@@ -2,6 +2,8 @@ pub(crate) mod cli;
 
 use std::process::ExitCode;
 
+pub mod interaction;
+
 use clap::Parser;
 use cli::CommandExecute;
 

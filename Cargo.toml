@@ -16,10 +16,10 @@ crossterm = { version = "0.25.0", features = ["event-stream"] }
 eyre = "0.6.8"
 futures = "0.3.24"
 owo-colors = { version = "3.5.0", features = [ "supports-colors" ] }
-reqwest = { version = "0.11.11", features = ["native-tls-vendored", "stream"] }
+reqwest = { version = "0.11.11", features = ["native-tls", "stream"] }
 target-lexicon = "0.12.4"
 thiserror = "1.0.33"
-tokio = { version = "1.21.0", features = ["time", "process", "fs", "tracing", "rt-multi-thread", "macros", "io-util"] }
+tokio = { version = "1.21.0", features = ["time", "io-std", "process", "fs", "tracing", "rt-multi-thread", "macros", "io-util"] }
 tracing = { version = "0.1.36", features = [ "valuable" ] }
 tracing-error = "0.2.0"
 tracing-subscriber = { version = "0.3.15", features = [ "env-filter", "valuable" ] }
