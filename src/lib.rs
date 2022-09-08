@@ -1,5 +1,10 @@
 mod error;
-use std::{fs::Permissions, os::unix::fs::PermissionsExt, path::Path};
+use std::{
+    fs::Permissions,
+    os::unix::fs::PermissionsExt,
+    path::{Path, PathBuf},
+    process::ExitStatus,
+};
 
 pub use error::HarmonicError;
 
@@ -8,12 +13,14 @@ mod nixos;
 #[cfg(target_os = "linux")]
 pub use nixos::NixOs;
 
-use futures::stream::TryStreamExt;
+use bytes::Buf;
+use glob::glob;
 use reqwest::Url;
 use tokio::{
-    fs::{create_dir, set_permissions, OpenOptions},
+    fs::{create_dir, create_dir_all, set_permissions, symlink, OpenOptions},
     io::AsyncWriteExt,
     process::Command,
+    task::spawn_blocking,
 };
 
 // This uses a Rust builder pattern
@@ -54,21 +61,22 @@ impl Harmonic {
         )
         .await
         .map_err(HarmonicError::DownloadingNix)?;
-        let stream = res.bytes_stream();
-        let async_read = stream
-            .map_err(|e| std::io::Error::new(std::io::ErrorKind::Other, e))
-            .into_async_read();
-        let buffered = futures::io::BufReader::new(async_read);
-        let decoder = async_compression::futures::bufread::XzDecoder::new(buffered);
-        let archive = async_tar::Archive::new(decoder);
-
+        let bytes = res.bytes().await.map_err(HarmonicError::DownloadingNix)?;
         // TODO(@Hoverbear): Pick directory
-        let destination = "/nix/store";
-        archive
-            .unpack(destination)
-            .await
-            .map_err(HarmonicError::UnpackingNix)?;
-        tracing::debug!(%destination, "Downloaded & extracted Nix");
+        let handle: Result<(), HarmonicError> = spawn_blocking(|| {
+            let decoder = xz2::read::XzDecoder::new(bytes.reader());
+            let mut archive = tar::Archive::new(decoder);
+            let destination = "/nix/install";
+            archive
+                .unpack(destination)
+                .map_err(HarmonicError::UnpackingNix)?;
+            tracing::debug!(%destination, "Downloaded & extracted Nix");
+            Ok(())
+        })
+        .await?;
+
+        handle?;
+
         Ok(())
     }
 
@@ -122,7 +130,7 @@ impl Harmonic {
         Ok(())
     }
     pub async fn create_directories(&self) -> Result<(), HarmonicError> {
-        let permissions = Permissions::from_mode(755);
+        let permissions = Permissions::from_mode(0o755);
         let paths = [
             "/nix",
             "/nix/var",
@@ -168,7 +176,158 @@ impl Harmonic {
         Ok(())
     }
     pub async fn configure_shell_profile(&self) -> Result<(), HarmonicError> {
-        todo!();
+        const PROFILE_TARGETS: &[&str] = &[
+            "/etc/bashrc",
+            "/etc/profile.d/nix.sh",
+            "/etc/zshrc",
+            "/etc/bash.bashrc",
+            "/etc/zsh/zshrc",
+        ];
+        const PROFILE_NIX_FILE: &str = "/nix/var/nix/profiles/default/etc/profile.d/nix-daemon.sh";
+        for profile_target in PROFILE_TARGETS {
+            let path = Path::new(profile_target);
+            let buf = format!(
+                "\n\
+                # Nix\n\
+                if [ -e '{PROFILE_NIX_FILE}' ]; then\n\
+                . '{PROFILE_NIX_FILE}'\n\
+                fi\n
+                # End Nix\n
+            \n",
+            );
+            if path.exists() {
+                // TODO(@Hoverbear): Backup
+                // TODO(@Hoverbear): See if the line already exists, skip setting it
+                tracing::trace!("TODO");
+            } else if let Some(parent) = path.parent() {
+                create_dir_all(parent).await.unwrap()
+            }
+            let mut file = OpenOptions::new()
+                .create(true)
+                .read(true)
+                .write(true)
+                .truncate(false)
+                .open(profile_target)
+                .await
+                .map_err(|e| HarmonicError::OpeningFile(path.to_owned(), e))?;
+            file.write_all(buf.as_bytes())
+                .await
+                .map_err(|e| HarmonicError::WritingFile(path.to_owned(), e))?;
+        }
+        Ok(())
+    }
+
+    pub async fn setup_default_profile(&self) -> Result<(), HarmonicError> {
+        Command::new("/nix/install/bin/nix-env")
+            .arg("-i")
+            .arg("/nix/install")
+            .status()
+            .await
+            .map_err(HarmonicError::InstallNixIntoStore)?;
+        // Find an `nss-cacert` package, add it too.
+        let mut found_nss_ca_cert = None;
+        for entry in
+            glob("/nix/install/store/*-nss-cacert").map_err(HarmonicError::GlobPatternError)?
+        {
+            match entry {
+                Ok(path) => {
+                    // TODO(@Hoverbear): Should probably ensure is unique
+                    found_nss_ca_cert = Some(path);
+                    break;
+                }
+                Err(_) => continue, /* Ignore it */
+            };
+        }
+        if let Some(nss_ca_cert) = found_nss_ca_cert {
+            let status = Command::new("/nix/install/bin/nix-env")
+                .arg("-i")
+                .arg(&nss_ca_cert)
+                .status()
+                .await
+                .map_err(HarmonicError::InstallNssCacertIntoStore)?;
+            if !status.success() {
+                // TODO(@Hoverbear): report
+            }
+            std::env::set_var("NIX_SSL_CERT_FILE", &nss_ca_cert);
+        } else {
+            return Err(HarmonicError::NoNssCacert);
+        }
+        if !self.channels.is_empty() {
+            status_failure_as_error(
+                Command::new("/nix/install/bin/nix-channel")
+                    .arg("--update")
+                    .arg("nixpkgs"),
+            )
+            .await?;
+        }
+        Ok(())
+    }
+
+    pub async fn place_nix_configuration(&self) -> Result<(), HarmonicError> {
+        let mut nix_conf = OpenOptions::new()
+            .create_new(true)
+            .write(true)
+            .read(true)
+            .open("/etc/nix/nix.conf")
+            .await
+            .map_err(HarmonicError::CreatingNixConf)?;
+        let buf = format!(
+            "\
+            {extra_conf}\n\
+            build-users-group = {build_group_name}\n\
+        ",
+            extra_conf = "", // TODO(@Hoverbear): populate me
+            build_group_name = self.nix_build_group_name,
+        );
+        nix_conf
+            .write_all(buf.as_bytes())
+            .await
+            .map_err(HarmonicError::CreatingNixConf)?;
+
+        Ok(())
+    }
+
+    pub async fn configure_nix_daemon_service(&self) -> Result<(), HarmonicError> {
+        if Path::new("/run/systemd/system").exists() {
+            const SERVICE_SRC: &str =
+                "/nix/var/nix/profiles/default/lib/systemd/system/nix-daemon.service";
+
+            const SOCKET_SRC: &str =
+                "/nix/var/nix/profiles/default/lib/systemd/system/nix-daemon.socket";
+
+            const TMPFILES_SRC: &str =
+                "/nix/var/nix/profiles/default//lib/tmpfiles.d/nix-daemon.conf";
+            const TMPFILES_DEST: &str = "/etc/tmpfiles.d/nix-daemon.conf";
+
+            symlink(TMPFILES_SRC, TMPFILES_DEST).await.map_err(|e| {
+                HarmonicError::Linking(PathBuf::from(TMPFILES_SRC), PathBuf::from(TMPFILES_DEST), e)
+            })?;
+            status_failure_as_error(
+                Command::new("systemd-tmpfiles")
+                    .arg("--create")
+                    .arg("--prefix=/nix/var/nix"),
+            )
+            .await?;
+            status_failure_as_error(Command::new("systemctl").arg("link").arg(SERVICE_SRC)).await?;
+            status_failure_as_error(Command::new("systemctl").arg("enable").arg(SOCKET_SRC))
+                .await?;
+            // TODO(@Hoverbear): Handle proxy vars
+            status_failure_as_error(Command::new("systemctl").arg("daemon-reload")).await?;
+            status_failure_as_error(
+                Command::new("systemctl")
+                    .arg("start")
+                    .arg("nix-daemon.socket"),
+            )
+            .await?;
+            status_failure_as_error(
+                Command::new("systemctl")
+                    .arg("restart")
+                    .arg("nix-daemon.service"),
+            )
+            .await?;
+        } else {
+            return Err(HarmonicError::InitNotSupported);
+        }
         Ok(())
     }
 }
@@ -197,4 +356,16 @@ async fn create_dir_with_permissions(
     create_dir(path).await?;
     set_permissions(path, permissions).await?;
     Ok(())
+}
+
+async fn status_failure_as_error(command: &mut Command) -> Result<ExitStatus, HarmonicError> {
+    let command_str = format!("{:?}", command.as_std());
+    let status = command
+        .status()
+        .await
+        .map_err(|e| HarmonicError::CommandFailedExec(command_str.clone(), e))?;
+    match status.success() {
+        true => Ok(status),
+        false => Err(HarmonicError::CommandFailedStatus(command_str)),
+    }
 }

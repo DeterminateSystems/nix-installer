@@ -64,6 +64,8 @@ impl CommandExecute for HarmonicCli {
         harmonic.place_channel_configuration().await?;
         harmonic.fetch_nix().await?;
         harmonic.configure_shell_profile().await?;
+        harmonic.setup_default_profile().await?;
+        harmonic.place_nix_configuration().await?;
 
         Ok(ExitCode::SUCCESS)
     }
