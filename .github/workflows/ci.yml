@@ -1,0 +1,112 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+jobs:
+  Format:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - uses: cachix/install-nix-action@v17
+        with:
+          extra_nix_config: |
+            access-tokens = github.com=${{ secrets.GITHUB_TOKEN }}
+      - name: Check rustfmt
+        run: nix develop --command ci-check-rustfmt
+
+  Spelling:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - uses: cachix/install-nix-action@v17
+        with:
+          extra_nix_config: |
+            access-tokens = github.com=${{ secrets.GITHUB_TOKEN }}
+      - name: Check Spelling
+        run: nix develop --command ci-check-spelling
+
+  NixFormatting:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - uses: cachix/install-nix-action@v17
+        with:
+          extra_nix_config: |
+            access-tokens = github.com=${{ secrets.GITHUB_TOKEN }}
+      - name: Check nixpkgs-fmt formatting
+        run: nix develop --command ci-check-nixpkgs-fmt
+
+  RegistryFormatting:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - uses: cachix/install-nix-action@v17
+        with:
+          extra_nix_config: |
+            access-tokens = github.com=${{ secrets.GITHUB_TOKEN }}
+      - name: Check registry.json formatting
+        run: nix develop --command ci-check-registry-format
+
+  EditorConfig:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - uses: cachix/install-nix-action@v17
+        with:
+          extra_nix_config: |
+            access-tokens = github.com=${{ secrets.GITHUB_TOKEN }}
+      - name: Check EditorConfig conformance
+        run: nix develop --command ci-check-editorconfig
+
+  Test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - uses: cachix/install-nix-action@v17
+        with:
+          extra_nix_config: |
+            access-tokens = github.com=${{ secrets.GITHUB_TOKEN }}
+      - name: Run tests
+        run: nix develop --command ci-test-rust
+        # run: nix develop -c -- cargo test -- --include-ignored
+
+  BuildX86Linux:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - uses: cachix/install-nix-action@v17
+        with:
+          extra_nix_config: |
+            access-tokens = github.com=${{ secrets.GITHUB_TOKEN }}
+      # Runs clippy as part of the preBuild.
+      - name: Build harmonic
+        run: nix build .#packages.x86_64-linux.harmonic -L
+      - name: Build harmonicStatic
+        run: nix build .#packages.x86_64-linux.harmonicStatic -L
+      - name: Create artifact for x86_64-linux harmonicStatic
+        uses: actions/upload-artifact@v3
+        with:
+          name: harmonic-x86_64-linux
+          path: |
+            result/bin/harmonic
+
+  BuildX86Darwin:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v3
+      - uses: cachix/install-nix-action@v17
+        with:
+          extra_nix_config: |
+            access-tokens = github.com=${{ secrets.GITHUB_TOKEN }}
+      # Runs clippy as part of the preBuild.
+      - name: Build harmonic
+        run: nix build .#packages.x86_64-darwin.harmonic -L
+      - name: Create artifact for x86_64-darwin harmonic
+        uses: actions/upload-artifact@v3
+        with:
+          name: harmonic-x86_64-darwin
+          path: |
+            result/bin/harmonic
