@@ -606,7 +606,7 @@ dependencies = [
 
 [[package]]
 name = "harmonic"
-version = "0.0.1"
+version = "0.0.0-unreleased"
 dependencies = [
  "async-tar",
  "async-trait",

@@ -8,13 +8,7 @@ use valuable::Valuable;
 #[derive(clap::Args, Debug, Valuable)]
 pub struct Instrumentation {
     /// Enable debug logs, -vv for trace
-    #[clap(
-        short = 'v',
-        long,
-        parse(from_occurrences),
-        global = true,
-        group = "verbosity"
-    )]
+    #[clap(short = 'v', long, parse(from_occurrences), global = true)]
     pub(crate) verbose: usize,
 }
 

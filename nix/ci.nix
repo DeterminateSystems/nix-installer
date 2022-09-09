@@ -24,11 +24,6 @@ in
     git ls-files '*.nix' | xargs | nixpkgs-fmt --check
   '')
 
-  # RegistryFormatting
-  (writeScriptBin "ci-check-registry-format" ''
-    ./registry/format.sh && git diff --exit-code
-  '')
-
   # EditorConfig
   (writeScriptBin "ci-check-editorconfig" ''
     eclint
@@ -39,7 +34,6 @@ in
     ci-test-rust
     ci-check-spelling
     ci-check-nixpkgs-fmt
-    ci-check-registry-format
     ci-check-editorconfig
   '')
 ]
