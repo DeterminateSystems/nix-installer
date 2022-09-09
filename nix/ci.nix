@@ -14,7 +14,7 @@ in
   # Spelling
   (writeScriptBin "ci-check-spelling" ''
     codespell \
-      --ignore-words-list crate,pullrequest,pullrequests,ser \
+      --ignore-words-list ba,sur,crate,pullrequest,pullrequests,ser \
       --skip target \
       .
   '')

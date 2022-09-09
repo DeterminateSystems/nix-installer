@@ -1,6 +1,6 @@
 #[derive(thiserror::Error, Debug)]
 pub enum HarmonicError {
-    #[error("Reqest error")]
+    #[error("Request error")]
     Reqwest(#[from] reqwest::Error),
     #[error("Unarchiving error")]
     Unarchive(std::io::Error),
