@@ -62,6 +62,7 @@ impl Harmonic {
 impl Harmonic {
     #[tracing::instrument(skip_all)]
     pub async fn fetch_nix(&self) -> Result<(), HarmonicError> {
+        tracing::debug!("Fetching nix");
         // TODO(@hoverbear): architecture specific download
         // TODO(@hoverbear): hash check
         // TODO(@hoverbear): custom url
@@ -93,6 +94,7 @@ impl Harmonic {
 
     #[tracing::instrument(skip_all)]
     pub async fn create_group(&self) -> Result<(), HarmonicError> {
+        tracing::debug!("Creating group");
         execute_command(
             Command::new("groupadd")
                 .arg("-g")
@@ -107,6 +109,7 @@ impl Harmonic {
 
     #[tracing::instrument(skip_all)]
     pub async fn create_users(&self) -> Result<(), HarmonicError> {
+        tracing::debug!("Creating users");
         for index in 1..=self.daemon_user_count {
             let user_name = format!("{}{index}", self.nix_build_user_prefix);
             let user_id = self.nix_build_user_id_base + index;
@@ -139,6 +142,7 @@ impl Harmonic {
 
     #[tracing::instrument(skip_all)]
     pub async fn create_directories(&self) -> Result<(), HarmonicError> {
+        tracing::debug!("Creating directories");
         create_directory("/nix", self.dry_run).await?;
         set_permissions(
             "/nix",
@@ -194,6 +198,7 @@ impl Harmonic {
 
     #[tracing::instrument(skip_all)]
     pub async fn place_channel_configuration(&self) -> Result<(), HarmonicError> {
+        tracing::debug!("Placing channel configuration");
         let buf = self
             .channels
             .iter()
@@ -214,6 +219,7 @@ impl Harmonic {
 
     #[tracing::instrument(skip_all)]
     pub async fn configure_shell_profile(&self) -> Result<(), HarmonicError> {
+        tracing::debug!("Configuring shell profile");
         const PROFILE_TARGETS: &[&str] = &[
             "/etc/bashrc",
             "/etc/profile.d/nix.sh",
@@ -240,6 +246,7 @@ impl Harmonic {
 
     #[tracing::instrument(skip_all)]
     pub async fn setup_default_profile(&self) -> Result<(), HarmonicError> {
+        tracing::debug!("Setting up default profile");
         // Find an `nix` package
         let nix_pkg_glob = "/nix/store/*-nix-*";
         let found_nix_pkg = if !self.dry_run {
@@ -328,6 +335,7 @@ impl Harmonic {
 
     #[tracing::instrument(skip_all)]
     pub async fn place_nix_configuration(&self) -> Result<(), HarmonicError> {
+        tracing::debug!("Placing nix configuration");
         let buf = format!(
             "\
             {extra_conf}\n\
@@ -341,6 +349,7 @@ impl Harmonic {
 
     #[tracing::instrument(skip_all)]
     pub async fn configure_nix_daemon_service(&self) -> Result<(), HarmonicError> {
+        tracing::debug!("Configuring nix daemon service");
         if Path::new("/run/systemd/system").exists() {
             const SERVICE_SRC: &str =
                 "/nix/var/nix/profiles/default/lib/systemd/system/nix-daemon.service";
@@ -429,6 +438,7 @@ async fn set_permissions(
     use nix::unistd::{chown, Group, User};
     use walkdir::WalkDir;
     if !dry_run {
+        tracing::trace!("Setting permissions");
         let path = path.as_ref();
         let uid = if let Some(owner) = owner {
             let uid = User::from_name(owner.as_str())
@@ -471,6 +481,7 @@ async fn set_permissions(
 async fn create_directory(path: impl AsRef<Path>, dry_run: bool) -> Result<(), HarmonicError> {
     use tokio::fs::create_dir;
     if !dry_run {
+        tracing::trace!("Creating directory");
         let path = path.as_ref();
         create_dir(path)
             .await
@@ -488,6 +499,7 @@ async fn execute_command(
     dry_run: bool,
 ) -> Result<ExitStatus, HarmonicError> {
     if !dry_run {
+        tracing::trace!("Executing");
         let command_str = format!("{:?}", command.as_std());
         let status = command
             .status()
@@ -521,6 +533,7 @@ async fn create_or_append_file(
     let path = path.as_ref();
     let buf = buf.as_ref();
     if !dry_run {
+        tracing::trace!("Creating or appending");
         if let Some(parent) = path.parent() {
             create_dir_all(parent)
                 .await
@@ -548,7 +561,7 @@ async fn create_or_append_file(
 
 #[tracing::instrument(skip_all, fields(
     path = %path.as_ref().display(),
-    buf = %format!("`{}`", buf.as_ref()),
+    buf = %format!("```{}```", buf.as_ref()),
 ))]
 async fn create_file_if_not_exists(
     path: impl AsRef<Path>,
@@ -559,6 +572,7 @@ async fn create_file_if_not_exists(
     let path = path.as_ref();
     let buf = buf.as_ref();
     if !dry_run {
+        tracing::trace!("Creating if not exists");
         if let Some(parent) = path.parent() {
             create_dir_all(parent)
                 .await
@@ -593,6 +607,7 @@ async fn symlink(
     let src = src.as_ref();
     let dest = dest.as_ref();
     if !dry_run {
+        tracing::trace!("Symlinking");
         tokio::fs::symlink(src, dest)
             .await
             .map_err(|e| HarmonicError::Symlink(src.to_owned(), dest.to_owned(), e))?;
@@ -614,6 +629,7 @@ async fn rename(
     let src = src.as_ref();
     let dest = dest.as_ref();
     if !dry_run {
+        tracing::trace!("Renaming");
         tokio::fs::rename(src, dest)
             .await
             .map_err(|e| HarmonicError::Rename(src.to_owned(), dest.to_owned(), e))?;
@@ -635,9 +651,11 @@ async fn fetch_url_and_unpack_xz(
     let url = url.as_ref();
     let dest = dest.as_ref().to_owned();
     if !dry_run {
+        tracing::trace!("Fetching url");
         let res = reqwest::get(url).await.map_err(HarmonicError::Reqwest)?;
         let bytes = res.bytes().await.map_err(HarmonicError::Reqwest)?;
         // TODO(@Hoverbear): Pick directory
+        tracing::trace!("Unpacking tar.xz");
         let handle: Result<(), HarmonicError> = spawn_blocking(move || {
             let decoder = xz2::read::XzDecoder::new(bytes.reader());
             let mut archive = tar::Archive::new(decoder);
@@ -661,6 +679,7 @@ async fn fetch_url_and_unpack_xz(
 ))]
 fn set_env(k: impl AsRef<OsStr>, v: impl AsRef<OsStr>, dry_run: bool) {
     if !dry_run {
+        tracing::trace!("Setting env");
         std::env::set_var(k.as_ref(), v.as_ref());
     } else {
         tracing::info!("Dry run: Would set env");
