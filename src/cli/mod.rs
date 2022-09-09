@@ -60,6 +60,7 @@ impl CommandExecute for HarmonicCli {
             daemon_user_count,
             channel,
             no_modify_profile,
+            #[cfg(target_os = "linux")]
             subcommand,
         } = self;
 
