@@ -1,3 +1,4 @@
+#[cfg(target_os = "linux")]
 mod nixos;
 
 #[derive(Debug, clap::Subcommand)]
