@@ -29,3 +29,5 @@ glob = "0.3.0"
 xz2 = { version = "0.1.7", features = ["static", "tokio"] }
 bytes = "1.2.1"
 tar = "0.4.38"
+nix = { version = "0.25.0", features = ["user", "fs"], default-features = false }
+walkdir = "2.3.2"

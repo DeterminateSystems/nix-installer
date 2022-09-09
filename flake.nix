@@ -109,6 +109,7 @@
               ]);
 
               doCheck = true;
+              RUSTFLAGS = "--cfg tracing_unstable";
 
               override = { preBuild ? "", ... }: {
                 preBuild = preBuild + ''

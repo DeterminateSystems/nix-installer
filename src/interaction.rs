@@ -10,7 +10,7 @@ pub(crate) async fn confirm(question: impl AsRef<str>) -> eyre::Result<bool> {
         "\
         {question}\n\
         \n\
-        {are_you_sure} ({yes}/{no})\
+        {are_you_sure} ({yes}/{no}): \
     ",
         question = question.as_ref(),
         are_you_sure = "Are you sure?".bright_white().bold(),

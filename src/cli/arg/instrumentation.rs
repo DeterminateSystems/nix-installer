@@ -6,7 +6,7 @@ use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt, EnvFilte
 use valuable::Valuable;
 
 #[derive(clap::Args, Debug, Valuable)]
-pub(crate) struct Instrumentation {
+pub struct Instrumentation {
     /// Enable debug logs, -vv for trace
     #[clap(
         short = 'v',
