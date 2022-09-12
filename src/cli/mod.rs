@@ -1,5 +1,4 @@
 pub(crate) mod arg;
-pub(crate) mod subcommand;
 
 use crate::{cli::arg::ChannelValue, interaction};
 use clap::{ArgAction, Parser};
@@ -40,9 +39,6 @@ pub(crate) struct HarmonicCli {
     /// Number of build users to create
     #[clap(long, default_value = "32", env = "HARMONIC_NIX_DAEMON_USER_COUNT")]
     pub(crate) daemon_user_count: usize,
-    #[cfg(target_os = "linux")]
-    #[clap(subcommand)]
-    subcommand: Option<subcommand::Subcommand>,
 }
 
 #[async_trait::async_trait]
@@ -60,15 +56,7 @@ impl CommandExecute for HarmonicCli {
             daemon_user_count,
             channel,
             no_modify_profile,
-            #[cfg(target_os = "linux")]
-            subcommand,
         } = self;
-
-        #[cfg(target_os = "linux")]
-        match subcommand {
-            Some(subcommand::Subcommand::NixOs(nixos)) => return nixos.execute().await,
-            None => (),
-        }
 
         let mut harmonic = Harmonic::default();
 

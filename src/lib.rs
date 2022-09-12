@@ -10,11 +10,6 @@ use std::{
 
 pub use error::HarmonicError;
 
-#[cfg(target_os = "linux")]
-mod nixos;
-#[cfg(target_os = "linux")]
-pub use nixos::NixOs;
-
 use bytes::Buf;
 use glob::glob;
 use reqwest::Url;
@@ -62,7 +57,7 @@ impl Harmonic {
 impl Harmonic {
     #[tracing::instrument(skip_all)]
     pub async fn fetch_nix(&self) -> Result<(), HarmonicError> {
-        tracing::debug!("Fetching nix");
+        tracing::info!("Fetching nix");
         // TODO(@hoverbear): architecture specific download
         // TODO(@hoverbear): hash check
         // TODO(@hoverbear): custom url
@@ -94,7 +89,7 @@ impl Harmonic {
 
     #[tracing::instrument(skip_all)]
     pub async fn create_group(&self) -> Result<(), HarmonicError> {
-        tracing::debug!("Creating group");
+        tracing::info!("Creating group");
         execute_command(
             Command::new("groupadd")
                 .arg("-g")
@@ -109,7 +104,7 @@ impl Harmonic {
 
     #[tracing::instrument(skip_all)]
     pub async fn create_users(&self) -> Result<(), HarmonicError> {
-        tracing::debug!("Creating users");
+        tracing::info!("Creating users");
         for index in 1..=self.daemon_user_count {
             let user_name = format!("{}{index}", self.nix_build_user_prefix);
             let user_id = self.nix_build_user_id_base + index;
@@ -142,7 +137,7 @@ impl Harmonic {
 
     #[tracing::instrument(skip_all)]
     pub async fn create_directories(&self) -> Result<(), HarmonicError> {
-        tracing::debug!("Creating directories");
+        tracing::info!("Creating directories");
         create_directory("/nix", self.dry_run).await?;
         set_permissions(
             "/nix",
@@ -198,7 +193,7 @@ impl Harmonic {
 
     #[tracing::instrument(skip_all)]
     pub async fn place_channel_configuration(&self) -> Result<(), HarmonicError> {
-        tracing::debug!("Placing channel configuration");
+        tracing::info!("Placing channel configuration");
         let buf = self
             .channels
             .iter()
@@ -219,7 +214,7 @@ impl Harmonic {
 
     #[tracing::instrument(skip_all)]
     pub async fn configure_shell_profile(&self) -> Result<(), HarmonicError> {
-        tracing::debug!("Configuring shell profile");
+        tracing::info!("Configuring shell profile");
         const PROFILE_TARGETS: &[&str] = &[
             "/etc/bashrc",
             "/etc/profile.d/nix.sh",
