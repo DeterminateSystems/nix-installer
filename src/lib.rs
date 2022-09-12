@@ -241,7 +241,7 @@ impl Harmonic {
 
     #[tracing::instrument(skip_all)]
     pub async fn setup_default_profile(&self) -> Result<(), HarmonicError> {
-        tracing::debug!("Setting up default profile");
+        tracing::info!("Setting up default profile");
         // Find an `nix` package
         let nix_pkg_glob = "/nix/store/*-nix-*";
         let found_nix_pkg = if !self.dry_run {
@@ -330,7 +330,7 @@ impl Harmonic {
 
     #[tracing::instrument(skip_all)]
     pub async fn place_nix_configuration(&self) -> Result<(), HarmonicError> {
-        tracing::debug!("Placing nix configuration");
+        tracing::info!("Placing nix configuration");
         let buf = format!(
             "\
             {extra_conf}\n\
@@ -344,7 +344,7 @@ impl Harmonic {
 
     #[tracing::instrument(skip_all)]
     pub async fn configure_nix_daemon_service(&self) -> Result<(), HarmonicError> {
-        tracing::debug!("Configuring nix daemon service");
+        tracing::info!("Configuring nix daemon service");
         if Path::new("/run/systemd/system").exists() {
             const SERVICE_SRC: &str =
                 "/nix/var/nix/profiles/default/lib/systemd/system/nix-daemon.service";
