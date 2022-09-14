@@ -1,4 +1,8 @@
 mod error;
+mod actions;
+mod plan;
+mod settings;
+
 use std::{
     ffi::OsStr,
     fs::Permissions,

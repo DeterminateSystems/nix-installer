@@ -1,3 +1,5 @@
+use serde::de::value::Error;
+
 #[derive(thiserror::Error, Debug)]
 pub enum HarmonicError {
     #[error("Request error")]
@@ -47,4 +49,8 @@ pub enum HarmonicError {
     GroupId(String, nix::errno::Errno),
     #[error("Getting group `{0}`")]
     NoGroup(String),
+    #[error("Errors with additional failures during reverts: {}\nDuring Revert:{}", .0.iter().map(|v| format!("{v}")).collect::<Vec<_>>().join(" & "), .1.iter().map(|v| format!("{v}")).collect::<Vec<_>>().join(" & "))]
+    FailedReverts(Vec<HarmonicError>, Vec<HarmonicError>),
+    #[error("Multiple errors: {}", .0.iter().map(|v| format!("{v}")).collect::<Vec<_>>().join(" & "))]
+    Multiple(Vec<HarmonicError>)
 }
