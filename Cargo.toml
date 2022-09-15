@@ -33,3 +33,4 @@ nix = { version = "0.25.0", features = ["user", "fs"], default-features = false 
 walkdir = "2.3.2"
 serde = { version = "1.0.144", features = ["derive"] }
 url = { version = "2.3.1", features = ["serde"] }
+serde_json = "1.0.85"

@@ -1,19 +1,24 @@
 use url::Url;
 
-#[derive(Debug, serde::Deserialize, serde::Serialize, Clone)]
+#[derive(Debug, serde::Deserialize, serde::Serialize, Clone, Default)]
 pub struct InstallSettings {
-    dry_run: bool,
-    daemon_user_count: usize,
-    channels: Vec<(String, Url)>,
-    modify_profile: bool,
-    nix_build_group_name: String,
-    nix_build_group_id: usize,
-    nix_build_user_prefix: String,
-    nix_build_user_id_base: usize,
+    pub(crate) dry_run: bool,
+    pub(crate) explain: bool,
+    pub(crate) daemon_user_count: usize,
+    pub(crate) channels: Vec<(String, Url)>,
+    pub(crate) modify_profile: bool,
+    pub(crate) nix_build_group_name: String,
+    pub(crate) nix_build_group_id: usize,
+    pub(crate) nix_build_user_prefix: String,
+    pub(crate) nix_build_user_id_base: usize,
 }
 
 // Builder Pattern
 impl InstallSettings {
+    pub fn explain(&mut self, explain: bool) -> &mut Self {
+        self.explain = explain;
+        self
+    }
     pub fn dry_run(&mut self, dry_run: bool) -> &mut Self {
         self.dry_run = dry_run;
         self

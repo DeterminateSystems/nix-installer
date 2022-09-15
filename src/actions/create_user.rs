@@ -1,6 +1,6 @@
 use crate::{settings::InstallSettings, HarmonicError};
 
-use super::{Actionable, ActionReceipt, Revertable};
+use super::{Actionable, ActionReceipt, Revertable, ActionDescription};
 
 
 #[derive(Debug, serde::Deserialize, serde::Serialize, Clone)]
@@ -23,8 +23,17 @@ impl CreateUser {
 
 #[async_trait::async_trait]
 impl<'a> Actionable<'a> for CreateUser {
-    fn description(&self) -> String {
-        todo!()
+    fn description(&self) -> Vec<ActionDescription> {
+        let name = &self.name;
+        let uid = &self.uid;
+        vec![
+            ActionDescription::new(
+                format!("Create user {name} with UID {uid}"),
+                vec![
+                    format!("The nix daemon requires system users it can act as in order to build"),
+                ]
+            )
+        ]
     }
 
     async fn execute(self) -> Result<ActionReceipt, HarmonicError> {
@@ -36,7 +45,7 @@ impl<'a> Actionable<'a> for CreateUser {
 
 #[async_trait::async_trait]
 impl<'a> Revertable<'a> for CreateUserReceipt {
-    fn description(&self) -> String {
+    fn description(&self) -> Vec<ActionDescription> {
         todo!()
     }
 

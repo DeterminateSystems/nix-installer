@@ -8,6 +8,19 @@ pub use create_users::{CreateUsers, CreateUsersReceipt};
 use crate::{HarmonicError, settings::InstallSettings};
 
 #[derive(Debug, serde::Deserialize, serde::Serialize, Clone)]
+
+pub struct ActionDescription {
+    pub description: String,
+    pub explanation: Vec<String>,
+}
+
+impl ActionDescription {
+    fn new(description: String, explanation: Vec<String>) -> Self {
+        Self { description, explanation }
+    }
+}
+
+#[derive(Debug, serde::Deserialize, serde::Serialize, Clone)]
 pub enum Action {
     CreateUsers(CreateUsers),
     CreateUser(CreateUser),
@@ -24,7 +37,7 @@ pub enum ActionReceipt {
 
 #[async_trait::async_trait]
 impl<'a> Actionable<'a> for Action {
-    fn description(&self) -> String {
+    fn description(&self) -> Vec<ActionDescription> {
         match self {
             Action::StartNixDaemonService(i) => i.description(),
             Action::CreateUser(i) => i.description(),
@@ -43,7 +56,7 @@ impl<'a> Actionable<'a> for Action {
 
 #[async_trait::async_trait]
 impl<'a> Revertable<'a> for ActionReceipt {
-    fn description(&self) -> String {
+    fn description(&self) -> Vec<ActionDescription> {
         match self {
             ActionReceipt::StartNixDaemonService(i) => i.description(),
             ActionReceipt::CreateUser(i) => i.description(),
@@ -62,12 +75,12 @@ impl<'a> Revertable<'a> for ActionReceipt {
 
 #[async_trait::async_trait]
 pub trait Actionable<'a>: serde::de::Deserialize<'a> + serde::Serialize {
-    fn description(&self) -> String;
+    fn description(&self) -> Vec<ActionDescription>;
     async fn execute(self) -> Result<ActionReceipt, HarmonicError>;
 }
 
 #[async_trait::async_trait]
 pub trait Revertable<'a>: serde::de::Deserialize<'a> + serde::Serialize {
-    fn description(&self) -> String;
+    fn description(&self) -> Vec<ActionDescription>;
     async fn revert(self) -> Result<(), HarmonicError>;
 }

@@ -1,11 +1,11 @@
 use serde::{Deserialize, Serialize};
 
-use crate::{settings::InstallSettings, actions::{Action, StartNixDaemonService, Actionable, ActionReceipt, Revertable}, HarmonicError};
+use crate::{settings::InstallSettings, actions::{Action, StartNixDaemonService, Actionable, ActionReceipt, Revertable, CreateUsers, ActionDescription}, HarmonicError};
 
 
 
 #[derive(Debug, serde::Deserialize, serde::Serialize, Clone)]
-struct InstallPlan {
+pub struct InstallPlan {
     settings: InstallSettings,
 
     /** Bootstrap the install
@@ -26,15 +26,47 @@ struct InstallPlan {
 }
 
 impl InstallPlan {
-    async fn plan(settings: InstallSettings) -> Result<Self, HarmonicError> {
+    pub fn description(&self) -> String {
+        format!("\
+            This Nix install is for:\n\
+              Operating System: {os_type}\n\
+              Init system: {init_type}\n\
+              Nix channels: {nix_channels}\n\
+            \n\
+            The following actions will be taken:\n\
+            {actions}
+        ", 
+            os_type = "Linux",
+            init_type = "systemd",
+            nix_channels = self.settings.channels.iter().map(|(name,url)| format!("{name}={url}")).collect::<Vec<_>>().join(","),
+            actions = self.actions.iter().flat_map(|action| action.description()).map(|desc| {
+                let ActionDescription {
+                    description,
+                    explanation,
+                } = desc;
+                
+                let mut buf = String::default();
+                buf.push_str(&format!("* {description}\n"));
+                if self.settings.explain {
+                    for line in explanation {
+                        buf.push_str(&format!("  {line}\n"));
+                    }
+                }
+                buf
+            }).collect::<Vec<_>>().join("\n"),
+        )
+    }
+    pub async fn new(settings: InstallSettings) -> Result<Self, HarmonicError> {
         let start_nix_daemon_service = StartNixDaemonService::plan();
+        let create_users = CreateUsers::plan(settings.nix_build_user_prefix.clone(), settings.nix_build_user_id_base, settings.daemon_user_count);
 
         let actions = vec![
+            Action::CreateUsers(create_users),
             Action::StartNixDaemonService(start_nix_daemon_service),
         ];
         Ok(Self { settings, actions })
     }
-    async fn install(self) -> Result<Receipt, HarmonicError> {
+    pub async fn install(self) -> Result<Receipt, HarmonicError> {
         let mut receipt = Receipt::default();
         // This is **deliberately sequential**.
         // Actions which are parallelizable are represented by "group actions" like CreateUsers
@@ -64,6 +96,6 @@ impl InstallPlan {
 }
 
 #[derive(Default, Debug, Serialize, Deserialize)]
-struct Receipt {
+pub struct Receipt {
     actions: Vec<ActionReceipt>,
 }

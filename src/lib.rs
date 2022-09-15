@@ -13,6 +13,8 @@ use std::{
 };
 
 pub use error::HarmonicError;
+pub use plan::InstallPlan;
+pub use settings::InstallSettings;
 
 use bytes::Buf;
 use glob::glob;

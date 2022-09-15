@@ -621,6 +621,7 @@ dependencies = [
  "owo-colors",
  "reqwest",
  "serde",
+ "serde_json",
  "tar",
  "target-lexicon",
  "tempdir",

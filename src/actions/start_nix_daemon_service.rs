@@ -1,6 +1,8 @@
+use reqwest::redirect::Action;
+
 use crate::{settings::InstallSettings, HarmonicError};
 
-use super::{Actionable, ActionReceipt, Revertable};
+use super::{Actionable, ActionReceipt, Revertable, ActionDescription};
 
 
 #[derive(Debug, serde::Deserialize, serde::Serialize, Clone)]
@@ -21,8 +23,15 @@ impl StartNixDaemonService {
 
 #[async_trait::async_trait]
 impl<'a> Actionable<'a> for StartNixDaemonService {
-    fn description(&self) -> String {
-        todo!()
+    fn description(&self) -> Vec<ActionDescription> {
+        vec![
+            ActionDescription::new(
+                "Start the systemd Nix daemon".to_string(),
+                vec![
+                    "The `nix` command line tool communicates with a running Nix daemon managed by your init system".to_string()
+                ]
+            ),
+        ]
     }
 
     async fn execute(self) -> Result<ActionReceipt, HarmonicError> {
@@ -33,7 +42,7 @@ impl<'a> Actionable<'a> for StartNixDaemonService {
 
 #[async_trait::async_trait]
 impl<'a> Revertable<'a> for StartNixDaemonServiceReceipt {
-    fn description(&self) -> String {
+    fn description(&self) -> Vec<ActionDescription> {
         todo!()
     }
 
