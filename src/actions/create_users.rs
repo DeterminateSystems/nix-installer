@@ -1,9 +1,8 @@
 use tokio::task::JoinSet;
 
-use crate::{settings::InstallSettings, HarmonicError};
+use crate::HarmonicError;
 
-use super::{Actionable, CreateUser, ActionReceipt, create_user::CreateUserReceipt, Revertable, ActionDescription};
-
+use super::{ActionDescription, ActionReceipt, Actionable, CreateUser, Revertable};
 
 #[derive(Debug, serde::Deserialize, serde::Serialize, Clone)]
 pub struct CreateUsers {
@@ -13,18 +12,26 @@ pub struct CreateUsers {
     children: Vec<CreateUser>,
 }
 
-#[derive(Debug, serde::Deserialize, serde::Serialize, Clone)]
-pub struct CreateUsersReceipt {
-    children: Vec<ActionReceipt>,
-}
-
 impl CreateUsers {
-    pub fn plan(nix_build_user_prefix: String, nix_build_user_id_base: usize, daemon_user_count: usize) -> Self {
-        let children = (0..daemon_user_count).map(|count| CreateUser::plan(
-            format!("{nix_build_user_prefix}{count}"),
-            nix_build_user_id_base + count
-        )).collect();
-        Self { nix_build_user_prefix, nix_build_user_id_base, daemon_user_count, children }
+    pub fn plan(
+        nix_build_user_prefix: String,
+        nix_build_user_id_base: usize,
+        daemon_user_count: usize,
+    ) -> Self {
+        let children = (0..daemon_user_count)
+            .map(|count| {
+                CreateUser::plan(
+                    format!("{nix_build_user_prefix}{count}"),
+                    nix_build_user_id_base + count,
+                )
+            })
+            .collect();
+        Self {
+            nix_build_user_prefix,
+            nix_build_user_id_base,
+            daemon_user_count,
+            children,
+        }
     }
 }
 
@@ -79,16 +86,22 @@ impl<'a> Actionable<'a> for CreateUsers {
             }
 
             if errors.len() == 1 {
-                return Err(errors.into_iter().next().unwrap())
+                return Err(errors.into_iter().next().unwrap());
             } else {
-                return Err(HarmonicError::Multiple(errors))
+                return Err(HarmonicError::Multiple(errors));
             }
         }
-        
-        Ok(ActionReceipt::CreateUsers(CreateUsersReceipt{ children: successes }))
+
+        Ok(ActionReceipt::CreateUsers(CreateUsersReceipt {
+            children: successes,
+        }))
     }
 }
 
+#[derive(Debug, serde::Deserialize, serde::Serialize, Clone)]
+pub struct CreateUsersReceipt {
+    children: Vec<ActionReceipt>,
+}
 
 #[async_trait::async_trait]
 impl<'a> Revertable<'a> for CreateUsersReceipt {
@@ -98,7 +111,7 @@ impl<'a> Revertable<'a> for CreateUsersReceipt {
 
     async fn revert(self) -> Result<(), HarmonicError> {
         todo!();
-        
+
         Ok(())
     }
 }

@@ -57,7 +57,7 @@ impl<'a> Instrumentation {
                     }
                 }
                 EnvFilter::try_new(&format!("{}={}", env!("CARGO_PKG_NAME"), self.log_level()))?
-            }
+            },
         };
 
         Ok(filter_layer)

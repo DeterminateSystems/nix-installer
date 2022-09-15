@@ -1,5 +1,5 @@
-mod error;
 mod actions;
+mod error;
 mod plan;
 mod settings;
 
@@ -258,7 +258,7 @@ impl Harmonic {
                         // TODO(@Hoverbear): Should probably ensure is unique
                         found_pkg = Some(path);
                         break;
-                    }
+                    },
                     Err(_) => continue, /* Ignore it */
                 };
             }
@@ -291,7 +291,7 @@ impl Harmonic {
                         // TODO(@Hoverbear): Should probably ensure is unique
                         found_pkg = Some(path);
                         break;
-                    }
+                    },
                     Err(_) => continue, /* Ignore it */
                 };
             }

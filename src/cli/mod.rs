@@ -8,7 +8,6 @@ use std::process::ExitCode;
 
 use self::subcommand::HarmonicSubcommand;
 
-
 #[async_trait::async_trait]
 pub(crate) trait CommandExecute {
     async fn execute(self) -> eyre::Result<ExitCode>;
@@ -70,42 +69,32 @@ impl CommandExecute for HarmonicCli {
         } = self;
 
         match subcommand {
-            Some(HarmonicSubcommand::Plan(plan)) => {
-                return plan.execute().await
+            Some(HarmonicSubcommand::Plan(plan)) => plan.execute().await,
+            Some(HarmonicSubcommand::Execute(execute)) => execute.execute().await,
+            None => {
+                let mut settings = InstallSettings::default();
+
+                settings.explain(explain);
+                settings.daemon_user_count(daemon_user_count);
+                settings.channels(
+                    channel
+                        .into_iter()
+                        .map(|ChannelValue(name, url)| (name, url)),
+                );
+                settings.modify_profile(!no_modify_profile);
+
+                let plan = InstallPlan::new(settings).await?;
+
+                // TODO(@Hoverbear): Make this smarter
+                if !interaction::confirm(plan.description()).await? {
+                    interaction::clean_exit_with_message("Okay, didn't do anything! Bye!").await;
+                }
+
+                let _receipt = plan.install().await?;
+
+                Ok(ExitCode::SUCCESS)
             },
-            Some(HarmonicSubcommand::Execute(execute)) => {
-                return execute.execute().await
-            }
-            None => (),
         }
-
-        let mut settings = InstallSettings::default();
-
-        settings.explain(explain);
-        settings.daemon_user_count(daemon_user_count);
-        settings.nix_build_group_name("nixbld".to_string());
-        settings.nix_build_group_id(30000);
-        settings.nix_build_user_prefix("nixbld".to_string());
-        settings.nix_build_user_id_base(30001);
-        settings.channels(
-            channel
-                .into_iter()
-                .map(|ChannelValue(name, url)| (name, url)),
-        );
-        settings.modify_profile(!no_modify_profile);
-
-        let plan = InstallPlan::new(settings).await?;
-
-
-        // TODO(@Hoverbear): Make this smarter
-        if !interaction::confirm(
-            plan.description()
-        )
-        .await?
-        {
-            interaction::clean_exit_with_message("Okay, didn't do anything! Bye!").await;
-        }
-
         // let mut harmonic = Harmonic::default();
 
         // harmonic.dry_run(dry_run);
@@ -117,8 +106,6 @@ impl CommandExecute for HarmonicCli {
         //         .map(|ChannelValue(name, url)| (name, url)),
         // );
         // harmonic.modify_profile(!no_modify_profile);
-
- 
 
         // // TODO(@Hoverbear): Make this smarter
         // if !interaction::confirm(
@@ -151,7 +138,5 @@ impl CommandExecute for HarmonicCli {
         // harmonic.setup_default_profile().await?;
         // harmonic.place_nix_configuration().await?;
         // harmonic.configure_nix_daemon_service().await?;
-
-        Ok(ExitCode::SUCCESS)
     }
 }

@@ -52,5 +52,5 @@ pub enum HarmonicError {
     #[error("Errors with additional failures during reverts: {}\nDuring Revert:{}", .0.iter().map(|v| format!("{v}")).collect::<Vec<_>>().join(" & "), .1.iter().map(|v| format!("{v}")).collect::<Vec<_>>().join(" & "))]
     FailedReverts(Vec<HarmonicError>, Vec<HarmonicError>),
     #[error("Multiple errors: {}", .0.iter().map(|v| format!("{v}")).collect::<Vec<_>>().join(" & "))]
-    Multiple(Vec<HarmonicError>)
+    Multiple(Vec<HarmonicError>),
 }

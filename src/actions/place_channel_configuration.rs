@@ -1,28 +1,18 @@
-use reqwest::redirect::Action;
+use crate::HarmonicError;
 
-use crate::{settings::InstallSettings, HarmonicError};
-
-use super::{Actionable, ActionReceipt, Revertable, ActionDescription};
-
+use super::{ActionDescription, ActionReceipt, Actionable, Revertable};
 
 #[derive(Debug, serde::Deserialize, serde::Serialize, Clone)]
-pub struct StartNixDaemonService {
-    
-}
+pub struct PlaceChannelConfiguration {}
 
-
-#[derive(Debug, serde::Deserialize, serde::Serialize, Clone)]
-pub struct StartNixDaemonServiceReceipt {
-}
-
-impl StartNixDaemonService {
+impl PlaceChannelConfiguration {
     pub fn plan() -> Self {
         Self {}
     }
 }
 
 #[async_trait::async_trait]
-impl<'a> Actionable<'a> for StartNixDaemonService {
+impl<'a> Actionable<'a> for PlaceChannelConfiguration {
     fn description(&self) -> Vec<ActionDescription> {
         vec![
             ActionDescription::new(
@@ -39,16 +29,25 @@ impl<'a> Actionable<'a> for StartNixDaemonService {
     }
 }
 
+#[derive(Debug, serde::Deserialize, serde::Serialize, Clone)]
+pub struct PlaceChannelConfigurationReceipt {}
 
 #[async_trait::async_trait]
-impl<'a> Revertable<'a> for StartNixDaemonServiceReceipt {
+impl<'a> Revertable<'a> for PlaceChannelConfigurationReceipt {
     fn description(&self) -> Vec<ActionDescription> {
-        todo!()
+        vec![
+            ActionDescription::new(
+                "Stop the systemd Nix daemon".to_string(),
+                vec![
+                    "The `nix` command line tool communicates with a running Nix daemon managed by your init system".to_string()
+                ]
+            ),
+        ]
     }
 
     async fn revert(self) -> Result<(), HarmonicError> {
         todo!();
-        
+
         Ok(())
     }
 }

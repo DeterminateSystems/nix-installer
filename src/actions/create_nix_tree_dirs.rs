@@ -3,44 +3,38 @@ use crate::HarmonicError;
 use super::{ActionDescription, ActionReceipt, Actionable, Revertable};
 
 #[derive(Debug, serde::Deserialize, serde::Serialize, Clone)]
-pub struct CreateUser {
-    name: String,
-    uid: usize,
-}
+pub struct CreateNixTreeDirs {}
 
-impl CreateUser {
+impl CreateNixTreeDirs {
     pub fn plan(name: String, uid: usize) -> Self {
-        Self { name, uid }
+        Self {}
     }
 }
 
 #[async_trait::async_trait]
-impl<'a> Actionable<'a> for CreateUser {
+impl<'a> Actionable<'a> for CreateNixTreeDirs {
     fn description(&self) -> Vec<ActionDescription> {
-        let name = &self.name;
-        let uid = &self.uid;
         vec![ActionDescription::new(
-            format!("Create user {name} with UID {uid}"),
+            format!("Create a directory tree in `/nix`"),
             vec![format!(
-                "The nix daemon requires system users it can act as in order to build"
+                "Nix and the Nix daemon require a Nix Store, which will be stored at `/nix`"
             )],
         )]
     }
 
     async fn execute(self) -> Result<ActionReceipt, HarmonicError> {
-        let Self { name, uid } = self;
-        Ok(ActionReceipt::CreateUser(CreateUserReceipt { name, uid }))
+        let Self {} = self;
+        Ok(ActionReceipt::CreateNixTreeDirs(
+            CreateNixTreeDirsReceipt {},
+        ))
     }
 }
 
 #[derive(Debug, serde::Deserialize, serde::Serialize, Clone)]
-pub struct CreateUserReceipt {
-    name: String,
-    uid: usize,
-}
+pub struct CreateNixTreeDirsReceipt {}
 
 #[async_trait::async_trait]
-impl<'a> Revertable<'a> for CreateUserReceipt {
+impl<'a> Revertable<'a> for CreateNixTreeDirsReceipt {
     fn description(&self) -> Vec<ActionDescription> {
         todo!()
     }

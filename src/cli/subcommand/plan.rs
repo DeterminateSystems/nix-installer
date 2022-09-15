@@ -1,7 +1,7 @@
 use std::process::ExitCode;
 
-use clap::{Parser, ArgAction};
-use harmonic::{InstallSettings, InstallPlan};
+use clap::{ArgAction, Parser};
+use harmonic::{InstallPlan, InstallSettings};
 use tokio::io::AsyncWriteExt;
 
 use crate::cli::{arg::ChannelValue, CommandExecute};
@@ -39,15 +39,15 @@ impl CommandExecute for Plan {
         no_modify_profile = %self.no_modify_profile,
     ))]
     async fn execute(self) -> eyre::Result<ExitCode> {
-        let Self {  channel, no_modify_profile, daemon_user_count } = self;
+        let Self {
+            channel,
+            no_modify_profile,
+            daemon_user_count,
+        } = self;
 
         let mut settings = InstallSettings::default();
 
         settings.daemon_user_count(daemon_user_count);
-        settings.nix_build_group_name("nixbld".to_string());
-        settings.nix_build_group_id(30000);
-        settings.nix_build_user_prefix("nixbld".to_string());
-        settings.nix_build_user_id_base(30001);
         settings.channels(
             channel
                 .into_iter()

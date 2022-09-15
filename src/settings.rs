@@ -1,8 +1,7 @@
 use url::Url;
 
-#[derive(Debug, serde::Deserialize, serde::Serialize, Clone, Default)]
+#[derive(Debug, serde::Deserialize, serde::Serialize, Clone)]
 pub struct InstallSettings {
-    pub(crate) dry_run: bool,
     pub(crate) explain: bool,
     pub(crate) daemon_user_count: usize,
     pub(crate) channels: Vec<(String, Url)>,
@@ -13,14 +12,25 @@ pub struct InstallSettings {
     pub(crate) nix_build_user_id_base: usize,
 }
 
+impl Default for InstallSettings {
+    fn default() -> Self {
+        Self {
+            explain: Default::default(),
+            daemon_user_count: Default::default(),
+            channels: Default::default(),
+            modify_profile: Default::default(),
+            nix_build_group_name: String::from("nixbld"),
+            nix_build_group_id: 3000,
+            nix_build_user_prefix: String::from("nixbld"),
+            nix_build_user_id_base: 3001,
+        }
+    }
+}
+
 // Builder Pattern
 impl InstallSettings {
     pub fn explain(&mut self, explain: bool) -> &mut Self {
         self.explain = explain;
-        self
-    }
-    pub fn dry_run(&mut self, dry_run: bool) -> &mut Self {
-        self.dry_run = dry_run;
         self
     }
     pub fn daemon_user_count(&mut self, count: usize) -> &mut Self {

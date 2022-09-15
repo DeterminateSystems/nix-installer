@@ -1,0 +1,12 @@
+# Put a trailing comma after a block based match arm (non-block arms are not affected)
+match_block_trailing_comma = true
+# Merge multiple derives into a single one.
+merge_derives = true
+# Reorder import and extern crate statements alphabetically in groups (a group is separated by a newline).
+reorder_imports = true
+# Reorder mod declarations alphabetically in group.
+reorder_modules = true
+# Use field initialize shorthand if possible.
+use_field_init_shorthand = true
+# Replace uses of the try! macro by the ? shorthand
+use_try_shorthand = true

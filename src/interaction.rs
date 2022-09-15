@@ -34,10 +34,10 @@ pub(crate) async fn confirm(question: impl AsRef<str>) -> eyre::Result<bool> {
                                 .await?;
                             stdout.flush().await?;
                             break Ok(false);
-                        }
+                        },
                     }
                 }
-            }
+            },
             Some(Err(err)) => return Err(err).wrap_err("Getting response"),
             None => return Err(eyre!("Bailed, no confirmation event")),
         }
