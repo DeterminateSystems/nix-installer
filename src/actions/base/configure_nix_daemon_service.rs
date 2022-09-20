@@ -17,9 +17,9 @@ impl<'a> Actionable<'a> for ConfigureNixDaemonService {
     fn description(&self) -> Vec<ActionDescription> {
         vec![
             ActionDescription::new(
-                "Start the systemd Nix daemon".to_string(),
+                "Configure the Nix Daemon Service".to_string(),
                 vec![
-                    "The `nix` command line tool communicates with a running Nix daemon managed by your init system".to_string()
+                    "Sets init system specific options".to_string()
                 ]
             ),
         ]
