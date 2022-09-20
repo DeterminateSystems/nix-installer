@@ -17,9 +17,9 @@ impl<'a> Actionable<'a> for ConfigureShellProfile {
     fn description(&self) -> Vec<ActionDescription> {
         vec![
             ActionDescription::new(
-                "Start the systemd Nix daemon".to_string(),
+                "Configure the shell profiles".to_string(),
                 vec![
-                    "The `nix` command line tool communicates with a running Nix daemon managed by your init system".to_string()
+                    "Update shell profiles to import Nix".to_string()
                 ]
             ),
         ]

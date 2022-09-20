@@ -38,28 +38,24 @@ impl<'a> Actionable<'a> for CreateUsersAndGroup {
     type Receipt = CreateUsersAndGroupReceipt;
     fn description(&self) -> Vec<ActionDescription> {
         let Self {
-            create_users: _,
-            create_group: _,
             settings: InstallSettings {
-                explain: _,
                 daemon_user_count,
-                channels: _,
-                modify_profile: _,
                 nix_build_group_name,
                 nix_build_group_id,
                 nix_build_user_prefix,
                 nix_build_user_id_base,
-                nix_package_url,
-            }
+                ..
+            },
+            ..
         } = &self;
 
         vec![
             ActionDescription::new(
                 format!("Create build users and group"),
                 vec![
-                    format!("The nix daemon requires system users it can act as in order to build"),
-                    format!("This action will create group `{nix_build_group_name}` with uid `{nix_build_group_id}`"),
-                    format!("This action will create {daemon_user_count} users with prefix `{nix_build_user_prefix}` starting at uid `{nix_build_user_id_base}`"),
+                    format!("The nix daemon requires system users (and a group they share) which it can act as in order to build"),
+                    format!("Create group `{nix_build_group_name}` with uid `{nix_build_group_id}`"),
+                    format!("Create {daemon_user_count} users with prefix `{nix_build_user_prefix}` starting at uid `{nix_build_user_id_base}`"),
                 ],
             )
         ]
@@ -74,9 +70,10 @@ impl<'a> Actionable<'a> for CreateUsersAndGroup {
         // Create users
         // TODO(@hoverbear): Abstract this, it will be common
         let mut set = JoinSet::new();
+
         let mut successes = Vec::with_capacity(create_users.len());
         let mut errors = Vec::default();
-
+        
         for create_user in create_users {
             let _abort_handle = set.spawn(async move { create_user.execute().await });
         }

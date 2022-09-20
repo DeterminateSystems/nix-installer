@@ -17,9 +17,9 @@ impl<'a> Actionable<'a> for SetupDefaultProfile {
     fn description(&self) -> Vec<ActionDescription> {
         vec![
             ActionDescription::new(
-                "Start the systemd Nix daemon".to_string(),
+                "Setup the default Nix profile".to_string(),
                 vec![
-                    "The `nix` command line tool communicates with a running Nix daemon managed by your init system".to_string()
+                    "TODO".to_string()
                 ]
             ),
         ]
@@ -38,9 +38,9 @@ impl<'a> Revertable<'a> for SetupDefaultProfileReceipt {
     fn description(&self) -> Vec<ActionDescription> {
         vec![
             ActionDescription::new(
-                "Stop the systemd Nix daemon".to_string(),
+                "Unset the default Nix profile".to_string(),
                 vec![
-                    "The `nix` command line tool communicates with a running Nix daemon managed by your init system".to_string()
+                    "TODO".to_string()
                 ]
             ),
         ]

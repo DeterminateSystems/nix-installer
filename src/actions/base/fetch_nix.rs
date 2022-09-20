@@ -28,7 +28,7 @@ impl<'a> Actionable<'a> for FetchNix {
         vec![ActionDescription::new(
             format!("Fetch Nix from `{url}`"),
             vec![format!(
-                "Fetch a Nix archive and unpack it to `{}`", destination.display()
+                "Unpack it to `{}`, so it can later be moved into the Nix store at /nix", destination.display()
             )],
         )]
     }
