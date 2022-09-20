@@ -2,8 +2,12 @@ use serde::{Deserialize, Serialize};
 
 use crate::{
     actions::{
-        Action, ActionDescription, ActionReceipt, Actionable, ConfigureNix, CreateNixTree,
-        Revertable, StartNixDaemon,
+        Action, ActionDescription, ActionReceipt, Actionable, Revertable,
+        meta::{
+            ConfigureNix,
+            ProvisionNix,
+            StartNixDaemon,
+        },
     },
     settings::InstallSettings,
     HarmonicError,
@@ -79,7 +83,7 @@ impl InstallPlan {
     }
     pub async fn new(settings: InstallSettings) -> Result<Self, HarmonicError> {
         let actions = vec![
-            Action::CreateNixTree(CreateNixTree::plan(settings.clone())),
+            Action::ProvisionNix(ProvisionNix::plan(settings.clone())?),
             Action::ConfigureNix(ConfigureNix::plan(settings.clone())),
             Action::StartNixDaemon(StartNixDaemon::plan(settings.clone())),
         ];

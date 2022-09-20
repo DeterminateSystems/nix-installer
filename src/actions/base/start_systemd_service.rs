@@ -1,18 +1,19 @@
 use crate::HarmonicError;
 
-use super::{ActionDescription, ActionReceipt, Actionable, Revertable};
+use crate::actions::{ActionDescription, ActionReceipt, Actionable, Revertable};
 
 #[derive(Debug, serde::Deserialize, serde::Serialize, Clone)]
-pub struct PlaceNixConfiguration {}
+pub struct StartSystemdService {}
 
-impl PlaceNixConfiguration {
+impl StartSystemdService {
     pub fn plan() -> Self {
         Self {}
     }
 }
 
 #[async_trait::async_trait]
-impl<'a> Actionable<'a> for PlaceNixConfiguration {
+impl<'a> Actionable<'a> for StartSystemdService {
+    type Receipt = StartSystemdServiceReceipt;
     fn description(&self) -> Vec<ActionDescription> {
         vec![
             ActionDescription::new(
@@ -24,16 +25,16 @@ impl<'a> Actionable<'a> for PlaceNixConfiguration {
         ]
     }
 
-    async fn execute(self) -> Result<ActionReceipt, HarmonicError> {
+    async fn execute(self) -> Result<Self::Receipt, HarmonicError> {
         todo!()
     }
 }
 
 #[derive(Debug, serde::Deserialize, serde::Serialize, Clone)]
-pub struct PlaceNixConfigurationReceipt {}
+pub struct StartSystemdServiceReceipt {}
 
 #[async_trait::async_trait]
-impl<'a> Revertable<'a> for PlaceNixConfigurationReceipt {
+impl<'a> Revertable<'a> for StartSystemdServiceReceipt {
     fn description(&self) -> Vec<ActionDescription> {
         vec![
             ActionDescription::new(

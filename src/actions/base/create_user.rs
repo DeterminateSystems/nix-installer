@@ -1,46 +1,47 @@
 use crate::HarmonicError;
 
-use super::{ActionDescription, ActionReceipt, Actionable, Revertable};
+use crate::actions::{ActionDescription, ActionReceipt, Actionable, Revertable};
 
 #[derive(Debug, serde::Deserialize, serde::Serialize, Clone)]
-pub struct CreateGroup {
+pub struct CreateUser {
     name: String,
     uid: usize,
 }
 
-impl CreateGroup {
+impl CreateUser {
     pub fn plan(name: String, uid: usize) -> Self {
         Self { name, uid }
     }
 }
 
 #[async_trait::async_trait]
-impl<'a> Actionable<'a> for CreateGroup {
+impl<'a> Actionable<'a> for CreateUser {
+    type Receipt = CreateUserReceipt;
     fn description(&self) -> Vec<ActionDescription> {
         let name = &self.name;
         let uid = &self.uid;
         vec![ActionDescription::new(
-            format!("Create group {name} with UID {uid}"),
+            format!("Create user {name} with UID {uid}"),
             vec![format!(
-                "The nix daemon requires a system user group its system users can be part of"
+                "The nix daemon requires system users it can act as in order to build"
             )],
         )]
     }
 
-    async fn execute(self) -> Result<ActionReceipt, HarmonicError> {
+    async fn execute(self) -> Result<Self::Receipt, HarmonicError> {
         let Self { name, uid } = self;
-        Ok(ActionReceipt::CreateGroup(CreateGroupReceipt { name, uid }))
+        Ok(CreateUserReceipt { name, uid })
     }
 }
 
 #[derive(Debug, serde::Deserialize, serde::Serialize, Clone)]
-pub struct CreateGroupReceipt {
+pub struct CreateUserReceipt {
     name: String,
     uid: usize,
 }
 
 #[async_trait::async_trait]
-impl<'a> Revertable<'a> for CreateGroupReceipt {
+impl<'a> Revertable<'a> for CreateUserReceipt {
     fn description(&self) -> Vec<ActionDescription> {
         todo!()
     }

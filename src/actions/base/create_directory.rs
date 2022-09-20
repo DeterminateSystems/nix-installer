@@ -5,7 +5,7 @@ use std::{
 
 use crate::HarmonicError;
 
-use super::{ActionDescription, ActionReceipt, Actionable, Revertable};
+use crate::actions::{ActionDescription, ActionReceipt, Actionable, Revertable};
 
 #[derive(Debug, serde::Deserialize, serde::Serialize, Clone)]
 pub struct CreateDirectory {
@@ -29,6 +29,7 @@ impl CreateDirectory {
 
 #[async_trait::async_trait]
 impl<'a> Actionable<'a> for CreateDirectory {
+    type Receipt = CreateDirectoryReceipt;
     fn description(&self) -> Vec<ActionDescription> {
         vec![ActionDescription::new(
             format!("Create the directory `/nix`"),
@@ -38,7 +39,7 @@ impl<'a> Actionable<'a> for CreateDirectory {
         )]
     }
 
-    async fn execute(self) -> Result<ActionReceipt, HarmonicError> {
+    async fn execute(self) -> Result<CreateDirectoryReceipt, HarmonicError> {
         let Self {
             path,
             user,
@@ -46,12 +47,12 @@ impl<'a> Actionable<'a> for CreateDirectory {
             mode,
         } = self;
         todo!();
-        Ok(ActionReceipt::CreateDirectory(CreateDirectoryReceipt {
+        Ok(CreateDirectoryReceipt {
             path,
             user,
             group,
             mode,
-        }))
+        })
     }
 }
 

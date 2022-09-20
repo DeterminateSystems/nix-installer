@@ -1,39 +1,40 @@
-use crate::HarmonicError;
+use crate::{HarmonicError, InstallSettings};
 
-use super::{ActionDescription, ActionReceipt, Actionable, Revertable};
+use crate::actions::{ActionDescription, ActionReceipt, Actionable, Revertable};
 
 #[derive(Debug, serde::Deserialize, serde::Serialize, Clone)]
-pub struct PlaceChannelConfiguration {}
+pub struct ConfigureNix {}
 
-impl PlaceChannelConfiguration {
-    pub fn plan() -> Self {
+impl ConfigureNix {
+    pub fn plan(settings: InstallSettings) -> Self {
         Self {}
     }
 }
 
 #[async_trait::async_trait]
-impl<'a> Actionable<'a> for PlaceChannelConfiguration {
+impl<'a> Actionable<'a> for ConfigureNix {
+    type Receipt = ConfigureNixReceipt;
     fn description(&self) -> Vec<ActionDescription> {
         vec![
             ActionDescription::new(
-                "Start the systemd Nix daemon".to_string(),
+                "Configure the Nix daemon".to_string(),
                 vec![
-                    "The `nix` command line tool communicates with a running Nix daemon managed by your init system".to_string()
+                    "Blah".to_string()
                 ]
             ),
         ]
     }
 
-    async fn execute(self) -> Result<ActionReceipt, HarmonicError> {
+    async fn execute(self) -> Result<Self::Receipt, HarmonicError> {
         todo!()
     }
 }
 
 #[derive(Debug, serde::Deserialize, serde::Serialize, Clone)]
-pub struct PlaceChannelConfigurationReceipt {}
+pub struct ConfigureNixReceipt {}
 
 #[async_trait::async_trait]
-impl<'a> Revertable<'a> for PlaceChannelConfigurationReceipt {
+impl<'a> Revertable<'a> for ConfigureNixReceipt {
     fn description(&self) -> Vec<ActionDescription> {
         vec![
             ActionDescription::new(

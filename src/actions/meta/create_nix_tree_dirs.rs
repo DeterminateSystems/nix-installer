@@ -1,20 +1,19 @@
-use crate::{HarmonicError, InstallSettings};
+use crate::HarmonicError;
 
-use super::{ActionDescription, ActionReceipt, Actionable, Revertable};
+use crate::actions::{ActionDescription, ActionReceipt, Actionable, Revertable};
 
 #[derive(Debug, serde::Deserialize, serde::Serialize, Clone)]
-pub struct CreateNixTree {
-    settings: InstallSettings,
-}
+pub struct CreateNixTreeDirs {}
 
-impl CreateNixTree {
-    pub fn plan(settings: InstallSettings) -> Self {
-        Self { settings }
+impl CreateNixTreeDirs {
+    pub fn plan(name: String, uid: usize) -> Self {
+        Self {}
     }
 }
 
 #[async_trait::async_trait]
-impl<'a> Actionable<'a> for CreateNixTree {
+impl<'a> Actionable<'a> for CreateNixTreeDirs {
+    type Receipt = CreateNixTreeDirsReceipt;
     fn description(&self) -> Vec<ActionDescription> {
         vec![ActionDescription::new(
             format!("Create a directory tree in `/nix`"),
@@ -24,17 +23,17 @@ impl<'a> Actionable<'a> for CreateNixTree {
         )]
     }
 
-    async fn execute(self) -> Result<ActionReceipt, HarmonicError> {
-        let Self { settings: _ } = self;
-        Ok(ActionReceipt::CreateNixTree(CreateNixTreeReceipt {}))
+    async fn execute(self) -> Result<Self::Receipt, HarmonicError> {
+        let Self {} = self;
+        Ok(CreateNixTreeDirsReceipt {})
     }
 }
 
 #[derive(Debug, serde::Deserialize, serde::Serialize, Clone)]
-pub struct CreateNixTreeReceipt {}
+pub struct CreateNixTreeDirsReceipt {}
 
 #[async_trait::async_trait]
-impl<'a> Revertable<'a> for CreateNixTreeReceipt {
+impl<'a> Revertable<'a> for CreateNixTreeDirsReceipt {
     fn description(&self) -> Vec<ActionDescription> {
         todo!()
     }

@@ -1,18 +1,19 @@
-use crate::{HarmonicError, InstallSettings};
+use crate::HarmonicError;
 
-use super::{ActionDescription, ActionReceipt, Actionable, Revertable};
+use crate::actions::{ActionDescription, ActionReceipt, Actionable, Revertable};
 
 #[derive(Debug, serde::Deserialize, serde::Serialize, Clone)]
-pub struct ConfigureNix {}
+pub struct ConfigureNixDaemonService {}
 
-impl ConfigureNix {
-    pub fn plan(settings: InstallSettings) -> Self {
+impl ConfigureNixDaemonService {
+    pub fn plan() -> Self {
         Self {}
     }
 }
 
 #[async_trait::async_trait]
-impl<'a> Actionable<'a> for ConfigureNix {
+impl<'a> Actionable<'a> for ConfigureNixDaemonService {
+    type Receipt = ConfigureNixDaemonServiceReceipt;
     fn description(&self) -> Vec<ActionDescription> {
         vec![
             ActionDescription::new(
@@ -24,16 +25,16 @@ impl<'a> Actionable<'a> for ConfigureNix {
         ]
     }
 
-    async fn execute(self) -> Result<ActionReceipt, HarmonicError> {
+    async fn execute(self) -> Result<Self::Receipt, HarmonicError> {
         todo!()
     }
 }
 
 #[derive(Debug, serde::Deserialize, serde::Serialize, Clone)]
-pub struct ConfigureNixReceipt {}
+pub struct ConfigureNixDaemonServiceReceipt {}
 
 #[async_trait::async_trait]
-impl<'a> Revertable<'a> for ConfigureNixReceipt {
+impl<'a> Revertable<'a> for ConfigureNixDaemonServiceReceipt {
     fn description(&self) -> Vec<ActionDescription> {
         vec![
             ActionDescription::new(

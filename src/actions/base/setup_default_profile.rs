@@ -1,6 +1,6 @@
 use crate::HarmonicError;
 
-use super::{ActionDescription, ActionReceipt, Actionable, Revertable};
+use crate::actions::{ActionDescription, ActionReceipt, Actionable, Revertable};
 
 #[derive(Debug, serde::Deserialize, serde::Serialize, Clone)]
 pub struct SetupDefaultProfile {}
@@ -13,6 +13,7 @@ impl SetupDefaultProfile {
 
 #[async_trait::async_trait]
 impl<'a> Actionable<'a> for SetupDefaultProfile {
+    type Receipt = SetupDefaultProfileReceipt;
     fn description(&self) -> Vec<ActionDescription> {
         vec![
             ActionDescription::new(
@@ -24,7 +25,7 @@ impl<'a> Actionable<'a> for SetupDefaultProfile {
         ]
     }
 
-    async fn execute(self) -> Result<ActionReceipt, HarmonicError> {
+    async fn execute(self) -> Result<Self::Receipt, HarmonicError> {
         todo!()
     }
 }
