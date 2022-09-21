@@ -29,6 +29,20 @@ pub(crate) struct Plan {
     /// Number of build users to create
     #[clap(long, default_value = "32", env = "HARMONIC_NIX_DAEMON_USER_COUNT")]
     pub(crate) daemon_user_count: usize,
+    #[clap(
+        long,
+        action(ArgAction::SetTrue),
+        default_value = "false",
+        global = true
+    )]
+    pub(crate) explain: bool,
+    #[clap(
+        long,
+        action(ArgAction::SetTrue),
+        default_value = "false",
+        global = true
+    )]
+    pub(crate) force: bool,
 }
 
 #[async_trait::async_trait]
@@ -43,10 +57,14 @@ impl CommandExecute for Plan {
             channel,
             no_modify_profile,
             daemon_user_count,
+            explain,
+            force,
         } = self;
 
         let mut settings = InstallSettings::default();
 
+        settings.force(force);
+        settings.explain(explain);
         settings.daemon_user_count(daemon_user_count);
         settings.channels(
             channel

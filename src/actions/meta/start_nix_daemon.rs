@@ -1,13 +1,20 @@
+use crate::actions::base::{ConfigureNixDaemonServiceReceipt, ConfigureNixDaemonService, StartSystemdUnit, StartSystemdUnitReceipt};
 use crate::{HarmonicError, InstallSettings};
 
 use crate::actions::{ActionDescription, ActionReceipt, Actionable, Revertable};
 
+/// This is mostly indirection for supporting non-systemd
 #[derive(Debug, serde::Deserialize, serde::Serialize, Clone)]
-pub struct StartNixDaemon {}
+pub struct StartNixDaemon {
+    start_systemd_socket: StartSystemdUnit,    
+    start_systemd_service: StartSystemdUnit,
+}
 
 impl StartNixDaemon {
-    pub fn plan(settings: InstallSettings) -> Self {
-        Self {}
+    pub async fn plan(settings: InstallSettings) -> Result<Self, HarmonicError> {
+        let start_systemd_socket = StartSystemdUnit::plan("nix-daemon.socket".into()).await?;
+        let start_systemd_service = StartSystemdUnit::plan("nix-daemon.service".into()).await?;
+        Ok(Self { start_systemd_socket, start_systemd_service })
     }
 }
 
@@ -15,35 +22,28 @@ impl StartNixDaemon {
 impl<'a> Actionable<'a> for StartNixDaemon {
     type Receipt = StartNixDaemonReceipt;
     fn description(&self) -> Vec<ActionDescription> {
-        vec![
-            ActionDescription::new(
-                "Start the systemd Nix daemon".to_string(),
-                vec![
-                    "The `nix` command line tool communicates with a running Nix daemon managed by your init system".to_string()
-                ]
-            ),
-        ]
+       let Self { start_systemd_socket, start_systemd_service } = &self;
+       start_systemd_service.description()
     }
 
     async fn execute(self) -> Result<Self::Receipt, HarmonicError> {
-        todo!()
+        let Self { start_systemd_socket, start_systemd_service } = self;
+        let start_systemd_service = start_systemd_service.execute().await?;
+        let start_systemd_socket = start_systemd_socket.execute().await?;
+        Ok(Self::Receipt { start_systemd_socket, start_systemd_service })
     }
 }
 
 #[derive(Debug, serde::Deserialize, serde::Serialize, Clone)]
-pub struct StartNixDaemonReceipt {}
+pub struct StartNixDaemonReceipt {
+    start_systemd_socket: StartSystemdUnitReceipt,
+    start_systemd_service: StartSystemdUnitReceipt,
+}
 
 #[async_trait::async_trait]
 impl<'a> Revertable<'a> for StartNixDaemonReceipt {
     fn description(&self) -> Vec<ActionDescription> {
-        vec![
-            ActionDescription::new(
-                "Stop the systemd Nix daemon".to_string(),
-                vec![
-                    "The `nix` command line tool communicates with a running Nix daemon managed by your init system".to_string()
-                ]
-            ),
-        ]
+        todo!()
     }
 
     async fn revert(self) -> Result<(), HarmonicError> {

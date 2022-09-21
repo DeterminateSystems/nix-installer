@@ -46,6 +46,13 @@ pub(crate) struct HarmonicCli {
         global = true
     )]
     pub(crate) explain: bool,
+    #[clap(
+        long,
+        action(ArgAction::SetTrue),
+        default_value = "false",
+        global = true
+    )]
+    pub(crate) force: bool,
     #[clap(subcommand)]
     subcommand: Option<HarmonicSubcommand>,
 }
@@ -66,6 +73,7 @@ impl CommandExecute for HarmonicCli {
             no_modify_profile,
             explain,
             subcommand,
+            force,
         } = self;
 
         match subcommand {
@@ -74,6 +82,7 @@ impl CommandExecute for HarmonicCli {
             None => {
                 let mut settings = InstallSettings::default();
 
+                settings.force(force);
                 settings.explain(explain);
                 settings.daemon_user_count(daemon_user_count);
                 settings.channels(

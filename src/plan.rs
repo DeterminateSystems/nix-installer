@@ -83,9 +83,9 @@ impl InstallPlan {
     }
     pub async fn new(settings: InstallSettings) -> Result<Self, HarmonicError> {
         let actions = vec![
-            Action::ProvisionNix(ProvisionNix::plan(settings.clone())?),
-            Action::ConfigureNix(ConfigureNix::plan(settings.clone())),
-            Action::StartNixDaemon(StartNixDaemon::plan(settings.clone())),
+            Action::ProvisionNix(ProvisionNix::plan(settings.clone()).await?),
+            Action::ConfigureNix(ConfigureNix::plan(settings.clone()).await?),
+            Action::StartNixDaemon(StartNixDaemon::plan(settings.clone()).await?),
         ];
         Ok(Self { settings, actions })
     }

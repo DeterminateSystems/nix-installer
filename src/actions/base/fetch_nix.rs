@@ -1,6 +1,8 @@
 use std::path::{Path, PathBuf};
 
+use bytes::Buf;
 use reqwest::Url;
+use tokio::task::spawn_blocking;
 
 use crate::HarmonicError;
 
@@ -13,8 +15,11 @@ pub struct FetchNix {
 }
 
 impl FetchNix {
-    pub fn plan(url: Url, destination: PathBuf) -> Self {
-        Self { url, destination }
+    pub async fn plan(url: Url, destination: PathBuf) -> Result<Self, HarmonicError> {
+        // TODO(@hoverbear): Check URL exists?
+        // TODO(@hoverbear): Check tempdir exists
+
+        Ok(Self { url, destination })
     }
 }
 
@@ -35,6 +40,24 @@ impl<'a> Actionable<'a> for FetchNix {
 
     async fn execute(self) -> Result<Self::Receipt, HarmonicError> {
         let Self { url, destination } = self;
+
+        tracing::trace!("Fetching url");
+        let res = reqwest::get(url.clone()).await.map_err(HarmonicError::Reqwest)?;
+        let bytes = res.bytes().await.map_err(HarmonicError::Reqwest)?;
+        // TODO(@Hoverbear): Pick directory
+        tracing::trace!("Unpacking tar.xz");
+        let destination_clone = destination.clone();
+        let handle: Result<(), HarmonicError> = spawn_blocking(move || {
+            let decoder = xz2::read::XzDecoder::new(bytes.reader());
+            let mut archive = tar::Archive::new(decoder);
+            archive.unpack(&destination_clone).map_err(HarmonicError::Unarchive)?;
+            tracing::debug!(destination = %destination_clone.display(), "Downloaded & extracted Nix");
+            Ok(())
+        })
+        .await?;
+
+        handle?;
+
         Ok(FetchNixReceipt { url, destination })
     }
 }

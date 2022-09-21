@@ -7,29 +7,40 @@ use crate::actions::{ActionDescription, ActionReceipt, Actionable, CreateUser, R
 
 #[derive(Debug, serde::Deserialize, serde::Serialize, Clone)]
 pub struct CreateUsersAndGroup {
-    settings: InstallSettings,
+    daemon_user_count: usize,
+    nix_build_group_name: String,
+    nix_build_group_id: usize,
+    nix_build_user_prefix: String,
+    nix_build_user_id_base: usize,
     create_group: CreateGroup,
     create_users: Vec<CreateUser>,
 }
 
 impl CreateUsersAndGroup {
-    pub fn plan(
+    pub async fn plan(
         settings: InstallSettings
-    ) -> Self {
+    ) -> Result<Self, HarmonicError> {
+        // TODO(@hoverbear): CHeck if it exist, error if so
         let create_group = CreateGroup::plan(settings.nix_build_group_name.clone(), settings.nix_build_group_id);
+        // TODO(@hoverbear): CHeck if they exist, error if so
         let create_users = (0..settings.daemon_user_count)
             .map(|count| {
                 CreateUser::plan(
                     format!("{}{count}", settings.nix_build_user_prefix),
                     settings.nix_build_user_id_base + count,
+                    settings.nix_build_group_id,
                 )
             })
             .collect();
-        Self {
-            settings,
+        Ok(Self {
+            daemon_user_count: settings.daemon_user_count,
+            nix_build_group_name: settings.nix_build_group_name,
+            nix_build_group_id: settings.nix_build_group_id,
+            nix_build_user_prefix: settings.nix_build_user_prefix,
+            nix_build_user_id_base: settings.nix_build_user_id_base,
             create_group,
             create_users,
-        }
+        })
     }
 }
 
@@ -38,14 +49,11 @@ impl<'a> Actionable<'a> for CreateUsersAndGroup {
     type Receipt = CreateUsersAndGroupReceipt;
     fn description(&self) -> Vec<ActionDescription> {
         let Self {
-            settings: InstallSettings {
-                daemon_user_count,
-                nix_build_group_name,
-                nix_build_group_id,
-                nix_build_user_prefix,
-                nix_build_user_id_base,
-                ..
-            },
+            daemon_user_count,
+            nix_build_group_name,
+            nix_build_group_id,
+            nix_build_user_prefix,
+            nix_build_user_id_base,
             ..
         } = &self;
 
@@ -62,7 +70,7 @@ impl<'a> Actionable<'a> for CreateUsersAndGroup {
     }
 
     async fn execute(self) -> Result<Self::Receipt, HarmonicError> {
-        let Self { create_users, create_group, settings: _ } = self;
+        let Self { create_users, create_group, .. } = self;
 
         // Create group
         let create_group = create_group.execute().await?;
@@ -87,19 +95,6 @@ impl<'a> Actionable<'a> for CreateUsersAndGroup {
         }
 
         if !errors.is_empty() {
-            // If we got an error in a child, we need to revert the successful ones:
-            let mut failed_reverts = Vec::default();
-            for success in successes {
-                match success.revert().await {
-                    Ok(()) => (),
-                    Err(e) => failed_reverts.push(e),
-                }
-            }
-
-            if !failed_reverts.is_empty() {
-                return Err(HarmonicError::FailedReverts(errors, failed_reverts));
-            }
-
             if errors.len() == 1 {
                 return Err(errors.into_iter().next().unwrap());
             } else {
@@ -107,7 +102,7 @@ impl<'a> Actionable<'a> for CreateUsersAndGroup {
             }
         }
 
-        Ok(CreateUsersAndGroupReceipt {
+        Ok(Self::Receipt {
             create_group,
             create_users: successes,
         })

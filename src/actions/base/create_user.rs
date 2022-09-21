@@ -1,3 +1,5 @@
+use tokio::process::Command;
+
 use crate::HarmonicError;
 
 use crate::actions::{ActionDescription, ActionReceipt, Actionable, Revertable};
@@ -6,11 +8,12 @@ use crate::actions::{ActionDescription, ActionReceipt, Actionable, Revertable};
 pub struct CreateUser {
     name: String,
     uid: usize,
+    gid: usize,
 }
 
 impl CreateUser {
-    pub fn plan(name: String, uid: usize) -> Self {
-        Self { name, uid }
+    pub fn plan(name: String, uid: usize, gid: usize) -> Self {
+        Self { name, uid, gid }
     }
 }
 
@@ -29,8 +32,41 @@ impl<'a> Actionable<'a> for CreateUser {
     }
 
     async fn execute(self) -> Result<Self::Receipt, HarmonicError> {
-        let Self { name, uid } = self;
-        Ok(CreateUserReceipt { name, uid })
+        let Self { name, uid, gid } = self;
+
+        let mut command = Command::new("useradd");
+        command.args([
+            "--home-dir",
+            "/var/empty",
+            "--comment",
+            &format!("\"Nix build user\""),
+            "--gid",
+            &gid.to_string(),
+            "--groups",
+            &gid.to_string(),
+            "--no-user-group",
+            "--system",
+            "--shell",
+            "/sbin/nologin",
+            "--uid",
+            &uid.to_string(),
+            "--password",
+            "\"!\"",
+            &name.to_string(),
+        ]);
+
+        let command_str = format!("{:?}", command.as_std());
+        let status = command
+            .status()
+            .await
+            .map_err(|e| HarmonicError::CommandFailedExec(command_str.clone(), e))?;
+        
+        match status.success() {
+            true => (),
+            false => return Err(HarmonicError::CommandFailedStatus(command_str)),
+        }
+
+        Ok(CreateUserReceipt { name, uid, gid })
     }
 }
 
@@ -38,6 +74,7 @@ impl<'a> Actionable<'a> for CreateUser {
 pub struct CreateUserReceipt {
     name: String,
     uid: usize,
+    gid: usize,
 }
 
 #[async_trait::async_trait]

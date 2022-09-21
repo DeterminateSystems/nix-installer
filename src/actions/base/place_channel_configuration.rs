@@ -1,13 +1,30 @@
+use std::path::Path;
+
+use reqwest::Url;
+
 use crate::HarmonicError;
 
 use crate::actions::{ActionDescription, ActionReceipt, Actionable, Revertable};
 
+use super::{CreateOrAppendFile, CreateFile, CreateFileReceipt};
+
+const NIX_CHANNELS_PATH: &str = "/root/.nix-channels";
+
 #[derive(Debug, serde::Deserialize, serde::Serialize, Clone)]
-pub struct PlaceChannelConfiguration {}
+pub struct PlaceChannelConfiguration {
+    channels: Vec<(String, Url)>,
+    create_file: CreateFile,
+}
 
 impl PlaceChannelConfiguration {
-    pub fn plan() -> Self {
-        Self {}
+    pub async fn plan(channels: Vec<(String, Url)>) -> Result<Self, HarmonicError> {
+        let buf = channels
+            .iter()
+            .map(|(name, url)| format!("{} {}", url, name))
+            .collect::<Vec<_>>()
+            .join("\n");
+        let create_file = CreateFile::plan(NIX_CHANNELS_PATH, "root".into(), "root".into(), 0o0664, buf).await?;
+        Ok(Self { create_file, channels })
     }
 }
 
@@ -15,35 +32,34 @@ impl PlaceChannelConfiguration {
 impl<'a> Actionable<'a> for PlaceChannelConfiguration {
     type Receipt = PlaceChannelConfigurationReceipt;
     fn description(&self) -> Vec<ActionDescription> {
+        let Self { channels, create_file } = self;
         vec![
             ActionDescription::new(
-                "Start the systemd Nix daemon".to_string(),
+                "Place a channel configuration".to_string(),
                 vec![
-                    "The `nix` command line tool communicates with a running Nix daemon managed by your init system".to_string()
+                    "Place a configuration at `{NIX_CHANNELS_PATH}` setting the channels".to_string()
                 ]
             ),
         ]
     }
 
     async fn execute(self) -> Result<Self::Receipt, HarmonicError> {
-        todo!()
+        let Self { create_file, channels } = self;
+        let create_file = create_file.execute().await?;
+        Ok(Self::Receipt { create_file, channels })
     }
 }
 
 #[derive(Debug, serde::Deserialize, serde::Serialize, Clone)]
-pub struct PlaceChannelConfigurationReceipt {}
+pub struct PlaceChannelConfigurationReceipt {
+    channels: Vec<(String, Url)>,
+    create_file: CreateFileReceipt,
+}
 
 #[async_trait::async_trait]
 impl<'a> Revertable<'a> for PlaceChannelConfigurationReceipt {
     fn description(&self) -> Vec<ActionDescription> {
-        vec![
-            ActionDescription::new(
-                "Stop the systemd Nix daemon".to_string(),
-                vec![
-                    "The `nix` command line tool communicates with a running Nix daemon managed by your init system".to_string()
-                ]
-            ),
-        ]
+        todo!()
     }
 
     async fn revert(self) -> Result<(), HarmonicError> {

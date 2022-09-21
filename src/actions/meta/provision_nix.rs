@@ -16,13 +16,13 @@ pub struct ProvisionNix {
 }
 
 impl ProvisionNix {
-    pub fn plan(settings: InstallSettings) -> Result<Self, HarmonicError> {
+    pub async fn plan(settings: InstallSettings) -> Result<Self, HarmonicError> {
         let tempdir = TempDir::new("nix").map_err(HarmonicError::TempDir)?;
 
-        let fetch_nix = FetchNix::plan(settings.nix_package_url.clone(), tempdir.path().to_path_buf());
-        let create_users_and_group = CreateUsersAndGroup::plan(settings.clone());
-        let create_nix_tree = CreateNixTree::plan(settings.clone());
-        let move_unpacked_nix = MoveUnpackedNix::plan(tempdir.path().to_path_buf());
+        let fetch_nix = FetchNix::plan(settings.nix_package_url.clone(), tempdir.path().to_path_buf()).await?;
+        let create_users_and_group = CreateUsersAndGroup::plan(settings.clone()).await?;
+        let create_nix_tree = CreateNixTree::plan(settings.force).await?;
+        let move_unpacked_nix = MoveUnpackedNix::plan(tempdir.path().to_path_buf()).await?;
         Ok(Self { fetch_nix, create_users_and_group, create_nix_tree, move_unpacked_nix })
     }
 }

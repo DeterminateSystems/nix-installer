@@ -11,6 +11,8 @@ pub struct InstallSettings {
     pub(crate) nix_build_user_prefix: String,
     pub(crate) nix_build_user_id_base: usize,
     pub(crate) nix_package_url: Url,
+    pub(crate) extra_conf: Option<String>,
+    pub(crate) force: bool,
 }
 
 impl Default for InstallSettings {
@@ -24,7 +26,9 @@ impl Default for InstallSettings {
             nix_build_group_id: 3000,
             nix_build_user_prefix: String::from("nixbld"),
             nix_build_user_id_base: 3001,
-            nix_package_url: "https://releases.nixos.org/nix/nix-2.11.0/nix-2.11.0-x86_64-linux.tar.xz".parse().expect("Could not parse default Nix archive url, please report this issue")
+            nix_package_url: "https://releases.nixos.org/nix/nix-2.11.0/nix-2.11.0-x86_64-linux.tar.xz".parse().expect("Could not parse default Nix archive url, please report this issue"),
+            extra_conf: Default::default(),
+            force: false,
         }
     }
 }
@@ -71,6 +75,14 @@ impl InstallSettings {
     }
     pub fn nix_package_url(&mut self, url: Url) -> &mut Self {
         self.nix_package_url = url;
+        self
+    }
+    pub fn extra_conf(&mut self, extra_conf: Option<String>) -> &mut Self {
+        self.extra_conf = extra_conf;
+        self
+    }
+    pub fn force(&mut self, force: bool) -> &mut Self {
+        self.force = force;
         self
     }
 }
