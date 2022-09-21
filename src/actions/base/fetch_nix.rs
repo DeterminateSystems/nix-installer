@@ -1,4 +1,4 @@
-use std::path::{Path, PathBuf};
+use std::path::{PathBuf};
 
 use bytes::Buf;
 use reqwest::Url;
@@ -6,7 +6,7 @@ use tokio::task::spawn_blocking;
 
 use crate::HarmonicError;
 
-use crate::actions::{ActionDescription, ActionReceipt, Actionable, Revertable};
+use crate::actions::{ActionDescription, Actionable, Revertable};
 
 #[derive(Debug, serde::Deserialize, serde::Serialize, Clone)]
 pub struct FetchNix {
@@ -15,6 +15,7 @@ pub struct FetchNix {
 }
 
 impl FetchNix {
+    #[tracing::instrument(skip_all)]
     pub async fn plan(url: Url, destination: PathBuf) -> Result<Self, HarmonicError> {
         // TODO(@hoverbear): Check URL exists?
         // TODO(@hoverbear): Check tempdir exists
@@ -27,22 +28,24 @@ impl FetchNix {
 impl<'a> Actionable<'a> for FetchNix {
     type Receipt = FetchNixReceipt;
     fn description(&self) -> Vec<ActionDescription> {
-        let Self {
-            url, destination
-        } = &self;
+        let Self { url, destination } = &self;
         vec![ActionDescription::new(
             format!("Fetch Nix from `{url}`"),
             vec![format!(
-                "Unpack it to `{}`, so it can later be moved into the Nix store at /nix", destination.display()
+                "Unpack it to `{}` (moved later)",
+                destination.display()
             )],
         )]
     }
 
+    #[tracing::instrument(skip_all)]
     async fn execute(self) -> Result<Self::Receipt, HarmonicError> {
         let Self { url, destination } = self;
 
-        tracing::trace!("Fetching url");
-        let res = reqwest::get(url.clone()).await.map_err(HarmonicError::Reqwest)?;
+        tracing::trace!(%url, "Fetching url");
+        let res = reqwest::get(url.clone())
+            .await
+            .map_err(HarmonicError::Reqwest)?;
         let bytes = res.bytes().await.map_err(HarmonicError::Reqwest)?;
         // TODO(@Hoverbear): Pick directory
         tracing::trace!("Unpacking tar.xz");
@@ -74,6 +77,7 @@ impl<'a> Revertable<'a> for FetchNixReceipt {
         todo!()
     }
 
+    #[tracing::instrument(skip_all)]
     async fn revert(self) -> Result<(), HarmonicError> {
         todo!();
 

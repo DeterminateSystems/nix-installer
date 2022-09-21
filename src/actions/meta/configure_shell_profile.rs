@@ -4,9 +4,8 @@ use tokio::task::JoinSet;
 
 use crate::HarmonicError;
 
-use crate::actions::{ActionDescription, ActionReceipt, Actionable, Revertable};
-
-use super::{CreateOrAppendFile, CreateOrAppendFileReceipt};
+use crate::actions::base::{CreateOrAppendFile, CreateOrAppendFileReceipt};
+use crate::actions::{ActionDescription, Actionable, Revertable};
 
 const PROFILE_TARGETS: &[&str] = &[
     "/etc/bashrc",
@@ -24,10 +23,15 @@ pub struct ConfigureShellProfile {
 }
 
 impl ConfigureShellProfile {
+    #[tracing::instrument(skip_all)]
     pub async fn plan() -> Result<Self, HarmonicError> {
         let mut create_or_append_files = Vec::default();
         for profile_target in PROFILE_TARGETS {
             let path = Path::new(profile_target);
+            if !path.exists() {
+                tracing::trace!("Did not plan to edit `{profile_target}` as it does not exist.");
+                continue;
+            }
             let buf = format!(
                 "\n\
                 # Nix\n\
@@ -37,11 +41,14 @@ impl ConfigureShellProfile {
                 # End Nix\n
             \n",
             );
-            create_or_append_files.push(CreateOrAppendFile::plan(path, "root".to_string(), "root".to_string(), 0o0644, buf).await?);
+            create_or_append_files.push(
+                CreateOrAppendFile::plan(path, "root".to_string(), "root".to_string(), 0o0644, buf)
+                    .await?,
+            );
         }
 
         Ok(Self {
-            create_or_append_files
+            create_or_append_files,
         })
     }
 }
@@ -50,18 +57,17 @@ impl ConfigureShellProfile {
 impl<'a> Actionable<'a> for ConfigureShellProfile {
     type Receipt = ConfigureShellProfileReceipt;
     fn description(&self) -> Vec<ActionDescription> {
-        vec![
-            ActionDescription::new(
-                "Configure the shell profiles".to_string(),
-                vec![
-                    "Update shell profiles to import Nix".to_string()
-                ]
-            ),
-        ]
+        vec![ActionDescription::new(
+            "Configure the shell profiles".to_string(),
+            vec!["Update shell profiles to import Nix".to_string()],
+        )]
     }
 
+    #[tracing::instrument(skip_all)]
     async fn execute(self) -> Result<Self::Receipt, HarmonicError> {
-        let Self { create_or_append_files } = self;
+        let Self {
+            create_or_append_files,
+        } = self;
         tracing::info!("Configuring shell profile");
 
         let mut set = JoinSet::new();
@@ -106,6 +112,7 @@ impl<'a> Revertable<'a> for ConfigureShellProfileReceipt {
         todo!()
     }
 
+    #[tracing::instrument(skip_all)]
     async fn revert(self) -> Result<(), HarmonicError> {
         todo!();
 

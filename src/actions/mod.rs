@@ -2,30 +2,20 @@ pub mod base;
 pub mod meta;
 
 use base::{
-    ConfigureNixDaemonService, ConfigureNixDaemonServiceReceipt,
-    ConfigureShellProfile, ConfigureShellProfileReceipt,
-    CreateDirectory, CreateDirectoryReceipt,
-    CreateFile, CreateFileReceipt,
-    CreateGroup, CreateGroupReceipt,
-    CreateOrAppendFile, CreateOrAppendFileReceipt,
-    CreateUser, CreateUserReceipt,
-    FetchNix, FetchNixReceipt,
-    MoveUnpackedNix, MoveUnpackedNixReceipt,
-    PlaceChannelConfiguration, PlaceChannelConfigurationReceipt,
-    PlaceNixConfiguration, PlaceNixConfigurationReceipt,
+    ConfigureNixDaemonService, ConfigureNixDaemonServiceReceipt, CreateDirectory,
+    CreateDirectoryReceipt, CreateFile, CreateFileReceipt, CreateGroup, CreateGroupReceipt,
+    CreateOrAppendFile, CreateOrAppendFileReceipt, CreateUser, CreateUserReceipt, FetchNix,
+    FetchNixReceipt, MoveUnpackedNix, MoveUnpackedNixReceipt, PlaceChannelConfiguration,
+    PlaceChannelConfigurationReceipt, PlaceNixConfiguration, PlaceNixConfigurationReceipt,
     SetupDefaultProfile, SetupDefaultProfileReceipt,
 };
 use meta::{
-    ConfigureNix, ConfigureNixReceipt,
-    CreateNixTree, CreateNixTreeReceipt,
-    CreateUsersAndGroup, CreateUsersAndGroupReceipt,
-    StartNixDaemon, StartNixDaemonReceipt,
+    ConfigureNix, ConfigureNixReceipt, ConfigureShellProfile, ConfigureShellProfileReceipt,
+    CreateNixTree, CreateNixTreeReceipt, CreateUsersAndGroup, CreateUsersAndGroupReceipt,
+    ProvisionNix, ProvisionNixReceipt, StartNixDaemon, StartNixDaemonReceipt,
 };
 
-
 use crate::HarmonicError;
-
-use self::meta::{ProvisionNix, ProvisionNixReceipt};
 
 #[async_trait::async_trait]
 pub trait Actionable<'a>: serde::de::Deserialize<'a> + serde::Serialize {
@@ -125,21 +115,37 @@ impl<'a> Actionable<'a> for Action {
 
     async fn execute(self) -> Result<Self::Receipt, HarmonicError> {
         match self {
-            Action::ConfigureNixDaemonService(i) => i.execute().await.map(ActionReceipt::ConfigureNixDaemonService),
+            Action::ConfigureNixDaemonService(i) => i
+                .execute()
+                .await
+                .map(ActionReceipt::ConfigureNixDaemonService),
             Action::ConfigureNix(i) => i.execute().await.map(ActionReceipt::ConfigureNix),
-            Action::ConfigureShellProfile(i) => i.execute().await.map(ActionReceipt::ConfigureShellProfile),
+            Action::ConfigureShellProfile(i) => {
+                i.execute().await.map(ActionReceipt::ConfigureShellProfile)
+            },
             Action::CreateDirectory(i) => i.execute().await.map(ActionReceipt::CreateDirectory),
             Action::CreateFile(i) => i.execute().await.map(ActionReceipt::CreateFile),
             Action::CreateGroup(i) => i.execute().await.map(ActionReceipt::CreateGroup),
-            Action::CreateOrAppendFile(i) => i.execute().await.map(ActionReceipt::CreateOrAppendFile),
+            Action::CreateOrAppendFile(i) => {
+                i.execute().await.map(ActionReceipt::CreateOrAppendFile)
+            },
             Action::CreateNixTree(i) => i.execute().await.map(ActionReceipt::CreateNixTree),
             Action::CreateUser(i) => i.execute().await.map(ActionReceipt::CreateUser),
-            Action::CreateUsersAndGroup(i) => i.execute().await.map(ActionReceipt::CreateUsersAndGroup),
+            Action::CreateUsersAndGroup(i) => {
+                i.execute().await.map(ActionReceipt::CreateUsersAndGroup)
+            },
             Action::FetchNix(i) => i.execute().await.map(ActionReceipt::FetchNix),
             Action::MoveUnpackedNix(i) => i.execute().await.map(ActionReceipt::MoveUnpackedNix),
-            Action::PlaceChannelConfiguration(i) => i.execute().await.map(ActionReceipt::PlaceChannelConfiguration),
-            Action::PlaceNixConfiguration(i) => i.execute().await.map(ActionReceipt::PlaceNixConfiguration),
-            Action::SetupDefaultProfile(i) => i.execute().await.map(ActionReceipt::SetupDefaultProfile),
+            Action::PlaceChannelConfiguration(i) => i
+                .execute()
+                .await
+                .map(ActionReceipt::PlaceChannelConfiguration),
+            Action::PlaceNixConfiguration(i) => {
+                i.execute().await.map(ActionReceipt::PlaceNixConfiguration)
+            },
+            Action::SetupDefaultProfile(i) => {
+                i.execute().await.map(ActionReceipt::SetupDefaultProfile)
+            },
             Action::StartNixDaemon(i) => i.execute().await.map(ActionReceipt::StartNixDaemon),
             Action::ProvisionNix(i) => i.execute().await.map(ActionReceipt::ProvisionNix),
         }

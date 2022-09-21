@@ -1,8 +1,8 @@
 use tokio::process::Command;
 
-use crate::HarmonicError;
+use crate::{HarmonicError, execute_command};
 
-use crate::actions::{ActionDescription, ActionReceipt, Actionable, Revertable};
+use crate::actions::{ActionDescription, Actionable, Revertable};
 
 #[derive(Debug, serde::Deserialize, serde::Serialize, Clone)]
 pub struct CreateGroup {
@@ -11,9 +11,8 @@ pub struct CreateGroup {
 }
 
 impl CreateGroup {
+    #[tracing::instrument(skip_all)]
     pub fn plan(name: String, gid: usize) -> Self {
-        
-
         Self { name, gid }
     }
 }
@@ -31,28 +30,14 @@ impl<'a> Actionable<'a> for CreateGroup {
         )]
     }
 
+    #[tracing::instrument(skip_all)]
     async fn execute(self) -> Result<Self::Receipt, HarmonicError> {
         let Self { name, gid } = self;
 
-        let mut command = Command::new("groupadd");
-
-        command.args([
-            "-g",
-            &gid.to_string(),
-            "--system",
-            &name
-        ]);
-
-        let command_str = format!("{:?}", command.as_std());
-        let status = command
-            .status()
-            .await
-            .map_err(|e| HarmonicError::CommandFailedExec(command_str.clone(), e))?;
-        
-        match status.success() {
-            true => (),
-            false => return Err(HarmonicError::CommandFailedStatus(command_str)),
-        }
+        execute_command(
+            Command::new("groupadd").args(["-g", &gid.to_string(), "--system", &name]),
+            false,
+        ).await?;
 
         Ok(CreateGroupReceipt { name, gid })
     }
@@ -70,6 +55,7 @@ impl<'a> Revertable<'a> for CreateGroupReceipt {
         todo!()
     }
 
+    #[tracing::instrument(skip_all)]
     async fn revert(self) -> Result<(), HarmonicError> {
         todo!();
 

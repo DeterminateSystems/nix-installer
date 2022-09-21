@@ -1,8 +1,8 @@
-use std::path::{PathBuf, Path};
+use std::path::{Path, PathBuf};
 
 use crate::HarmonicError;
 
-use crate::actions::{ActionDescription, ActionReceipt, Actionable, Revertable};
+use crate::actions::{ActionDescription, Actionable, Revertable};
 
 #[derive(Debug, serde::Deserialize, serde::Serialize, Clone)]
 pub struct MoveUnpackedNix {
@@ -10,9 +10,10 @@ pub struct MoveUnpackedNix {
 }
 
 impl MoveUnpackedNix {
+    #[tracing::instrument(skip_all)]
     pub async fn plan(source: PathBuf) -> Result<Self, HarmonicError> {
         // Note: Do NOT try to check for the source/dest since the installer creates those
-        Ok(Self { source, })
+        Ok(Self { source })
     }
 }
 
@@ -24,17 +25,19 @@ impl<'a> Actionable<'a> for MoveUnpackedNix {
         vec![ActionDescription::new(
             format!("Move the downloaded Nix into `/nix`"),
             vec![format!(
-                "Nix is downloaded to `{}` and should be in `nix`", source.display(),
+                "Nix is being downloaded to `{}` and should be in `nix`",
+                source.display(),
             )],
         )]
     }
 
+    #[tracing::instrument(skip_all)]
     async fn execute(self) -> Result<Self::Receipt, HarmonicError> {
         let Self { source } = self;
 
         // TODO(@Hoverbear): I would like to make this less awful
-        let found_nix_paths = glob::glob(&format!("{}/nix-*", source.display()))?
-            .collect::<Result<Vec<_>, _>>()?;
+        let found_nix_paths =
+            glob::glob(&format!("{}/nix-*", source.display()))?.collect::<Result<Vec<_>, _>>()?;
         assert_eq!(
             found_nix_paths.len(),
             1,
@@ -47,15 +50,13 @@ impl<'a> Actionable<'a> for MoveUnpackedNix {
         tokio::fs::rename(src.clone(), dest)
             .await
             .map_err(|e| HarmonicError::Rename(src, dest.to_owned(), e))?;
-            
-        Ok(MoveUnpackedNixReceipt { })
+
+        Ok(MoveUnpackedNixReceipt {})
     }
 }
 
 #[derive(Debug, serde::Deserialize, serde::Serialize, Clone)]
-pub struct MoveUnpackedNixReceipt {
-    
-}
+pub struct MoveUnpackedNixReceipt {}
 
 #[async_trait::async_trait]
 impl<'a> Revertable<'a> for MoveUnpackedNixReceipt {
@@ -63,6 +64,7 @@ impl<'a> Revertable<'a> for MoveUnpackedNixReceipt {
         todo!()
     }
 
+    #[tracing::instrument(skip_all)]
     async fn revert(self) -> Result<(), HarmonicError> {
         todo!();
 

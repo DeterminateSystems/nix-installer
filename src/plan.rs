@@ -2,12 +2,8 @@ use serde::{Deserialize, Serialize};
 
 use crate::{
     actions::{
+        meta::{ConfigureNix, ProvisionNix, StartNixDaemon},
         Action, ActionDescription, ActionReceipt, Actionable, Revertable,
-        meta::{
-            ConfigureNix,
-            ProvisionNix,
-            StartNixDaemon,
-        },
     },
     settings::InstallSettings,
     HarmonicError,
@@ -38,6 +34,7 @@ pub struct InstallPlan {
 }
 
 impl InstallPlan {
+    #[tracing::instrument(skip_all)]
     pub fn description(&self) -> String {
         format!(
             "\
@@ -85,10 +82,12 @@ impl InstallPlan {
         let actions = vec![
             Action::ProvisionNix(ProvisionNix::plan(settings.clone()).await?),
             Action::ConfigureNix(ConfigureNix::plan(settings.clone()).await?),
-            Action::StartNixDaemon(StartNixDaemon::plan(settings.clone()).await?),
+            Action::StartNixDaemon(StartNixDaemon::plan().await?),
         ];
         Ok(Self { settings, actions })
     }
+
+    #[tracing::instrument(skip_all)]
     pub async fn install(self) -> Result<Receipt, HarmonicError> {
         let mut receipt = Receipt::default();
         // This is **deliberately sequential**.
@@ -98,18 +97,18 @@ impl InstallPlan {
             match action.execute().await {
                 Ok(action_receipt) => receipt.actions.push(action_receipt),
                 Err(err) => {
-                    let mut revert_errs = Vec::default();
-
-                    for action_receipt in receipt.actions {
-                        if let Err(err) = action_receipt.revert().await {
-                            revert_errs.push(err);
-                        }
-                    }
-                    if !revert_errs.is_empty() {
-                        return Err(HarmonicError::FailedReverts(vec![err], revert_errs));
-                    }
-
                     return Err(err);
+                    // TODO 
+                    // let mut revert_errs = Vec::default();
+
+                    // for action_receipt in receipt.actions {
+                    //     if let Err(err) = action_receipt.revert().await {
+                    //         revert_errs.push(err);
+                    //     }
+                    // }
+                    // if !revert_errs.is_empty() {
+                    //     return Err(HarmonicError::FailedReverts(vec![err], revert_errs));
+                    // }
                 },
             };
         }

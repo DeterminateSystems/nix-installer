@@ -26,7 +26,10 @@ impl Default for InstallSettings {
             nix_build_group_id: 3000,
             nix_build_user_prefix: String::from("nixbld"),
             nix_build_user_id_base: 3001,
-            nix_package_url: "https://releases.nixos.org/nix/nix-2.11.0/nix-2.11.0-x86_64-linux.tar.xz".parse().expect("Could not parse default Nix archive url, please report this issue"),
+            nix_package_url:
+                "https://releases.nixos.org/nix/nix-2.11.0/nix-2.11.0-x86_64-linux.tar.xz"
+                    .parse()
+                    .expect("Could not parse default Nix archive url, please report this issue"),
             extra_conf: Default::default(),
             force: false,
         }

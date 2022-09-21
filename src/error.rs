@@ -20,6 +20,8 @@ pub enum HarmonicError {
     NoNssCacert,
     #[error("No supported init system found")]
     InitNotSupported,
+    #[error("Creating file `{0}`: {1}")]
+    CreateFile(std::path::PathBuf, std::io::Error),
     #[error("Creating directory `{0}`: {1}")]
     CreateDirectory(std::path::PathBuf, std::io::Error),
     #[error("Walking directory `{0}`")]

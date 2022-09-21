@@ -1,13 +1,13 @@
-use std::{
-    fs::Permissions,
-    path::{Path, PathBuf, self}, io::SeekFrom,
+use nix::unistd::{chown, Group, User};
+use std::path::{Path, PathBuf};
+use tokio::{
+    fs::{create_dir_all, OpenOptions},
+    io::AsyncWriteExt,
 };
-use nix::unistd::{Group, User, Gid, Uid, chown};
-use tokio::{fs::{create_dir, create_dir_all, OpenOptions}, io::{AsyncWriteExt, AsyncSeekExt}};
 
 use crate::HarmonicError;
 
-use crate::actions::{ActionDescription, ActionReceipt, Actionable, Revertable};
+use crate::actions::{ActionDescription, Actionable, Revertable};
 
 #[derive(Debug, serde::Deserialize, serde::Serialize, Clone)]
 pub struct CreateFile {
@@ -16,13 +16,39 @@ pub struct CreateFile {
     group: String,
     mode: u32,
     buf: String,
+    force: bool,
 }
 
 impl CreateFile {
-    pub async fn plan(path: impl AsRef<Path>, user: String, group: String, mode: u32, buf: String) -> Result<Self, HarmonicError> {
+    #[tracing::instrument(skip_all)]
+    pub async fn plan(
+        path: impl AsRef<Path>,
+        user: String,
+        group: String,
+        mode: u32,
+        buf: String,
+        force: bool,
+    ) -> Result<Self, HarmonicError> {
         let path = path.as_ref().to_path_buf();
 
-        Ok(Self { path, user, group, mode, buf })
+        if path.exists() && !force {
+            return Err(HarmonicError::CreateFile(
+                path.to_path_buf(),
+                std::io::Error::new(
+                    std::io::ErrorKind::AlreadyExists,
+                    format!("Directory `{}` already exists", path.display()),
+                ),
+            ));
+        }
+
+        Ok(Self {
+            path,
+            user,
+            group,
+            mode,
+            buf,
+            force,
+        })
     }
 }
 
@@ -30,7 +56,14 @@ impl CreateFile {
 impl<'a> Actionable<'a> for CreateFile {
     type Receipt = CreateFileReceipt;
     fn description(&self) -> Vec<ActionDescription> {
-        let Self { path, user, group, mode, buf } = &self;
+        let Self {
+            path,
+            user,
+            group,
+            mode,
+            buf,
+            force,
+        } = &self;
         vec![ActionDescription::new(
             format!("Create or overwrite file `{}`", path.display()),
             vec![format!(
@@ -39,15 +72,17 @@ impl<'a> Actionable<'a> for CreateFile {
         )]
     }
 
+    #[tracing::instrument(skip_all)]
     async fn execute(self) -> Result<CreateFileReceipt, HarmonicError> {
-        let Self { path, user, group, mode, buf } = self;
-
-        tracing::trace!("Creating or appending");
-        if let Some(parent) = path.parent() {
-            create_dir_all(parent)
-                .await
-                .map_err(|e| HarmonicError::CreateDirectory(parent.to_owned(), e))?;
-        }
+        let Self {
+            path,
+            user,
+            group,
+            mode,
+            buf,
+            force: _,
+        } = self;
+        tracing::trace!(path = %path.display(), "Creating file");
         let mut file = OpenOptions::new()
             .create_new(true)
             .write(true)
@@ -67,11 +102,18 @@ impl<'a> Actionable<'a> for CreateFile {
         let uid = User::from_name(user.as_str())
             .map_err(|e| HarmonicError::UserId(user.clone(), e))?
             .ok_or(HarmonicError::NoUser(user.clone()))?
-            .uid; 
-        chown(&path, Some(uid), Some(gid))
-            .map_err(|e| HarmonicError::Chown(path.clone(), e))?;
+            .uid;
         
-        Ok(Self::Receipt { path, user, group, mode, buf })
+        tracing::trace!(path = %path.display(), "Chowning file");
+        chown(&path, Some(uid), Some(gid)).map_err(|e| HarmonicError::Chown(path.clone(), e))?;
+
+        Ok(Self::Receipt {
+            path,
+            user,
+            group,
+            mode,
+            buf,
+        })
     }
 }
 
@@ -90,9 +132,8 @@ impl<'a> Revertable<'a> for CreateFileReceipt {
         todo!()
     }
 
+    #[tracing::instrument(skip_all)]
     async fn revert(self) -> Result<(), HarmonicError> {
-
-
         todo!();
 
         Ok(())

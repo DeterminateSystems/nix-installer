@@ -1,9 +1,9 @@
-use crate::{HarmonicError, execute_command};
+use crate::{execute_command, HarmonicError};
 
 use glob::glob;
 use tokio::process::Command;
 
-use crate::actions::{ActionDescription, ActionReceipt, Actionable, Revertable};
+use crate::actions::{ActionDescription, Actionable, Revertable};
 
 #[derive(Debug, serde::Deserialize, serde::Serialize, Clone)]
 pub struct SetupDefaultProfile {
@@ -11,6 +11,7 @@ pub struct SetupDefaultProfile {
 }
 
 impl SetupDefaultProfile {
+    #[tracing::instrument(skip_all)]
     pub async fn plan(channels: Vec<String>) -> Result<Self, HarmonicError> {
         Ok(Self { channels })
     }
@@ -20,16 +21,13 @@ impl SetupDefaultProfile {
 impl<'a> Actionable<'a> for SetupDefaultProfile {
     type Receipt = SetupDefaultProfileReceipt;
     fn description(&self) -> Vec<ActionDescription> {
-        vec![
-            ActionDescription::new(
-                "Setup the default Nix profile".to_string(),
-                vec![
-                    "TODO".to_string()
-                ]
-            ),
-        ]
+        vec![ActionDescription::new(
+            "Setup the default Nix profile".to_string(),
+            vec!["TODO".to_string()],
+        )]
     }
 
+    #[tracing::instrument(skip_all)]
     async fn execute(self) -> Result<Self::Receipt, HarmonicError> {
         let Self { channels } = self;
         tracing::info!("Setting up default profile");
@@ -74,13 +72,13 @@ impl<'a> Actionable<'a> for SetupDefaultProfile {
                 },
                 Err(_) => continue, /* Ignore it */
             };
-        };
+        }
         let nss_ca_cert_pkg = if let Some(nss_ca_cert_pkg) = found_nss_ca_cert_pkg {
             nss_ca_cert_pkg
         } else {
             return Err(HarmonicError::NoNssCacert);
         };
-        
+
         // Install `nss-cacert` into the store
         execute_command(
             Command::new(nix_pkg.join("bin/nix-env"))
@@ -96,14 +94,17 @@ impl<'a> Actionable<'a> for SetupDefaultProfile {
             for channel in channels {
                 command.arg(channel);
             }
-            command.env("NIX_SSL_CERT_FILE", "/nix/var/nix/profiles/default/etc/ssl/certs/ca-bundle.crt");
-            
+            command.env(
+                "NIX_SSL_CERT_FILE",
+                "/nix/var/nix/profiles/default/etc/ssl/certs/ca-bundle.crt",
+            );
+
             let command_str = format!("{:?}", command.as_std());
             let status = command
                 .status()
                 .await
                 .map_err(|e| HarmonicError::CommandFailedExec(command_str.clone(), e))?;
-            
+
             match status.success() {
                 true => (),
                 false => return Err(HarmonicError::CommandFailedStatus(command_str)),
@@ -119,16 +120,13 @@ pub struct SetupDefaultProfileReceipt {}
 #[async_trait::async_trait]
 impl<'a> Revertable<'a> for SetupDefaultProfileReceipt {
     fn description(&self) -> Vec<ActionDescription> {
-        vec![
-            ActionDescription::new(
-                "Unset the default Nix profile".to_string(),
-                vec![
-                    "TODO".to_string()
-                ]
-            ),
-        ]
+        vec![ActionDescription::new(
+            "Unset the default Nix profile".to_string(),
+            vec!["TODO".to_string()],
+        )]
     }
 
+    #[tracing::instrument(skip_all)]
     async fn revert(self) -> Result<(), HarmonicError> {
         todo!();
 

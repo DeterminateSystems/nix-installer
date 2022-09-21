@@ -2,8 +2,8 @@ use tokio::task::JoinSet;
 
 use crate::{HarmonicError, InstallSettings};
 
-use crate::actions::base::{CreateGroup, CreateUserReceipt, CreateGroupReceipt};
-use crate::actions::{ActionDescription, ActionReceipt, Actionable, CreateUser, Revertable};
+use crate::actions::base::{CreateGroup, CreateGroupReceipt, CreateUserReceipt};
+use crate::actions::{ActionDescription, Actionable, CreateUser, Revertable};
 
 #[derive(Debug, serde::Deserialize, serde::Serialize, Clone)]
 pub struct CreateUsersAndGroup {
@@ -17,11 +17,13 @@ pub struct CreateUsersAndGroup {
 }
 
 impl CreateUsersAndGroup {
-    pub async fn plan(
-        settings: InstallSettings
-    ) -> Result<Self, HarmonicError> {
+    #[tracing::instrument(skip_all)]
+    pub async fn plan(settings: InstallSettings) -> Result<Self, HarmonicError> {
         // TODO(@hoverbear): CHeck if it exist, error if so
-        let create_group = CreateGroup::plan(settings.nix_build_group_name.clone(), settings.nix_build_group_id);
+        let create_group = CreateGroup::plan(
+            settings.nix_build_group_name.clone(),
+            settings.nix_build_group_id,
+        );
         // TODO(@hoverbear): CHeck if they exist, error if so
         let create_users = (0..settings.daemon_user_count)
             .map(|count| {
@@ -69,8 +71,13 @@ impl<'a> Actionable<'a> for CreateUsersAndGroup {
         ]
     }
 
+    #[tracing::instrument(skip_all)]
     async fn execute(self) -> Result<Self::Receipt, HarmonicError> {
-        let Self { create_users, create_group, .. } = self;
+        let Self {
+            create_users,
+            create_group,
+            ..
+        } = self;
 
         // Create group
         let create_group = create_group.execute().await?;
@@ -81,7 +88,7 @@ impl<'a> Actionable<'a> for CreateUsersAndGroup {
 
         let mut successes = Vec::with_capacity(create_users.len());
         let mut errors = Vec::default();
-        
+
         for create_user in create_users {
             let _abort_handle = set.spawn(async move { create_user.execute().await });
         }
@@ -121,6 +128,7 @@ impl<'a> Revertable<'a> for CreateUsersAndGroupReceipt {
         todo!()
     }
 
+    #[tracing::instrument(skip_all)]
     async fn revert(self) -> Result<(), HarmonicError> {
         todo!();
 

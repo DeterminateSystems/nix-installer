@@ -1,12 +1,10 @@
-use std::path::Path;
-
 use reqwest::Url;
 
 use crate::HarmonicError;
 
-use crate::actions::{ActionDescription, ActionReceipt, Actionable, Revertable};
+use crate::actions::{ActionDescription, Actionable, Revertable};
 
-use super::{CreateOrAppendFile, CreateFile, CreateFileReceipt};
+use super::{CreateFile, CreateFileReceipt};
 
 const NIX_CHANNELS_PATH: &str = "/root/.nix-channels";
 
@@ -17,14 +15,19 @@ pub struct PlaceChannelConfiguration {
 }
 
 impl PlaceChannelConfiguration {
-    pub async fn plan(channels: Vec<(String, Url)>) -> Result<Self, HarmonicError> {
+    #[tracing::instrument(skip_all)]
+    pub async fn plan(channels: Vec<(String, Url)>, force: bool) -> Result<Self, HarmonicError> {
         let buf = channels
             .iter()
             .map(|(name, url)| format!("{} {}", url, name))
             .collect::<Vec<_>>()
             .join("\n");
-        let create_file = CreateFile::plan(NIX_CHANNELS_PATH, "root".into(), "root".into(), 0o0664, buf).await?;
-        Ok(Self { create_file, channels })
+        let create_file =
+            CreateFile::plan(NIX_CHANNELS_PATH, "root".into(), "root".into(), 0o0664, buf, force).await?;
+        Ok(Self {
+            create_file,
+            channels,
+        })
     }
 }
 
@@ -32,21 +35,27 @@ impl PlaceChannelConfiguration {
 impl<'a> Actionable<'a> for PlaceChannelConfiguration {
     type Receipt = PlaceChannelConfigurationReceipt;
     fn description(&self) -> Vec<ActionDescription> {
-        let Self { channels, create_file } = self;
-        vec![
-            ActionDescription::new(
-                "Place a channel configuration".to_string(),
-                vec![
-                    "Place a configuration at `{NIX_CHANNELS_PATH}` setting the channels".to_string()
-                ]
-            ),
-        ]
+        let Self {
+            channels,
+             create_file,
+        } = self;
+        vec![ActionDescription::new(
+            "Place a channel configuration".to_string(),
+            vec!["Place a configuration at `{NIX_CHANNELS_PATH}` setting the channels".to_string()],
+        )]
     }
 
+    #[tracing::instrument(skip_all)]
     async fn execute(self) -> Result<Self::Receipt, HarmonicError> {
-        let Self { create_file, channels } = self;
+        let Self {
+            create_file,
+            channels,
+        } = self;
         let create_file = create_file.execute().await?;
-        Ok(Self::Receipt { create_file, channels })
+        Ok(Self::Receipt {
+            create_file,
+            channels,
+        })
     }
 }
 
@@ -62,6 +71,7 @@ impl<'a> Revertable<'a> for PlaceChannelConfigurationReceipt {
         todo!()
     }
 
+    #[tracing::instrument(skip_all)]
     async fn revert(self) -> Result<(), HarmonicError> {
         todo!();
 

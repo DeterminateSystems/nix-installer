@@ -1,8 +1,8 @@
 use tokio::process::Command;
 
-use crate::{HarmonicError, execute_command};
+use crate::{execute_command, HarmonicError};
 
-use crate::actions::{ActionDescription, ActionReceipt, Actionable, Revertable};
+use crate::actions::{ActionDescription, Actionable, Revertable};
 
 #[derive(Debug, serde::Deserialize, serde::Serialize, Clone)]
 pub struct StartSystemdUnit {
@@ -10,6 +10,7 @@ pub struct StartSystemdUnit {
 }
 
 impl StartSystemdUnit {
+    #[tracing::instrument(skip_all)]
     pub async fn plan(unit: String) -> Result<Self, HarmonicError> {
         Ok(Self { unit })
     }
@@ -29,22 +30,15 @@ impl<'a> Actionable<'a> for StartSystemdUnit {
         ]
     }
 
+    #[tracing::instrument(skip_all)]
     async fn execute(self) -> Result<Self::Receipt, HarmonicError> {
         let Self { unit } = self;
         // TODO(@Hoverbear): Handle proxy vars
-        
 
         execute_command(
             Command::new("systemctl")
                 .arg("enable")
-                .arg(format!("{unit}")),
-            false,
-        )
-        .await?;
-        
-        execute_command(
-            Command::new("systemctl")
-                .arg("restart")
+                .arg("--now")
                 .arg(format!("{unit}")),
             false,
         )
@@ -63,6 +57,7 @@ impl<'a> Revertable<'a> for StartSystemdUnitReceipt {
         todo!()
     }
 
+    #[tracing::instrument(skip_all)]
     async fn revert(self) -> Result<(), HarmonicError> {
         todo!();
 

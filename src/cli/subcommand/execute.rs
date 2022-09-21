@@ -1,11 +1,11 @@
 use std::process::ExitCode;
 
 use clap::{ArgAction, Parser};
-use harmonic::{InstallPlan, InstallSettings};
-use tokio::io::{AsyncReadExt, AsyncWriteExt};
+use harmonic::InstallPlan;
+use tokio::io::AsyncReadExt;
 
 use crate::{
-    cli::{arg::ChannelValue, CommandExecute},
+    cli::CommandExecute,
     interaction,
 };
 

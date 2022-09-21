@@ -1,8 +1,8 @@
 use tokio::process::Command;
 
-use crate::HarmonicError;
+use crate::{HarmonicError, execute_command};
 
-use crate::actions::{ActionDescription, ActionReceipt, Actionable, Revertable};
+use crate::actions::{ActionDescription, Actionable, Revertable};
 
 #[derive(Debug, serde::Deserialize, serde::Serialize, Clone)]
 pub struct CreateUser {
@@ -12,6 +12,7 @@ pub struct CreateUser {
 }
 
 impl CreateUser {
+    #[tracing::instrument(skip_all)]
     pub fn plan(name: String, uid: usize, gid: usize) -> Self {
         Self { name, uid, gid }
     }
@@ -31,11 +32,11 @@ impl<'a> Actionable<'a> for CreateUser {
         )]
     }
 
+    #[tracing::instrument(skip_all)]
     async fn execute(self) -> Result<Self::Receipt, HarmonicError> {
         let Self { name, uid, gid } = self;
 
-        let mut command = Command::new("useradd");
-        command.args([
+        execute_command(Command::new("useradd").args([
             "--home-dir",
             "/var/empty",
             "--comment",
@@ -53,18 +54,7 @@ impl<'a> Actionable<'a> for CreateUser {
             "--password",
             "\"!\"",
             &name.to_string(),
-        ]);
-
-        let command_str = format!("{:?}", command.as_std());
-        let status = command
-            .status()
-            .await
-            .map_err(|e| HarmonicError::CommandFailedExec(command_str.clone(), e))?;
-        
-        match status.success() {
-            true => (),
-            false => return Err(HarmonicError::CommandFailedStatus(command_str)),
-        }
+        ]), false).await?;
 
         Ok(CreateUserReceipt { name, uid, gid })
     }
@@ -83,6 +73,7 @@ impl<'a> Revertable<'a> for CreateUserReceipt {
         todo!()
     }
 
+    #[tracing::instrument(skip_all)]
     async fn revert(self) -> Result<(), HarmonicError> {
         todo!();
 

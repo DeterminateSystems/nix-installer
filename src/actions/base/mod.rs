@@ -1,7 +1,6 @@
 /*! Actions which do not only call other base plugins. */
 
 mod configure_nix_daemon_service;
-mod configure_shell_profile;
 mod create_directory;
 mod create_file;
 mod create_group;
@@ -17,7 +16,6 @@ mod start_systemd_unit;
 pub use configure_nix_daemon_service::{
     ConfigureNixDaemonService, ConfigureNixDaemonServiceReceipt,
 };
-pub use configure_shell_profile::{ConfigureShellProfile, ConfigureShellProfileReceipt};
 pub use create_directory::{CreateDirectory, CreateDirectoryReceipt};
 pub use create_file::{CreateFile, CreateFileReceipt};
 pub use create_group::{CreateGroup, CreateGroupReceipt};
