@@ -1,10 +1,11 @@
 use serde::Serialize;
 use tempdir::TempDir;
+use tokio::task::JoinError;
 
 use crate::actions::base::{FetchNix, FetchNixError, MoveUnpackedNix, MoveUnpackedNixError};
 use crate::{HarmonicError, InstallSettings};
 
-use crate::actions::{ActionDescription, Actionable, ActionState, Action};
+use crate::actions::{ActionDescription, Actionable, ActionState, Action, ActionError};
 
 use super::{
     CreateNixTree, CreateNixTreeError,
@@ -17,11 +18,12 @@ pub struct ProvisionNix {
     create_users_and_group: CreateUsersAndGroup,
     create_nix_tree: CreateNixTree,
     move_unpacked_nix: MoveUnpackedNix,
+    action_state: ActionState,
 }
 
 impl ProvisionNix {
     #[tracing::instrument(skip_all)]
-    pub async fn plan(settings: InstallSettings) -> Result<ActionState<Self>, ProvisionNixError> {
+    pub async fn plan(settings: InstallSettings) -> Result<Self, ProvisionNixError> {
         let tempdir = TempDir::new("nix").map_err(ProvisionNixError::TempDir)?;
 
         let fetch_nix = FetchNix::plan(
@@ -32,29 +34,26 @@ impl ProvisionNix {
         let create_users_and_group = CreateUsersAndGroup::plan(settings.clone()).await?;
         let create_nix_tree = CreateNixTree::plan(settings.force).await?;
         let move_unpacked_nix = MoveUnpackedNix::plan(tempdir.path().to_path_buf()).await?;
-        Ok(ActionState::Planned(Self {
+        Ok(Self {
             fetch_nix,
             create_users_and_group,
             create_nix_tree,
             move_unpacked_nix,
-        }))
+            action_state: ActionState::Planned,
+        })
     }
 }
 
 #[async_trait::async_trait]
-impl Actionable for ActionState<ProvisionNix> {
+impl Actionable for ProvisionNix {
     type Error = ProvisionNixError;
     fn description(&self) -> Vec<ActionDescription> {
-        match self {
-            ActionState::Completed(action) => action.start_systemd_socket.description(),
-            ActionState::Planned(action) => action.start_systemd_socket.description(),
-            ActionState::Reverted(_) => todo!(),
-        }
         let Self {
             fetch_nix,
             create_users_and_group,
             create_nix_tree,
             move_unpacked_nix,
+            action_state: _,
         } = &self;
 
         let mut buf = fetch_nix.description();
@@ -72,17 +71,20 @@ impl Actionable for ActionState<ProvisionNix> {
             create_nix_tree,
             create_users_and_group,
             move_unpacked_nix,
+            action_state,
         } = self;
 
         // We fetch nix while doing the rest, then move it over.
-        let fetch_nix_handle = tokio::spawn(async move { fetch_nix.execute().await });
+        let mut fetch_nix_clone = fetch_nix.clone();
+        let fetch_nix_handle = tokio::task::spawn_local(async { fetch_nix_clone.execute().await?; Result::<_, Self::Error>::Ok(fetch_nix_clone) });
 
         create_users_and_group.execute().await?;
-        create_nix_tree.execute().await?;
+        create_nix_tree.execute().await.map_err(ProvisionNixError::from)?;
 
-        fetch_nix_handle.await??;
+        *fetch_nix = fetch_nix_handle.await.map_err(ProvisionNixError::from)??;
         move_unpacked_nix.execute().await?;
 
+        *action_state = ActionState::Completed;
         Ok(())
     }
 
@@ -94,13 +96,9 @@ impl Actionable for ActionState<ProvisionNix> {
     }
 }
 
-impl From<ActionState<ProvisionNix>> for ActionState<Action> {
-    fn from(v: ActionState<ProvisionNix>) -> Self {
-        match v {
-            ActionState::Completed(_) => ActionState::Completed(Action::ProvisionNix(v)),
-            ActionState::Planned(_) => ActionState::Planned(Action::ProvisionNix(v)),
-            ActionState::Reverted(_) => ActionState::Reverted(Action::ProvisionNix(v)),
-        }
+impl From<ProvisionNix> for Action {
+    fn from(v: ProvisionNix) -> Self {
+        Action::ProvisionNix(v)
     }
 }
 
@@ -108,6 +106,23 @@ impl From<ActionState<ProvisionNix>> for ActionState<Action> {
 #[derive(Debug, thiserror::Error, Serialize)]
 pub enum ProvisionNixError {
     #[error("Failed create tempdir")]
-    #[serde(serialize_with = "crate::serialize_std_io_error_to_display")]
-    TempDir(#[source] std::io::Error)
+    TempDir(
+        #[source] 
+        #[serde(serialize_with = "crate::serialize_error_to_display")] 
+        std::io::Error
+    ),
+    #[error(transparent)]
+    FetchNix(#[from] FetchNixError),
+    #[error(transparent)]
+    Join(
+        #[from]
+        #[serde(serialize_with = "crate::serialize_error_to_display")]
+        JoinError
+    ),
+    #[error(transparent)]
+    CreateUsersAndGroup(#[from] CreateUsersAndGroupError),
+    #[error(transparent)]
+    CreateNixTree(#[from] CreateNixTreeError),
+    #[error(transparent)]
+    MoveUnpackedNix(#[from] MoveUnpackedNixError),
 }

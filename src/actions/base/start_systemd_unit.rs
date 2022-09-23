@@ -9,21 +9,22 @@ use crate::actions::{ActionDescription, Actionable, ActionState, Action, ActionE
 #[derive(Debug, serde::Deserialize, serde::Serialize, Clone)]
 pub struct StartSystemdUnit {
     unit: String,
+    action_state: ActionState,
 }
 
 impl StartSystemdUnit {
     #[tracing::instrument(skip_all)]
-    pub async fn plan(unit: String) -> Result<ActionState<Self>, StartSystemdUnitError> {
-        Ok(ActionState::Planned(Self { unit }))
+    pub async fn plan(unit: String) -> Result<Self, StartSystemdUnitError> {
+        Ok(Self { unit, action_state: ActionState::Planned })
     }
 }
 
 #[async_trait::async_trait]
-impl Actionable for ActionState<StartSystemdUnit> {
+impl Actionable for StartSystemdUnit {
     type Error = StartSystemdUnitError;
     fn description(&self) -> Vec<ActionDescription> {
-        match self {
-            ActionState::Planned(v) => vec![
+        match self.action_state {
+            ActionState::Planned => vec![
                 ActionDescription::new(
                     "Start the systemd Nix service and socket".to_string(),
                     vec![
@@ -31,7 +32,7 @@ impl Actionable for ActionState<StartSystemdUnit> {
                     ]
                 ),
             ],
-            ActionState::Completed(_) => vec![
+            ActionState::Completed => vec![
                 ActionDescription::new(
                     "Stop the systemd Nix service and socket".to_string(),
                     vec![
@@ -39,7 +40,7 @@ impl Actionable for ActionState<StartSystemdUnit> {
                     ]
                 ),
             ],
-            ActionState::Reverted(_) => vec![
+            ActionState::Reverted => vec![
                 ActionDescription::new(
                     "Stopped the systemd Nix service and socket".to_string(),
                     vec![
@@ -51,12 +52,9 @@ impl Actionable for ActionState<StartSystemdUnit> {
     }
 
     #[tracing::instrument(skip_all)]
-    async fn execute(&mut self) -> Result<(), ActionError> {
-        let StartSystemdUnit { unit } = match self {
-            ActionState::Completed(_) => return Err(ActionError::AlreadyExecuted(self.clone().into())),
-            ActionState::Reverted(_) => return Err(ActionError::AlreadyReverted(self.clone().into())),
-            ActionState::Planned(v) => v,
-        };
+    async fn execute(&mut self) -> Result<(), Self::Error> {
+        let Self { unit, action_state } = self;
+
         // TODO(@Hoverbear): Handle proxy vars
         execute_command(
             Command::new("systemctl")
@@ -66,30 +64,26 @@ impl Actionable for ActionState<StartSystemdUnit> {
         )
         .await.map_err(StartSystemdUnitError::Command)?;
 
+        *action_state = ActionState::Completed;
         Ok(())
     }
 
     #[tracing::instrument(skip_all)]
-    async fn revert(&mut self) -> Result<(), ActionError> {
+    async fn revert(&mut self) -> Result<(), Self::Error> {
         todo!();
 
         Ok(())
     }
 }
 
-impl From<ActionState<StartSystemdUnit>> for ActionState<Action> {
-    fn from(v: ActionState<StartSystemdUnit>) -> Self {
-        match v {
-            ActionState::Completed(_) => ActionState::Completed(Action::StartSystemdUnit(v)),
-            ActionState::Planned(_) => ActionState::Planned(Action::StartSystemdUnit(v)),
-            ActionState::Reverted(_) => ActionState::Reverted(Action::StartSystemdUnit(v)),
-        }
+impl From<StartSystemdUnit> for Action {
+    fn from(v: StartSystemdUnit) -> Self {
+        Action::StartSystemdUnit(v)
     }
 }
 
 #[derive(Debug, thiserror::Error, Serialize)]
 pub enum StartSystemdUnitError {
     #[error("Failed to execute command")]
-    #[serde(serialize_with = "crate::serialize_std_io_error_to_display")]
-    Command(#[source] std::io::Error)
+    Command(#[source] #[serde(serialize_with = "crate::serialize_error_to_display")] std::io::Error)
 }

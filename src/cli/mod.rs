@@ -3,7 +3,7 @@ pub(crate) mod subcommand;
 
 use crate::{cli::arg::ChannelValue, interaction};
 use clap::{ArgAction, Parser};
-use harmonic::{Harmonic, InstallPlan, InstallSettings};
+use harmonic::{InstallPlan, InstallSettings};
 use std::process::ExitCode;
 
 use self::subcommand::HarmonicSubcommand;
@@ -92,7 +92,7 @@ impl CommandExecute for HarmonicCli {
                 );
                 settings.modify_profile(!no_modify_profile);
 
-                let plan = InstallPlan::new(settings).await?;
+                let mut plan = InstallPlan::new(settings).await?;
 
                 // TODO(@Hoverbear): Make this smarter
                 if !interaction::confirm(plan.description()).await? {

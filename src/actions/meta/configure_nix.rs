@@ -5,7 +5,7 @@ use crate::actions::{
         ConfigureNixDaemonService, ConfigureNixDaemonServiceError, PlaceNixConfiguration,
         PlaceNixConfigurationError, SetupDefaultProfile, SetupDefaultProfileError, PlaceChannelConfiguration, PlaceChannelConfigurationError,
     },
-    meta::{ConfigureShellProfile, ConfigureShellProfileError}, ActionState, Action,
+    meta::{ConfigureShellProfile, ConfigureShellProfileError}, ActionState, Action, ActionError,
 };
 use crate::{HarmonicError, InstallSettings};
 
@@ -18,11 +18,12 @@ pub struct ConfigureNix {
     place_channel_configuration: PlaceChannelConfiguration,
     place_nix_configuration: PlaceNixConfiguration,
     configure_nix_daemon_service: ConfigureNixDaemonService,
+    action_state: ActionState,
 }
 
 impl ConfigureNix {
     #[tracing::instrument(skip_all)]
-    pub async fn plan(settings: InstallSettings) -> Result<ActionState<Self>, ConfigureNixError> {
+    pub async fn plan(settings: InstallSettings) -> Result<Self, ConfigureNixError> {
         let channels = settings
             .channels
             .iter()
@@ -48,12 +49,13 @@ impl ConfigureNix {
             setup_default_profile,
             configure_nix_daemon_service,
             configure_shell_profile,
+            action_state: ActionState::Planned,
         })
     }
 }
 
 #[async_trait::async_trait]
-impl Actionable for ActionState<ConfigureNix> {
+impl Actionable for ConfigureNix {
     type Error = ConfigureNixError;
     fn description(&self) -> Vec<ActionDescription> {
         let Self {
@@ -62,6 +64,7 @@ impl Actionable for ActionState<ConfigureNix> {
             place_nix_configuration,
             place_channel_configuration,
             configure_shell_profile,
+            action_state: _,
         } = &self;
 
         let mut buf = setup_default_profile.description();
@@ -83,6 +86,7 @@ impl Actionable for ActionState<ConfigureNix> {
             place_nix_configuration,
             place_channel_configuration,
             configure_shell_profile,
+            action_state,
         } = self;
 
         let (
@@ -92,29 +96,24 @@ impl Actionable for ActionState<ConfigureNix> {
             configure_shell_profile,
         ) = if let Some(configure_shell_profile) = configure_shell_profile {
             let (a, b, c, d) = tokio::try_join!(
-                setup_default_profile.execute(),
-                place_nix_configuration.execute(),
-                place_channel_configuration.execute(),
-                configure_shell_profile.execute(),
+                async move { setup_default_profile.execute().await.map_err(|e| ConfigureNixError::from(e)) },
+                async move { place_nix_configuration.execute().await.map_err(|e| ConfigureNixError::from(e)) },
+                async move { place_channel_configuration.execute().await.map_err(|e| ConfigureNixError::from(e)) },
+                async move { configure_shell_profile.execute().await.map_err(|e| ConfigureNixError::from(e)) },
             )?;
             (a, b, c, Some(d))
         } else {
             let (a, b, c) = tokio::try_join!(
-                setup_default_profile.execute(),
-                place_nix_configuration.execute(),
-                place_channel_configuration.execute(),
+                async move { setup_default_profile.execute().await.map_err(|e| ConfigureNixError::from(e)) },
+                async move { place_nix_configuration.execute().await.map_err(|e| ConfigureNixError::from(e)) },
+                async move { place_channel_configuration.execute().await.map_err(|e| ConfigureNixError::from(e)) },
             )?;
             (a, b, c, None)
         };
         let configure_nix_daemon_service = configure_nix_daemon_service.execute().await?;
 
-        Ok(Self::Receipt {
-            setup_default_profile,
-            configure_nix_daemon_service,
-            place_nix_configuration,
-            place_channel_configuration,
-            configure_shell_profile,
-        })
+        *action_state = ActionState::Completed;
+        Ok(())
     }
 
 
@@ -126,17 +125,22 @@ impl Actionable for ActionState<ConfigureNix> {
     }
 }
 
-impl From<ActionState<ConfigureNix>> for ActionState<Action> {
-    fn from(v: ActionState<ConfigureNix>) -> Self {
-        match v {
-            ActionState::Completed(_) => ActionState::Completed(Action::ConfigureNix(v)),
-            ActionState::Planned(_) => ActionState::Planned(Action::ConfigureNix(v)),
-            ActionState::Reverted(_) => ActionState::Reverted(Action::ConfigureNix(v)),
-        }
+impl From<ConfigureNix> for Action {
+    fn from(v: ConfigureNix) -> Self {
+        Action::ConfigureNix(v)
     }
 }
 
 #[derive(Debug, thiserror::Error, Serialize)]
 pub enum ConfigureNixError {
-
+    #[error(transparent)]
+    SetupDefaultProfile(#[from] SetupDefaultProfileError),
+    #[error(transparent)]
+    PlaceNixConfiguration(#[from] PlaceNixConfigurationError),
+    #[error(transparent)]
+    PlaceChannelConfiguration(#[from] PlaceChannelConfigurationError),
+    #[error(transparent)]
+    ConfigureNixDaemonService(#[from] ConfigureNixDaemonServiceError),
+    #[error(transparent)]
+    ConfigureShellProfile(#[from] ConfigureShellProfileError),
 }

@@ -1,12 +1,12 @@
 use std::path::Path;
 
 use serde::Serialize;
-use tokio::task::JoinSet;
+use tokio::task::{JoinSet, JoinError};
 
 use crate::HarmonicError;
 
 use crate::actions::base::{CreateOrAppendFile, CreateOrAppendFileError};
-use crate::actions::{ActionDescription, Actionable, ActionState, Action};
+use crate::actions::{ActionDescription, Actionable, ActionState, Action, ActionError};
 
 const PROFILE_TARGETS: &[&str] = &[
     "/etc/bashrc",
@@ -21,11 +21,12 @@ const PROFILE_NIX_FILE: &str = "/nix/var/nix/profiles/default/etc/profile.d/nix-
 #[derive(Debug, serde::Deserialize, serde::Serialize, Clone)]
 pub struct ConfigureShellProfile {
     create_or_append_files: Vec<CreateOrAppendFile>,
+    action_state: ActionState,
 }
 
 impl ConfigureShellProfile {
     #[tracing::instrument(skip_all)]
-    pub async fn plan() -> Result<ActionState<Self>, ConfigureShellProfileError> {
+    pub async fn plan() -> Result<Self, ConfigureShellProfileError> {
         let mut create_or_append_files = Vec::default();
         for profile_target in PROFILE_TARGETS {
             let path = Path::new(profile_target);
@@ -50,12 +51,13 @@ impl ConfigureShellProfile {
 
         Ok(Self {
             create_or_append_files,
+            action_state: ActionState::Planned,
         })
     }
 }
 
 #[async_trait::async_trait]
-impl Actionable for ActionState<ConfigureShellProfile> {
+impl Actionable for ConfigureShellProfile {
     type Error = ConfigureShellProfileError;
     fn description(&self) -> Vec<ActionDescription> {
         vec![ActionDescription::new(
@@ -68,34 +70,35 @@ impl Actionable for ActionState<ConfigureShellProfile> {
     async fn execute(&mut self) -> Result<(), Self::Error> {
         let Self {
             create_or_append_files,
+            action_state,
         } = self;
         tracing::info!("Configuring shell profile");
 
         let mut set = JoinSet::new();
-
-        let mut successes = Vec::with_capacity(create_or_append_files.len());
         let mut errors = Vec::default();
 
-        for create_or_append_file in create_or_append_files {
-            let _abort_handle = set.spawn(async move { create_or_append_file.execute().await });
+        for (idx, create_or_append_file) in create_or_append_files.iter().enumerate() {
+            let mut create_or_append_file_clone = create_or_append_file.clone();
+            let _abort_handle = set.spawn(async move { create_or_append_file_clone.execute().await?; Result::<_, CreateOrAppendFileError>::Ok((idx, create_or_append_file_clone)) });
         }
 
         while let Some(result) = set.join_next().await {
             match result {
-                Ok(Ok(())) => (),
+                Ok(Ok((idx, create_or_append_file))) => create_or_append_files[idx] = create_or_append_file,
                 Ok(Err(e)) => errors.push(e),
-                Err(e) => errors.push(e.into()),
+                Err(e) => return Err(e.into()),
             };
         }
 
         if !errors.is_empty() {
             if errors.len() == 1 {
-                return Err(errors.into_iter().next().unwrap());
+                return Err(errors.into_iter().next().unwrap().into());
             } else {
-                return Err(HarmonicError::Multiple(errors));
+                return Err(ConfigureShellProfileError::MultipleCreateOrAppendFile(errors));
             }
         }
 
+        *action_state = ActionState::Completed;
         Ok(())
     }
 
@@ -108,17 +111,18 @@ impl Actionable for ActionState<ConfigureShellProfile> {
     }
 }
 
-impl From<ActionState<ConfigureShellProfile>> for ActionState<Action> {
-    fn from(v: ActionState<ConfigureShellProfile>) -> Self {
-        match v {
-            ActionState::Completed(_) => ActionState::Completed(Action::ConfigureShellProfile(v)),
-            ActionState::Planned(_) => ActionState::Planned(Action::ConfigureShellProfile(v)),
-            ActionState::Reverted(_) => ActionState::Reverted(Action::ConfigureShellProfile(v)),
-        }
+impl From<ConfigureShellProfile> for Action {
+    fn from(v: ConfigureShellProfile) -> Self {
+        Action::ConfigureShellProfile(v)
     }
 }
 
 #[derive(Debug, thiserror::Error, Serialize)]
 pub enum ConfigureShellProfileError {
-
+    #[error(transparent)]
+    CreateOrAppendFile(#[from] CreateOrAppendFileError),
+    #[error("Multiple errors: {}", .0.iter().map(|v| format!("{v}")).collect::<Vec<_>>().join(" & "))]
+    MultipleCreateOrAppendFile(Vec<CreateOrAppendFileError>),
+    #[error(transparent)]
+    Join(#[from] #[serde(serialize_with = "crate::serialize_error_to_display")] JoinError),
 }

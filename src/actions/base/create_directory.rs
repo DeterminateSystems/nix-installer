@@ -6,7 +6,7 @@ use tokio::fs::create_dir;
 
 use crate::HarmonicError;
 
-use crate::actions::{ActionDescription, Actionable, ActionState, Action};
+use crate::actions::{ActionDescription, Actionable, ActionState, Action, ActionError};
 
 #[derive(Debug, serde::Deserialize, serde::Serialize, Clone)]
 pub struct CreateDirectory {
@@ -14,6 +14,7 @@ pub struct CreateDirectory {
     user: String,
     group: String,
     mode: u32,
+    action_state: ActionState,
 }
 
 impl CreateDirectory {
@@ -24,11 +25,11 @@ impl CreateDirectory {
         group: String,
         mode: u32,
         force: bool,
-    ) -> Result<Self, HarmonicError> {
+    ) -> Result<Self, CreateDirectoryError> {
         let path = path.as_ref();
 
         if path.exists() && !force {
-            return Err(HarmonicError::CreateDirectory(
+            return Err(CreateDirectoryError::Exists(
                 path.to_path_buf(),
                 std::io::Error::new(
                     std::io::ErrorKind::AlreadyExists,
@@ -42,12 +43,13 @@ impl CreateDirectory {
             user,
             group,
             mode,
+            action_state: ActionState::Planned,
         })
     }
 }
 
 #[async_trait::async_trait]
-impl Actionable for ActionState<CreateDirectory> {
+impl Actionable for CreateDirectory {
     type Error = CreateDirectoryError;
     fn description(&self) -> Vec<ActionDescription> {
         let Self {
@@ -55,6 +57,7 @@ impl Actionable for ActionState<CreateDirectory> {
             user,
             group,
             mode,
+            action_state,
         } = &self;
         vec![ActionDescription::new(
             format!("Create the directory `{}`", path.display()),
@@ -72,23 +75,25 @@ impl Actionable for ActionState<CreateDirectory> {
             user,
             group,
             mode,
+            action_state,
         } = self;
 
         let gid = Group::from_name(group.as_str())
-            .map_err(|e| HarmonicError::GroupId(group.clone(), e))?
-            .ok_or(HarmonicError::NoGroup(group.clone()))?
+            .map_err(|e| Self::Error::GroupId(group.clone(), e))?
+            .ok_or(Self::Error::NoGroup(group.clone()))?
             .gid;
         let uid = User::from_name(user.as_str())
-            .map_err(|e| HarmonicError::UserId(user.clone(), e))?
-            .ok_or(HarmonicError::NoUser(user.clone()))?
+            .map_err(|e| Self::Error::UserId(user.clone(), e))?
+            .ok_or(Self::Error::NoUser(user.clone()))?
             .uid;
 
         tracing::trace!(path = %path.display(), "Creating directory");
         create_dir(path.clone())
             .await
-            .map_err(|e| HarmonicError::CreateDirectory(path.clone(), e))?;
-        chown(&path, Some(uid), Some(gid)).map_err(|e| HarmonicError::Chown(path.clone(), e))?;
+            .map_err(|e| Self::Error::Creating(path.clone(), e))?;
+        chown(path, Some(uid), Some(gid)).map_err(|e| Self::Error::Chown(path.clone(), e))?;
 
+        *action_state = ActionState::Completed;
         Ok(())
     }
 
@@ -102,18 +107,27 @@ impl Actionable for ActionState<CreateDirectory> {
 }
 
 
-impl From<ActionState<CreateDirectory>> for ActionState<Action> {
-    fn from(v: ActionState<CreateDirectory>) -> Self {
-        match v {
-            ActionState::Completed(_) => ActionState::Completed(Action::CreateDirectory(v)),
-            ActionState::Planned(_) => ActionState::Planned(Action::CreateDirectory(v)),
-            ActionState::Reverted(_) => ActionState::Reverted(Action::CreateDirectory(v)),
-        }
+impl From<CreateDirectory> for Action {
+    fn from(v: CreateDirectory) -> Self {
+        Action::CreateDirectory(v)
     }
 }
 
 
 #[derive(Debug, thiserror::Error, Serialize)]
 pub enum CreateDirectoryError {
-
+    #[error("Directory exists `{0}`")]
+    Exists(std::path::PathBuf, #[source] #[serde(serialize_with = "crate::serialize_error_to_display")] std::io::Error),
+    #[error("Creating directory `{0}`")]
+    Creating(std::path::PathBuf, #[source] #[serde(serialize_with = "crate::serialize_error_to_display")] std::io::Error),
+    #[error("Chowning directory `{0}`")]
+    Chown(std::path::PathBuf, #[source] #[serde(serialize_with = "crate::serialize_error_to_display")] nix::errno::Errno),
+    #[error("Getting uid for user `{0}`")]
+    UserId(String, #[source] #[serde(serialize_with = "crate::serialize_error_to_display")] nix::errno::Errno),
+    #[error("Getting user `{0}`")]
+    NoUser(String),
+    #[error("Getting gid for group `{0}`")]
+    GroupId(String, #[source] #[serde(serialize_with = "crate::serialize_error_to_display")] nix::errno::Errno),
+    #[error("Getting group `{0}`")]
+    NoGroup(String),
 }

@@ -3,7 +3,7 @@ use serde::Serialize;
 use crate::HarmonicError;
 
 use crate::actions::base::{CreateDirectory, CreateDirectoryError};
-use crate::actions::{ActionDescription, Actionable, ActionState, Action};
+use crate::actions::{ActionDescription, Actionable, ActionState, Action, ActionError};
 
 const PATHS: &[&str] = &[
     "/nix",
@@ -25,11 +25,12 @@ const PATHS: &[&str] = &[
 #[derive(Debug, serde::Deserialize, serde::Serialize, Clone)]
 pub struct CreateNixTree {
     create_directories: Vec<CreateDirectory>,
+    action_state: ActionState,
 }
 
 impl CreateNixTree {
     #[tracing::instrument(skip_all)]
-    pub async fn plan(force: bool) -> Result<Self, HarmonicError> {
+    pub async fn plan(force: bool) -> Result<Self, CreateNixTreeError> {
         let mut create_directories = Vec::default();
         for path in PATHS {
             // We use `create_dir` over `create_dir_all` to ensure we always set permissions right
@@ -38,12 +39,12 @@ impl CreateNixTree {
             )
         }
 
-        Ok(Self { create_directories })
+        Ok(Self { create_directories, action_state: ActionState::Planned })
     }
 }
 
 #[async_trait::async_trait]
-impl Actionable for ActionState<CreateNixTree> {
+impl Actionable for CreateNixTree {
     type Error = CreateNixTreeError;
     fn description(&self) -> Vec<ActionDescription> {
         vec![ActionDescription::new(
@@ -56,15 +57,15 @@ impl Actionable for ActionState<CreateNixTree> {
     }
 
     #[tracing::instrument(skip_all)]
-    async fn execute(&mut self) -> Result<(), HarmonicError> {
-        let Self { create_directories } = self;
+    async fn execute(&mut self) -> Result<(), Self::Error> {
+        let Self { create_directories, action_state } = self;
 
-        let mut successes = Vec::with_capacity(create_directories.len());
         // Just do sequential since parallizing this will have little benefit
         for create_directory in create_directories {
             create_directory.execute().await?
         }
 
+        *action_state = ActionState::Completed;
         Ok(())
     }
 
@@ -77,17 +78,14 @@ impl Actionable for ActionState<CreateNixTree> {
     }
 }
 
-impl From<ActionState<CreateNixTree>> for ActionState<Action> {
-    fn from(v: ActionState<CreateNixTree>) -> Self {
-        match v {
-            ActionState::Completed(_) => ActionState::Completed(Action::CreateNixTree(v)),
-            ActionState::Planned(_) => ActionState::Planned(Action::CreateNixTree(v)),
-            ActionState::Reverted(_) => ActionState::Reverted(Action::CreateNixTree(v)),
-        }
+impl From<CreateNixTree> for Action {
+    fn from(v: CreateNixTree) -> Self {
+        Action::CreateNixTree(v)
     }
 }
 
 #[derive(Debug, thiserror::Error, Serialize)]
 pub enum CreateNixTreeError {
-
+    #[error(transparent)]
+    CreateDirectory(#[from] CreateDirectoryError),
 }

@@ -1,4 +1,4 @@
-use crate::{execute_command, HarmonicError, actions::{ActionState, Action}};
+use crate::{execute_command, actions::{ActionState, Action, ActionError}};
 
 use glob::glob;
 use serde::Serialize;
@@ -13,13 +13,13 @@ pub struct SetupDefaultProfile {
 
 impl SetupDefaultProfile {
     #[tracing::instrument(skip_all)]
-    pub async fn plan(channels: Vec<String>) -> Result<Self, HarmonicError> {
+    pub async fn plan(channels: Vec<String>) -> Result<Self, SetupDefaultProfileError> {
         Ok(Self { channels })
     }
 }
 
 #[async_trait::async_trait]
-impl Actionable for ActionState<SetupDefaultProfile> {
+impl Actionable for SetupDefaultProfile {
     type Error = SetupDefaultProfileError;
     fn description(&self) -> Vec<ActionDescription> {
         vec![ActionDescription::new(
@@ -36,7 +36,7 @@ impl Actionable for ActionState<SetupDefaultProfile> {
         // Find an `nix` package
         let nix_pkg_glob = "/nix/store/*-nix-*";
         let mut found_nix_pkg = None;
-        for entry in glob(nix_pkg_glob).map_err(HarmonicError::GlobPatternError)? {
+        for entry in glob(nix_pkg_glob).map_err(Self::Error::GlobPatternError)? {
             match entry {
                 Ok(path) => {
                     // TODO(@Hoverbear): Should probably ensure is unique
@@ -49,7 +49,7 @@ impl Actionable for ActionState<SetupDefaultProfile> {
         let nix_pkg = if let Some(nix_pkg) = found_nix_pkg {
             nix_pkg
         } else {
-            return Err(HarmonicError::NoNssCacert); // TODO(@hoverbear): Fix this error
+            return Err(Self::Error::NoNssCacert); // TODO(@hoverbear): Fix this error
         };
 
         // Install `nix` itself into the store
@@ -57,14 +57,13 @@ impl Actionable for ActionState<SetupDefaultProfile> {
             Command::new(nix_pkg.join("bin/nix-env"))
                 .arg("-i")
                 .arg(&nix_pkg),
-            false,
         )
-        .await?;
+        .await.map_err(SetupDefaultProfileError::Command)?;
 
         // Find an `nss-cacert` package, add it too.
         let nss_ca_cert_pkg_glob = "/nix/store/*-nss-cacert-*";
         let mut found_nss_ca_cert_pkg = None;
-        for entry in glob(nss_ca_cert_pkg_glob).map_err(HarmonicError::GlobPatternError)? {
+        for entry in glob(nss_ca_cert_pkg_glob).map_err(Self::Error::GlobPatternError)? {
             match entry {
                 Ok(path) => {
                     // TODO(@Hoverbear): Should probably ensure is unique
@@ -77,17 +76,15 @@ impl Actionable for ActionState<SetupDefaultProfile> {
         let nss_ca_cert_pkg = if let Some(nss_ca_cert_pkg) = found_nss_ca_cert_pkg {
             nss_ca_cert_pkg
         } else {
-            return Err(HarmonicError::NoNssCacert);
+            return Err(Self::Error::NoNssCacert);
         };
 
         // Install `nss-cacert` into the store
         execute_command(
             Command::new(nix_pkg.join("bin/nix-env"))
                 .arg("-i")
-                .arg(&nss_ca_cert_pkg),
-            false,
         )
-        .await?;
+        .await.map_err(SetupDefaultProfileError::Command)?;
 
         if !channels.is_empty() {
             let mut command = Command::new(nix_pkg.join("bin/nix-channel"));
@@ -100,16 +97,7 @@ impl Actionable for ActionState<SetupDefaultProfile> {
                 "/nix/var/nix/profiles/default/etc/ssl/certs/ca-bundle.crt",
             );
 
-            let command_str = format!("{:?}", command.as_std());
-            let status = command
-                .status()
-                .await
-                .map_err(|e| HarmonicError::CommandFailedExec(command_str.clone(), e))?;
-
-            match status.success() {
-                true => (),
-                false => return Err(HarmonicError::CommandFailedStatus(command_str)),
-            }
+            execute_command(&mut command).await.map_err(SetupDefaultProfileError::Command)?;
         }
         Ok(())
     }
@@ -123,18 +111,21 @@ impl Actionable for ActionState<SetupDefaultProfile> {
     }
 }
 
-impl From<ActionState<SetupDefaultProfile>> for ActionState<Action> {
-    fn from(v: ActionState<SetupDefaultProfile>) -> Self {
-        match v {
-            ActionState::Completed(_) => ActionState::Completed(Action::SetupDefaultProfile(v)),
-            ActionState::Planned(_) => ActionState::Planned(Action::SetupDefaultProfile(v)),
-            ActionState::Reverted(_) => ActionState::Reverted(Action::SetupDefaultProfile(v)),
-        }
+impl From<SetupDefaultProfile> for Action {
+    fn from(v: SetupDefaultProfile) -> Self {
+        Action::SetupDefaultProfile(v)
     }
 }
 
 
 #[derive(Debug, thiserror::Error, Serialize)]
 pub enum SetupDefaultProfileError {
-
+    #[error("Glob pattern error")]
+    GlobPatternError(#[from] #[source] #[serde(serialize_with = "crate::serialize_error_to_display")] glob::PatternError),
+    #[error("Glob globbing error")]
+    GlobGlobError(#[from] #[source] #[serde(serialize_with = "crate::serialize_error_to_display")] glob::GlobError),
+    #[error("Unarchived Nix store did not appear to include a `nss-cacert` location")]
+    NoNssCacert,
+    #[error("Failed to execute command")]
+    Command(#[source] #[serde(serialize_with = "crate::serialize_error_to_display")] std::io::Error)
 }

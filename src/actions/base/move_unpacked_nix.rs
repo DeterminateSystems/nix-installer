@@ -4,26 +4,27 @@ use serde::Serialize;
 
 use crate::HarmonicError;
 
-use crate::actions::{ActionDescription, Actionable, ActionState, Action};
+use crate::actions::{ActionDescription, Actionable, ActionState, Action, ActionError};
 
 #[derive(Debug, serde::Deserialize, serde::Serialize, Clone)]
 pub struct MoveUnpackedNix {
     source: PathBuf,
+    action_state: ActionState,
 }
 
 impl MoveUnpackedNix {
     #[tracing::instrument(skip_all)]
-    pub async fn plan(source: PathBuf) -> Result<Self, HarmonicError> {
+    pub async fn plan(source: PathBuf) -> Result<Self, MoveUnpackedNixError> {
         // Note: Do NOT try to check for the source/dest since the installer creates those
-        Ok(Self { source })
+        Ok(Self { source, action_state: ActionState::Planned })
     }
 }
 
 #[async_trait::async_trait]
-impl Actionable for ActionState<MoveUnpackedNix> {
+impl Actionable for MoveUnpackedNix {
     type Error = MoveUnpackedNixError;
     fn description(&self) -> Vec<ActionDescription> {
-        let Self { source } = &self;
+        let Self { source, action_state: _ } = &self;
         vec![ActionDescription::new(
             format!("Move the downloaded Nix into `/nix`"),
             vec![format!(
@@ -35,7 +36,7 @@ impl Actionable for ActionState<MoveUnpackedNix> {
 
     #[tracing::instrument(skip_all)]
     async fn execute(&mut self) -> Result<(), Self::Error> {
-        let Self { source } = self;
+        let Self { source, action_state } = self;
 
         // TODO(@Hoverbear): I would like to make this less awful
         let found_nix_paths =
@@ -51,8 +52,9 @@ impl Actionable for ActionState<MoveUnpackedNix> {
         let dest = Path::new("/nix/store");
         tokio::fs::rename(src.clone(), dest)
             .await
-            .map_err(|e| HarmonicError::Rename(src, dest.to_owned(), e))?;
+            .map_err(|e| MoveUnpackedNixError::Rename(src, dest.to_owned(), e))?;
 
+        *action_state = ActionState::Completed;
         Ok(())
     }
 
@@ -65,17 +67,18 @@ impl Actionable for ActionState<MoveUnpackedNix> {
     }
 }
 
-impl From<ActionState<MoveUnpackedNix>> for ActionState<Action> {
-    fn from(v: ActionState<MoveUnpackedNix>) -> Self {
-        match v {
-            ActionState::Completed(_) => ActionState::Completed(Action::MoveUnpackedNix(v)),
-            ActionState::Planned(_) => ActionState::Planned(Action::MoveUnpackedNix(v)),
-            ActionState::Reverted(_) => ActionState::Reverted(Action::MoveUnpackedNix(v)),
-        }
+impl From<MoveUnpackedNix> for Action {
+    fn from(v: MoveUnpackedNix) -> Self {
+        Action::MoveUnpackedNix(v)
     }
 }
 
 #[derive(Debug, thiserror::Error, Serialize)]
 pub enum MoveUnpackedNixError {
-
+    #[error("Glob pattern error")]
+    GlobPatternError(#[from] #[source] #[serde(serialize_with = "crate::serialize_error_to_display")] glob::PatternError),
+    #[error("Glob globbing error")]
+    GlobGlobError(#[from] #[source] #[serde(serialize_with = "crate::serialize_error_to_display")] glob::GlobError),
+    #[error("Rename `{0}` to `{1}`")]
+    Rename(std::path::PathBuf, std::path::PathBuf, #[source] #[serde(serialize_with = "crate::serialize_error_to_display")] std::io::Error),
 }

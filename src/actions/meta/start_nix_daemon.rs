@@ -8,68 +8,52 @@ use crate::actions::{ActionDescription, Actionable, ActionState, Action, ActionE
 /// This is mostly indirection for supporting non-systemd
 #[derive(Debug, serde::Deserialize, serde::Serialize, Clone)]
 pub struct StartNixDaemon {
-    start_systemd_socket: ActionState<StartSystemdUnit>,
+    start_systemd_socket: StartSystemdUnit,
+    action_state: ActionState,
 }
 
 impl StartNixDaemon {
     #[tracing::instrument(skip_all)]
-    pub async fn plan() -> Result<ActionState<Self>, StartNixDaemonError> {
+    pub async fn plan() -> Result<Self, StartNixDaemonError> {
         let start_systemd_socket = StartSystemdUnit::plan("nix-daemon.socket".into()).await?;
-        Ok(ActionState::Planned(Self {
+        Ok(Self {
             start_systemd_socket,
-        }))
+            action_state: ActionState::Planned,
+        })
     }
 }
 
 #[async_trait::async_trait]
-impl Actionable for ActionState<StartNixDaemon> {
+impl Actionable for StartNixDaemon {
     type Error = StartNixDaemonError;
 
     fn description(&self) -> Vec<ActionDescription> {
-        let StartNixDaemon { start_systemd_socket } = match self {
-            ActionState::Completed(v) | ActionState::Reverted(v) | ActionState::Planned(v) => v,
-        };
-        start_systemd_socket.description()
+        self.start_systemd_socket.description()
     }
 
     #[tracing::instrument(skip_all)]
-    async fn execute(self) -> Result<Self, ActionError> {
-        let StartNixDaemon { start_systemd_socket } = match self {
-            ActionState::Planned(v) => v,
-            ActionState::Completed(_) => return Err(ActionError::AlreadyExecuted(self.clone().into())),
-            ActionState::Reverted(_) => return Err(ActionError::AlreadyReverted(self.clone().into())),
-        };
+    async fn execute(&mut self) -> Result<(), Self::Error> {
+        let Self { start_systemd_socket, action_state } = self;
 
         start_systemd_socket.execute().await?;
 
-        Ok(Self::Completed(StartNixDaemon {
-            start_systemd_socket,
-        }))
+        Ok(())
     }
 
     #[tracing::instrument(skip_all)]
-    async fn revert(self) -> Result<Self, ActionError> {
-        let StartNixDaemon { start_systemd_socket } = match self {
-            ActionState::Planned(v) => return Err(ActionError::NotExecuted(self.clone().into())),
-            ActionState::Completed(v) => v,
-            ActionState::Reverted(_) => return Err(ActionError::AlreadyReverted(self.clone().into())),
-        };
+    async fn revert(&mut self) -> Result<(), Self::Error> {
+        let Self { start_systemd_socket, action_state, .. } = self;
 
         start_systemd_socket.revert().await?;
 
-        Ok(Self::Reverted(StartNixDaemon {
-            start_systemd_socket,
-        }))
+        *action_state = ActionState::Completed;
+        Ok(())
     }
 }
 
-impl From<ActionState<StartNixDaemon>> for ActionState<Action> {
-    fn from(v: ActionState<StartNixDaemon>) -> Self {
-        match v {
-            ActionState::Completed(_) => ActionState::Completed(Action::StartNixDaemon(v)),
-            ActionState::Planned(_) => ActionState::Planned(Action::StartNixDaemon(v)),
-            ActionState::Reverted(_) => ActionState::Reverted(Action::StartNixDaemon(v)),
-        }
+impl From<StartNixDaemon> for Action {
+    fn from(v: StartNixDaemon) -> Self {
+        Action::StartNixDaemon(v)
     }
 }
 

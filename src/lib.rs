@@ -9,7 +9,7 @@ use std::{
     io::SeekFrom,
     os::unix::fs::PermissionsExt,
     path::{Path, PathBuf},
-    process::ExitStatus,
+    process::ExitStatus, fmt::Display,
 };
 
 pub use error::HarmonicError;
@@ -280,6 +280,6 @@ fn set_env(k: impl AsRef<OsStr>, v: impl AsRef<OsStr>, dry_run: bool) {
     }
 }
 
-fn serialize_std_io_error_to_display<S>(err: &std::io::Error, ser: S) -> Result<S::Ok, S::Error> where S: Serializer {
+fn serialize_error_to_display<E, S>(err: &E, ser: S) -> Result<S::Ok, S::Error> where E: Display, S: Serializer {
     ser.serialize_str(&format!("{err:#}"))
 }

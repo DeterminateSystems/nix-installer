@@ -3,7 +3,7 @@ use serde::Serialize;
 
 use crate::HarmonicError;
 
-use crate::actions::{ActionDescription, Actionable, ActionState, Action};
+use crate::actions::{ActionDescription, Actionable, ActionState, Action, ActionError};
 
 use super::{CreateFile, CreateFileError};
 
@@ -13,11 +13,12 @@ const NIX_CHANNELS_PATH: &str = "/root/.nix-channels";
 pub struct PlaceChannelConfiguration {
     channels: Vec<(String, Url)>,
     create_file: CreateFile,
+    action_state: ActionState,
 }
 
 impl PlaceChannelConfiguration {
     #[tracing::instrument(skip_all)]
-    pub async fn plan(channels: Vec<(String, Url)>, force: bool) -> Result<Self, HarmonicError> {
+    pub async fn plan(channels: Vec<(String, Url)>, force: bool) -> Result<Self, PlaceChannelConfigurationError> {
         let buf = channels
             .iter()
             .map(|(name, url)| format!("{} {}", url, name))
@@ -28,17 +29,19 @@ impl PlaceChannelConfiguration {
         Ok(Self {
             create_file,
             channels,
+            action_state: ActionState::Planned,
         })
     }
 }
 
 #[async_trait::async_trait]
-impl Actionable for ActionState<PlaceChannelConfiguration> {
+impl Actionable for PlaceChannelConfiguration {
     type Error = PlaceChannelConfigurationError;
     fn description(&self) -> Vec<ActionDescription> {
         let Self {
             channels,
              create_file,
+             action_state: _,
         } = self;
         vec![ActionDescription::new(
             "Place a channel configuration".to_string(),
@@ -51,10 +54,12 @@ impl Actionable for ActionState<PlaceChannelConfiguration> {
         let Self {
             create_file,
             channels,
+            action_state,
         } = self;
         
         create_file.execute().await?;
         
+        *action_state = ActionState::Completed;
         Ok(())
     }
 
@@ -67,18 +72,15 @@ impl Actionable for ActionState<PlaceChannelConfiguration> {
     }
 }
 
-impl From<ActionState<PlaceChannelConfiguration>> for ActionState<Action> {
-    fn from(v: ActionState<PlaceChannelConfiguration>) -> Self {
-        match v {
-            ActionState::Completed(_) => ActionState::Completed(Action::PlaceChannelConfiguration(v)),
-            ActionState::Planned(_) => ActionState::Planned(Action::PlaceChannelConfiguration(v)),
-            ActionState::Reverted(_) => ActionState::Reverted(Action::PlaceChannelConfiguration(v)),
-        }
+impl From<PlaceChannelConfiguration> for Action {
+    fn from(v: PlaceChannelConfiguration) -> Self {
+        Action::PlaceChannelConfiguration(v)
     }
 }
 
 
 #[derive(Debug, thiserror::Error, Serialize)]
 pub enum PlaceChannelConfigurationError {
-
+    #[error(transparent)]
+    CreateFile(#[from] CreateFileError),
 }

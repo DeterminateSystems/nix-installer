@@ -3,26 +3,27 @@ use tokio::process::Command;
 
 use crate::{HarmonicError, execute_command};
 
-use crate::actions::{ActionDescription, Actionable, ActionState, Action};
+use crate::actions::{ActionDescription, Actionable, ActionState, Action, ActionError};
 
 #[derive(Debug, serde::Deserialize, serde::Serialize, Clone)]
 pub struct CreateGroup {
     name: String,
     gid: usize,
+    action_state: ActionState,
 }
 
 impl CreateGroup {
     #[tracing::instrument(skip_all)]
     pub fn plan(name: String, gid: usize) -> Self {
-        Self { name, gid }
+        Self { name, gid, action_state: ActionState::Planned }
     }
 }
 
 #[async_trait::async_trait]
-impl Actionable for ActionState<CreateGroup> {
-    type Error = CreateOrAppendFileError;
+impl Actionable for CreateGroup {
+    type Error = CreateGroupError;
     fn description(&self) -> Vec<ActionDescription> {
-        let Self { name, gid } = &self;
+        let Self { name, gid, action_state: _ } = &self;
         vec![ActionDescription::new(
             format!("Create group {name} with GID {gid}"),
             vec![format!(
@@ -33,13 +34,14 @@ impl Actionable for ActionState<CreateGroup> {
 
     #[tracing::instrument(skip_all)]
     async fn execute(&mut self) -> Result<(), Self::Error> {
-        let Self { name, gid } = self;
+        let Self { name, gid, action_state } = self;
 
         execute_command(
             Command::new("groupadd").args(["-g", &gid.to_string(), "--system", &name]),
-            false,
-        ).await?;
+        ).await.map_err(CreateGroupError::Command)?;
 
+
+        *action_state = ActionState::Completed;
         Ok(())
     }
 
@@ -51,16 +53,14 @@ impl Actionable for ActionState<CreateGroup> {
     }
 }
 
-impl From<ActionState<CreateGroup>> for ActionState<Action> {
-    fn from(v: ActionState<CreateGroup>) -> Self {
-        match v {
-            ActionState::Completed(_) => ActionState::Completed(Action::CreateGroup(v)),
-            ActionState::Planned(_) => ActionState::Planned(Action::CreateGroup(v)),
-            ActionState::Reverted(_) => ActionState::Reverted(Action::CreateGroup(v)),
-        }
+impl From<CreateGroup> for Action {
+    fn from(v: CreateGroup) -> Self {
+        Action::CreateGroup(v)
     }
 }
 
 #[derive(Debug, thiserror::Error, Serialize)]
 pub enum CreateGroupError {
+    #[error("Failed to execute command")]
+    Command(#[source] #[serde(serialize_with = "crate::serialize_error_to_display")] std::io::Error)
 }

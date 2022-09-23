@@ -9,7 +9,7 @@ use tokio::{
     io::{AsyncSeekExt, AsyncWriteExt},
 };
 
-use crate::{HarmonicError, actions::{ActionState, Action}};
+use crate::{HarmonicError, actions::{ActionState, Action, ActionError}};
 
 use crate::actions::{ActionDescription, Actionable};
 
@@ -20,6 +20,7 @@ pub struct CreateOrAppendFile {
     group: String,
     mode: u32,
     buf: String,
+    action_state: ActionState,
 }
 
 impl CreateOrAppendFile {
@@ -30,7 +31,7 @@ impl CreateOrAppendFile {
         group: String,
         mode: u32,
         buf: String,
-    ) -> Result<Self, HarmonicError> {
+    ) -> Result<Self, CreateOrAppendFileError> {
         let path = path.as_ref().to_path_buf();
 
         Ok(Self {
@@ -39,12 +40,13 @@ impl CreateOrAppendFile {
             group,
             mode,
             buf,
+            action_state: ActionState::Planned,
         })
     }
 }
 
 #[async_trait::async_trait]
-impl Actionable for ActionState<CreateOrAppendFile> {
+impl Actionable for CreateOrAppendFile {
     type Error = CreateOrAppendFileError;
     fn description(&self) -> Vec<ActionDescription> {
         let Self {
@@ -53,6 +55,7 @@ impl Actionable for ActionState<CreateOrAppendFile> {
             group,
             mode,
             buf,
+            action_state: _,
         } = &self;
         vec![ActionDescription::new(
             format!("Create or append file `{}`", path.display()),
@@ -70,6 +73,7 @@ impl Actionable for ActionState<CreateOrAppendFile> {
             group,
             mode,
             buf,
+            action_state,
         } = self;
 
         tracing::trace!(path = %path.display(), "Creating or appending");
@@ -79,27 +83,28 @@ impl Actionable for ActionState<CreateOrAppendFile> {
             .read(true)
             .open(&path)
             .await
-            .map_err(|e| HarmonicError::OpenFile(path.to_owned(), e))?;
+            .map_err(|e| Self::Error::OpenFile(path.to_owned(), e))?;
 
         file.seek(SeekFrom::End(0))
             .await
-            .map_err(|e| HarmonicError::SeekFile(path.to_owned(), e))?;
+            .map_err(|e| Self::Error::SeekFile(path.to_owned(), e))?;
         file.write_all(buf.as_bytes())
             .await
-            .map_err(|e| HarmonicError::WriteFile(path.to_owned(), e))?;
+            .map_err(|e| Self::Error::WriteFile(path.to_owned(), e))?;
 
         let gid = Group::from_name(group.as_str())
-            .map_err(|e| HarmonicError::GroupId(group.clone(), e))?
-            .ok_or(HarmonicError::NoGroup(group.clone()))?
+            .map_err(|e| Self::Error::GroupId(group.clone(), e))?
+            .ok_or(Self::Error::NoGroup(group.clone()))?
             .gid;
         let uid = User::from_name(user.as_str())
-            .map_err(|e| HarmonicError::UserId(user.clone(), e))?
-            .ok_or(HarmonicError::NoUser(user.clone()))?
+            .map_err(|e| Self::Error::UserId(user.clone(), e))?
+            .ok_or(Self::Error::NoUser(user.clone()))?
             .uid;
 
             tracing::trace!(path = %path.display(), "Chowning");
-        chown(&path, Some(uid), Some(gid)).map_err(|e| HarmonicError::Chown(path.clone(), e))?;
+        chown(path, Some(uid), Some(gid)).map_err(|e| Self::Error::Chown(path.clone(), e))?;
 
+        *action_state = ActionState::Completed;
         Ok(())
     }
 
@@ -113,17 +118,28 @@ impl Actionable for ActionState<CreateOrAppendFile> {
 }
 
 
-impl From<ActionState<CreateOrAppendFile>> for ActionState<Action> {
-    fn from(v: ActionState<CreateOrAppendFile>) -> Self {
-        match v {
-            ActionState::Completed(_) => ActionState::Completed(Action::CreateOrAppendFile(v)),
-            ActionState::Planned(_) => ActionState::Planned(Action::CreateOrAppendFile(v)),
-            ActionState::Reverted(_) => ActionState::Reverted(Action::CreateOrAppendFile(v)),
-        }
+impl From<CreateOrAppendFile> for Action {
+    fn from(v: CreateOrAppendFile) -> Self {
+        Action::CreateOrAppendFile(v)
     }
 }
 
 #[derive(Debug, thiserror::Error, Serialize)]
 pub enum CreateOrAppendFileError {
-
+    #[error("Open file `{0}`")]
+    OpenFile(std::path::PathBuf, #[source] #[serde(serialize_with = "crate::serialize_error_to_display")] std::io::Error),
+    #[error("Write file `{0}`")]
+    WriteFile(std::path::PathBuf, #[source] #[serde(serialize_with = "crate::serialize_error_to_display")] std::io::Error),
+    #[error("Seek file `{0}`")]
+    SeekFile(std::path::PathBuf, #[source] #[serde(serialize_with = "crate::serialize_error_to_display")] std::io::Error),
+    #[error("Getting uid for user `{0}`")]
+    UserId(String, #[source] #[serde(serialize_with = "crate::serialize_error_to_display")] nix::errno::Errno),
+    #[error("Getting user `{0}`")]
+    NoUser(String),
+    #[error("Getting gid for group `{0}`")]
+    GroupId(String, #[source] #[serde(serialize_with = "crate::serialize_error_to_display")] nix::errno::Errno),
+    #[error("Getting group `{0}`")]
+    NoGroup(String),
+    #[error("Chowning directory `{0}`")]
+    Chown(std::path::PathBuf, #[source] #[serde(serialize_with = "crate::serialize_error_to_display")] nix::errno::Errno),
 }

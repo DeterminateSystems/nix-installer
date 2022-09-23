@@ -2,7 +2,7 @@ use serde::Serialize;
 
 use crate::HarmonicError;
 
-use crate::actions::{ActionDescription, Actionable, ActionState, Action};
+use crate::actions::{ActionDescription, Actionable, ActionState, Action, ActionError};
 
 use super::{CreateFile, CreateFileError, CreateDirectory, CreateDirectoryError};
 
@@ -13,6 +13,7 @@ const NIX_CONF: &str = "/etc/nix/nix.conf";
 pub struct PlaceNixConfiguration {
     create_directory: CreateDirectory,
     create_file: CreateFile,
+    action_state: ActionState,
 }
 
 impl PlaceNixConfiguration {
@@ -21,7 +22,7 @@ impl PlaceNixConfiguration {
         nix_build_group_name: String,
         extra_conf: Option<String>,
         force: bool,
-    ) -> Result<Self, HarmonicError> {
+    ) -> Result<Self, PlaceNixConfigurationError> {
         let buf = format!(
             "\
             {extra_conf}\n\
@@ -32,12 +33,12 @@ impl PlaceNixConfiguration {
         let create_directory = CreateDirectory::plan(NIX_CONF_FOLDER, "root".into(), "root".into(), 0o0755, force).await?;
         let create_file =
             CreateFile::plan(NIX_CONF, "root".into(), "root".into(), 0o0664, buf, force).await?;
-        Ok(Self { create_directory, create_file })
+        Ok(Self { create_directory, create_file, action_state: ActionState::Planned })
     }
 }
 
 #[async_trait::async_trait]
-impl Actionable for ActionState<PlaceNixConfiguration> {
+impl Actionable for PlaceNixConfiguration {
     type Error = PlaceNixConfigurationError;
 
     fn description(&self) -> Vec<ActionDescription> {
@@ -49,11 +50,12 @@ impl Actionable for ActionState<PlaceNixConfiguration> {
 
     #[tracing::instrument(skip_all)]
     async fn execute(&mut self) -> Result<(), Self::Error> {
-        let Self { create_file, create_directory } = self;
+        let Self { create_file, create_directory, action_state } = self;
 
         create_directory.execute().await?;
         create_file.execute().await?;
 
+        *action_state = ActionState::Completed;
         Ok(())
     }
 
@@ -66,18 +68,17 @@ impl Actionable for ActionState<PlaceNixConfiguration> {
     }
 }
 
-impl From<ActionState<PlaceNixConfiguration>> for ActionState<Action> {
-    fn from(v: ActionState<PlaceNixConfiguration>) -> Self {
-        match v {
-            ActionState::Completed(_) => ActionState::Completed(Action::PlaceNixConfiguration(v)),
-            ActionState::Planned(_) => ActionState::Planned(Action::PlaceNixConfiguration(v)),
-            ActionState::Reverted(_) => ActionState::Reverted(Action::PlaceNixConfiguration(v)),
-        }
+impl From<PlaceNixConfiguration> for Action {
+    fn from(v: PlaceNixConfiguration) -> Self {
+        Action::PlaceNixConfiguration(v)
     }
 }
 
 
 #[derive(Debug, thiserror::Error, Serialize)]
 pub enum PlaceNixConfigurationError {
-
+    #[error(transparent)]
+    CreateFile(#[from] CreateFileError),
+    #[error(transparent)]
+    CreateDirectory(#[from] CreateDirectoryError),
 }

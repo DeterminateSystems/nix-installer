@@ -30,9 +30,9 @@ pub struct InstallPlan {
     * "Start Nix"
     * start_nix_daemon_service
     */
-    provision_nix: ActionState<ProvisionNix>,
-    configure_nix: ActionState<ConfigureNix>,
-    start_nix_daemon: ActionState<StartNixDaemon>,
+    provision_nix: ProvisionNix,
+    configure_nix: ConfigureNix,
+    start_nix_daemon: StartNixDaemon,
 }
 
 impl InstallPlan {

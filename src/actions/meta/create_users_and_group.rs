@@ -1,5 +1,5 @@
 use serde::Serialize;
-use tokio::task::JoinSet;
+use tokio::task::{JoinSet, JoinError};
 
 use crate::{HarmonicError, InstallSettings};
 
@@ -15,11 +15,12 @@ pub struct CreateUsersAndGroup {
     nix_build_user_id_base: usize,
     create_group: CreateGroup,
     create_users: Vec<CreateUser>,
+    action_state: ActionState,
 }
 
 impl CreateUsersAndGroup {
     #[tracing::instrument(skip_all)]
-    pub async fn plan(settings: InstallSettings) -> Result<Self, HarmonicError> {
+    pub async fn plan(settings: InstallSettings) -> Result<Self, CreateUsersAndGroupError> {
         // TODO(@hoverbear): CHeck if it exist, error if so
         let create_group = CreateGroup::plan(
             settings.nix_build_group_name.clone(),
@@ -43,12 +44,13 @@ impl CreateUsersAndGroup {
             nix_build_user_id_base: settings.nix_build_user_id_base,
             create_group,
             create_users,
+            action_state: ActionState::Planned,
         })
     }
 }
 
 #[async_trait::async_trait]
-impl Actionable for ActionState<CreateUsersAndGroup> {
+impl Actionable for CreateUsersAndGroup {
     type Error = CreateUsersAndGroupError;
     fn description(&self) -> Vec<ActionDescription> {
         let Self {
@@ -57,7 +59,9 @@ impl Actionable for ActionState<CreateUsersAndGroup> {
             nix_build_group_id,
             nix_build_user_prefix,
             nix_build_user_id_base,
-            ..
+            create_group: _,
+            create_users: _,
+            action_state: _,
         } = &self;
 
         vec![
@@ -73,12 +77,18 @@ impl Actionable for ActionState<CreateUsersAndGroup> {
     }
 
     #[tracing::instrument(skip_all)]
-    async fn execute(&mut self) -> Result<(), HarmonicError> {
+    async fn execute(&mut self) -> Result<(), Self::Error> {
         let Self {
             create_users,
-            create_group,
-            ..
+            create_group, 
+            daemon_user_count, 
+            nix_build_group_name,
+            nix_build_group_id, 
+            nix_build_user_prefix, 
+            nix_build_user_id_base, 
+            action_state
         } = self;
+
 
         // Create group
         let create_group = create_group.execute().await?;
@@ -87,33 +97,32 @@ impl Actionable for ActionState<CreateUsersAndGroup> {
         // TODO(@hoverbear): Abstract this, it will be common
         let mut set = JoinSet::new();
 
-        let mut successes = Vec::with_capacity(create_users.len());
         let mut errors = Vec::default();
 
-        for create_user in create_users {
-            let _abort_handle = set.spawn(async move { create_user.execute().await });
+        for (idx, create_user) in create_users.iter().enumerate() {
+            let mut create_user_clone = create_user.clone();
+            let _abort_handle = set.spawn(async move { create_user_clone.execute().await?; Result::<_, CreateUserError>::Ok((idx, create_user_clone)) });
         }
 
         while let Some(result) = set.join_next().await {
             match result {
-                Ok(Ok(success)) => successes.push(success),
+                Ok(Ok((idx, success))) => create_users[idx] = success,
                 Ok(Err(e)) => errors.push(e),
-                Err(e) => errors.push(e.into()),
+                Err(e) => return Err(e)?,
             };
         }
 
         if !errors.is_empty() {
             if errors.len() == 1 {
-                return Err(errors.into_iter().next().unwrap());
+                return Err(errors.into_iter().next().unwrap().into());
             } else {
-                return Err(HarmonicError::Multiple(errors));
+                return Err(CreateUsersAndGroupError::CreateUsers(errors));
             }
         }
 
-        Ok(Self::Receipt {
-            create_group,
-            create_users: successes,
-        })
+
+        *action_state = ActionState::Completed;
+        Ok(())
     }
 
     #[tracing::instrument(skip_all)]
@@ -125,19 +134,26 @@ impl Actionable for ActionState<CreateUsersAndGroup> {
 }
 
 
-impl From<ActionState<CreateUsersAndGroup>> for ActionState<Action> {
-    fn from(v: ActionState<CreateUsersAndGroup>) -> Self {
-        match v {
-            ActionState::Completed(_) => ActionState::Completed(Action::CreateUsersAndGroup(v)),
-            ActionState::Planned(_) => ActionState::Planned(Action::CreateUsersAndGroup(v)),
-            ActionState::Reverted(_) => ActionState::Reverted(Action::CreateUsersAndGroup(v)),
-        }
+impl From<CreateUsersAndGroup> for Action {
+    fn from(v: CreateUsersAndGroup) -> Self {
+        Action::CreateUsersAndGroup(v)
     }
 }
 
 
 #[derive(Debug, thiserror::Error, Serialize)]
 pub enum CreateUsersAndGroupError {
-
+    #[error(transparent)]
+    CreateUser(#[from] CreateUserError),
+    #[error("Multiple errors: {}", .0.iter().map(|v| format!("{v}")).collect::<Vec<_>>().join(" & "))]
+    CreateUsers(Vec<CreateUserError>),
+    #[error(transparent)]
+    CreateGroup(#[from] CreateGroupError),
+    #[error(transparent)]
+    Join(
+        #[from]
+        #[serde(serialize_with = "crate::serialize_error_to_display")]
+        JoinError
+    ),
 }
 

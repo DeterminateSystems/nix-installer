@@ -6,7 +6,7 @@ use tokio::{
     io::AsyncWriteExt,
 };
 
-use crate::{HarmonicError, actions::{ActionState, Action}};
+use crate::{HarmonicError, actions::{ActionState, Action, ActionError}};
 
 use crate::actions::{ActionDescription, Actionable};
 
@@ -18,6 +18,7 @@ pub struct CreateFile {
     mode: u32,
     buf: String,
     force: bool,
+    action_state: ActionState,
 }
 
 impl CreateFile {
@@ -29,17 +30,11 @@ impl CreateFile {
         mode: u32,
         buf: String,
         force: bool,
-    ) -> Result<Self, HarmonicError> {
+    ) -> Result<Self, CreateFileError> {
         let path = path.as_ref().to_path_buf();
 
         if path.exists() && !force {
-            return Err(HarmonicError::CreateFile(
-                path.to_path_buf(),
-                std::io::Error::new(
-                    std::io::ErrorKind::AlreadyExists,
-                    format!("Directory `{}` already exists", path.display()),
-                ),
-            ));
+            return Err(CreateFileError::Exists(path.to_path_buf()));
         }
 
         Ok(Self {
@@ -49,12 +44,13 @@ impl CreateFile {
             mode,
             buf,
             force,
+            action_state: ActionState::Planned,
         })
     }
 }
 
 #[async_trait::async_trait]
-impl Actionable for ActionState<CreateFile> {
+impl Actionable for CreateFile {
     type Error = CreateFileError;
     fn description(&self) -> Vec<ActionDescription> {
         let Self {
@@ -64,6 +60,7 @@ impl Actionable for ActionState<CreateFile> {
             mode,
             buf,
             force,
+            action_state: _,
         } = &self;
         vec![ActionDescription::new(
             format!("Create or overwrite file `{}`", path.display()),
@@ -82,6 +79,7 @@ impl Actionable for ActionState<CreateFile> {
             mode,
             buf,
             force: _,
+            action_state,
         } = self;
         tracing::trace!(path = %path.display(), "Creating file");
         let mut file = OpenOptions::new()
@@ -90,24 +88,25 @@ impl Actionable for ActionState<CreateFile> {
             .read(true)
             .open(&path)
             .await
-            .map_err(|e| HarmonicError::OpenFile(path.to_owned(), e))?;
+            .map_err(|e| Self::Error::OpenFile(path.to_owned(), e))?;
 
         file.write_all(buf.as_bytes())
             .await
-            .map_err(|e| HarmonicError::WriteFile(path.to_owned(), e))?;
+            .map_err(|e| Self::Error::WriteFile(path.to_owned(), e))?;
 
         let gid = Group::from_name(group.as_str())
-            .map_err(|e| HarmonicError::GroupId(group.clone(), e))?
-            .ok_or(HarmonicError::NoGroup(group.clone()))?
+            .map_err(|e| Self::Error::GroupId(group.clone(), e))?
+            .ok_or(Self::Error::NoGroup(group.clone()))?
             .gid;
         let uid = User::from_name(user.as_str())
-            .map_err(|e| HarmonicError::UserId(user.clone(), e))?
-            .ok_or(HarmonicError::NoUser(user.clone()))?
+            .map_err(|e| Self::Error::UserId(user.clone(), e))?
+            .ok_or(Self::Error::NoUser(user.clone()))?
             .uid;
         
         tracing::trace!(path = %path.display(), "Chowning file");
-        chown(&path, Some(uid), Some(gid)).map_err(|e| HarmonicError::Chown(path.clone(), e))?;
+        chown(path, Some(uid), Some(gid)).map_err(|e| Self::Error::Chown(path.clone(), e))?;
 
+        *action_state = ActionState::Completed;
         Ok(())
     }
 
@@ -120,17 +119,28 @@ impl Actionable for ActionState<CreateFile> {
     }
 }
 
-impl From<ActionState<CreateFile>> for ActionState<Action> {
-    fn from(v: ActionState<CreateFile>) -> Self {
-        match v {
-            ActionState::Completed(_) => ActionState::Completed(Action::CreateFile(v)),
-            ActionState::Planned(_) => ActionState::Planned(Action::CreateFile(v)),
-            ActionState::Reverted(_) => ActionState::Reverted(Action::CreateFile(v)),
-        }
+impl From<CreateFile> for Action {
+    fn from(v: CreateFile) -> Self {
+        Action::CreateFile(v)
     }
 }
 
 #[derive(Debug, thiserror::Error, Serialize)]
 pub enum CreateFileError {
-
+    #[error("File exists `{0}`")]
+    Exists(std::path::PathBuf),
+    #[error("Open file `{0}`")]
+    OpenFile(std::path::PathBuf, #[source] #[serde(serialize_with = "crate::serialize_error_to_display")] std::io::Error),
+    #[error("Write file `{0}`")]
+    WriteFile(std::path::PathBuf, #[source] #[serde(serialize_with = "crate::serialize_error_to_display")] std::io::Error),
+    #[error("Getting uid for user `{0}`")]
+    UserId(String, #[source] #[serde(serialize_with = "crate::serialize_error_to_display")] nix::errno::Errno),
+    #[error("Getting user `{0}`")]
+    NoUser(String),
+    #[error("Getting gid for group `{0}`")]
+    GroupId(String, #[source] #[serde(serialize_with = "crate::serialize_error_to_display")] nix::errno::Errno),
+    #[error("Getting group `{0}`")]
+    NoGroup(String),
+    #[error("Chowning directory `{0}`")]
+    Chown(std::path::PathBuf, #[source] #[serde(serialize_with = "crate::serialize_error_to_display")] nix::errno::Errno),
 }

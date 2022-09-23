@@ -3,24 +3,25 @@ use tokio::process::Command;
 
 use crate::{HarmonicError, execute_command};
 
-use crate::actions::{ActionDescription, Actionable, ActionState, Action};
+use crate::actions::{ActionDescription, Actionable, ActionState, Action, ActionError};
 
 #[derive(Debug, serde::Deserialize, serde::Serialize, Clone)]
 pub struct CreateUser {
     name: String,
     uid: usize,
     gid: usize,
+    action_state: ActionState,
 }
 
 impl CreateUser {
     #[tracing::instrument(skip_all)]
     pub fn plan(name: String, uid: usize, gid: usize) -> Self {
-        Self { name, uid, gid }
+        Self { name, uid, gid, action_state: ActionState::Planned }
     }
 }
 
 #[async_trait::async_trait]
-impl Actionable for ActionState<CreateUser> {
+impl Actionable for CreateUser {
     type Error = CreateUserError;
     fn description(&self) -> Vec<ActionDescription> {
         let name = &self.name;
@@ -35,7 +36,7 @@ impl Actionable for ActionState<CreateUser> {
 
     #[tracing::instrument(skip_all)]
     async fn execute(&mut self) -> Result<(), Self::Error> {
-        let Self { name, uid, gid } = self;
+        let Self { name, uid, gid, action_state } = self;
 
         execute_command(Command::new("useradd").args([
             "--home-dir",
@@ -55,8 +56,9 @@ impl Actionable for ActionState<CreateUser> {
             "--password",
             "\"!\"",
             &name.to_string(),
-        ]), false).await?;
+        ])).await.map_err(Self::Error::Command)?;
 
+        *action_state = ActionState::Completed;
         Ok(())
     }
 
@@ -69,17 +71,14 @@ impl Actionable for ActionState<CreateUser> {
     }
 }
 
-impl From<ActionState<CreateUser>> for ActionState<Action> {
-    fn from(v: ActionState<CreateUser>) -> Self {
-        match v {
-            ActionState::Completed(_) => ActionState::Completed(Action::CreateUser(v)),
-            ActionState::Planned(_) => ActionState::Planned(Action::CreateUser(v)),
-            ActionState::Reverted(_) => ActionState::Reverted(Action::CreateUser(v)),
-        }
+impl From<CreateUser> for Action {
+    fn from(v: CreateUser) -> Self {
+        Action::CreateUser(v)
     }
 }
 
 #[derive(Debug, thiserror::Error, Serialize)]
 pub enum CreateUserError {
-
+    #[error("Failed to execute command")]
+    Command(#[source] #[serde(serialize_with = "crate::serialize_error_to_display")] std::io::Error)
 }
