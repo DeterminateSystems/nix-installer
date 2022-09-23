@@ -19,7 +19,7 @@ impl CreateUser {
 }
 
 #[async_trait::async_trait]
-impl<'a> Actionable<'a> for CreateUser {
+impl Actionable for CreateUser {
     type Receipt = CreateUserReceipt;
     fn description(&self) -> Vec<ActionDescription> {
         let name = &self.name;
@@ -68,7 +68,7 @@ pub struct CreateUserReceipt {
 }
 
 #[async_trait::async_trait]
-impl<'a> Revertable<'a> for CreateUserReceipt {
+impl Revertable for CreateUserReceipt {
     fn description(&self) -> Vec<ActionDescription> {
         todo!()
     }

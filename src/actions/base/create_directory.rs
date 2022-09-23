@@ -46,7 +46,7 @@ impl CreateDirectory {
 }
 
 #[async_trait::async_trait]
-impl<'a> Actionable<'a> for CreateDirectory {
+impl Actionable for CreateDirectory {
     type Receipt = CreateDirectoryReceipt;
     fn description(&self) -> Vec<ActionDescription> {
         let Self {
@@ -106,7 +106,7 @@ pub struct CreateDirectoryReceipt {
 }
 
 #[async_trait::async_trait]
-impl<'a> Revertable<'a> for CreateDirectoryReceipt {
+impl Revertable for CreateDirectoryReceipt {
     fn description(&self) -> Vec<ActionDescription> {
         vec![ActionDescription::new(
             format!("Create the directory `/nix`"),

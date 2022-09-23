@@ -1,3 +1,4 @@
+use serde::{Serialize, Deserialize};
 use tokio::task::JoinSet;
 
 use crate::{HarmonicError, InstallSettings};
@@ -47,8 +48,9 @@ impl CreateUsersAndGroup {
 }
 
 #[async_trait::async_trait]
-impl<'a> Actionable<'a> for CreateUsersAndGroup {
+impl Actionable for CreateUsersAndGroup {
     type Receipt = CreateUsersAndGroupReceipt;
+    type Error = CreateUsersAndGroupError;
     fn description(&self) -> Vec<ActionDescription> {
         let Self {
             daemon_user_count,
@@ -72,7 +74,7 @@ impl<'a> Actionable<'a> for CreateUsersAndGroup {
     }
 
     #[tracing::instrument(skip_all)]
-    async fn execute(self) -> Result<Self::Receipt, HarmonicError> {
+    async fn execute(self) -> Result<Self::Receipt, Self::Error> {
         let Self {
             create_users,
             create_group,
@@ -123,7 +125,7 @@ pub struct CreateUsersAndGroupReceipt {
 }
 
 #[async_trait::async_trait]
-impl<'a> Revertable<'a> for CreateUsersAndGroupReceipt {
+impl Revertable for CreateUsersAndGroupReceipt {
     fn description(&self) -> Vec<ActionDescription> {
         todo!()
     }
@@ -134,4 +136,9 @@ impl<'a> Revertable<'a> for CreateUsersAndGroupReceipt {
 
         Ok(())
     }
+}
+
+#[derive(thiserror::Error, Debug, Serialize, Deserialize)]
+pub enum CreateUsersAndGroupError {
+
 }

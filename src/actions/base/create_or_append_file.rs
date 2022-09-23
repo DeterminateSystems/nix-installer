@@ -43,7 +43,7 @@ impl CreateOrAppendFile {
 }
 
 #[async_trait::async_trait]
-impl<'a> Actionable<'a> for CreateOrAppendFile {
+impl Actionable for CreateOrAppendFile {
     type Receipt = CreateOrAppendFileReceipt;
     fn description(&self) -> Vec<ActionDescription> {
         let Self {
@@ -119,7 +119,7 @@ pub struct CreateOrAppendFileReceipt {
 }
 
 #[async_trait::async_trait]
-impl<'a> Revertable<'a> for CreateOrAppendFileReceipt {
+impl Revertable for CreateOrAppendFileReceipt {
     fn description(&self) -> Vec<ActionDescription> {
         vec![ActionDescription::new(
             format!("Create the directory `/nix`"),

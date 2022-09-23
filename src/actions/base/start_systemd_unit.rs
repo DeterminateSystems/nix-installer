@@ -1,5 +1,7 @@
+use serde::{Serialize, Deserialize};
 use tokio::process::Command;
 
+use crate::error::ActionState;
 use crate::{execute_command, HarmonicError};
 
 use crate::actions::{ActionDescription, Actionable, Revertable};
@@ -17,8 +19,9 @@ impl StartSystemdUnit {
 }
 
 #[async_trait::async_trait]
-impl<'a> Actionable<'a> for StartSystemdUnit {
+impl Actionable for StartSystemdUnit {
     type Receipt = StartSystemdUnitReceipt;
+    type Error = StartSystemdUnitError;
     fn description(&self) -> Vec<ActionDescription> {
         vec![
             ActionDescription::new(
@@ -31,7 +34,7 @@ impl<'a> Actionable<'a> for StartSystemdUnit {
     }
 
     #[tracing::instrument(skip_all)]
-    async fn execute(self) -> Result<Self::Receipt, HarmonicError> {
+    async fn execute(self) -> ActionState<Self> {
         let Self { unit } = self;
         // TODO(@Hoverbear): Handle proxy vars
 
@@ -49,10 +52,12 @@ impl<'a> Actionable<'a> for StartSystemdUnit {
 }
 
 #[derive(Debug, serde::Deserialize, serde::Serialize, Clone)]
-pub struct StartSystemdUnitReceipt {}
+pub struct StartSystemdUnitReceipt {
+
+}
 
 #[async_trait::async_trait]
-impl<'a> Revertable<'a> for StartSystemdUnitReceipt {
+impl Revertable for StartSystemdUnitReceipt {
     fn description(&self) -> Vec<ActionDescription> {
         todo!()
     }
@@ -64,3 +69,16 @@ impl<'a> Revertable<'a> for StartSystemdUnitReceipt {
         Ok(())
     }
 }
+
+
+#[derive(thiserror::Error, Debug, Serialize, Deserialize)]
+pub enum StartSystemdUnitError {
+
+}
+
+
+impl ActionState<StartSystemdUnit> {
+    fn errored(&self) -> bool {
+        false
+    }
+} 

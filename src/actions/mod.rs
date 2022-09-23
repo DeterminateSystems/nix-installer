@@ -1,6 +1,8 @@
 pub mod base;
 pub mod meta;
 
+use std::fmt::Display;
+
 use base::{
     ConfigureNixDaemonService, ConfigureNixDaemonServiceReceipt, CreateDirectory,
     CreateDirectoryReceipt, CreateFile, CreateFileReceipt, CreateGroup, CreateGroupReceipt,
@@ -15,17 +17,18 @@ use meta::{
     ProvisionNix, ProvisionNixReceipt, StartNixDaemon, StartNixDaemonReceipt,
 };
 
-use crate::HarmonicError;
+use crate::{HarmonicError, error::ActionState};
 
 #[async_trait::async_trait]
-pub trait Actionable<'a>: serde::de::Deserialize<'a> + serde::Serialize {
-    type Receipt;
+pub trait Actionable: serde::de::DeserializeOwned + serde::Serialize {
+    type Receipt: Revertable;
+    type Error: std::error::Error + Display;
     fn description(&self) -> Vec<ActionDescription>;
-    async fn execute(self) -> Result<Self::Receipt, HarmonicError>;
+    async fn execute(self) -> ActionState<Self>;
 }
 
 #[async_trait::async_trait]
-pub trait Revertable<'a>: serde::de::Deserialize<'a> + serde::Serialize {
+pub trait Revertable: serde::de::DeserializeOwned + serde::Serialize {
     fn description(&self) -> Vec<ActionDescription>;
     async fn revert(self) -> Result<(), HarmonicError>;
 }
@@ -88,9 +91,15 @@ pub enum ActionReceipt {
     ProvisionNix(ProvisionNixReceipt),
 }
 
+#[derive(thiserror::Error, Debug)]
+pub enum ActionError {
+
+}
+
 #[async_trait::async_trait]
-impl<'a> Actionable<'a> for Action {
+impl Actionable for Action {
     type Receipt = ActionReceipt;
+    type Error = ActionError;
     fn description(&self) -> Vec<ActionDescription> {
         match self {
             Action::ConfigureNixDaemonService(i) => i.description(),
@@ -153,7 +162,7 @@ impl<'a> Actionable<'a> for Action {
 }
 
 #[async_trait::async_trait]
-impl<'a> Revertable<'a> for ActionReceipt {
+impl Revertable for ActionReceipt {
     fn description(&self) -> Vec<ActionDescription> {
         match self {
             ActionReceipt::ConfigureNixDaemonService(i) => i.description(),

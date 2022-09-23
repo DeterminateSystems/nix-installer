@@ -2,35 +2,32 @@ use serde::{Deserialize, Serialize};
 
 use crate::{
     actions::{
-        meta::{ConfigureNix, ProvisionNix, StartNixDaemon},
+        meta::{ConfigureNix, ProvisionNix, StartNixDaemon, ProvisionNixReceipt, ConfigureNixReceipt, StartNixDaemonReceipt},
         Action, ActionDescription, ActionReceipt, Actionable, Revertable,
     },
     settings::InstallSettings,
-    HarmonicError,
+    HarmonicError, error::ActionState,
 };
+
+#[derive(thiserror::Error, Debug)]
+struct InstallError {
+
+}
+
+impl std::fmt::Display for InstallError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        todo!()
+    }
+}
+
 
 #[derive(Debug, serde::Deserialize, serde::Serialize, Clone)]
 pub struct InstallPlan {
     settings: InstallSettings,
 
-    /** Bootstrap the install
-
-    * There are roughly three phases:
-    * "Create nix tree"":
-    * download_nix  --------------------------------------> move_downloaded_nix
-    * create_group -> create_users -> create_directories -> move_downloaded_nix
-    * place_channel_configuration
-    * place_nix_configuration
-    * ---
-    * "Configure Nix":
-    * setup_default_profile
-    * configure_nix_daemon_service
-    * configure_shell_profile
-    * ---
-    * "Start Nix"
-    * start_nix_daemon_service
-    */
-    actions: Vec<Action>,
+    provision_nix: ProvisionNix,
+    configure_nix: ConfigureNix,
+    start_nix_daemon: StartNixDaemon,
 }
 
 impl InstallPlan {
@@ -55,68 +52,92 @@ impl InstallPlan {
                 .map(|(name, url)| format!("{name}={url}"))
                 .collect::<Vec<_>>()
                 .join(","),
-            actions = self
-                .actions
-                .iter()
-                .flat_map(|action| action.description())
-                .map(|desc| {
-                    let ActionDescription {
-                        description,
-                        explanation,
-                    } = desc;
+            
+            actions = {
+                let mut buf = self.provision_nix.description();
+                buf.append(&mut self.configure_nix.description());
+                buf.append(&mut self.start_nix_daemon.description());
 
-                    let mut buf = String::default();
-                    buf.push_str(&format!("* {description}\n"));
-                    if self.settings.explain {
-                        for line in explanation {
-                            buf.push_str(&format!("  {line}\n"));
+                buf
+                    .iter()
+                    .map(|desc| {
+                        let ActionDescription {
+                            description,
+                            explanation,
+                        } = desc;
+
+                        let mut buf = String::default();
+                        buf.push_str(&format!("* {description}\n"));
+                        if self.settings.explain {
+                            for line in explanation {
+                                buf.push_str(&format!("  {line}\n"));
+                            }
                         }
-                    }
-                    buf
-                })
-                .collect::<Vec<_>>()
-                .join("\n"),
+                        buf
+                    })
+                    .collect::<Vec<_>>()
+                    .join("\n")
+            },
         )
     }
     pub async fn new(settings: InstallSettings) -> Result<Self, HarmonicError> {
-        let actions = vec![
-            Action::ProvisionNix(ProvisionNix::plan(settings.clone()).await?),
-            Action::ConfigureNix(ConfigureNix::plan(settings.clone()).await?),
-            Action::StartNixDaemon(StartNixDaemon::plan().await?),
-        ];
-        Ok(Self { settings, actions })
+        let settings_clone_1 = settings.clone();
+        let settings_clone_2 = settings.clone();
+        Ok(Self {
+            settings,
+            provision_nix: ProvisionNix::plan(settings_clone_1).await?,
+            configure_nix: ConfigureNix::plan(settings_clone_2).await?,
+            start_nix_daemon: StartNixDaemon::plan().await?,
+        })
     }
 
     #[tracing::instrument(skip_all)]
-    pub async fn install(self) -> Result<Receipt, HarmonicError> {
-        let mut receipt = Receipt::default();
+    pub async fn install(self) -> Result<InstallReceipt, InstallReceipt> {
+        let Self { settings: _, provision_nix, configure_nix, start_nix_daemon } = self;
         // This is **deliberately sequential**.
         // Actions which are parallelizable are represented by "group actions" like CreateUsers
         // The plan itself represents the concept of the sequence of stages.
-        for action in self.actions {
-            match action.execute().await {
-                Ok(action_receipt) => receipt.actions.push(action_receipt),
-                Err(err) => {
-                    return Err(err);
-                    // TODO 
-                    // let mut revert_errs = Vec::default();
 
-                    // for action_receipt in receipt.actions {
-                    //     if let Err(err) = action_receipt.revert().await {
-                    //         revert_errs.push(err);
-                    //     }
-                    // }
-                    // if !revert_errs.is_empty() {
-                    //     return Err(HarmonicError::FailedReverts(vec![err], revert_errs));
-                    // }
+        let mut errored = false;
+        let receipt = InstallReceipt {
+            provision_nix: match provision_nix.execute().await {
+                Ok(success) => success,
+                Err(err) => {
+                    errored = true;
+                    err
                 },
-            };
+            },
+            configure_nix: match configure_nix.execute().await {
+                Ok(success) => success,
+                Err(err) => {
+                    errored = true;
+                    err
+                },
+            },
+            start_nix_daemon: match start_nix_daemon.execute().await {
+                Ok(success) => success,
+                Err(err) => {
+                    errored = true;
+                    err
+                },
+            },
+        };
+        match errored {
+            true => Err(receipt),
+            false => Ok(receipt),
         }
-        Ok(receipt)
     }
 }
 
-#[derive(Default, Debug, Serialize, Deserialize)]
-pub struct Receipt {
-    actions: Vec<ActionReceipt>,
+#[derive(thiserror::Error, Debug, Serialize, Deserialize)]
+pub struct InstallReceipt {
+    provision_nix: ActionState<ProvisionNix>,
+    configure_nix: ActionState<ConfigureNix>,
+    start_nix_daemon: ActionState<StartNixDaemon>,
+}
+
+impl<'a> std::fmt::Display for InstallReceipt {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        todo!()
+    }
 }

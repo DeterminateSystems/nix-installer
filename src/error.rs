@@ -1,4 +1,8 @@
-use serde::de::value::Error;
+use std::{error::Error, fmt::Display};
+
+use serde::{Deserialize, Serialize, de::DeserializeOwned};
+
+use crate::{InstallPlan, plan::InstallReceipt, actions::{Revertable, Actionable, ActionDescription}};
 
 #[derive(thiserror::Error, Debug)]
 pub enum HarmonicError {
@@ -55,4 +59,23 @@ pub enum HarmonicError {
     FailedReverts(Vec<HarmonicError>, Vec<HarmonicError>),
     #[error("Multiple errors: {}", .0.iter().map(|v| format!("{v}")).collect::<Vec<_>>().join(" & "))]
     Multiple(Vec<HarmonicError>),
+}
+
+#[derive(thiserror::Error, Debug)]
+enum NewError {
+    #[error("")]
+    InstallError(InstallReceipt),
+}
+
+
+#[derive(thiserror::Error, Debug, Clone, Serialize, Deserialize)]
+pub enum ActionState<P> where P: Actionable {
+    #[serde(bound = "P::Receipt: DeserializeOwned")]
+    Attempted(P::Receipt),
+    #[serde(bound = "P: DeserializeOwned")]
+    Planned(P),
+}
+
+fn return_option_none<E: Error + Display>() -> Option<E> {
+    None
 }

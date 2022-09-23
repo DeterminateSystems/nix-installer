@@ -1,7 +1,10 @@
+use serde::{Serialize, Deserialize};
+
 use crate::actions::base::{StartSystemdUnit, StartSystemdUnitReceipt};
 use crate::HarmonicError;
 
 use crate::actions::{ActionDescription, Actionable, Revertable};
+use crate::error::ActionState;
 
 /// This is mostly indirection for supporting non-systemd
 #[derive(Debug, serde::Deserialize, serde::Serialize, Clone)]
@@ -21,8 +24,9 @@ impl StartNixDaemon {
 }
 
 #[async_trait::async_trait]
-impl<'a> Actionable<'a> for StartNixDaemon {
+impl Actionable for StartNixDaemon {
     type Receipt = StartNixDaemonReceipt;
+    type Error = StartNixDaemonError;
     fn description(&self) -> Vec<ActionDescription> {
         let Self {
             start_systemd_socket,
@@ -31,12 +35,14 @@ impl<'a> Actionable<'a> for StartNixDaemon {
     }
 
     #[tracing::instrument(skip_all)]
-    async fn execute(self) -> Result<Self::Receipt, HarmonicError> {
+    async fn execute(self) -> ActionState<Self> {
         let Self {
             start_systemd_socket,
         } = self;
-        let start_systemd_socket = start_systemd_socket.execute().await?;
-        Ok(Self::Receipt {
+        
+        let start_systemd_socket = start_systemd_socket.execute().await;
+        
+        ActionState::Attempted(Self::Receipt {
             start_systemd_socket,
         })
     }
@@ -44,11 +50,11 @@ impl<'a> Actionable<'a> for StartNixDaemon {
 
 #[derive(Debug, serde::Deserialize, serde::Serialize, Clone)]
 pub struct StartNixDaemonReceipt {
-    start_systemd_socket: StartSystemdUnitReceipt,
+    start_systemd_socket: ActionState<StartSystemdUnit>,
 }
 
 #[async_trait::async_trait]
-impl<'a> Revertable<'a> for StartNixDaemonReceipt {
+impl Revertable for StartNixDaemonReceipt {
     fn description(&self) -> Vec<ActionDescription> {
         todo!()
     }
@@ -60,3 +66,20 @@ impl<'a> Revertable<'a> for StartNixDaemonReceipt {
         Ok(())
     }
 }
+
+#[derive(thiserror::Error, Debug, Serialize, Deserialize)]
+pub enum StartNixDaemonError {
+
+}
+
+impl ActionState<StartNixDaemon> {
+    fn errored(&self) -> bool {
+        match self {
+            ActionState::Attempted(attempted) => {
+                let StartNixDaemonReceipt { start_systemd_socket } = &attempted;
+                start_systemd_socket.errored()
+            },
+            ActionState::Planned(_) => false,
+        }
+    }
+} 

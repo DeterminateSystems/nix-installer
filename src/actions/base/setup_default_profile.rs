@@ -18,7 +18,7 @@ impl SetupDefaultProfile {
 }
 
 #[async_trait::async_trait]
-impl<'a> Actionable<'a> for SetupDefaultProfile {
+impl Actionable for SetupDefaultProfile {
     type Receipt = SetupDefaultProfileReceipt;
     fn description(&self) -> Vec<ActionDescription> {
         vec![ActionDescription::new(
@@ -118,7 +118,7 @@ impl<'a> Actionable<'a> for SetupDefaultProfile {
 pub struct SetupDefaultProfileReceipt {}
 
 #[async_trait::async_trait]
-impl<'a> Revertable<'a> for SetupDefaultProfileReceipt {
+impl Revertable for SetupDefaultProfileReceipt {
     fn description(&self) -> Vec<ActionDescription> {
         vec![ActionDescription::new(
             "Unset the default Nix profile".to_string(),

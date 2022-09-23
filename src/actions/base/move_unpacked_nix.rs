@@ -18,7 +18,7 @@ impl MoveUnpackedNix {
 }
 
 #[async_trait::async_trait]
-impl<'a> Actionable<'a> for MoveUnpackedNix {
+impl Actionable for MoveUnpackedNix {
     type Receipt = MoveUnpackedNixReceipt;
     fn description(&self) -> Vec<ActionDescription> {
         let Self { source } = &self;
@@ -59,7 +59,7 @@ impl<'a> Actionable<'a> for MoveUnpackedNix {
 pub struct MoveUnpackedNixReceipt {}
 
 #[async_trait::async_trait]
-impl<'a> Revertable<'a> for MoveUnpackedNixReceipt {
+impl Revertable for MoveUnpackedNixReceipt {
     fn description(&self) -> Vec<ActionDescription> {
         todo!()
     }

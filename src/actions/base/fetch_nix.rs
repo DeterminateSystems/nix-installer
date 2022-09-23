@@ -25,7 +25,7 @@ impl FetchNix {
 }
 
 #[async_trait::async_trait]
-impl<'a> Actionable<'a> for FetchNix {
+impl Actionable for FetchNix {
     type Receipt = FetchNixReceipt;
     fn description(&self) -> Vec<ActionDescription> {
         let Self { url, destination } = &self;
@@ -72,7 +72,7 @@ pub struct FetchNixReceipt {
 }
 
 #[async_trait::async_trait]
-impl<'a> Revertable<'a> for FetchNixReceipt {
+impl Revertable for FetchNixReceipt {
     fn description(&self) -> Vec<ActionDescription> {
         todo!()
     }

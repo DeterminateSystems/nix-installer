@@ -53,7 +53,7 @@ impl CreateFile {
 }
 
 #[async_trait::async_trait]
-impl<'a> Actionable<'a> for CreateFile {
+impl Actionable for CreateFile {
     type Receipt = CreateFileReceipt;
     fn description(&self) -> Vec<ActionDescription> {
         let Self {
@@ -127,7 +127,7 @@ pub struct CreateFileReceipt {
 }
 
 #[async_trait::async_trait]
-impl<'a> Revertable<'a> for CreateFileReceipt {
+impl Revertable for CreateFileReceipt {
     fn description(&self) -> Vec<ActionDescription> {
         todo!()
     }

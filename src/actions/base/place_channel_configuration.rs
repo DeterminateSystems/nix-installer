@@ -32,7 +32,7 @@ impl PlaceChannelConfiguration {
 }
 
 #[async_trait::async_trait]
-impl<'a> Actionable<'a> for PlaceChannelConfiguration {
+impl Actionable for PlaceChannelConfiguration {
     type Receipt = PlaceChannelConfigurationReceipt;
     fn description(&self) -> Vec<ActionDescription> {
         let Self {
@@ -66,7 +66,7 @@ pub struct PlaceChannelConfigurationReceipt {
 }
 
 #[async_trait::async_trait]
-impl<'a> Revertable<'a> for PlaceChannelConfigurationReceipt {
+impl Revertable for PlaceChannelConfigurationReceipt {
     fn description(&self) -> Vec<ActionDescription> {
         todo!()
     }

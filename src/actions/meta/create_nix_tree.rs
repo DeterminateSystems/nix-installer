@@ -1,3 +1,5 @@
+use serde::{Serialize, Deserialize};
+
 use crate::HarmonicError;
 
 use crate::actions::base::{CreateDirectory, CreateDirectoryReceipt};
@@ -41,8 +43,9 @@ impl CreateNixTree {
 }
 
 #[async_trait::async_trait]
-impl<'a> Actionable<'a> for CreateNixTree {
+impl Actionable for CreateNixTree {
     type Receipt = CreateNixTreeReceipt;
+    type Error = CreateNixTreeError;
     fn description(&self) -> Vec<ActionDescription> {
         vec![ActionDescription::new(
             format!("Create a directory tree in `/nix`"),
@@ -54,7 +57,7 @@ impl<'a> Actionable<'a> for CreateNixTree {
     }
 
     #[tracing::instrument(skip_all)]
-    async fn execute(self) -> Result<Self::Receipt, HarmonicError> {
+    async fn execute(self) -> Result<Self::Receipt, Self::Error> {
         let Self { create_directories } = self;
 
         let mut successes = Vec::with_capacity(create_directories.len());
@@ -75,7 +78,7 @@ pub struct CreateNixTreeReceipt {
 }
 
 #[async_trait::async_trait]
-impl<'a> Revertable<'a> for CreateNixTreeReceipt {
+impl Revertable for CreateNixTreeReceipt {
     fn description(&self) -> Vec<ActionDescription> {
         todo!()
     }
@@ -86,4 +89,9 @@ impl<'a> Revertable<'a> for CreateNixTreeReceipt {
 
         Ok(())
     }
+}
+
+#[derive(thiserror::Error, Debug, Serialize, Deserialize)]
+pub enum CreateNixTreeError {
+
 }

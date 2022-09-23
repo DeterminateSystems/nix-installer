@@ -1,5 +1,6 @@
 use std::path::Path;
 
+use serde::{Serialize, Deserialize};
 use tokio::task::JoinSet;
 
 use crate::HarmonicError;
@@ -54,8 +55,9 @@ impl ConfigureShellProfile {
 }
 
 #[async_trait::async_trait]
-impl<'a> Actionable<'a> for ConfigureShellProfile {
+impl Actionable for ConfigureShellProfile {
     type Receipt = ConfigureShellProfileReceipt;
+    type Error = ConfigureShellProfileError;
     fn description(&self) -> Vec<ActionDescription> {
         vec![ActionDescription::new(
             "Configure the shell profiles".to_string(),
@@ -64,7 +66,7 @@ impl<'a> Actionable<'a> for ConfigureShellProfile {
     }
 
     #[tracing::instrument(skip_all)]
-    async fn execute(self) -> Result<Self::Receipt, HarmonicError> {
+    async fn execute(self) -> Result<Self::Receipt, Self::Error> {
         let Self {
             create_or_append_files,
         } = self;
@@ -107,7 +109,7 @@ pub struct ConfigureShellProfileReceipt {
 }
 
 #[async_trait::async_trait]
-impl<'a> Revertable<'a> for ConfigureShellProfileReceipt {
+impl Revertable for ConfigureShellProfileReceipt {
     fn description(&self) -> Vec<ActionDescription> {
         todo!()
     }
@@ -118,4 +120,9 @@ impl<'a> Revertable<'a> for ConfigureShellProfileReceipt {
 
         Ok(())
     }
+}
+
+#[derive(thiserror::Error, Debug, Serialize, Deserialize)]
+pub enum ConfigureShellProfileError {
+
 }

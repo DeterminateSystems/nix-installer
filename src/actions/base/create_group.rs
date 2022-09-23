@@ -18,7 +18,7 @@ impl CreateGroup {
 }
 
 #[async_trait::async_trait]
-impl<'a> Actionable<'a> for CreateGroup {
+impl Actionable for CreateGroup {
     type Receipt = CreateGroupReceipt;
     fn description(&self) -> Vec<ActionDescription> {
         let Self { name, gid } = &self;
@@ -50,7 +50,7 @@ pub struct CreateGroupReceipt {
 }
 
 #[async_trait::async_trait]
-impl<'a> Revertable<'a> for CreateGroupReceipt {
+impl Revertable for CreateGroupReceipt {
     fn description(&self) -> Vec<ActionDescription> {
         todo!()
     }

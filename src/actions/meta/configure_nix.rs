@@ -51,8 +51,9 @@ impl ConfigureNix {
 }
 
 #[async_trait::async_trait]
-impl<'a> Actionable<'a> for ConfigureNix {
+impl Actionable for ConfigureNix {
     type Receipt = ConfigureNixReceipt;
+    type Error = ConfigureNixError;
     fn description(&self) -> Vec<ActionDescription> {
         let Self {
             setup_default_profile,
@@ -126,7 +127,7 @@ pub struct ConfigureNixReceipt {
 }
 
 #[async_trait::async_trait]
-impl<'a> Revertable<'a> for ConfigureNixReceipt {
+impl Revertable for ConfigureNixReceipt {
     fn description(&self) -> Vec<ActionDescription> {
         vec![
             ActionDescription::new(

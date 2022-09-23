@@ -25,7 +25,7 @@ impl ConfigureNixDaemonService {
 }
 
 #[async_trait::async_trait]
-impl<'a> Actionable<'a> for ConfigureNixDaemonService {
+impl Actionable for ConfigureNixDaemonService {
     type Receipt = ConfigureNixDaemonServiceReceipt;
     fn description(&self) -> Vec<ActionDescription> {
         vec![ActionDescription::new(
@@ -76,7 +76,7 @@ impl<'a> Actionable<'a> for ConfigureNixDaemonService {
 pub struct ConfigureNixDaemonServiceReceipt {}
 
 #[async_trait::async_trait]
-impl<'a> Revertable<'a> for ConfigureNixDaemonServiceReceipt {
+impl Revertable for ConfigureNixDaemonServiceReceipt {
     fn description(&self) -> Vec<ActionDescription> {
         vec![
             ActionDescription::new(

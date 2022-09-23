@@ -35,7 +35,7 @@ impl PlaceNixConfiguration {
 }
 
 #[async_trait::async_trait]
-impl<'a> Actionable<'a> for PlaceNixConfiguration {
+impl Actionable for PlaceNixConfiguration {
     type Receipt = PlaceNixConfigurationReceipt;
     fn description(&self) -> Vec<ActionDescription> {
         vec![ActionDescription::new(
@@ -60,7 +60,7 @@ pub struct PlaceNixConfigurationReceipt {
 }
 
 #[async_trait::async_trait]
-impl<'a> Revertable<'a> for PlaceNixConfigurationReceipt {
+impl Revertable for PlaceNixConfigurationReceipt {
     fn description(&self) -> Vec<ActionDescription> {
         todo!()
     }
