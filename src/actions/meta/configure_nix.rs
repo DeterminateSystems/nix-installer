@@ -1,13 +1,15 @@
+use serde::Serialize;
+
 use crate::actions::{
     base::{
-        ConfigureNixDaemonService, ConfigureNixDaemonServiceReceipt, PlaceNixConfiguration,
-        PlaceNixConfigurationReceipt, SetupDefaultProfile, SetupDefaultProfileReceipt, PlaceChannelConfiguration, PlaceChannelConfigurationReceipt,
+        ConfigureNixDaemonService, ConfigureNixDaemonServiceError, PlaceNixConfiguration,
+        PlaceNixConfigurationError, SetupDefaultProfile, SetupDefaultProfileError, PlaceChannelConfiguration, PlaceChannelConfigurationError,
     },
-    meta::{ConfigureShellProfile, ConfigureShellProfileReceipt},
+    meta::{ConfigureShellProfile, ConfigureShellProfileError}, ActionState, Action,
 };
 use crate::{HarmonicError, InstallSettings};
 
-use crate::actions::{ActionDescription, Actionable, Revertable};
+use crate::actions::{ActionDescription, Actionable};
 
 #[derive(Debug, serde::Deserialize, serde::Serialize, Clone)]
 pub struct ConfigureNix {
@@ -20,7 +22,7 @@ pub struct ConfigureNix {
 
 impl ConfigureNix {
     #[tracing::instrument(skip_all)]
-    pub async fn plan(settings: InstallSettings) -> Result<Self, HarmonicError> {
+    pub async fn plan(settings: InstallSettings) -> Result<ActionState<Self>, ConfigureNixError> {
         let channels = settings
             .channels
             .iter()
@@ -51,8 +53,8 @@ impl ConfigureNix {
 }
 
 #[async_trait::async_trait]
-impl<'a> Actionable<'a> for ConfigureNix {
-    type Receipt = ConfigureNixReceipt;
+impl Actionable for ActionState<ConfigureNix> {
+    type Error = ConfigureNixError;
     fn description(&self) -> Vec<ActionDescription> {
         let Self {
             setup_default_profile,
@@ -74,7 +76,7 @@ impl<'a> Actionable<'a> for ConfigureNix {
     }
 
     #[tracing::instrument(skip_all)]
-    async fn execute(self) -> Result<Self::Receipt, HarmonicError> {
+    async fn execute(&mut self) -> Result<(), Self::Error> {
         let Self {
             setup_default_profile,
             configure_nix_daemon_service,
@@ -114,34 +116,27 @@ impl<'a> Actionable<'a> for ConfigureNix {
             configure_shell_profile,
         })
     }
-}
 
-#[derive(Debug, serde::Deserialize, serde::Serialize, Clone)]
-pub struct ConfigureNixReceipt {
-    setup_default_profile: SetupDefaultProfileReceipt,
-    configure_shell_profile: Option<ConfigureShellProfileReceipt>,
-    place_nix_configuration: PlaceNixConfigurationReceipt,
-    place_channel_configuration: PlaceChannelConfigurationReceipt,
-    configure_nix_daemon_service: ConfigureNixDaemonServiceReceipt,
-}
-
-#[async_trait::async_trait]
-impl<'a> Revertable<'a> for ConfigureNixReceipt {
-    fn description(&self) -> Vec<ActionDescription> {
-        vec![
-            ActionDescription::new(
-                "Stop the systemd Nix daemon".to_string(),
-                vec![
-                    "The `nix` command line tool communicates with a running Nix daemon managed by your init system".to_string()
-                ]
-            ),
-        ]
-    }
 
     #[tracing::instrument(skip_all)]
-    async fn revert(self) -> Result<(), HarmonicError> {
+    async fn revert(&mut self) -> Result<(), Self::Error> {
         todo!();
 
         Ok(())
     }
+}
+
+impl From<ActionState<ConfigureNix>> for ActionState<Action> {
+    fn from(v: ActionState<ConfigureNix>) -> Self {
+        match v {
+            ActionState::Completed(_) => ActionState::Completed(Action::ConfigureNix(v)),
+            ActionState::Planned(_) => ActionState::Planned(Action::ConfigureNix(v)),
+            ActionState::Reverted(_) => ActionState::Reverted(Action::ConfigureNix(v)),
+        }
+    }
+}
+
+#[derive(Debug, thiserror::Error, Serialize)]
+pub enum ConfigureNixError {
+
 }

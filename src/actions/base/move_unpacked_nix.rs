@@ -1,8 +1,10 @@
 use std::path::{Path, PathBuf};
 
+use serde::Serialize;
+
 use crate::HarmonicError;
 
-use crate::actions::{ActionDescription, Actionable, Revertable};
+use crate::actions::{ActionDescription, Actionable, ActionState, Action};
 
 #[derive(Debug, serde::Deserialize, serde::Serialize, Clone)]
 pub struct MoveUnpackedNix {
@@ -18,8 +20,8 @@ impl MoveUnpackedNix {
 }
 
 #[async_trait::async_trait]
-impl<'a> Actionable<'a> for MoveUnpackedNix {
-    type Receipt = MoveUnpackedNixReceipt;
+impl Actionable for ActionState<MoveUnpackedNix> {
+    type Error = MoveUnpackedNixError;
     fn description(&self) -> Vec<ActionDescription> {
         let Self { source } = &self;
         vec![ActionDescription::new(
@@ -32,7 +34,7 @@ impl<'a> Actionable<'a> for MoveUnpackedNix {
     }
 
     #[tracing::instrument(skip_all)]
-    async fn execute(self) -> Result<Self::Receipt, HarmonicError> {
+    async fn execute(&mut self) -> Result<(), Self::Error> {
         let Self { source } = self;
 
         // TODO(@Hoverbear): I would like to make this less awful
@@ -51,23 +53,29 @@ impl<'a> Actionable<'a> for MoveUnpackedNix {
             .await
             .map_err(|e| HarmonicError::Rename(src, dest.to_owned(), e))?;
 
-        Ok(MoveUnpackedNixReceipt {})
+        Ok(())
     }
-}
 
-#[derive(Debug, serde::Deserialize, serde::Serialize, Clone)]
-pub struct MoveUnpackedNixReceipt {}
-
-#[async_trait::async_trait]
-impl<'a> Revertable<'a> for MoveUnpackedNixReceipt {
-    fn description(&self) -> Vec<ActionDescription> {
-        todo!()
-    }
 
     #[tracing::instrument(skip_all)]
-    async fn revert(self) -> Result<(), HarmonicError> {
+    async fn revert(&mut self) -> Result<(), Self::Error> {
         todo!();
 
         Ok(())
     }
+}
+
+impl From<ActionState<MoveUnpackedNix>> for ActionState<Action> {
+    fn from(v: ActionState<MoveUnpackedNix>) -> Self {
+        match v {
+            ActionState::Completed(_) => ActionState::Completed(Action::MoveUnpackedNix(v)),
+            ActionState::Planned(_) => ActionState::Planned(Action::MoveUnpackedNix(v)),
+            ActionState::Reverted(_) => ActionState::Reverted(Action::MoveUnpackedNix(v)),
+        }
+    }
+}
+
+#[derive(Debug, thiserror::Error, Serialize)]
+pub enum MoveUnpackedNixError {
+
 }

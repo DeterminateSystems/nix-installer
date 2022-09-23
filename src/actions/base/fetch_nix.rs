@@ -2,11 +2,12 @@ use std::path::{PathBuf};
 
 use bytes::Buf;
 use reqwest::Url;
+use serde::Serialize;
 use tokio::task::spawn_blocking;
 
 use crate::HarmonicError;
 
-use crate::actions::{ActionDescription, Actionable, Revertable};
+use crate::actions::{ActionDescription, Actionable, ActionState, Action};
 
 #[derive(Debug, serde::Deserialize, serde::Serialize, Clone)]
 pub struct FetchNix {
@@ -16,7 +17,7 @@ pub struct FetchNix {
 
 impl FetchNix {
     #[tracing::instrument(skip_all)]
-    pub async fn plan(url: Url, destination: PathBuf) -> Result<Self, HarmonicError> {
+    pub async fn plan(url: Url, destination: PathBuf) -> Result<Self, FetchNixError> {
         // TODO(@hoverbear): Check URL exists?
         // TODO(@hoverbear): Check tempdir exists
 
@@ -25,8 +26,8 @@ impl FetchNix {
 }
 
 #[async_trait::async_trait]
-impl<'a> Actionable<'a> for FetchNix {
-    type Receipt = FetchNixReceipt;
+impl Actionable for ActionState<FetchNix> {
+    type Error = FetchNixError;
     fn description(&self) -> Vec<ActionDescription> {
         let Self { url, destination } = &self;
         vec![ActionDescription::new(
@@ -39,7 +40,7 @@ impl<'a> Actionable<'a> for FetchNix {
     }
 
     #[tracing::instrument(skip_all)]
-    async fn execute(self) -> Result<Self::Receipt, HarmonicError> {
+    async fn execute(&mut self) -> Result<(), Self::Error> {
         let Self { url, destination } = self;
 
         tracing::trace!(%url, "Fetching url");
@@ -61,26 +62,29 @@ impl<'a> Actionable<'a> for FetchNix {
 
         handle?;
 
-        Ok(FetchNixReceipt { url, destination })
+        Ok(())
     }
-}
 
-#[derive(Debug, serde::Deserialize, serde::Serialize, Clone)]
-pub struct FetchNixReceipt {
-    url: Url,
-    destination: PathBuf,
-}
-
-#[async_trait::async_trait]
-impl<'a> Revertable<'a> for FetchNixReceipt {
-    fn description(&self) -> Vec<ActionDescription> {
-        todo!()
-    }
 
     #[tracing::instrument(skip_all)]
-    async fn revert(self) -> Result<(), HarmonicError> {
+    async fn revert(&mut self) -> Result<(), Self::Error> {
         todo!();
 
         Ok(())
     }
+}
+
+impl From<ActionState<FetchNix>> for ActionState<Action> {
+    fn from(v: ActionState<FetchNix>) -> Self {
+        match v {
+            ActionState::Completed(_) => ActionState::Completed(Action::FetchNix(v)),
+            ActionState::Planned(_) => ActionState::Planned(Action::FetchNix(v)),
+            ActionState::Reverted(_) => ActionState::Reverted(Action::FetchNix(v)),
+        }
+    }
+}
+
+#[derive(Debug, thiserror::Error, Serialize)]
+pub enum FetchNixError {
+
 }

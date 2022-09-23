@@ -7,9 +7,9 @@ mod create_users_and_group;
 mod provision_nix;
 mod start_nix_daemon;
 
-pub use configure_nix::{ConfigureNix, ConfigureNixReceipt};
-pub use configure_shell_profile::{ConfigureShellProfile, ConfigureShellProfileReceipt};
-pub use create_nix_tree::{CreateNixTree, CreateNixTreeReceipt};
-pub use create_users_and_group::{CreateUsersAndGroup, CreateUsersAndGroupReceipt};
-pub use provision_nix::{ProvisionNix, ProvisionNixReceipt};
-pub use start_nix_daemon::{StartNixDaemon, StartNixDaemonReceipt};
+pub use configure_nix::{ConfigureNix, ConfigureNixError};
+pub use configure_shell_profile::{ConfigureShellProfile, ConfigureShellProfileError};
+pub use create_nix_tree::{CreateNixTree, CreateNixTreeError};
+pub use create_users_and_group::{CreateUsersAndGroup, CreateUsersAndGroupError};
+pub use provision_nix::{ProvisionNix, ProvisionNixError};
+pub use start_nix_daemon::{StartNixDaemon, StartNixDaemonError};

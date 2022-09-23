@@ -14,18 +14,18 @@ mod setup_default_profile;
 mod start_systemd_unit;
 
 pub use configure_nix_daemon_service::{
-    ConfigureNixDaemonService, ConfigureNixDaemonServiceReceipt,
+    ConfigureNixDaemonService, ConfigureNixDaemonServiceError,
 };
-pub use create_directory::{CreateDirectory, CreateDirectoryReceipt};
-pub use create_file::{CreateFile, CreateFileReceipt};
-pub use create_group::{CreateGroup, CreateGroupReceipt};
-pub use create_or_append_file::{CreateOrAppendFile, CreateOrAppendFileReceipt};
-pub use create_user::{CreateUser, CreateUserReceipt};
-pub use fetch_nix::{FetchNix, FetchNixReceipt};
-pub use move_unpacked_nix::{MoveUnpackedNix, MoveUnpackedNixReceipt};
+pub use create_directory::{CreateDirectory, CreateDirectoryError};
+pub use create_file::{CreateFile, CreateFileError};
+pub use create_group::{CreateGroup, CreateGroupError};
+pub use create_or_append_file::{CreateOrAppendFile, CreateOrAppendFileError};
+pub use create_user::{CreateUser, CreateUserError};
+pub use fetch_nix::{FetchNix, FetchNixError};
+pub use move_unpacked_nix::{MoveUnpackedNix, MoveUnpackedNixError};
 pub use place_channel_configuration::{
-    PlaceChannelConfiguration, PlaceChannelConfigurationReceipt,
+    PlaceChannelConfiguration, PlaceChannelConfigurationError,
 };
-pub use place_nix_configuration::{PlaceNixConfiguration, PlaceNixConfigurationReceipt};
-pub use setup_default_profile::{SetupDefaultProfile, SetupDefaultProfileReceipt};
-pub use start_systemd_unit::{StartSystemdUnit, StartSystemdUnitReceipt};
+pub use place_nix_configuration::{PlaceNixConfiguration, PlaceNixConfigurationError};
+pub use setup_default_profile::{SetupDefaultProfile, SetupDefaultProfileError};
+pub use start_systemd_unit::{StartSystemdUnit, StartSystemdUnitError};

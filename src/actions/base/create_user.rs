@@ -1,8 +1,9 @@
+use serde::Serialize;
 use tokio::process::Command;
 
 use crate::{HarmonicError, execute_command};
 
-use crate::actions::{ActionDescription, Actionable, Revertable};
+use crate::actions::{ActionDescription, Actionable, ActionState, Action};
 
 #[derive(Debug, serde::Deserialize, serde::Serialize, Clone)]
 pub struct CreateUser {
@@ -19,8 +20,8 @@ impl CreateUser {
 }
 
 #[async_trait::async_trait]
-impl<'a> Actionable<'a> for CreateUser {
-    type Receipt = CreateUserReceipt;
+impl Actionable for ActionState<CreateUser> {
+    type Error = CreateUserError;
     fn description(&self) -> Vec<ActionDescription> {
         let name = &self.name;
         let uid = &self.uid;
@@ -33,7 +34,7 @@ impl<'a> Actionable<'a> for CreateUser {
     }
 
     #[tracing::instrument(skip_all)]
-    async fn execute(self) -> Result<Self::Receipt, HarmonicError> {
+    async fn execute(&mut self) -> Result<(), Self::Error> {
         let Self { name, uid, gid } = self;
 
         execute_command(Command::new("useradd").args([
@@ -56,27 +57,29 @@ impl<'a> Actionable<'a> for CreateUser {
             &name.to_string(),
         ]), false).await?;
 
-        Ok(CreateUserReceipt { name, uid, gid })
+        Ok(())
     }
-}
 
-#[derive(Debug, serde::Deserialize, serde::Serialize, Clone)]
-pub struct CreateUserReceipt {
-    name: String,
-    uid: usize,
-    gid: usize,
-}
-
-#[async_trait::async_trait]
-impl<'a> Revertable<'a> for CreateUserReceipt {
-    fn description(&self) -> Vec<ActionDescription> {
-        todo!()
-    }
 
     #[tracing::instrument(skip_all)]
-    async fn revert(self) -> Result<(), HarmonicError> {
+    async fn revert(&mut self) -> Result<(), Self::Error> {
         todo!();
 
         Ok(())
     }
+}
+
+impl From<ActionState<CreateUser>> for ActionState<Action> {
+    fn from(v: ActionState<CreateUser>) -> Self {
+        match v {
+            ActionState::Completed(_) => ActionState::Completed(Action::CreateUser(v)),
+            ActionState::Planned(_) => ActionState::Planned(Action::CreateUser(v)),
+            ActionState::Reverted(_) => ActionState::Reverted(Action::CreateUser(v)),
+        }
+    }
+}
+
+#[derive(Debug, thiserror::Error, Serialize)]
+pub enum CreateUserError {
+
 }

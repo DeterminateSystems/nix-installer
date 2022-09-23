@@ -1,9 +1,10 @@
-use crate::{execute_command, HarmonicError};
+use crate::{execute_command, HarmonicError, actions::{ActionState, Action}};
 
 use glob::glob;
+use serde::Serialize;
 use tokio::process::Command;
 
-use crate::actions::{ActionDescription, Actionable, Revertable};
+use crate::actions::{ActionDescription, Actionable};
 
 #[derive(Debug, serde::Deserialize, serde::Serialize, Clone)]
 pub struct SetupDefaultProfile {
@@ -18,8 +19,8 @@ impl SetupDefaultProfile {
 }
 
 #[async_trait::async_trait]
-impl<'a> Actionable<'a> for SetupDefaultProfile {
-    type Receipt = SetupDefaultProfileReceipt;
+impl Actionable for ActionState<SetupDefaultProfile> {
+    type Error = SetupDefaultProfileError;
     fn description(&self) -> Vec<ActionDescription> {
         vec![ActionDescription::new(
             "Setup the default Nix profile".to_string(),
@@ -28,7 +29,7 @@ impl<'a> Actionable<'a> for SetupDefaultProfile {
     }
 
     #[tracing::instrument(skip_all)]
-    async fn execute(self) -> Result<Self::Receipt, HarmonicError> {
+    async fn execute(&mut self) -> Result<(), Self::Error> {
         let Self { channels } = self;
         tracing::info!("Setting up default profile");
 
@@ -110,26 +111,30 @@ impl<'a> Actionable<'a> for SetupDefaultProfile {
                 false => return Err(HarmonicError::CommandFailedStatus(command_str)),
             }
         }
-        Ok(Self::Receipt {})
+        Ok(())
     }
-}
 
-#[derive(Debug, serde::Deserialize, serde::Serialize, Clone)]
-pub struct SetupDefaultProfileReceipt {}
-
-#[async_trait::async_trait]
-impl<'a> Revertable<'a> for SetupDefaultProfileReceipt {
-    fn description(&self) -> Vec<ActionDescription> {
-        vec![ActionDescription::new(
-            "Unset the default Nix profile".to_string(),
-            vec!["TODO".to_string()],
-        )]
-    }
 
     #[tracing::instrument(skip_all)]
-    async fn revert(self) -> Result<(), HarmonicError> {
+    async fn revert(&mut self) -> Result<(), Self::Error> {
         todo!();
 
         Ok(())
     }
+}
+
+impl From<ActionState<SetupDefaultProfile>> for ActionState<Action> {
+    fn from(v: ActionState<SetupDefaultProfile>) -> Self {
+        match v {
+            ActionState::Completed(_) => ActionState::Completed(Action::SetupDefaultProfile(v)),
+            ActionState::Planned(_) => ActionState::Planned(Action::SetupDefaultProfile(v)),
+            ActionState::Reverted(_) => ActionState::Reverted(Action::SetupDefaultProfile(v)),
+        }
+    }
+}
+
+
+#[derive(Debug, thiserror::Error, Serialize)]
+pub enum SetupDefaultProfileError {
+
 }

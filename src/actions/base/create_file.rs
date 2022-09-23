@@ -1,13 +1,14 @@
 use nix::unistd::{chown, Group, User};
+use serde::Serialize;
 use std::path::{Path, PathBuf};
 use tokio::{
     fs::{create_dir_all, OpenOptions},
     io::AsyncWriteExt,
 };
 
-use crate::HarmonicError;
+use crate::{HarmonicError, actions::{ActionState, Action}};
 
-use crate::actions::{ActionDescription, Actionable, Revertable};
+use crate::actions::{ActionDescription, Actionable};
 
 #[derive(Debug, serde::Deserialize, serde::Serialize, Clone)]
 pub struct CreateFile {
@@ -53,8 +54,8 @@ impl CreateFile {
 }
 
 #[async_trait::async_trait]
-impl<'a> Actionable<'a> for CreateFile {
-    type Receipt = CreateFileReceipt;
+impl Actionable for ActionState<CreateFile> {
+    type Error = CreateFileError;
     fn description(&self) -> Vec<ActionDescription> {
         let Self {
             path,
@@ -73,7 +74,7 @@ impl<'a> Actionable<'a> for CreateFile {
     }
 
     #[tracing::instrument(skip_all)]
-    async fn execute(self) -> Result<CreateFileReceipt, HarmonicError> {
+    async fn execute(&mut self) -> Result<(), Self::Error> {
         let Self {
             path,
             user,
@@ -107,35 +108,29 @@ impl<'a> Actionable<'a> for CreateFile {
         tracing::trace!(path = %path.display(), "Chowning file");
         chown(&path, Some(uid), Some(gid)).map_err(|e| HarmonicError::Chown(path.clone(), e))?;
 
-        Ok(Self::Receipt {
-            path,
-            user,
-            group,
-            mode,
-            buf,
-        })
+        Ok(())
     }
-}
 
-#[derive(Debug, serde::Deserialize, serde::Serialize, Clone)]
-pub struct CreateFileReceipt {
-    path: PathBuf,
-    user: String,
-    group: String,
-    mode: u32,
-    buf: String,
-}
-
-#[async_trait::async_trait]
-impl<'a> Revertable<'a> for CreateFileReceipt {
-    fn description(&self) -> Vec<ActionDescription> {
-        todo!()
-    }
 
     #[tracing::instrument(skip_all)]
-    async fn revert(self) -> Result<(), HarmonicError> {
+    async fn revert(&mut self) -> Result<(), Self::Error> {
         todo!();
 
         Ok(())
     }
+}
+
+impl From<ActionState<CreateFile>> for ActionState<Action> {
+    fn from(v: ActionState<CreateFile>) -> Self {
+        match v {
+            ActionState::Completed(_) => ActionState::Completed(Action::CreateFile(v)),
+            ActionState::Planned(_) => ActionState::Planned(Action::CreateFile(v)),
+            ActionState::Reverted(_) => ActionState::Reverted(Action::CreateFile(v)),
+        }
+    }
+}
+
+#[derive(Debug, thiserror::Error, Serialize)]
+pub enum CreateFileError {
+
 }

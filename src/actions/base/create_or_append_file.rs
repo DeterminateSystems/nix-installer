@@ -1,4 +1,5 @@
 use nix::unistd::{chown, Group, User};
+use serde::Serialize;
 use std::{
     io::SeekFrom,
     path::{Path, PathBuf},
@@ -8,9 +9,9 @@ use tokio::{
     io::{AsyncSeekExt, AsyncWriteExt},
 };
 
-use crate::HarmonicError;
+use crate::{HarmonicError, actions::{ActionState, Action}};
 
-use crate::actions::{ActionDescription, Actionable, Revertable};
+use crate::actions::{ActionDescription, Actionable};
 
 #[derive(Debug, serde::Deserialize, serde::Serialize, Clone)]
 pub struct CreateOrAppendFile {
@@ -43,8 +44,8 @@ impl CreateOrAppendFile {
 }
 
 #[async_trait::async_trait]
-impl<'a> Actionable<'a> for CreateOrAppendFile {
-    type Receipt = CreateOrAppendFileReceipt;
+impl Actionable for ActionState<CreateOrAppendFile> {
+    type Error = CreateOrAppendFileError;
     fn description(&self) -> Vec<ActionDescription> {
         let Self {
             path,
@@ -62,7 +63,7 @@ impl<'a> Actionable<'a> for CreateOrAppendFile {
     }
 
     #[tracing::instrument(skip_all)]
-    async fn execute(self) -> Result<CreateOrAppendFileReceipt, HarmonicError> {
+    async fn execute(&mut self) -> Result<(), Self::Error> {
         let Self {
             path,
             user,
@@ -99,40 +100,30 @@ impl<'a> Actionable<'a> for CreateOrAppendFile {
             tracing::trace!(path = %path.display(), "Chowning");
         chown(&path, Some(uid), Some(gid)).map_err(|e| HarmonicError::Chown(path.clone(), e))?;
 
-        Ok(Self::Receipt {
-            path,
-            user,
-            group,
-            mode,
-            buf,
-        })
+        Ok(())
     }
-}
 
-#[derive(Debug, serde::Deserialize, serde::Serialize, Clone)]
-pub struct CreateOrAppendFileReceipt {
-    path: PathBuf,
-    user: String,
-    group: String,
-    mode: u32,
-    buf: String,
-}
-
-#[async_trait::async_trait]
-impl<'a> Revertable<'a> for CreateOrAppendFileReceipt {
-    fn description(&self) -> Vec<ActionDescription> {
-        vec![ActionDescription::new(
-            format!("Create the directory `/nix`"),
-            vec![format!(
-                "Nix and the Nix daemon require a Nix Store, which will be stored at `/nix`"
-            )],
-        )]
-    }
 
     #[tracing::instrument(skip_all)]
-    async fn revert(self) -> Result<(), HarmonicError> {
+    async fn revert(&mut self) -> Result<(), Self::Error> {
         todo!();
 
         Ok(())
     }
+}
+
+
+impl From<ActionState<CreateOrAppendFile>> for ActionState<Action> {
+    fn from(v: ActionState<CreateOrAppendFile>) -> Self {
+        match v {
+            ActionState::Completed(_) => ActionState::Completed(Action::CreateOrAppendFile(v)),
+            ActionState::Planned(_) => ActionState::Planned(Action::CreateOrAppendFile(v)),
+            ActionState::Reverted(_) => ActionState::Reverted(Action::CreateOrAppendFile(v)),
+        }
+    }
+}
+
+#[derive(Debug, thiserror::Error, Serialize)]
+pub enum CreateOrAppendFileError {
+
 }

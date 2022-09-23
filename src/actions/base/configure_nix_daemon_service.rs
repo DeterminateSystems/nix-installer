@@ -1,10 +1,11 @@
 use std::path::{Path, PathBuf};
 
+use serde::Serialize;
 use tokio::process::Command;
 
 use crate::{execute_command, HarmonicError};
 
-use crate::actions::{ActionDescription, Actionable, Revertable};
+use crate::actions::{ActionDescription, Actionable, ActionState, Action};
 
 const SERVICE_SRC: &str = "/nix/var/nix/profiles/default/lib/systemd/system/nix-daemon.service";
 const SOCKET_SRC: &str = "/nix/var/nix/profiles/default/lib/systemd/system/nix-daemon.socket";
@@ -25,8 +26,8 @@ impl ConfigureNixDaemonService {
 }
 
 #[async_trait::async_trait]
-impl<'a> Actionable<'a> for ConfigureNixDaemonService {
-    type Receipt = ConfigureNixDaemonServiceReceipt;
+impl Actionable for ActionState<ConfigureNixDaemonService> {
+    type Error = ConfigureNixDaemonServiceError;
     fn description(&self) -> Vec<ActionDescription> {
         vec![ActionDescription::new(
             "Configure Nix daemon related settings with systemd".to_string(),
@@ -40,7 +41,7 @@ impl<'a> Actionable<'a> for ConfigureNixDaemonService {
     }
 
     #[tracing::instrument(skip_all)]
-    async fn execute(self) -> Result<Self::Receipt, HarmonicError> {
+    async fn execute(&mut self) -> Result<(), Self::Error> {
         tracing::info!("Configuring nix daemon service");
 
         tracing::trace!(src = TMPFILES_SRC, dest = TMPFILES_DEST, "Symlinking");
@@ -68,30 +69,31 @@ impl<'a> Actionable<'a> for ConfigureNixDaemonService {
 
         execute_command(Command::new("systemctl").arg("daemon-reload"), false).await?;
 
-        Ok(Self::Receipt {})
+        Ok(())
     }
-}
 
-#[derive(Debug, serde::Deserialize, serde::Serialize, Clone)]
-pub struct ConfigureNixDaemonServiceReceipt {}
-
-#[async_trait::async_trait]
-impl<'a> Revertable<'a> for ConfigureNixDaemonServiceReceipt {
-    fn description(&self) -> Vec<ActionDescription> {
-        vec![
-            ActionDescription::new(
-                "Stop the systemd Nix daemon".to_string(),
-                vec![
-                    "The `nix` command line tool communicates with a running Nix daemon managed by your init system".to_string()
-                ]
-            ),
-        ]
-    }
 
     #[tracing::instrument(skip_all)]
-    async fn revert(self) -> Result<(), HarmonicError> {
+    async fn revert(&mut self) -> Result<(), Self::Error> {
         todo!();
 
         Ok(())
     }
+}
+
+
+
+impl From<ActionState<ConfigureNixDaemonService>> for ActionState<Action> {
+    fn from(v: ActionState<ConfigureNixDaemonService>) -> Self {
+        match v {
+            ActionState::Completed(_) => ActionState::Completed(Action::ConfigureNixDaemonService(v)),
+            ActionState::Planned(_) => ActionState::Planned(Action::ConfigureNixDaemonService(v)),
+            ActionState::Reverted(_) => ActionState::Reverted(Action::ConfigureNixDaemonService(v)),
+        }
+    }
+}
+
+#[derive(Debug, thiserror::Error, Serialize)]
+pub enum ConfigureNixDaemonServiceError {
+
 }

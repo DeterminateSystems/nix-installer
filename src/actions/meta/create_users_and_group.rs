@@ -1,9 +1,10 @@
+use serde::Serialize;
 use tokio::task::JoinSet;
 
 use crate::{HarmonicError, InstallSettings};
 
-use crate::actions::base::{CreateGroup, CreateGroupReceipt, CreateUserReceipt};
-use crate::actions::{ActionDescription, Actionable, CreateUser, Revertable};
+use crate::actions::base::{CreateGroup, CreateGroupError, CreateUserError};
+use crate::actions::{ActionDescription, Actionable, CreateUser, ActionState, Action};
 
 #[derive(Debug, serde::Deserialize, serde::Serialize, Clone)]
 pub struct CreateUsersAndGroup {
@@ -47,8 +48,8 @@ impl CreateUsersAndGroup {
 }
 
 #[async_trait::async_trait]
-impl<'a> Actionable<'a> for CreateUsersAndGroup {
-    type Receipt = CreateUsersAndGroupReceipt;
+impl Actionable for ActionState<CreateUsersAndGroup> {
+    type Error = CreateUsersAndGroupError;
     fn description(&self) -> Vec<ActionDescription> {
         let Self {
             daemon_user_count,
@@ -72,7 +73,7 @@ impl<'a> Actionable<'a> for CreateUsersAndGroup {
     }
 
     #[tracing::instrument(skip_all)]
-    async fn execute(self) -> Result<Self::Receipt, HarmonicError> {
+    async fn execute(&mut self) -> Result<(), HarmonicError> {
         let Self {
             create_users,
             create_group,
@@ -114,24 +115,29 @@ impl<'a> Actionable<'a> for CreateUsersAndGroup {
             create_users: successes,
         })
     }
-}
-
-#[derive(Debug, serde::Deserialize, serde::Serialize, Clone)]
-pub struct CreateUsersAndGroupReceipt {
-    create_group: CreateGroupReceipt,
-    create_users: Vec<CreateUserReceipt>,
-}
-
-#[async_trait::async_trait]
-impl<'a> Revertable<'a> for CreateUsersAndGroupReceipt {
-    fn description(&self) -> Vec<ActionDescription> {
-        todo!()
-    }
 
     #[tracing::instrument(skip_all)]
-    async fn revert(self) -> Result<(), HarmonicError> {
+    async fn revert(&mut self) -> Result<(), Self::Error> {
         todo!();
 
         Ok(())
     }
 }
+
+
+impl From<ActionState<CreateUsersAndGroup>> for ActionState<Action> {
+    fn from(v: ActionState<CreateUsersAndGroup>) -> Self {
+        match v {
+            ActionState::Completed(_) => ActionState::Completed(Action::CreateUsersAndGroup(v)),
+            ActionState::Planned(_) => ActionState::Planned(Action::CreateUsersAndGroup(v)),
+            ActionState::Reverted(_) => ActionState::Reverted(Action::CreateUsersAndGroup(v)),
+        }
+    }
+}
+
+
+#[derive(Debug, thiserror::Error, Serialize)]
+pub enum CreateUsersAndGroupError {
+
+}
+

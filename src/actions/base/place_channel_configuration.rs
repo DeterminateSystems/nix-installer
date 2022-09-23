@@ -1,10 +1,11 @@
 use reqwest::Url;
+use serde::Serialize;
 
 use crate::HarmonicError;
 
-use crate::actions::{ActionDescription, Actionable, Revertable};
+use crate::actions::{ActionDescription, Actionable, ActionState, Action};
 
-use super::{CreateFile, CreateFileReceipt};
+use super::{CreateFile, CreateFileError};
 
 const NIX_CHANNELS_PATH: &str = "/root/.nix-channels";
 
@@ -32,8 +33,8 @@ impl PlaceChannelConfiguration {
 }
 
 #[async_trait::async_trait]
-impl<'a> Actionable<'a> for PlaceChannelConfiguration {
-    type Receipt = PlaceChannelConfigurationReceipt;
+impl Actionable for ActionState<PlaceChannelConfiguration> {
+    type Error = PlaceChannelConfigurationError;
     fn description(&self) -> Vec<ActionDescription> {
         let Self {
             channels,
@@ -46,35 +47,38 @@ impl<'a> Actionable<'a> for PlaceChannelConfiguration {
     }
 
     #[tracing::instrument(skip_all)]
-    async fn execute(self) -> Result<Self::Receipt, HarmonicError> {
+    async fn execute(&mut self) -> Result<(), Self::Error> {
         let Self {
             create_file,
             channels,
         } = self;
-        let create_file = create_file.execute().await?;
-        Ok(Self::Receipt {
-            create_file,
-            channels,
-        })
+        
+        create_file.execute().await?;
+        
+        Ok(())
     }
-}
 
-#[derive(Debug, serde::Deserialize, serde::Serialize, Clone)]
-pub struct PlaceChannelConfigurationReceipt {
-    channels: Vec<(String, Url)>,
-    create_file: CreateFileReceipt,
-}
-
-#[async_trait::async_trait]
-impl<'a> Revertable<'a> for PlaceChannelConfigurationReceipt {
-    fn description(&self) -> Vec<ActionDescription> {
-        todo!()
-    }
 
     #[tracing::instrument(skip_all)]
-    async fn revert(self) -> Result<(), HarmonicError> {
+    async fn revert(&mut self) -> Result<(), Self::Error> {
         todo!();
 
         Ok(())
     }
+}
+
+impl From<ActionState<PlaceChannelConfiguration>> for ActionState<Action> {
+    fn from(v: ActionState<PlaceChannelConfiguration>) -> Self {
+        match v {
+            ActionState::Completed(_) => ActionState::Completed(Action::PlaceChannelConfiguration(v)),
+            ActionState::Planned(_) => ActionState::Planned(Action::PlaceChannelConfiguration(v)),
+            ActionState::Reverted(_) => ActionState::Reverted(Action::PlaceChannelConfiguration(v)),
+        }
+    }
+}
+
+
+#[derive(Debug, thiserror::Error, Serialize)]
+pub enum PlaceChannelConfigurationError {
+
 }

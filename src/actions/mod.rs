@@ -1,33 +1,45 @@
 pub mod base;
 pub mod meta;
 
+use std::{error::Error, fmt::Display};
+
 use base::{
-    ConfigureNixDaemonService, ConfigureNixDaemonServiceReceipt, CreateDirectory,
-    CreateDirectoryReceipt, CreateFile, CreateFileReceipt, CreateGroup, CreateGroupReceipt,
-    CreateOrAppendFile, CreateOrAppendFileReceipt, CreateUser, CreateUserReceipt, FetchNix,
-    FetchNixReceipt, MoveUnpackedNix, MoveUnpackedNixReceipt, PlaceChannelConfiguration,
-    PlaceChannelConfigurationReceipt, PlaceNixConfiguration, PlaceNixConfigurationReceipt,
-    SetupDefaultProfile, SetupDefaultProfileReceipt,
+    ConfigureNixDaemonService, ConfigureNixDaemonServiceError, CreateDirectory,
+    CreateDirectoryError, CreateFile, CreateFileError, CreateGroup, CreateGroupError,
+    CreateOrAppendFile, CreateOrAppendFileError, CreateUser, CreateUserError, FetchNix,
+    FetchNixError, MoveUnpackedNix, MoveUnpackedNixError, PlaceChannelConfiguration,
+    PlaceChannelConfigurationError, PlaceNixConfiguration, PlaceNixConfigurationError,
+    SetupDefaultProfile, SetupDefaultProfileError,
 };
 use meta::{
-    ConfigureNix, ConfigureNixReceipt, ConfigureShellProfile, ConfigureShellProfileReceipt,
-    CreateNixTree, CreateNixTreeReceipt, CreateUsersAndGroup, CreateUsersAndGroupReceipt,
-    ProvisionNix, ProvisionNixReceipt, StartNixDaemon, StartNixDaemonReceipt,
+    ConfigureNix, ConfigureNixError, ConfigureShellProfile, ConfigureShellProfileError,
+    CreateNixTree, CreateNixTreeError, CreateUsersAndGroup, CreateUsersAndGroupError,
+    ProvisionNix, ProvisionNixError, StartNixDaemon, StartNixDaemonError,
 };
+use serde::{Deserialize, de::DeserializeOwned, Serialize};
 
-use crate::HarmonicError;
+
+use self::base::{StartSystemdUnit, StartSystemdUnitError};
 
 #[async_trait::async_trait]
-pub trait Actionable<'a>: serde::de::Deserialize<'a> + serde::Serialize {
-    type Receipt;
+pub trait Actionable: DeserializeOwned + Serialize + Into<ActionState<Action>> {
+    type Error: std::error::Error + std::fmt::Debug + Serialize;
+
     fn description(&self) -> Vec<ActionDescription>;
-    async fn execute(self) -> Result<Self::Receipt, HarmonicError>;
+    
+    // They should also have an `async fn plan(args...) -> Result<ActionState<Self>, Self::Error>;`
+    async fn execute(self) -> Result<Self, ActionError>;
+    async fn revert(self) -> Result<Self, ActionError>;
 }
 
-#[async_trait::async_trait]
-pub trait Revertable<'a>: serde::de::Deserialize<'a> + serde::Serialize {
-    fn description(&self) -> Vec<ActionDescription>;
-    async fn revert(self) -> Result<(), HarmonicError>;
+#[derive(thiserror::Error, Debug, Serialize, Deserialize, Clone)]
+pub enum ActionState<P> where P: Serialize + DeserializeOwned + Clone {
+    #[serde(bound = "P: DeserializeOwned")]
+    Completed(P),
+    #[serde(bound = "P: DeserializeOwned")]
+    Planned(P),
+    #[serde(bound = "P: DeserializeOwned")]
+    Reverted(P),
 }
 
 #[derive(Debug, serde::Deserialize, serde::Serialize, Clone)]
@@ -48,51 +60,80 @@ impl ActionDescription {
 
 #[derive(Debug, serde::Deserialize, serde::Serialize, Clone)]
 pub enum Action {
-    ConfigureNixDaemonService(ConfigureNixDaemonService),
-    ConfigureNix(ConfigureNix),
-    ConfigureShellProfile(ConfigureShellProfile),
-    CreateDirectory(CreateDirectory),
-    CreateFile(CreateFile),
-    CreateGroup(CreateGroup),
-    CreateOrAppendFile(CreateOrAppendFile),
-    CreateNixTree(CreateNixTree),
-    CreateUser(CreateUser),
-    CreateUsersAndGroup(CreateUsersAndGroup),
-    FetchNix(FetchNix),
-    MoveUnpackedNix(MoveUnpackedNix),
-    PlaceChannelConfiguration(PlaceChannelConfiguration),
-    PlaceNixConfiguration(PlaceNixConfiguration),
-    SetupDefaultProfile(SetupDefaultProfile),
-    StartNixDaemon(StartNixDaemon),
-    ProvisionNix(ProvisionNix),
+    ConfigureNixDaemonService(ActionState<ConfigureNixDaemonService>),
+    ConfigureNix(ActionState<ConfigureNix>),
+    ConfigureShellProfile(ActionState<ConfigureShellProfile>),
+    CreateDirectory(ActionState<CreateDirectory>),
+    CreateFile(ActionState<CreateFile>),
+    CreateGroup(ActionState<CreateGroup>),
+    CreateOrAppendFile(ActionState<CreateOrAppendFile>),
+    CreateNixTree(ActionState<CreateNixTree>),
+    CreateUser(ActionState<CreateUser>),
+    CreateUsersAndGroup(ActionState<CreateUsersAndGroup>),
+    FetchNix(ActionState<FetchNix>),
+    MoveUnpackedNix(ActionState<MoveUnpackedNix>),
+    PlaceChannelConfiguration(ActionState<PlaceChannelConfiguration>),
+    PlaceNixConfiguration(ActionState<PlaceNixConfiguration>),
+    SetupDefaultProfile(ActionState<SetupDefaultProfile>),
+    StartNixDaemon(ActionState<StartNixDaemon>),
+    StartSystemdUnit(ActionState<StartSystemdUnit>),
+    ProvisionNix(ActionState<ProvisionNix>),
 }
 
-#[derive(Debug, serde::Deserialize, serde::Serialize, Clone)]
-pub enum ActionReceipt {
-    ConfigureNixDaemonService(ConfigureNixDaemonServiceReceipt),
-    ConfigureNix(ConfigureNixReceipt),
-    ConfigureShellProfile(ConfigureShellProfileReceipt),
-    CreateDirectory(CreateDirectoryReceipt),
-    CreateFile(CreateFileReceipt),
-    CreateGroup(CreateGroupReceipt),
-    CreateOrAppendFile(CreateOrAppendFileReceipt),
-    CreateNixTree(CreateNixTreeReceipt),
-    CreateUser(CreateUserReceipt),
-    CreateUsersAndGroup(CreateUsersAndGroupReceipt),
-    FetchNix(FetchNixReceipt),
-    MoveUnpackedNix(MoveUnpackedNixReceipt),
-    PlaceChannelConfiguration(PlaceChannelConfigurationReceipt),
-    PlaceNixConfiguration(PlaceNixConfigurationReceipt),
-    SetupDefaultProfile(SetupDefaultProfileReceipt),
-    StartNixDaemon(StartNixDaemonReceipt),
-    ProvisionNix(ProvisionNixReceipt),
+#[derive(Debug, thiserror::Error, serde::Serialize)]
+pub enum ActionError {
+    #[error("Attempted to revert an unexecuted action")]
+    NotExecuted(ActionState<Action>),
+    #[error("Attempted to execute an already executed action")]
+    AlreadyExecuted(ActionState<Action>),
+    #[error("Attempted to revert an already reverted action")]
+    AlreadyReverted(ActionState<Action>),
+    #[error(transparent)]
+    ConfigureNixDaemonService(#[from] ConfigureNixDaemonServiceError),
+    #[error(transparent)]
+    ConfigureNix(#[from] ConfigureNixError),
+    #[error(transparent)]
+    ConfigureShellProfile(#[from] ConfigureShellProfileError),
+    #[error(transparent)]
+    CreateDirectory(#[from] CreateDirectoryError),
+    #[error(transparent)]
+    CreateFile(#[from] CreateFileError),
+    #[error(transparent)]
+    CreateGroup(#[from] CreateGroupError),
+    #[error(transparent)]
+    CreateOrAppendFile(#[from] CreateOrAppendFileError),
+    #[error(transparent)]
+    CreateNixTree(#[from] CreateNixTreeError),
+    #[error(transparent)]
+    CreateUser(#[from] CreateUserError),
+    #[error(transparent)]
+    CreateUsersAndGroup(#[from] CreateUsersAndGroupError),
+    #[error(transparent)]
+    FetchNix(#[from] FetchNixError),
+    #[error(transparent)]
+    MoveUnpackedNix(#[from] MoveUnpackedNixError),
+    #[error(transparent)]
+    PlaceChannelConfiguration(#[from] PlaceChannelConfigurationError),
+    #[error(transparent)]
+    PlaceNixConfiguration(#[from] PlaceNixConfigurationError),
+    #[error(transparent)]
+    SetupDefaultProfile(#[from] SetupDefaultProfileError),
+    #[error(transparent)]
+    StartNixDaemon(#[from] StartNixDaemonError),
+    #[error(transparent)]
+    StartSystemdUnit(#[from] StartSystemdUnitError),
+    #[error(transparent)]
+    ProvisionNix(#[from] ProvisionNixError),
 }
 
 #[async_trait::async_trait]
-impl<'a> Actionable<'a> for Action {
-    type Receipt = ActionReceipt;
+impl Actionable for ActionState<Action> {
+    type Error = ActionError;
     fn description(&self) -> Vec<ActionDescription> {
-        match self {
+        let inner = match self {
+            ActionState::Planned(p) | ActionState::Completed(p) | ActionState::Reverted(p) => p,
+        };
+        match inner {
             Action::ConfigureNixDaemonService(i) => i.description(),
             Action::ConfigureNix(i) => i.description(),
             Action::ConfigureShellProfile(i) => i.description(),
@@ -109,92 +150,64 @@ impl<'a> Actionable<'a> for Action {
             Action::PlaceNixConfiguration(i) => i.description(),
             Action::SetupDefaultProfile(i) => i.description(),
             Action::StartNixDaemon(i) => i.description(),
+            Action::StartSystemdUnit(i) => i.description(),
             Action::ProvisionNix(i) => i.description(),
         }
     }
 
-    async fn execute(self) -> Result<Self::Receipt, HarmonicError> {
-        match self {
-            Action::ConfigureNixDaemonService(i) => i
-                .execute()
-                .await
-                .map(ActionReceipt::ConfigureNixDaemonService),
-            Action::ConfigureNix(i) => i.execute().await.map(ActionReceipt::ConfigureNix),
-            Action::ConfigureShellProfile(i) => {
-                i.execute().await.map(ActionReceipt::ConfigureShellProfile)
-            },
-            Action::CreateDirectory(i) => i.execute().await.map(ActionReceipt::CreateDirectory),
-            Action::CreateFile(i) => i.execute().await.map(ActionReceipt::CreateFile),
-            Action::CreateGroup(i) => i.execute().await.map(ActionReceipt::CreateGroup),
-            Action::CreateOrAppendFile(i) => {
-                i.execute().await.map(ActionReceipt::CreateOrAppendFile)
-            },
-            Action::CreateNixTree(i) => i.execute().await.map(ActionReceipt::CreateNixTree),
-            Action::CreateUser(i) => i.execute().await.map(ActionReceipt::CreateUser),
-            Action::CreateUsersAndGroup(i) => {
-                i.execute().await.map(ActionReceipt::CreateUsersAndGroup)
-            },
-            Action::FetchNix(i) => i.execute().await.map(ActionReceipt::FetchNix),
-            Action::MoveUnpackedNix(i) => i.execute().await.map(ActionReceipt::MoveUnpackedNix),
-            Action::PlaceChannelConfiguration(i) => i
-                .execute()
-                .await
-                .map(ActionReceipt::PlaceChannelConfiguration),
-            Action::PlaceNixConfiguration(i) => {
-                i.execute().await.map(ActionReceipt::PlaceNixConfiguration)
-            },
-            Action::SetupDefaultProfile(i) => {
-                i.execute().await.map(ActionReceipt::SetupDefaultProfile)
-            },
-            Action::StartNixDaemon(i) => i.execute().await.map(ActionReceipt::StartNixDaemon),
-            Action::ProvisionNix(i) => i.execute().await.map(ActionReceipt::ProvisionNix),
-        }
-    }
-}
-
-#[async_trait::async_trait]
-impl<'a> Revertable<'a> for ActionReceipt {
-    fn description(&self) -> Vec<ActionDescription> {
-        match self {
-            ActionReceipt::ConfigureNixDaemonService(i) => i.description(),
-            ActionReceipt::ConfigureNix(i) => i.description(),
-            ActionReceipt::ConfigureShellProfile(i) => i.description(),
-            ActionReceipt::CreateDirectory(i) => i.description(),
-            ActionReceipt::CreateFile(i) => i.description(),
-            ActionReceipt::CreateGroup(i) => i.description(),
-            ActionReceipt::CreateOrAppendFile(i) => i.description(),
-            ActionReceipt::CreateNixTree(i) => i.description(),
-            ActionReceipt::CreateUser(i) => i.description(),
-            ActionReceipt::CreateUsersAndGroup(i) => i.description(),
-            ActionReceipt::FetchNix(i) => i.description(),
-            ActionReceipt::MoveUnpackedNix(i) => i.description(),
-            ActionReceipt::PlaceChannelConfiguration(i) => i.description(),
-            ActionReceipt::PlaceNixConfiguration(i) => i.description(),
-            ActionReceipt::SetupDefaultProfile(i) => i.description(),
-            ActionReceipt::StartNixDaemon(i) => i.description(),
-            ActionReceipt::ProvisionNix(i) => i.description(),
+    async fn execute(&mut self) -> Result<(), Self::Error> {
+        let inner = match self {
+            ActionState::Completed(p) => todo!(),
+            ActionState::Planned(p) => p,
+            ActionState::Reverted(p) => todo!(),
+        };
+        match inner {
+            Action::ConfigureNixDaemonService(i) => i.execute().await,
+            Action::ConfigureNix(i) => i.execute().await,
+            Action::ConfigureShellProfile(i) => i.execute().await,
+            Action::CreateDirectory(i) => i.execute().await,
+            Action::CreateFile(i) => i.execute().await,
+            Action::CreateGroup(i) => i.execute().await,
+            Action::CreateOrAppendFile(i) => i.execute().await,
+            Action::CreateNixTree(i) => i.execute().await,
+            Action::CreateUser(i) => i.execute().await,
+            Action::CreateUsersAndGroup(i) => i.execute().await,
+            Action::FetchNix(i) => i.execute().await,
+            Action::MoveUnpackedNix(i) => i.execute().await,
+            Action::PlaceChannelConfiguration(i) => i.execute().await,
+            Action::PlaceNixConfiguration(i) => i.execute().await,
+            Action::SetupDefaultProfile(i) => i.execute().await,
+            Action::StartNixDaemon(i) => i.execute().await,
+            Action::StartSystemdUnit(i) => i.execute().await,
+            Action::ProvisionNix(i) => i.execute().await,
         }
     }
 
-    async fn revert(self) -> Result<(), HarmonicError> {
-        match self {
-            ActionReceipt::ConfigureNixDaemonService(i) => i.revert().await,
-            ActionReceipt::ConfigureNix(i) => i.revert().await,
-            ActionReceipt::ConfigureShellProfile(i) => i.revert().await,
-            ActionReceipt::CreateDirectory(i) => i.revert().await,
-            ActionReceipt::CreateFile(i) => i.revert().await,
-            ActionReceipt::CreateGroup(i) => i.revert().await,
-            ActionReceipt::CreateOrAppendFile(i) => i.revert().await,
-            ActionReceipt::CreateNixTree(i) => i.revert().await,
-            ActionReceipt::CreateUser(i) => i.revert().await,
-            ActionReceipt::CreateUsersAndGroup(i) => i.revert().await,
-            ActionReceipt::FetchNix(i) => i.revert().await,
-            ActionReceipt::MoveUnpackedNix(i) => i.revert().await,
-            ActionReceipt::PlaceChannelConfiguration(i) => i.revert().await,
-            ActionReceipt::PlaceNixConfiguration(i) => i.revert().await,
-            ActionReceipt::SetupDefaultProfile(i) => i.revert().await,
-            ActionReceipt::StartNixDaemon(i) => i.revert().await,
-            ActionReceipt::ProvisionNix(i) => i.revert().await,
+    async fn revert(&mut self) -> Result<(), Self::Error> {
+        let inner = match self {
+            ActionState::Planned(p) => todo!(),
+            ActionState::Completed(p) => p,
+            ActionState::Reverted(p) => todo!(),
+        };
+        match inner {
+            Action::ConfigureNixDaemonService(i) => i.revert().await,
+            Action::ConfigureNix(i) => i.revert().await,
+            Action::ConfigureShellProfile(i) => i.revert().await,
+            Action::CreateDirectory(i) => i.revert().await,
+            Action::CreateFile(i) => i.revert().await,
+            Action::CreateGroup(i) => i.revert().await,
+            Action::CreateOrAppendFile(i) => i.revert().await,
+            Action::CreateNixTree(i) => i.revert().await,
+            Action::CreateUser(i) => i.revert().await,
+            Action::CreateUsersAndGroup(i) => i.revert().await,
+            Action::FetchNix(i) => i.revert().await,
+            Action::MoveUnpackedNix(i) => i.revert().await,
+            Action::PlaceChannelConfiguration(i) => i.revert().await,
+            Action::PlaceNixConfiguration(i) => i.revert().await,
+            Action::SetupDefaultProfile(i) => i.revert().await,
+            Action::StartNixDaemon(i) => i.revert().await,
+            Action::StartSystemdUnit(i) => i.revert().await,
+            Action::ProvisionNix(i) => i.revert().await,
         }
     }
 }

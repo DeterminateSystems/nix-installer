@@ -1,11 +1,12 @@
 use std::path::{Path, PathBuf};
 
 use nix::unistd::{chown, Group, User};
+use serde::Serialize;
 use tokio::fs::create_dir;
 
 use crate::HarmonicError;
 
-use crate::actions::{ActionDescription, Actionable, Revertable};
+use crate::actions::{ActionDescription, Actionable, ActionState, Action};
 
 #[derive(Debug, serde::Deserialize, serde::Serialize, Clone)]
 pub struct CreateDirectory {
@@ -46,8 +47,8 @@ impl CreateDirectory {
 }
 
 #[async_trait::async_trait]
-impl<'a> Actionable<'a> for CreateDirectory {
-    type Receipt = CreateDirectoryReceipt;
+impl Actionable for ActionState<CreateDirectory> {
+    type Error = CreateDirectoryError;
     fn description(&self) -> Vec<ActionDescription> {
         let Self {
             path,
@@ -65,7 +66,7 @@ impl<'a> Actionable<'a> for CreateDirectory {
     }
 
     #[tracing::instrument(skip_all)]
-    async fn execute(self) -> Result<CreateDirectoryReceipt, HarmonicError> {
+    async fn execute(&mut self) -> Result<(), Self::Error> {
         let Self {
             path,
             user,
@@ -88,45 +89,31 @@ impl<'a> Actionable<'a> for CreateDirectory {
             .map_err(|e| HarmonicError::CreateDirectory(path.clone(), e))?;
         chown(&path, Some(uid), Some(gid)).map_err(|e| HarmonicError::Chown(path.clone(), e))?;
 
-        Ok(CreateDirectoryReceipt {
-            path,
-            user,
-            group,
-            mode,
-        })
+        Ok(())
     }
-}
 
-#[derive(Debug, serde::Deserialize, serde::Serialize, Clone)]
-pub struct CreateDirectoryReceipt {
-    path: PathBuf,
-    user: String,
-    group: String,
-    mode: u32,
-}
-
-#[async_trait::async_trait]
-impl<'a> Revertable<'a> for CreateDirectoryReceipt {
-    fn description(&self) -> Vec<ActionDescription> {
-        vec![ActionDescription::new(
-            format!("Create the directory `/nix`"),
-            vec![format!(
-                "Nix and the Nix daemon require a Nix Store, which will be stored at `/nix`"
-            )],
-        )]
-    }
 
     #[tracing::instrument(skip_all)]
-    async fn revert(self) -> Result<(), HarmonicError> {
-        let Self {
-            path,
-            user,
-            group,
-            mode,
-        } = self;
-
+    async fn revert(&mut self) -> Result<(), Self::Error> {
         todo!();
 
         Ok(())
     }
+}
+
+
+impl From<ActionState<CreateDirectory>> for ActionState<Action> {
+    fn from(v: ActionState<CreateDirectory>) -> Self {
+        match v {
+            ActionState::Completed(_) => ActionState::Completed(Action::CreateDirectory(v)),
+            ActionState::Planned(_) => ActionState::Planned(Action::CreateDirectory(v)),
+            ActionState::Reverted(_) => ActionState::Reverted(Action::CreateDirectory(v)),
+        }
+    }
+}
+
+
+#[derive(Debug, thiserror::Error, Serialize)]
+pub enum CreateDirectoryError {
+
 }

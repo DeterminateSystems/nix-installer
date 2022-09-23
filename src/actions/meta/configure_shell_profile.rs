@@ -1,11 +1,12 @@
 use std::path::Path;
 
+use serde::Serialize;
 use tokio::task::JoinSet;
 
 use crate::HarmonicError;
 
-use crate::actions::base::{CreateOrAppendFile, CreateOrAppendFileReceipt};
-use crate::actions::{ActionDescription, Actionable, Revertable};
+use crate::actions::base::{CreateOrAppendFile, CreateOrAppendFileError};
+use crate::actions::{ActionDescription, Actionable, ActionState, Action};
 
 const PROFILE_TARGETS: &[&str] = &[
     "/etc/bashrc",
@@ -24,7 +25,7 @@ pub struct ConfigureShellProfile {
 
 impl ConfigureShellProfile {
     #[tracing::instrument(skip_all)]
-    pub async fn plan() -> Result<Self, HarmonicError> {
+    pub async fn plan() -> Result<ActionState<Self>, ConfigureShellProfileError> {
         let mut create_or_append_files = Vec::default();
         for profile_target in PROFILE_TARGETS {
             let path = Path::new(profile_target);
@@ -54,8 +55,8 @@ impl ConfigureShellProfile {
 }
 
 #[async_trait::async_trait]
-impl<'a> Actionable<'a> for ConfigureShellProfile {
-    type Receipt = ConfigureShellProfileReceipt;
+impl Actionable for ActionState<ConfigureShellProfile> {
+    type Error = ConfigureShellProfileError;
     fn description(&self) -> Vec<ActionDescription> {
         vec![ActionDescription::new(
             "Configure the shell profiles".to_string(),
@@ -64,7 +65,7 @@ impl<'a> Actionable<'a> for ConfigureShellProfile {
     }
 
     #[tracing::instrument(skip_all)]
-    async fn execute(self) -> Result<Self::Receipt, HarmonicError> {
+    async fn execute(&mut self) -> Result<(), Self::Error> {
         let Self {
             create_or_append_files,
         } = self;
@@ -81,7 +82,7 @@ impl<'a> Actionable<'a> for ConfigureShellProfile {
 
         while let Some(result) = set.join_next().await {
             match result {
-                Ok(Ok(success)) => successes.push(success),
+                Ok(Ok(())) => (),
                 Ok(Err(e)) => errors.push(e),
                 Err(e) => errors.push(e.into()),
             };
@@ -95,27 +96,29 @@ impl<'a> Actionable<'a> for ConfigureShellProfile {
             }
         }
 
-        Ok(Self::Receipt {
-            create_or_append_files: successes,
-        })
+        Ok(())
     }
-}
 
-#[derive(Debug, serde::Deserialize, serde::Serialize, Clone)]
-pub struct ConfigureShellProfileReceipt {
-    create_or_append_files: Vec<CreateOrAppendFileReceipt>,
-}
-
-#[async_trait::async_trait]
-impl<'a> Revertable<'a> for ConfigureShellProfileReceipt {
-    fn description(&self) -> Vec<ActionDescription> {
-        todo!()
-    }
 
     #[tracing::instrument(skip_all)]
-    async fn revert(self) -> Result<(), HarmonicError> {
+    async fn revert(&mut self) -> Result<(), Self::Error> {
         todo!();
 
         Ok(())
     }
+}
+
+impl From<ActionState<ConfigureShellProfile>> for ActionState<Action> {
+    fn from(v: ActionState<ConfigureShellProfile>) -> Self {
+        match v {
+            ActionState::Completed(_) => ActionState::Completed(Action::ConfigureShellProfile(v)),
+            ActionState::Planned(_) => ActionState::Planned(Action::ConfigureShellProfile(v)),
+            ActionState::Reverted(_) => ActionState::Reverted(Action::ConfigureShellProfile(v)),
+        }
+    }
+}
+
+#[derive(Debug, thiserror::Error, Serialize)]
+pub enum ConfigureShellProfileError {
+
 }

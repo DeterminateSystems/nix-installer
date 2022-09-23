@@ -1,8 +1,10 @@
+use serde::Serialize;
+
 use crate::HarmonicError;
 
-use crate::actions::{ActionDescription, Actionable, Revertable};
+use crate::actions::{ActionDescription, Actionable, ActionState, Action};
 
-use super::{CreateFile, CreateFileReceipt, CreateDirectory, CreateDirectoryReceipt};
+use super::{CreateFile, CreateFileError, CreateDirectory, CreateDirectoryError};
 
 const NIX_CONF_FOLDER: &str = "/etc/nix";
 const NIX_CONF: &str = "/etc/nix/nix.conf";
@@ -35,8 +37,9 @@ impl PlaceNixConfiguration {
 }
 
 #[async_trait::async_trait]
-impl<'a> Actionable<'a> for PlaceNixConfiguration {
-    type Receipt = PlaceNixConfigurationReceipt;
+impl Actionable for ActionState<PlaceNixConfiguration> {
+    type Error = PlaceNixConfigurationError;
+
     fn description(&self) -> Vec<ActionDescription> {
         vec![ActionDescription::new(
             format!("Place the nix configuration in `{NIX_CONF}`"),
@@ -45,30 +48,36 @@ impl<'a> Actionable<'a> for PlaceNixConfiguration {
     }
 
     #[tracing::instrument(skip_all)]
-    async fn execute(self) -> Result<Self::Receipt, HarmonicError> {
+    async fn execute(&mut self) -> Result<(), Self::Error> {
         let Self { create_file, create_directory } = self;
-        let create_directory = create_directory.execute().await?;
-        let create_file = create_file.execute().await?;
-        Ok(Self::Receipt { create_file, create_directory })
-    }
-}
 
-#[derive(Debug, serde::Deserialize, serde::Serialize, Clone)]
-pub struct PlaceNixConfigurationReceipt {
-    create_directory: CreateDirectoryReceipt,
-    create_file: CreateFileReceipt,
-}
+        create_directory.execute().await?;
+        create_file.execute().await?;
 
-#[async_trait::async_trait]
-impl<'a> Revertable<'a> for PlaceNixConfigurationReceipt {
-    fn description(&self) -> Vec<ActionDescription> {
-        todo!()
+        Ok(())
     }
+
 
     #[tracing::instrument(skip_all)]
-    async fn revert(self) -> Result<(), HarmonicError> {
+    async fn revert(&mut self) -> Result<(), Self::Error> {
         todo!();
 
         Ok(())
     }
+}
+
+impl From<ActionState<PlaceNixConfiguration>> for ActionState<Action> {
+    fn from(v: ActionState<PlaceNixConfiguration>) -> Self {
+        match v {
+            ActionState::Completed(_) => ActionState::Completed(Action::PlaceNixConfiguration(v)),
+            ActionState::Planned(_) => ActionState::Planned(Action::PlaceNixConfiguration(v)),
+            ActionState::Reverted(_) => ActionState::Reverted(Action::PlaceNixConfiguration(v)),
+        }
+    }
+}
+
+
+#[derive(Debug, thiserror::Error, Serialize)]
+pub enum PlaceNixConfigurationError {
+
 }
