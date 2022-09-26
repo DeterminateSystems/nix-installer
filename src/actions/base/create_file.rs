@@ -2,11 +2,11 @@ use nix::unistd::{chown, Group, User};
 use serde::Serialize;
 use std::path::{Path, PathBuf};
 use tokio::{
-    fs::{create_dir_all, OpenOptions},
+    fs::{OpenOptions, remove_file},
     io::AsyncWriteExt,
 };
 
-use crate::{HarmonicError, actions::{ActionState, Action, ActionError}};
+use crate::{actions::{ActionState, Action, ActionError}};
 
 use crate::actions::{ActionDescription, Actionable};
 
@@ -59,7 +59,7 @@ impl Actionable for CreateFile {
             group,
             mode,
             buf,
-            force,
+            force: _,
             action_state: _,
         } = &self;
         vec![ActionDescription::new(
@@ -84,6 +84,7 @@ impl Actionable for CreateFile {
         tracing::trace!(path = %path.display(), "Creating file");
         let mut file = OpenOptions::new()
             .create_new(true)
+            .mode(*mode)
             .write(true)
             .read(true)
             .open(&path)
@@ -113,8 +114,22 @@ impl Actionable for CreateFile {
 
     #[tracing::instrument(skip_all)]
     async fn revert(&mut self) -> Result<(), Self::Error> {
-        todo!();
+        let Self {
+            path,
+            user: _,
+            group: _,
+            mode: _,
+            buf: _,
+            force: _,
+            action_state,
+        } = self;
+        
+        tracing::trace!(path = %path.display(), "Deleting file");
 
+        remove_file(&path).await
+            .map_err(|e| Self::Error::RemoveFile(path.to_owned(), e))?;
+
+        *action_state = ActionState::Reverted;
         Ok(())
     }
 }
@@ -129,6 +144,8 @@ impl From<CreateFile> for Action {
 pub enum CreateFileError {
     #[error("File exists `{0}`")]
     Exists(std::path::PathBuf),
+    #[error("Remove file `{0}`")]
+    RemoveFile(std::path::PathBuf, #[source] #[serde(serialize_with = "crate::serialize_error_to_display")] std::io::Error),
     #[error("Open file `{0}`")]
     OpenFile(std::path::PathBuf, #[source] #[serde(serialize_with = "crate::serialize_error_to_display")] std::io::Error),
     #[error("Write file `{0}`")]

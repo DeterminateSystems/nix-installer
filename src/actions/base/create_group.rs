@@ -47,8 +47,13 @@ impl Actionable for CreateGroup {
 
     #[tracing::instrument(skip_all)]
     async fn revert(&mut self) -> Result<(), Self::Error> {
-        todo!();
+        let Self { name, gid: _, action_state } = self;
 
+        execute_command(
+            Command::new("groupdel").arg(&name),
+        ).await.map_err(CreateGroupError::Command)?;
+
+        *action_state = ActionState::Reverted;
         Ok(())
     }
 }

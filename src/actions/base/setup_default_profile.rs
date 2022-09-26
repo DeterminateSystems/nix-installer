@@ -9,12 +9,13 @@ use crate::actions::{ActionDescription, Actionable};
 #[derive(Debug, serde::Deserialize, serde::Serialize, Clone)]
 pub struct SetupDefaultProfile {
     channels: Vec<String>,
+    action_state: ActionState,
 }
 
 impl SetupDefaultProfile {
     #[tracing::instrument(skip_all)]
     pub async fn plan(channels: Vec<String>) -> Result<Self, SetupDefaultProfileError> {
-        Ok(Self { channels })
+        Ok(Self { channels, action_state: ActionState::Planned })
     }
 }
 
@@ -30,7 +31,7 @@ impl Actionable for SetupDefaultProfile {
 
     #[tracing::instrument(skip_all)]
     async fn execute(&mut self) -> Result<(), Self::Error> {
-        let Self { channels } = self;
+        let Self { channels, action_state } = self;
         tracing::info!("Setting up default profile");
 
         // Find an `nix` package
@@ -105,14 +106,18 @@ impl Actionable for SetupDefaultProfile {
 
             execute_command(&mut command).await.map_err(SetupDefaultProfileError::Command)?;
         }
+        *action_state = ActionState::Completed;
         Ok(())
     }
 
 
     #[tracing::instrument(skip_all)]
     async fn revert(&mut self) -> Result<(), Self::Error> {
-        todo!();
+        let Self { channels: _, action_state } = self;
 
+        std::env::remove_var("NIX_SSL_CERT_FILE");
+
+        *action_state = ActionState::Reverted;
         Ok(())
     }
 }

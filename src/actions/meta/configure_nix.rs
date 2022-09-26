@@ -89,28 +89,21 @@ impl Actionable for ConfigureNix {
             action_state,
         } = self;
 
-        let (
-            setup_default_profile,
-            place_nix_configuration,
-            place_channel_configuration,
-            configure_shell_profile,
-        ) = if let Some(configure_shell_profile) = configure_shell_profile {
-            let (a, b, c, d) = tokio::try_join!(
+        if let Some(configure_shell_profile) = configure_shell_profile {
+            tokio::try_join!(
                 async move { setup_default_profile.execute().await.map_err(|e| ConfigureNixError::from(e)) },
                 async move { place_nix_configuration.execute().await.map_err(|e| ConfigureNixError::from(e)) },
                 async move { place_channel_configuration.execute().await.map_err(|e| ConfigureNixError::from(e)) },
                 async move { configure_shell_profile.execute().await.map_err(|e| ConfigureNixError::from(e)) },
             )?;
-            (a, b, c, Some(d))
         } else {
-            let (a, b, c) = tokio::try_join!(
+            tokio::try_join!(
                 async move { setup_default_profile.execute().await.map_err(|e| ConfigureNixError::from(e)) },
                 async move { place_nix_configuration.execute().await.map_err(|e| ConfigureNixError::from(e)) },
                 async move { place_channel_configuration.execute().await.map_err(|e| ConfigureNixError::from(e)) },
             )?;
-            (a, b, c, None)
         };
-        let configure_nix_daemon_service = configure_nix_daemon_service.execute().await?;
+        configure_nix_daemon_service.execute().await?;
 
         *action_state = ActionState::Completed;
         Ok(())
@@ -119,8 +112,24 @@ impl Actionable for ConfigureNix {
 
     #[tracing::instrument(skip_all)]
     async fn revert(&mut self) -> Result<(), Self::Error> {
-        todo!();
+        let Self {
+            setup_default_profile,
+            configure_nix_daemon_service,
+            place_nix_configuration,
+            place_channel_configuration,
+            configure_shell_profile,
+            action_state,
+        } = self;
 
+        configure_nix_daemon_service.revert().await?;
+        if let Some(configure_shell_profile) = configure_shell_profile {
+            configure_shell_profile.revert().await?;
+        }
+        place_channel_configuration.revert().await?;
+        place_nix_configuration.revert().await?;
+        setup_default_profile.revert().await?;
+
+        *action_state = ActionState::Reverted;
         Ok(())
     }
 }

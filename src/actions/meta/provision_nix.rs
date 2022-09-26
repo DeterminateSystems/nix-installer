@@ -90,8 +90,25 @@ impl Actionable for ProvisionNix {
 
     #[tracing::instrument(skip_all)]
     async fn revert(&mut self) -> Result<(), Self::Error> {
-        todo!();
+        let Self {
+            fetch_nix,
+            create_nix_tree,
+            create_users_and_group,
+            move_unpacked_nix,
+            action_state,
+        } = self;
 
+        // We fetch nix while doing the rest, then move it over.
+        let mut fetch_nix_clone = fetch_nix.clone();
+        let fetch_nix_handle = tokio::task::spawn(async { fetch_nix_clone.revert().await?; Result::<_, Self::Error>::Ok(fetch_nix_clone) });
+
+        create_users_and_group.revert().await?;
+        create_nix_tree.revert().await.map_err(ProvisionNixError::from)?;
+
+        *fetch_nix = fetch_nix_handle.await.map_err(ProvisionNixError::from)??;
+        move_unpacked_nix.revert().await?;
+
+        *action_state = ActionState::Completed;
         Ok(())
     }
 }

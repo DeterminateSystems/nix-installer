@@ -1,4 +1,7 @@
+use std::path::PathBuf;
+
 use serde::{Deserialize, Serialize};
+use tokio::fs::File;
 
 use crate::{
     actions::{
@@ -82,23 +85,51 @@ impl InstallPlan {
             },
         )
     }
-    pub async fn new(settings: InstallSettings) -> Result<Self, ActionError> {
+    pub async fn new(settings: InstallSettings) -> Result<Self, HarmonicError> {
         Ok(Self {
             settings: settings.clone(),
-            provision_nix: ProvisionNix::plan(settings.clone()).await?,
-            configure_nix: ConfigureNix::plan(settings).await?,
-            start_nix_daemon: StartNixDaemon::plan().await?,
+            provision_nix: ProvisionNix::plan(settings.clone()).await
+                .map_err(|e| ActionError::from(e))?,
+            configure_nix: ConfigureNix::plan(settings).await
+                .map_err(|e| ActionError::from(e))?,
+            start_nix_daemon: StartNixDaemon::plan().await
+                .map_err(|e| ActionError::from(e))?,
         })
     }
 
     #[tracing::instrument(skip_all)]
-    pub async fn install(&mut self) -> Result<(), ActionError> {
+    pub async fn install(&mut self) -> Result<(), HarmonicError> {
         // This is **deliberately sequential**.
         // Actions which are parallelizable are represented by "group actions" like CreateUsers
         // The plan itself represents the concept of the sequence of stages.
-        self.provision_nix.execute().await?;
-        self.configure_nix.execute().await?;
-        self.start_nix_daemon.execute().await?;
+        self.provision_nix.execute().await
+            .map_err(|e| ActionError::from(e))?;
+        self.configure_nix.execute().await
+            .map_err(|e| ActionError::from(e))?;
+        self.start_nix_daemon.execute().await
+            .map_err(|e| ActionError::from(e))?;
+
+        let install_receipt_path = PathBuf::from("/nix/receipt.json");
+        let self_json = serde_json::to_string_pretty(&self)
+            .map_err(HarmonicError::SerializingReceipt)?;
+        tokio::fs::write(&install_receipt_path, self_json).await
+            .map_err(|e| HarmonicError::RecordingReceipt(install_receipt_path, e))?;
+
+        Ok(())
+    }
+
+    #[tracing::instrument(skip_all)]
+    pub async fn revert(&mut self) -> Result<(), HarmonicError> {
+        // This is **deliberately sequential**.
+        // Actions which are parallelizable are represented by "group actions" like CreateUsers
+        // The plan itself represents the concept of the sequence of stages.
+        self.start_nix_daemon.revert().await
+            .map_err(|e| ActionError::from(e))?;
+        self.configure_nix.revert().await
+            .map_err(|e| ActionError::from(e))?;
+        self.provision_nix.revert().await
+            .map_err(|e| ActionError::from(e))?;
+
         Ok(())
     }
 }

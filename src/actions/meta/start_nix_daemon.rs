@@ -37,6 +37,7 @@ impl Actionable for StartNixDaemon {
 
         start_systemd_socket.execute().await?;
 
+        *action_state = ActionState::Completed;
         Ok(())
     }
 
@@ -46,7 +47,7 @@ impl Actionable for StartNixDaemon {
 
         start_systemd_socket.revert().await?;
 
-        *action_state = ActionState::Completed;
+        *action_state = ActionState::Reverted;
         Ok(())
     }
 }

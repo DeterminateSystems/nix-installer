@@ -65,8 +65,13 @@ impl Actionable for CreateUser {
 
     #[tracing::instrument(skip_all)]
     async fn revert(&mut self) -> Result<(), Self::Error> {
-        todo!();
+        let Self { name, uid: _, gid: _, action_state } = self;
 
+        execute_command(Command::new("userdel").args([
+            &name.to_string(),
+        ])).await.map_err(Self::Error::Command)?;
+
+        *action_state = ActionState::Completed;
         Ok(())
     }
 }

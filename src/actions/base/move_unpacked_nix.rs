@@ -61,8 +61,11 @@ impl Actionable for MoveUnpackedNix {
 
     #[tracing::instrument(skip_all)]
     async fn revert(&mut self) -> Result<(), Self::Error> {
-        todo!();
+        let Self { source: _, action_state } = self;
 
+        tracing::trace!("Nothing to do for `MoveUnpackedNix` revert");
+
+        *action_state = ActionState::Reverted;
         Ok(())
     }
 }

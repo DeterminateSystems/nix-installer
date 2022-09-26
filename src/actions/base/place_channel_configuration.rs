@@ -39,9 +39,9 @@ impl Actionable for PlaceChannelConfiguration {
     type Error = PlaceChannelConfigurationError;
     fn description(&self) -> Vec<ActionDescription> {
         let Self {
-            channels,
-             create_file,
-             action_state: _,
+            channels: _,
+            create_file: _,
+            action_state: _,
         } = self;
         vec![ActionDescription::new(
             "Place a channel configuration".to_string(),
@@ -53,7 +53,7 @@ impl Actionable for PlaceChannelConfiguration {
     async fn execute(&mut self) -> Result<(), Self::Error> {
         let Self {
             create_file,
-            channels,
+            channels: _,
             action_state,
         } = self;
         
@@ -66,8 +66,15 @@ impl Actionable for PlaceChannelConfiguration {
 
     #[tracing::instrument(skip_all)]
     async fn revert(&mut self) -> Result<(), Self::Error> {
-        todo!();
-
+        let Self {
+            create_file,
+            channels: _,
+            action_state,
+        } = self;
+        
+        create_file.revert().await?;
+        
+        *action_state = ActionState::Reverted;
         Ok(())
     }
 }

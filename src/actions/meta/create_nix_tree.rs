@@ -72,8 +72,14 @@ impl Actionable for CreateNixTree {
 
     #[tracing::instrument(skip_all)]
     async fn revert(&mut self) -> Result<(), Self::Error> {
-        todo!();
+        let Self { create_directories, action_state } = self;
 
+        // Just do sequential since parallizing this will have little benefit
+        for create_directory in create_directories.iter_mut().rev() {
+            create_directory.revert().await?
+        }
+
+        *action_state = ActionState::Reverted;
         Ok(())
     }
 }

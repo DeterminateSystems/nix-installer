@@ -79,6 +79,7 @@ impl CommandExecute for HarmonicCli {
         match subcommand {
             Some(HarmonicSubcommand::Plan(plan)) => plan.execute().await,
             Some(HarmonicSubcommand::Execute(execute)) => execute.execute().await,
+            Some(HarmonicSubcommand::Revert(revert)) => revert.execute().await,
             None => {
                 let mut settings = InstallSettings::default();
 

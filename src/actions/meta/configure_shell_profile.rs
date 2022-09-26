@@ -105,8 +105,37 @@ impl Actionable for ConfigureShellProfile {
 
     #[tracing::instrument(skip_all)]
     async fn revert(&mut self) -> Result<(), Self::Error> {
-        todo!();
+        let Self {
+            create_or_append_files,
+            action_state,
+        } = self;
+        tracing::info!("Configuring shell profile");
 
+        let mut set = JoinSet::new();
+        let mut errors = Vec::default();
+
+        for (idx, create_or_append_file) in create_or_append_files.iter().enumerate() {
+            let mut create_or_append_file_clone = create_or_append_file.clone();
+            let _abort_handle = set.spawn(async move { create_or_append_file_clone.revert().await?; Result::<_, CreateOrAppendFileError>::Ok((idx, create_or_append_file_clone)) });
+        }
+
+        while let Some(result) = set.join_next().await {
+            match result {
+                Ok(Ok((idx, create_or_append_file))) => create_or_append_files[idx] = create_or_append_file,
+                Ok(Err(e)) => errors.push(e),
+                Err(e) => return Err(e.into()),
+            };
+        }
+
+        if !errors.is_empty() {
+            if errors.len() == 1 {
+                return Err(errors.into_iter().next().unwrap().into());
+            } else {
+                return Err(ConfigureShellProfileError::MultipleCreateOrAppendFile(errors));
+            }
+        }
+
+        *action_state = ActionState::Reverted;
         Ok(())
     }
 }

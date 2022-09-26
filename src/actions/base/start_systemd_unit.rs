@@ -70,8 +70,17 @@ impl Actionable for StartSystemdUnit {
 
     #[tracing::instrument(skip_all)]
     async fn revert(&mut self) -> Result<(), Self::Error> {
-        todo!();
+        let Self { unit, action_state } = self;
 
+        // TODO(@Hoverbear): Handle proxy vars
+        execute_command(
+            Command::new("systemctl")
+                .arg("stop")
+                .arg(format!("{unit}")),
+        )
+        .await.map_err(StartSystemdUnitError::Command)?;
+
+        *action_state = ActionState::Reverted;
         Ok(())
     }
 }

@@ -1,8 +1,9 @@
-use std::process::ExitCode;
+use std::{process::ExitCode, path::PathBuf};
 
 use clap::{ArgAction, Parser};
 use harmonic::{InstallPlan, InstallSettings};
 use tokio::io::AsyncWriteExt;
+use eyre::WrapErr;
 
 use crate::cli::{arg::ChannelValue, CommandExecute};
 
@@ -43,6 +44,8 @@ pub(crate) struct Plan {
         global = true
     )]
     pub(crate) force: bool,
+    #[clap(default_value = "/dev/stdout")]
+    plan: PathBuf,
 }
 
 #[async_trait::async_trait]
@@ -59,6 +62,7 @@ impl CommandExecute for Plan {
             daemon_user_count,
             explain,
             force,
+            plan,
         } = self;
 
         let mut settings = InstallSettings::default();
@@ -73,11 +77,11 @@ impl CommandExecute for Plan {
         );
         settings.modify_profile(!no_modify_profile);
 
-        let plan = InstallPlan::new(settings).await?;
+        let install_plan = InstallPlan::new(settings).await?;
 
-        let json = serde_json::to_string_pretty(&plan)?;
-        let mut stdout = tokio::io::stdout();
-        stdout.write_all(json.as_bytes()).await?;
+        let json = serde_json::to_string_pretty(&install_plan)?;
+        tokio::fs::write(plan, json).await.wrap_err("Writing plan")?;
+
         Ok(ExitCode::SUCCESS)
     }
 }

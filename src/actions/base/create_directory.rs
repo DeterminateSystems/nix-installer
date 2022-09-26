@@ -1,12 +1,14 @@
+
+use std::os::unix::prelude::PermissionsExt;
 use std::path::{Path, PathBuf};
 
 use nix::unistd::{chown, Group, User};
 use serde::Serialize;
-use tokio::fs::create_dir;
+use tokio::fs::{create_dir, remove_dir_all};
 
-use crate::HarmonicError;
 
-use crate::actions::{ActionDescription, Actionable, ActionState, Action, ActionError};
+
+use crate::actions::{ActionDescription, Actionable, ActionState, Action};
 
 #[derive(Debug, serde::Deserialize, serde::Serialize, Clone)]
 pub struct CreateDirectory {
@@ -57,7 +59,7 @@ impl Actionable for CreateDirectory {
             user,
             group,
             mode,
-            action_state,
+            action_state: _,
         } = &self;
         vec![ActionDescription::new(
             format!("Create the directory `{}`", path.display()),
@@ -93,6 +95,12 @@ impl Actionable for CreateDirectory {
             .map_err(|e| Self::Error::Creating(path.clone(), e))?;
         chown(path, Some(uid), Some(gid)).map_err(|e| Self::Error::Chown(path.clone(), e))?;
 
+        tracing::trace!(path = %path.display(), "Changing permissions on directory");    
+        tokio::fs::set_permissions(&path, PermissionsExt::from_mode(*mode))
+            .await
+            .map_err(|e| Self::Error::SetPermissions(*mode, path.to_owned(), e))?;
+
+
         *action_state = ActionState::Completed;
         Ok(())
     }
@@ -100,8 +108,20 @@ impl Actionable for CreateDirectory {
 
     #[tracing::instrument(skip_all)]
     async fn revert(&mut self) -> Result<(), Self::Error> {
-        todo!();
+        let Self {
+            path,
+            user: _,
+            group: _,
+            mode: _,
+            action_state,
+        } = self;
 
+        tracing::trace!(path = %path.display(), "Removing directory");
+        remove_dir_all(path.clone())
+            .await
+            .map_err(|e| Self::Error::Removing(path.clone(), e))?;
+
+        *action_state = ActionState::Reverted;
         Ok(())
     }
 }
@@ -120,6 +140,10 @@ pub enum CreateDirectoryError {
     Exists(std::path::PathBuf, #[source] #[serde(serialize_with = "crate::serialize_error_to_display")] std::io::Error),
     #[error("Creating directory `{0}`")]
     Creating(std::path::PathBuf, #[source] #[serde(serialize_with = "crate::serialize_error_to_display")] std::io::Error),
+    #[error("Removing directory `{0}`")]
+    Removing(std::path::PathBuf, #[source] #[serde(serialize_with = "crate::serialize_error_to_display")] std::io::Error),
+    #[error("Set mode `{0}` on `{1}`")]
+    SetPermissions(u32, std::path::PathBuf, #[source] #[serde(serialize_with = "crate::serialize_error_to_display")] std::io::Error),
     #[error("Chowning directory `{0}`")]
     Chown(std::path::PathBuf, #[source] #[serde(serialize_with = "crate::serialize_error_to_display")] nix::errno::Errno),
     #[error("Getting uid for user `{0}`")]

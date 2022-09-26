@@ -66,8 +66,12 @@ impl Actionable for PlaceNixConfiguration {
 
     #[tracing::instrument(skip_all)]
     async fn revert(&mut self) -> Result<(), Self::Error> {
-        todo!();
+        let Self { create_file, create_directory, action_state } = self;
 
+        create_file.revert().await?;
+        create_directory.revert().await?;
+
+        *action_state = ActionState::Reverted;
         Ok(())
     }
 }
