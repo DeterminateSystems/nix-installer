@@ -1,4 +1,4 @@
-use crate::{execute_command, actions::{ActionState, Action, ActionError}};
+use crate::{execute_command, actions::{ActionState, Action, ActionError}, set_env};
 
 use glob::glob;
 use serde::Serialize;
@@ -83,8 +83,14 @@ impl Actionable for SetupDefaultProfile {
         execute_command(
             Command::new(nix_pkg.join("bin/nix-env"))
                 .arg("-i")
+                .arg(&nss_ca_cert_pkg),
         )
         .await.map_err(SetupDefaultProfileError::Command)?;
+
+        set_env(
+            "NIX_SSL_CERT_FILE",
+            "/nix/var/nix/profiles/default/etc/ssl/certs/ca-bundle.crt",
+        );
 
         if !channels.is_empty() {
             let mut command = Command::new(nix_pkg.join("bin/nix-channel"));

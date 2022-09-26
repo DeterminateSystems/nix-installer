@@ -271,13 +271,9 @@ async fn fetch_url_and_unpack_xz(
     k = %k.as_ref().to_string_lossy(),
     v = %v.as_ref().to_string_lossy(),
 ))]
-fn set_env(k: impl AsRef<OsStr>, v: impl AsRef<OsStr>, dry_run: bool) {
-    if !dry_run {
-        tracing::trace!("Setting env");
-        std::env::set_var(k.as_ref(), v.as_ref());
-    } else {
-        tracing::info!("Dry run: Would set env");
-    }
+fn set_env(k: impl AsRef<OsStr>, v: impl AsRef<OsStr>) {
+    tracing::trace!("Setting env");
+    std::env::set_var(k.as_ref(), v.as_ref());
 }
 
 fn serialize_error_to_display<E, S>(err: &E, ser: S) -> Result<S::Ok, S::Error> where E: Display, S: Serializer {

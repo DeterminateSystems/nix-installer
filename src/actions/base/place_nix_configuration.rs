@@ -27,6 +27,10 @@ impl PlaceNixConfiguration {
             "\
             {extra_conf}\n\
             build-users-group = {nix_build_group_name}\n\
+            \n\
+            experimental-features = nix-command flakes\n\
+            \n\
+            auto-optimise-store = true\n\
         ",
             extra_conf = extra_conf.unwrap_or_else(|| "".into()),
         );

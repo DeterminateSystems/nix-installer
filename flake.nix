@@ -113,7 +113,7 @@
 
               override = { preBuild ? "", ... }: {
                 preBuild = preBuild + ''
-                  logRun "cargo clippy --all-targets --all-features -- -D warnings"
+                  # logRun "cargo clippy --all-targets --all-features -- -D warnings"
                 '';
               };
             };

@@ -76,7 +76,7 @@ impl Actionable for ProvisionNix {
 
         // We fetch nix while doing the rest, then move it over.
         let mut fetch_nix_clone = fetch_nix.clone();
-        let fetch_nix_handle = tokio::task::spawn_local(async { fetch_nix_clone.execute().await?; Result::<_, Self::Error>::Ok(fetch_nix_clone) });
+        let fetch_nix_handle = tokio::task::spawn(async { fetch_nix_clone.execute().await?; Result::<_, Self::Error>::Ok(fetch_nix_clone) });
 
         create_users_and_group.execute().await?;
         create_nix_tree.execute().await.map_err(ProvisionNixError::from)?;
