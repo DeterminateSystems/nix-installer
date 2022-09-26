@@ -1,8 +1,6 @@
 pub mod base;
 pub mod meta;
 
-use std::error::Error;
-
 use base::{
     ConfigureNixDaemonService, ConfigureNixDaemonServiceError, CreateDirectory,
     CreateDirectoryError, CreateFile, CreateFileError, CreateGroup, CreateGroupError,
