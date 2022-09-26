@@ -44,7 +44,7 @@ impl CreateUsersAndGroup {
             nix_build_user_id_base: settings.nix_build_user_id_base,
             create_group,
             create_users,
-            action_state: ActionState::Planned,
+            action_state: ActionState::Uncompleted,
         })
     }
 }
@@ -88,6 +88,11 @@ impl Actionable for CreateUsersAndGroup {
             nix_build_user_id_base: _,
             action_state,
         } = self;
+        if *action_state == ActionState::Completed {
+            tracing::trace!("Already completed: Creating users and groups");
+            return Ok(());
+        }
+        tracing::debug!("Creating users and groups");
 
         // Create group
         create_group.execute().await?;
@@ -122,6 +127,7 @@ impl Actionable for CreateUsersAndGroup {
             }
         }
 
+        tracing::trace!("Created users and groups");
         *action_state = ActionState::Completed;
         Ok(())
     }
@@ -138,9 +144,12 @@ impl Actionable for CreateUsersAndGroup {
             nix_build_user_id_base: _,
             action_state,
         } = self;
+        if *action_state == ActionState::Uncompleted {
+            tracing::trace!("Already reverted: Delete users and groups");
+            return Ok(());
+        }
+        tracing::debug!("Delete users and groups");
 
-        // Create users
-        // TODO(@hoverbear): Abstract this, it will be common
         let mut set = JoinSet::new();
 
         let mut errors = Vec::default();
@@ -172,7 +181,8 @@ impl Actionable for CreateUsersAndGroup {
         // Create group
         create_group.revert().await?;
 
-        *action_state = ActionState::Reverted;
+        tracing::trace!("Deleted users and groups");
+        *action_state = ActionState::Uncompleted;
         Ok(())
     }
 }

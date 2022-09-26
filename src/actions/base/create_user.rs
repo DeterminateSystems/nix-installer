@@ -20,7 +20,7 @@ impl CreateUser {
             name,
             uid,
             gid,
-            action_state: ActionState::Planned,
+            action_state: ActionState::Uncompleted,
         }
     }
 }
@@ -47,6 +47,11 @@ impl Actionable for CreateUser {
             gid,
             action_state,
         } = self;
+        if *action_state == ActionState::Completed {
+            tracing::trace!("Already completed: Creating user");
+            return Ok(());
+        }
+        tracing::debug!("Creating user");
 
         execute_command(Command::new("useradd").args([
             "--home-dir",
@@ -70,6 +75,7 @@ impl Actionable for CreateUser {
         .await
         .map_err(Self::Error::Command)?;
 
+        tracing::trace!("Created user");
         *action_state = ActionState::Completed;
         Ok(())
     }
@@ -82,12 +88,18 @@ impl Actionable for CreateUser {
             gid: _,
             action_state,
         } = self;
+        if *action_state == ActionState::Uncompleted {
+            tracing::trace!("Already completed: Deleting user");
+            return Ok(());
+        }
+        tracing::debug!("Deleting user");
 
         execute_command(Command::new("userdel").args([&name.to_string()]))
             .await
             .map_err(Self::Error::Command)?;
 
-        *action_state = ActionState::Completed;
+        tracing::trace!("Deleted user");
+        *action_state = ActionState::Uncompleted;
         Ok(())
     }
 }

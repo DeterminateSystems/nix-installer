@@ -3,7 +3,7 @@ use serde::Serialize;
 
 use crate::actions::{Action, ActionDescription, ActionState, Actionable};
 
-use super::{CreateFile, CreateFileError};
+use crate::actions::base::{CreateFile, CreateFileError};
 
 const NIX_CHANNELS_PATH: &str = "/root/.nix-channels";
 
@@ -37,7 +37,7 @@ impl PlaceChannelConfiguration {
         Ok(Self {
             create_file,
             channels,
-            action_state: ActionState::Planned,
+            action_state: ActionState::Uncompleted,
         })
     }
 }
@@ -64,9 +64,15 @@ impl Actionable for PlaceChannelConfiguration {
             channels: _,
             action_state,
         } = self;
+        if *action_state == ActionState::Completed {
+            tracing::trace!("Already completed: Placing channel configuration");
+            return Ok(());
+        }
+        tracing::debug!("Placing channel configuration");
 
         create_file.execute().await?;
 
+        tracing::trace!("Placed channel configuration");
         *action_state = ActionState::Completed;
         Ok(())
     }
@@ -78,10 +84,16 @@ impl Actionable for PlaceChannelConfiguration {
             channels: _,
             action_state,
         } = self;
-
+        if *action_state == ActionState::Uncompleted {
+            tracing::trace!("Already reverted: Removing channel configuration");
+            return Ok(());
+        }
+        tracing::debug!("Removing channel configuration");
+        
         create_file.revert().await?;
 
-        *action_state = ActionState::Reverted;
+        tracing::debug!("Removed channel configuration");
+        *action_state = ActionState::Uncompleted;
         Ok(())
     }
 }

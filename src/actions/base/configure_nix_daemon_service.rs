@@ -25,7 +25,7 @@ impl ConfigureNixDaemonService {
             return Err(ConfigureNixDaemonServiceError::InitNotSupported);
         }
         Ok(Self {
-            action_state: ActionState::Planned,
+            action_state: ActionState::Uncompleted,
         })
     }
 }
@@ -48,7 +48,11 @@ impl Actionable for ConfigureNixDaemonService {
     #[tracing::instrument(skip_all)]
     async fn execute(&mut self) -> Result<(), Self::Error> {
         let Self { action_state } = self;
-        tracing::info!("Configuring nix daemon service");
+        if *action_state == ActionState::Completed {
+            tracing::trace!("Already completed: Configuring nix daemon service");
+            return Ok(());
+        }
+        tracing::debug!("Configuring nix daemon service");
 
         tracing::trace!(src = TMPFILES_SRC, dest = TMPFILES_DEST, "Symlinking");
         tokio::fs::symlink(TMPFILES_SRC, TMPFILES_DEST)
@@ -77,6 +81,7 @@ impl Actionable for ConfigureNixDaemonService {
             .await
             .map_err(Self::Error::CommandFailed)?;
 
+        tracing::trace!("Configured nix daemon service");
         *action_state = ActionState::Completed;
         Ok(())
     }
@@ -84,7 +89,11 @@ impl Actionable for ConfigureNixDaemonService {
     #[tracing::instrument(skip_all)]
     async fn revert(&mut self) -> Result<(), Self::Error> {
         let Self { action_state } = self;
-        tracing::info!("Unconfiguring nix daemon service");
+        if *action_state == ActionState::Uncompleted {
+            tracing::trace!("Already reverted: Unconfiguring nix daemon service");
+            return Ok(());
+        }
+        tracing::debug!("Unconfiguring nix daemon service");
 
         // We don't need to do this! Systemd does it for us! (In fact, it's an error if we try to do this...)
         execute_command(Command::new("systemctl").args(["disable", SOCKET_SRC]))
@@ -111,7 +120,8 @@ impl Actionable for ConfigureNixDaemonService {
             .await
             .map_err(Self::Error::CommandFailed)?;
 
-        *action_state = ActionState::Reverted;
+        tracing::trace!("Unconfigured nix daemon service");
+        *action_state = ActionState::Uncompleted;
         Ok(())
     }
 }

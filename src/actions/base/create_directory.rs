@@ -42,7 +42,7 @@ impl CreateDirectory {
             user,
             group,
             mode,
-            action_state: ActionState::Planned,
+            action_state: ActionState::Uncompleted,
         })
     }
 }
@@ -67,7 +67,12 @@ impl Actionable for CreateDirectory {
         )]
     }
 
-    #[tracing::instrument(skip_all)]
+    #[tracing::instrument(skip_all, fields(
+        path = %self.path.display(),
+        user = self.user,
+        group = self.group,
+        mode = format!("{:#o}", self.mode),
+    ))]
     async fn execute(&mut self) -> Result<(), Self::Error> {
         let Self {
             path,
@@ -76,6 +81,11 @@ impl Actionable for CreateDirectory {
             mode,
             action_state,
         } = self;
+        if *action_state == ActionState::Completed {
+            tracing::trace!("Already completed: Creating directory");
+            return Ok(());
+        }
+        tracing::debug!("Creating directory");
 
         let gid = Group::from_name(group.as_str())
             .map_err(|e| Self::Error::GroupId(group.clone(), e))?
@@ -86,22 +96,26 @@ impl Actionable for CreateDirectory {
             .ok_or(Self::Error::NoUser(user.clone()))?
             .uid;
 
-        tracing::trace!(path = %path.display(), "Creating directory");
         create_dir(path.clone())
             .await
             .map_err(|e| Self::Error::Creating(path.clone(), e))?;
         chown(path, Some(uid), Some(gid)).map_err(|e| Self::Error::Chown(path.clone(), e))?;
 
-        tracing::trace!(path = %path.display(), "Changing permissions on directory");
         tokio::fs::set_permissions(&path, PermissionsExt::from_mode(*mode))
             .await
             .map_err(|e| Self::Error::SetPermissions(*mode, path.to_owned(), e))?;
 
+        tracing::trace!("Created directory");
         *action_state = ActionState::Completed;
         Ok(())
     }
 
-    #[tracing::instrument(skip_all)]
+    #[tracing::instrument(skip_all, fields(
+        path = %self.path.display(),
+        user = self.user,
+        group = self.group,
+        mode = format!("{:#o}", self.mode),
+    ))]
     async fn revert(&mut self) -> Result<(), Self::Error> {
         let Self {
             path,
@@ -110,13 +124,19 @@ impl Actionable for CreateDirectory {
             mode: _,
             action_state,
         } = self;
+        if *action_state == ActionState::Uncompleted {
+            tracing::trace!("Already reverted: Removing directory");
+            return Ok(());
+        }
+        tracing::debug!("Removing directory");
 
         tracing::trace!(path = %path.display(), "Removing directory");
         remove_dir_all(path.clone())
             .await
             .map_err(|e| Self::Error::Removing(path.clone(), e))?;
 
-        *action_state = ActionState::Reverted;
+        tracing::trace!("Removed directory");
+        *action_state = ActionState::Uncompleted;
         Ok(())
     }
 }

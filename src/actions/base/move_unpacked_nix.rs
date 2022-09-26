@@ -16,7 +16,7 @@ impl MoveUnpackedNix {
         // Note: Do NOT try to check for the source/dest since the installer creates those
         Ok(Self {
             source,
-            action_state: ActionState::Planned,
+            action_state: ActionState::Uncompleted,
         })
     }
 }
@@ -44,6 +44,11 @@ impl Actionable for MoveUnpackedNix {
             source,
             action_state,
         } = self;
+        if *action_state == ActionState::Completed {
+            tracing::trace!("Already completed: Moving Nix");
+            return Ok(());
+        }
+        tracing::debug!("Moving Nix");
 
         // TODO(@Hoverbear): I would like to make this less awful
         let found_nix_paths =
@@ -61,6 +66,7 @@ impl Actionable for MoveUnpackedNix {
             .await
             .map_err(|e| MoveUnpackedNixError::Rename(src, dest.to_owned(), e))?;
 
+        tracing::trace!("Moved Nix");
         *action_state = ActionState::Completed;
         Ok(())
     }
@@ -71,10 +77,12 @@ impl Actionable for MoveUnpackedNix {
             source: _,
             action_state,
         } = self;
-
-        tracing::trace!("Nothing to do for `MoveUnpackedNix` revert");
-
-        *action_state = ActionState::Reverted;
+        if *action_state == ActionState::Uncompleted {
+            tracing::trace!("Already reverted: Unmove Nix (noop)");
+            return Ok(());
+        }
+        tracing::debug!("Unmove Nix (noop)");
+        *action_state = ActionState::Uncompleted;
         Ok(())
     }
 }

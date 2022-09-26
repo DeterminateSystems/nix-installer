@@ -23,7 +23,7 @@ impl FetchNix {
         Ok(Self {
             url,
             destination,
-            action_state: ActionState::Planned,
+            action_state: ActionState::Uncompleted,
         })
     }
 }
@@ -53,8 +53,12 @@ impl Actionable for FetchNix {
             destination,
             action_state,
         } = self;
+        if *action_state == ActionState::Completed {
+            tracing::trace!("Already completed: Fetching Nix");
+            return Ok(());
+        }
+        tracing::debug!("Fetching Nix");
 
-        tracing::trace!(%url, "Fetching url");
         let res = reqwest::get(url.clone())
             .await
             .map_err(Self::Error::Reqwest)?;
@@ -73,6 +77,7 @@ impl Actionable for FetchNix {
 
         handle?;
 
+        tracing::trace!("Fetched Nix");
         *action_state = ActionState::Completed;
         Ok(())
     }
@@ -85,9 +90,12 @@ impl Actionable for FetchNix {
             action_state,
         } = self;
 
-        tracing::trace!("Nothing to do for `FetchNix` revert");
-
-        *action_state = ActionState::Reverted;
+        if *action_state == ActionState::Uncompleted {
+            tracing::trace!("Already reverted: Unfetch Nix (noop)");
+            return Ok(());
+        }
+        tracing::debug!("Unfetch Nix (noop)");
+        *action_state = ActionState::Uncompleted;
         Ok(())
     }
 }

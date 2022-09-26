@@ -16,7 +16,7 @@ impl StartSystemdUnit {
     pub async fn plan(unit: String) -> Result<Self, StartSystemdUnitError> {
         Ok(Self {
             unit,
-            action_state: ActionState::Planned,
+            action_state: ActionState::Uncompleted,
         })
     }
 }
@@ -26,7 +26,7 @@ impl Actionable for StartSystemdUnit {
     type Error = StartSystemdUnitError;
     fn description(&self) -> Vec<ActionDescription> {
         match self.action_state {
-            ActionState::Planned => vec![
+            ActionState::Uncompleted => vec![
                 ActionDescription::new(
                     "Start the systemd Nix service and socket".to_string(),
                     vec![
@@ -37,14 +37,6 @@ impl Actionable for StartSystemdUnit {
             ActionState::Completed => vec![
                 ActionDescription::new(
                     "Stop the systemd Nix service and socket".to_string(),
-                    vec![
-                        "The `nix` command line tool communicates with a running Nix daemon managed by your init system".to_string()
-                    ]
-                ),
-            ],
-            ActionState::Reverted => vec![
-                ActionDescription::new(
-                    "Stopped the systemd Nix service and socket".to_string(),
                     vec![
                         "The `nix` command line tool communicates with a running Nix daemon managed by your init system".to_string()
                     ]
@@ -80,7 +72,7 @@ impl Actionable for StartSystemdUnit {
             .await
             .map_err(StartSystemdUnitError::Command)?;
 
-        *action_state = ActionState::Reverted;
+        *action_state = ActionState::Completed;
         Ok(())
     }
 }

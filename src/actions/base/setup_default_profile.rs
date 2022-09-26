@@ -20,7 +20,7 @@ impl SetupDefaultProfile {
     pub async fn plan(channels: Vec<String>) -> Result<Self, SetupDefaultProfileError> {
         Ok(Self {
             channels,
-            action_state: ActionState::Planned,
+            action_state: ActionState::Uncompleted,
         })
     }
 }
@@ -132,7 +132,7 @@ impl Actionable for SetupDefaultProfile {
 
         std::env::remove_var("NIX_SSL_CERT_FILE");
 
-        *action_state = ActionState::Reverted;
+        *action_state = ActionState::Completed;
         Ok(())
     }
 }

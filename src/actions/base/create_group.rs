@@ -18,7 +18,7 @@ impl CreateGroup {
         Self {
             name,
             gid,
-            action_state: ActionState::Planned,
+            action_state: ActionState::Uncompleted,
         }
     }
 }
@@ -40,35 +40,53 @@ impl Actionable for CreateGroup {
         )]
     }
 
-    #[tracing::instrument(skip_all)]
+    #[tracing::instrument(skip_all, fields(
+        user = self.name,
+        gid = self.gid,
+    ))]
     async fn execute(&mut self) -> Result<(), Self::Error> {
         let Self {
             name,
             gid,
             action_state,
         } = self;
+        if *action_state == ActionState::Completed {
+            tracing::trace!("Already completed: Creating group");
+            return Ok(());
+        }
+        tracing::debug!("Creating group");
 
         execute_command(Command::new("groupadd").args(["-g", &gid.to_string(), "--system", &name]))
             .await
             .map_err(CreateGroupError::Command)?;
 
+        tracing::trace!("Created group");
         *action_state = ActionState::Completed;
         Ok(())
     }
 
-    #[tracing::instrument(skip_all)]
+    #[tracing::instrument(skip_all, fields(
+        user = self.name,
+        gid = self.gid,
+    ))]
     async fn revert(&mut self) -> Result<(), Self::Error> {
         let Self {
             name,
             gid: _,
             action_state,
         } = self;
+        if *action_state == ActionState::Uncompleted {
+            tracing::trace!("Already reverted: Deleting group");
+            return Ok(());
+        }
+        tracing::debug!("Deleting group");
 
         execute_command(Command::new("groupdel").arg(&name))
             .await
             .map_err(CreateGroupError::Command)?;
 
-        *action_state = ActionState::Reverted;
+        tracing::trace!("Deleted group");
+        *action_state = ActionState::Uncompleted;
         Ok(())
     }
 }

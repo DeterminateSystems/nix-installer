@@ -44,7 +44,7 @@ impl CreateFile {
             mode,
             buf,
             force,
-            action_state: ActionState::Planned,
+            action_state: ActionState::Uncompleted,
         })
     }
 }
@@ -70,7 +70,12 @@ impl Actionable for CreateFile {
         )]
     }
 
-    #[tracing::instrument(skip_all)]
+    #[tracing::instrument(skip_all, fields(
+        path = %self.path.display(),
+        user = self.user,
+        group = self.group,
+        mode = format!("{:#o}", self.mode),
+    ))]
     async fn execute(&mut self) -> Result<(), Self::Error> {
         let Self {
             path,
@@ -81,7 +86,12 @@ impl Actionable for CreateFile {
             force: _,
             action_state,
         } = self;
-        tracing::trace!(path = %path.display(), "Creating file");
+        if *action_state == ActionState::Completed {
+            tracing::trace!("Already completed: Creating file");
+            return Ok(());
+        }
+        tracing::debug!("Creating file");
+
         let mut file = OpenOptions::new()
             .create_new(true)
             .mode(*mode)
@@ -104,14 +114,19 @@ impl Actionable for CreateFile {
             .ok_or(Self::Error::NoUser(user.clone()))?
             .uid;
 
-        tracing::trace!(path = %path.display(), "Chowning file");
         chown(path, Some(uid), Some(gid)).map_err(|e| Self::Error::Chown(path.clone(), e))?;
 
+        tracing::trace!("Created file");
         *action_state = ActionState::Completed;
         Ok(())
     }
 
-    #[tracing::instrument(skip_all)]
+    #[tracing::instrument(skip_all, fields(
+        path = %self.path.display(),
+        user = self.user,
+        group = self.group,
+        mode = format!("{:#o}", self.mode),
+    ))]
     async fn revert(&mut self) -> Result<(), Self::Error> {
         let Self {
             path,
@@ -122,14 +137,18 @@ impl Actionable for CreateFile {
             force: _,
             action_state,
         } = self;
-
-        tracing::trace!(path = %path.display(), "Deleting file");
+        if *action_state == ActionState::Uncompleted {
+            tracing::trace!("Already reverted: Deleting file");
+            return Ok(());
+        }
+        tracing::debug!("Deleting file");
 
         remove_file(&path)
             .await
             .map_err(|e| Self::Error::RemoveFile(path.to_owned(), e))?;
 
-        *action_state = ActionState::Reverted;
+        tracing::trace!("Deleted file");
+        *action_state = ActionState::Uncompleted;
         Ok(())
     }
 }

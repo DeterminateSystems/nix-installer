@@ -49,7 +49,7 @@ impl ConfigureShellProfile {
 
         Ok(Self {
             create_or_append_files,
-            action_state: ActionState::Planned,
+            action_state: ActionState::Uncompleted,
         })
     }
 }
@@ -70,7 +70,11 @@ impl Actionable for ConfigureShellProfile {
             create_or_append_files,
             action_state,
         } = self;
-        tracing::info!("Configuring shell profile");
+        if *action_state == ActionState::Completed {
+            tracing::trace!("Already completed: Configuring shell profile");
+            return Ok(());
+        }
+        tracing::debug!("Configuring shell profile");
 
         let mut set = JoinSet::new();
         let mut errors = Vec::default();
@@ -103,6 +107,7 @@ impl Actionable for ConfigureShellProfile {
             }
         }
 
+        tracing::trace!("Configured shell profile");
         *action_state = ActionState::Completed;
         Ok(())
     }
@@ -113,7 +118,11 @@ impl Actionable for ConfigureShellProfile {
             create_or_append_files,
             action_state,
         } = self;
-        tracing::info!("Configuring shell profile");
+        if *action_state == ActionState::Uncompleted {
+            tracing::trace!("Already reverted: Unconfiguring shell profile");
+            return Ok(());
+        }
+        tracing::debug!("Unconfiguring shell profile");
 
         let mut set = JoinSet::new();
         let mut errors = Vec::default();
@@ -146,7 +155,8 @@ impl Actionable for ConfigureShellProfile {
             }
         }
 
-        *action_state = ActionState::Reverted;
+        tracing::trace!("Unconfigured shell profile");
+        *action_state = ActionState::Uncompleted;
         Ok(())
     }
 }

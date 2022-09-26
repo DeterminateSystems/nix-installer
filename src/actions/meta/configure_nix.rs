@@ -2,11 +2,14 @@ use serde::Serialize;
 
 use crate::actions::{
     base::{
-        ConfigureNixDaemonService, ConfigureNixDaemonServiceError, PlaceChannelConfiguration,
-        PlaceChannelConfigurationError, PlaceNixConfiguration, PlaceNixConfigurationError,
+        ConfigureNixDaemonService, ConfigureNixDaemonServiceError,
         SetupDefaultProfile, SetupDefaultProfileError,
     },
-    meta::{ConfigureShellProfile, ConfigureShellProfileError},
+    meta::{
+        ConfigureShellProfile, ConfigureShellProfileError,
+        PlaceChannelConfiguration, PlaceChannelConfigurationError,
+        PlaceNixConfiguration, PlaceNixConfigurationError,
+    },
     Action, ActionState,
 };
 use crate::InstallSettings;
@@ -55,7 +58,7 @@ impl ConfigureNix {
             setup_default_profile,
             configure_nix_daemon_service,
             configure_shell_profile,
-            action_state: ActionState::Planned,
+            action_state: ActionState::Uncompleted,
         })
     }
 }
@@ -94,6 +97,11 @@ impl Actionable for ConfigureNix {
             configure_shell_profile,
             action_state,
         } = self;
+        if *action_state == ActionState::Completed {
+            tracing::trace!("Already completed: Configuring nix");
+            return Ok(());
+        }
+        tracing::debug!("Configuring nix");
 
         if let Some(configure_shell_profile) = configure_shell_profile {
             tokio::try_join!(
@@ -146,6 +154,7 @@ impl Actionable for ConfigureNix {
         };
         configure_nix_daemon_service.execute().await?;
 
+        tracing::trace!("Configured nix");
         *action_state = ActionState::Completed;
         Ok(())
     }
@@ -160,6 +169,11 @@ impl Actionable for ConfigureNix {
             configure_shell_profile,
             action_state,
         } = self;
+        if *action_state == ActionState::Uncompleted {
+            tracing::trace!("Already reverted: Unconfiguring nix");
+            return Ok(());
+        }
+        tracing::debug!("Unconfiguring nix");
 
         configure_nix_daemon_service.revert().await?;
         if let Some(configure_shell_profile) = configure_shell_profile {
@@ -169,7 +183,8 @@ impl Actionable for ConfigureNix {
         place_nix_configuration.revert().await?;
         setup_default_profile.revert().await?;
 
-        *action_state = ActionState::Reverted;
+        tracing::trace!("Unconfigured nix");
+        *action_state = ActionState::Uncompleted;
         Ok(())
     }
 }

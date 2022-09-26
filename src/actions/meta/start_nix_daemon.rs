@@ -17,7 +17,7 @@ impl StartNixDaemon {
         let start_systemd_socket = StartSystemdUnit::plan("nix-daemon.socket".into()).await?;
         Ok(Self {
             start_systemd_socket,
-            action_state: ActionState::Planned,
+            action_state: ActionState::Uncompleted,
         })
     }
 }
@@ -36,9 +36,15 @@ impl Actionable for StartNixDaemon {
             start_systemd_socket,
             action_state,
         } = self;
+        if *action_state == ActionState::Completed {
+            tracing::trace!("Already completed: Starting the nix daemon");
+            return Ok(());
+        }
+        tracing::debug!("Starting the nix daemon");
 
         start_systemd_socket.execute().await?;
 
+        tracing::trace!("Started the nix daemon");
         *action_state = ActionState::Completed;
         Ok(())
     }
@@ -50,10 +56,16 @@ impl Actionable for StartNixDaemon {
             action_state,
             ..
         } = self;
+        if *action_state == ActionState::Uncompleted {
+            tracing::trace!("Already reverted: Stop the nix daemon");
+            return Ok(());
+        }
+        tracing::debug!("Stop the nix daemon");
 
         start_systemd_socket.revert().await?;
 
-        *action_state = ActionState::Reverted;
+        tracing::trace!("Stopped the nix daemon");
+        *action_state = ActionState::Uncompleted;
         Ok(())
     }
 }

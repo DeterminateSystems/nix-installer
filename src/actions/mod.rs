@@ -5,13 +5,14 @@ use base::{
     ConfigureNixDaemonService, ConfigureNixDaemonServiceError, CreateDirectory,
     CreateDirectoryError, CreateFile, CreateFileError, CreateGroup, CreateGroupError,
     CreateOrAppendFile, CreateOrAppendFileError, CreateUser, CreateUserError, FetchNix,
-    FetchNixError, MoveUnpackedNix, MoveUnpackedNixError, PlaceChannelConfiguration,
-    PlaceChannelConfigurationError, PlaceNixConfiguration, PlaceNixConfigurationError,
+    FetchNixError, MoveUnpackedNix, MoveUnpackedNixError,
     SetupDefaultProfile, SetupDefaultProfileError,
 };
 use meta::{
     ConfigureNix, ConfigureNixError, ConfigureShellProfile, ConfigureShellProfileError,
-    CreateNixTree, CreateNixTreeError, CreateUsersAndGroup, CreateUsersAndGroupError, ProvisionNix,
+    CreateNixTree, CreateNixTreeError, CreateUsersAndGroup, PlaceChannelConfiguration,
+    PlaceNixConfiguration, PlaceNixConfigurationError,
+    PlaceChannelConfigurationError, CreateUsersAndGroupError, ProvisionNix,
     ProvisionNixError, StartNixDaemon, StartNixDaemonError,
 };
 use serde::{de::DeserializeOwned, Deserialize, Serialize};
@@ -29,11 +30,10 @@ pub trait Actionable: DeserializeOwned + Serialize + Into<Action> {
     async fn revert(&mut self) -> Result<(), Self::Error>;
 }
 
-#[derive(Debug, Serialize, Deserialize, Clone)]
+#[derive(Debug, Serialize, Deserialize, Clone, PartialEq, Eq)]
 pub enum ActionState {
     Completed,
-    Planned,
-    Reverted,
+    Uncompleted,
 }
 
 #[derive(Debug, serde::Deserialize, serde::Serialize, Clone)]

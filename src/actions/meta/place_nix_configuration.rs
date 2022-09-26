@@ -2,7 +2,7 @@ use serde::Serialize;
 
 use crate::actions::{Action, ActionDescription, ActionState, Actionable};
 
-use super::{CreateDirectory, CreateDirectoryError, CreateFile, CreateFileError};
+use crate::actions::base::{CreateDirectory, CreateDirectoryError, CreateFile, CreateFileError};
 
 const NIX_CONF_FOLDER: &str = "/etc/nix";
 const NIX_CONF: &str = "/etc/nix/nix.conf";
@@ -40,7 +40,7 @@ impl PlaceNixConfiguration {
         Ok(Self {
             create_directory,
             create_file,
-            action_state: ActionState::Planned,
+            action_state: ActionState::Uncompleted,
         })
     }
 }
@@ -66,10 +66,16 @@ impl Actionable for PlaceNixConfiguration {
             create_directory,
             action_state,
         } = self;
+        if *action_state == ActionState::Completed {
+            tracing::trace!("Already completed: Placing Nix configuration");
+            return Ok(());
+        }
+        tracing::debug!("Placing Nix configuration");
 
         create_directory.execute().await?;
         create_file.execute().await?;
 
+        tracing::trace!("Placed Nix configuration");
         *action_state = ActionState::Completed;
         Ok(())
     }
@@ -81,11 +87,17 @@ impl Actionable for PlaceNixConfiguration {
             create_directory,
             action_state,
         } = self;
+        if *action_state == ActionState::Uncompleted {
+            tracing::trace!("Already reverted: Remove nix configuration");
+            return Ok(());
+        }
+        tracing::debug!("Remove nix configuration");
 
         create_file.revert().await?;
         create_directory.revert().await?;
 
-        *action_state = ActionState::Reverted;
+        tracing::trace!("Removed nix configuration");
+        *action_state = ActionState::Uncompleted;
         Ok(())
     }
 }

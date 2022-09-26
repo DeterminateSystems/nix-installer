@@ -41,7 +41,7 @@ impl CreateOrAppendFile {
             group,
             mode,
             buf,
-            action_state: ActionState::Planned,
+            action_state: ActionState::Uncompleted,
         })
     }
 }
@@ -76,8 +76,12 @@ impl Actionable for CreateOrAppendFile {
             buf,
             action_state,
         } = self;
+        if *action_state == ActionState::Completed {
+            tracing::trace!("Already completed: Creating or appending fragment to file");
+            return Ok(());
+        }
+        tracing::debug!("Creating or appending fragment to file");
 
-        tracing::trace!(path = %path.display(), "Creating or appending");
         let mut file = OpenOptions::new()
             .create(true)
             .write(true)
@@ -103,14 +107,13 @@ impl Actionable for CreateOrAppendFile {
             .ok_or(Self::Error::NoUser(user.clone()))?
             .uid;
 
-        tracing::trace!(path = %path.display(), "Changing permissions on file");
         tokio::fs::set_permissions(&path, PermissionsExt::from_mode(*mode))
             .await
             .map_err(|e| Self::Error::SetPermissions(*mode, path.to_owned(), e))?;
 
-        tracing::trace!(path = %path.display(), "Chowning");
         chown(path, Some(uid), Some(gid)).map_err(|e| Self::Error::Chown(path.clone(), e))?;
 
+        tracing::trace!("Created or appended fragment to file");
         *action_state = ActionState::Completed;
         Ok(())
     }
@@ -125,7 +128,11 @@ impl Actionable for CreateOrAppendFile {
             buf,
             action_state,
         } = self;
-        tracing::trace!(path = %path.display(), "Deleting or trimming content from file");
+        if *action_state == ActionState::Uncompleted {
+            tracing::trace!("Already completed: Removing fragment from file (and deleting it if it becomes empty)");
+            return Ok(());
+        }
+        tracing::debug!("Removing fragment from file (and deleting it if it becomes empty)");
 
         let mut file = OpenOptions::new()
             .create(false)
@@ -149,6 +156,8 @@ impl Actionable for CreateOrAppendFile {
             remove_file(&path)
                 .await
                 .map_err(|e| Self::Error::RemoveFile(path.to_owned(), e))?;
+            
+            tracing::trace!("Removed file (since all content was removed)");
         } else {
             file.seek(SeekFrom::Start(0))
                 .await
@@ -156,9 +165,10 @@ impl Actionable for CreateOrAppendFile {
             file.write_all(file_contents.as_bytes())
                 .await
                 .map_err(|e| Self::Error::WriteFile(path.to_owned(), e))?;
-        }
 
-        *action_state = ActionState::Reverted;
+            tracing::trace!("Removed fragment from from file");
+        }
+        *action_state = ActionState::Uncompleted;
         Ok(())
     }
 }

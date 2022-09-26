@@ -39,7 +39,7 @@ impl CreateNixTree {
 
         Ok(Self {
             create_directories,
-            action_state: ActionState::Planned,
+            action_state: ActionState::Uncompleted,
         })
     }
 }
@@ -72,12 +72,18 @@ impl Actionable for CreateNixTree {
             create_directories,
             action_state,
         } = self;
+        if *action_state == ActionState::Completed {
+            tracing::trace!("Already completed: Creating nix tree");
+            return Ok(());
+        }
+        tracing::debug!("Creating nix tree");
 
         // Just do sequential since parallizing this will have little benefit
         for create_directory in create_directories {
             create_directory.execute().await?
         }
 
+        tracing::trace!("Created nix tree");
         *action_state = ActionState::Completed;
         Ok(())
     }
@@ -88,13 +94,19 @@ impl Actionable for CreateNixTree {
             create_directories,
             action_state,
         } = self;
+        if *action_state == ActionState::Uncompleted {
+            tracing::trace!("Already reverted: Deleting nix tree");
+            return Ok(());
+        }
+        tracing::debug!("Deleting nix tree");
 
         // Just do sequential since parallizing this will have little benefit
         for create_directory in create_directories.iter_mut().rev() {
             create_directory.revert().await?
         }
 
-        *action_state = ActionState::Reverted;
+        tracing::trace!("Deleted nix tree");
+        *action_state = ActionState::Uncompleted;
         Ok(())
     }
 }
