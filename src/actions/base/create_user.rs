@@ -1,9 +1,9 @@
 use serde::Serialize;
 use tokio::process::Command;
 
-use crate::{HarmonicError, execute_command};
+use crate::execute_command;
 
-use crate::actions::{ActionDescription, Actionable, ActionState, Action, ActionError};
+use crate::actions::{Action, ActionDescription, ActionState, Actionable};
 
 #[derive(Debug, serde::Deserialize, serde::Serialize, Clone)]
 pub struct CreateUser {
@@ -16,7 +16,12 @@ pub struct CreateUser {
 impl CreateUser {
     #[tracing::instrument(skip_all)]
     pub fn plan(name: String, uid: usize, gid: usize) -> Self {
-        Self { name, uid, gid, action_state: ActionState::Planned }
+        Self {
+            name,
+            uid,
+            gid,
+            action_state: ActionState::Planned,
+        }
     }
 }
 
@@ -36,7 +41,12 @@ impl Actionable for CreateUser {
 
     #[tracing::instrument(skip_all)]
     async fn execute(&mut self) -> Result<(), Self::Error> {
-        let Self { name, uid, gid, action_state } = self;
+        let Self {
+            name,
+            uid,
+            gid,
+            action_state,
+        } = self;
 
         execute_command(Command::new("useradd").args([
             "--home-dir",
@@ -56,20 +66,26 @@ impl Actionable for CreateUser {
             "--password",
             "\"!\"",
             &name.to_string(),
-        ])).await.map_err(Self::Error::Command)?;
+        ]))
+        .await
+        .map_err(Self::Error::Command)?;
 
         *action_state = ActionState::Completed;
         Ok(())
     }
 
-
     #[tracing::instrument(skip_all)]
     async fn revert(&mut self) -> Result<(), Self::Error> {
-        let Self { name, uid: _, gid: _, action_state } = self;
+        let Self {
+            name,
+            uid: _,
+            gid: _,
+            action_state,
+        } = self;
 
-        execute_command(Command::new("userdel").args([
-            &name.to_string(),
-        ])).await.map_err(Self::Error::Command)?;
+        execute_command(Command::new("userdel").args([&name.to_string()]))
+            .await
+            .map_err(Self::Error::Command)?;
 
         *action_state = ActionState::Completed;
         Ok(())
@@ -85,5 +101,9 @@ impl From<CreateUser> for Action {
 #[derive(Debug, thiserror::Error, Serialize)]
 pub enum CreateUserError {
     #[error("Failed to execute command")]
-    Command(#[source] #[serde(serialize_with = "crate::serialize_error_to_display")] std::io::Error)
+    Command(
+        #[source]
+        #[serde(serialize_with = "crate::serialize_error_to_display")]
+        std::io::Error,
+    ),
 }

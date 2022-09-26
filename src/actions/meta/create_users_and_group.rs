@@ -1,10 +1,10 @@
 use serde::Serialize;
-use tokio::task::{JoinSet, JoinError};
+use tokio::task::{JoinError, JoinSet};
 
-use crate::{HarmonicError, InstallSettings};
+use crate::InstallSettings;
 
 use crate::actions::base::{CreateGroup, CreateGroupError, CreateUserError};
-use crate::actions::{ActionDescription, Actionable, CreateUser, ActionState, Action};
+use crate::actions::{Action, ActionDescription, ActionState, Actionable, CreateUser};
 
 #[derive(Debug, serde::Deserialize, serde::Serialize, Clone)]
 pub struct CreateUsersAndGroup {
@@ -80,15 +80,14 @@ impl Actionable for CreateUsersAndGroup {
     async fn execute(&mut self) -> Result<(), Self::Error> {
         let Self {
             create_users,
-            create_group, 
-            daemon_user_count: _, 
+            create_group,
+            daemon_user_count: _,
             nix_build_group_name: _,
-            nix_build_group_id: _, 
-            nix_build_user_prefix: _, 
-            nix_build_user_id_base: _, 
+            nix_build_group_id: _,
+            nix_build_user_prefix: _,
+            nix_build_user_id_base: _,
             action_state,
         } = self;
-
 
         // Create group
         create_group.execute().await?;
@@ -101,7 +100,10 @@ impl Actionable for CreateUsersAndGroup {
 
         for (idx, create_user) in create_users.iter().enumerate() {
             let mut create_user_clone = create_user.clone();
-            let _abort_handle = set.spawn(async move { create_user_clone.execute().await?; Result::<_, CreateUserError>::Ok((idx, create_user_clone)) });
+            let _abort_handle = set.spawn(async move {
+                create_user_clone.execute().await?;
+                Result::<_, CreateUserError>::Ok((idx, create_user_clone))
+            });
         }
 
         while let Some(result) = set.join_next().await {
@@ -120,7 +122,6 @@ impl Actionable for CreateUsersAndGroup {
             }
         }
 
-
         *action_state = ActionState::Completed;
         Ok(())
     }
@@ -129,12 +130,12 @@ impl Actionable for CreateUsersAndGroup {
     async fn revert(&mut self) -> Result<(), Self::Error> {
         let Self {
             create_users,
-            create_group, 
-            daemon_user_count: _, 
+            create_group,
+            daemon_user_count: _,
             nix_build_group_name: _,
-            nix_build_group_id: _, 
-            nix_build_user_prefix: _, 
-            nix_build_user_id_base: _, 
+            nix_build_group_id: _,
+            nix_build_user_prefix: _,
+            nix_build_user_id_base: _,
             action_state,
         } = self;
 
@@ -146,7 +147,10 @@ impl Actionable for CreateUsersAndGroup {
 
         for (idx, create_user) in create_users.iter().enumerate() {
             let mut create_user_clone = create_user.clone();
-            let _abort_handle = set.spawn(async move { create_user_clone.revert().await?; Result::<_, CreateUserError>::Ok((idx, create_user_clone)) });
+            let _abort_handle = set.spawn(async move {
+                create_user_clone.revert().await?;
+                Result::<_, CreateUserError>::Ok((idx, create_user_clone))
+            });
         }
 
         while let Some(result) = set.join_next().await {
@@ -164,7 +168,7 @@ impl Actionable for CreateUsersAndGroup {
                 return Err(CreateUsersAndGroupError::CreateUsers(errors));
             }
         }
-        
+
         // Create group
         create_group.revert().await?;
 
@@ -173,13 +177,11 @@ impl Actionable for CreateUsersAndGroup {
     }
 }
 
-
 impl From<CreateUsersAndGroup> for Action {
     fn from(v: CreateUsersAndGroup) -> Self {
         Action::CreateUsersAndGroup(v)
     }
 }
-
 
 #[derive(Debug, thiserror::Error, Serialize)]
 pub enum CreateUsersAndGroupError {
@@ -193,7 +195,6 @@ pub enum CreateUsersAndGroupError {
     Join(
         #[from]
         #[serde(serialize_with = "crate::serialize_error_to_display")]
-        JoinError
+        JoinError,
     ),
 }
-

@@ -3,14 +3,11 @@ use tempdir::TempDir;
 use tokio::task::JoinError;
 
 use crate::actions::base::{FetchNix, FetchNixError, MoveUnpackedNix, MoveUnpackedNixError};
-use crate::{HarmonicError, InstallSettings};
+use crate::InstallSettings;
 
-use crate::actions::{ActionDescription, Actionable, ActionState, Action, ActionError};
+use crate::actions::{Action, ActionDescription, ActionState, Actionable};
 
-use super::{
-    CreateNixTree, CreateNixTreeError,
-    CreateUsersAndGroup, CreateUsersAndGroupError,
-};
+use super::{CreateNixTree, CreateNixTreeError, CreateUsersAndGroup, CreateUsersAndGroupError};
 
 #[derive(Debug, serde::Deserialize, serde::Serialize, Clone)]
 pub struct ProvisionNix {
@@ -76,10 +73,16 @@ impl Actionable for ProvisionNix {
 
         // We fetch nix while doing the rest, then move it over.
         let mut fetch_nix_clone = fetch_nix.clone();
-        let fetch_nix_handle = tokio::task::spawn(async { fetch_nix_clone.execute().await?; Result::<_, Self::Error>::Ok(fetch_nix_clone) });
+        let fetch_nix_handle = tokio::task::spawn(async {
+            fetch_nix_clone.execute().await?;
+            Result::<_, Self::Error>::Ok(fetch_nix_clone)
+        });
 
         create_users_and_group.execute().await?;
-        create_nix_tree.execute().await.map_err(ProvisionNixError::from)?;
+        create_nix_tree
+            .execute()
+            .await
+            .map_err(ProvisionNixError::from)?;
 
         *fetch_nix = fetch_nix_handle.await.map_err(ProvisionNixError::from)??;
         move_unpacked_nix.execute().await?;
@@ -100,10 +103,16 @@ impl Actionable for ProvisionNix {
 
         // We fetch nix while doing the rest, then move it over.
         let mut fetch_nix_clone = fetch_nix.clone();
-        let fetch_nix_handle = tokio::task::spawn(async { fetch_nix_clone.revert().await?; Result::<_, Self::Error>::Ok(fetch_nix_clone) });
+        let fetch_nix_handle = tokio::task::spawn(async {
+            fetch_nix_clone.revert().await?;
+            Result::<_, Self::Error>::Ok(fetch_nix_clone)
+        });
 
         create_users_and_group.revert().await?;
-        create_nix_tree.revert().await.map_err(ProvisionNixError::from)?;
+        create_nix_tree
+            .revert()
+            .await
+            .map_err(ProvisionNixError::from)?;
 
         *fetch_nix = fetch_nix_handle.await.map_err(ProvisionNixError::from)??;
         move_unpacked_nix.revert().await?;
@@ -119,14 +128,13 @@ impl From<ProvisionNix> for Action {
     }
 }
 
-
 #[derive(Debug, thiserror::Error, Serialize)]
 pub enum ProvisionNixError {
     #[error("Failed create tempdir")]
     TempDir(
-        #[source] 
-        #[serde(serialize_with = "crate::serialize_error_to_display")] 
-        std::io::Error
+        #[source]
+        #[serde(serialize_with = "crate::serialize_error_to_display")]
+        std::io::Error,
     ),
     #[error(transparent)]
     FetchNix(#[from] FetchNixError),
@@ -134,7 +142,7 @@ pub enum ProvisionNixError {
     Join(
         #[from]
         #[serde(serialize_with = "crate::serialize_error_to_display")]
-        JoinError
+        JoinError,
     ),
     #[error(transparent)]
     CreateUsersAndGroup(#[from] CreateUsersAndGroupError),

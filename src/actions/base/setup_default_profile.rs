@@ -1,4 +1,7 @@
-use crate::{execute_command, actions::{ActionState, Action, ActionError}, set_env};
+use crate::{
+    actions::{Action, ActionState},
+    execute_command, set_env,
+};
 
 use glob::glob;
 use serde::Serialize;
@@ -15,7 +18,10 @@ pub struct SetupDefaultProfile {
 impl SetupDefaultProfile {
     #[tracing::instrument(skip_all)]
     pub async fn plan(channels: Vec<String>) -> Result<Self, SetupDefaultProfileError> {
-        Ok(Self { channels, action_state: ActionState::Planned })
+        Ok(Self {
+            channels,
+            action_state: ActionState::Planned,
+        })
     }
 }
 
@@ -31,7 +37,10 @@ impl Actionable for SetupDefaultProfile {
 
     #[tracing::instrument(skip_all)]
     async fn execute(&mut self) -> Result<(), Self::Error> {
-        let Self { channels, action_state } = self;
+        let Self {
+            channels,
+            action_state,
+        } = self;
         tracing::info!("Setting up default profile");
 
         // Find an `nix` package
@@ -59,7 +68,8 @@ impl Actionable for SetupDefaultProfile {
                 .arg("-i")
                 .arg(&nix_pkg),
         )
-        .await.map_err(SetupDefaultProfileError::Command)?;
+        .await
+        .map_err(SetupDefaultProfileError::Command)?;
 
         // Find an `nss-cacert` package, add it too.
         let nss_ca_cert_pkg_glob = "/nix/store/*-nss-cacert-*";
@@ -86,7 +96,8 @@ impl Actionable for SetupDefaultProfile {
                 .arg("-i")
                 .arg(&nss_ca_cert_pkg),
         )
-        .await.map_err(SetupDefaultProfileError::Command)?;
+        .await
+        .map_err(SetupDefaultProfileError::Command)?;
 
         set_env(
             "NIX_SSL_CERT_FILE",
@@ -104,16 +115,20 @@ impl Actionable for SetupDefaultProfile {
                 "/nix/var/nix/profiles/default/etc/ssl/certs/ca-bundle.crt",
             );
 
-            execute_command(&mut command).await.map_err(SetupDefaultProfileError::Command)?;
+            execute_command(&mut command)
+                .await
+                .map_err(SetupDefaultProfileError::Command)?;
         }
         *action_state = ActionState::Completed;
         Ok(())
     }
 
-
     #[tracing::instrument(skip_all)]
     async fn revert(&mut self) -> Result<(), Self::Error> {
-        let Self { channels: _, action_state } = self;
+        let Self {
+            channels: _,
+            action_state,
+        } = self;
 
         std::env::remove_var("NIX_SSL_CERT_FILE");
 
@@ -128,15 +143,28 @@ impl From<SetupDefaultProfile> for Action {
     }
 }
 
-
 #[derive(Debug, thiserror::Error, Serialize)]
 pub enum SetupDefaultProfileError {
     #[error("Glob pattern error")]
-    GlobPatternError(#[from] #[source] #[serde(serialize_with = "crate::serialize_error_to_display")] glob::PatternError),
+    GlobPatternError(
+        #[from]
+        #[source]
+        #[serde(serialize_with = "crate::serialize_error_to_display")]
+        glob::PatternError,
+    ),
     #[error("Glob globbing error")]
-    GlobGlobError(#[from] #[source] #[serde(serialize_with = "crate::serialize_error_to_display")] glob::GlobError),
+    GlobGlobError(
+        #[from]
+        #[source]
+        #[serde(serialize_with = "crate::serialize_error_to_display")]
+        glob::GlobError,
+    ),
     #[error("Unarchived Nix store did not appear to include a `nss-cacert` location")]
     NoNssCacert,
     #[error("Failed to execute command")]
-    Command(#[source] #[serde(serialize_with = "crate::serialize_error_to_display")] std::io::Error)
+    Command(
+        #[source]
+        #[serde(serialize_with = "crate::serialize_error_to_display")]
+        std::io::Error,
+    ),
 }

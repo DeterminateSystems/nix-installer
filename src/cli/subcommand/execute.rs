@@ -1,13 +1,10 @@
-use std::{process::ExitCode, path::PathBuf};
+use std::{path::PathBuf, process::ExitCode};
 
 use clap::{ArgAction, Parser};
-use harmonic::InstallPlan;
 use eyre::WrapErr;
+use harmonic::InstallPlan;
 
-use crate::{
-    cli::CommandExecute,
-    interaction,
-};
+use crate::{cli::CommandExecute, interaction};
 
 /// An opinionated, experimental Nix installer
 #[derive(Debug, Parser)]
@@ -29,7 +26,9 @@ impl CommandExecute for Execute {
     async fn execute(self) -> eyre::Result<ExitCode> {
         let Self { no_confirm, plan } = self;
 
-        let install_plan_string = tokio::fs::read_to_string(plan).await.wrap_err("Reading plan")?;
+        let install_plan_string = tokio::fs::read_to_string(plan)
+            .await
+            .wrap_err("Reading plan")?;
         let mut plan: InstallPlan = serde_json::from_str(&install_plan_string)?;
 
         if !no_confirm {

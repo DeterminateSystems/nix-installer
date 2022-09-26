@@ -1,13 +1,11 @@
-use std::path::{PathBuf};
+use std::path::PathBuf;
 
 use bytes::Buf;
 use reqwest::Url;
 use serde::Serialize;
 use tokio::task::{spawn_blocking, JoinError};
 
-use crate::HarmonicError;
-
-use crate::actions::{ActionDescription, Actionable, ActionState, Action, ActionError};
+use crate::actions::{Action, ActionDescription, ActionState, Actionable};
 
 #[derive(Debug, serde::Deserialize, serde::Serialize, Clone)]
 pub struct FetchNix {
@@ -22,7 +20,11 @@ impl FetchNix {
         // TODO(@hoverbear): Check URL exists?
         // TODO(@hoverbear): Check tempdir exists
 
-        Ok(Self { url, destination, action_state: ActionState::Planned })
+        Ok(Self {
+            url,
+            destination,
+            action_state: ActionState::Planned,
+        })
     }
 }
 
@@ -30,7 +32,11 @@ impl FetchNix {
 impl Actionable for FetchNix {
     type Error = FetchNixError;
     fn description(&self) -> Vec<ActionDescription> {
-        let Self { url, destination, action_state: _ } = &self;
+        let Self {
+            url,
+            destination,
+            action_state: _,
+        } = &self;
         vec![ActionDescription::new(
             format!("Fetch Nix from `{url}`"),
             vec![format!(
@@ -42,7 +48,11 @@ impl Actionable for FetchNix {
 
     #[tracing::instrument(skip_all)]
     async fn execute(&mut self) -> Result<(), Self::Error> {
-        let Self { url, destination, action_state } = self;
+        let Self {
+            url,
+            destination,
+            action_state,
+        } = self;
 
         tracing::trace!(%url, "Fetching url");
         let res = reqwest::get(url.clone())
@@ -67,10 +77,13 @@ impl Actionable for FetchNix {
         Ok(())
     }
 
-
     #[tracing::instrument(skip_all)]
     async fn revert(&mut self) -> Result<(), Self::Error> {
-        let Self { url: _, destination: _, action_state } = self;
+        let Self {
+            url: _,
+            destination: _,
+            action_state,
+        } = self;
 
         tracing::trace!("Nothing to do for `FetchNix` revert");
 
@@ -91,10 +104,19 @@ pub enum FetchNixError {
     Join(
         #[from]
         #[serde(serialize_with = "crate::serialize_error_to_display")]
-        JoinError
+        JoinError,
     ),
     #[error("Request error")]
-    Reqwest(#[from] #[source]  #[serde(serialize_with = "crate::serialize_error_to_display")] reqwest::Error),
+    Reqwest(
+        #[from]
+        #[source]
+        #[serde(serialize_with = "crate::serialize_error_to_display")]
+        reqwest::Error,
+    ),
     #[error("Unarchiving error")]
-    Unarchive(#[source]  #[serde(serialize_with = "crate::serialize_error_to_display")] std::io::Error),
+    Unarchive(
+        #[source]
+        #[serde(serialize_with = "crate::serialize_error_to_display")]
+        std::io::Error,
+    ),
 }

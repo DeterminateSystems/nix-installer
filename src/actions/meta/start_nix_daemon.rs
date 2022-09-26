@@ -1,9 +1,8 @@
 use serde::Serialize;
 
 use crate::actions::base::{StartSystemdUnit, StartSystemdUnitError};
-use crate::HarmonicError;
 
-use crate::actions::{ActionDescription, Actionable, ActionState, Action, ActionError};
+use crate::actions::{Action, ActionDescription, ActionState, Actionable};
 
 /// This is mostly indirection for supporting non-systemd
 #[derive(Debug, serde::Deserialize, serde::Serialize, Clone)]
@@ -33,7 +32,10 @@ impl Actionable for StartNixDaemon {
 
     #[tracing::instrument(skip_all)]
     async fn execute(&mut self) -> Result<(), Self::Error> {
-        let Self { start_systemd_socket, action_state } = self;
+        let Self {
+            start_systemd_socket,
+            action_state,
+        } = self;
 
         start_systemd_socket.execute().await?;
 
@@ -43,7 +45,11 @@ impl Actionable for StartNixDaemon {
 
     #[tracing::instrument(skip_all)]
     async fn revert(&mut self) -> Result<(), Self::Error> {
-        let Self { start_systemd_socket, action_state, .. } = self;
+        let Self {
+            start_systemd_socket,
+            action_state,
+            ..
+        } = self;
 
         start_systemd_socket.revert().await?;
 
@@ -61,5 +67,5 @@ impl From<StartNixDaemon> for Action {
 #[derive(Debug, thiserror::Error, Serialize)]
 pub enum StartNixDaemonError {
     #[error(transparent)]
-    StartSystemdUnit(#[from] StartSystemdUnitError)
+    StartSystemdUnit(#[from] StartSystemdUnitError),
 }

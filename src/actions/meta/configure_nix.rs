@@ -2,12 +2,14 @@ use serde::Serialize;
 
 use crate::actions::{
     base::{
-        ConfigureNixDaemonService, ConfigureNixDaemonServiceError, PlaceNixConfiguration,
-        PlaceNixConfigurationError, SetupDefaultProfile, SetupDefaultProfileError, PlaceChannelConfiguration, PlaceChannelConfigurationError,
+        ConfigureNixDaemonService, ConfigureNixDaemonServiceError, PlaceChannelConfiguration,
+        PlaceChannelConfigurationError, PlaceNixConfiguration, PlaceNixConfigurationError,
+        SetupDefaultProfile, SetupDefaultProfileError,
     },
-    meta::{ConfigureShellProfile, ConfigureShellProfileError}, ActionState, Action, ActionError,
+    meta::{ConfigureShellProfile, ConfigureShellProfileError},
+    Action, ActionState,
 };
-use crate::{HarmonicError, InstallSettings};
+use crate::InstallSettings;
 
 use crate::actions::{ActionDescription, Actionable};
 
@@ -39,8 +41,12 @@ impl ConfigureNix {
         };
         let place_channel_configuration =
             PlaceChannelConfiguration::plan(settings.channels, settings.force).await?;
-        let place_nix_configuration =
-            PlaceNixConfiguration::plan(settings.nix_build_group_name, settings.extra_conf, settings.force).await?;
+        let place_nix_configuration = PlaceNixConfiguration::plan(
+            settings.nix_build_group_name,
+            settings.extra_conf,
+            settings.force,
+        )
+        .await?;
         let configure_nix_daemon_service = ConfigureNixDaemonService::plan().await?;
 
         Ok(Self {
@@ -91,16 +97,51 @@ impl Actionable for ConfigureNix {
 
         if let Some(configure_shell_profile) = configure_shell_profile {
             tokio::try_join!(
-                async move { setup_default_profile.execute().await.map_err(|e| ConfigureNixError::from(e)) },
-                async move { place_nix_configuration.execute().await.map_err(|e| ConfigureNixError::from(e)) },
-                async move { place_channel_configuration.execute().await.map_err(|e| ConfigureNixError::from(e)) },
-                async move { configure_shell_profile.execute().await.map_err(|e| ConfigureNixError::from(e)) },
+                async move {
+                    setup_default_profile
+                        .execute()
+                        .await
+                        .map_err(|e| ConfigureNixError::from(e))
+                },
+                async move {
+                    place_nix_configuration
+                        .execute()
+                        .await
+                        .map_err(|e| ConfigureNixError::from(e))
+                },
+                async move {
+                    place_channel_configuration
+                        .execute()
+                        .await
+                        .map_err(|e| ConfigureNixError::from(e))
+                },
+                async move {
+                    configure_shell_profile
+                        .execute()
+                        .await
+                        .map_err(|e| ConfigureNixError::from(e))
+                },
             )?;
         } else {
             tokio::try_join!(
-                async move { setup_default_profile.execute().await.map_err(|e| ConfigureNixError::from(e)) },
-                async move { place_nix_configuration.execute().await.map_err(|e| ConfigureNixError::from(e)) },
-                async move { place_channel_configuration.execute().await.map_err(|e| ConfigureNixError::from(e)) },
+                async move {
+                    setup_default_profile
+                        .execute()
+                        .await
+                        .map_err(|e| ConfigureNixError::from(e))
+                },
+                async move {
+                    place_nix_configuration
+                        .execute()
+                        .await
+                        .map_err(|e| ConfigureNixError::from(e))
+                },
+                async move {
+                    place_channel_configuration
+                        .execute()
+                        .await
+                        .map_err(|e| ConfigureNixError::from(e))
+                },
             )?;
         };
         configure_nix_daemon_service.execute().await?;
@@ -108,7 +149,6 @@ impl Actionable for ConfigureNix {
         *action_state = ActionState::Completed;
         Ok(())
     }
-
 
     #[tracing::instrument(skip_all)]
     async fn revert(&mut self) -> Result<(), Self::Error> {

@@ -1,9 +1,7 @@
 use reqwest::Url;
 use serde::Serialize;
 
-use crate::HarmonicError;
-
-use crate::actions::{ActionDescription, Actionable, ActionState, Action, ActionError};
+use crate::actions::{Action, ActionDescription, ActionState, Actionable};
 
 use super::{CreateFile, CreateFileError};
 
@@ -18,14 +16,24 @@ pub struct PlaceChannelConfiguration {
 
 impl PlaceChannelConfiguration {
     #[tracing::instrument(skip_all)]
-    pub async fn plan(channels: Vec<(String, Url)>, force: bool) -> Result<Self, PlaceChannelConfigurationError> {
+    pub async fn plan(
+        channels: Vec<(String, Url)>,
+        force: bool,
+    ) -> Result<Self, PlaceChannelConfigurationError> {
         let buf = channels
             .iter()
             .map(|(name, url)| format!("{} {}", url, name))
             .collect::<Vec<_>>()
             .join("\n");
-        let create_file =
-            CreateFile::plan(NIX_CHANNELS_PATH, "root".into(), "root".into(), 0o0664, buf, force).await?;
+        let create_file = CreateFile::plan(
+            NIX_CHANNELS_PATH,
+            "root".into(),
+            "root".into(),
+            0o0664,
+            buf,
+            force,
+        )
+        .await?;
         Ok(Self {
             create_file,
             channels,
@@ -56,13 +64,12 @@ impl Actionable for PlaceChannelConfiguration {
             channels: _,
             action_state,
         } = self;
-        
+
         create_file.execute().await?;
-        
+
         *action_state = ActionState::Completed;
         Ok(())
     }
-
 
     #[tracing::instrument(skip_all)]
     async fn revert(&mut self) -> Result<(), Self::Error> {
@@ -71,9 +78,9 @@ impl Actionable for PlaceChannelConfiguration {
             channels: _,
             action_state,
         } = self;
-        
+
         create_file.revert().await?;
-        
+
         *action_state = ActionState::Reverted;
         Ok(())
     }
@@ -84,7 +91,6 @@ impl From<PlaceChannelConfiguration> for Action {
         Action::PlaceChannelConfiguration(v)
     }
 }
-
 
 #[derive(Debug, thiserror::Error, Serialize)]
 pub enum PlaceChannelConfigurationError {

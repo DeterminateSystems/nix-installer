@@ -1,9 +1,9 @@
 use serde::Serialize;
 use tokio::process::Command;
 
-use crate::{HarmonicError, execute_command};
+use crate::execute_command;
 
-use crate::actions::{ActionDescription, Actionable, ActionState, Action, ActionError};
+use crate::actions::{Action, ActionDescription, ActionState, Actionable};
 
 #[derive(Debug, serde::Deserialize, serde::Serialize, Clone)]
 pub struct CreateGroup {
@@ -15,7 +15,11 @@ pub struct CreateGroup {
 impl CreateGroup {
     #[tracing::instrument(skip_all)]
     pub fn plan(name: String, gid: usize) -> Self {
-        Self { name, gid, action_state: ActionState::Planned }
+        Self {
+            name,
+            gid,
+            action_state: ActionState::Planned,
+        }
     }
 }
 
@@ -23,7 +27,11 @@ impl CreateGroup {
 impl Actionable for CreateGroup {
     type Error = CreateGroupError;
     fn description(&self) -> Vec<ActionDescription> {
-        let Self { name, gid, action_state: _ } = &self;
+        let Self {
+            name,
+            gid,
+            action_state: _,
+        } = &self;
         vec![ActionDescription::new(
             format!("Create group {name} with GID {gid}"),
             vec![format!(
@@ -34,12 +42,15 @@ impl Actionable for CreateGroup {
 
     #[tracing::instrument(skip_all)]
     async fn execute(&mut self) -> Result<(), Self::Error> {
-        let Self { name, gid, action_state } = self;
+        let Self {
+            name,
+            gid,
+            action_state,
+        } = self;
 
-        execute_command(
-            Command::new("groupadd").args(["-g", &gid.to_string(), "--system", &name]),
-        ).await.map_err(CreateGroupError::Command)?;
-
+        execute_command(Command::new("groupadd").args(["-g", &gid.to_string(), "--system", &name]))
+            .await
+            .map_err(CreateGroupError::Command)?;
 
         *action_state = ActionState::Completed;
         Ok(())
@@ -47,11 +58,15 @@ impl Actionable for CreateGroup {
 
     #[tracing::instrument(skip_all)]
     async fn revert(&mut self) -> Result<(), Self::Error> {
-        let Self { name, gid: _, action_state } = self;
+        let Self {
+            name,
+            gid: _,
+            action_state,
+        } = self;
 
-        execute_command(
-            Command::new("groupdel").arg(&name),
-        ).await.map_err(CreateGroupError::Command)?;
+        execute_command(Command::new("groupdel").arg(&name))
+            .await
+            .map_err(CreateGroupError::Command)?;
 
         *action_state = ActionState::Reverted;
         Ok(())
@@ -67,5 +82,9 @@ impl From<CreateGroup> for Action {
 #[derive(Debug, thiserror::Error, Serialize)]
 pub enum CreateGroupError {
     #[error("Failed to execute command")]
-    Command(#[source] #[serde(serialize_with = "crate::serialize_error_to_display")] std::io::Error)
+    Command(
+        #[source]
+        #[serde(serialize_with = "crate::serialize_error_to_display")]
+        std::io::Error,
+    ),
 }

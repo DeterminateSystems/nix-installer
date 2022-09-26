@@ -13,9 +13,7 @@ mod place_nix_configuration;
 mod setup_default_profile;
 mod start_systemd_unit;
 
-pub use configure_nix_daemon_service::{
-    ConfigureNixDaemonService, ConfigureNixDaemonServiceError,
-};
+pub use configure_nix_daemon_service::{ConfigureNixDaemonService, ConfigureNixDaemonServiceError};
 pub use create_directory::{CreateDirectory, CreateDirectoryError};
 pub use create_file::{CreateFile, CreateFileError};
 pub use create_group::{CreateGroup, CreateGroupError};
@@ -23,9 +21,7 @@ pub use create_or_append_file::{CreateOrAppendFile, CreateOrAppendFileError};
 pub use create_user::{CreateUser, CreateUserError};
 pub use fetch_nix::{FetchNix, FetchNixError};
 pub use move_unpacked_nix::{MoveUnpackedNix, MoveUnpackedNixError};
-pub use place_channel_configuration::{
-    PlaceChannelConfiguration, PlaceChannelConfigurationError,
-};
+pub use place_channel_configuration::{PlaceChannelConfiguration, PlaceChannelConfigurationError};
 pub use place_nix_configuration::{PlaceNixConfiguration, PlaceNixConfigurationError};
 pub use setup_default_profile::{SetupDefaultProfile, SetupDefaultProfileError};
 pub use start_systemd_unit::{StartSystemdUnit, StartSystemdUnitError};

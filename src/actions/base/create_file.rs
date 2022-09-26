@@ -2,11 +2,11 @@ use nix::unistd::{chown, Group, User};
 use serde::Serialize;
 use std::path::{Path, PathBuf};
 use tokio::{
-    fs::{OpenOptions, remove_file},
+    fs::{remove_file, OpenOptions},
     io::AsyncWriteExt,
 };
 
-use crate::{actions::{ActionState, Action, ActionError}};
+use crate::actions::{Action, ActionState};
 
 use crate::actions::{ActionDescription, Actionable};
 
@@ -103,14 +103,13 @@ impl Actionable for CreateFile {
             .map_err(|e| Self::Error::UserId(user.clone(), e))?
             .ok_or(Self::Error::NoUser(user.clone()))?
             .uid;
-        
+
         tracing::trace!(path = %path.display(), "Chowning file");
         chown(path, Some(uid), Some(gid)).map_err(|e| Self::Error::Chown(path.clone(), e))?;
 
         *action_state = ActionState::Completed;
         Ok(())
     }
-
 
     #[tracing::instrument(skip_all)]
     async fn revert(&mut self) -> Result<(), Self::Error> {
@@ -123,10 +122,11 @@ impl Actionable for CreateFile {
             force: _,
             action_state,
         } = self;
-        
+
         tracing::trace!(path = %path.display(), "Deleting file");
 
-        remove_file(&path).await
+        remove_file(&path)
+            .await
             .map_err(|e| Self::Error::RemoveFile(path.to_owned(), e))?;
 
         *action_state = ActionState::Reverted;
@@ -145,19 +145,49 @@ pub enum CreateFileError {
     #[error("File exists `{0}`")]
     Exists(std::path::PathBuf),
     #[error("Remove file `{0}`")]
-    RemoveFile(std::path::PathBuf, #[source] #[serde(serialize_with = "crate::serialize_error_to_display")] std::io::Error),
+    RemoveFile(
+        std::path::PathBuf,
+        #[source]
+        #[serde(serialize_with = "crate::serialize_error_to_display")]
+        std::io::Error,
+    ),
     #[error("Open file `{0}`")]
-    OpenFile(std::path::PathBuf, #[source] #[serde(serialize_with = "crate::serialize_error_to_display")] std::io::Error),
+    OpenFile(
+        std::path::PathBuf,
+        #[source]
+        #[serde(serialize_with = "crate::serialize_error_to_display")]
+        std::io::Error,
+    ),
     #[error("Write file `{0}`")]
-    WriteFile(std::path::PathBuf, #[source] #[serde(serialize_with = "crate::serialize_error_to_display")] std::io::Error),
+    WriteFile(
+        std::path::PathBuf,
+        #[source]
+        #[serde(serialize_with = "crate::serialize_error_to_display")]
+        std::io::Error,
+    ),
     #[error("Getting uid for user `{0}`")]
-    UserId(String, #[source] #[serde(serialize_with = "crate::serialize_error_to_display")] nix::errno::Errno),
+    UserId(
+        String,
+        #[source]
+        #[serde(serialize_with = "crate::serialize_error_to_display")]
+        nix::errno::Errno,
+    ),
     #[error("Getting user `{0}`")]
     NoUser(String),
     #[error("Getting gid for group `{0}`")]
-    GroupId(String, #[source] #[serde(serialize_with = "crate::serialize_error_to_display")] nix::errno::Errno),
+    GroupId(
+        String,
+        #[source]
+        #[serde(serialize_with = "crate::serialize_error_to_display")]
+        nix::errno::Errno,
+    ),
     #[error("Getting group `{0}`")]
     NoGroup(String),
     #[error("Chowning directory `{0}`")]
-    Chown(std::path::PathBuf, #[source] #[serde(serialize_with = "crate::serialize_error_to_display")] nix::errno::Errno),
+    Chown(
+        std::path::PathBuf,
+        #[source]
+        #[serde(serialize_with = "crate::serialize_error_to_display")]
+        nix::errno::Errno,
+    ),
 }

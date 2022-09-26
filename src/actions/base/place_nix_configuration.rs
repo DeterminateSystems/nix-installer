@@ -1,10 +1,8 @@
 use serde::Serialize;
 
-use crate::HarmonicError;
+use crate::actions::{Action, ActionDescription, ActionState, Actionable};
 
-use crate::actions::{ActionDescription, Actionable, ActionState, Action, ActionError};
-
-use super::{CreateFile, CreateFileError, CreateDirectory, CreateDirectoryError};
+use super::{CreateDirectory, CreateDirectoryError, CreateFile, CreateFileError};
 
 const NIX_CONF_FOLDER: &str = "/etc/nix";
 const NIX_CONF: &str = "/etc/nix/nix.conf";
@@ -34,10 +32,16 @@ impl PlaceNixConfiguration {
         ",
             extra_conf = extra_conf.unwrap_or_else(|| "".into()),
         );
-        let create_directory = CreateDirectory::plan(NIX_CONF_FOLDER, "root".into(), "root".into(), 0o0755, force).await?;
+        let create_directory =
+            CreateDirectory::plan(NIX_CONF_FOLDER, "root".into(), "root".into(), 0o0755, force)
+                .await?;
         let create_file =
             CreateFile::plan(NIX_CONF, "root".into(), "root".into(), 0o0664, buf, force).await?;
-        Ok(Self { create_directory, create_file, action_state: ActionState::Planned })
+        Ok(Self {
+            create_directory,
+            create_file,
+            action_state: ActionState::Planned,
+        })
     }
 }
 
@@ -48,13 +52,20 @@ impl Actionable for PlaceNixConfiguration {
     fn description(&self) -> Vec<ActionDescription> {
         vec![ActionDescription::new(
             format!("Place the nix configuration in `{NIX_CONF}`"),
-            vec!["This file is read by the Nix daemon to set its configuration options at runtime.".to_string()],
+            vec![
+                "This file is read by the Nix daemon to set its configuration options at runtime."
+                    .to_string(),
+            ],
         )]
     }
 
     #[tracing::instrument(skip_all)]
     async fn execute(&mut self) -> Result<(), Self::Error> {
-        let Self { create_file, create_directory, action_state } = self;
+        let Self {
+            create_file,
+            create_directory,
+            action_state,
+        } = self;
 
         create_directory.execute().await?;
         create_file.execute().await?;
@@ -63,10 +74,13 @@ impl Actionable for PlaceNixConfiguration {
         Ok(())
     }
 
-
     #[tracing::instrument(skip_all)]
     async fn revert(&mut self) -> Result<(), Self::Error> {
-        let Self { create_file, create_directory, action_state } = self;
+        let Self {
+            create_file,
+            create_directory,
+            action_state,
+        } = self;
 
         create_file.revert().await?;
         create_directory.revert().await?;
@@ -81,7 +95,6 @@ impl From<PlaceNixConfiguration> for Action {
         Action::PlaceNixConfiguration(v)
     }
 }
-
 
 #[derive(Debug, thiserror::Error, Serialize)]
 pub enum PlaceNixConfigurationError {

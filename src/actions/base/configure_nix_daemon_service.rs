@@ -4,9 +4,9 @@ use serde::Serialize;
 use tokio::fs::remove_file;
 use tokio::process::Command;
 
-use crate::{execute_command};
+use crate::execute_command;
 
-use crate::actions::{ActionDescription, Actionable, ActionState, Action};
+use crate::actions::{Action, ActionDescription, ActionState, Actionable};
 
 const SERVICE_SRC: &str = "/nix/var/nix/profiles/default/lib/systemd/system/nix-daemon.service";
 const SOCKET_SRC: &str = "/nix/var/nix/profiles/default/lib/systemd/system/nix-daemon.socket";
@@ -62,23 +62,24 @@ impl Actionable for ConfigureNixDaemonService {
                 .arg("--create")
                 .arg("--prefix=/nix/var/nix"),
         )
-        .await.map_err(Self::Error::CommandFailed)?;
+        .await
+        .map_err(Self::Error::CommandFailed)?;
 
-        execute_command(
-            Command::new("systemctl").arg("link").arg(SERVICE_SRC),
-        )
-        .await.map_err(Self::Error::CommandFailed)?;
-
-        execute_command(Command::new("systemctl").arg("link").arg(SOCKET_SRC)).await
+        execute_command(Command::new("systemctl").arg("link").arg(SERVICE_SRC))
+            .await
             .map_err(Self::Error::CommandFailed)?;
 
-        execute_command(Command::new("systemctl").arg("daemon-reload")).await
+        execute_command(Command::new("systemctl").arg("link").arg(SOCKET_SRC))
+            .await
+            .map_err(Self::Error::CommandFailed)?;
+
+        execute_command(Command::new("systemctl").arg("daemon-reload"))
+            .await
             .map_err(Self::Error::CommandFailed)?;
 
         *action_state = ActionState::Completed;
         Ok(())
     }
-
 
     #[tracing::instrument(skip_all)]
     async fn revert(&mut self) -> Result<(), Self::Error> {
@@ -86,33 +87,34 @@ impl Actionable for ConfigureNixDaemonService {
         tracing::info!("Unconfiguring nix daemon service");
 
         // We don't need to do this! Systemd does it for us! (In fact, it's an error if we try to do this...)
-        execute_command(Command::new("systemctl").args(["disable", SOCKET_SRC])).await
+        execute_command(Command::new("systemctl").args(["disable", SOCKET_SRC]))
+            .await
             .map_err(Self::Error::CommandFailed)?;
 
-        execute_command(
-            Command::new("systemctl").args(["disable", SERVICE_SRC]),
-        )
-        .await.map_err(Self::Error::CommandFailed)?;
+        execute_command(Command::new("systemctl").args(["disable", SERVICE_SRC]))
+            .await
+            .map_err(Self::Error::CommandFailed)?;
 
         execute_command(
             Command::new("systemd-tmpfiles")
                 .arg("--remove")
                 .arg("--prefix=/nix/var/nix"),
         )
-        .await.map_err(Self::Error::CommandFailed)?;
+        .await
+        .map_err(Self::Error::CommandFailed)?;
 
-        remove_file(TMPFILES_DEST).await
+        remove_file(TMPFILES_DEST)
+            .await
             .map_err(|e| Self::Error::RemoveFile(PathBuf::from(TMPFILES_DEST), e))?;
 
-        execute_command(Command::new("systemctl").arg("daemon-reload")).await
+        execute_command(Command::new("systemctl").arg("daemon-reload"))
+            .await
             .map_err(Self::Error::CommandFailed)?;
 
         *action_state = ActionState::Reverted;
         Ok(())
     }
 }
-
-
 
 impl From<ConfigureNixDaemonService> for Action {
     fn from(v: ConfigureNixDaemonService) -> Self {
@@ -128,16 +130,21 @@ pub enum ConfigureNixDaemonServiceError {
         std::path::PathBuf,
         #[source]
         #[serde(serialize_with = "crate::serialize_error_to_display")]
-        std::io::Error
+        std::io::Error,
     ),
     #[error("Command failed to execute")]
     CommandFailed(
         #[source]
         #[serde(serialize_with = "crate::serialize_error_to_display")]
-        std::io::Error
+        std::io::Error,
     ),
     #[error("Remove file `{0}`")]
-    RemoveFile(std::path::PathBuf, #[source] #[serde(serialize_with = "crate::serialize_error_to_display")] std::io::Error),
+    RemoveFile(
+        std::path::PathBuf,
+        #[source]
+        #[serde(serialize_with = "crate::serialize_error_to_display")]
+        std::io::Error,
+    ),
     #[error("No supported init system found")]
     InitNotSupported,
 }

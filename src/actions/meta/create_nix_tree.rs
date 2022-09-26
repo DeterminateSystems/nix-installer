@@ -1,9 +1,7 @@
 use serde::Serialize;
 
-use crate::HarmonicError;
-
 use crate::actions::base::{CreateDirectory, CreateDirectoryError};
-use crate::actions::{ActionDescription, Actionable, ActionState, Action, ActionError};
+use crate::actions::{Action, ActionDescription, ActionState, Actionable};
 
 const PATHS: &[&str] = &[
     "/nix",
@@ -39,7 +37,10 @@ impl CreateNixTree {
             )
         }
 
-        Ok(Self { create_directories, action_state: ActionState::Planned })
+        Ok(Self {
+            create_directories,
+            action_state: ActionState::Planned,
+        })
     }
 }
 
@@ -50,15 +51,27 @@ impl Actionable for CreateNixTree {
         vec![ActionDescription::new(
             format!("Create a directory tree in `/nix`"),
             vec![
-                format!("Nix and the Nix daemon require a Nix Store, which will be stored at `/nix`"),
-                format!("Creates: {}", PATHS.iter().map(|v| format!("`{v}`")).collect::<Vec<_>>().join(", ")),
+                format!(
+                    "Nix and the Nix daemon require a Nix Store, which will be stored at `/nix`"
+                ),
+                format!(
+                    "Creates: {}",
+                    PATHS
+                        .iter()
+                        .map(|v| format!("`{v}`"))
+                        .collect::<Vec<_>>()
+                        .join(", ")
+                ),
             ],
         )]
     }
 
     #[tracing::instrument(skip_all)]
     async fn execute(&mut self) -> Result<(), Self::Error> {
-        let Self { create_directories, action_state } = self;
+        let Self {
+            create_directories,
+            action_state,
+        } = self;
 
         // Just do sequential since parallizing this will have little benefit
         for create_directory in create_directories {
@@ -69,10 +82,12 @@ impl Actionable for CreateNixTree {
         Ok(())
     }
 
-
     #[tracing::instrument(skip_all)]
     async fn revert(&mut self) -> Result<(), Self::Error> {
-        let Self { create_directories, action_state } = self;
+        let Self {
+            create_directories,
+            action_state,
+        } = self;
 
         // Just do sequential since parallizing this will have little benefit
         for create_directory in create_directories.iter_mut().rev() {

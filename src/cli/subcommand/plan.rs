@@ -1,8 +1,8 @@
-use std::{process::ExitCode, path::PathBuf};
+use std::{path::PathBuf, process::ExitCode};
 
 use clap::{ArgAction, Parser};
 use harmonic::{InstallPlan, InstallSettings};
-use tokio::io::AsyncWriteExt;
+
 use eyre::WrapErr;
 
 use crate::cli::{arg::ChannelValue, CommandExecute};
@@ -80,7 +80,9 @@ impl CommandExecute for Plan {
         let install_plan = InstallPlan::new(settings).await?;
 
         let json = serde_json::to_string_pretty(&install_plan)?;
-        tokio::fs::write(plan, json).await.wrap_err("Writing plan")?;
+        tokio::fs::write(plan, json)
+            .await
+            .wrap_err("Writing plan")?;
 
         Ok(ExitCode::SUCCESS)
     }

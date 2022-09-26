@@ -1,7 +1,7 @@
 pub mod base;
 pub mod meta;
 
-use std::{error::Error, fmt::Display};
+use std::error::Error;
 
 use base::{
     ConfigureNixDaemonService, ConfigureNixDaemonServiceError, CreateDirectory,
@@ -13,11 +13,10 @@ use base::{
 };
 use meta::{
     ConfigureNix, ConfigureNixError, ConfigureShellProfile, ConfigureShellProfileError,
-    CreateNixTree, CreateNixTreeError, CreateUsersAndGroup, CreateUsersAndGroupError,
-    ProvisionNix, ProvisionNixError, StartNixDaemon, StartNixDaemonError,
+    CreateNixTree, CreateNixTreeError, CreateUsersAndGroup, CreateUsersAndGroupError, ProvisionNix,
+    ProvisionNixError, StartNixDaemon, StartNixDaemonError,
 };
-use serde::{Deserialize, de::DeserializeOwned, Serialize};
-
+use serde::{de::DeserializeOwned, Deserialize, Serialize};
 
 use self::base::{StartSystemdUnit, StartSystemdUnitError};
 
@@ -26,7 +25,7 @@ pub trait Actionable: DeserializeOwned + Serialize + Into<Action> {
     type Error: std::error::Error + std::fmt::Debug + Serialize + Into<ActionError>;
 
     fn description(&self) -> Vec<ActionDescription>;
-    
+
     // They should also have an `async fn plan(args...) -> Result<ActionState<Self>, Self::Error>;`
     async fn execute(&mut self) -> Result<(), Self::Error>;
     async fn revert(&mut self) -> Result<(), Self::Error>;

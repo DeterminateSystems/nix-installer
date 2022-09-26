@@ -1,12 +1,10 @@
 use std::path::Path;
 
 use serde::Serialize;
-use tokio::task::{JoinSet, JoinError};
-
-use crate::HarmonicError;
+use tokio::task::{JoinError, JoinSet};
 
 use crate::actions::base::{CreateOrAppendFile, CreateOrAppendFileError};
-use crate::actions::{ActionDescription, Actionable, ActionState, Action, ActionError};
+use crate::actions::{Action, ActionDescription, ActionState, Actionable};
 
 const PROFILE_TARGETS: &[&str] = &[
     "/etc/bashrc",
@@ -79,12 +77,17 @@ impl Actionable for ConfigureShellProfile {
 
         for (idx, create_or_append_file) in create_or_append_files.iter().enumerate() {
             let mut create_or_append_file_clone = create_or_append_file.clone();
-            let _abort_handle = set.spawn(async move { create_or_append_file_clone.execute().await?; Result::<_, CreateOrAppendFileError>::Ok((idx, create_or_append_file_clone)) });
+            let _abort_handle = set.spawn(async move {
+                create_or_append_file_clone.execute().await?;
+                Result::<_, CreateOrAppendFileError>::Ok((idx, create_or_append_file_clone))
+            });
         }
 
         while let Some(result) = set.join_next().await {
             match result {
-                Ok(Ok((idx, create_or_append_file))) => create_or_append_files[idx] = create_or_append_file,
+                Ok(Ok((idx, create_or_append_file))) => {
+                    create_or_append_files[idx] = create_or_append_file
+                },
                 Ok(Err(e)) => errors.push(e),
                 Err(e) => return Err(e.into()),
             };
@@ -94,14 +97,15 @@ impl Actionable for ConfigureShellProfile {
             if errors.len() == 1 {
                 return Err(errors.into_iter().next().unwrap().into());
             } else {
-                return Err(ConfigureShellProfileError::MultipleCreateOrAppendFile(errors));
+                return Err(ConfigureShellProfileError::MultipleCreateOrAppendFile(
+                    errors,
+                ));
             }
         }
 
         *action_state = ActionState::Completed;
         Ok(())
     }
-
 
     #[tracing::instrument(skip_all)]
     async fn revert(&mut self) -> Result<(), Self::Error> {
@@ -116,12 +120,17 @@ impl Actionable for ConfigureShellProfile {
 
         for (idx, create_or_append_file) in create_or_append_files.iter().enumerate() {
             let mut create_or_append_file_clone = create_or_append_file.clone();
-            let _abort_handle = set.spawn(async move { create_or_append_file_clone.revert().await?; Result::<_, CreateOrAppendFileError>::Ok((idx, create_or_append_file_clone)) });
+            let _abort_handle = set.spawn(async move {
+                create_or_append_file_clone.revert().await?;
+                Result::<_, CreateOrAppendFileError>::Ok((idx, create_or_append_file_clone))
+            });
         }
 
         while let Some(result) = set.join_next().await {
             match result {
-                Ok(Ok((idx, create_or_append_file))) => create_or_append_files[idx] = create_or_append_file,
+                Ok(Ok((idx, create_or_append_file))) => {
+                    create_or_append_files[idx] = create_or_append_file
+                },
                 Ok(Err(e)) => errors.push(e),
                 Err(e) => return Err(e.into()),
             };
@@ -131,7 +140,9 @@ impl Actionable for ConfigureShellProfile {
             if errors.len() == 1 {
                 return Err(errors.into_iter().next().unwrap().into());
             } else {
-                return Err(ConfigureShellProfileError::MultipleCreateOrAppendFile(errors));
+                return Err(ConfigureShellProfileError::MultipleCreateOrAppendFile(
+                    errors,
+                ));
             }
         }
 
@@ -153,5 +164,9 @@ pub enum ConfigureShellProfileError {
     #[error("Multiple errors: {}", .0.iter().map(|v| format!("{v}")).collect::<Vec<_>>().join(" & "))]
     MultipleCreateOrAppendFile(Vec<CreateOrAppendFileError>),
     #[error(transparent)]
-    Join(#[from] #[serde(serialize_with = "crate::serialize_error_to_display")] JoinError),
+    Join(
+        #[from]
+        #[serde(serialize_with = "crate::serialize_error_to_display")]
+        JoinError,
+    ),
 }

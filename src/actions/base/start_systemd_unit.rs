@@ -1,10 +1,9 @@
 use serde::Serialize;
 use tokio::process::Command;
 
-use crate::actions::meta::StartNixDaemon;
-use crate::{execute_command, HarmonicError};
+use crate::execute_command;
 
-use crate::actions::{ActionDescription, Actionable, ActionState, Action, ActionError};
+use crate::actions::{Action, ActionDescription, ActionState, Actionable};
 
 #[derive(Debug, serde::Deserialize, serde::Serialize, Clone)]
 pub struct StartSystemdUnit {
@@ -15,7 +14,10 @@ pub struct StartSystemdUnit {
 impl StartSystemdUnit {
     #[tracing::instrument(skip_all)]
     pub async fn plan(unit: String) -> Result<Self, StartSystemdUnitError> {
-        Ok(Self { unit, action_state: ActionState::Planned })
+        Ok(Self {
+            unit,
+            action_state: ActionState::Planned,
+        })
     }
 }
 
@@ -62,7 +64,8 @@ impl Actionable for StartSystemdUnit {
                 .arg("--now")
                 .arg(format!("{unit}")),
         )
-        .await.map_err(StartSystemdUnitError::Command)?;
+        .await
+        .map_err(StartSystemdUnitError::Command)?;
 
         *action_state = ActionState::Completed;
         Ok(())
@@ -73,12 +76,9 @@ impl Actionable for StartSystemdUnit {
         let Self { unit, action_state } = self;
 
         // TODO(@Hoverbear): Handle proxy vars
-        execute_command(
-            Command::new("systemctl")
-                .arg("stop")
-                .arg(format!("{unit}")),
-        )
-        .await.map_err(StartSystemdUnitError::Command)?;
+        execute_command(Command::new("systemctl").arg("stop").arg(format!("{unit}")))
+            .await
+            .map_err(StartSystemdUnitError::Command)?;
 
         *action_state = ActionState::Reverted;
         Ok(())
@@ -94,5 +94,9 @@ impl From<StartSystemdUnit> for Action {
 #[derive(Debug, thiserror::Error, Serialize)]
 pub enum StartSystemdUnitError {
     #[error("Failed to execute command")]
-    Command(#[source] #[serde(serialize_with = "crate::serialize_error_to_display")] std::io::Error)
+    Command(
+        #[source]
+        #[serde(serialize_with = "crate::serialize_error_to_display")]
+        std::io::Error,
+    ),
 }
