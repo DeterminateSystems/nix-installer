@@ -57,7 +57,9 @@ impl Actionable for PlaceChannelConfiguration {
         )]
     }
 
-    #[tracing::instrument(skip_all)]
+    #[tracing::instrument(skip_all, fields(
+        channels = self.channels.iter().map(|(c, u)| format!("{c}={u}")).collect::<Vec<_>>().join(", "),
+    ))]
     async fn execute(&mut self) -> Result<(), Self::Error> {
         let Self {
             create_file,
@@ -77,7 +79,9 @@ impl Actionable for PlaceChannelConfiguration {
         Ok(())
     }
 
-    #[tracing::instrument(skip_all)]
+    #[tracing::instrument(skip_all, fields(
+        channels = self.channels.iter().map(|(c, u)| format!("{c}={u}")).collect::<Vec<_>>().join(", "),
+    ))]
     async fn revert(&mut self) -> Result<(), Self::Error> {
         let Self {
             create_file,

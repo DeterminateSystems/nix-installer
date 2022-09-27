@@ -35,13 +35,19 @@ impl Actionable for SetupDefaultProfile {
         )]
     }
 
-    #[tracing::instrument(skip_all)]
+    #[tracing::instrument(skip_all, fields(
+        channels = %self.channels.join(","),
+    ))]
     async fn execute(&mut self) -> Result<(), Self::Error> {
         let Self {
             channels,
             action_state,
         } = self;
-        tracing::info!("Setting up default profile");
+        if *action_state == ActionState::Completed {
+            tracing::trace!("Already completed: Setting up default profile");
+            return Ok(());
+        }
+        tracing::debug!("Setting up default profile");
 
         // Find an `nix` package
         let nix_pkg_glob = "/nix/store/*-nix-*";
@@ -119,19 +125,29 @@ impl Actionable for SetupDefaultProfile {
                 .await
                 .map_err(SetupDefaultProfileError::Command)?;
         }
+
+        tracing::trace!("Set up default profile");
         *action_state = ActionState::Completed;
         Ok(())
     }
 
-    #[tracing::instrument(skip_all)]
+    #[tracing::instrument(skip_all, fields(
+        channels = %self.channels.join(","),
+    ))]
     async fn revert(&mut self) -> Result<(), Self::Error> {
         let Self {
             channels: _,
             action_state,
         } = self;
+        if *action_state == ActionState::Uncompleted {
+            tracing::trace!("Already reverted: Unset default profile");
+            return Ok(());
+        }
+        tracing::debug!("Unsetting default profile (mostly noop)");
 
         std::env::remove_var("NIX_SSL_CERT_FILE");
 
+        tracing::trace!("Unset default profile (mostly noop)");
         *action_state = ActionState::Completed;
         Ok(())
     }

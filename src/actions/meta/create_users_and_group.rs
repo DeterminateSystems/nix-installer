@@ -76,7 +76,13 @@ impl Actionable for CreateUsersAndGroup {
         ]
     }
 
-    #[tracing::instrument(skip_all)]
+    #[tracing::instrument(skip_all, fields(
+        daemon_user_count = self.daemon_user_count,
+        nix_build_group_name = self.nix_build_group_name,
+        nix_build_group_id = self.nix_build_group_id,
+        nix_build_user_prefix = self.nix_build_user_prefix,
+        nix_build_user_id_base = self.nix_build_user_id_base,
+    ))]
     async fn execute(&mut self) -> Result<(), Self::Error> {
         let Self {
             create_users,
@@ -132,7 +138,14 @@ impl Actionable for CreateUsersAndGroup {
         Ok(())
     }
 
-    #[tracing::instrument(skip_all)]
+
+    #[tracing::instrument(skip_all, fields(
+        daemon_user_count = self.daemon_user_count,
+        nix_build_group_name = self.nix_build_group_name,
+        nix_build_group_id = self.nix_build_group_id,
+        nix_build_user_prefix = self.nix_build_user_prefix,
+        nix_build_user_id_base = self.nix_build_user_id_base,
+    ))]
     async fn revert(&mut self) -> Result<(), Self::Error> {
         let Self {
             create_users,

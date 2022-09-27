@@ -4,18 +4,20 @@ use serde::Serialize;
 
 use crate::actions::{Action, ActionDescription, ActionState, Actionable};
 
+const DEST: &str = "/nix/store";
+
 #[derive(Debug, serde::Deserialize, serde::Serialize, Clone)]
 pub struct MoveUnpackedNix {
-    source: PathBuf,
+    src: PathBuf,
     action_state: ActionState,
 }
 
 impl MoveUnpackedNix {
     #[tracing::instrument(skip_all)]
-    pub async fn plan(source: PathBuf) -> Result<Self, MoveUnpackedNixError> {
-        // Note: Do NOT try to check for the source/dest since the installer creates those
+    pub async fn plan(src: PathBuf) -> Result<Self, MoveUnpackedNixError> {
+        // Note: Do NOT try to check for the src/dest since the installer creates those
         Ok(Self {
-            source,
+            src,
             action_state: ActionState::Uncompleted,
         })
     }
@@ -26,22 +28,25 @@ impl Actionable for MoveUnpackedNix {
     type Error = MoveUnpackedNixError;
     fn description(&self) -> Vec<ActionDescription> {
         let Self {
-            source,
+            src,
             action_state: _,
         } = &self;
         vec![ActionDescription::new(
             format!("Move the downloaded Nix into `/nix`"),
             vec![format!(
                 "Nix is being downloaded to `{}` and should be in `nix`",
-                source.display(),
+                src.display(),
             )],
         )]
     }
 
-    #[tracing::instrument(skip_all)]
+    #[tracing::instrument(skip_all, fields(
+        src = %self.src.display(),
+        dest = DEST,
+    ))]
     async fn execute(&mut self) -> Result<(), Self::Error> {
         let Self {
-            source,
+            src,
             action_state,
         } = self;
         if *action_state == ActionState::Completed {
@@ -52,7 +57,7 @@ impl Actionable for MoveUnpackedNix {
 
         // TODO(@Hoverbear): I would like to make this less awful
         let found_nix_paths =
-            glob::glob(&format!("{}/nix-*", source.display()))?.collect::<Result<Vec<_>, _>>()?;
+            glob::glob(&format!("{}/nix-*", src.display()))?.collect::<Result<Vec<_>, _>>()?;
         assert_eq!(
             found_nix_paths.len(),
             1,
@@ -61,7 +66,7 @@ impl Actionable for MoveUnpackedNix {
         let found_nix_path = found_nix_paths.into_iter().next().unwrap();
         tracing::trace!("Renaming");
         let src = found_nix_path.join("store");
-        let dest = Path::new("/nix/store");
+        let dest = Path::new(DEST);
         tokio::fs::rename(src.clone(), dest)
             .await
             .map_err(|e| MoveUnpackedNixError::Rename(src, dest.to_owned(), e))?;
@@ -71,10 +76,13 @@ impl Actionable for MoveUnpackedNix {
         Ok(())
     }
 
-    #[tracing::instrument(skip_all)]
+    #[tracing::instrument(skip_all, fields(
+        src = %self.src.display(),
+        dest = DEST,
+    ))]
     async fn revert(&mut self) -> Result<(), Self::Error> {
         let Self {
-            source: _,
+            src: _,
             action_state,
         } = self;
         if *action_state == ActionState::Uncompleted {

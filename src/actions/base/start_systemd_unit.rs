@@ -45,9 +45,16 @@ impl Actionable for StartSystemdUnit {
         }
     }
 
-    #[tracing::instrument(skip_all)]
+    #[tracing::instrument(skip_all, fields(
+        unit = %self.unit,
+    ))]
     async fn execute(&mut self) -> Result<(), Self::Error> {
         let Self { unit, action_state } = self;
+        if *action_state == ActionState::Completed {
+            tracing::trace!("Already completed: Starting systemd unit");
+            return Ok(());
+        }
+        tracing::debug!("Starting systemd unit");
 
         // TODO(@Hoverbear): Handle proxy vars
         execute_command(
@@ -59,19 +66,28 @@ impl Actionable for StartSystemdUnit {
         .await
         .map_err(StartSystemdUnitError::Command)?;
 
+        tracing::trace!("Started systemd unit");
         *action_state = ActionState::Completed;
         Ok(())
     }
 
-    #[tracing::instrument(skip_all)]
+    #[tracing::instrument(skip_all, fields(
+        unit = %self.unit,
+    ))]
     async fn revert(&mut self) -> Result<(), Self::Error> {
         let Self { unit, action_state } = self;
+        if *action_state == ActionState::Uncompleted {
+            tracing::trace!("Already reverted: Stopping systemd unit");
+            return Ok(());
+        }
+        tracing::debug!("Stopping systemd unit");
 
         // TODO(@Hoverbear): Handle proxy vars
         execute_command(Command::new("systemctl").arg("stop").arg(format!("{unit}")))
             .await
             .map_err(StartSystemdUnitError::Command)?;
 
+        tracing::trace!("Stopped systemd unit");
         *action_state = ActionState::Completed;
         Ok(())
     }

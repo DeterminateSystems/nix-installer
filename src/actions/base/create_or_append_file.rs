@@ -66,7 +66,12 @@ impl Actionable for CreateOrAppendFile {
         )]
     }
 
-    #[tracing::instrument(skip_all)]
+    #[tracing::instrument(skip_all, fields(
+        path = %self.path.display(),
+        user = self.user,
+        group = self.group,
+        mode = format!("{:#o}", self.mode),
+    ))]
     async fn execute(&mut self) -> Result<(), Self::Error> {
         let Self {
             path,
@@ -118,7 +123,12 @@ impl Actionable for CreateOrAppendFile {
         Ok(())
     }
 
-    #[tracing::instrument(skip_all)]
+    #[tracing::instrument(skip_all, fields(
+        path = %self.path.display(),
+        user = self.user,
+        group = self.group,
+        mode = format!("{:#o}", self.mode),
+    ))]
     async fn revert(&mut self) -> Result<(), Self::Error> {
         let Self {
             path,

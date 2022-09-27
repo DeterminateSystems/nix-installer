@@ -39,7 +39,11 @@ impl Actionable for CreateUser {
         )]
     }
 
-    #[tracing::instrument(skip_all)]
+    #[tracing::instrument(skip_all, fields(
+        user = self.name,
+        uid = self.uid,
+        gid = self.gid,
+    ))]
     async fn execute(&mut self) -> Result<(), Self::Error> {
         let Self {
             name,
@@ -80,7 +84,11 @@ impl Actionable for CreateUser {
         Ok(())
     }
 
-    #[tracing::instrument(skip_all)]
+    #[tracing::instrument(skip_all, fields(
+        user = self.name,
+        uid = self.uid,
+        gid = self.gid,
+    ))]
     async fn revert(&mut self) -> Result<(), Self::Error> {
         let Self {
             name,

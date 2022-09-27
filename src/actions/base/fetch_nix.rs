@@ -10,19 +10,19 @@ use crate::actions::{Action, ActionDescription, ActionState, Actionable};
 #[derive(Debug, serde::Deserialize, serde::Serialize, Clone)]
 pub struct FetchNix {
     url: Url,
-    destination: PathBuf,
+    dest: PathBuf,
     action_state: ActionState,
 }
 
 impl FetchNix {
     #[tracing::instrument(skip_all)]
-    pub async fn plan(url: Url, destination: PathBuf) -> Result<Self, FetchNixError> {
+    pub async fn plan(url: Url, dest: PathBuf) -> Result<Self, FetchNixError> {
         // TODO(@hoverbear): Check URL exists?
         // TODO(@hoverbear): Check tempdir exists
 
         Ok(Self {
             url,
-            destination,
+            dest,
             action_state: ActionState::Uncompleted,
         })
     }
@@ -34,23 +34,26 @@ impl Actionable for FetchNix {
     fn description(&self) -> Vec<ActionDescription> {
         let Self {
             url,
-            destination,
+            dest,
             action_state: _,
         } = &self;
         vec![ActionDescription::new(
             format!("Fetch Nix from `{url}`"),
             vec![format!(
                 "Unpack it to `{}` (moved later)",
-                destination.display()
+                dest.display()
             )],
         )]
     }
 
-    #[tracing::instrument(skip_all)]
+    #[tracing::instrument(skip_all, fields(
+        url = %self.url,
+        dest = %self.dest.display(),
+    ))]
     async fn execute(&mut self) -> Result<(), Self::Error> {
         let Self {
             url,
-            destination,
+            dest,
             action_state,
         } = self;
         if *action_state == ActionState::Completed {
@@ -65,12 +68,12 @@ impl Actionable for FetchNix {
         let bytes = res.bytes().await.map_err(Self::Error::Reqwest)?;
         // TODO(@Hoverbear): Pick directory
         tracing::trace!("Unpacking tar.xz");
-        let destination_clone = destination.clone();
+        let dest_clone = dest.clone();
         let handle: Result<(), Self::Error> = spawn_blocking(move || {
             let decoder = xz2::read::XzDecoder::new(bytes.reader());
             let mut archive = tar::Archive::new(decoder);
-            archive.unpack(&destination_clone).map_err(Self::Error::Unarchive)?;
-            tracing::debug!(destination = %destination_clone.display(), "Downloaded & extracted Nix");
+            archive.unpack(&dest_clone).map_err(Self::Error::Unarchive)?;
+            tracing::debug!(dest = %dest_clone.display(), "Downloaded & extracted Nix");
             Ok(())
         })
         .await?;
@@ -82,11 +85,14 @@ impl Actionable for FetchNix {
         Ok(())
     }
 
-    #[tracing::instrument(skip_all)]
+    #[tracing::instrument(skip_all, fields(
+        url = %self.url,
+        dest = %self.dest.display(),
+    ))]
     async fn revert(&mut self) -> Result<(), Self::Error> {
         let Self {
             url: _,
-            destination: _,
+            dest: _,
             action_state,
         } = self;
 
