@@ -28,15 +28,20 @@ impl CreateUser {
 #[async_trait::async_trait]
 impl Actionable for CreateUser {
     type Error = CreateUserError;
-    fn description(&self) -> Vec<ActionDescription> {
-        let name = &self.name;
-        let uid = &self.uid;
-        vec![ActionDescription::new(
-            format!("Create user {name} with UID {uid}"),
-            vec![format!(
-                "The nix daemon requires system users it can act as in order to build"
-            )],
-        )]
+
+    fn describe_execute(&self) -> Vec<ActionDescription> {
+        if self.action_state == ActionState::Completed {
+            vec![]
+        } else {
+            let Self { name, uid, gid, action_state: _ } = self;
+
+            vec![ActionDescription::new(
+                format!("Create user {name} with UID {uid} with group {gid}"),
+                vec![format!(
+                    "The nix daemon requires system users it can act as in order to build"
+                )],
+            )]
+        }
     }
 
     #[tracing::instrument(skip_all, fields(
@@ -82,6 +87,22 @@ impl Actionable for CreateUser {
         tracing::trace!("Created user");
         *action_state = ActionState::Completed;
         Ok(())
+    }
+
+
+    fn describe_revert(&self) -> Vec<ActionDescription> {
+        if self.action_state == ActionState::Uncompleted {
+            vec![]
+        } else {
+            let Self { name, uid, gid, action_state: _ } = self;
+
+            vec![ActionDescription::new(
+                format!("Delete user {name} with UID {uid} with group {gid}"),
+                vec![format!(
+                    "The nix daemon requires system users it can act as in order to build"
+                )],
+            )]
+        }
     }
 
     #[tracing::instrument(skip_all, fields(

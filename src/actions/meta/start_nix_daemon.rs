@@ -26,8 +26,12 @@ impl StartNixDaemon {
 impl Actionable for StartNixDaemon {
     type Error = StartNixDaemonError;
 
-    fn description(&self) -> Vec<ActionDescription> {
-        self.start_systemd_socket.description()
+    fn describe_execute(&self) -> Vec<ActionDescription> {
+        if self.action_state == ActionState::Completed {
+            vec![]
+        } else {
+            self.start_systemd_socket.describe_execute()
+        }
     }
 
     #[tracing::instrument(skip_all)]
@@ -47,6 +51,14 @@ impl Actionable for StartNixDaemon {
         tracing::trace!("Started the nix daemon");
         *action_state = ActionState::Completed;
         Ok(())
+    }
+
+    fn describe_revert(&self) -> Vec<ActionDescription> {
+        if self.action_state == ActionState::Uncompleted {
+            vec![]
+        } else {
+            self.start_systemd_socket.describe_revert()
+        }
     }
 
     #[tracing::instrument(skip_all)]
@@ -78,6 +90,6 @@ impl From<StartNixDaemon> for Action {
 
 #[derive(Debug, thiserror::Error, Serialize)]
 pub enum StartNixDaemonError {
-    #[error(transparent)]
-    StartSystemdUnit(#[from] StartSystemdUnitError),
+    #[error("Starting systemd unit")]
+    StartSystemdUnit(#[source] #[from] StartSystemdUnitError),
 }

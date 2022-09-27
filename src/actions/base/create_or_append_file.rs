@@ -49,7 +49,8 @@ impl CreateOrAppendFile {
 #[async_trait::async_trait]
 impl Actionable for CreateOrAppendFile {
     type Error = CreateOrAppendFileError;
-    fn description(&self) -> Vec<ActionDescription> {
+
+    fn describe_execute(&self) -> Vec<ActionDescription> {
         let Self {
             path,
             user,
@@ -58,12 +59,16 @@ impl Actionable for CreateOrAppendFile {
             buf,
             action_state: _,
         } = &self;
-        vec![ActionDescription::new(
-            format!("Create or append file `{}`", path.display()),
-            vec![format!(
-                "Create or append `{}` owned by `{user}:{group}` with mode `{mode:#o}` with `{buf}`", path.display()
-            )],
-        )]
+        if self.action_state == ActionState::Completed {
+            vec![]
+        } else {
+            vec![ActionDescription::new(
+                format!("Create or append file `{}`", path.display()),
+                vec![format!(
+                    "Create or append `{}` owned by `{user}:{group}` with mode `{mode:#o}` with `{buf}`", path.display()
+                )],
+            )]
+        }
     }
 
     #[tracing::instrument(skip_all, fields(
@@ -121,6 +126,27 @@ impl Actionable for CreateOrAppendFile {
         tracing::trace!("Created or appended fragment to file");
         *action_state = ActionState::Completed;
         Ok(())
+    }
+
+    fn describe_revert(&self) -> Vec<ActionDescription> {
+        let Self {
+            path,
+            user: _,
+            group: _,
+            mode: _,
+            buf,
+            action_state: _,
+        } = &self;
+        if self.action_state == ActionState::Uncompleted {
+            vec![]
+        } else {
+            vec![ActionDescription::new(
+                format!("Delete Nix related fragment from file `{}`", path.display()),
+                vec![format!(
+                    "Delete Nix related fragment from file `{}`. Fragment: `{buf}`", path.display()
+                )],
+            )]
+        }
     }
 
     #[tracing::instrument(skip_all, fields(

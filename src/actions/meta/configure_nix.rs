@@ -66,7 +66,7 @@ impl ConfigureNix {
 #[async_trait::async_trait]
 impl Actionable for ConfigureNix {
     type Error = ConfigureNixError;
-    fn description(&self) -> Vec<ActionDescription> {
+    fn describe_execute(&self) -> Vec<ActionDescription> {
         let Self {
             setup_default_profile,
             configure_nix_daemon_service,
@@ -76,15 +76,18 @@ impl Actionable for ConfigureNix {
             action_state: _,
         } = &self;
 
-        let mut buf = setup_default_profile.description();
-        buf.append(&mut configure_nix_daemon_service.description());
-        buf.append(&mut place_nix_configuration.description());
-        buf.append(&mut place_channel_configuration.description());
-        if let Some(configure_shell_profile) = configure_shell_profile {
-            buf.append(&mut configure_shell_profile.description());
+        if self.action_state == ActionState::Completed {
+            vec![]
+        } else {
+            let mut buf = setup_default_profile.describe_execute();
+            buf.append(&mut configure_nix_daemon_service.describe_execute());
+            buf.append(&mut place_nix_configuration.describe_execute());
+            buf.append(&mut place_channel_configuration.describe_execute());
+            if let Some(configure_shell_profile) = configure_shell_profile {
+                buf.append(&mut configure_shell_profile.describe_execute());
+            }
+            buf
         }
-
-        buf
     }
 
     #[tracing::instrument(skip_all)]
@@ -159,6 +162,33 @@ impl Actionable for ConfigureNix {
         Ok(())
     }
 
+    fn describe_revert(&self) -> Vec<ActionDescription> {
+        let Self {
+            setup_default_profile,
+            configure_nix_daemon_service,
+            place_nix_configuration,
+            place_channel_configuration,
+            configure_shell_profile,
+            action_state: _,
+        } = &self;
+
+        if self.action_state == ActionState::Uncompleted {
+            vec![]
+        } else {
+            let mut buf = Vec::default();
+            if let Some(configure_shell_profile) = configure_shell_profile {
+                buf.append(&mut configure_shell_profile.describe_revert());
+            }
+            buf.append(&mut place_channel_configuration.describe_revert());
+            buf.append(&mut place_nix_configuration.describe_revert());
+            buf.append(&mut configure_nix_daemon_service.describe_revert());
+            buf.append(&mut setup_default_profile.describe_revert());
+
+            buf
+        }
+    }
+
+
     #[tracing::instrument(skip_all)]
     async fn revert(&mut self) -> Result<(), Self::Error> {
         let Self {
@@ -197,14 +227,14 @@ impl From<ConfigureNix> for Action {
 
 #[derive(Debug, thiserror::Error, Serialize)]
 pub enum ConfigureNixError {
-    #[error(transparent)]
-    SetupDefaultProfile(#[from] SetupDefaultProfileError),
-    #[error(transparent)]
-    PlaceNixConfiguration(#[from] PlaceNixConfigurationError),
-    #[error(transparent)]
-    PlaceChannelConfiguration(#[from] PlaceChannelConfigurationError),
-    #[error(transparent)]
-    ConfigureNixDaemonService(#[from] ConfigureNixDaemonServiceError),
-    #[error(transparent)]
-    ConfigureShellProfile(#[from] ConfigureShellProfileError),
+    #[error("Setting up default profile")]
+    SetupDefaultProfile(#[source] #[from] SetupDefaultProfileError),
+    #[error("Placing Nix configuration")]
+    PlaceNixConfiguration(#[source] #[from] PlaceNixConfigurationError),
+    #[error("Placing channel configuration")]
+    PlaceChannelConfiguration(#[source] #[from] PlaceChannelConfigurationError),
+    #[error("Configuring Nix daemon")]
+    ConfigureNixDaemonService(#[source] #[from] ConfigureNixDaemonServiceError),
+    #[error("Configuring shell profile")]
+    ConfigureShellProfile(#[source] #[from] ConfigureShellProfileError),
 }

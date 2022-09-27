@@ -31,19 +31,24 @@ impl FetchNix {
 #[async_trait::async_trait]
 impl Actionable for FetchNix {
     type Error = FetchNixError;
-    fn description(&self) -> Vec<ActionDescription> {
+
+    fn describe_execute(&self) -> Vec<ActionDescription> {
         let Self {
             url,
             dest,
             action_state: _,
         } = &self;
-        vec![ActionDescription::new(
-            format!("Fetch Nix from `{url}`"),
-            vec![format!(
-                "Unpack it to `{}` (moved later)",
-                dest.display()
-            )],
-        )]
+        if self.action_state == ActionState::Completed {
+            vec![]
+        } else {
+            vec![ActionDescription::new(
+                format!("Fetch Nix from `{url}`"),
+                vec![format!(
+                    "Unpack it to `{}` (moved later)",
+                    dest.display()
+                )],
+            )]
+        }
     }
 
     #[tracing::instrument(skip_all, fields(
@@ -85,6 +90,14 @@ impl Actionable for FetchNix {
         Ok(())
     }
 
+    fn describe_revert(&self) -> Vec<ActionDescription> {
+        if self.action_state == ActionState::Uncompleted {
+            vec![]
+        } else {
+            vec![/* Deliberately empty -- this is a noop */]
+        }
+    }
+
     #[tracing::instrument(skip_all, fields(
         url = %self.url,
         dest = %self.dest.display(),
@@ -114,8 +127,9 @@ impl From<FetchNix> for Action {
 
 #[derive(Debug, thiserror::Error, Serialize)]
 pub enum FetchNixError {
-    #[error(transparent)]
+    #[error("Joining spawned async task")]
     Join(
+        #[source]
         #[from]
         #[serde(serialize_with = "crate::serialize_error_to_display")]
         JoinError,

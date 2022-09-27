@@ -57,11 +57,16 @@ impl ConfigureShellProfile {
 #[async_trait::async_trait]
 impl Actionable for ConfigureShellProfile {
     type Error = ConfigureShellProfileError;
-    fn description(&self) -> Vec<ActionDescription> {
-        vec![ActionDescription::new(
-            "Configure the shell profiles".to_string(),
-            vec!["Update shell profiles to import Nix".to_string()],
-        )]
+
+    fn describe_execute(&self) -> Vec<ActionDescription> {
+        if self.action_state == ActionState::Completed {
+            vec![]
+        } else {
+            vec![ActionDescription::new(
+                "Configure the shell profiles".to_string(),
+                vec!["Update shell profiles to import Nix".to_string()],
+            )]
+        }
     }
 
     #[tracing::instrument(skip_all)]
@@ -111,6 +116,18 @@ impl Actionable for ConfigureShellProfile {
         *action_state = ActionState::Completed;
         Ok(())
     }
+
+    fn describe_revert(&self) -> Vec<ActionDescription> {
+        if self.action_state == ActionState::Uncompleted {
+            vec![]
+        } else {
+            vec![ActionDescription::new(
+                "Unconfigure the shell profiles".to_string(),
+                vec!["Update shell profiles to no longer import Nix".to_string()],
+            )]
+        }
+    }
+
 
     #[tracing::instrument(skip_all)]
     async fn revert(&mut self) -> Result<(), Self::Error> {
@@ -169,12 +186,17 @@ impl From<ConfigureShellProfile> for Action {
 
 #[derive(Debug, thiserror::Error, Serialize)]
 pub enum ConfigureShellProfileError {
-    #[error(transparent)]
-    CreateOrAppendFile(#[from] CreateOrAppendFileError),
+    #[error("Creating or appending to file")]
+    CreateOrAppendFile(
+        #[from]
+        #[source]
+        CreateOrAppendFileError
+    ),
     #[error("Multiple errors: {}", .0.iter().map(|v| format!("{v}")).collect::<Vec<_>>().join(" & "))]
     MultipleCreateOrAppendFile(Vec<CreateOrAppendFileError>),
-    #[error(transparent)]
+    #[error("Joining spawned async task")]
     Join(
+        #[source]
         #[from]
         #[serde(serialize_with = "crate::serialize_error_to_display")]
         JoinError,

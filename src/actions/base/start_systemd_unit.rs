@@ -24,24 +24,17 @@ impl StartSystemdUnit {
 #[async_trait::async_trait]
 impl Actionable for StartSystemdUnit {
     type Error = StartSystemdUnitError;
-    fn description(&self) -> Vec<ActionDescription> {
-        match self.action_state {
-            ActionState::Uncompleted => vec![
-                ActionDescription::new(
-                    "Start the systemd Nix service and socket".to_string(),
-                    vec![
-                        "The `nix` command line tool communicates with a running Nix daemon managed by your init system".to_string()
-                    ]
-                ),
-            ],
-            ActionState::Completed => vec![
-                ActionDescription::new(
-                    "Stop the systemd Nix service and socket".to_string(),
-                    vec![
-                        "The `nix` command line tool communicates with a running Nix daemon managed by your init system".to_string()
-                    ]
-                ),
-            ],
+
+    fn describe_execute(&self) -> Vec<ActionDescription> {
+        if self.action_state == ActionState::Completed {
+            vec![]
+        } else {
+            vec![ActionDescription::new(
+                "Start the systemd Nix service and socket".to_string(),
+                vec![
+                    "The `nix` command line tool communicates with a running Nix daemon managed by your init system".to_string()
+                ]
+            )]
         }
     }
 
@@ -69,6 +62,19 @@ impl Actionable for StartSystemdUnit {
         tracing::trace!("Started systemd unit");
         *action_state = ActionState::Completed;
         Ok(())
+    }
+
+    fn describe_revert(&self) -> Vec<ActionDescription> {
+        if self.action_state == ActionState::Uncompleted {
+            vec![]
+        } else {
+            vec![ActionDescription::new(
+                "Stop the systemd Nix service and socket".to_string(),
+                vec![
+                    "The `nix` command line tool communicates with a running Nix daemon managed by your init system".to_string()
+                ]
+            )]
+        }
     }
 
     #[tracing::instrument(skip_all, fields(

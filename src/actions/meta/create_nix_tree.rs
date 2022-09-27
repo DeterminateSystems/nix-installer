@@ -47,23 +47,28 @@ impl CreateNixTree {
 #[async_trait::async_trait]
 impl Actionable for CreateNixTree {
     type Error = CreateNixTreeError;
-    fn description(&self) -> Vec<ActionDescription> {
-        vec![ActionDescription::new(
-            format!("Create a directory tree in `/nix`"),
-            vec![
-                format!(
-                    "Nix and the Nix daemon require a Nix Store, which will be stored at `/nix`"
-                ),
-                format!(
-                    "Creates: {}",
-                    PATHS
-                        .iter()
-                        .map(|v| format!("`{v}`"))
-                        .collect::<Vec<_>>()
-                        .join(", ")
-                ),
-            ],
-        )]
+
+    fn describe_execute(&self) -> Vec<ActionDescription> {
+        if self.action_state == ActionState::Completed {
+            vec![]
+        } else {
+            vec![ActionDescription::new(
+                format!("Create a directory tree in `/nix`"),
+                vec![
+                    format!(
+                        "Nix and the Nix daemon require a Nix Store, which will be stored at `/nix`"
+                    ),
+                    format!(
+                        "Creates: {}",
+                        PATHS
+                            .iter()
+                            .map(|v| format!("`{v}`"))
+                            .collect::<Vec<_>>()
+                            .join(", ")
+                    ),
+                ],
+            )]
+        }
     }
 
     #[tracing::instrument(skip_all)]
@@ -86,6 +91,30 @@ impl Actionable for CreateNixTree {
         tracing::trace!("Created nix tree");
         *action_state = ActionState::Completed;
         Ok(())
+    }
+
+    fn describe_revert(&self) -> Vec<ActionDescription> {
+        if self.action_state == ActionState::Uncompleted {
+            vec![]
+        } else {
+            vec![ActionDescription::new(
+                format!("Remove the directory tree in `/nix`"),
+                vec![
+                    format!(
+                        "Nix and the Nix daemon require a Nix Store, which will be stored at `/nix`"
+                    ),
+                    format!(
+                        "Removes: {}",
+                        PATHS
+                            .iter()
+                            .rev()
+                            .map(|v| format!("`{v}`"))
+                            .collect::<Vec<_>>()
+                            .join(", ")
+                    ),
+                ],
+            )]
+        }
     }
 
     #[tracing::instrument(skip_all)]
@@ -119,6 +148,6 @@ impl From<CreateNixTree> for Action {
 
 #[derive(Debug, thiserror::Error, Serialize)]
 pub enum CreateNixTreeError {
-    #[error(transparent)]
-    CreateDirectory(#[from] CreateDirectoryError),
+    #[error("Creating directory")]
+    CreateDirectory(#[source] #[from] CreateDirectoryError),
 }

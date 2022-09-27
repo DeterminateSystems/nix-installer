@@ -52,7 +52,8 @@ impl CreateUsersAndGroup {
 #[async_trait::async_trait]
 impl Actionable for CreateUsersAndGroup {
     type Error = CreateUsersAndGroupError;
-    fn description(&self) -> Vec<ActionDescription> {
+
+    fn describe_execute(&self) -> Vec<ActionDescription> {
         let Self {
             daemon_user_count,
             nix_build_group_name,
@@ -63,17 +64,20 @@ impl Actionable for CreateUsersAndGroup {
             create_users: _,
             action_state: _,
         } = &self;
-
-        vec![
-            ActionDescription::new(
-                format!("Create build users and group"),
-                vec![
-                    format!("The nix daemon requires system users (and a group they share) which it can act as in order to build"),
-                    format!("Create group `{nix_build_group_name}` with uid `{nix_build_group_id}`"),
-                    format!("Create {daemon_user_count} users with prefix `{nix_build_user_prefix}` starting at uid `{nix_build_user_id_base}`"),
-                ],
-            )
-        ]
+        if self.action_state == ActionState::Completed {
+            vec![]
+        } else {
+            vec![
+                ActionDescription::new(
+                    format!("Create build users and group"),
+                    vec![
+                        format!("The nix daemon requires system users (and a group they share) which it can act as in order to build"),
+                        format!("Create group `{nix_build_group_name}` with uid `{nix_build_group_id}`"),
+                        format!("Create {daemon_user_count} users with prefix `{nix_build_user_prefix}` starting at uid `{nix_build_user_id_base}`"),
+                    ],
+                )
+            ]
+        }
     }
 
     #[tracing::instrument(skip_all, fields(
@@ -138,6 +142,32 @@ impl Actionable for CreateUsersAndGroup {
         Ok(())
     }
 
+    fn describe_revert(&self) -> Vec<ActionDescription> {
+        let Self {
+            daemon_user_count,
+            nix_build_group_name,
+            nix_build_group_id,
+            nix_build_user_prefix,
+            nix_build_user_id_base,
+            create_group: _,
+            create_users: _,
+            action_state: _,
+        } = &self;
+        if self.action_state == ActionState::Uncompleted {
+            vec![]
+        } else {
+            vec![
+                ActionDescription::new(
+                    format!("Remove build users and group"),
+                    vec![
+                        format!("The nix daemon requires system users (and a group they share) which it can act as in order to build"),
+                        format!("Create group `{nix_build_group_name}` with uid `{nix_build_group_id}`"),
+                        format!("Create {daemon_user_count} users with prefix `{nix_build_user_prefix}` starting at uid `{nix_build_user_id_base}`"),
+                    ],
+                )
+            ]
+        }
+    }
 
     #[tracing::instrument(skip_all, fields(
         daemon_user_count = self.daemon_user_count,
@@ -208,14 +238,15 @@ impl From<CreateUsersAndGroup> for Action {
 
 #[derive(Debug, thiserror::Error, Serialize)]
 pub enum CreateUsersAndGroupError {
-    #[error(transparent)]
-    CreateUser(#[from] CreateUserError),
+    #[error("Creating user")]
+    CreateUser(#[source] #[from] CreateUserError),
     #[error("Multiple errors: {}", .0.iter().map(|v| format!("{v}")).collect::<Vec<_>>().join(" & "))]
     CreateUsers(Vec<CreateUserError>),
-    #[error(transparent)]
-    CreateGroup(#[from] CreateGroupError),
-    #[error(transparent)]
+    #[error("Creating group")]
+    CreateGroup(#[source] #[from] CreateGroupError),
+    #[error("Joining spawned async task")]
     Join(
+        #[source]
         #[from]
         #[serde(serialize_with = "crate::serialize_error_to_display")]
         JoinError,

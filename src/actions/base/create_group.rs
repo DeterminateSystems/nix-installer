@@ -26,18 +26,23 @@ impl CreateGroup {
 #[async_trait::async_trait]
 impl Actionable for CreateGroup {
     type Error = CreateGroupError;
-    fn description(&self) -> Vec<ActionDescription> {
+
+    fn describe_execute(&self) -> Vec<ActionDescription> {
         let Self {
             name,
             gid,
             action_state: _,
         } = &self;
-        vec![ActionDescription::new(
-            format!("Create group {name} with GID {gid}"),
-            vec![format!(
-                "The nix daemon requires a system user group its system users can be part of"
-            )],
-        )]
+        if self.action_state == ActionState::Completed {
+            vec![]
+        } else {
+            vec![ActionDescription::new(
+                format!("Create group {name} with GID {gid}"),
+                vec![format!(
+                    "The nix daemon requires a system user group its system users can be part of"
+                )],
+            )]
+        }
     }
 
     #[tracing::instrument(skip_all, fields(
@@ -63,6 +68,25 @@ impl Actionable for CreateGroup {
         tracing::trace!("Created group");
         *action_state = ActionState::Completed;
         Ok(())
+    }
+
+
+    fn describe_revert(&self) -> Vec<ActionDescription> {
+        let Self {
+            name,
+            gid: _,
+            action_state: _,
+        } = &self;
+        if self.action_state == ActionState::Completed {
+            vec![]
+        } else {
+            vec![ActionDescription::new(
+                format!("Delete group {name}"),
+                vec![format!(
+                    "The nix daemon requires a system user group its system users can be part of"
+                )],
+            )]
+        }
     }
 
     #[tracing::instrument(skip_all, fields(

@@ -23,7 +23,8 @@ use self::base::{StartSystemdUnit, StartSystemdUnitError};
 pub trait Actionable: DeserializeOwned + Serialize + Into<Action> {
     type Error: std::error::Error + std::fmt::Debug + Serialize + Into<ActionError>;
 
-    fn description(&self) -> Vec<ActionDescription>;
+    fn describe_execute(&self) -> Vec<ActionDescription>;
+    fn describe_revert(&self) -> Vec<ActionDescription>;
 
     // They should also have an `async fn plan(args...) -> Result<ActionState<Self>, Self::Error>;`
     async fn execute(&mut self) -> Result<(), Self::Error>;
@@ -123,26 +124,26 @@ pub enum ActionError {
 #[async_trait::async_trait]
 impl Actionable for Action {
     type Error = ActionError;
-    fn description(&self) -> Vec<ActionDescription> {
+    fn describe_execute(&self) -> Vec<ActionDescription> {
         match self {
-            Action::ConfigureNixDaemonService(i) => i.description(),
-            Action::ConfigureNix(i) => i.description(),
-            Action::ConfigureShellProfile(i) => i.description(),
-            Action::CreateDirectory(i) => i.description(),
-            Action::CreateFile(i) => i.description(),
-            Action::CreateGroup(i) => i.description(),
-            Action::CreateOrAppendFile(i) => i.description(),
-            Action::CreateNixTree(i) => i.description(),
-            Action::CreateUser(i) => i.description(),
-            Action::CreateUsersAndGroup(i) => i.description(),
-            Action::FetchNix(i) => i.description(),
-            Action::MoveUnpackedNix(i) => i.description(),
-            Action::PlaceChannelConfiguration(i) => i.description(),
-            Action::PlaceNixConfiguration(i) => i.description(),
-            Action::SetupDefaultProfile(i) => i.description(),
-            Action::StartNixDaemon(i) => i.description(),
-            Action::StartSystemdUnit(i) => i.description(),
-            Action::ProvisionNix(i) => i.description(),
+            Action::ConfigureNixDaemonService(i) => i.describe_execute(),
+            Action::ConfigureNix(i) => i.describe_execute(),
+            Action::ConfigureShellProfile(i) => i.describe_execute(),
+            Action::CreateDirectory(i) => i.describe_execute(),
+            Action::CreateFile(i) => i.describe_execute(),
+            Action::CreateGroup(i) => i.describe_execute(),
+            Action::CreateOrAppendFile(i) => i.describe_execute(),
+            Action::CreateNixTree(i) => i.describe_execute(),
+            Action::CreateUser(i) => i.describe_execute(),
+            Action::CreateUsersAndGroup(i) => i.describe_execute(),
+            Action::FetchNix(i) => i.describe_execute(),
+            Action::MoveUnpackedNix(i) => i.describe_execute(),
+            Action::PlaceChannelConfiguration(i) => i.describe_execute(),
+            Action::PlaceNixConfiguration(i) => i.describe_execute(),
+            Action::SetupDefaultProfile(i) => i.describe_execute(),
+            Action::StartNixDaemon(i) => i.describe_execute(),
+            Action::StartSystemdUnit(i) => i.describe_execute(),
+            Action::ProvisionNix(i) => i.describe_execute(),
         }
     }
 
@@ -168,6 +169,29 @@ impl Actionable for Action {
             Action::ProvisionNix(i) => i.execute().await?,
         };
         Ok(())
+    }
+
+    fn describe_revert(&self) -> Vec<ActionDescription> {
+        match self {
+            Action::ConfigureNixDaemonService(i) => i.describe_revert(),
+            Action::ConfigureNix(i) => i.describe_revert(),
+            Action::ConfigureShellProfile(i) => i.describe_revert(),
+            Action::CreateDirectory(i) => i.describe_revert(),
+            Action::CreateFile(i) => i.describe_revert(),
+            Action::CreateGroup(i) => i.describe_revert(),
+            Action::CreateOrAppendFile(i) => i.describe_revert(),
+            Action::CreateNixTree(i) => i.describe_revert(),
+            Action::CreateUser(i) => i.describe_revert(),
+            Action::CreateUsersAndGroup(i) => i.describe_revert(),
+            Action::FetchNix(i) => i.describe_revert(),
+            Action::MoveUnpackedNix(i) => i.describe_revert(),
+            Action::PlaceChannelConfiguration(i) => i.describe_revert(),
+            Action::PlaceNixConfiguration(i) => i.describe_revert(),
+            Action::SetupDefaultProfile(i) => i.describe_revert(),
+            Action::StartNixDaemon(i) => i.describe_revert(),
+            Action::StartSystemdUnit(i) => i.describe_revert(),
+            Action::ProvisionNix(i) => i.describe_revert(),
+        }
     }
 
     async fn revert(&mut self) -> Result<(), Self::Error> {

@@ -96,11 +96,17 @@ impl CommandExecute for HarmonicCli {
                 let mut plan = InstallPlan::new(settings).await?;
 
                 // TODO(@Hoverbear): Make this smarter
-                if !interaction::confirm(plan.description()).await? {
+                if !interaction::confirm(plan.describe_execute()).await? {
                     interaction::clean_exit_with_message("Okay, didn't do anything! Bye!").await;
                 }
-
-                let _receipt = plan.install().await?;
+                
+                if let Err(err) = plan.install().await {
+                    tracing::error!("{err:#?}");
+                    if !interaction::confirm(plan.describe_revert()).await? {
+                        interaction::clean_exit_with_message("Okay, didn't do anything! Bye!").await;
+                    }
+                    plan.revert().await?
+                }
 
                 Ok(ExitCode::SUCCESS)
             },

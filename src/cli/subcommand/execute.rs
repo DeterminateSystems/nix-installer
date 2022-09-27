@@ -32,12 +32,18 @@ impl CommandExecute for Execute {
         let mut plan: InstallPlan = serde_json::from_str(&install_plan_string)?;
 
         if !no_confirm {
-            if !interaction::confirm(plan.description()).await? {
+            if !interaction::confirm(plan.describe_execute()).await? {
                 interaction::clean_exit_with_message("Okay, didn't do anything! Bye!").await;
             }
         }
 
-        plan.install().await?;
+        if let Err(err) = plan.install().await {
+            tracing::error!("{err:#?}");
+            if !interaction::confirm(plan.describe_revert()).await? {
+                interaction::clean_exit_with_message("Okay, didn't do anything! Bye!").await;
+            }
+            plan.revert().await?
+        }
 
         Ok(ExitCode::SUCCESS)
     }

@@ -26,18 +26,19 @@ impl MoveUnpackedNix {
 #[async_trait::async_trait]
 impl Actionable for MoveUnpackedNix {
     type Error = MoveUnpackedNixError;
-    fn description(&self) -> Vec<ActionDescription> {
-        let Self {
-            src,
-            action_state: _,
-        } = &self;
-        vec![ActionDescription::new(
-            format!("Move the downloaded Nix into `/nix`"),
-            vec![format!(
-                "Nix is being downloaded to `{}` and should be in `nix`",
-                src.display(),
-            )],
-        )]
+
+    fn describe_execute(&self) -> Vec<ActionDescription> {
+        if self.action_state == ActionState::Completed {
+            vec![]
+        } else {
+            vec![ActionDescription::new(
+                format!("Move the downloaded Nix into `/nix`"),
+                vec![format!(
+                    "Nix is being downloaded to `{}` and should be in `nix`",
+                    self.src.display(),
+                )],
+            )]
+        }
     }
 
     #[tracing::instrument(skip_all, fields(
@@ -75,6 +76,15 @@ impl Actionable for MoveUnpackedNix {
         *action_state = ActionState::Completed;
         Ok(())
     }
+
+    fn describe_revert(&self) -> Vec<ActionDescription> {
+        if self.action_state == ActionState::Uncompleted {
+            vec![]
+        } else {
+            vec![/* Deliberately empty -- this is a noop */]
+        }
+    }
+    
 
     #[tracing::instrument(skip_all, fields(
         src = %self.src.display(),

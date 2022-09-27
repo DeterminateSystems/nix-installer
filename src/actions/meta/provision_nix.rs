@@ -44,7 +44,7 @@ impl ProvisionNix {
 #[async_trait::async_trait]
 impl Actionable for ProvisionNix {
     type Error = ProvisionNixError;
-    fn description(&self) -> Vec<ActionDescription> {
+    fn describe_execute(&self) -> Vec<ActionDescription> {
         let Self {
             fetch_nix,
             create_users_and_group,
@@ -52,13 +52,16 @@ impl Actionable for ProvisionNix {
             move_unpacked_nix,
             action_state: _,
         } = &self;
-
-        let mut buf = fetch_nix.description();
-        buf.append(&mut create_users_and_group.description());
-        buf.append(&mut create_nix_tree.description());
-        buf.append(&mut move_unpacked_nix.description());
-
-        buf
+        if self.action_state == ActionState::Completed {
+            vec![]
+        } else {
+            let mut buf = fetch_nix.describe_execute();
+            buf.append(&mut create_users_and_group.describe_execute());
+            buf.append(&mut create_nix_tree.describe_execute());
+            buf.append(&mut move_unpacked_nix.describe_execute());
+    
+            buf
+        }
     }
 
     #[tracing::instrument(skip_all)]
@@ -96,6 +99,27 @@ impl Actionable for ProvisionNix {
         *action_state = ActionState::Completed;
         Ok(())
     }
+
+    fn describe_revert(&self) -> Vec<ActionDescription> {
+        let Self {
+            fetch_nix,
+            create_users_and_group,
+            create_nix_tree,
+            move_unpacked_nix,
+            action_state: _,
+        } = &self;
+        if self.action_state == ActionState::Uncompleted {
+            vec![]
+        } else {
+            let mut buf = Vec::default();
+            buf.append(&mut move_unpacked_nix.describe_revert());
+            buf.append(&mut create_nix_tree.describe_revert());
+            buf.append(&mut create_users_and_group.describe_revert());
+            buf.append(&mut fetch_nix.describe_revert());
+            buf
+        }
+    }
+
 
     #[tracing::instrument(skip_all)]
     async fn revert(&mut self) -> Result<(), Self::Error> {
@@ -148,18 +172,19 @@ pub enum ProvisionNixError {
         #[serde(serialize_with = "crate::serialize_error_to_display")]
         std::io::Error,
     ),
-    #[error(transparent)]
-    FetchNix(#[from] FetchNixError),
-    #[error(transparent)]
+    #[error("Fetching Nix")]
+    FetchNix(#[source] #[from] FetchNixError),
+    #[error("Joining spawned async task")]
     Join(
+        #[source]
         #[from]
         #[serde(serialize_with = "crate::serialize_error_to_display")]
         JoinError,
     ),
-    #[error(transparent)]
-    CreateUsersAndGroup(#[from] CreateUsersAndGroupError),
-    #[error(transparent)]
-    CreateNixTree(#[from] CreateNixTreeError),
-    #[error(transparent)]
-    MoveUnpackedNix(#[from] MoveUnpackedNixError),
+    #[error("Creating users and group")]
+    CreateUsersAndGroup(#[source] #[from] CreateUsersAndGroupError),
+    #[error("Creating nix tree")]
+    CreateNixTree(#[source] #[from] CreateNixTreeError),
+    #[error("Moving unpacked nix")]
+    MoveUnpackedNix(#[source] #[from] MoveUnpackedNixError),
 }

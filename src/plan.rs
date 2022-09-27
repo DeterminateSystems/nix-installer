@@ -36,8 +36,24 @@ pub struct InstallPlan {
 }
 
 impl InstallPlan {
+    pub async fn new(settings: InstallSettings) -> Result<Self, HarmonicError> {
+        Ok(Self {
+            settings: settings.clone(),
+            provision_nix: ProvisionNix::plan(settings.clone())
+                .await
+                .map_err(|e| ActionError::from(e))?,
+            configure_nix: ConfigureNix::plan(settings)
+                .await
+                .map_err(|e| ActionError::from(e))?,
+            start_nix_daemon: StartNixDaemon::plan()
+                .await
+                .map_err(|e| ActionError::from(e))?,
+        })
+    }
+
     #[tracing::instrument(skip_all)]
-    pub fn description(&self) -> String {
+    pub fn describe_execute(&self) -> String {
+        let Self { settings, provision_nix, configure_nix, start_nix_daemon } = self;
         format!(
             "\
             This Nix install is for:\n\
@@ -50,17 +66,16 @@ impl InstallPlan {
         ",
             os_type = "Linux",
             init_type = "systemd",
-            nix_channels = self
-                .settings
+            nix_channels = settings
                 .channels
                 .iter()
                 .map(|(name, url)| format!("{name}={url}"))
                 .collect::<Vec<_>>()
                 .join(","),
             actions = {
-                let mut buf = self.provision_nix.description();
-                buf.append(&mut self.configure_nix.description());
-                buf.append(&mut self.start_nix_daemon.description());
+                let mut buf = provision_nix.describe_execute();
+                buf.append(&mut configure_nix.describe_execute());
+                buf.append(&mut start_nix_daemon.describe_execute());
                 buf.iter()
                     .map(|desc| {
                         let ActionDescription {
@@ -82,20 +97,7 @@ impl InstallPlan {
             },
         )
     }
-    pub async fn new(settings: InstallSettings) -> Result<Self, HarmonicError> {
-        Ok(Self {
-            settings: settings.clone(),
-            provision_nix: ProvisionNix::plan(settings.clone())
-                .await
-                .map_err(|e| ActionError::from(e))?,
-            configure_nix: ConfigureNix::plan(settings)
-                .await
-                .map_err(|e| ActionError::from(e))?,
-            start_nix_daemon: StartNixDaemon::plan()
-                .await
-                .map_err(|e| ActionError::from(e))?,
-        })
-    }
+
 
     #[tracing::instrument(skip_all)]
     pub async fn install(&mut self) -> Result<(), HarmonicError> {
@@ -123,6 +125,53 @@ impl InstallPlan {
             .map_err(|e| HarmonicError::RecordingReceipt(install_receipt_path, e))?;
 
         Ok(())
+    }
+
+    #[tracing::instrument(skip_all)]
+    pub fn describe_revert(&self) -> String {
+        let Self { settings, provision_nix, configure_nix, start_nix_daemon } = self;
+        format!(
+            "\
+            This Nix uninstall is for:\n\
+              Operating System: {os_type}\n\
+              Init system: {init_type}\n\
+              Nix channels: {nix_channels}\n\
+            \n\
+            The following actions will be taken:\n\
+            {actions}
+        ",
+            os_type = "Linux",
+            init_type = "systemd",
+            nix_channels = settings
+                .channels
+                .iter()
+                .map(|(name, url)| format!("{name}={url}"))
+                .collect::<Vec<_>>()
+                .join(","),
+            actions = {
+                let mut buf = provision_nix.describe_revert();
+                buf.append(&mut configure_nix.describe_revert());
+                buf.append(&mut start_nix_daemon.describe_revert());
+                buf.iter()
+                    .map(|desc| {
+                        let ActionDescription {
+                            description,
+                            explanation,
+                        } = desc;
+
+                        let mut buf = String::default();
+                        buf.push_str(&format!("* {description}\n"));
+                        if self.settings.explain {
+                            for line in explanation {
+                                buf.push_str(&format!("  {line}\n"));
+                            }
+                        }
+                        buf
+                    })
+                    .collect::<Vec<_>>()
+                    .join("\n")
+            },
+        )
     }
 
     #[tracing::instrument(skip_all)]

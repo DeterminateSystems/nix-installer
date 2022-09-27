@@ -52,7 +52,8 @@ impl CreateFile {
 #[async_trait::async_trait]
 impl Actionable for CreateFile {
     type Error = CreateFileError;
-    fn description(&self) -> Vec<ActionDescription> {
+
+    fn describe_execute(&self) -> Vec<ActionDescription> {
         let Self {
             path,
             user,
@@ -62,12 +63,16 @@ impl Actionable for CreateFile {
             force: _,
             action_state: _,
         } = &self;
-        vec![ActionDescription::new(
-            format!("Create or overwrite file `{}`", path.display()),
-            vec![format!(
-                "Create or overwrite `{}` owned by `{user}:{group}` with mode `{mode:#o}` with `{buf}`", path.display()
-            )],
-        )]
+        if self.action_state == ActionState::Completed {
+            vec![]
+        } else {
+            vec![ActionDescription::new(
+                format!("Create or overwrite file `{}`", path.display()),
+                vec![format!(
+                    "Create or overwrite `{}` owned by `{user}:{group}` with mode `{mode:#o}` with `{buf}`", path.display()
+                )],
+            )]
+        }
     }
 
     #[tracing::instrument(skip_all, fields(
@@ -119,6 +124,29 @@ impl Actionable for CreateFile {
         tracing::trace!("Created file");
         *action_state = ActionState::Completed;
         Ok(())
+    }
+
+
+    fn describe_revert(&self) -> Vec<ActionDescription> {
+        let Self {
+            path,
+            user: _,
+            group: _,
+            mode: _,
+            buf: _,
+            force: _,
+            action_state: _,
+        } = &self;
+        if self.action_state == ActionState::Uncompleted {
+            vec![]
+        } else {
+            vec![ActionDescription::new(
+                format!("Delete file `{}`", path.display()),
+                vec![format!(
+                    "Delete file `{}`", path.display()
+                )],
+            )]
+        }
     }
 
     #[tracing::instrument(skip_all, fields(

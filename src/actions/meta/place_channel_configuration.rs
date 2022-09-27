@@ -45,16 +45,21 @@ impl PlaceChannelConfiguration {
 #[async_trait::async_trait]
 impl Actionable for PlaceChannelConfiguration {
     type Error = PlaceChannelConfigurationError;
-    fn description(&self) -> Vec<ActionDescription> {
+
+    fn describe_execute(&self) -> Vec<ActionDescription> {
         let Self {
             channels: _,
             create_file: _,
             action_state: _,
         } = self;
-        vec![ActionDescription::new(
-            "Place a channel configuration".to_string(),
-            vec!["Place a configuration at `{NIX_CHANNELS_PATH}` setting the channels".to_string()],
-        )]
+        if self.action_state == ActionState::Completed {
+            vec![]
+        } else {
+            vec![ActionDescription::new(
+                "Place channel configuration at `{NIX_CHANNELS_PATH}`".to_string(),
+                vec!["Place channel configuration at `{NIX_CHANNELS_PATH}`".to_string()],
+            )]
+        }
     }
 
     #[tracing::instrument(skip_all, fields(
@@ -77,6 +82,22 @@ impl Actionable for PlaceChannelConfiguration {
         tracing::trace!("Placed channel configuration");
         *action_state = ActionState::Completed;
         Ok(())
+    }
+
+    fn describe_revert(&self) -> Vec<ActionDescription> {
+        let Self {
+            channels: _,
+            create_file: _,
+            action_state: _,
+        } = self;
+        if self.action_state == ActionState::Uncompleted {
+            vec![]
+        } else {
+            vec![ActionDescription::new(
+                "Remove channel configuration at `{NIX_CHANNELS_PATH}`".to_string(),
+                vec!["Remove channel configuration at `{NIX_CHANNELS_PATH}`".to_string()],
+            )]
+        }
     }
 
     #[tracing::instrument(skip_all, fields(
@@ -110,6 +131,6 @@ impl From<PlaceChannelConfiguration> for Action {
 
 #[derive(Debug, thiserror::Error, Serialize)]
 pub enum PlaceChannelConfigurationError {
-    #[error(transparent)]
-    CreateFile(#[from] CreateFileError),
+    #[error("Creating file")]
+    CreateFile(#[source] #[from] CreateFileError),
 }

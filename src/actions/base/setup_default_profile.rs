@@ -28,11 +28,19 @@ impl SetupDefaultProfile {
 #[async_trait::async_trait]
 impl Actionable for SetupDefaultProfile {
     type Error = SetupDefaultProfileError;
-    fn description(&self) -> Vec<ActionDescription> {
-        vec![ActionDescription::new(
-            "Setup the default Nix profile".to_string(),
-            vec!["TODO".to_string()],
-        )]
+
+
+    fn describe_execute(&self) -> Vec<ActionDescription> {
+        if self.action_state == ActionState::Completed {
+            vec![]
+        } else {
+            vec![ActionDescription::new(
+                "Setup the default Nix profile".to_string(),
+                vec![
+                    "TODO".to_string()
+                ]
+            )]
+        }
     }
 
     #[tracing::instrument(skip_all, fields(
@@ -129,6 +137,19 @@ impl Actionable for SetupDefaultProfile {
         tracing::trace!("Set up default profile");
         *action_state = ActionState::Completed;
         Ok(())
+    }
+
+    fn describe_revert(&self) -> Vec<ActionDescription> {
+        if self.action_state == ActionState::Uncompleted {
+            vec![]
+        } else {
+            vec![ActionDescription::new(
+                "Unset the default Nix profile".to_string(),
+                vec![
+                    "TODO".to_string()
+                ]
+            )]
+        }
     }
 
     #[tracing::instrument(skip_all, fields(

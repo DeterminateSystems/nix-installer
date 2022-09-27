@@ -33,16 +33,21 @@ impl ConfigureNixDaemonService {
 #[async_trait::async_trait]
 impl Actionable for ConfigureNixDaemonService {
     type Error = ConfigureNixDaemonServiceError;
-    fn description(&self) -> Vec<ActionDescription> {
-        vec![ActionDescription::new(
-            "Configure Nix daemon related settings with systemd".to_string(),
-            vec![
-                "Run `systemd-tempfiles --create --prefix=/nix/var/nix`".to_string(),
-                "Run `systemctl link {SERVICE_SRC}`".to_string(),
-                "Run `systemctl link {SOCKET_SRC}`".to_string(),
-                "Run `systemctl daemon-reload`".to_string(),
-            ],
-        )]
+
+    fn describe_execute(&self) -> Vec<ActionDescription> {
+        if self.action_state == ActionState::Completed {
+            vec![]
+        } else {
+            vec![ActionDescription::new(
+                "Configure Nix daemon related settings with systemd".to_string(),
+                vec![
+                    "Run `systemd-tempfiles --create --prefix=/nix/var/nix`".to_string(),
+                    "Run `systemctl link {SERVICE_SRC}`".to_string(),
+                    "Run `systemctl link {SOCKET_SRC}`".to_string(),
+                    "Run `systemctl daemon-reload`".to_string(),
+                ],
+            )]
+        }
     }
 
     #[tracing::instrument(skip_all)]
@@ -84,6 +89,22 @@ impl Actionable for ConfigureNixDaemonService {
         tracing::trace!("Configured nix daemon service");
         *action_state = ActionState::Completed;
         Ok(())
+    }
+
+    fn describe_revert(&self) -> Vec<ActionDescription> {
+        if self.action_state == ActionState::Uncompleted {
+            vec![]
+        } else {
+            vec![ActionDescription::new(
+                "Unconfigure Nix daemon related settings with systemd".to_string(),
+                vec![
+                    "Run `systemctl disable {SOCKET_SRC}`".to_string(),    
+                    "Run `systemctl disable {SERVICE_SRC}`".to_string(),
+                    "Run `systemd-tempfiles --remove --prefix=/nix/var/nix`".to_string(),
+                    "Run `systemctl daemon-reload`".to_string(),
+                ],
+            )]
+        }
     }
 
     #[tracing::instrument(skip_all)]

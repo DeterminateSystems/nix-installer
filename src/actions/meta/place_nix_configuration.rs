@@ -49,14 +49,18 @@ impl PlaceNixConfiguration {
 impl Actionable for PlaceNixConfiguration {
     type Error = PlaceNixConfigurationError;
 
-    fn description(&self) -> Vec<ActionDescription> {
-        vec![ActionDescription::new(
-            format!("Place the nix configuration in `{NIX_CONF}`"),
-            vec![
-                "This file is read by the Nix daemon to set its configuration options at runtime."
-                    .to_string(),
-            ],
-        )]
+    fn describe_execute(&self) -> Vec<ActionDescription> {
+        if self.action_state == ActionState::Completed {
+            vec![]
+        } else {
+            vec![ActionDescription::new(
+                format!("Place the nix configuration in `{NIX_CONF}`"),
+                vec![
+                    "This file is read by the Nix daemon to set its configuration options at runtime."
+                        .to_string(),
+                ],
+            )]
+        }
     }
 
     #[tracing::instrument(skip_all)]
@@ -78,6 +82,20 @@ impl Actionable for PlaceNixConfiguration {
         tracing::trace!("Placed Nix configuration");
         *action_state = ActionState::Completed;
         Ok(())
+    }
+
+    fn describe_revert(&self) -> Vec<ActionDescription> {
+        if self.action_state == ActionState::Uncompleted {
+            vec![]
+        } else {
+            vec![ActionDescription::new(
+                format!("Remove the nix configuration in `{NIX_CONF}`"),
+                vec![
+                    "This file is read by the Nix daemon to set its configuration options at runtime."
+                        .to_string(),
+                ],
+            )]
+        }
     }
 
     #[tracing::instrument(skip_all)]
@@ -110,8 +128,8 @@ impl From<PlaceNixConfiguration> for Action {
 
 #[derive(Debug, thiserror::Error, Serialize)]
 pub enum PlaceNixConfigurationError {
-    #[error(transparent)]
-    CreateFile(#[from] CreateFileError),
-    #[error(transparent)]
-    CreateDirectory(#[from] CreateDirectoryError),
+    #[error("Creating file")]
+    CreateFile(#[source] #[from] CreateFileError),
+    #[error("Creating directory")]
+    CreateDirectory(#[source] #[from] CreateDirectoryError),
 }

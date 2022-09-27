@@ -50,7 +50,8 @@ impl CreateDirectory {
 #[async_trait::async_trait]
 impl Actionable for CreateDirectory {
     type Error = CreateDirectoryError;
-    fn description(&self) -> Vec<ActionDescription> {
+
+    fn describe_execute(&self) -> Vec<ActionDescription> {
         let Self {
             path,
             user,
@@ -58,13 +59,17 @@ impl Actionable for CreateDirectory {
             mode,
             action_state: _,
         } = &self;
-        vec![ActionDescription::new(
-            format!("Create the directory `{}`", path.display()),
-            vec![format!(
-                "Creating directory `{}` owned by `{user}:{group}` with mode `{mode:#o}`",
-                path.display()
-            )],
-        )]
+        if self.action_state == ActionState::Completed {
+            vec![]
+        } else {
+            vec![ActionDescription::new(
+                format!("Create the directory `{}`", path.display()),
+                vec![format!(
+                    "Creating directory `{}` owned by `{user}:{group}` with mode `{mode:#o}`",
+                    path.display()
+                )],
+            )]
+        }
     }
 
     #[tracing::instrument(skip_all, fields(
@@ -108,6 +113,25 @@ impl Actionable for CreateDirectory {
         tracing::trace!("Created directory");
         *action_state = ActionState::Completed;
         Ok(())
+    }
+
+
+    fn describe_revert(&self) -> Vec<ActionDescription> {
+        let Self {
+            path,
+            user: _,
+            group: _,
+            mode: _,
+            action_state: _,
+        } = &self;
+        if self.action_state == ActionState::Uncompleted {
+            vec![]
+        } else {
+            vec![ActionDescription::new(
+                format!("Remove the directory `{}`", path.display()),
+                vec![],
+            )]
+        }
     }
 
     #[tracing::instrument(skip_all, fields(
