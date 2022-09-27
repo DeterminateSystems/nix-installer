@@ -29,7 +29,6 @@ impl CreateDirectory {
 
         if path.exists() && !force {
             return Err(CreateDirectoryError::Exists(
-                path.to_path_buf(),
                 std::io::Error::new(
                     std::io::ErrorKind::AlreadyExists,
                     format!("Directory `{}` already exists", path.display()),
@@ -173,10 +172,8 @@ impl From<CreateDirectory> for Action {
 
 #[derive(Debug, thiserror::Error, Serialize)]
 pub enum CreateDirectoryError {
-    #[error("Directory exists `{0}`")]
+    #[error(transparent)]
     Exists(
-        std::path::PathBuf,
-        #[source]
         #[serde(serialize_with = "crate::serialize_error_to_display")]
         std::io::Error,
     ),
