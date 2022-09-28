@@ -129,7 +129,6 @@ impl Actionable for ConfigureShellProfile {
         }
     }
 
-
     #[tracing::instrument(skip_all)]
     async fn revert(&mut self) -> Result<(), Self::Error> {
         let Self {
@@ -192,7 +191,7 @@ pub enum ConfigureShellProfileError {
     CreateOrAppendFile(
         #[from]
         #[source]
-        CreateOrAppendFileError
+        CreateOrAppendFileError,
     ),
     #[error("Multiple errors: {}", .0.iter().map(|v| format!("{v}")).collect::<Vec<_>>().join(" & "))]
     MultipleCreateOrAppendFile(Vec<CreateOrAppendFileError>),

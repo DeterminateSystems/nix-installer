@@ -1,7 +1,7 @@
 use std::{path::PathBuf, process::ExitCode};
 
 use clap::{ArgAction, Parser};
-use eyre::{WrapErr, eyre};
+use eyre::{eyre, WrapErr};
 use harmonic::InstallPlan;
 
 use crate::{cli::CommandExecute, interaction};

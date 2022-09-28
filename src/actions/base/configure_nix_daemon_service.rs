@@ -98,7 +98,7 @@ impl Actionable for ConfigureNixDaemonService {
             vec![ActionDescription::new(
                 "Unconfigure Nix daemon related settings with systemd".to_string(),
                 vec![
-                    "Run `systemctl disable {SOCKET_SRC}`".to_string(),    
+                    "Run `systemctl disable {SOCKET_SRC}`".to_string(),
                     "Run `systemctl disable {SERVICE_SRC}`".to_string(),
                     "Run `systemd-tempfiles --remove --prefix=/nix/var/nix`".to_string(),
                     "Run `systemctl daemon-reload`".to_string(),

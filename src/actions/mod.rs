@@ -5,15 +5,15 @@ use base::{
     ConfigureNixDaemonService, ConfigureNixDaemonServiceError, CreateDirectory,
     CreateDirectoryError, CreateFile, CreateFileError, CreateGroup, CreateGroupError,
     CreateOrAppendFile, CreateOrAppendFileError, CreateUser, CreateUserError, FetchNix,
-    FetchNixError, MoveUnpackedNix, MoveUnpackedNixError,
-    SetupDefaultProfile, SetupDefaultProfileError,
+    FetchNixError, MoveUnpackedNix, MoveUnpackedNixError, SetupDefaultProfile,
+    SetupDefaultProfileError,
 };
 use meta::{
     ConfigureNix, ConfigureNixError, ConfigureShellProfile, ConfigureShellProfileError,
-    CreateNixTree, CreateNixTreeError, CreateUsersAndGroup, PlaceChannelConfiguration,
-    PlaceNixConfiguration, PlaceNixConfigurationError,
-    PlaceChannelConfigurationError, CreateUsersAndGroupError, ProvisionNix,
-    ProvisionNixError, StartNixDaemon, StartNixDaemonError,
+    CreateNixTree, CreateNixTreeError, CreateUsersAndGroup, CreateUsersAndGroupError,
+    PlaceChannelConfiguration, PlaceChannelConfigurationError, PlaceNixConfiguration,
+    PlaceNixConfigurationError, ProvisionNix, ProvisionNixError, StartNixDaemon,
+    StartNixDaemonError,
 };
 use serde::{de::DeserializeOwned, Deserialize, Serialize};
 

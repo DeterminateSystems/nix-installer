@@ -20,7 +20,7 @@ pub(crate) async fn confirm(question: impl AsRef<str>) -> eyre::Result<bool> {
 
     stdout.write_all(with_confirm.as_bytes()).await?;
     stdout.flush().await?;
-    
+
     crossterm::terminal::enable_raw_mode()?;
     let mut reader = EventStream::new();
     let retval = loop {
@@ -30,7 +30,7 @@ pub(crate) async fn confirm(question: impl AsRef<str>) -> eyre::Result<bool> {
                 if let crossterm::event::Event::Key(key) = event {
                     match key.code {
                         KeyCode::Enter => continue, // Many users will hit enter accidently when they are agreeing/declining prompts.
-                                                    // TODO(@hoverbear): Should maybe actually even wait for it?
+                        // TODO(@hoverbear): Should maybe actually even wait for it?
                         KeyCode::Char('y') => break Ok(true),
                         _ => {
                             stdout

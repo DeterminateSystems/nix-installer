@@ -70,7 +70,6 @@ impl Actionable for CreateGroup {
         Ok(())
     }
 
-
     fn describe_revert(&self) -> Vec<ActionDescription> {
         let Self {
             name,

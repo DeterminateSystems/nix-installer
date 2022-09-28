@@ -241,11 +241,19 @@ impl From<CreateUsersAndGroup> for Action {
 #[derive(Debug, thiserror::Error, Serialize)]
 pub enum CreateUsersAndGroupError {
     #[error("Creating user")]
-    CreateUser(#[source] #[from] CreateUserError),
+    CreateUser(
+        #[source]
+        #[from]
+        CreateUserError,
+    ),
     #[error("Multiple errors: {}", .0.iter().map(|v| format!("{v}")).collect::<Vec<_>>().join(" & "))]
     CreateUsers(Vec<CreateUserError>),
     #[error("Creating group")]
-    CreateGroup(#[source] #[from] CreateGroupError),
+    CreateGroup(
+        #[source]
+        #[from]
+        CreateGroupError,
+    ),
     #[error("Joining spawned async task")]
     Join(
         #[source]

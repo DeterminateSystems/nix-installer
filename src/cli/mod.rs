@@ -3,8 +3,8 @@ pub(crate) mod subcommand;
 
 use crate::{cli::arg::ChannelValue, interaction};
 use clap::{ArgAction, Parser};
-use harmonic::{InstallPlan, InstallSettings};
 use eyre::eyre;
+use harmonic::{InstallPlan, InstallSettings};
 use std::process::ExitCode;
 
 use self::subcommand::HarmonicSubcommand;
@@ -100,11 +100,12 @@ impl CommandExecute for HarmonicCli {
                 if !interaction::confirm(plan.describe_execute()).await? {
                     interaction::clean_exit_with_message("Okay, didn't do anything! Bye!").await;
                 }
-                
+
                 if let Err(err) = plan.install().await {
                     tracing::error!("{:?}", eyre!(err));
                     if !interaction::confirm(plan.describe_revert()).await? {
-                        interaction::clean_exit_with_message("Okay, didn't do anything! Bye!").await;
+                        interaction::clean_exit_with_message("Okay, didn't do anything! Bye!")
+                            .await;
                     }
                     plan.revert().await?
                 }

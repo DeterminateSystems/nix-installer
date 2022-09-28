@@ -46,10 +46,7 @@ impl Actionable for MoveUnpackedNix {
         dest = DEST,
     ))]
     async fn execute(&mut self) -> Result<(), Self::Error> {
-        let Self {
-            src,
-            action_state,
-        } = self;
+        let Self { src, action_state } = self;
         if *action_state == ActionState::Completed {
             tracing::trace!("Already completed: Moving Nix");
             return Ok(());
@@ -84,7 +81,6 @@ impl Actionable for MoveUnpackedNix {
             vec![/* Deliberately empty -- this is a noop */]
         }
     }
-    
 
     #[tracing::instrument(skip_all, fields(
         src = %self.src.display(),

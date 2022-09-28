@@ -131,7 +131,15 @@ impl From<PlaceNixConfiguration> for Action {
 #[derive(Debug, thiserror::Error, Serialize)]
 pub enum PlaceNixConfigurationError {
     #[error("Creating file")]
-    CreateFile(#[source] #[from] CreateFileError),
+    CreateFile(
+        #[source]
+        #[from]
+        CreateFileError,
+    ),
     #[error("Creating directory")]
-    CreateDirectory(#[source] #[from] CreateDirectoryError),
+    CreateDirectory(
+        #[source]
+        #[from]
+        CreateDirectoryError,
+    ),
 }

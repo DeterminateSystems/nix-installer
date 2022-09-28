@@ -2,13 +2,12 @@ use serde::Serialize;
 
 use crate::actions::{
     base::{
-        ConfigureNixDaemonService, ConfigureNixDaemonServiceError,
-        SetupDefaultProfile, SetupDefaultProfileError,
+        ConfigureNixDaemonService, ConfigureNixDaemonServiceError, SetupDefaultProfile,
+        SetupDefaultProfileError,
     },
     meta::{
-        ConfigureShellProfile, ConfigureShellProfileError,
-        PlaceChannelConfiguration, PlaceChannelConfigurationError,
-        PlaceNixConfiguration, PlaceNixConfigurationError,
+        ConfigureShellProfile, ConfigureShellProfileError, PlaceChannelConfiguration,
+        PlaceChannelConfigurationError, PlaceNixConfiguration, PlaceNixConfigurationError,
     },
     Action, ActionState,
 };
@@ -189,7 +188,6 @@ impl Actionable for ConfigureNix {
         }
     }
 
-
     #[tracing::instrument(skip_all)]
     async fn revert(&mut self) -> Result<(), Self::Error> {
         let Self {
@@ -230,13 +228,33 @@ impl From<ConfigureNix> for Action {
 #[derive(Debug, thiserror::Error, Serialize)]
 pub enum ConfigureNixError {
     #[error("Setting up default profile")]
-    SetupDefaultProfile(#[source] #[from] SetupDefaultProfileError),
+    SetupDefaultProfile(
+        #[source]
+        #[from]
+        SetupDefaultProfileError,
+    ),
     #[error("Placing Nix configuration")]
-    PlaceNixConfiguration(#[source] #[from] PlaceNixConfigurationError),
+    PlaceNixConfiguration(
+        #[source]
+        #[from]
+        PlaceNixConfigurationError,
+    ),
     #[error("Placing channel configuration")]
-    PlaceChannelConfiguration(#[source] #[from] PlaceChannelConfigurationError),
+    PlaceChannelConfiguration(
+        #[source]
+        #[from]
+        PlaceChannelConfigurationError,
+    ),
     #[error("Configuring Nix daemon")]
-    ConfigureNixDaemonService(#[source] #[from] ConfigureNixDaemonServiceError),
+    ConfigureNixDaemonService(
+        #[source]
+        #[from]
+        ConfigureNixDaemonServiceError,
+    ),
     #[error("Configuring shell profile")]
-    ConfigureShellProfile(#[source] #[from] ConfigureShellProfileError),
+    ConfigureShellProfile(
+        #[source]
+        #[from]
+        ConfigureShellProfileError,
+    ),
 }

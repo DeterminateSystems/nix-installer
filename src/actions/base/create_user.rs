@@ -33,7 +33,12 @@ impl Actionable for CreateUser {
         if self.action_state == ActionState::Completed {
             vec![]
         } else {
-            let Self { name, uid, gid, action_state: _ } = self;
+            let Self {
+                name,
+                uid,
+                gid,
+                action_state: _,
+            } = self;
 
             vec![ActionDescription::new(
                 format!("Create user {name} with UID {uid} with group {gid}"),
@@ -89,12 +94,16 @@ impl Actionable for CreateUser {
         Ok(())
     }
 
-
     fn describe_revert(&self) -> Vec<ActionDescription> {
         if self.action_state == ActionState::Uncompleted {
             vec![]
         } else {
-            let Self { name, uid, gid, action_state: _ } = self;
+            let Self {
+                name,
+                uid,
+                gid,
+                action_state: _,
+            } = self;
 
             vec![ActionDescription::new(
                 format!("Delete user {name} with UID {uid} with group {gid}"),

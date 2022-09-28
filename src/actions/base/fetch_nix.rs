@@ -43,10 +43,7 @@ impl Actionable for FetchNix {
         } else {
             vec![ActionDescription::new(
                 format!("Fetch Nix from `{url}`"),
-                vec![format!(
-                    "Unpack it to `{}` (moved later)",
-                    dest.display()
-                )],
+                vec![format!("Unpack it to `{}` (moved later)", dest.display())],
             )]
         }
     }
@@ -77,7 +74,9 @@ impl Actionable for FetchNix {
         let handle: Result<(), Self::Error> = spawn_blocking(move || {
             let decoder = xz2::read::XzDecoder::new(bytes.reader());
             let mut archive = tar::Archive::new(decoder);
-            archive.unpack(&dest_clone).map_err(Self::Error::Unarchive)?;
+            archive
+                .unpack(&dest_clone)
+                .map_err(Self::Error::Unarchive)?;
             tracing::debug!(dest = %dest_clone.display(), "Downloaded & extracted Nix");
             Ok(())
         })

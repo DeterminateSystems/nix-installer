@@ -57,7 +57,9 @@ impl Actionable for PlaceChannelConfiguration {
         } else {
             vec![ActionDescription::new(
                 format!("Place channel configuration at `{NIX_CHANNELS_PATH}`"),
-                vec![format!("Place channel configuration at `{NIX_CHANNELS_PATH}`")],
+                vec![format!(
+                    "Place channel configuration at `{NIX_CHANNELS_PATH}`"
+                )],
             )]
         }
     }
@@ -96,7 +98,9 @@ impl Actionable for PlaceChannelConfiguration {
         } else {
             vec![ActionDescription::new(
                 format!("Remove channel configuration at `{NIX_CHANNELS_PATH}`"),
-                vec![format!("Remove channel configuration at `{NIX_CHANNELS_PATH}`")],
+                vec![format!(
+                    "Remove channel configuration at `{NIX_CHANNELS_PATH}`"
+                )],
             )]
         }
     }
@@ -116,7 +120,7 @@ impl Actionable for PlaceChannelConfiguration {
         }
         *action_state = ActionState::Progress;
         tracing::debug!("Removing channel configuration");
-        
+
         create_file.revert().await?;
 
         tracing::debug!("Removed channel configuration");
@@ -134,5 +138,9 @@ impl From<PlaceChannelConfiguration> for Action {
 #[derive(Debug, thiserror::Error, Serialize)]
 pub enum PlaceChannelConfigurationError {
     #[error("Creating file")]
-    CreateFile(#[source] #[from] CreateFileError),
+    CreateFile(
+        #[source]
+        #[from]
+        CreateFileError,
+    ),
 }

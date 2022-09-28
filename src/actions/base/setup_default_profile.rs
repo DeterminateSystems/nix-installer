@@ -29,16 +29,13 @@ impl SetupDefaultProfile {
 impl Actionable for SetupDefaultProfile {
     type Error = SetupDefaultProfileError;
 
-
     fn describe_execute(&self) -> Vec<ActionDescription> {
         if self.action_state == ActionState::Completed {
             vec![]
         } else {
             vec![ActionDescription::new(
                 "Setup the default Nix profile".to_string(),
-                vec![
-                    "TODO".to_string()
-                ]
+                vec!["TODO".to_string()],
             )]
         }
     }
@@ -145,9 +142,7 @@ impl Actionable for SetupDefaultProfile {
         } else {
             vec![ActionDescription::new(
                 "Unset the default Nix profile".to_string(),
-                vec![
-                    "TODO".to_string()
-                ]
+                vec!["TODO".to_string()],
             )]
         }
     }

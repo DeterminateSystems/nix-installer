@@ -93,5 +93,9 @@ impl From<StartNixDaemon> for Action {
 #[derive(Debug, thiserror::Error, Serialize)]
 pub enum StartNixDaemonError {
     #[error("Starting systemd unit")]
-    StartSystemdUnit(#[source] #[from] StartSystemdUnitError),
+    StartSystemdUnit(
+        #[source]
+        #[from]
+        StartSystemdUnitError,
+    ),
 }

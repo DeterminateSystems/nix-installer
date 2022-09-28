@@ -59,7 +59,7 @@ impl Actionable for ProvisionNix {
             buf.append(&mut create_users_and_group.describe_execute());
             buf.append(&mut create_nix_tree.describe_execute());
             buf.append(&mut move_unpacked_nix.describe_execute());
-    
+
             buf
         }
     }
@@ -121,7 +121,6 @@ impl Actionable for ProvisionNix {
         }
     }
 
-
     #[tracing::instrument(skip_all)]
     async fn revert(&mut self) -> Result<(), Self::Error> {
         let Self {
@@ -175,7 +174,11 @@ pub enum ProvisionNixError {
         std::io::Error,
     ),
     #[error("Fetching Nix")]
-    FetchNix(#[source] #[from] FetchNixError),
+    FetchNix(
+        #[source]
+        #[from]
+        FetchNixError,
+    ),
     #[error("Joining spawned async task")]
     Join(
         #[source]
@@ -184,9 +187,21 @@ pub enum ProvisionNixError {
         JoinError,
     ),
     #[error("Creating users and group")]
-    CreateUsersAndGroup(#[source] #[from] CreateUsersAndGroupError),
+    CreateUsersAndGroup(
+        #[source]
+        #[from]
+        CreateUsersAndGroupError,
+    ),
     #[error("Creating nix tree")]
-    CreateNixTree(#[source] #[from] CreateNixTreeError),
+    CreateNixTree(
+        #[source]
+        #[from]
+        CreateNixTreeError,
+    ),
     #[error("Moving unpacked nix")]
-    MoveUnpackedNix(#[source] #[from] MoveUnpackedNixError),
+    MoveUnpackedNix(
+        #[source]
+        #[from]
+        MoveUnpackedNixError,
+    ),
 }

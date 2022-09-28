@@ -143,7 +143,8 @@ impl Actionable for CreateOrAppendFile {
             vec![ActionDescription::new(
                 format!("Delete Nix related fragment from file `{}`", path.display()),
                 vec![format!(
-                    "Delete Nix related fragment from file `{}`. Fragment: `{buf}`", path.display()
+                    "Delete Nix related fragment from file `{}`. Fragment: `{buf}`",
+                    path.display()
                 )],
             )]
         }
@@ -192,7 +193,7 @@ impl Actionable for CreateOrAppendFile {
             remove_file(&path)
                 .await
                 .map_err(|e| Self::Error::RemoveFile(path.to_owned(), e))?;
-            
+
             tracing::trace!("Removed file (since all content was removed)");
         } else {
             file.seek(SeekFrom::Start(0))

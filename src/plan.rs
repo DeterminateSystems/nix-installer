@@ -53,7 +53,12 @@ impl InstallPlan {
 
     #[tracing::instrument(skip_all)]
     pub fn describe_execute(&self) -> String {
-        let Self { settings, provision_nix, configure_nix, start_nix_daemon } = self;
+        let Self {
+            settings,
+            provision_nix,
+            configure_nix,
+            start_nix_daemon,
+        } = self;
         format!(
             "\
             This Nix install is for:\n\
@@ -98,36 +103,40 @@ impl InstallPlan {
         )
     }
 
-
     #[tracing::instrument(skip_all)]
     pub async fn install(&mut self) -> Result<(), HarmonicError> {
         // This is **deliberately sequential**.
         // Actions which are parallelizable are represented by "group actions" like CreateUsers
         // The plan itself represents the concept of the sequence of stages.
-        
+
         if let Err(err) = self.provision_nix.execute().await {
             write_receipt(self.clone()).await?;
-            return Err(ActionError::from(err).into())
+            return Err(ActionError::from(err).into());
         }
-        
+
         if let Err(err) = self.configure_nix.execute().await {
             write_receipt(self.clone()).await?;
-            return Err(ActionError::from(err).into())
+            return Err(ActionError::from(err).into());
         }
-        
+
         if let Err(err) = self.start_nix_daemon.execute().await {
             write_receipt(self.clone()).await?;
-            return Err(ActionError::from(err).into())
+            return Err(ActionError::from(err).into());
         }
 
         write_receipt(self.clone()).await?;
- 
+
         Ok(())
     }
 
     #[tracing::instrument(skip_all)]
     pub fn describe_revert(&self) -> String {
-        let Self { settings, provision_nix, configure_nix, start_nix_daemon } = self;
+        let Self {
+            settings,
+            provision_nix,
+            configure_nix,
+            start_nix_daemon,
+        } = self;
         format!(
             "\
             This Nix uninstall is for:\n\
@@ -179,17 +188,17 @@ impl InstallPlan {
         // The plan itself represents the concept of the sequence of stages.
         if let Err(err) = self.start_nix_daemon.revert().await {
             write_receipt(self.clone()).await?;
-            return Err(ActionError::from(err).into())
+            return Err(ActionError::from(err).into());
         }
 
         if let Err(err) = self.configure_nix.revert().await {
             write_receipt(self.clone()).await?;
-            return Err(ActionError::from(err).into())
+            return Err(ActionError::from(err).into());
         }
 
         if let Err(err) = self.provision_nix.revert().await {
             write_receipt(self.clone()).await?;
-            return Err(ActionError::from(err).into())
+            return Err(ActionError::from(err).into());
         }
 
         Ok(())
@@ -197,7 +206,8 @@ impl InstallPlan {
 }
 
 async fn write_receipt(plan: InstallPlan) -> Result<(), HarmonicError> {
-    tokio::fs::create_dir_all("/nix").await
+    tokio::fs::create_dir_all("/nix")
+        .await
         .map_err(|e| HarmonicError::RecordingReceipt(PathBuf::from("/nix"), e))?;
     let install_receipt_path = PathBuf::from("/nix/receipt.json");
     let self_json =

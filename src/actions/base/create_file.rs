@@ -126,7 +126,6 @@ impl Actionable for CreateFile {
         Ok(())
     }
 
-
     fn describe_revert(&self) -> Vec<ActionDescription> {
         let Self {
             path,
@@ -142,9 +141,7 @@ impl Actionable for CreateFile {
         } else {
             vec![ActionDescription::new(
                 format!("Delete file `{}`", path.display()),
-                vec![format!(
-                    "Delete file `{}`", path.display()
-                )],
+                vec![format!("Delete file `{}`", path.display())],
             )]
         }
     }

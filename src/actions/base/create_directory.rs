@@ -28,12 +28,10 @@ impl CreateDirectory {
         let path = path.as_ref();
 
         if path.exists() && !force {
-            return Err(CreateDirectoryError::Exists(
-                std::io::Error::new(
-                    std::io::ErrorKind::AlreadyExists,
-                    format!("Directory `{}` already exists", path.display()),
-                ),
-            ));
+            return Err(CreateDirectoryError::Exists(std::io::Error::new(
+                std::io::ErrorKind::AlreadyExists,
+                format!("Directory `{}` already exists", path.display()),
+            )));
         }
 
         Ok(Self {
@@ -114,7 +112,6 @@ impl Actionable for CreateDirectory {
         Ok(())
     }
 
-
     fn describe_revert(&self) -> Vec<ActionDescription> {
         let Self {
             path,
@@ -173,10 +170,7 @@ impl From<CreateDirectory> for Action {
 #[derive(Debug, thiserror::Error, Serialize)]
 pub enum CreateDirectoryError {
     #[error(transparent)]
-    Exists(
-        #[serde(serialize_with = "crate::serialize_error_to_display")]
-        std::io::Error,
-    ),
+    Exists(#[serde(serialize_with = "crate::serialize_error_to_display")] std::io::Error),
     #[error("Creating directory `{0}`")]
     Creating(
         std::path::PathBuf,

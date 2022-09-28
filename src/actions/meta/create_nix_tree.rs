@@ -151,5 +151,9 @@ impl From<CreateNixTree> for Action {
 #[derive(Debug, thiserror::Error, Serialize)]
 pub enum CreateNixTreeError {
     #[error("Creating directory")]
-    CreateDirectory(#[source] #[from] CreateDirectoryError),
+    CreateDirectory(
+        #[source]
+        #[from]
+        CreateDirectoryError,
+    ),
 }
