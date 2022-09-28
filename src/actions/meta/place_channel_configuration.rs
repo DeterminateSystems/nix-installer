@@ -56,8 +56,8 @@ impl Actionable for PlaceChannelConfiguration {
             vec![]
         } else {
             vec![ActionDescription::new(
-                "Place channel configuration at `{NIX_CHANNELS_PATH}`".to_string(),
-                vec!["Place channel configuration at `{NIX_CHANNELS_PATH}`".to_string()],
+                format!("Place channel configuration at `{NIX_CHANNELS_PATH}`"),
+                vec![format!("Place channel configuration at `{NIX_CHANNELS_PATH}`")],
             )]
         }
     }
@@ -94,8 +94,8 @@ impl Actionable for PlaceChannelConfiguration {
             vec![]
         } else {
             vec![ActionDescription::new(
-                "Remove channel configuration at `{NIX_CHANNELS_PATH}`".to_string(),
-                vec!["Remove channel configuration at `{NIX_CHANNELS_PATH}`".to_string()],
+                format!("Remove channel configuration at `{NIX_CHANNELS_PATH}`"),
+                vec![format!("Remove channel configuration at `{NIX_CHANNELS_PATH}`")],
             )]
         }
     }
