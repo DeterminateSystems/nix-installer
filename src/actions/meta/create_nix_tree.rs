@@ -81,6 +81,7 @@ impl Actionable for CreateNixTree {
             tracing::trace!("Already completed: Creating nix tree");
             return Ok(());
         }
+        *action_state = ActionState::Progress;
         tracing::debug!("Creating nix tree");
 
         // Just do sequential since parallizing this will have little benefit
@@ -127,6 +128,7 @@ impl Actionable for CreateNixTree {
             tracing::trace!("Already reverted: Deleting nix tree");
             return Ok(());
         }
+        *action_state = ActionState::Progress;
         tracing::debug!("Deleting nix tree");
 
         // Just do sequential since parallizing this will have little benefit

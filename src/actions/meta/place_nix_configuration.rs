@@ -74,6 +74,7 @@ impl Actionable for PlaceNixConfiguration {
             tracing::trace!("Already completed: Placing Nix configuration");
             return Ok(());
         }
+        *action_state = ActionState::Progress;
         tracing::debug!("Placing Nix configuration");
 
         create_directory.execute().await?;
@@ -109,6 +110,7 @@ impl Actionable for PlaceNixConfiguration {
             tracing::trace!("Already reverted: Remove nix configuration");
             return Ok(());
         }
+        *action_state = ActionState::Progress;
         tracing::debug!("Remove nix configuration");
 
         create_file.revert().await?;

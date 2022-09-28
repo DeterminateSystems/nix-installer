@@ -75,6 +75,7 @@ impl Actionable for PlaceChannelConfiguration {
             tracing::trace!("Already completed: Placing channel configuration");
             return Ok(());
         }
+        *action_state = ActionState::Progress;
         tracing::debug!("Placing channel configuration");
 
         create_file.execute().await?;
@@ -113,6 +114,7 @@ impl Actionable for PlaceChannelConfiguration {
             tracing::trace!("Already reverted: Removing channel configuration");
             return Ok(());
         }
+        *action_state = ActionState::Progress;
         tracing::debug!("Removing channel configuration");
         
         create_file.revert().await?;

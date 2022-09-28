@@ -1,7 +1,7 @@
 use std::{path::PathBuf, process::ExitCode};
 
 use clap::{ArgAction, Parser};
-use eyre::WrapErr;
+use eyre::{WrapErr, eyre};
 use harmonic::InstallPlan;
 
 use crate::{cli::CommandExecute, interaction};
@@ -38,7 +38,7 @@ impl CommandExecute for Execute {
         }
 
         if let Err(err) = plan.install().await {
-            tracing::error!("{err:#?}");
+            tracing::error!("{:?}", eyre!(err));
             if !interaction::confirm(plan.describe_revert()).await? {
                 interaction::clean_exit_with_message("Okay, didn't do anything! Bye!").await;
             }

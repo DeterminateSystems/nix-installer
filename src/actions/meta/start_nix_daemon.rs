@@ -44,6 +44,7 @@ impl Actionable for StartNixDaemon {
             tracing::trace!("Already completed: Starting the nix daemon");
             return Ok(());
         }
+        *action_state = ActionState::Progress;
         tracing::debug!("Starting the nix daemon");
 
         start_systemd_socket.execute().await?;
@@ -72,6 +73,7 @@ impl Actionable for StartNixDaemon {
             tracing::trace!("Already reverted: Stop the nix daemon");
             return Ok(());
         }
+        *action_state = ActionState::Progress;
         tracing::debug!("Stop the nix daemon");
 
         start_systemd_socket.revert().await?;

@@ -79,6 +79,7 @@ impl Actionable for ConfigureShellProfile {
             tracing::trace!("Already completed: Configuring shell profile");
             return Ok(());
         }
+        *action_state = ActionState::Progress;
         tracing::debug!("Configuring shell profile");
 
         let mut set = JoinSet::new();
@@ -139,6 +140,7 @@ impl Actionable for ConfigureShellProfile {
             tracing::trace!("Already reverted: Unconfiguring shell profile");
             return Ok(());
         }
+        *action_state = ActionState::Progress;
         tracing::debug!("Unconfiguring shell profile");
 
         let mut set = JoinSet::new();

@@ -34,6 +34,8 @@ pub trait Actionable: DeserializeOwned + Serialize + Into<Action> {
 #[derive(Debug, Serialize, Deserialize, Clone, PartialEq, Eq)]
 pub enum ActionState {
     Completed,
+    // Only applicable to meta-actions that start multiple sub-actions.
+    Progress,
     Uncompleted,
 }
 

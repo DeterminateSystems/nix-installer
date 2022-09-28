@@ -102,6 +102,7 @@ impl Actionable for CreateUsersAndGroup {
             tracing::trace!("Already completed: Creating users and groups");
             return Ok(());
         }
+        *action_state = ActionState::Progress;
         tracing::debug!("Creating users and groups");
 
         // Create group
@@ -191,6 +192,7 @@ impl Actionable for CreateUsersAndGroup {
             tracing::trace!("Already reverted: Delete users and groups");
             return Ok(());
         }
+        *action_state = ActionState::Progress;
         tracing::debug!("Delete users and groups");
 
         let mut set = JoinSet::new();

@@ -104,6 +104,7 @@ impl Actionable for ConfigureNix {
             tracing::trace!("Already completed: Configuring nix");
             return Ok(());
         }
+        *action_state = ActionState::Progress;
         tracing::debug!("Configuring nix");
 
         if let Some(configure_shell_profile) = configure_shell_profile {
@@ -203,6 +204,7 @@ impl Actionable for ConfigureNix {
             tracing::trace!("Already reverted: Unconfiguring nix");
             return Ok(());
         }
+        *action_state = ActionState::Progress;
         tracing::debug!("Unconfiguring nix");
 
         configure_nix_daemon_service.revert().await?;

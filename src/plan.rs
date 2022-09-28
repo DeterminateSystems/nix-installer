@@ -104,26 +104,24 @@ impl InstallPlan {
         // This is **deliberately sequential**.
         // Actions which are parallelizable are represented by "group actions" like CreateUsers
         // The plan itself represents the concept of the sequence of stages.
-        self.provision_nix
-            .execute()
-            .await
-            .map_err(|e| ActionError::from(e))?;
-        self.configure_nix
-            .execute()
-            .await
-            .map_err(|e| ActionError::from(e))?;
-        self.start_nix_daemon
-            .execute()
-            .await
-            .map_err(|e| ActionError::from(e))?;
+        
+        if let Err(err) = self.provision_nix.execute().await {
+            write_receipt(self.clone()).await?;
+            return Err(ActionError::from(err).into())
+        }
+        
+        if let Err(err) = self.configure_nix.execute().await {
+            write_receipt(self.clone()).await?;
+            return Err(ActionError::from(err).into())
+        }
+        
+        if let Err(err) = self.start_nix_daemon.execute().await {
+            write_receipt(self.clone()).await?;
+            return Err(ActionError::from(err).into())
+        }
 
-        let install_receipt_path = PathBuf::from("/nix/receipt.json");
-        let self_json =
-            serde_json::to_string_pretty(&self).map_err(HarmonicError::SerializingReceipt)?;
-        tokio::fs::write(&install_receipt_path, self_json)
-            .await
-            .map_err(|e| HarmonicError::RecordingReceipt(install_receipt_path, e))?;
-
+        write_receipt(self.clone()).await?;
+ 
         Ok(())
     }
 
@@ -179,19 +177,33 @@ impl InstallPlan {
         // This is **deliberately sequential**.
         // Actions which are parallelizable are represented by "group actions" like CreateUsers
         // The plan itself represents the concept of the sequence of stages.
-        self.start_nix_daemon
-            .revert()
-            .await
-            .map_err(|e| ActionError::from(e))?;
-        self.configure_nix
-            .revert()
-            .await
-            .map_err(|e| ActionError::from(e))?;
-        self.provision_nix
-            .revert()
-            .await
-            .map_err(|e| ActionError::from(e))?;
+        if let Err(err) = self.start_nix_daemon.revert().await {
+            write_receipt(self.clone()).await?;
+            return Err(ActionError::from(err).into())
+        }
+
+        if let Err(err) = self.configure_nix.revert().await {
+            write_receipt(self.clone()).await?;
+            return Err(ActionError::from(err).into())
+        }
+
+        if let Err(err) = self.provision_nix.revert().await {
+            write_receipt(self.clone()).await?;
+            return Err(ActionError::from(err).into())
+        }
 
         Ok(())
     }
+}
+
+async fn write_receipt(plan: InstallPlan) -> Result<(), HarmonicError> {
+    tokio::fs::create_dir_all("/nix").await
+        .map_err(|e| HarmonicError::RecordingReceipt(PathBuf::from("/nix"), e))?;
+    let install_receipt_path = PathBuf::from("/nix/receipt.json");
+    let self_json =
+        serde_json::to_string_pretty(&plan).map_err(HarmonicError::SerializingReceipt)?;
+    tokio::fs::write(&install_receipt_path, self_json)
+        .await
+        .map_err(|e| HarmonicError::RecordingReceipt(install_receipt_path, e))?;
+    Result::<(), HarmonicError>::Ok(())
 }

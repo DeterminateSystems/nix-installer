@@ -77,6 +77,7 @@ impl Actionable for ProvisionNix {
             tracing::trace!("Already completed: Provisioning Nix");
             return Ok(());
         }
+        *action_state = ActionState::Progress;
         tracing::debug!("Provisioning Nix");
 
         // We fetch nix while doing the rest, then move it over.
@@ -134,6 +135,7 @@ impl Actionable for ProvisionNix {
             tracing::trace!("Already reverted: Unprovisioning nix");
             return Ok(());
         }
+        *action_state = ActionState::Progress;
         tracing::debug!("Unprovisioning nix");
 
         // We fetch nix while doing the rest, then move it over.
