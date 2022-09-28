@@ -29,7 +29,7 @@ pub(crate) async fn confirm(question: impl AsRef<str>) -> eyre::Result<bool> {
             Some(Ok(event)) => {
                 if let crossterm::event::Event::Key(key) = event {
                     match key.code {
-                        KeyCode::Enter => continue, // Many users will hit enter accidently when they are agreeing/declining prompts.
+                        KeyCode::Enter => continue, // Many users will hit enter accidentally when they are agreeing/declining prompts.
                         // TODO(@hoverbear): Should maybe actually even wait for it?
                         KeyCode::Char('y') => break Ok(true),
                         _ => {

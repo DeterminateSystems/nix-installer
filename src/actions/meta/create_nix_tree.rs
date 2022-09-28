@@ -84,7 +84,7 @@ impl Actionable for CreateNixTree {
         *action_state = ActionState::Progress;
         tracing::debug!("Creating nix tree");
 
-        // Just do sequential since parallizing this will have little benefit
+        // Just do sequential since parallelizing this will have little benefit
         for create_directory in create_directories {
             create_directory.execute().await?
         }
@@ -131,7 +131,7 @@ impl Actionable for CreateNixTree {
         *action_state = ActionState::Progress;
         tracing::debug!("Deleting nix tree");
 
-        // Just do sequential since parallizing this will have little benefit
+        // Just do sequential since parallelizing this will have little benefit
         for create_directory in create_directories.iter_mut().rev() {
             create_directory.revert().await?
         }

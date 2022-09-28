@@ -47,7 +47,7 @@
         ]);
     in
     {
-      devShell = forAllSystems ({ system, pkgs, ... }:
+      devShells = forAllSystems ({ system, pkgs, ... }:
         let
           toolchain = fenixToolchain system;
           ci = import ./nix/ci.nix { inherit pkgs; };
@@ -60,29 +60,31 @@
               .
           '';
         in
-        pkgs.mkShell {
-          name = "nix-install-shell";
+        {
+          default = pkgs.mkShell {
+            name = "nix-install-shell";
 
-          RUST_SRC_PATH = "${toolchain}/lib/rustlib/src/rust/library";
+            RUST_SRC_PATH = "${toolchain}/lib/rustlib/src/rust/library";
 
-          nativeBuildInputs = with pkgs; [
-            pkg-config
-          ];
-          buildInputs = with pkgs; [
-            toolchain
-            openssl
-            rust-analyzer
+            nativeBuildInputs = with pkgs; [
+              pkg-config
+            ];
+            buildInputs = with pkgs; [
+              toolchain
+              openssl
+              rust-analyzer
 
-            # CI dependencies
-            jq
-            codespell
-            findutils # for xargs
-            git
-            nixpkgs-fmt
-            eclint
-          ]
-          ++ ci
-          ++ lib.optionals (pkgs.stdenv.isDarwin) (with pkgs; [ libiconv darwin.apple_sdk.frameworks.Security ]);
+              # CI dependencies
+              jq
+              codespell
+              findutils # for xargs
+              git
+              nixpkgs-fmt
+              eclint
+            ]
+            ++ ci
+            ++ lib.optionals (pkgs.stdenv.isDarwin) (with pkgs; [ libiconv darwin.apple_sdk.frameworks.Security ]);
+          };
         });
 
       packages = forAllSystems
@@ -118,7 +120,8 @@
               };
             };
           in
-          {
+          rec {
+            default = harmonic;
             harmonic = naerskLib.buildPackage
               (sharedAttrs // { });
           } // lib.optionalAttrs (system == "x86_64-linux") {
