@@ -4,7 +4,6 @@ use crate::actions::base::{CreateDirectory, CreateDirectoryError};
 use crate::actions::{Action, ActionDescription, ActionState, Actionable};
 
 const PATHS: &[&str] = &[
-    "/nix",
     "/nix/var",
     "/nix/var/log",
     "/nix/var/log/nix",

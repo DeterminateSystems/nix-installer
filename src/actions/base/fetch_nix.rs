@@ -71,18 +71,12 @@ impl Actionable for FetchNix {
         // TODO(@Hoverbear): Pick directory
         tracing::trace!("Unpacking tar.xz");
         let dest_clone = dest.clone();
-        let handle: Result<(), Self::Error> = spawn_blocking(move || {
-            let decoder = xz2::read::XzDecoder::new(bytes.reader());
-            let mut archive = tar::Archive::new(decoder);
-            archive
-                .unpack(&dest_clone)
-                .map_err(Self::Error::Unarchive)?;
-            tracing::debug!(dest = %dest_clone.display(), "Downloaded & extracted Nix");
-            Ok(())
-        })
-        .await?;
 
-        handle?;
+        let decoder = xz2::read::XzDecoder::new(bytes.reader());
+        let mut archive = tar::Archive::new(decoder);
+        archive
+            .unpack(&dest_clone)
+            .map_err(Self::Error::Unarchive)?;
 
         tracing::trace!("Fetched Nix");
         *action_state = ActionState::Completed;

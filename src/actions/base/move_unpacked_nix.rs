@@ -63,12 +63,14 @@ impl Actionable for MoveUnpackedNix {
         );
         let found_nix_path = found_nix_paths.into_iter().next().unwrap();
         tracing::trace!("Renaming");
-        let src = found_nix_path.join("store");
+        let src_store = found_nix_path.join("store");
         let dest = Path::new(DEST);
-        tokio::fs::rename(src.clone(), dest)
+        tokio::fs::rename(src_store.clone(), dest)
             .await
-            .map_err(|e| MoveUnpackedNixError::Rename(src, dest.to_owned(), e))?;
+            .map_err(|e| MoveUnpackedNixError::Rename(src_store.clone(), dest.to_owned(), e))?;
 
+        tokio::fs::remove_dir_all(src).await
+            .map_err(|e| MoveUnpackedNixError::Rename(src_store, dest.to_owned(), e))?;
         tracing::trace!("Moved Nix");
         *action_state = ActionState::Completed;
         Ok(())
