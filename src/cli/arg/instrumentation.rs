@@ -8,8 +8,8 @@ use valuable::Valuable;
 #[derive(clap::Args, Debug, Valuable)]
 pub struct Instrumentation {
     /// Enable debug logs, -vv for trace
-    #[clap(short = 'v', long, parse(from_occurrences), global = true)]
-    pub(crate) verbose: usize,
+    #[clap(short = 'v', long, action = clap::ArgAction::Count, global = true)]
+    pub(crate) verbose: u8,
 }
 
 impl<'a> Instrumentation {

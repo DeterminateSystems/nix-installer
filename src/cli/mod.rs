@@ -15,6 +15,8 @@ pub(crate) trait CommandExecute {
 }
 
 /// An opinionated, experimental Nix installer
+/// 
+/// Plans a Nix install, prompts for confirmation, then executes it
 #[derive(Debug, Parser)]
 #[clap(version)]
 pub(crate) struct HarmonicCli {
@@ -80,7 +82,7 @@ impl CommandExecute for HarmonicCli {
         match subcommand {
             Some(HarmonicSubcommand::Plan(plan)) => plan.execute().await,
             Some(HarmonicSubcommand::Execute(execute)) => execute.execute().await,
-            Some(HarmonicSubcommand::Revert(revert)) => revert.execute().await,
+            Some(HarmonicSubcommand::Uninstall(revert)) => revert.execute().await,
             None => {
                 let mut settings = InstallSettings::default();
 

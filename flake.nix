@@ -121,17 +121,18 @@
             };
           in
           rec {
-            default = harmonic;
             harmonic = naerskLib.buildPackage
               (sharedAttrs // { });
-          } // lib.optionalAttrs (system == "x86_64-linux") {
+          } // lib.optionalAttrs (system == "x86_64-linux") rec {
+            default = harmonicStatic;
             harmonicStatic = naerskLib.buildPackage
               (sharedAttrs // {
                 CARGO_BUILD_TARGET = "x86_64-unknown-linux-musl";
                 OPENSSL_LIB_DIR = "${pkgs.pkgsStatic.openssl.out}/lib";
                 OPENSSL_INCLUDE_DIR = "${pkgs.pkgsStatic.openssl.dev}";
               });
-          } // lib.optionalAttrs (system == "aarch64-linux") {
+          } // lib.optionalAttrs (system == "aarch64-linux") rec {
+            default = harmonicStatic;
             harmonicStatic = naerskLib.buildPackage
               (sharedAttrs // {
                 CARGO_BUILD_TARGET = "aarch64-unknown-linux-musl";

@@ -7,7 +7,7 @@ use eyre::WrapErr;
 
 use crate::cli::{arg::ChannelValue, CommandExecute};
 
-/// An opinionated, experimental Nix installer
+/// Plan an install that can be repeated on an identical host later
 #[derive(Debug, Parser)]
 pub(crate) struct Plan {
     /// Channel(s) to add by default, pass multiple times for multiple channels

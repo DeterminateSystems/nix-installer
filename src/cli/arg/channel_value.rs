@@ -22,11 +22,11 @@ impl clap::builder::TypedValueParser for ChannelValueParser {
         value: &std::ffi::OsStr,
     ) -> Result<Self::Value, clap::Error> {
         let buf = value.to_str().ok_or_else(|| {
-            clap::Error::raw(clap::ErrorKind::InvalidValue, "Should be all UTF-8")
+            clap::Error::raw(clap::error::ErrorKind::InvalidValue, "Should be all UTF-8")
         })?;
         let (name, url) = buf.split_once('=').ok_or_else(|| {
             clap::Error::raw(
-                clap::ErrorKind::InvalidValue,
+                clap::error::ErrorKind::InvalidValue,
                 "Should be formatted `name=url`",
             )
         })?;

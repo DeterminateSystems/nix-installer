@@ -6,9 +6,9 @@ use harmonic::InstallPlan;
 
 use crate::{cli::CommandExecute, interaction};
 
-/// An opinionated, experimental Nix installer
+/// Uninstall a previously installed Nix (only Harmonic done installs supported)
 #[derive(Debug, Parser)]
-pub(crate) struct Revert {
+pub(crate) struct Uninstall {
     #[clap(
         long,
         action(ArgAction::SetTrue),
@@ -21,7 +21,7 @@ pub(crate) struct Revert {
 }
 
 #[async_trait::async_trait]
-impl CommandExecute for Revert {
+impl CommandExecute for Uninstall {
     #[tracing::instrument(skip_all, fields())]
     async fn execute(self) -> eyre::Result<ExitCode> {
         let Self {

@@ -3,7 +3,7 @@ use std::path::PathBuf;
 use bytes::Buf;
 use reqwest::Url;
 use serde::Serialize;
-use tokio::task::{spawn_blocking, JoinError};
+use tokio::task::{JoinError};
 
 use crate::actions::{Action, ActionDescription, ActionState, Actionable};
 

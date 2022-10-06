@@ -6,7 +6,7 @@ use harmonic::InstallPlan;
 
 use crate::{cli::CommandExecute, interaction};
 
-/// An opinionated, experimental Nix installer
+/// Execute an install using an existing plan
 #[derive(Debug, Parser)]
 pub(crate) struct Execute {
     #[clap(
