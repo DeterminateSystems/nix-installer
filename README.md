@@ -6,7 +6,7 @@ Harmonic is an opinionated, experimental Nix installer.
 
 ## Status
 
-Harmonic is **pre-release and experimental**. It is not ready for you to use! *Please* don't use it on a machine you are not planning to oblierate!
+Harmonic is **pre-release and experimental**. It is not ready for you to use! *Please* don't use it on a machine you are not planning to obliterate!
 
 Planned support:
 
@@ -54,7 +54,7 @@ Then copy the `result/bin/harmonic` to the machine you wish to run it on.
 
 ## Running
 
-Harmonic must be run as `root` or via `sudo`, as it needs to alter the system and cannot elevate privileges without significant complexity.
+Harmonic must be run as `root`, as it needs to alter the system and cannot elevate privileges without significant complexity.
 
 Install Nix with default options:
 
@@ -62,6 +62,6 @@ Install Nix with default options:
 ./harmonic
 ```
 
-To observe verbose logging, either use `harmonic -V`, for extremely verbose trace logging use `RUST_LOG=harmonic=trace harmonic`.
+To observe verbose logging, either use `harmonic -v`, this tool [also respects the `RUST_LOG` environment](https://docs.rs/tracing-subscriber/latest/tracing_subscriber/filter/struct.EnvFilter.html#directives). (Eg `RUST_LOG=harmonic=trace harmonic`).
 
 Harmonic supports many of the options the current official Nix installer scripts. Review `harmonic --help` for details.

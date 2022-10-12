@@ -123,6 +123,7 @@
           rec {
             harmonic = naerskLib.buildPackage
               (sharedAttrs // { });
+            default = self.packages.${system}.harmonic;
           } // lib.optionalAttrs (system == "x86_64-linux") rec {
             default = harmonicStatic;
             harmonicStatic = naerskLib.buildPackage
@@ -140,7 +141,5 @@
                 OPENSSL_INCLUDE_DIR = "${pkgs.pkgsStatic.openssl.dev}";
               });
           });
-
-      defaultPackage = forAllSystems ({ system, ... }: self.packages.${system}.harmonic);
     };
 }
