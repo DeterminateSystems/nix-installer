@@ -22,7 +22,7 @@ pub(crate) struct Uninstall {
         default_value = "false",
         global = true
     )]
-    pub(crate) explain: bool,
+    explain: bool,
     #[clap(default_value = "/nix/receipt.json")]
     receipt: PathBuf,
 }

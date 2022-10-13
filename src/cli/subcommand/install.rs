@@ -22,7 +22,7 @@ pub(crate) struct Execute {
         default_value = "false",
         global = true
     )]
-    pub(crate) explain: bool,
+    explain: bool,
     #[clap(default_value = "/dev/stdin")]
     plan: PathBuf,
 }

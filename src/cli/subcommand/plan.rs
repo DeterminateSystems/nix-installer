@@ -18,7 +18,7 @@ pub(crate) struct Plan {
         env = "HARMONIC_CHANNEL",
         default_value = "nixpkgs=https://nixos.org/channels/nixpkgs-unstable"
     )]
-    pub(crate) channel: Vec<crate::cli::arg::ChannelValue>,
+    channel: Vec<crate::cli::arg::ChannelValue>,
     /// Don't modify the user profile to automatically load nix
     #[clap(
         long,
@@ -26,17 +26,17 @@ pub(crate) struct Plan {
         default_value = "false",
         global = true
     )]
-    pub(crate) no_modify_profile: bool,
+    no_modify_profile: bool,
     /// Number of build users to create
     #[clap(long, default_value = "32", env = "HARMONIC_NIX_DAEMON_USER_COUNT")]
-    pub(crate) daemon_user_count: usize,
+    daemon_user_count: usize,
     #[clap(
         long,
         action(ArgAction::SetTrue),
         default_value = "false",
         global = true
     )]
-    pub(crate) force: bool,
+    force: bool,
     #[clap(default_value = "/dev/stdout")]
     plan: PathBuf,
 }

@@ -3,7 +3,7 @@ use std::path::PathBuf;
 use crate::{
     actions::{
         meta::{ConfigureNix, ProvisionNix, StartNixDaemon},
-        ActionDescription, ActionError, Actionable,
+        Action, ActionDescription, ActionError, Actionable,
     },
     settings::InstallSettings,
     HarmonicError,
@@ -13,52 +13,33 @@ use crate::{
 pub struct InstallPlan {
     settings: InstallSettings,
 
-    /** Bootstrap the install
-
-    * There are roughly three phases:
-    * "Create nix tree"":
-    * download_nix  --------------------------------------> move_downloaded_nix
-    * create_group -> create_users -> create_directories -> move_downloaded_nix
-    * place_channel_configuration
-    * place_nix_configuration
-    * ---
-    * "Configure Nix":
-    * setup_default_profile
-    * configure_nix_daemon_service
-    * configure_shell_profile
-    * ---
-    * "Start Nix"
-    * start_nix_daemon_service
-    */
-    provision_nix: ProvisionNix,
-    configure_nix: ConfigureNix,
-    start_nix_daemon: StartNixDaemon,
+    actions: Vec<Action>,
 }
 
 impl InstallPlan {
     pub async fn new(settings: InstallSettings) -> Result<Self, HarmonicError> {
         Ok(Self {
             settings: settings.clone(),
-            provision_nix: ProvisionNix::plan(settings.clone())
-                .await
-                .map_err(|e| ActionError::from(e))?,
-            configure_nix: ConfigureNix::plan(settings)
-                .await
-                .map_err(|e| ActionError::from(e))?,
-            start_nix_daemon: StartNixDaemon::plan()
-                .await
-                .map_err(|e| ActionError::from(e))?,
+            actions: vec![
+                ProvisionNix::plan(settings.clone())
+                    .await
+                    .map(Action::from)
+                    .map_err(ActionError::from)?,
+                ConfigureNix::plan(settings)
+                    .await
+                    .map(Action::from)
+                    .map_err(ActionError::from)?,
+                StartNixDaemon::plan()
+                    .await
+                    .map(Action::from)
+                    .map_err(ActionError::from)?,
+            ],
         })
     }
 
     #[tracing::instrument(skip_all)]
     pub fn describe_execute(&self, explain: bool) -> String {
-        let Self {
-            settings,
-            provision_nix,
-            configure_nix,
-            start_nix_daemon,
-        } = self;
+        let Self { settings, actions } = self;
         format!(
             "\
             This Nix install is for:\n\
@@ -77,66 +58,53 @@ impl InstallPlan {
                 .map(|(name, url)| format!("{name}={url}"))
                 .collect::<Vec<_>>()
                 .join(","),
-            actions = {
-                let mut buf = provision_nix.describe_execute();
-                buf.append(&mut configure_nix.describe_execute());
-                buf.append(&mut start_nix_daemon.describe_execute());
-                buf.iter()
-                    .map(|desc| {
-                        let ActionDescription {
-                            description,
-                            explanation,
-                        } = desc;
+            actions = actions
+                .iter()
+                .map(|v| v.describe_execute())
+                .flatten()
+                .map(|desc| {
+                    let ActionDescription {
+                        description,
+                        explanation,
+                    } = desc;
 
-                        let mut buf = String::default();
-                        buf.push_str(&format!("* {description}\n"));
-                        if explain {
-                            for line in explanation {
-                                buf.push_str(&format!("  {line}\n"));
-                            }
+                    let mut buf = String::default();
+                    buf.push_str(&format!("* {description}\n"));
+                    if explain {
+                        for line in explanation {
+                            buf.push_str(&format!("  {line}\n"));
                         }
-                        buf
-                    })
-                    .collect::<Vec<_>>()
-                    .join("\n")
-            },
+                    }
+                    buf
+                })
+                .collect::<Vec<_>>()
+                .join("\n"),
         )
     }
 
     #[tracing::instrument(skip_all)]
     pub async fn install(&mut self) -> Result<(), HarmonicError> {
+        let Self {
+            actions,
+            settings: _,
+        } = self;
+
         // This is **deliberately sequential**.
         // Actions which are parallelizable are represented by "group actions" like CreateUsers
         // The plan itself represents the concept of the sequence of stages.
-
-        if let Err(err) = self.provision_nix.execute().await {
-            write_receipt(self.clone()).await?;
-            return Err(ActionError::from(err).into());
+        for action in actions {
+            if let Err(err) = action.execute().await {
+                write_receipt(self.clone()).await?;
+                return Err(ActionError::from(err).into());
+            }
         }
 
-        if let Err(err) = self.configure_nix.execute().await {
-            write_receipt(self.clone()).await?;
-            return Err(ActionError::from(err).into());
-        }
-
-        if let Err(err) = self.start_nix_daemon.execute().await {
-            write_receipt(self.clone()).await?;
-            return Err(ActionError::from(err).into());
-        }
-
-        write_receipt(self.clone()).await?;
-
-        Ok(())
+        write_receipt(self.clone()).await
     }
 
     #[tracing::instrument(skip_all)]
     pub fn describe_revert(&self, explain: bool) -> String {
-        let Self {
-            settings,
-            provision_nix,
-            configure_nix,
-            start_nix_daemon,
-        } = self;
+        let Self { settings, actions } = self;
         format!(
             "\
             This Nix uninstall is for:\n\
@@ -155,50 +123,45 @@ impl InstallPlan {
                 .map(|(name, url)| format!("{name}={url}"))
                 .collect::<Vec<_>>()
                 .join(","),
-            actions = {
-                let mut buf = provision_nix.describe_revert();
-                buf.append(&mut configure_nix.describe_revert());
-                buf.append(&mut start_nix_daemon.describe_revert());
-                buf.iter()
-                    .map(|desc| {
-                        let ActionDescription {
-                            description,
-                            explanation,
-                        } = desc;
+            actions = actions
+                .iter()
+                .map(|v| v.describe_revert())
+                .flatten()
+                .map(|desc| {
+                    let ActionDescription {
+                        description,
+                        explanation,
+                    } = desc;
 
-                        let mut buf = String::default();
-                        buf.push_str(&format!("* {description}\n"));
-                        if explain {
-                            for line in explanation {
-                                buf.push_str(&format!("  {line}\n"));
-                            }
+                    let mut buf = String::default();
+                    buf.push_str(&format!("* {description}\n"));
+                    if explain {
+                        for line in explanation {
+                            buf.push_str(&format!("  {line}\n"));
                         }
-                        buf
-                    })
-                    .collect::<Vec<_>>()
-                    .join("\n")
-            },
+                    }
+                    buf
+                })
+                .collect::<Vec<_>>()
+                .join("\n"),
         )
     }
 
     #[tracing::instrument(skip_all)]
     pub async fn revert(&mut self) -> Result<(), HarmonicError> {
+        let Self {
+            actions,
+            settings: _,
+        } = self;
+
         // This is **deliberately sequential**.
         // Actions which are parallelizable are represented by "group actions" like CreateUsers
         // The plan itself represents the concept of the sequence of stages.
-        if let Err(err) = self.start_nix_daemon.revert().await {
-            write_receipt(self.clone()).await?;
-            return Err(ActionError::from(err).into());
-        }
-
-        if let Err(err) = self.configure_nix.revert().await {
-            write_receipt(self.clone()).await?;
-            return Err(ActionError::from(err).into());
-        }
-
-        if let Err(err) = self.provision_nix.revert().await {
-            write_receipt(self.clone()).await?;
-            return Err(ActionError::from(err).into());
+        for action in actions {
+            if let Err(err) = action.revert().await {
+                write_receipt(self.clone()).await?;
+                return Err(ActionError::from(err).into());
+            }
         }
 
         Ok(())
