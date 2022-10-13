@@ -16,6 +16,13 @@ pub(crate) struct Uninstall {
         global = true
     )]
     no_confirm: bool,
+    #[clap(
+        long,
+        action(ArgAction::SetTrue),
+        default_value = "false",
+        global = true
+    )]
+    pub(crate) explain: bool,
     #[clap(default_value = "/nix/receipt.json")]
     receipt: PathBuf,
 }
@@ -27,6 +34,7 @@ impl CommandExecute for Uninstall {
         let Self {
             no_confirm,
             receipt,
+            explain,
         } = self;
 
         let install_receipt_string = tokio::fs::read_to_string(receipt)
@@ -35,7 +43,7 @@ impl CommandExecute for Uninstall {
         let mut plan: InstallPlan = serde_json::from_str(&install_receipt_string)?;
 
         if !no_confirm {
-            if !interaction::confirm(plan.describe_revert()).await? {
+            if !interaction::confirm(plan.describe_revert(explain)).await? {
                 interaction::clean_exit_with_message("Okay, didn't do anything! Bye!").await;
             }
         }

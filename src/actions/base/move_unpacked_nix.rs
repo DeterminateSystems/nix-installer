@@ -69,7 +69,8 @@ impl Actionable for MoveUnpackedNix {
             .await
             .map_err(|e| MoveUnpackedNixError::Rename(src_store.clone(), dest.to_owned(), e))?;
 
-        tokio::fs::remove_dir_all(src).await
+        tokio::fs::remove_dir_all(src)
+            .await
             .map_err(|e| MoveUnpackedNixError::Rename(src_store, dest.to_owned(), e))?;
         tracing::trace!("Moved Nix");
         *action_state = ActionState::Completed;

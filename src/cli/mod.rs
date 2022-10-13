@@ -15,7 +15,7 @@ pub(crate) trait CommandExecute {
 }
 
 /// An opinionated, experimental Nix installer
-/// 
+///
 /// Plans a Nix install, prompts for confirmation, then executes it
 #[derive(Debug, Parser)]
 #[clap(version)]
@@ -87,7 +87,6 @@ impl CommandExecute for HarmonicCli {
                 let mut settings = InstallSettings::default();
 
                 settings.force(force);
-                settings.explain(explain);
                 settings.daemon_user_count(daemon_user_count);
                 settings.channels(
                     channel
@@ -99,13 +98,13 @@ impl CommandExecute for HarmonicCli {
                 let mut plan = InstallPlan::new(settings).await?;
 
                 // TODO(@Hoverbear): Make this smarter
-                if !interaction::confirm(plan.describe_execute()).await? {
+                if !interaction::confirm(plan.describe_execute(explain)).await? {
                     interaction::clean_exit_with_message("Okay, didn't do anything! Bye!").await;
                 }
 
                 if let Err(err) = plan.install().await {
                     tracing::error!("{:?}", eyre!(err));
-                    if !interaction::confirm(plan.describe_revert()).await? {
+                    if !interaction::confirm(plan.describe_revert(explain)).await? {
                         interaction::clean_exit_with_message("Okay, didn't do anything! Bye!")
                             .await;
                     }

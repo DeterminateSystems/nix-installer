@@ -2,7 +2,6 @@ use url::Url;
 
 #[derive(Debug, serde::Deserialize, serde::Serialize, Clone)]
 pub struct InstallSettings {
-    pub(crate) explain: bool,
     pub(crate) daemon_user_count: usize,
     pub(crate) channels: Vec<(String, Url)>,
     pub(crate) modify_profile: bool,
@@ -18,7 +17,6 @@ pub struct InstallSettings {
 impl Default for InstallSettings {
     fn default() -> Self {
         Self {
-            explain: Default::default(),
             daemon_user_count: Default::default(),
             channels: Default::default(),
             modify_profile: Default::default(),
@@ -38,10 +36,6 @@ impl Default for InstallSettings {
 
 // Builder Pattern
 impl InstallSettings {
-    pub fn explain(&mut self, explain: bool) -> &mut Self {
-        self.explain = explain;
-        self
-    }
     pub fn daemon_user_count(&mut self, count: usize) -> &mut Self {
         self.daemon_user_count = count;
         self

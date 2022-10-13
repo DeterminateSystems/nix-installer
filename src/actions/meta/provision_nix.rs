@@ -3,7 +3,10 @@ use std::path::PathBuf;
 use serde::Serialize;
 use tokio::task::JoinError;
 
-use crate::actions::base::{FetchNix, FetchNixError, MoveUnpackedNix, MoveUnpackedNixError, CreateDirectory, CreateDirectoryError};
+use crate::actions::base::{
+    CreateDirectory, CreateDirectoryError, FetchNix, FetchNixError, MoveUnpackedNix,
+    MoveUnpackedNixError,
+};
 use crate::InstallSettings;
 
 use crate::actions::{Action, ActionDescription, ActionState, Actionable};
@@ -23,7 +26,9 @@ pub struct ProvisionNix {
 impl ProvisionNix {
     #[tracing::instrument(skip_all)]
     pub async fn plan(settings: InstallSettings) -> Result<Self, ProvisionNixError> {
-        let create_nix_dir = CreateDirectory::plan("/nix", "root".into(), "root".into(), 0o0755, settings.force).await?;
+        let create_nix_dir =
+            CreateDirectory::plan("/nix", "root".into(), "root".into(), 0o0755, settings.force)
+                .await?;
 
         let fetch_nix = FetchNix::plan(
             settings.nix_package_url.clone(),
@@ -32,7 +37,8 @@ impl ProvisionNix {
         .await?;
         let create_users_and_group = CreateUsersAndGroup::plan(settings.clone()).await?;
         let create_nix_tree = CreateNixTree::plan(settings.force).await?;
-        let move_unpacked_nix = MoveUnpackedNix::plan(PathBuf::from("/nix/temp-install-dir")).await?;
+        let move_unpacked_nix =
+            MoveUnpackedNix::plan(PathBuf::from("/nix/temp-install-dir")).await?;
         Ok(Self {
             create_nix_dir,
             fetch_nix,

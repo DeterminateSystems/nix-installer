@@ -36,13 +36,6 @@ pub(crate) struct Plan {
         default_value = "false",
         global = true
     )]
-    pub(crate) explain: bool,
-    #[clap(
-        long,
-        action(ArgAction::SetTrue),
-        default_value = "false",
-        global = true
-    )]
     pub(crate) force: bool,
     #[clap(default_value = "/dev/stdout")]
     plan: PathBuf,
@@ -60,7 +53,6 @@ impl CommandExecute for Plan {
             channel,
             no_modify_profile,
             daemon_user_count,
-            explain,
             force,
             plan,
         } = self;
@@ -68,7 +60,6 @@ impl CommandExecute for Plan {
         let mut settings = InstallSettings::default();
 
         settings.force(force);
-        settings.explain(explain);
         settings.daemon_user_count(daemon_user_count);
         settings.channels(
             channel

@@ -87,6 +87,22 @@
           };
         });
 
+      checks = forAllSystems ({ system, pkgs, ... }:
+        let
+          pkgs = import nixpkgs {
+            inherit system;
+          };
+        in
+        {
+          format = pkgs.runCommand "check-format"
+            {
+              buildInputs = with pkgs; [ rustfmt cargo ];
+            } ''
+            ${pkgs.nixpkgs-fmt}/bin/nixpkgs-fmt --check ${./.}
+            touch $out # it worked!
+          '';
+        });
+
       packages = forAllSystems
         ({ system, pkgs, lib, ... }:
           let

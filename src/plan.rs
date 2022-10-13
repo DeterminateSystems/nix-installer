@@ -52,7 +52,7 @@ impl InstallPlan {
     }
 
     #[tracing::instrument(skip_all)]
-    pub fn describe_execute(&self) -> String {
+    pub fn describe_execute(&self, explain: bool) -> String {
         let Self {
             settings,
             provision_nix,
@@ -90,7 +90,7 @@ impl InstallPlan {
 
                         let mut buf = String::default();
                         buf.push_str(&format!("* {description}\n"));
-                        if self.settings.explain {
+                        if explain {
                             for line in explanation {
                                 buf.push_str(&format!("  {line}\n"));
                             }
@@ -130,7 +130,7 @@ impl InstallPlan {
     }
 
     #[tracing::instrument(skip_all)]
-    pub fn describe_revert(&self) -> String {
+    pub fn describe_revert(&self, explain: bool) -> String {
         let Self {
             settings,
             provision_nix,
@@ -168,7 +168,7 @@ impl InstallPlan {
 
                         let mut buf = String::default();
                         buf.push_str(&format!("* {description}\n"));
-                        if self.settings.explain {
+                        if explain {
                             for line in explanation {
                                 buf.push_str(&format!("  {line}\n"));
                             }
