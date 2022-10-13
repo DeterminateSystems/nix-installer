@@ -5,7 +5,10 @@ use eyre::{eyre, WrapErr};
 use harmonic::{InstallPlan, InstallSettings};
 
 use crate::{
-    cli::{arg::ChannelValue, CommandExecute},
+    cli::{
+        arg::{ChannelValue, PlanOptions},
+        CommandExecute,
+    },
     interaction,
 };
 
@@ -19,26 +22,8 @@ pub(crate) struct Install {
         global = true
     )]
     no_confirm: bool,
-    /// Channel(s) to add by default, pass multiple times for multiple channels
-    #[clap(
-        long,
-        value_parser,
-        action = clap::ArgAction::Append,
-        env = "HARMONIC_CHANNEL",
-        default_value = "nixpkgs=https://nixos.org/channels/nixpkgs-unstable"
-    )]
-    pub(crate) channel: Vec<ChannelValue>,
-    /// Don't modify the user profile to automatically load nix
-    #[clap(
-        long,
-        action(ArgAction::SetTrue),
-        default_value = "false",
-        global = true
-    )]
-    pub(crate) no_modify_profile: bool,
-    /// Number of build users to create
-    #[clap(long, default_value = "32", env = "HARMONIC_NIX_DAEMON_USER_COUNT")]
-    pub(crate) daemon_user_count: usize,
+    #[clap(flatten)]
+    plan_options: PlanOptions,
     #[clap(
         long,
         action(ArgAction::SetTrue),
@@ -47,14 +32,7 @@ pub(crate) struct Install {
     )]
     pub(crate) explain: bool,
     #[clap(
-        long,
-        action(ArgAction::SetTrue),
-        default_value = "false",
-        global = true
-    )]
-    pub(crate) force: bool,
-    #[clap(
-        conflicts_with_all = [ "no_modify_profile", "daemon_user_count", "channel" ],
+        conflicts_with_all = [ "plan_options" ],
         env = "HARMONIC_PLAN",
     )]
     plan: Option<PathBuf>,
@@ -67,11 +45,8 @@ impl CommandExecute for Install {
         let Self {
             no_confirm,
             plan,
+            plan_options,
             explain,
-            channel,
-            no_modify_profile,
-            daemon_user_count,
-            force,
         } = self;
 
         let mut plan = match &plan {
@@ -84,14 +59,15 @@ impl CommandExecute for Install {
             None => {
                 let mut settings = InstallSettings::default()?;
 
-                settings.force(force);
-                settings.daemon_user_count(daemon_user_count);
+                settings.force(plan_options.force);
+                settings.daemon_user_count(plan_options.daemon_user_count);
                 settings.channels(
-                    channel
+                    plan_options
+                        .channel
                         .into_iter()
                         .map(|ChannelValue(name, url)| (name, url)),
                 );
-                settings.modify_profile(!no_modify_profile);
+                settings.modify_profile(!plan_options.no_modify_profile);
 
                 InstallPlan::new(settings).await?
             },

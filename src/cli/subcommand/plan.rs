@@ -1,59 +1,40 @@
 use std::{path::PathBuf, process::ExitCode};
 
-use clap::{ArgAction, Parser};
+use clap::Parser;
 use harmonic::{InstallPlan, InstallSettings};
 
 use eyre::WrapErr;
 
-use crate::cli::{arg::ChannelValue, CommandExecute};
+use crate::cli::{
+    arg::{ChannelValue, PlanOptions},
+    CommandExecute,
+};
 
 /// Plan an install that can be repeated on an identical host later
 #[derive(Debug, Parser)]
 pub(crate) struct Plan {
-    /// Channel(s) to add by default, pass multiple times for multiple channels
-    #[clap(
-        long,
-        value_parser,
-        action = clap::ArgAction::Append,
-        env = "HARMONIC_CHANNEL",
-        default_value = "nixpkgs=https://nixos.org/channels/nixpkgs-unstable"
-    )]
-    channel: Vec<crate::cli::arg::ChannelValue>,
-    /// Don't modify the user profile to automatically load nix
-    #[clap(
-        long,
-        action(ArgAction::SetTrue),
-        default_value = "false",
-        global = true
-    )]
-    no_modify_profile: bool,
-    /// Number of build users to create
-    #[clap(long, default_value = "32", env = "HARMONIC_NIX_DAEMON_USER_COUNT")]
-    daemon_user_count: usize,
-    #[clap(
-        long,
-        action(ArgAction::SetTrue),
-        default_value = "false",
-        global = true
-    )]
-    force: bool,
+    #[clap(flatten)]
+    plan_options: PlanOptions,
     #[clap(default_value = "/dev/stdout")]
-    plan: PathBuf,
+    pub(crate) plan: PathBuf,
 }
 
 #[async_trait::async_trait]
 impl CommandExecute for Plan {
     #[tracing::instrument(skip_all, fields(
-        channels = %self.channel.iter().map(|ChannelValue(name, url)| format!("{name} {url}")).collect::<Vec<_>>().join(", "),
-        daemon_user_count = %self.daemon_user_count,
-        no_modify_profile = %self.no_modify_profile,
+        channels = %self.plan_options.channel.iter().map(|ChannelValue(name, url)| format!("{name} {url}")).collect::<Vec<_>>().join(", "),
+        daemon_user_count = %self.plan_options.daemon_user_count,
+        no_modify_profile = %self.plan_options.no_modify_profile,
     ))]
     async fn execute(self) -> eyre::Result<ExitCode> {
         let Self {
-            channel,
-            no_modify_profile,
-            daemon_user_count,
-            force,
+            plan_options:
+                PlanOptions {
+                    channel,
+                    no_modify_profile,
+                    daemon_user_count,
+                    force,
+                },
             plan,
         } = self;
 

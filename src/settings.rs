@@ -1,5 +1,7 @@
+use target_lexicon::Triple;
 use url::Url;
 
+#[serde_with::serde_as]
 #[derive(Debug, serde::Deserialize, serde::Serialize, Clone)]
 pub struct InstallSettings {
     pub(crate) daemon_user_count: usize,
@@ -12,6 +14,8 @@ pub struct InstallSettings {
     pub(crate) nix_package_url: Url,
     pub(crate) extra_conf: Option<String>,
     pub(crate) force: bool,
+    #[serde_as(as = "serde_with::DisplayFromStr")]
+    pub(crate) triple: Triple,
 }
 
 impl InstallSettings {
@@ -40,6 +44,7 @@ impl InstallSettings {
         };
 
         Ok(Self {
+            triple: target_lexicon::HOST,
             daemon_user_count: Default::default(),
             channels: Default::default(),
             modify_profile: Default::default(),
