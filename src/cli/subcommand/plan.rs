@@ -57,7 +57,7 @@ impl CommandExecute for Plan {
             plan,
         } = self;
 
-        let mut settings = InstallSettings::default();
+        let mut settings = InstallSettings::default()?;
 
         settings.force(force);
         settings.daemon_user_count(daemon_user_count);

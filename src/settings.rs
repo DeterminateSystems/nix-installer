@@ -14,9 +14,32 @@ pub struct InstallSettings {
     pub(crate) force: bool,
 }
 
-impl Default for InstallSettings {
-    fn default() -> Self {
-        Self {
+impl InstallSettings {
+    pub fn default() -> Result<Self, InstallSettingsError> {
+        let url;
+
+        use target_lexicon::{Architecture, OperatingSystem};
+        match (Architecture::host(), OperatingSystem::host()) {
+            (Architecture::X86_64, OperatingSystem::Linux) => {
+                url = "https://releases.nixos.org/nix/nix-2.11.0/nix-2.11.0-x86_64-linux.tar.xz";
+            },
+            (Architecture::Aarch64(_), OperatingSystem::Linux) => {
+                url = "https://releases.nixos.org/nix/nix-2.11.0/nix-2.11.0-aarch64-linux.tar.xz";
+            },
+            (Architecture::X86_64, OperatingSystem::MacOSX { .. }) => {
+                url = "https://releases.nixos.org/nix/nix-2.11.0/nix-2.11.0-x86_64-darwin.tar.xz";
+            },
+            (Architecture::Aarch64(_), OperatingSystem::MacOSX { .. }) => {
+                url = "https://releases.nixos.org/nix/nix-2.11.0/nix-2.11.0-aarch64-darwin.tar.xz";
+            },
+            _ => {
+                return Err(InstallSettingsError::UnsupportedArchitecture(
+                    target_lexicon::HOST,
+                ))
+            },
+        };
+
+        Ok(Self {
             daemon_user_count: Default::default(),
             channels: Default::default(),
             modify_profile: Default::default(),
@@ -24,13 +47,12 @@ impl Default for InstallSettings {
             nix_build_group_id: 3000,
             nix_build_user_prefix: String::from("nixbld"),
             nix_build_user_id_base: 3001,
-            nix_package_url:
-                "https://releases.nixos.org/nix/nix-2.11.0/nix-2.11.0-x86_64-linux.tar.xz"
-                    .parse()
-                    .expect("Could not parse default Nix archive url, please report this issue"),
+            nix_package_url: url
+                .parse()
+                .expect("Could not parse default Nix archive url, please report this issue"),
             extra_conf: Default::default(),
             force: false,
-        }
+        })
     }
 }
 
@@ -82,4 +104,10 @@ impl InstallSettings {
         self.force = force;
         self
     }
+}
+
+#[derive(thiserror::Error, Debug)]
+pub enum InstallSettingsError {
+    #[error("Harmonic does not support the `{0}` architecture right now")]
+    UnsupportedArchitecture(target_lexicon::Triple),
 }

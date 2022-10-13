@@ -8,7 +8,6 @@ use base::{
     FetchNixError, MoveUnpackedNix, MoveUnpackedNixError, SetupDefaultProfile,
     SetupDefaultProfileError,
 };
-use futures::Future;
 use meta::{
     ConfigureNix, ConfigureNixError, ConfigureShellProfile, ConfigureShellProfileError,
     CreateNixTree, CreateNixTreeError, CreateUsersAndGroup, CreateUsersAndGroupError,

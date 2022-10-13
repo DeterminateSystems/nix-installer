@@ -1,13 +1,13 @@
 mod plan;
 use plan::Plan;
 mod install;
-use install::Execute;
+use install::Install;
 mod uninstall;
 use uninstall::Uninstall;
 
 #[derive(Debug, clap::Subcommand)]
 pub(crate) enum HarmonicSubcommand {
     Plan(Plan),
-    Execute(Execute),
+    Install(Install),
     Uninstall(Uninstall),
 }
