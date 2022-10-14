@@ -2,7 +2,7 @@ use std::{path::PathBuf, process::ExitCode};
 
 use clap::{ArgAction, Parser};
 use eyre::{eyre, WrapErr};
-use harmonic::{InstallPlan, InstallSettings};
+use harmonic::{InstallPlan, InstallSettings, Planner};
 
 use crate::{
     cli::{
@@ -69,7 +69,12 @@ impl CommandExecute for Install {
                 );
                 settings.modify_profile(!plan_options.no_modify_profile);
 
-                InstallPlan::new(settings).await?
+                let planner = match plan_options.planner {
+                    Some(planner) => planner,
+                    None => Planner::default()?,
+                };
+
+                InstallPlan::new(planner, settings).await?
             },
         };
 

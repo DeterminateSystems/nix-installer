@@ -5,47 +5,40 @@ use crate::{
         meta::{ConfigureNix, ProvisionNix, StartNixDaemon},
         Action, ActionDescription, ActionError, Actionable,
     },
+    planner::PlannerError,
     settings::InstallSettings,
-    HarmonicError,
+    HarmonicError, Planner,
 };
 
 #[derive(Debug, serde::Deserialize, serde::Serialize, Clone)]
 pub struct InstallPlan {
-    settings: InstallSettings,
+    pub(crate) settings: InstallSettings,
 
-    actions: Vec<Action>,
+    pub(crate) actions: Vec<Action>,
+
+    pub(crate) planner: Planner,
 }
 
 impl InstallPlan {
-    pub async fn new(settings: InstallSettings) -> Result<Self, HarmonicError> {
-        Ok(Self {
-            settings: settings.clone(),
-            actions: vec![
-                ProvisionNix::plan(settings.clone())
-                    .await
-                    .map(Action::from)
-                    .map_err(ActionError::from)?,
-                ConfigureNix::plan(settings)
-                    .await
-                    .map(Action::from)
-                    .map_err(ActionError::from)?,
-                StartNixDaemon::plan()
-                    .await
-                    .map(Action::from)
-                    .map_err(ActionError::from)?,
-            ],
-        })
+    pub async fn new(planner: Planner, settings: InstallSettings) -> Result<Self, PlannerError> {
+        planner.plan(settings).await
     }
 
     #[tracing::instrument(skip_all)]
     pub fn describe_execute(&self, explain: bool) -> String {
-        let Self { settings, actions } = self;
+        let Self {
+            planner,
+            settings,
+            actions,
+        } = self;
         format!(
             "\
             This Nix install is for:\n\
               Operating System: {os_type}\n\
               Init system: {init_type}\n\
               Nix channels: {nix_channels}\n\
+            \n\
+            Created by planner: {planner:?}
             \n\
             The following actions will be taken:\n\
             {actions}
@@ -87,6 +80,7 @@ impl InstallPlan {
         let Self {
             actions,
             settings: _,
+            planner: _,
         } = self;
 
         // This is **deliberately sequential**.
@@ -104,13 +98,19 @@ impl InstallPlan {
 
     #[tracing::instrument(skip_all)]
     pub fn describe_revert(&self, explain: bool) -> String {
-        let Self { settings, actions } = self;
+        let Self {
+            planner,
+            settings,
+            actions,
+        } = self;
         format!(
             "\
             This Nix uninstall is for:\n\
               Operating System: {os_type}\n\
               Init system: {init_type}\n\
               Nix channels: {nix_channels}\n\
+            \n\
+            Created by planner: {planner:?}
             \n\
             The following actions will be taken:\n\
             {actions}
@@ -152,6 +152,7 @@ impl InstallPlan {
         let Self {
             actions,
             settings: _,
+            planner: _,
         } = self;
 
         // This is **deliberately sequential**.

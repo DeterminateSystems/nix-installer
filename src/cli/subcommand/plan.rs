@@ -1,7 +1,7 @@
 use std::{path::PathBuf, process::ExitCode};
 
 use clap::Parser;
-use harmonic::{InstallPlan, InstallSettings};
+use harmonic::{InstallPlan, InstallSettings, Planner};
 
 use eyre::WrapErr;
 
@@ -34,6 +34,7 @@ impl CommandExecute for Plan {
                     no_modify_profile,
                     daemon_user_count,
                     force,
+                    planner,
                 },
             plan,
         } = self;
@@ -49,7 +50,12 @@ impl CommandExecute for Plan {
         );
         settings.modify_profile(!no_modify_profile);
 
-        let install_plan = InstallPlan::new(settings).await?;
+        let planner = match planner {
+            Some(planner) => planner,
+            None => Planner::default()?,
+        };
+
+        let install_plan = InstallPlan::new(planner, settings).await?;
 
         let json = serde_json::to_string_pretty(&install_plan)?;
         tokio::fs::write(plan, json)

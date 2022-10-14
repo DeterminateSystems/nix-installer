@@ -1,4 +1,5 @@
 use clap::{ArgAction, Parser};
+use harmonic::Planner;
 
 /// Plan an install that can be repeated on an identical host later
 #[derive(Debug, Parser)]
@@ -38,4 +39,7 @@ pub(crate) struct PlanOptions {
         group = "plan_options"
     )]
     pub(crate) force: bool,
+    // Override the default planner for this OS/Architecture
+    #[clap(long, global = true, group = "plan_options", value_parser = clap::builder::EnumValueParser::<Planner>::new())]
+    pub(crate) planner: Option<Planner>,
 }

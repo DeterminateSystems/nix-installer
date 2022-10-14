@@ -1,3 +1,4 @@
+use crate::{planner, Planner};
 use target_lexicon::Triple;
 use url::Url;
 
@@ -115,4 +116,10 @@ impl InstallSettings {
 pub enum InstallSettingsError {
     #[error("Harmonic does not support the `{0}` architecture right now")]
     UnsupportedArchitecture(target_lexicon::Triple),
+    #[error("Planner error")]
+    Planner(
+        #[source]
+        #[from]
+        planner::PlannerError,
+    ),
 }
