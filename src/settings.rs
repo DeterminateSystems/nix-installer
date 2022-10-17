@@ -1,4 +1,4 @@
-use crate::{planner, Planner};
+use crate::planner;
 use target_lexicon::Triple;
 use url::Url;
 

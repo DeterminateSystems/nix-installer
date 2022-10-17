@@ -27,12 +27,12 @@ pub struct CreateNixTree {
 
 impl CreateNixTree {
     #[tracing::instrument(skip_all)]
-    pub async fn plan(force: bool) -> Result<Self, CreateNixTreeError> {
+    pub async fn plan() -> Result<Self, CreateNixTreeError> {
         let mut create_directories = Vec::default();
         for path in PATHS {
             // We use `create_dir` over `create_dir_all` to ensure we always set permissions right
             create_directories.push(
-                CreateDirectory::plan(path, "root".into(), "root".into(), 0o0755, force).await?,
+                CreateDirectory::plan(path, "root".into(), "root".into(), 0o0755, false).await?,
             )
         }
 

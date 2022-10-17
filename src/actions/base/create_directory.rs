@@ -14,6 +14,7 @@ pub struct CreateDirectory {
     group: String,
     mode: u32,
     action_state: ActionState,
+    force_prune_on_revert: bool,
 }
 
 impl CreateDirectory {
@@ -23,23 +24,37 @@ impl CreateDirectory {
         user: String,
         group: String,
         mode: u32,
-        force: bool,
+        force_prune_on_revert: bool,
     ) -> Result<Self, CreateDirectoryError> {
         let path = path.as_ref();
 
-        if path.exists() && !force {
-            return Err(CreateDirectoryError::Exists(std::io::Error::new(
-                std::io::ErrorKind::AlreadyExists,
-                format!("Directory `{}` already exists", path.display()),
-            )));
-        }
+        let action_state = if path.exists() {
+            let metadata = tokio::fs::metadata(path)
+                .await
+                .map_err(|e| CreateDirectoryError::GettingMetadata(path.to_path_buf(), e))?;
+            if metadata.is_dir() {
+                // TODO: Validate owner/group...
+                ActionState::Completed
+            } else {
+                return Err(CreateDirectoryError::Exists(std::io::Error::new(
+                    std::io::ErrorKind::AlreadyExists,
+                    format!(
+                        "Path `{}` already exists and is not directory",
+                        path.display()
+                    ),
+                )));
+            }
+        } else {
+            ActionState::Uncompleted
+        };
 
         Ok(Self {
             path: path.to_path_buf(),
             user,
             group,
             mode,
-            action_state: ActionState::Uncompleted,
+            force_prune_on_revert,
+            action_state,
         })
     }
 }
@@ -54,6 +69,7 @@ impl Actionable for CreateDirectory {
             user,
             group,
             mode,
+            force_prune_on_revert: _,
             action_state: _,
         } = &self;
         if self.action_state == ActionState::Completed {
@@ -81,6 +97,7 @@ impl Actionable for CreateDirectory {
             user,
             group,
             mode,
+            force_prune_on_revert: _,
             action_state,
         } = self;
         if *action_state == ActionState::Completed {
@@ -118,13 +135,22 @@ impl Actionable for CreateDirectory {
             user: _,
             group: _,
             mode: _,
+            force_prune_on_revert,
             action_state: _,
         } = &self;
         if self.action_state == ActionState::Uncompleted {
             vec![]
         } else {
             vec![ActionDescription::new(
-                format!("Remove the directory `{}`", path.display()),
+                format!(
+                    "Remove the directory `{}`{}",
+                    path.display(),
+                    if *force_prune_on_revert {
+                        ""
+                    } else {
+                        " if no other contents exists"
+                    }
+                ),
                 vec![],
             )]
         }
@@ -142,6 +168,7 @@ impl Actionable for CreateDirectory {
             user: _,
             group: _,
             mode: _,
+            force_prune_on_revert,
             action_state,
         } = self;
         if *action_state == ActionState::Uncompleted {
@@ -151,9 +178,18 @@ impl Actionable for CreateDirectory {
         tracing::debug!("Removing directory");
 
         tracing::trace!(path = %path.display(), "Removing directory");
-        remove_dir_all(path.clone())
-            .await
-            .map_err(|e| Self::Error::Removing(path.clone(), e))?;
+
+        let is_empty = path
+            .read_dir()
+            .map_err(|e| CreateDirectoryError::ReadDir(path.clone(), e))?
+            .next()
+            .is_some();
+        match (is_empty, force_prune_on_revert) {
+            (true, _) | (false, true) => remove_dir_all(path.clone())
+                .await
+                .map_err(|e| Self::Error::Removing(path.clone(), e))?,
+            (false, false) => {},
+        };
 
         tracing::trace!("Removed directory");
         *action_state = ActionState::Uncompleted;
@@ -180,6 +216,20 @@ pub enum CreateDirectoryError {
     ),
     #[error("Removing directory `{0}`")]
     Removing(
+        std::path::PathBuf,
+        #[source]
+        #[serde(serialize_with = "crate::serialize_error_to_display")]
+        std::io::Error,
+    ),
+    #[error("Getting metadata for {0}`")]
+    GettingMetadata(
+        std::path::PathBuf,
+        #[source]
+        #[serde(serialize_with = "crate::serialize_error_to_display")]
+        std::io::Error,
+    ),
+    #[error("Reading directory `{0}``")]
+    ReadDir(
         std::path::PathBuf,
         #[source]
         #[serde(serialize_with = "crate::serialize_error_to_display")]

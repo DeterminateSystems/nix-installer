@@ -27,8 +27,7 @@ impl ProvisionNix {
     #[tracing::instrument(skip_all)]
     pub async fn plan(settings: InstallSettings) -> Result<Self, ProvisionNixError> {
         let create_nix_dir =
-            CreateDirectory::plan("/nix", "root".into(), "root".into(), 0o0755, settings.force)
-                .await?;
+            CreateDirectory::plan("/nix", "root".into(), "root".into(), 0o0755, true).await?;
 
         let fetch_nix = FetchNix::plan(
             settings.nix_package_url.clone(),
@@ -36,7 +35,7 @@ impl ProvisionNix {
         )
         .await?;
         let create_users_and_group = CreateUsersAndGroup::plan(settings.clone()).await?;
-        let create_nix_tree = CreateNixTree::plan(settings.force).await?;
+        let create_nix_tree = CreateNixTree::plan().await?;
         let move_unpacked_nix =
             MoveUnpackedNix::plan(PathBuf::from("/nix/temp-install-dir")).await?;
         Ok(Self {

@@ -1,4 +1,11 @@
-use crate::{planner::Plannable, Planner};
+use crate::{
+    actions::{
+        meta::{CreateSystemdSysext, ProvisionNix, StartNixDaemon},
+        Action, ActionError,
+    },
+    planner::Plannable,
+    InstallPlan, Planner,
+};
 
 #[derive(Debug, Clone, serde::Serialize, serde::Deserialize, Default)]
 pub struct SteamDeck;
@@ -11,7 +18,24 @@ impl Plannable for SteamDeck {
     async fn plan(
         settings: crate::InstallSettings,
     ) -> Result<crate::InstallPlan, crate::planner::PlannerError> {
-        todo!()
+        Ok(InstallPlan {
+            planner: Self.into(),
+            settings: settings.clone(),
+            actions: vec![
+                CreateSystemdSysext::plan("/var/lib/extensions")
+                    .await
+                    .map(Action::from)
+                    .map_err(ActionError::from)?,
+                ProvisionNix::plan(settings.clone())
+                    .await
+                    .map(Action::from)
+                    .map_err(ActionError::from)?,
+                StartNixDaemon::plan()
+                    .await
+                    .map(Action::from)
+                    .map_err(ActionError::from)?,
+            ],
+        })
     }
 }
 

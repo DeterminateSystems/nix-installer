@@ -2,9 +2,7 @@ mod darwin;
 mod linux;
 mod specific;
 
-use std::{ffi::OsStr, str::FromStr};
-
-use crate::{actions::ActionError, HarmonicError, InstallPlan, InstallSettings};
+use crate::{actions::ActionError, InstallPlan, InstallSettings};
 
 #[derive(Debug, Clone, clap::ValueEnum, serde::Serialize, serde::Deserialize)]
 pub enum Planner {

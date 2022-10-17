@@ -1,10 +1,7 @@
 use std::path::PathBuf;
 
 use crate::{
-    actions::{
-        meta::{ConfigureNix, ProvisionNix, StartNixDaemon},
-        Action, ActionDescription, ActionError, Actionable,
-    },
+    actions::{Action, ActionDescription, ActionError, Actionable},
     planner::PlannerError,
     settings::InstallSettings,
     HarmonicError, Planner,

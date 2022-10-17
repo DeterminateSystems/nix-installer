@@ -6,18 +6,17 @@ use base::{
     CreateDirectoryError, CreateFile, CreateFileError, CreateGroup, CreateGroupError,
     CreateOrAppendFile, CreateOrAppendFileError, CreateUser, CreateUserError, FetchNix,
     FetchNixError, MoveUnpackedNix, MoveUnpackedNixError, SetupDefaultProfile,
-    SetupDefaultProfileError,
+    SetupDefaultProfileError, StartSystemdUnit, StartSystemdUnitError, SystemdSysextMerge,
+    SystemdSysextMergeError,
 };
 use meta::{
     ConfigureNix, ConfigureNixError, ConfigureShellProfile, ConfigureShellProfileError,
-    CreateNixTree, CreateNixTreeError, CreateUsersAndGroup, CreateUsersAndGroupError,
-    PlaceChannelConfiguration, PlaceChannelConfigurationError, PlaceNixConfiguration,
-    PlaceNixConfigurationError, ProvisionNix, ProvisionNixError, StartNixDaemon,
-    StartNixDaemonError,
+    CreateNixTree, CreateNixTreeError, CreateSystemdSysext, CreateSystemdSysextError,
+    CreateUsersAndGroup, CreateUsersAndGroupError, PlaceChannelConfiguration,
+    PlaceChannelConfigurationError, PlaceNixConfiguration, PlaceNixConfigurationError,
+    ProvisionNix, ProvisionNixError, StartNixDaemon, StartNixDaemonError,
 };
 use serde::{de::DeserializeOwned, Deserialize, Serialize};
-
-use self::base::{StartSystemdUnit, StartSystemdUnitError};
 
 #[async_trait::async_trait]
 pub trait Actionable: DeserializeOwned + Serialize + Into<Action> {
@@ -61,6 +60,7 @@ pub enum Action {
     ConfigureNix(ConfigureNix),
     ConfigureShellProfile(ConfigureShellProfile),
     CreateDirectory(CreateDirectory),
+    CreateSystemdSysext(CreateSystemdSysext),
     CreateFile(CreateFile),
     CreateGroup(CreateGroup),
     CreateOrAppendFile(CreateOrAppendFile),
@@ -74,6 +74,7 @@ pub enum Action {
     SetupDefaultProfile(SetupDefaultProfile),
     StartNixDaemon(StartNixDaemon),
     StartSystemdUnit(StartSystemdUnit),
+    SystemdSysextMerge(SystemdSysextMerge),
     ProvisionNix(ProvisionNix),
 }
 
@@ -93,6 +94,8 @@ pub enum ActionError {
     ConfigureShellProfile(#[from] ConfigureShellProfileError),
     #[error(transparent)]
     CreateDirectory(#[from] CreateDirectoryError),
+    #[error(transparent)]
+    CreateSystemdSysext(#[from] CreateSystemdSysextError),
     #[error(transparent)]
     CreateFile(#[from] CreateFileError),
     #[error(transparent)]
@@ -120,6 +123,8 @@ pub enum ActionError {
     #[error(transparent)]
     StartSystemdUnit(#[from] StartSystemdUnitError),
     #[error(transparent)]
+    SystemdSysExtMerge(#[from] SystemdSysextMergeError),
+    #[error(transparent)]
     ProvisionNix(#[from] ProvisionNixError),
 }
 
@@ -132,6 +137,7 @@ impl Actionable for Action {
             Action::ConfigureNix(i) => i.describe_execute(),
             Action::ConfigureShellProfile(i) => i.describe_execute(),
             Action::CreateDirectory(i) => i.describe_execute(),
+            Action::CreateSystemdSysext(i) => i.describe_execute(),
             Action::CreateFile(i) => i.describe_execute(),
             Action::CreateGroup(i) => i.describe_execute(),
             Action::CreateOrAppendFile(i) => i.describe_execute(),
@@ -145,6 +151,7 @@ impl Actionable for Action {
             Action::SetupDefaultProfile(i) => i.describe_execute(),
             Action::StartNixDaemon(i) => i.describe_execute(),
             Action::StartSystemdUnit(i) => i.describe_execute(),
+            Action::SystemdSysextMerge(i) => i.describe_execute(),
             Action::ProvisionNix(i) => i.describe_execute(),
         }
     }
@@ -155,6 +162,7 @@ impl Actionable for Action {
             Action::ConfigureNix(i) => i.execute().await?,
             Action::ConfigureShellProfile(i) => i.execute().await?,
             Action::CreateDirectory(i) => i.execute().await?,
+            Action::CreateSystemdSysext(i) => i.execute().await?,
             Action::CreateFile(i) => i.execute().await?,
             Action::CreateGroup(i) => i.execute().await?,
             Action::CreateOrAppendFile(i) => i.execute().await?,
@@ -168,6 +176,7 @@ impl Actionable for Action {
             Action::SetupDefaultProfile(i) => i.execute().await?,
             Action::StartNixDaemon(i) => i.execute().await?,
             Action::StartSystemdUnit(i) => i.execute().await?,
+            Action::SystemdSysextMerge(i) => i.execute().await?,
             Action::ProvisionNix(i) => i.execute().await?,
         };
         Ok(())
@@ -179,6 +188,7 @@ impl Actionable for Action {
             Action::ConfigureNix(i) => i.describe_revert(),
             Action::ConfigureShellProfile(i) => i.describe_revert(),
             Action::CreateDirectory(i) => i.describe_revert(),
+            Action::CreateSystemdSysext(i) => i.describe_revert(),
             Action::CreateFile(i) => i.describe_revert(),
             Action::CreateGroup(i) => i.describe_revert(),
             Action::CreateOrAppendFile(i) => i.describe_revert(),
@@ -192,6 +202,7 @@ impl Actionable for Action {
             Action::SetupDefaultProfile(i) => i.describe_revert(),
             Action::StartNixDaemon(i) => i.describe_revert(),
             Action::StartSystemdUnit(i) => i.describe_revert(),
+            Action::SystemdSysextMerge(i) => i.describe_revert(),
             Action::ProvisionNix(i) => i.describe_revert(),
         }
     }
@@ -202,6 +213,7 @@ impl Actionable for Action {
             Action::ConfigureNix(i) => i.revert().await?,
             Action::ConfigureShellProfile(i) => i.revert().await?,
             Action::CreateDirectory(i) => i.revert().await?,
+            Action::CreateSystemdSysext(i) => i.revert().await?,
             Action::CreateFile(i) => i.revert().await?,
             Action::CreateGroup(i) => i.revert().await?,
             Action::CreateOrAppendFile(i) => i.revert().await?,
@@ -215,6 +227,7 @@ impl Actionable for Action {
             Action::SetupDefaultProfile(i) => i.revert().await?,
             Action::StartNixDaemon(i) => i.revert().await?,
             Action::StartSystemdUnit(i) => i.revert().await?,
+            Action::SystemdSysextMerge(i) => i.revert().await?,
             Action::ProvisionNix(i) => i.revert().await?,
         }
         Ok(())

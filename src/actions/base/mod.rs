@@ -10,6 +10,7 @@ mod fetch_nix;
 mod move_unpacked_nix;
 mod setup_default_profile;
 mod start_systemd_unit;
+mod systemd_sysext_merge;
 
 pub use configure_nix_daemon_service::{ConfigureNixDaemonService, ConfigureNixDaemonServiceError};
 pub use create_directory::{CreateDirectory, CreateDirectoryError};
@@ -21,3 +22,4 @@ pub use fetch_nix::{FetchNix, FetchNixError};
 pub use move_unpacked_nix::{MoveUnpackedNix, MoveUnpackedNixError};
 pub use setup_default_profile::{SetupDefaultProfile, SetupDefaultProfileError};
 pub use start_systemd_unit::{StartSystemdUnit, StartSystemdUnitError};
+pub use systemd_sysext_merge::{SystemdSysextMerge, SystemdSysextMergeError};
