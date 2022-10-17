@@ -1,4 +1,11 @@
-use crate::{planner::Plannable, Planner};
+use crate::{
+    actions::{
+        meta::{darwin::CreateApfsVolume, ConfigureNix, ProvisionNix, StartNixDaemon},
+        Action, ActionError,
+    },
+    planner::Plannable,
+    InstallPlan, Planner,
+};
 
 #[derive(Debug, Clone, serde::Serialize, serde::Deserialize, Default)]
 pub struct DarwinMultiUser;
@@ -11,7 +18,32 @@ impl Plannable for DarwinMultiUser {
     async fn plan(
         settings: crate::InstallSettings,
     ) -> Result<crate::InstallPlan, crate::planner::PlannerError> {
-        todo!()
+        Ok(InstallPlan {
+            planner: Self.into(),
+            settings: settings.clone(),
+            actions: vec![
+                // Create Volume step:
+                //
+                // setup_Synthetic -> create_synthetic_objects
+                // Unmount -> create_volume -> Setup_fstab -> maybe encrypt_volume -> launchctl bootstrap -> launchctl kickstart -> await_volume -> maybe enableOwnership
+                CreateApfsVolume::plan(settings.clone())
+                    .await
+                    .map(Action::from)
+                    .map_err(ActionError::from)?,
+                ProvisionNix::plan(settings.clone())
+                    .await
+                    .map(Action::from)
+                    .map_err(ActionError::from)?,
+                ConfigureNix::plan(settings)
+                    .await
+                    .map(Action::from)
+                    .map_err(ActionError::from)?,
+                StartNixDaemon::plan()
+                    .await
+                    .map(Action::from)
+                    .map_err(ActionError::from)?,
+            ],
+        })
     }
 }
 

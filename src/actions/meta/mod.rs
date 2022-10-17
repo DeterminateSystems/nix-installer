@@ -5,6 +5,7 @@ mod configure_shell_profile;
 mod create_nix_tree;
 mod create_systemd_sysext;
 mod create_users_and_group;
+pub mod darwin;
 mod place_channel_configuration;
 mod place_nix_configuration;
 mod provision_nix;

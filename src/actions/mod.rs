@@ -10,6 +10,7 @@ use base::{
     SystemdSysextMergeError,
 };
 use meta::{
+    darwin::{CreateApfsVolume, CreateApfsVolumeError},
     ConfigureNix, ConfigureNixError, ConfigureShellProfile, ConfigureShellProfileError,
     CreateNixTree, CreateNixTreeError, CreateSystemdSysext, CreateSystemdSysextError,
     CreateUsersAndGroup, CreateUsersAndGroupError, PlaceChannelConfiguration,
@@ -56,26 +57,27 @@ impl ActionDescription {
 
 #[derive(Debug, serde::Deserialize, serde::Serialize, Clone)]
 pub enum Action {
-    ConfigureNixDaemonService(ConfigureNixDaemonService),
     ConfigureNix(ConfigureNix),
+    ConfigureNixDaemonService(ConfigureNixDaemonService),
     ConfigureShellProfile(ConfigureShellProfile),
+    CreateApfsVolume(CreateApfsVolume),
     CreateDirectory(CreateDirectory),
-    CreateSystemdSysext(CreateSystemdSysext),
     CreateFile(CreateFile),
     CreateGroup(CreateGroup),
-    CreateOrAppendFile(CreateOrAppendFile),
     CreateNixTree(CreateNixTree),
+    CreateOrAppendFile(CreateOrAppendFile),
+    CreateSystemdSysext(CreateSystemdSysext),
     CreateUser(CreateUser),
     CreateUsersAndGroup(CreateUsersAndGroup),
     FetchNix(FetchNix),
     MoveUnpackedNix(MoveUnpackedNix),
     PlaceChannelConfiguration(PlaceChannelConfiguration),
     PlaceNixConfiguration(PlaceNixConfiguration),
+    ProvisionNix(ProvisionNix),
     SetupDefaultProfile(SetupDefaultProfile),
     StartNixDaemon(StartNixDaemon),
     StartSystemdUnit(StartSystemdUnit),
     SystemdSysextMerge(SystemdSysextMerge),
-    ProvisionNix(ProvisionNix),
 }
 
 #[derive(Debug, thiserror::Error, serde::Serialize)]
@@ -86,6 +88,8 @@ pub enum ActionError {
     AlreadyExecuted(Action),
     #[error("Attempted to revert an already reverted action")]
     AlreadyReverted(Action),
+    #[error(transparent)]
+    CreateApfsVolume(#[from] CreateApfsVolumeError),
     #[error(transparent)]
     ConfigureNixDaemonService(#[from] ConfigureNixDaemonServiceError),
     #[error(transparent)]
@@ -133,102 +137,106 @@ impl Actionable for Action {
     type Error = ActionError;
     fn describe_execute(&self) -> Vec<ActionDescription> {
         match self {
-            Action::ConfigureNixDaemonService(i) => i.describe_execute(),
             Action::ConfigureNix(i) => i.describe_execute(),
+            Action::ConfigureNixDaemonService(i) => i.describe_execute(),
             Action::ConfigureShellProfile(i) => i.describe_execute(),
+            Action::CreateApfsVolume(i) => i.describe_execute(),
             Action::CreateDirectory(i) => i.describe_execute(),
-            Action::CreateSystemdSysext(i) => i.describe_execute(),
             Action::CreateFile(i) => i.describe_execute(),
             Action::CreateGroup(i) => i.describe_execute(),
-            Action::CreateOrAppendFile(i) => i.describe_execute(),
             Action::CreateNixTree(i) => i.describe_execute(),
+            Action::CreateOrAppendFile(i) => i.describe_execute(),
+            Action::CreateSystemdSysext(i) => i.describe_execute(),
             Action::CreateUser(i) => i.describe_execute(),
             Action::CreateUsersAndGroup(i) => i.describe_execute(),
             Action::FetchNix(i) => i.describe_execute(),
             Action::MoveUnpackedNix(i) => i.describe_execute(),
             Action::PlaceChannelConfiguration(i) => i.describe_execute(),
             Action::PlaceNixConfiguration(i) => i.describe_execute(),
+            Action::ProvisionNix(i) => i.describe_execute(),
             Action::SetupDefaultProfile(i) => i.describe_execute(),
             Action::StartNixDaemon(i) => i.describe_execute(),
             Action::StartSystemdUnit(i) => i.describe_execute(),
             Action::SystemdSysextMerge(i) => i.describe_execute(),
-            Action::ProvisionNix(i) => i.describe_execute(),
         }
     }
 
     async fn execute(&mut self) -> Result<(), Self::Error> {
         match self {
-            Action::ConfigureNixDaemonService(i) => i.execute().await?,
             Action::ConfigureNix(i) => i.execute().await?,
+            Action::ConfigureNixDaemonService(i) => i.execute().await?,
             Action::ConfigureShellProfile(i) => i.execute().await?,
+            Action::CreateApfsVolume(i) => i.execute().await?,
             Action::CreateDirectory(i) => i.execute().await?,
-            Action::CreateSystemdSysext(i) => i.execute().await?,
             Action::CreateFile(i) => i.execute().await?,
             Action::CreateGroup(i) => i.execute().await?,
-            Action::CreateOrAppendFile(i) => i.execute().await?,
             Action::CreateNixTree(i) => i.execute().await?,
+            Action::CreateOrAppendFile(i) => i.execute().await?,
+            Action::CreateSystemdSysext(i) => i.execute().await?,
             Action::CreateUser(i) => i.execute().await?,
             Action::CreateUsersAndGroup(i) => i.execute().await?,
             Action::FetchNix(i) => i.execute().await?,
             Action::MoveUnpackedNix(i) => i.execute().await?,
             Action::PlaceChannelConfiguration(i) => i.execute().await?,
             Action::PlaceNixConfiguration(i) => i.execute().await?,
+            Action::ProvisionNix(i) => i.execute().await?,
             Action::SetupDefaultProfile(i) => i.execute().await?,
             Action::StartNixDaemon(i) => i.execute().await?,
             Action::StartSystemdUnit(i) => i.execute().await?,
             Action::SystemdSysextMerge(i) => i.execute().await?,
-            Action::ProvisionNix(i) => i.execute().await?,
         };
         Ok(())
     }
 
     fn describe_revert(&self) -> Vec<ActionDescription> {
         match self {
-            Action::ConfigureNixDaemonService(i) => i.describe_revert(),
             Action::ConfigureNix(i) => i.describe_revert(),
+            Action::ConfigureNixDaemonService(i) => i.describe_revert(),
             Action::ConfigureShellProfile(i) => i.describe_revert(),
+            Action::CreateApfsVolume(i) => i.describe_revert(),
             Action::CreateDirectory(i) => i.describe_revert(),
-            Action::CreateSystemdSysext(i) => i.describe_revert(),
             Action::CreateFile(i) => i.describe_revert(),
             Action::CreateGroup(i) => i.describe_revert(),
-            Action::CreateOrAppendFile(i) => i.describe_revert(),
             Action::CreateNixTree(i) => i.describe_revert(),
+            Action::CreateOrAppendFile(i) => i.describe_revert(),
+            Action::CreateSystemdSysext(i) => i.describe_revert(),
             Action::CreateUser(i) => i.describe_revert(),
             Action::CreateUsersAndGroup(i) => i.describe_revert(),
             Action::FetchNix(i) => i.describe_revert(),
             Action::MoveUnpackedNix(i) => i.describe_revert(),
             Action::PlaceChannelConfiguration(i) => i.describe_revert(),
             Action::PlaceNixConfiguration(i) => i.describe_revert(),
+            Action::ProvisionNix(i) => i.describe_revert(),
             Action::SetupDefaultProfile(i) => i.describe_revert(),
             Action::StartNixDaemon(i) => i.describe_revert(),
             Action::StartSystemdUnit(i) => i.describe_revert(),
             Action::SystemdSysextMerge(i) => i.describe_revert(),
-            Action::ProvisionNix(i) => i.describe_revert(),
         }
     }
 
     async fn revert(&mut self) -> Result<(), Self::Error> {
         match self {
-            Action::ConfigureNixDaemonService(i) => i.revert().await?,
             Action::ConfigureNix(i) => i.revert().await?,
+            Action::ConfigureNixDaemonService(i) => i.revert().await?,
             Action::ConfigureShellProfile(i) => i.revert().await?,
+            Action::CreateApfsVolume(i) => i.revert().await?,
             Action::CreateDirectory(i) => i.revert().await?,
-            Action::CreateSystemdSysext(i) => i.revert().await?,
             Action::CreateFile(i) => i.revert().await?,
             Action::CreateGroup(i) => i.revert().await?,
-            Action::CreateOrAppendFile(i) => i.revert().await?,
             Action::CreateNixTree(i) => i.revert().await?,
+            Action::CreateOrAppendFile(i) => i.revert().await?,
+            Action::CreateSystemdSysext(i) => i.revert().await?,
             Action::CreateUser(i) => i.revert().await?,
             Action::CreateUsersAndGroup(i) => i.revert().await?,
             Action::FetchNix(i) => i.revert().await?,
             Action::MoveUnpackedNix(i) => i.revert().await?,
             Action::PlaceChannelConfiguration(i) => i.revert().await?,
             Action::PlaceNixConfiguration(i) => i.revert().await?,
+            Action::ProvisionNix(i) => i.revert().await?,
             Action::SetupDefaultProfile(i) => i.revert().await?,
             Action::StartNixDaemon(i) => i.revert().await?,
             Action::StartSystemdUnit(i) => i.revert().await?,
             Action::SystemdSysextMerge(i) => i.revert().await?,
-            Action::ProvisionNix(i) => i.revert().await?,
         }
         Ok(())
     }
