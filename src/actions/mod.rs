@@ -57,6 +57,12 @@ impl ActionDescription {
 
 #[derive(Debug, serde::Deserialize, serde::Serialize, Clone)]
 pub enum Action {
+    DarwinBootstrapVolume(base::darwin::BootstrapVolume),
+    DarwinCreateSyntheticObjects(base::darwin::CreateSyntheticObjects),
+    DarwinCreateVolume(base::darwin::CreateVolume),
+    DarwinEnableOwnership(base::darwin::EnableOwnership),
+    DarwinEncryptVolume(base::darwin::EncryptVolume),
+    DarwinUnmountVolume(base::darwin::UnmountVolume),
     ConfigureNix(ConfigureNix),
     ConfigureNixDaemonService(ConfigureNixDaemonService),
     ConfigureShellProfile(ConfigureShellProfile),
@@ -82,6 +88,18 @@ pub enum Action {
 
 #[derive(Debug, thiserror::Error, serde::Serialize)]
 pub enum ActionError {
+    #[error(transparent)]
+    DarwinBootstrapVolume(#[from] base::darwin::BootstrapVolumeError),
+    #[error(transparent)]
+    DarwinCreateSyntheticObjects(#[from] base::darwin::CreateSyntheticObjectsError),
+    #[error(transparent)]
+    DarwinCreateVolume(#[from] base::darwin::CreateVolumeError),
+    #[error(transparent)]
+    DarwinEnableOwnership(#[from] base::darwin::EnableOwnershipError),
+    #[error(transparent)]
+    DarwinEncryptVolume(#[from] base::darwin::EncryptVolumeError),
+    #[error(transparent)]
+    DarwinUnmountVolume(#[from] base::darwin::UnmountVolumeError),
     #[error("Attempted to revert an unexecuted action")]
     NotExecuted(Action),
     #[error("Attempted to execute an already executed action")]
@@ -137,6 +155,12 @@ impl Actionable for Action {
     type Error = ActionError;
     fn describe_execute(&self) -> Vec<ActionDescription> {
         match self {
+            Action::DarwinBootstrapVolume(i) => i.describe_execute(),
+            Action::DarwinCreateSyntheticObjects(i) => i.describe_execute(),
+            Action::DarwinCreateVolume(i) => i.describe_execute(),
+            Action::DarwinEnableOwnership(i) => i.describe_execute(),
+            Action::DarwinEncryptVolume(i) => i.describe_execute(),
+            Action::DarwinUnmountVolume(i) => i.describe_execute(),
             Action::ConfigureNix(i) => i.describe_execute(),
             Action::ConfigureNixDaemonService(i) => i.describe_execute(),
             Action::ConfigureShellProfile(i) => i.describe_execute(),
@@ -163,6 +187,12 @@ impl Actionable for Action {
 
     async fn execute(&mut self) -> Result<(), Self::Error> {
         match self {
+            Action::DarwinBootstrapVolume(i) => i.execute().await?,
+            Action::DarwinCreateSyntheticObjects(i) => i.execute().await?,
+            Action::DarwinCreateVolume(i) => i.execute().await?,
+            Action::DarwinEnableOwnership(i) => i.execute().await?,
+            Action::DarwinEncryptVolume(i) => i.execute().await?,
+            Action::DarwinUnmountVolume(i) => i.execute().await?,
             Action::ConfigureNix(i) => i.execute().await?,
             Action::ConfigureNixDaemonService(i) => i.execute().await?,
             Action::ConfigureShellProfile(i) => i.execute().await?,
@@ -190,6 +220,12 @@ impl Actionable for Action {
 
     fn describe_revert(&self) -> Vec<ActionDescription> {
         match self {
+            Action::DarwinBootstrapVolume(i) => i.describe_revert(),
+            Action::DarwinCreateSyntheticObjects(i) => i.describe_revert(),
+            Action::DarwinCreateVolume(i) => i.describe_revert(),
+            Action::DarwinEnableOwnership(i) => i.describe_revert(),
+            Action::DarwinEncryptVolume(i) => i.describe_revert(),
+            Action::DarwinUnmountVolume(i) => i.describe_revert(),
             Action::ConfigureNix(i) => i.describe_revert(),
             Action::ConfigureNixDaemonService(i) => i.describe_revert(),
             Action::ConfigureShellProfile(i) => i.describe_revert(),
@@ -216,6 +252,12 @@ impl Actionable for Action {
 
     async fn revert(&mut self) -> Result<(), Self::Error> {
         match self {
+            Action::DarwinBootstrapVolume(i) => i.revert().await?,
+            Action::DarwinCreateSyntheticObjects(i) => i.revert().await?,
+            Action::DarwinCreateVolume(i) => i.revert().await?,
+            Action::DarwinEnableOwnership(i) => i.revert().await?,
+            Action::DarwinEncryptVolume(i) => i.revert().await?,
+            Action::DarwinUnmountVolume(i) => i.revert().await?,
             Action::ConfigureNix(i) => i.revert().await?,
             Action::ConfigureNixDaemonService(i) => i.revert().await?,
             Action::ConfigureShellProfile(i) => i.revert().await?,

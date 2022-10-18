@@ -6,6 +6,7 @@ mod create_file;
 mod create_group;
 mod create_or_append_file;
 mod create_user;
+pub mod darwin;
 mod fetch_nix;
 mod move_unpacked_nix;
 mod setup_default_profile;

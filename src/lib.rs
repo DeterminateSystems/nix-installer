@@ -4,7 +4,11 @@ mod plan;
 mod planner;
 mod settings;
 
-use std::{ffi::OsStr, fmt::Display, process::ExitStatus};
+use std::{
+    ffi::OsStr,
+    fmt::Display,
+    process::{ExitStatus, Output},
+};
 
 pub use error::HarmonicError;
 pub use plan::InstallPlan;
@@ -15,12 +19,12 @@ pub use settings::InstallSettings;
 use tokio::process::Command;
 
 #[tracing::instrument(skip_all, fields(command = %format!("{:?}", command.as_std())))]
-async fn execute_command(command: &mut Command) -> Result<ExitStatus, std::io::Error> {
+async fn execute_command(command: &mut Command) -> Result<Output, std::io::Error> {
     tracing::trace!("Executing");
     let command_str = format!("{:?}", command.as_std());
-    let status = command.status().await?;
-    match status.success() {
-        true => Ok(status),
+    let output = command.output().await?;
+    match output.status.success() {
+        true => Ok(output),
         false => Err(std::io::Error::new(
             std::io::ErrorKind::Other,
             format!("Command `{command_str}` failed status"),
