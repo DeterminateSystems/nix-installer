@@ -1,3 +1,4 @@
+use std::io::Cursor;
 use std::path::{Path, PathBuf};
 
 use serde::Serialize;
@@ -6,6 +7,7 @@ use tokio::process::Command;
 use crate::execute_command;
 
 use crate::actions::{Action, ActionDescription, ActionState, Actionable};
+use crate::os::darwin::DiskUtilOutput;
 
 #[derive(Debug, serde::Deserialize, serde::Serialize, Clone)]
 pub struct EnableOwnership {
@@ -58,17 +60,9 @@ impl Actionable for EnableOwnership {
             .await
             .unwrap()
             .stdout;
-            let package = sxd_document::parser::parse(&String::from_utf8(buf).unwrap()).unwrap();
+            let the_plist: DiskUtilOutput = plist::from_reader(Cursor::new(buf)).unwrap();
 
-            match sxd_xpath::evaluate_xpath(
-                &package.as_document(),
-                "(/plist/dict/key[text()='GlobalPermissionsEnabled'])/following-sibling::*[1]",
-            )
-            .unwrap()
-            {
-                sxd_xpath::Value::Boolean(bool) => bool,
-                _ => panic!("At the other disk i/o!!!"),
-            }
+            the_plist.global_permissions_enabled
         };
 
         if should_enable_ownership {

@@ -1,3 +1,5 @@
+use std::io::Cursor;
+
 use tokio::process::Command;
 
 use crate::{
@@ -6,6 +8,7 @@ use crate::{
         Action, ActionError,
     },
     execute_command,
+    os::darwin::DiskUtilOutput,
     planner::{Plannable, PlannerError},
     InstallPlan, Planner,
 };
@@ -22,23 +25,14 @@ impl Plannable for DarwinMultiUser {
         settings: crate::InstallSettings,
     ) -> Result<crate::InstallPlan, crate::planner::PlannerError> {
         let root_disk = {
-            let root_disk_buf =
+            let buf =
                 execute_command(Command::new("/usr/sbin/diskutil").args(["info", "-plist", "/"]))
                     .await
                     .unwrap()
                     .stdout;
-            let package =
-                sxd_document::parser::parse(&String::from_utf8(root_disk_buf).unwrap()).unwrap();
+            let the_plist: DiskUtilOutput = plist::from_reader(Cursor::new(buf)).unwrap();
 
-            match sxd_xpath::evaluate_xpath(
-                &package.as_document(),
-                "/plist/dict/key[text()='ParentWholeDisk']/following-sibling::string[1]/text()",
-            )
-            .unwrap()
-            {
-                sxd_xpath::Value::String(s) => s,
-                _ => panic!("At the disk i/o!!!"),
-            }
+            the_plist.parent_whole_disk
         };
 
         let volume_label = "Nix Store".into();

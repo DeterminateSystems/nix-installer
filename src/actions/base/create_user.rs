@@ -68,12 +68,13 @@ impl Actionable for CreateUser {
         tracing::debug!("Creating user");
 
         use target_lexicon::OperatingSystem;
-        match target_lexicon::HOST.operating_system {
+        match target_lexicon::OperatingSystem::host() {
             OperatingSystem::MacOSX {
                 major: _,
                 minor: _,
                 patch: _,
-            } => {
+            }
+            | OperatingSystem::Darwin => {
                 execute_command(Command::new("/usr/bin/dscl").args([
                     ".",
                     "create",
@@ -155,12 +156,13 @@ impl Actionable for CreateUser {
         tracing::debug!("Deleting user");
 
         use target_lexicon::OperatingSystem;
-        match target_lexicon::HOST.operating_system {
+        match target_lexicon::OperatingSystem::host() {
             OperatingSystem::MacOSX {
                 major: _,
                 minor: _,
                 patch: _,
-            } => {
+            }
+            | OperatingSystem::Darwin => {
                 todo!()
             },
             _ => {

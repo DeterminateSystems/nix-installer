@@ -1,5 +1,6 @@
 mod actions;
 mod error;
+mod os;
 mod plan;
 mod planner;
 mod settings;

@@ -62,12 +62,13 @@ impl Actionable for CreateGroup {
         tracing::debug!("Creating group");
 
         use target_lexicon::OperatingSystem;
-        match target_lexicon::HOST.operating_system {
+        match target_lexicon::OperatingSystem::host() {
             OperatingSystem::MacOSX {
                 major: _,
                 minor: _,
                 patch: _,
-            } => {
+            }
+            | OperatingSystem::Darwin => {
                 execute_command(Command::new("/usr/sbin/dseditgroup").args([
                     "-o",
                     "create",
@@ -131,9 +132,24 @@ impl Actionable for CreateGroup {
         }
         tracing::debug!("Deleting group");
 
-        execute_command(Command::new("groupdel").arg(&name))
-            .await
-            .map_err(CreateGroupError::Command)?;
+        use target_lexicon::OperatingSystem;
+        match target_lexicon::OperatingSystem::host() {
+            OperatingSystem::MacOSX {
+                major: _,
+                minor: _,
+                patch: _,
+            }
+            | OperatingSystem::Darwin => {
+                execute_command(Command::new("groupdel").arg(&name))
+                    .await
+                    .map_err(CreateGroupError::Command)?;
+            },
+            _ => {
+                execute_command(Command::new("userdel").args([&name.to_string()]))
+                    .await
+                    .map_err(Self::Error::Command)?;
+            },
+        };
 
         tracing::trace!("Deleted group");
         *action_state = ActionState::Uncompleted;

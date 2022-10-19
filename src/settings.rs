@@ -31,10 +31,12 @@ impl InstallSettings {
             (Architecture::Aarch64(_), OperatingSystem::Linux) => {
                 url = "https://releases.nixos.org/nix/nix-2.11.0/nix-2.11.0-aarch64-linux.tar.xz";
             },
-            (Architecture::X86_64, OperatingSystem::MacOSX { .. }) => {
+            (Architecture::X86_64, OperatingSystem::MacOSX { .. })
+            | (Architecture::X86_64, OperatingSystem::Darwin) => {
                 url = "https://releases.nixos.org/nix/nix-2.11.0/nix-2.11.0-x86_64-darwin.tar.xz";
             },
-            (Architecture::Aarch64(_), OperatingSystem::MacOSX { .. }) => {
+            (Architecture::Aarch64(_), OperatingSystem::MacOSX { .. })
+            | (Architecture::Aarch64(_), OperatingSystem::Darwin) => {
                 url = "https://releases.nixos.org/nix/nix-2.11.0/nix-2.11.0-aarch64-darwin.tar.xz";
             },
             _ => {
