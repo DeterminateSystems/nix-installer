@@ -58,7 +58,7 @@ impl Actionable for SystemdSysextMerge {
 
         execute_command(Command::new("systemd-sysext").arg("merge").arg(device))
             .await
-            .map_err(SystemdSysextMergeError::Command)?;
+            .map_err(Self::Error::Command)?;
 
         tracing::trace!("Merged systemd-sysext");
         *action_state = ActionState::Completed;

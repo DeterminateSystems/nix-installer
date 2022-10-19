@@ -1,3 +1,5 @@
+use std::path::{Path, PathBuf};
+
 use serde::Serialize;
 use tokio::process::Command;
 
@@ -7,15 +9,23 @@ use crate::actions::{Action, ActionDescription, ActionState, Actionable};
 
 #[derive(Debug, serde::Deserialize, serde::Serialize, Clone)]
 pub struct CreateVolume {
-    unit: String,
+    disk: PathBuf,
+    name: String,
+    case_sensitive: bool,
     action_state: ActionState,
 }
 
 impl CreateVolume {
     #[tracing::instrument(skip_all)]
-    pub async fn plan(unit: String) -> Result<Self, CreateVolumeError> {
+    pub async fn plan(
+        disk: impl AsRef<Path>,
+        name: String,
+        case_sensitive: bool,
+    ) -> Result<Self, CreateVolumeError> {
         Ok(Self {
-            unit,
+            disk: disk.as_ref().to_path_buf(),
+            name,
+            case_sensitive,
             action_state: ActionState::Uncompleted,
         })
     }
@@ -30,36 +40,50 @@ impl Actionable for CreateVolume {
             vec![]
         } else {
             vec![ActionDescription::new(
-                "Start the systemd Nix service and socket".to_string(),
-                vec![
-                    "The `nix` command line tool communicates with a running Nix daemon managed by your init system".to_string()
-                ]
+                format!(
+                    "Create a volumne on `{}` named `{}`",
+                    self.disk.display(),
+                    self.name
+                ),
+                vec![],
             )]
         }
     }
 
     #[tracing::instrument(skip_all, fields(
-        unit = %self.unit,
+        disk = %self.disk.display(),
+        name = %self.name,
+        case_sensitive = %self.case_sensitive,
     ))]
     async fn execute(&mut self) -> Result<(), Self::Error> {
-        let Self { unit, action_state } = self;
+        let Self {
+            disk,
+            name,
+            case_sensitive,
+            action_state,
+        } = self;
         if *action_state == ActionState::Completed {
-            tracing::trace!("Already completed: Starting systemd unit");
+            tracing::trace!("Already completed: Creating volume");
             return Ok(());
         }
-        tracing::debug!("Starting systemd unit");
+        tracing::debug!("Creating volume");
 
-        // TODO(@Hoverbear): Handle proxy vars
-        execute_command(
-            Command::new("systemctl")
-                .arg("enable")
-                .arg("--now")
-                .arg(format!("{unit}")),
-        )
+        execute_command(Command::new("/usr/sbin/diskutil").args([
+            "apfs",
+            "addVolume",
+            &format!("{}", disk.display()),
+            if !*case_sensitive {
+                "APFS"
+            } else {
+                "Case-sensitive APFS"
+            },
+            name,
+            "-nomount",
+        ]))
         .await
-        .map_err(CreateVolumeError::Command)?;
+        .map_err(Self::Error::Command)?;
 
-        tracing::trace!("Started systemd unit");
+        tracing::trace!("Created volume");
         *action_state = ActionState::Completed;
         Ok(())
     }
@@ -69,31 +93,44 @@ impl Actionable for CreateVolume {
             vec![]
         } else {
             vec![ActionDescription::new(
-                "Stop the systemd Nix service and socket".to_string(),
-                vec![
-                    "The `nix` command line tool communicates with a running Nix daemon managed by your init system".to_string()
-                ]
+                format!(
+                    "Remove the volume on `{}` named `{}`",
+                    self.disk.display(),
+                    self.name
+                ),
+                vec![],
             )]
         }
     }
 
     #[tracing::instrument(skip_all, fields(
-        unit = %self.unit,
+        disk = %self.disk.display(),
+        name = %self.name,
+        case_sensitive = %self.case_sensitive,
     ))]
     async fn revert(&mut self) -> Result<(), Self::Error> {
-        let Self { unit, action_state } = self;
+        let Self {
+            disk,
+            name,
+            case_sensitive: _,
+            action_state,
+        } = self;
         if *action_state == ActionState::Uncompleted {
-            tracing::trace!("Already reverted: Stopping systemd unit");
+            tracing::trace!("Already reverted: Deleting volume");
             return Ok(());
         }
-        tracing::debug!("Stopping systemd unit");
+        tracing::debug!("Deleting volume");
 
-        // TODO(@Hoverbear): Handle proxy vars
-        execute_command(Command::new("systemctl").arg("stop").arg(format!("{unit}")))
-            .await
-            .map_err(CreateVolumeError::Command)?;
+        execute_command(Command::new("/usr/sbin/diskutil").args([
+            "apfs",
+            "deleteVolume",
+            &format!("{}", disk.display()),
+            name,
+        ]))
+        .await
+        .map_err(Self::Error::Command)?;
 
-        tracing::trace!("Stopped systemd unit");
+        tracing::trace!("Deleted volume");
         *action_state = ActionState::Completed;
         Ok(())
     }

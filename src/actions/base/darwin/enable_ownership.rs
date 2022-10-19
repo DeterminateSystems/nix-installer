@@ -1,3 +1,5 @@
+use std::path::{Path, PathBuf};
+
 use serde::Serialize;
 use tokio::process::Command;
 
@@ -7,15 +9,15 @@ use crate::actions::{Action, ActionDescription, ActionState, Actionable};
 
 #[derive(Debug, serde::Deserialize, serde::Serialize, Clone)]
 pub struct EnableOwnership {
-    unit: String,
+    path: PathBuf,
     action_state: ActionState,
 }
 
 impl EnableOwnership {
     #[tracing::instrument(skip_all)]
-    pub async fn plan(unit: String) -> Result<Self, EnableOwnershipError> {
+    pub async fn plan(path: impl AsRef<Path>) -> Result<Self, EnableOwnershipError> {
         Ok(Self {
-            unit,
+            path: path.as_ref().to_path_buf(),
             action_state: ActionState::Uncompleted,
         })
     }
@@ -30,36 +32,56 @@ impl Actionable for EnableOwnership {
             vec![]
         } else {
             vec![ActionDescription::new(
-                "Start the systemd Nix service and socket".to_string(),
-                vec![
-                    "The `nix` command line tool communicates with a running Nix daemon managed by your init system".to_string()
-                ]
+                format!("Enable ownership on {}", self.path.display()),
+                vec![],
             )]
         }
     }
 
     #[tracing::instrument(skip_all, fields(
-        unit = %self.unit,
+        path = %self.path.display(),
     ))]
     async fn execute(&mut self) -> Result<(), Self::Error> {
-        let Self { unit, action_state } = self;
+        let Self { path, action_state } = self;
         if *action_state == ActionState::Completed {
-            tracing::trace!("Already completed: Starting systemd unit");
+            tracing::trace!("Already completed: Enabling ownership");
             return Ok(());
         }
-        tracing::debug!("Starting systemd unit");
+        tracing::debug!("Enabling ownership");
 
-        // TODO(@Hoverbear): Handle proxy vars
-        execute_command(
-            Command::new("systemctl")
-                .arg("enable")
-                .arg("--now")
-                .arg(format!("{unit}")),
-        )
-        .await
-        .map_err(EnableOwnershipError::Command)?;
+        let should_enable_ownership = {
+            let buf = execute_command(
+                Command::new("/usr/sbin/diskutil")
+                    .args(["info", "-plist"])
+                    .arg(&path),
+            )
+            .await
+            .unwrap()
+            .stdout;
+            let package = sxd_document::parser::parse(&String::from_utf8(buf).unwrap()).unwrap();
 
-        tracing::trace!("Started systemd unit");
+            match sxd_xpath::evaluate_xpath(
+                &package.as_document(),
+                "(/plist/dict/key[text()='GlobalPermissionsEnabled'])/following-sibling::*[1]",
+            )
+            .unwrap()
+            {
+                sxd_xpath::Value::Boolean(bool) => bool,
+                _ => panic!("At the other disk i/o!!!"),
+            }
+        };
+
+        if should_enable_ownership {
+            execute_command(
+                Command::new("/usr/sbin/diskutil")
+                    .arg("enableOwnership")
+                    .arg(path),
+            )
+            .await
+            .map_err(Self::Error::Command)?;
+        }
+
+        tracing::trace!("Enabled ownership");
         *action_state = ActionState::Completed;
         Ok(())
     }
@@ -68,32 +90,25 @@ impl Actionable for EnableOwnership {
         if self.action_state == ActionState::Uncompleted {
             vec![]
         } else {
-            vec![ActionDescription::new(
-                "Stop the systemd Nix service and socket".to_string(),
-                vec![
-                    "The `nix` command line tool communicates with a running Nix daemon managed by your init system".to_string()
-                ]
-            )]
+            vec![]
         }
     }
 
     #[tracing::instrument(skip_all, fields(
-        unit = %self.unit,
+        path = %self.path.display(),
     ))]
     async fn revert(&mut self) -> Result<(), Self::Error> {
-        let Self { unit, action_state } = self;
+        let Self {
+            path: _,
+            action_state,
+        } = self;
         if *action_state == ActionState::Uncompleted {
-            tracing::trace!("Already reverted: Stopping systemd unit");
+            tracing::trace!("Already reverted: Unenabling ownership (noop)");
             return Ok(());
         }
-        tracing::debug!("Stopping systemd unit");
+        tracing::debug!("Unenabling ownership (noop)");
 
-        // TODO(@Hoverbear): Handle proxy vars
-        execute_command(Command::new("systemctl").arg("stop").arg(format!("{unit}")))
-            .await
-            .map_err(EnableOwnershipError::Command)?;
-
-        tracing::trace!("Stopped systemd unit");
+        tracing::trace!("Unenabled ownership (noop)");
         *action_state = ActionState::Completed;
         Ok(())
     }

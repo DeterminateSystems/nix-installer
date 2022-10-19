@@ -1,4 +1,5 @@
 use serde::Serialize;
+use std::path::{Path, PathBuf};
 use tokio::process::Command;
 
 use crate::execute_command;
@@ -7,15 +8,20 @@ use crate::actions::{Action, ActionDescription, ActionState, Actionable};
 
 #[derive(Debug, serde::Deserialize, serde::Serialize, Clone)]
 pub struct EncryptVolume {
-    unit: String,
+    disk: PathBuf,
+    password: String,
     action_state: ActionState,
 }
 
 impl EncryptVolume {
     #[tracing::instrument(skip_all)]
-    pub async fn plan(unit: String) -> Result<Self, EncryptVolumeError> {
+    pub async fn plan(
+        disk: impl AsRef<Path>,
+        password: String,
+    ) -> Result<Self, EncryptVolumeError> {
         Ok(Self {
-            unit,
+            disk: disk.as_ref().to_path_buf(),
+            password,
             action_state: ActionState::Uncompleted,
         })
     }
@@ -30,36 +36,30 @@ impl Actionable for EncryptVolume {
             vec![]
         } else {
             vec![ActionDescription::new(
-                "Start the systemd Nix service and socket".to_string(),
-                vec![
-                    "The `nix` command line tool communicates with a running Nix daemon managed by your init system".to_string()
-                ]
+                format!("Encrypt volume `{}`", self.disk.display()),
+                vec![],
             )]
         }
     }
 
     #[tracing::instrument(skip_all, fields(
-        unit = %self.unit,
+        disk = %self.disk.display(),
     ))]
     async fn execute(&mut self) -> Result<(), Self::Error> {
-        let Self { unit, action_state } = self;
+        let Self {
+            disk,
+            password,
+            action_state,
+        } = self;
         if *action_state == ActionState::Completed {
-            tracing::trace!("Already completed: Starting systemd unit");
+            tracing::trace!("Already completed: Encrypting volume");
             return Ok(());
         }
-        tracing::debug!("Starting systemd unit");
+        tracing::debug!("Encrypting volume");
 
-        // TODO(@Hoverbear): Handle proxy vars
-        execute_command(
-            Command::new("systemctl")
-                .arg("enable")
-                .arg("--now")
-                .arg(format!("{unit}")),
-        )
-        .await
-        .map_err(EncryptVolumeError::Command)?;
+        todo!();
 
-        tracing::trace!("Started systemd unit");
+        tracing::trace!("Encrypted volume");
         *action_state = ActionState::Completed;
         Ok(())
     }
@@ -68,32 +68,26 @@ impl Actionable for EncryptVolume {
         if self.action_state == ActionState::Uncompleted {
             vec![]
         } else {
-            vec![ActionDescription::new(
-                "Stop the systemd Nix service and socket".to_string(),
-                vec![
-                    "The `nix` command line tool communicates with a running Nix daemon managed by your init system".to_string()
-                ]
-            )]
+            vec![]
         }
     }
 
     #[tracing::instrument(skip_all, fields(
-        unit = %self.unit,
+        disk = %self.disk.display(),
     ))]
     async fn revert(&mut self) -> Result<(), Self::Error> {
-        let Self { unit, action_state } = self;
+        let Self {
+            disk,
+            password,
+            action_state,
+        } = self;
         if *action_state == ActionState::Uncompleted {
-            tracing::trace!("Already reverted: Stopping systemd unit");
+            tracing::trace!("Already reverted: Unencrypted volume (noop)");
             return Ok(());
         }
-        tracing::debug!("Stopping systemd unit");
+        tracing::debug!("Unencrypted volume (noop)");
 
-        // TODO(@Hoverbear): Handle proxy vars
-        execute_command(Command::new("systemctl").arg("stop").arg(format!("{unit}")))
-            .await
-            .map_err(EncryptVolumeError::Command)?;
-
-        tracing::trace!("Stopped systemd unit");
+        tracing::trace!("Unencrypted volume (noop)");
         *action_state = ActionState::Completed;
         Ok(())
     }

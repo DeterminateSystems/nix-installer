@@ -1,3 +1,5 @@
+use std::path::{Path, PathBuf};
+
 use serde::Serialize;
 use tokio::process::Command;
 
@@ -7,15 +9,18 @@ use crate::actions::{Action, ActionDescription, ActionState, Actionable};
 
 #[derive(Debug, serde::Deserialize, serde::Serialize, Clone)]
 pub struct UnmountVolume {
-    unit: String,
+    disk: PathBuf,
+    name: String,
     action_state: ActionState,
 }
 
 impl UnmountVolume {
     #[tracing::instrument(skip_all)]
-    pub async fn plan(unit: String) -> Result<Self, UnmountVolumeError> {
+    pub async fn plan(disk: impl AsRef<Path>, name: String) -> Result<Self, UnmountVolumeError> {
+        let disk = disk.as_ref().to_owned();
         Ok(Self {
-            unit,
+            disk,
+            name,
             action_state: ActionState::Uncompleted,
         })
     }
@@ -39,27 +44,30 @@ impl Actionable for UnmountVolume {
     }
 
     #[tracing::instrument(skip_all, fields(
-        unit = %self.unit,
+        disk = %self.disk.display(),
+        name = %self.name,
     ))]
     async fn execute(&mut self) -> Result<(), Self::Error> {
-        let Self { unit, action_state } = self;
+        let Self {
+            disk,
+            name,
+            action_state,
+        } = self;
         if *action_state == ActionState::Completed {
-            tracing::trace!("Already completed: Starting systemd unit");
+            tracing::trace!("Already completed: Unmounting volume");
             return Ok(());
         }
-        tracing::debug!("Starting systemd unit");
+        tracing::debug!("Unmounting volume");
 
-        // TODO(@Hoverbear): Handle proxy vars
         execute_command(
-            Command::new("systemctl")
-                .arg("enable")
-                .arg("--now")
-                .arg(format!("{unit}")),
+            Command::new(" /usr/sbin/diskutil")
+                .args(["unmount", "force"])
+                .arg(name),
         )
         .await
-        .map_err(UnmountVolumeError::Command)?;
+        .map_err(Self::Error::Command)?;
 
-        tracing::trace!("Started systemd unit");
+        tracing::trace!("Unmounted volume");
         *action_state = ActionState::Completed;
         Ok(())
     }
@@ -78,20 +86,28 @@ impl Actionable for UnmountVolume {
     }
 
     #[tracing::instrument(skip_all, fields(
-        unit = %self.unit,
+        disk = %self.disk.display(),
+        name = %self.name,
     ))]
     async fn revert(&mut self) -> Result<(), Self::Error> {
-        let Self { unit, action_state } = self;
+        let Self {
+            disk,
+            name,
+            action_state,
+        } = self;
         if *action_state == ActionState::Uncompleted {
             tracing::trace!("Already reverted: Stopping systemd unit");
             return Ok(());
         }
         tracing::debug!("Stopping systemd unit");
 
-        // TODO(@Hoverbear): Handle proxy vars
-        execute_command(Command::new("systemctl").arg("stop").arg(format!("{unit}")))
-            .await
-            .map_err(UnmountVolumeError::Command)?;
+        execute_command(
+            Command::new(" /usr/sbin/diskutil")
+                .args(["unmount", "force"])
+                .arg(name),
+        )
+        .await
+        .map_err(Self::Error::Command)?;
 
         tracing::trace!("Stopped systemd unit");
         *action_state = ActionState::Completed;

@@ -7,8 +7,7 @@ use crate::actions::base::{
         CreateVolume, CreateVolumeError, EnableOwnership, EnableOwnershipError, EncryptVolume,
         EncryptVolumeError, UnmountVolume, UnmountVolumeError,
     },
-    CreateDirectory, CreateDirectoryError, CreateFile, CreateFileError, CreateOrAppendFile,
-    CreateOrAppendFileError,
+    CreateOrAppendFile, CreateOrAppendFileError,
 };
 use crate::actions::{base::darwin, Action, ActionDescription, ActionState, Actionable};
 
@@ -51,10 +50,9 @@ impl CreateApfsVolume {
 
         let create_synthetic_objects = CreateSyntheticObjects::plan().await?;
 
-        let unmount_volume =
-            UnmountVolume::plan(disk, name.clone(), case_sensitive, encrypt).await?;
+        let unmount_volume = UnmountVolume::plan(disk, name.clone()).await?;
 
-        let create_volume = CreateVolume::plan(disk, name.clone(), case_sensitive, encrypt).await?;
+        let create_volume = CreateVolume::plan(disk, name.clone(), case_sensitive).await?;
 
         let create_or_append_fstab = CreateOrAppendFile::plan(
             "/etc/fstab",
@@ -65,13 +63,13 @@ impl CreateApfsVolume {
         )
         .await?;
 
-        let encrypt_volume = if let Some(password) = encrypt {
-            Some(EncryptVolume::plan(disk, password).await)
+        let encrypt_volume = if let Some(password) = encrypt.as_ref() {
+            Some(EncryptVolume::plan(disk, password.to_string()).await?)
         } else {
             None
         };
 
-        let bootstrap_volume = BootstrapVolume::plan(NIX_VOLUME_MOUNTD_DEST, disk, name).await?;
+        let bootstrap_volume = BootstrapVolume::plan(NIX_VOLUME_MOUNTD_DEST).await?;
         let enable_ownership = EnableOwnership::plan("/nix").await?;
 
         Ok(Self {
@@ -100,17 +98,8 @@ impl Actionable for CreateApfsVolume {
         let Self {
             disk,
             name,
-            case_sensitive,
-            encrypt,
-            create_or_append_synthetic_conf,
-            create_synthetic_objects,
-            unmount_volume,
-            create_volume,
-            create_or_append_fstab,
-            encrypt_volume,
-            bootstrap_volume,
-            enable_ownership,
             action_state: _,
+            ..
         } = &self;
         if self.action_state == ActionState::Completed {
             vec![]
@@ -127,10 +116,10 @@ impl Actionable for CreateApfsVolume {
     #[tracing::instrument(skip_all, fields(destination,))]
     async fn execute(&mut self) -> Result<(), Self::Error> {
         let Self {
-            disk,
-            name,
-            case_sensitive,
-            encrypt,
+            disk: _,
+            name: _,
+            case_sensitive: _,
+            encrypt: _,
             create_or_append_synthetic_conf,
             create_synthetic_objects,
             unmount_volume,
@@ -152,7 +141,9 @@ impl Actionable for CreateApfsVolume {
         unmount_volume.execute().await?;
         create_volume.execute().await?;
         create_or_append_fstab.execute().await?;
-        encrypt_volume.execute().await?;
+        if let Some(encrypt_volume) = encrypt_volume {
+            encrypt_volume.execute().await?;
+        }
         bootstrap_volume.execute().await?;
         enable_ownership.execute().await?;
 
@@ -165,19 +156,10 @@ impl Actionable for CreateApfsVolume {
         let Self {
             disk,
             name,
-            case_sensitive,
-            encrypt,
-            create_or_append_synthetic_conf,
-            create_synthetic_objects,
-            unmount_volume,
-            create_volume,
-            create_or_append_fstab,
-            encrypt_volume,
-            bootstrap_volume,
-            enable_ownership,
-            action_state: _,
+            action_state,
+            ..
         } = &self;
-        if self.action_state == ActionState::Uncompleted {
+        if *action_state == ActionState::Uncompleted {
             vec![]
         } else {
             vec![ActionDescription::new(

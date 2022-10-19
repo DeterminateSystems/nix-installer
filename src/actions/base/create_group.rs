@@ -61,9 +61,36 @@ impl Actionable for CreateGroup {
         }
         tracing::debug!("Creating group");
 
-        execute_command(Command::new("groupadd").args(["-g", &gid.to_string(), "--system", &name]))
-            .await
-            .map_err(CreateGroupError::Command)?;
+        use target_lexicon::OperatingSystem;
+        match target_lexicon::HOST.operating_system {
+            OperatingSystem::MacOSX {
+                major: _,
+                minor: _,
+                patch: _,
+            } => {
+                execute_command(Command::new("/usr/sbin/dseditgroup").args([
+                    "-o",
+                    "create",
+                    "-r",
+                    "Nix build group for nix-daemon",
+                    "-i",
+                    &format!("{gid}"),
+                    name.as_str(),
+                ]))
+                .await
+                .map_err(Self::Error::Command)?;
+            },
+            _ => {
+                execute_command(Command::new("groupadd").args([
+                    "-g",
+                    &gid.to_string(),
+                    "--system",
+                    &name,
+                ]))
+                .await
+                .map_err(CreateGroupError::Command)?;
+            },
+        };
 
         tracing::trace!("Created group");
         *action_state = ActionState::Completed;

@@ -67,27 +67,49 @@ impl Actionable for CreateUser {
         }
         tracing::debug!("Creating user");
 
-        execute_command(Command::new("useradd").args([
-            "--home-dir",
-            "/var/empty",
-            "--comment",
-            &format!("\"Nix build user\""),
-            "--gid",
-            &gid.to_string(),
-            "--groups",
-            &gid.to_string(),
-            "--no-user-group",
-            "--system",
-            "--shell",
-            "/sbin/nologin",
-            "--uid",
-            &uid.to_string(),
-            "--password",
-            "\"!\"",
-            &name.to_string(),
-        ]))
-        .await
-        .map_err(Self::Error::Command)?;
+        use target_lexicon::OperatingSystem;
+        match target_lexicon::HOST.operating_system {
+            OperatingSystem::MacOSX {
+                major: _,
+                minor: _,
+                patch: _,
+            } => {
+                execute_command(Command::new("/usr/bin/dscl").args([
+                    ".",
+                    "create",
+                    &format!("/Users/{name}"),
+                    "UniqueId",
+                    &format!("{uid}"),
+                    "PrimaryGroupID",
+                    &format!("{gid}"),
+                ]))
+                .await
+                .map_err(Self::Error::Command)?;
+            },
+            _ => {
+                execute_command(Command::new("useradd").args([
+                    "--home-dir",
+                    "/var/empty",
+                    "--comment",
+                    &format!("\"Nix build user\""),
+                    "--gid",
+                    &gid.to_string(),
+                    "--groups",
+                    &gid.to_string(),
+                    "--no-user-group",
+                    "--system",
+                    "--shell",
+                    "/sbin/nologin",
+                    "--uid",
+                    &uid.to_string(),
+                    "--password",
+                    "\"!\"",
+                    &name.to_string(),
+                ]))
+                .await
+                .map_err(Self::Error::Command)?;
+            },
+        }
 
         tracing::trace!("Created user");
         *action_state = ActionState::Completed;
@@ -132,9 +154,21 @@ impl Actionable for CreateUser {
         }
         tracing::debug!("Deleting user");
 
-        execute_command(Command::new("userdel").args([&name.to_string()]))
-            .await
-            .map_err(Self::Error::Command)?;
+        use target_lexicon::OperatingSystem;
+        match target_lexicon::HOST.operating_system {
+            OperatingSystem::MacOSX {
+                major: _,
+                minor: _,
+                patch: _,
+            } => {
+                todo!()
+            },
+            _ => {
+                execute_command(Command::new("userdel").args([&name.to_string()]))
+                    .await
+                    .map_err(Self::Error::Command)?;
+            },
+        };
 
         tracing::trace!("Deleted user");
         *action_state = ActionState::Uncompleted;

@@ -7,15 +7,13 @@ use crate::actions::{Action, ActionDescription, ActionState, Actionable};
 
 #[derive(Debug, serde::Deserialize, serde::Serialize, Clone)]
 pub struct CreateSyntheticObjects {
-    unit: String,
     action_state: ActionState,
 }
 
 impl CreateSyntheticObjects {
     #[tracing::instrument(skip_all)]
-    pub async fn plan(unit: String) -> Result<Self, CreateSyntheticObjectsError> {
+    pub async fn plan() -> Result<Self, CreateSyntheticObjectsError> {
         Ok(Self {
-            unit,
             action_state: ActionState::Uncompleted,
         })
     }
@@ -30,36 +28,36 @@ impl Actionable for CreateSyntheticObjects {
             vec![]
         } else {
             vec![ActionDescription::new(
-                "Start the systemd Nix service and socket".to_string(),
-                vec![
-                    "The `nix` command line tool communicates with a running Nix daemon managed by your init system".to_string()
-                ]
+                "Create objects defined in `/etc/synthetic.conf`".to_string(),
+                vec!["Populates the `/nix` path".to_string()],
             )]
         }
     }
 
-    #[tracing::instrument(skip_all, fields(
-        unit = %self.unit,
-    ))]
+    #[tracing::instrument(skip_all, fields())]
     async fn execute(&mut self) -> Result<(), Self::Error> {
-        let Self { unit, action_state } = self;
+        let Self { action_state } = self;
         if *action_state == ActionState::Completed {
-            tracing::trace!("Already completed: Starting systemd unit");
+            tracing::trace!("Already completed: Creating synthetic objects");
             return Ok(());
         }
-        tracing::debug!("Starting systemd unit");
+        tracing::debug!("Creating synthetic objects");
 
-        // TODO(@Hoverbear): Handle proxy vars
+        // Yup we literally call both and ignore the error! Reasoning: https://github.com/NixOS/nix/blob/95331cb9c99151cbd790ceb6ddaf49fc1c0da4b3/scripts/create-darwin-volume.sh#L261
         execute_command(
-            Command::new("systemctl")
-                .arg("enable")
-                .arg("--now")
-                .arg(format!("{unit}")),
+            Command::new("/System/Library/Filesystems/apfs.fs/Contents/Resources/apfs.util")
+                .arg("-t"),
         )
         .await
-        .map_err(CreateSyntheticObjectsError::Command)?;
+        .ok(); // Deliberate
+        execute_command(
+            Command::new("/System/Library/Filesystems/apfs.fs/Contents/Resources/apfs.util")
+                .arg("-B"),
+        )
+        .await
+        .ok(); // Deliberate
 
-        tracing::trace!("Started systemd unit");
+        tracing::trace!("Created synthetic objects");
         *action_state = ActionState::Completed;
         Ok(())
     }
@@ -69,31 +67,36 @@ impl Actionable for CreateSyntheticObjects {
             vec![]
         } else {
             vec![ActionDescription::new(
-                "Stop the systemd Nix service and socket".to_string(),
-                vec![
-                    "The `nix` command line tool communicates with a running Nix daemon managed by your init system".to_string()
-                ]
+                "Refresh the objects defined in `/etc/synthetic.conf`".to_string(),
+                vec!["Will remove the `/nix` path".to_string()],
             )]
         }
     }
 
-    #[tracing::instrument(skip_all, fields(
-        unit = %self.unit,
-    ))]
+    #[tracing::instrument(skip_all, fields())]
     async fn revert(&mut self) -> Result<(), Self::Error> {
-        let Self { unit, action_state } = self;
+        let Self { action_state } = self;
         if *action_state == ActionState::Uncompleted {
-            tracing::trace!("Already reverted: Stopping systemd unit");
+            tracing::trace!("Already reverted: Refreshing synthetic objects");
             return Ok(());
         }
-        tracing::debug!("Stopping systemd unit");
+        tracing::debug!("Refreshing synthetic objects");
 
-        // TODO(@Hoverbear): Handle proxy vars
-        execute_command(Command::new("systemctl").arg("stop").arg(format!("{unit}")))
-            .await
-            .map_err(CreateSyntheticObjectsError::Command)?;
+        // Yup we literally call both and ignore the error! Reasoning: https://github.com/NixOS/nix/blob/95331cb9c99151cbd790ceb6ddaf49fc1c0da4b3/scripts/create-darwin-volume.sh#L261
+        execute_command(
+            Command::new("/System/Library/Filesystems/apfs.fs/Contents/Resources/apfs.util")
+                .arg("-t"),
+        )
+        .await
+        .ok(); // Deliberate
+        execute_command(
+            Command::new("/System/Library/Filesystems/apfs.fs/Contents/Resources/apfs.util")
+                .arg("-B"),
+        )
+        .await
+        .ok(); // Deliberate
 
-        tracing::trace!("Stopped systemd unit");
+        tracing::trace!("Refreshed synthetic objects");
         *action_state = ActionState::Completed;
         Ok(())
     }

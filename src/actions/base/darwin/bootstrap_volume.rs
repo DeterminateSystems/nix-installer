@@ -1,3 +1,5 @@
+use std::path::{Path, PathBuf};
+
 use serde::Serialize;
 use tokio::process::Command;
 
@@ -7,15 +9,15 @@ use crate::actions::{Action, ActionDescription, ActionState, Actionable};
 
 #[derive(Debug, serde::Deserialize, serde::Serialize, Clone)]
 pub struct BootstrapVolume {
-    unit: String,
+    path: PathBuf,
     action_state: ActionState,
 }
 
 impl BootstrapVolume {
     #[tracing::instrument(skip_all)]
-    pub async fn plan(unit: String) -> Result<Self, BootstrapVolumeError> {
+    pub async fn plan(path: impl AsRef<Path>) -> Result<Self, BootstrapVolumeError> {
         Ok(Self {
-            unit,
+            path: path.as_ref().to_path_buf(),
             action_state: ActionState::Uncompleted,
         })
     }
@@ -30,36 +32,35 @@ impl Actionable for BootstrapVolume {
             vec![]
         } else {
             vec![ActionDescription::new(
-                "Start the systemd Nix service and socket".to_string(),
-                vec![
-                    "The `nix` command line tool communicates with a running Nix daemon managed by your init system".to_string()
-                ]
+                format!("Bootstrap and kickstart `{}`", self.path.display()),
+                vec![],
             )]
         }
     }
 
     #[tracing::instrument(skip_all, fields(
-        unit = %self.unit,
+        path = %self.path.display(),
     ))]
     async fn execute(&mut self) -> Result<(), Self::Error> {
-        let Self { unit, action_state } = self;
+        let Self { path, action_state } = self;
         if *action_state == ActionState::Completed {
-            tracing::trace!("Already completed: Starting systemd unit");
+            tracing::trace!("Already completed: Bootstrapping volume");
             return Ok(());
         }
-        tracing::debug!("Starting systemd unit");
+        tracing::debug!("Bootstrapping volume");
 
-        // TODO(@Hoverbear): Handle proxy vars
         execute_command(
-            Command::new("systemctl")
-                .arg("enable")
-                .arg("--now")
-                .arg(format!("{unit}")),
+            Command::new("launchctl")
+                .args(["bootstrap", "system"])
+                .arg(path),
         )
         .await
-        .map_err(BootstrapVolumeError::Command)?;
+        .map_err(Self::Error::Command)?;
+        execute_command(Command::new("launchctl").args(["-k", "system/org.nixos.darwin-store"]))
+            .await
+            .map_err(Self::Error::Command)?;
 
-        tracing::trace!("Started systemd unit");
+        tracing::trace!("Bootstrapped volume");
         *action_state = ActionState::Completed;
         Ok(())
     }
@@ -69,31 +70,32 @@ impl Actionable for BootstrapVolume {
             vec![]
         } else {
             vec![ActionDescription::new(
-                "Stop the systemd Nix service and socket".to_string(),
-                vec![
-                    "The `nix` command line tool communicates with a running Nix daemon managed by your init system".to_string()
-                ]
+                format!("Stop `{}`", self.path.display()),
+                vec![],
             )]
         }
     }
 
     #[tracing::instrument(skip_all, fields(
-        unit = %self.unit,
+        path = %self.path.display(),
     ))]
     async fn revert(&mut self) -> Result<(), Self::Error> {
-        let Self { unit, action_state } = self;
+        let Self { path, action_state } = self;
         if *action_state == ActionState::Uncompleted {
-            tracing::trace!("Already reverted: Stopping systemd unit");
+            tracing::trace!("Already reverted: Stop volume");
             return Ok(());
         }
-        tracing::debug!("Stopping systemd unit");
+        tracing::debug!("Stop volume");
 
-        // TODO(@Hoverbear): Handle proxy vars
-        execute_command(Command::new("systemctl").arg("stop").arg(format!("{unit}")))
-            .await
-            .map_err(BootstrapVolumeError::Command)?;
+        execute_command(
+            Command::new("launchctl")
+                .args(["bootout", "system"])
+                .arg(path),
+        )
+        .await
+        .map_err(Self::Error::Command)?;
 
-        tracing::trace!("Stopped systemd unit");
+        tracing::trace!("Stopped volume");
         *action_state = ActionState::Completed;
         Ok(())
     }
