@@ -31,9 +31,7 @@ impl CreateNixTree {
         let mut create_directories = Vec::default();
         for path in PATHS {
             // We use `create_dir` over `create_dir_all` to ensure we always set permissions right
-            create_directories.push(
-                CreateDirectory::plan(path, "root".into(), "root".into(), 0o0755, false).await?,
-            )
+            create_directories.push(CreateDirectory::plan(path, None, None, 0o0755, false).await?)
         }
 
         Ok(Self {

@@ -1,6 +1,7 @@
 use std::path::{Path, PathBuf};
 
 use serde::Serialize;
+use target_lexicon::OperatingSystem;
 use tokio::fs::remove_file;
 use tokio::process::Command;
 
@@ -21,9 +22,20 @@ pub struct ConfigureNixDaemonService {
 impl ConfigureNixDaemonService {
     #[tracing::instrument(skip_all)]
     pub async fn plan() -> Result<Self, ConfigureNixDaemonServiceError> {
-        if !Path::new("/run/systemd/system").exists() {
-            return Err(ConfigureNixDaemonServiceError::InitNotSupported);
-        }
+        match OperatingSystem::host() {
+            OperatingSystem::MacOSX {
+                major: _,
+                minor: _,
+                patch: _,
+            }
+            | OperatingSystem::Darwin => (),
+            _ => {
+                if !Path::new("/run/systemd/system").exists() {
+                    return Err(ConfigureNixDaemonServiceError::InitNotSupported);
+                }
+            },
+        };
+
         Ok(Self {
             action_state: ActionState::Uncompleted,
         })
@@ -59,32 +71,68 @@ impl Actionable for ConfigureNixDaemonService {
         }
         tracing::debug!("Configuring nix daemon service");
 
-        tracing::trace!(src = TMPFILES_SRC, dest = TMPFILES_DEST, "Symlinking");
-        tokio::fs::symlink(TMPFILES_SRC, TMPFILES_DEST)
-            .await
-            .map_err(|e| {
-                Self::Error::Symlink(PathBuf::from(TMPFILES_SRC), PathBuf::from(TMPFILES_DEST), e)
-            })?;
+        match OperatingSystem::host() {
+            OperatingSystem::MacOSX {
+                major: _,
+                minor: _,
+                patch: _,
+            }
+            | OperatingSystem::Darwin => {
+                const DARWIN_NIX_DAEMON_DEST: &str =
+                    "/Library/LaunchDaemons/org.nixos.nix-daemon.plist";
 
-        execute_command(
-            Command::new("systemd-tmpfiles")
-                .arg("--create")
-                .arg("--prefix=/nix/var/nix"),
-        )
-        .await
-        .map_err(Self::Error::CommandFailed)?;
+                let src = Path::new("/nix/var/nix/profiles/default").join(DARWIN_NIX_DAEMON_DEST);
+                tokio::fs::copy(src.clone(), DARWIN_NIX_DAEMON_DEST)
+                    .await
+                    .map_err(|e| {
+                        Self::Error::Copy(
+                            src.to_path_buf(),
+                            PathBuf::from(DARWIN_NIX_DAEMON_DEST),
+                            e,
+                        )
+                    })?;
 
-        execute_command(Command::new("systemctl").arg("link").arg(SERVICE_SRC))
-            .await
-            .map_err(Self::Error::CommandFailed)?;
+                execute_command(
+                    Command::new("launchctl")
+                        .arg("load")
+                        .arg(DARWIN_NIX_DAEMON_DEST),
+                )
+                .await
+                .map_err(Self::Error::CommandFailed)?;
+            },
+            _ => {
+                tracing::trace!(src = TMPFILES_SRC, dest = TMPFILES_DEST, "Symlinking");
+                tokio::fs::symlink(TMPFILES_SRC, TMPFILES_DEST)
+                    .await
+                    .map_err(|e| {
+                        Self::Error::Symlink(
+                            PathBuf::from(TMPFILES_SRC),
+                            PathBuf::from(TMPFILES_DEST),
+                            e,
+                        )
+                    })?;
 
-        execute_command(Command::new("systemctl").arg("link").arg(SOCKET_SRC))
-            .await
-            .map_err(Self::Error::CommandFailed)?;
+                execute_command(
+                    Command::new("systemd-tmpfiles")
+                        .arg("--create")
+                        .arg("--prefix=/nix/var/nix"),
+                )
+                .await
+                .map_err(Self::Error::CommandFailed)?;
 
-        execute_command(Command::new("systemctl").arg("daemon-reload"))
-            .await
-            .map_err(Self::Error::CommandFailed)?;
+                execute_command(Command::new("systemctl").arg("link").arg(SERVICE_SRC))
+                    .await
+                    .map_err(Self::Error::CommandFailed)?;
+
+                execute_command(Command::new("systemctl").arg("link").arg(SOCKET_SRC))
+                    .await
+                    .map_err(Self::Error::CommandFailed)?;
+
+                execute_command(Command::new("systemctl").arg("daemon-reload"))
+                    .await
+                    .map_err(Self::Error::CommandFailed)?;
+            },
+        };
 
         tracing::trace!("Configured nix daemon service");
         *action_state = ActionState::Completed;
@@ -171,6 +219,14 @@ pub enum ConfigureNixDaemonServiceError {
     ),
     #[error("Remove file `{0}`")]
     RemoveFile(
+        std::path::PathBuf,
+        #[source]
+        #[serde(serialize_with = "crate::serialize_error_to_display")]
+        std::io::Error,
+    ),
+    #[error("Copying file `{0}` to `{1}`")]
+    Copy(
+        std::path::PathBuf,
         std::path::PathBuf,
         #[source]
         #[serde(serialize_with = "crate::serialize_error_to_display")]

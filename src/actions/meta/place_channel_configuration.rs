@@ -5,8 +5,6 @@ use crate::actions::{Action, ActionDescription, ActionState, Actionable};
 
 use crate::actions::base::{CreateFile, CreateFileError};
 
-const NIX_CHANNELS_PATH: &str = "/root/.nix-channels";
-
 #[derive(Debug, serde::Deserialize, serde::Serialize, Clone)]
 pub struct PlaceChannelConfiguration {
     channels: Vec<(String, Url)>,
@@ -26,9 +24,11 @@ impl PlaceChannelConfiguration {
             .collect::<Vec<_>>()
             .join("\n");
         let create_file = CreateFile::plan(
-            NIX_CHANNELS_PATH,
-            "root".into(),
-            "root".into(),
+            dirs::home_dir()
+                .ok_or(PlaceChannelConfigurationError::NoRootHome)?
+                .join("/.nix-channels"),
+            None,
+            None,
             0o0664,
             buf,
             force,
@@ -49,17 +49,18 @@ impl Actionable for PlaceChannelConfiguration {
     fn describe_execute(&self) -> Vec<ActionDescription> {
         let Self {
             channels: _,
-            create_file: _,
+            create_file,
             action_state: _,
         } = self;
         if self.action_state == ActionState::Completed {
             vec![]
         } else {
             vec![ActionDescription::new(
-                format!("Place channel configuration at `{NIX_CHANNELS_PATH}`"),
-                vec![format!(
-                    "Place channel configuration at `{NIX_CHANNELS_PATH}`"
-                )],
+                format!(
+                    "Place channel configuration at `{}`",
+                    create_file.path.display()
+                ),
+                vec![],
             )]
         }
     }
@@ -90,17 +91,18 @@ impl Actionable for PlaceChannelConfiguration {
     fn describe_revert(&self) -> Vec<ActionDescription> {
         let Self {
             channels: _,
-            create_file: _,
+            create_file,
             action_state: _,
         } = self;
         if self.action_state == ActionState::Uncompleted {
             vec![]
         } else {
             vec![ActionDescription::new(
-                format!("Remove channel configuration at `{NIX_CHANNELS_PATH}`"),
-                vec![format!(
-                    "Remove channel configuration at `{NIX_CHANNELS_PATH}`"
-                )],
+                format!(
+                    "Remove channel configuration at `{}`",
+                    create_file.path.display()
+                ),
+                vec![],
             )]
         }
     }
@@ -143,4 +145,6 @@ pub enum PlaceChannelConfigurationError {
         #[from]
         CreateFileError,
     ),
+    #[error("No root home found to place channel configuration in")]
+    NoRootHome,
 }

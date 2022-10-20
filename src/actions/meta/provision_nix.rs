@@ -26,8 +26,7 @@ pub struct ProvisionNix {
 impl ProvisionNix {
     #[tracing::instrument(skip_all)]
     pub async fn plan(settings: InstallSettings) -> Result<Self, ProvisionNixError> {
-        let create_nix_dir =
-            CreateDirectory::plan("/nix", "root".into(), "root".into(), 0o0755, true).await?;
+        let create_nix_dir = CreateDirectory::plan("/nix", None, None, 0o0755, true).await?;
 
         let fetch_nix = FetchNix::plan(
             settings.nix_package_url.clone(),

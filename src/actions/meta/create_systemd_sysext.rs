@@ -26,19 +26,11 @@ impl CreateSystemdSysext {
     pub async fn plan(destination: impl AsRef<Path>) -> Result<Self, CreateSystemdSysextError> {
         let destination = destination.as_ref();
 
-        let mut create_directories = vec![
-            CreateDirectory::plan(destination, "root".into(), "root".into(), 0o0755, true).await?,
-        ];
+        let mut create_directories =
+            vec![CreateDirectory::plan(destination, None, None, 0o0755, true).await?];
         for path in PATHS {
             create_directories.push(
-                CreateDirectory::plan(
-                    destination.join(path),
-                    "root".into(),
-                    "root".into(),
-                    0o0755,
-                    false,
-                )
-                .await?,
+                CreateDirectory::plan(destination.join(path), None, None, 0o0755, false).await?,
             )
         }
 
@@ -57,8 +49,8 @@ impl CreateSystemdSysext {
             format!("SYSEXT_LEVEL=1.0\nID=steamos\nVERSION_ID={version_id}");
         let create_extension_release = CreateFile::plan(
             destination.join("usr/lib/extension-release.d/extension-release.nix"),
-            "root".into(),
-            "root".into(),
+            None,
+            None,
             0o0755,
             extension_release_buf,
             false,
@@ -77,8 +69,8 @@ impl CreateSystemdSysext {
         );
         let create_bind_mount_unit = CreateFile::plan(
             destination.join("usr/lib/systemd/system/nix.mount"),
-            "root".into(),
-            "root".into(),
+            None,
+            None,
             0o0755,
             create_bind_mount_buf,
             false,

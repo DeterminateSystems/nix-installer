@@ -39,14 +39,9 @@ impl CreateApfsVolume {
         encrypt: Option<String>,
     ) -> Result<Self, CreateApfsVolumeError> {
         let disk = disk.as_ref();
-        let create_or_append_synthetic_conf = CreateOrAppendFile::plan(
-            "/etc/synthetic.conf",
-            "root".into(),
-            "wheel".into(),
-            0o0655,
-            "nix".into(),
-        )
-        .await?;
+        let create_or_append_synthetic_conf =
+            CreateOrAppendFile::plan("/etc/synthetic.conf", None, None, 0o0655, "nix".into())
+                .await?;
 
         let create_synthetic_objects = CreateSyntheticObjects::plan().await?;
 
@@ -56,10 +51,10 @@ impl CreateApfsVolume {
 
         let create_or_append_fstab = CreateOrAppendFile::plan(
             "/etc/fstab",
-            "root".into(),
-            "root".into(),
+            None,
+            None,
             0o0655,
-            "NAME={name} /nix apfs rw,noauto,nobrowse,suid,owners".into(),
+            format!("NAME=\"{name}\" /nix apfs rw,noauto,nobrowse,suid,owners"),
         )
         .await?;
 
@@ -138,7 +133,7 @@ impl Actionable for CreateApfsVolume {
 
         create_or_append_synthetic_conf.execute().await?;
         create_synthetic_objects.execute().await?;
-        unmount_volume.execute().await?;
+        unmount_volume.execute().await.ok(); // We actually expect this may fail.
         create_volume.execute().await?;
         create_or_append_fstab.execute().await?;
         if let Some(encrypt_volume) = encrypt_volume {

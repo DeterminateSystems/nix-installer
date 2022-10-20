@@ -10,9 +10,9 @@ use crate::actions::{Action, ActionDescription, ActionState, Actionable};
 #[derive(Debug, serde::Deserialize, serde::Serialize, Clone)]
 pub struct CreateDirectory {
     path: PathBuf,
-    user: String,
-    group: String,
-    mode: u32,
+    user: Option<String>,
+    group: Option<String>,
+    mode: Option<u32>,
     action_state: ActionState,
     force_prune_on_revert: bool,
 }
@@ -21,12 +21,15 @@ impl CreateDirectory {
     #[tracing::instrument(skip_all)]
     pub async fn plan(
         path: impl AsRef<Path>,
-        user: String,
-        group: String,
-        mode: u32,
+        user: impl Into<Option<String>>,
+        group: impl Into<Option<String>>,
+        mode: impl Into<Option<u32>>,
         force_prune_on_revert: bool,
     ) -> Result<Self, CreateDirectoryError> {
         let path = path.as_ref();
+        let user = user.into();
+        let group = group.into();
+        let mode = mode.into();
 
         let action_state = if path.exists() {
             let metadata = tokio::fs::metadata(path)
@@ -77,10 +80,7 @@ impl Actionable for CreateDirectory {
         } else {
             vec![ActionDescription::new(
                 format!("Create the directory `{}`", path.display()),
-                vec![format!(
-                    "Creating directory `{}` owned by `{user}:{group}` with mode `{mode:#o}`",
-                    path.display()
-                )],
+                vec![],
             )]
         }
     }
@@ -89,7 +89,7 @@ impl Actionable for CreateDirectory {
         path = %self.path.display(),
         user = self.user,
         group = self.group,
-        mode = format!("{:#o}", self.mode),
+        mode = self.mode.map(|v| tracing::field::display(format!("{:#o}", v))),
     ))]
     async fn execute(&mut self) -> Result<(), Self::Error> {
         let Self {
@@ -106,23 +106,37 @@ impl Actionable for CreateDirectory {
         }
         tracing::debug!("Creating directory");
 
-        let gid = Group::from_name(group.as_str())
-            .map_err(|e| Self::Error::GroupId(group.clone(), e))?
-            .ok_or(Self::Error::NoGroup(group.clone()))?
-            .gid;
-        let uid = User::from_name(user.as_str())
-            .map_err(|e| Self::Error::UserId(user.clone(), e))?
-            .ok_or(Self::Error::NoUser(user.clone()))?
-            .uid;
+        let gid = if let Some(group) = group {
+            Some(
+                Group::from_name(group.as_str())
+                    .map_err(|e| Self::Error::GroupId(group.clone(), e))?
+                    .ok_or(Self::Error::NoGroup(group.clone()))?
+                    .gid,
+            )
+        } else {
+            None
+        };
+        let uid = if let Some(user) = user {
+            Some(
+                User::from_name(user.as_str())
+                    .map_err(|e| Self::Error::UserId(user.clone(), e))?
+                    .ok_or(Self::Error::NoUser(user.clone()))?
+                    .uid,
+            )
+        } else {
+            None
+        };
 
         create_dir(path.clone())
             .await
             .map_err(|e| Self::Error::Creating(path.clone(), e))?;
-        chown(path, Some(uid), Some(gid)).map_err(|e| Self::Error::Chown(path.clone(), e))?;
+        chown(path, uid, gid).map_err(|e| Self::Error::Chown(path.clone(), e))?;
 
-        tokio::fs::set_permissions(&path, PermissionsExt::from_mode(*mode))
-            .await
-            .map_err(|e| Self::Error::SetPermissions(*mode, path.to_owned(), e))?;
+        if let Some(mode) = mode {
+            tokio::fs::set_permissions(&path, PermissionsExt::from_mode(*mode))
+                .await
+                .map_err(|e| Self::Error::SetPermissions(*mode, path.to_owned(), e))?;
+        }
 
         tracing::trace!("Created directory");
         *action_state = ActionState::Completed;
@@ -160,7 +174,7 @@ impl Actionable for CreateDirectory {
         path = %self.path.display(),
         user = self.user,
         group = self.group,
-        mode = format!("{:#o}", self.mode),
+        mode = self.mode.map(|v| tracing::field::display(format!("{:#o}", v))),
     ))]
     async fn revert(&mut self) -> Result<(), Self::Error> {
         let Self {

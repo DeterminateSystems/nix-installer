@@ -85,7 +85,9 @@ impl InstallPlan {
         // The plan itself represents the concept of the sequence of stages.
         for action in actions {
             if let Err(err) = action.execute().await {
-                write_receipt(self.clone()).await?;
+                if let Err(err) = write_receipt(self.clone()).await {
+                    tracing::error!("Error saving receipt: {:?}", err);
+                }
                 return Err(ActionError::from(err).into());
             }
         }
@@ -157,7 +159,9 @@ impl InstallPlan {
         // The plan itself represents the concept of the sequence of stages.
         for action in actions {
             if let Err(err) = action.revert().await {
-                write_receipt(self.clone()).await?;
+                if let Err(err) = write_receipt(self.clone()).await {
+                    tracing::error!("Error saving receipt: {:?}", err);
+                }
                 return Err(ActionError::from(err).into());
             }
         }

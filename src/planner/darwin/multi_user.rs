@@ -4,7 +4,8 @@ use tokio::process::Command;
 
 use crate::{
     actions::{
-        meta::{darwin::CreateApfsVolume, ConfigureNix, ProvisionNix, StartNixDaemon},
+        base::darwin::KickstartLaunchctlService,
+        meta::{darwin::CreateApfsVolume, ConfigureNix, ProvisionNix},
         Action, ActionError,
     },
     execute_command,
@@ -57,7 +58,7 @@ impl Plannable for DarwinMultiUser {
                     .await
                     .map(Action::from)
                     .map_err(ActionError::from)?,
-                StartNixDaemon::plan()
+                KickstartLaunchctlService::plan("system/org.nixos.nix-daemon".into())
                     .await
                     .map(Action::from)
                     .map_err(ActionError::from)?,

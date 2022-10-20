@@ -41,10 +41,8 @@ impl ConfigureShellProfile {
                 # End Nix\n
             \n",
             );
-            create_or_append_files.push(
-                CreateOrAppendFile::plan(path, "root".to_string(), "root".to_string(), 0o0644, buf)
-                    .await?,
-            );
+            create_or_append_files
+                .push(CreateOrAppendFile::plan(path, None, None, 0o0644, buf).await?);
         }
 
         Ok(Self {

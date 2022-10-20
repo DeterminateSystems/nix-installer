@@ -33,10 +33,8 @@ impl PlaceNixConfiguration {
             extra_conf = extra_conf.unwrap_or_else(|| "".into()),
         );
         let create_directory =
-            CreateDirectory::plan(NIX_CONF_FOLDER, "root".into(), "root".into(), 0o0755, force)
-                .await?;
-        let create_file =
-            CreateFile::plan(NIX_CONF, "root".into(), "root".into(), 0o0664, buf, force).await?;
+            CreateDirectory::plan(NIX_CONF_FOLDER, None, None, 0o0755, force).await?;
+        let create_file = CreateFile::plan(NIX_CONF, None, None, 0o0664, buf, force).await?;
         Ok(Self {
             create_directory,
             create_file,

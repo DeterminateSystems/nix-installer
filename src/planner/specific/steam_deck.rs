@@ -1,6 +1,7 @@
 use crate::{
     actions::{
-        meta::{CreateSystemdSysext, ProvisionNix, StartNixDaemon},
+        base::StartSystemdUnit,
+        meta::{CreateSystemdSysext, ProvisionNix},
         Action, ActionError,
     },
     planner::Plannable,
@@ -30,7 +31,7 @@ impl Plannable for SteamDeck {
                     .await
                     .map(Action::from)
                     .map_err(ActionError::from)?,
-                StartNixDaemon::plan()
+                StartSystemdUnit::plan("nix-daemon.socket".into())
                     .await
                     .map(Action::from)
                     .map_err(ActionError::from)?,

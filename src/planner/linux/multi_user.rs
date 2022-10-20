@@ -1,6 +1,7 @@
 use crate::{
     actions::{
-        meta::{ConfigureNix, ProvisionNix, StartNixDaemon},
+        base::StartSystemdUnit,
+        meta::{ConfigureNix, ProvisionNix},
         Action, ActionError,
     },
     planner::{Plannable, PlannerError},
@@ -28,7 +29,7 @@ impl Plannable for LinuxMultiUser {
                     .await
                     .map(Action::from)
                     .map_err(ActionError::from)?,
-                StartNixDaemon::plan()
+                StartSystemdUnit::plan("nix-daemon.socket".into())
                     .await
                     .map(Action::from)
                     .map_err(ActionError::from)?,

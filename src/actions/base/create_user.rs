@@ -68,7 +68,7 @@ impl Actionable for CreateUser {
         tracing::debug!("Creating user");
 
         use target_lexicon::OperatingSystem;
-        match target_lexicon::OperatingSystem::host() {
+        match OperatingSystem::host() {
             OperatingSystem::MacOSX {
                 major: _,
                 minor: _,

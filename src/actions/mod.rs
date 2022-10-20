@@ -15,7 +15,7 @@ use meta::{
     CreateNixTree, CreateNixTreeError, CreateSystemdSysext, CreateSystemdSysextError,
     CreateUsersAndGroup, CreateUsersAndGroupError, PlaceChannelConfiguration,
     PlaceChannelConfigurationError, PlaceNixConfiguration, PlaceNixConfigurationError,
-    ProvisionNix, ProvisionNixError, StartNixDaemon, StartNixDaemonError,
+    ProvisionNix, ProvisionNixError,
 };
 use serde::{de::DeserializeOwned, Deserialize, Serialize};
 
@@ -62,6 +62,7 @@ pub enum Action {
     DarwinCreateVolume(base::darwin::CreateVolume),
     DarwinEnableOwnership(base::darwin::EnableOwnership),
     DarwinEncryptVolume(base::darwin::EncryptVolume),
+    DarwinKickStartLaunchctlService(base::darwin::KickstartLaunchctlService),
     DarwinUnmountVolume(base::darwin::UnmountVolume),
     ConfigureNix(ConfigureNix),
     ConfigureNixDaemonService(ConfigureNixDaemonService),
@@ -81,7 +82,6 @@ pub enum Action {
     PlaceNixConfiguration(PlaceNixConfiguration),
     ProvisionNix(ProvisionNix),
     SetupDefaultProfile(SetupDefaultProfile),
-    StartNixDaemon(StartNixDaemon),
     StartSystemdUnit(StartSystemdUnit),
     SystemdSysextMerge(SystemdSysextMerge),
 }
@@ -98,6 +98,8 @@ pub enum ActionError {
     DarwinEnableOwnership(#[from] base::darwin::EnableOwnershipError),
     #[error(transparent)]
     DarwinEncryptVolume(#[from] base::darwin::EncryptVolumeError),
+    #[error(transparent)]
+    DarwinKickStartLaunchctlService(#[from] base::darwin::KickstartLaunchctlServiceError),
     #[error(transparent)]
     DarwinUnmountVolume(#[from] base::darwin::UnmountVolumeError),
     #[error("Attempted to revert an unexecuted action")]
@@ -141,8 +143,6 @@ pub enum ActionError {
     #[error(transparent)]
     SetupDefaultProfile(#[from] SetupDefaultProfileError),
     #[error(transparent)]
-    StartNixDaemon(#[from] StartNixDaemonError),
-    #[error(transparent)]
     StartSystemdUnit(#[from] StartSystemdUnitError),
     #[error(transparent)]
     SystemdSysExtMerge(#[from] SystemdSysextMergeError),
@@ -179,7 +179,7 @@ impl Actionable for Action {
             Action::PlaceNixConfiguration(i) => i.describe_execute(),
             Action::ProvisionNix(i) => i.describe_execute(),
             Action::SetupDefaultProfile(i) => i.describe_execute(),
-            Action::StartNixDaemon(i) => i.describe_execute(),
+            Action::DarwinKickStartLaunchctlService(i) => i.describe_execute(),
             Action::StartSystemdUnit(i) => i.describe_execute(),
             Action::SystemdSysextMerge(i) => i.describe_execute(),
         }
@@ -211,7 +211,7 @@ impl Actionable for Action {
             Action::PlaceNixConfiguration(i) => i.execute().await?,
             Action::ProvisionNix(i) => i.execute().await?,
             Action::SetupDefaultProfile(i) => i.execute().await?,
-            Action::StartNixDaemon(i) => i.execute().await?,
+            Action::DarwinKickStartLaunchctlService(i) => i.execute().await?,
             Action::StartSystemdUnit(i) => i.execute().await?,
             Action::SystemdSysextMerge(i) => i.execute().await?,
         };
@@ -244,7 +244,7 @@ impl Actionable for Action {
             Action::PlaceNixConfiguration(i) => i.describe_revert(),
             Action::ProvisionNix(i) => i.describe_revert(),
             Action::SetupDefaultProfile(i) => i.describe_revert(),
-            Action::StartNixDaemon(i) => i.describe_revert(),
+            Action::DarwinKickStartLaunchctlService(i) => i.describe_revert(),
             Action::StartSystemdUnit(i) => i.describe_revert(),
             Action::SystemdSysextMerge(i) => i.describe_revert(),
         }
@@ -276,7 +276,7 @@ impl Actionable for Action {
             Action::PlaceNixConfiguration(i) => i.revert().await?,
             Action::ProvisionNix(i) => i.revert().await?,
             Action::SetupDefaultProfile(i) => i.revert().await?,
-            Action::StartNixDaemon(i) => i.revert().await?,
+            Action::DarwinKickStartLaunchctlService(i) => i.revert().await?,
             Action::StartSystemdUnit(i) => i.revert().await?,
             Action::SystemdSysextMerge(i) => i.revert().await?,
         }

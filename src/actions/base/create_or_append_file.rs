@@ -17,9 +17,9 @@ use crate::actions::{ActionDescription, Actionable};
 #[derive(Debug, serde::Deserialize, serde::Serialize, Clone)]
 pub struct CreateOrAppendFile {
     path: PathBuf,
-    user: String,
-    group: String,
-    mode: u32,
+    user: Option<String>,
+    group: Option<String>,
+    mode: Option<u32>,
     buf: String,
     action_state: ActionState,
 }
@@ -28,18 +28,18 @@ impl CreateOrAppendFile {
     #[tracing::instrument(skip_all)]
     pub async fn plan(
         path: impl AsRef<Path>,
-        user: String,
-        group: String,
-        mode: u32,
+        user: impl Into<Option<String>>,
+        group: impl Into<Option<String>>,
+        mode: impl Into<Option<u32>>,
         buf: String,
     ) -> Result<Self, CreateOrAppendFileError> {
         let path = path.as_ref().to_path_buf();
 
         Ok(Self {
             path,
-            user,
-            group,
-            mode,
+            user: user.into(),
+            group: group.into(),
+            mode: mode.into(),
             buf,
             action_state: ActionState::Uncompleted,
         })
@@ -64,9 +64,7 @@ impl Actionable for CreateOrAppendFile {
         } else {
             vec![ActionDescription::new(
                 format!("Create or append file `{}`", path.display()),
-                vec![format!(
-                    "Create or append `{}` owned by `{user}:{group}` with mode `{mode:#o}` with `{buf}`", path.display()
-                )],
+                vec![],
             )]
         }
     }
@@ -75,7 +73,7 @@ impl Actionable for CreateOrAppendFile {
         path = %self.path.display(),
         user = self.user,
         group = self.group,
-        mode = format!("{:#o}", self.mode),
+        mode = self.mode.map(|v| tracing::field::display(format!("{:#o}", v))),
     ))]
     async fn execute(&mut self) -> Result<(), Self::Error> {
         let Self {
@@ -108,20 +106,34 @@ impl Actionable for CreateOrAppendFile {
             .await
             .map_err(|e| Self::Error::WriteFile(path.to_owned(), e))?;
 
-        let gid = Group::from_name(group.as_str())
-            .map_err(|e| Self::Error::GroupId(group.clone(), e))?
-            .ok_or(Self::Error::NoGroup(group.clone()))?
-            .gid;
-        let uid = User::from_name(user.as_str())
-            .map_err(|e| Self::Error::UserId(user.clone(), e))?
-            .ok_or(Self::Error::NoUser(user.clone()))?
-            .uid;
+        let gid = if let Some(group) = group {
+            Some(
+                Group::from_name(group.as_str())
+                    .map_err(|e| Self::Error::GroupId(group.clone(), e))?
+                    .ok_or(Self::Error::NoGroup(group.clone()))?
+                    .gid,
+            )
+        } else {
+            None
+        };
+        let uid = if let Some(user) = user {
+            Some(
+                User::from_name(user.as_str())
+                    .map_err(|e| Self::Error::UserId(user.clone(), e))?
+                    .ok_or(Self::Error::NoUser(user.clone()))?
+                    .uid,
+            )
+        } else {
+            None
+        };
 
-        tokio::fs::set_permissions(&path, PermissionsExt::from_mode(*mode))
-            .await
-            .map_err(|e| Self::Error::SetPermissions(*mode, path.to_owned(), e))?;
+        if let Some(mode) = mode {
+            tokio::fs::set_permissions(&path, PermissionsExt::from_mode(*mode))
+                .await
+                .map_err(|e| Self::Error::SetPermissions(*mode, path.to_owned(), e))?;
+        }
 
-        chown(path, Some(uid), Some(gid)).map_err(|e| Self::Error::Chown(path.clone(), e))?;
+        chown(path, uid, gid).map_err(|e| Self::Error::Chown(path.clone(), e))?;
 
         tracing::trace!("Created or appended fragment to file");
         *action_state = ActionState::Completed;
@@ -154,7 +166,7 @@ impl Actionable for CreateOrAppendFile {
         path = %self.path.display(),
         user = self.user,
         group = self.group,
-        mode = format!("{:#o}", self.mode),
+        mode = self.mode.map(|v| tracing::field::display(format!("{:#o}", v))),
     ))]
     async fn revert(&mut self) -> Result<(), Self::Error> {
         let Self {
