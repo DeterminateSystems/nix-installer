@@ -26,7 +26,7 @@ impl PlaceChannelConfiguration {
         let create_file = CreateFile::plan(
             dirs::home_dir()
                 .ok_or(PlaceChannelConfigurationError::NoRootHome)?
-                .join("/.nix-channels"),
+                .join(".nix-channels"),
             None,
             None,
             0o0664,

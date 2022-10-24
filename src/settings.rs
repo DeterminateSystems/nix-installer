@@ -22,22 +22,32 @@ pub struct InstallSettings {
 impl InstallSettings {
     pub fn default() -> Result<Self, InstallSettingsError> {
         let url;
+        let nix_build_user_prefix;
+        let nix_build_user_id_base;
 
         use target_lexicon::{Architecture, OperatingSystem};
         match (Architecture::host(), OperatingSystem::host()) {
             (Architecture::X86_64, OperatingSystem::Linux) => {
                 url = "https://releases.nixos.org/nix/nix-2.11.0/nix-2.11.0-x86_64-linux.tar.xz";
+                nix_build_user_prefix = "nixbld";
+                nix_build_user_id_base = 3000;
             },
             (Architecture::Aarch64(_), OperatingSystem::Linux) => {
                 url = "https://releases.nixos.org/nix/nix-2.11.0/nix-2.11.0-aarch64-linux.tar.xz";
+                nix_build_user_prefix = "nixbld";
+                nix_build_user_id_base = 3000;
             },
             (Architecture::X86_64, OperatingSystem::MacOSX { .. })
             | (Architecture::X86_64, OperatingSystem::Darwin) => {
                 url = "https://releases.nixos.org/nix/nix-2.11.0/nix-2.11.0-x86_64-darwin.tar.xz";
+                nix_build_user_prefix = "_nixbld";
+                nix_build_user_id_base = 300;
             },
             (Architecture::Aarch64(_), OperatingSystem::MacOSX { .. })
             | (Architecture::Aarch64(_), OperatingSystem::Darwin) => {
                 url = "https://releases.nixos.org/nix/nix-2.11.0/nix-2.11.0-aarch64-darwin.tar.xz";
+                nix_build_user_prefix = "_nixbld";
+                nix_build_user_id_base = 300;
             },
             _ => {
                 return Err(InstallSettingsError::UnsupportedArchitecture(
@@ -53,8 +63,8 @@ impl InstallSettings {
             modify_profile: Default::default(),
             nix_build_group_name: String::from("nixbld"),
             nix_build_group_id: 3000,
-            nix_build_user_prefix: String::from("nixbld"),
-            nix_build_user_id_base: 3001,
+            nix_build_user_prefix: nix_build_user_prefix.to_string(),
+            nix_build_user_id_base,
             nix_package_url: url
                 .parse()
                 .expect("Could not parse default Nix archive url, please report this issue"),

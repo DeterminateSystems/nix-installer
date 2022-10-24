@@ -15,7 +15,6 @@ use super::{CreateNixTree, CreateNixTreeError, CreateUsersAndGroup, CreateUsersA
 
 #[derive(Debug, serde::Deserialize, serde::Serialize, Clone)]
 pub struct ProvisionNix {
-    create_nix_dir: CreateDirectory,
     fetch_nix: FetchNix,
     create_users_and_group: CreateUsersAndGroup,
     create_nix_tree: CreateNixTree,
@@ -26,8 +25,6 @@ pub struct ProvisionNix {
 impl ProvisionNix {
     #[tracing::instrument(skip_all)]
     pub async fn plan(settings: InstallSettings) -> Result<Self, ProvisionNixError> {
-        let create_nix_dir = CreateDirectory::plan("/nix", None, None, 0o0755, true).await?;
-
         let fetch_nix = FetchNix::plan(
             settings.nix_package_url.clone(),
             PathBuf::from("/nix/temp-install-dir"),
@@ -38,7 +35,6 @@ impl ProvisionNix {
         let move_unpacked_nix =
             MoveUnpackedNix::plan(PathBuf::from("/nix/temp-install-dir")).await?;
         Ok(Self {
-            create_nix_dir,
             fetch_nix,
             create_users_and_group,
             create_nix_tree,
@@ -53,7 +49,6 @@ impl Actionable for ProvisionNix {
     type Error = ProvisionNixError;
     fn describe_execute(&self) -> Vec<ActionDescription> {
         let Self {
-            create_nix_dir,
             fetch_nix,
             create_users_and_group,
             create_nix_tree,
@@ -64,7 +59,6 @@ impl Actionable for ProvisionNix {
             vec![]
         } else {
             let mut buf = Vec::default();
-            buf.append(&mut create_nix_dir.describe_execute());
             buf.append(&mut fetch_nix.describe_execute());
             buf.append(&mut create_users_and_group.describe_execute());
             buf.append(&mut create_nix_tree.describe_execute());
@@ -77,7 +71,6 @@ impl Actionable for ProvisionNix {
     #[tracing::instrument(skip_all)]
     async fn execute(&mut self) -> Result<(), Self::Error> {
         let Self {
-            create_nix_dir,
             fetch_nix,
             create_nix_tree,
             create_users_and_group,
@@ -90,8 +83,6 @@ impl Actionable for ProvisionNix {
         }
         *action_state = ActionState::Progress;
         tracing::debug!("Provisioning Nix");
-
-        create_nix_dir.execute().await?;
 
         // We fetch nix while doing the rest, then move it over.
         let mut fetch_nix_clone = fetch_nix.clone();
@@ -116,7 +107,6 @@ impl Actionable for ProvisionNix {
 
     fn describe_revert(&self) -> Vec<ActionDescription> {
         let Self {
-            create_nix_dir,
             fetch_nix,
             create_users_and_group,
             create_nix_tree,
@@ -131,7 +121,6 @@ impl Actionable for ProvisionNix {
             buf.append(&mut create_nix_tree.describe_revert());
             buf.append(&mut create_users_and_group.describe_revert());
             buf.append(&mut fetch_nix.describe_revert());
-            buf.append(&mut create_nix_dir.describe_revert());
             buf
         }
     }
@@ -139,7 +128,6 @@ impl Actionable for ProvisionNix {
     #[tracing::instrument(skip_all)]
     async fn revert(&mut self) -> Result<(), Self::Error> {
         let Self {
-            create_nix_dir,
             fetch_nix,
             create_nix_tree,
             create_users_and_group,
@@ -171,8 +159,6 @@ impl Actionable for ProvisionNix {
 
         *fetch_nix = fetch_nix_handle.await.map_err(ProvisionNixError::from)??;
         move_unpacked_nix.revert().await?;
-
-        create_nix_dir.revert().await?;
 
         tracing::trace!("Unprovisioned Nix");
         *action_state = ActionState::Uncompleted;

@@ -73,15 +73,6 @@ impl Actionable for SetupDefaultProfile {
             return Err(Self::Error::NoNssCacert); // TODO(@hoverbear): Fix this error
         };
 
-        // Install `nix` itself into the store
-        execute_command(
-            Command::new(nix_pkg.join("bin/nix-env"))
-                .arg("-i")
-                .arg(&nix_pkg),
-        )
-        .await
-        .map_err(SetupDefaultProfileError::Command)?;
-
         // Find an `nss-cacert` package, add it too.
         let nss_ca_cert_pkg_glob = "/nix/store/*-nss-cacert-*";
         let mut found_nss_ca_cert_pkg = None;
@@ -101,11 +92,29 @@ impl Actionable for SetupDefaultProfile {
             return Err(Self::Error::NoNssCacert);
         };
 
+        // Install `nix` itself into the store
+        execute_command(
+            Command::new(nix_pkg.join("bin/nix-env"))
+                .arg("-i")
+                .arg(&nix_pkg)
+                .env("HOME", dirs::home_dir().ok_or(Self::Error::NoRootHome)?)
+                .env(
+                    "NIX_SSL_CERT_FILE",
+                    nss_ca_cert_pkg.join("etc/ssl/certs/ca-bundle.crt"),
+                ), /* This is apparently load bearing... */
+        )
+        .await
+        .map_err(SetupDefaultProfileError::Command)?;
+
         // Install `nss-cacert` into the store
         execute_command(
             Command::new(nix_pkg.join("bin/nix-env"))
                 .arg("-i")
-                .arg(&nss_ca_cert_pkg),
+                .arg(&nss_ca_cert_pkg)
+                .env(
+                    "NIX_SSL_CERT_FILE",
+                    nss_ca_cert_pkg.join("etc/ssl/certs/ca-bundle.crt"),
+                ),
         )
         .await
         .map_err(SetupDefaultProfileError::Command)?;
@@ -199,4 +208,6 @@ pub enum SetupDefaultProfileError {
         #[serde(serialize_with = "crate::serialize_error_to_display")]
         std::io::Error,
     ),
+    #[error("No root home found to place channel configuration in")]
+    NoRootHome,
 }

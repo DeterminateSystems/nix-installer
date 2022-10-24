@@ -9,16 +9,18 @@ use crate::actions::{Action, ActionDescription, ActionState, Actionable};
 pub struct CreateUser {
     name: String,
     uid: usize,
+    groupname: String,
     gid: usize,
     action_state: ActionState,
 }
 
 impl CreateUser {
     #[tracing::instrument(skip_all)]
-    pub fn plan(name: String, uid: usize, gid: usize) -> Self {
+    pub fn plan(name: String, uid: usize, groupname: String, gid: usize) -> Self {
         Self {
             name,
             uid,
+            groupname,
             gid,
             action_state: ActionState::Uncompleted,
         }
@@ -36,6 +38,7 @@ impl Actionable for CreateUser {
             let Self {
                 name,
                 uid,
+                groupname: _,
                 gid,
                 action_state: _,
             } = self;
@@ -52,12 +55,14 @@ impl Actionable for CreateUser {
     #[tracing::instrument(skip_all, fields(
         user = self.name,
         uid = self.uid,
+        groupname = self.groupname,
         gid = self.gid,
     ))]
     async fn execute(&mut self) -> Result<(), Self::Error> {
         let Self {
             name,
             uid,
+            groupname,
             gid,
             action_state,
         } = self;
@@ -77,13 +82,77 @@ impl Actionable for CreateUser {
             | OperatingSystem::Darwin => {
                 execute_command(Command::new("/usr/bin/dscl").args([
                     ".",
-                    "create",
+                    "-create",
                     &format!("/Users/{name}"),
-                    "UniqueId",
+                ]))
+                .await
+                .map_err(Self::Error::Command)?;
+                execute_command(Command::new("/usr/bin/dscl").args([
+                    ".",
+                    "-create",
+                    &format!("/Users/{name}"),
+                    "UniqueID",
                     &format!("{uid}"),
+                ]))
+                .await
+                .map_err(Self::Error::Command)?;
+                execute_command(Command::new("/usr/bin/dscl").args([
+                    ".",
+                    "-create",
+                    &format!("/Users/{name}"),
                     "PrimaryGroupID",
                     &format!("{gid}"),
                 ]))
+                .await
+                .map_err(Self::Error::Command)?;
+                execute_command(Command::new("/usr/bin/dscl").args([
+                    ".",
+                    "-create",
+                    &format!("/Users/{name}"),
+                    "NFSHomeDirectory",
+                    "/var/empty",
+                ]))
+                .await
+                .map_err(Self::Error::Command)?;
+                execute_command(Command::new("/usr/bin/dscl").args([
+                    ".",
+                    "-create",
+                    &format!("/Users/{name}"),
+                    "UserShell",
+                    "/sbin/nologin",
+                ]))
+                .await
+                .map_err(Self::Error::Command)?;
+                execute_command(
+                    Command::new("/usr/bin/dscl")
+                        .args([
+                            ".",
+                            "-append",
+                            &format!("/Groups/{groupname}"),
+                            "GroupMembership",
+                        ])
+                        .arg(&name),
+                )
+                .await
+                .map_err(Self::Error::Command)?;
+                execute_command(Command::new("/usr/bin/dscl").args([
+                    ".",
+                    "-create",
+                    &format!("/Users/{name}"),
+                    "IsHidden",
+                    "1",
+                ]))
+                .await
+                .map_err(Self::Error::Command)?;
+                execute_command(
+                    Command::new("/usr/sbin/dseditgroup")
+                        .args(["-o", "edit"])
+                        .arg("-a")
+                        .arg(&name)
+                        .arg("-t")
+                        .arg(&name)
+                        .arg(groupname),
+                )
                 .await
                 .map_err(Self::Error::Command)?;
             },
@@ -124,6 +193,7 @@ impl Actionable for CreateUser {
             let Self {
                 name,
                 uid,
+                groupname: _,
                 gid,
                 action_state: _,
             } = self;
@@ -146,6 +216,7 @@ impl Actionable for CreateUser {
         let Self {
             name,
             uid: _,
+            groupname: _,
             gid: _,
             action_state,
         } = self;
@@ -163,7 +234,13 @@ impl Actionable for CreateUser {
                 patch: _,
             }
             | OperatingSystem::Darwin => {
-                todo!()
+                execute_command(Command::new("/usr/bin/dscl").args([
+                    ".",
+                    "-delete",
+                    &format!("/Users/{name}"),
+                ]))
+                .await
+                .map_err(Self::Error::Command)?;
             },
             _ => {
                 execute_command(Command::new("userdel").args([&name.to_string()]))

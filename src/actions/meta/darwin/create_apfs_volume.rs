@@ -1,5 +1,8 @@
 use serde::Serialize;
-use std::path::{Path, PathBuf};
+use std::{
+    path::{Path, PathBuf},
+    time::Duration,
+};
 
 use crate::actions::base::{
     darwin::{
@@ -7,7 +10,7 @@ use crate::actions::base::{
         CreateVolume, CreateVolumeError, EnableOwnership, EnableOwnershipError, EncryptVolume,
         EncryptVolumeError, UnmountVolume, UnmountVolumeError,
     },
-    CreateOrAppendFile, CreateOrAppendFileError,
+    CreateFile, CreateFileError, CreateOrAppendFile, CreateOrAppendFileError,
 };
 use crate::actions::{base::darwin, Action, ActionDescription, ActionState, Actionable};
 
@@ -25,6 +28,7 @@ pub struct CreateApfsVolume {
     create_volume: CreateVolume,
     create_or_append_fstab: CreateOrAppendFile,
     encrypt_volume: Option<EncryptVolume>,
+    setup_volume_daemon: CreateFile,
     bootstrap_volume: BootstrapVolume,
     enable_ownership: EnableOwnership,
     action_state: ActionState,
@@ -39,9 +43,14 @@ impl CreateApfsVolume {
         encrypt: Option<String>,
     ) -> Result<Self, CreateApfsVolumeError> {
         let disk = disk.as_ref();
-        let create_or_append_synthetic_conf =
-            CreateOrAppendFile::plan("/etc/synthetic.conf", None, None, 0o0655, "nix".into())
-                .await?;
+        let create_or_append_synthetic_conf = CreateOrAppendFile::plan(
+            "/etc/synthetic.conf",
+            None,
+            None,
+            0o0655,
+            "nix\n".into(), /* The newline is required otherwise it segfaults */
+        )
+        .await?;
 
         let create_synthetic_objects = CreateSyntheticObjects::plan().await?;
 
@@ -64,6 +73,49 @@ impl CreateApfsVolume {
             None
         };
 
+        let mount_command = if encrypt.is_some() {
+            vec![
+                "/bin/sh",
+                "-c",
+                "/usr/bin/security find-generic-password",
+                "-s",
+                "{name}",
+                "-w",
+                "|",
+                "/usr/sbin/diskutil",
+                "apfs",
+                "unlockVolume",
+                &name,
+                "-mountpoint",
+                "/nix",
+                "-stdinpassphrase",
+            ]
+        } else {
+            vec!["/usr/sbin/diskutil", "mount", "-mountPoint", "/nix", &name]
+        };
+        // TODO(@hoverbear): Use plist lib we have in tree...
+        let mount_plist = format!(
+            "\
+            <?xml version=\"1.0\" encoding=\"UTF-8\"?>\n\
+            <!DOCTYPE plist PUBLIC \"-//Apple Computer//DTD PLIST 1.0//EN\" \"http://www.apple.com/DTDs/PropertyList-1.0.dtd\">\n\
+            <plist version=\"1.0\">\n\
+            <dict>\n\
+            <key>RunAtLoad</key>\n\
+            <true/>\n\
+            <key>Label</key>\n\
+            <string>org.nixos.darwin-store</string>\n\
+            <key>ProgramArguments</key>\n\
+            <array>\n\
+                {}\
+            </array>\n\
+            </dict>\n\
+            </plist>\n\
+        \
+        ", mount_command.iter().map(|v| format!("<string>{v}</string>\n")).collect::<Vec<_>>().join("\n")
+        );
+        let setup_volume_daemon =
+            CreateFile::plan(NIX_VOLUME_MOUNTD_DEST, None, None, None, mount_plist, false).await?;
+
         let bootstrap_volume = BootstrapVolume::plan(NIX_VOLUME_MOUNTD_DEST).await?;
         let enable_ownership = EnableOwnership::plan("/nix").await?;
 
@@ -78,6 +130,7 @@ impl CreateApfsVolume {
             create_volume,
             create_or_append_fstab,
             encrypt_volume,
+            setup_volume_daemon,
             bootstrap_volume,
             enable_ownership,
             action_state: ActionState::Uncompleted,
@@ -121,6 +174,7 @@ impl Actionable for CreateApfsVolume {
             create_volume,
             create_or_append_fstab,
             encrypt_volume,
+            setup_volume_daemon,
             bootstrap_volume,
             enable_ownership,
             action_state,
@@ -139,7 +193,13 @@ impl Actionable for CreateApfsVolume {
         if let Some(encrypt_volume) = encrypt_volume {
             encrypt_volume.execute().await?;
         }
+        setup_volume_daemon.execute().await?;
+
         bootstrap_volume.execute().await?;
+
+        // TODO: Check wait
+        tokio::time::sleep(Duration::from_millis(5000)).await;
+
         enable_ownership.execute().await?;
 
         tracing::trace!("Created APFS volume");
@@ -179,6 +239,7 @@ impl Actionable for CreateApfsVolume {
             create_volume,
             create_or_append_fstab,
             encrypt_volume,
+            setup_volume_daemon,
             bootstrap_volume,
             enable_ownership,
             action_state,
@@ -191,6 +252,7 @@ impl Actionable for CreateApfsVolume {
 
         enable_ownership.revert().await?;
         bootstrap_volume.revert().await?;
+        setup_volume_daemon.revert().await?;
         if let Some(encrypt_volume) = encrypt_volume {
             encrypt_volume.revert().await?;
         }
@@ -217,6 +279,8 @@ impl From<CreateApfsVolume> for Action {
 
 #[derive(Debug, thiserror::Error, Serialize)]
 pub enum CreateApfsVolumeError {
+    #[error(transparent)]
+    CreateFile(#[from] CreateFileError),
     #[error(transparent)]
     DarwinBootstrapVolume(#[from] BootstrapVolumeError),
     #[error(transparent)]

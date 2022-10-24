@@ -81,7 +81,7 @@ impl Actionable for ConfigureNixDaemonService {
                 const DARWIN_NIX_DAEMON_DEST: &str =
                     "/Library/LaunchDaemons/org.nixos.nix-daemon.plist";
 
-                let src = Path::new("/nix/var/nix/profiles/default").join(DARWIN_NIX_DAEMON_DEST);
+                let src = Path::new("/nix/var/nix/profiles/default/Library/LaunchDaemons/org.nixos.nix-daemon.plist");
                 tokio::fs::copy(src.clone(), DARWIN_NIX_DAEMON_DEST)
                     .await
                     .map_err(|e| {

@@ -32,6 +32,7 @@ impl CreateUsersAndGroup {
                 CreateUser::plan(
                     format!("{}{count}", settings.nix_build_user_prefix),
                     settings.nix_build_user_id_base + count,
+                    settings.nix_build_group_name.clone(),
                     settings.nix_build_group_id,
                 )
             })
@@ -108,35 +109,30 @@ impl Actionable for CreateUsersAndGroup {
         // Create group
         create_group.execute().await?;
 
-        // Create users
-        // TODO(@hoverbear): Abstract this, it will be common
-        let mut set = JoinSet::new();
-
-        let mut errors = Vec::default();
-
-        for (idx, create_user) in create_users.iter().enumerate() {
-            let mut create_user_clone = create_user.clone();
-            let _abort_handle = set.spawn(async move {
-                create_user_clone.execute().await?;
-                Result::<_, CreateUserError>::Ok((idx, create_user_clone))
-            });
+        // Mac is apparently not threadsafe here...
+        for create_user in create_users.iter_mut() {
+            // let mut create_user_clone = create_user.clone();
+            // let _abort_handle = set.spawn(async move {
+            create_user.execute().await?;
+            //     Result::<_, CreateUserError>::Ok((idx, create_user_clone))
+            // });
         }
 
-        while let Some(result) = set.join_next().await {
-            match result {
-                Ok(Ok((idx, success))) => create_users[idx] = success,
-                Ok(Err(e)) => errors.push(e),
-                Err(e) => return Err(e)?,
-            };
-        }
+        // while let Some(result) = set.join_next().await {
+        //     match result {
+        //         Ok(Ok((idx, success))) => create_users[idx] = success,
+        //         Ok(Err(e)) => errors.push(e),
+        //         Err(e) => return Err(e)?,
+        //     };
+        // }
 
-        if !errors.is_empty() {
-            if errors.len() == 1 {
-                return Err(errors.into_iter().next().unwrap().into());
-            } else {
-                return Err(CreateUsersAndGroupError::CreateUsers(errors));
-            }
-        }
+        // if !errors.is_empty() {
+        //     if errors.len() == 1 {
+        //         return Err(errors.into_iter().next().unwrap().into());
+        //     } else {
+        //         return Err(CreateUsersAndGroupError::CreateUsers(errors));
+        //     }
+        // }
 
         tracing::trace!("Created users and groups");
         *action_state = ActionState::Completed;

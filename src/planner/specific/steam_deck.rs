@@ -1,6 +1,6 @@
 use crate::{
     actions::{
-        base::StartSystemdUnit,
+        base::{CreateDirectory, StartSystemdUnit},
         meta::{CreateSystemdSysext, ProvisionNix},
         Action, ActionError,
     },
@@ -24,6 +24,10 @@ impl Plannable for SteamDeck {
             settings: settings.clone(),
             actions: vec![
                 CreateSystemdSysext::plan("/var/lib/extensions")
+                    .await
+                    .map(Action::from)
+                    .map_err(ActionError::from)?,
+                CreateDirectory::plan("/nix", None, None, 0o0755, true)
                     .await
                     .map(Action::from)
                     .map_err(ActionError::from)?,

@@ -20,8 +20,10 @@ impl Planner {
         match (Architecture::host(), OperatingSystem::host()) {
             (Architecture::X86_64, OperatingSystem::Linux) => Ok(Self::LinuxMultiUser),
             (Architecture::Aarch64(_), OperatingSystem::Linux) => Ok(Self::LinuxMultiUser),
-            (Architecture::X86_64, OperatingSystem::MacOSX { .. }) => Ok(Self::DarwinMultiUser),
-            (Architecture::Aarch64(_), OperatingSystem::MacOSX { .. }) => Ok(Self::DarwinMultiUser),
+            (Architecture::X86_64, OperatingSystem::MacOSX { .. })
+            | (Architecture::X86_64, OperatingSystem::Darwin) => Ok(Self::DarwinMultiUser),
+            (Architecture::Aarch64(_), OperatingSystem::MacOSX { .. })
+            | (Architecture::Aarch64(_), OperatingSystem::Darwin) => Ok(Self::DarwinMultiUser),
             _ => Err(PlannerError::UnsupportedArchitecture(target_lexicon::HOST)),
         }
     }

@@ -1,6 +1,6 @@
 use crate::{
     actions::{
-        base::StartSystemdUnit,
+        base::{CreateDirectory, StartSystemdUnit},
         meta::{ConfigureNix, ProvisionNix},
         Action, ActionError,
     },
@@ -21,6 +21,10 @@ impl Plannable for LinuxMultiUser {
             planner: Self.into(),
             settings: settings.clone(),
             actions: vec![
+                CreateDirectory::plan("/nix", None, None, 0o0755, true)
+                    .await
+                    .map(Action::from)
+                    .map_err(ActionError::from)?,
                 ProvisionNix::plan(settings.clone())
                     .await
                     .map(Action::from)

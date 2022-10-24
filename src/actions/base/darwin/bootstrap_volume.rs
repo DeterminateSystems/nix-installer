@@ -56,9 +56,13 @@ impl Actionable for BootstrapVolume {
         )
         .await
         .map_err(Self::Error::Command)?;
-        execute_command(Command::new("launchctl").args(["-k", "system/org.nixos.darwin-store"]))
-            .await
-            .map_err(Self::Error::Command)?;
+        execute_command(Command::new("launchctl").args([
+            "kickstart",
+            "-k",
+            "system/org.nixos.darwin-store",
+        ]))
+        .await
+        .map_err(Self::Error::Command)?;
 
         tracing::trace!("Bootstrapped volume");
         *action_state = ActionState::Completed;

@@ -121,14 +121,9 @@ impl Actionable for CreateVolume {
         }
         tracing::debug!("Deleting volume");
 
-        execute_command(Command::new("/usr/sbin/diskutil").args([
-            "apfs",
-            "deleteVolume",
-            &format!("{}", disk.display()),
-            name,
-        ]))
-        .await
-        .map_err(Self::Error::Command)?;
+        execute_command(Command::new("/usr/sbin/diskutil").args(["apfs", "deleteVolume", name]))
+            .await
+            .map_err(Self::Error::Command)?;
 
         tracing::trace!("Deleted volume");
         *action_state = ActionState::Completed;
