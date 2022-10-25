@@ -3,16 +3,21 @@ use std::{
     path::{Path, PathBuf},
     time::Duration,
 };
+use tokio::process::Command;
 
-use crate::actions::base::{
-    darwin::{
-        BootstrapVolume, BootstrapVolumeError, CreateSyntheticObjects, CreateSyntheticObjectsError,
-        CreateVolume, CreateVolumeError, EnableOwnership, EnableOwnershipError, EncryptVolume,
-        EncryptVolumeError, UnmountVolume, UnmountVolumeError,
-    },
-    CreateFile, CreateFileError, CreateOrAppendFile, CreateOrAppendFileError,
-};
 use crate::actions::{base::darwin, Action, ActionDescription, ActionState, Actionable};
+use crate::{
+    actions::base::{
+        darwin::{
+            BootstrapVolume, BootstrapVolumeError, CreateSyntheticObjects,
+            CreateSyntheticObjectsError, CreateVolume, CreateVolumeError, EnableOwnership,
+            EnableOwnershipError, EncryptVolume, EncryptVolumeError, UnmountVolume,
+            UnmountVolumeError,
+        },
+        CreateFile, CreateFileError, CreateOrAppendFile, CreateOrAppendFileError,
+    },
+    execute_command,
+};
 
 const NIX_VOLUME_MOUNTD_DEST: &str = "/Library/LaunchDaemons/org.nixos.darwin-store.plist";
 
@@ -197,8 +202,23 @@ impl Actionable for CreateApfsVolume {
 
         bootstrap_volume.execute().await?;
 
-        // TODO: Check wait
-        tokio::time::sleep(Duration::from_millis(5000)).await;
+        let mut retry_tokens: usize = 50;
+        loop {
+            tracing::trace!(%retry_tokens, "Checking for Nix Store existence");
+            let status = Command::new("/usr/sbin/diskutil")
+                .args(["info", "/nix"])
+                .stderr(std::process::Stdio::null())
+                .stdout(std::process::Stdio::null())
+                .status()
+                .await
+                .map_err(Self::Error::Command)?;
+            if status.success() || retry_tokens == 0 {
+                break;
+            } else {
+                retry_tokens = retry_tokens.saturating_sub(1);
+            }
+            tokio::time::sleep(Duration::from_millis(100)).await;
+        }
 
         enable_ownership.execute().await?;
 
@@ -295,4 +315,10 @@ pub enum CreateApfsVolumeError {
     DarwinUnmountVolume(#[from] UnmountVolumeError),
     #[error(transparent)]
     CreateOrAppendFile(#[from] CreateOrAppendFileError),
+    #[error("Failed to execute command")]
+    Command(
+        #[source]
+        #[serde(serialize_with = "crate::serialize_error_to_display")]
+        std::io::Error,
+    ),
 }
