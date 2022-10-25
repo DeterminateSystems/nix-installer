@@ -1,51 +1,57 @@
-mod darwin;
-mod linux;
-mod specific;
+pub mod darwin;
+pub mod linux;
+pub mod specific;
 
-use crate::{actions::ActionError, InstallPlan, InstallSettings};
+use crate::{actions::ActionError, settings::InstallSettingsError, InstallPlan};
 
-#[derive(Debug, Clone, clap::ValueEnum, serde::Serialize, serde::Deserialize)]
-pub enum Planner {
-    LinuxMultiUser,
-    DarwinMultiUser,
-    SteamDeck,
+#[derive(Debug, Clone, clap::Subcommand, serde::Serialize, serde::Deserialize)]
+pub enum BuiltinPlanner {
+    LinuxMulti(linux::LinuxMulti),
+    DarwinMulti(darwin::DarwinMulti),
+    SteamDeck(specific::SteamDeck),
 }
 
-impl Planner {
-    pub fn possible_values() -> &'static [Planner] {
-        &[Self::LinuxMultiUser, Self::DarwinMultiUser, Self::SteamDeck]
-    }
+impl BuiltinPlanner {
     pub fn default() -> Result<Self, PlannerError> {
         use target_lexicon::{Architecture, OperatingSystem};
         match (Architecture::host(), OperatingSystem::host()) {
-            (Architecture::X86_64, OperatingSystem::Linux) => Ok(Self::LinuxMultiUser),
-            (Architecture::Aarch64(_), OperatingSystem::Linux) => Ok(Self::LinuxMultiUser),
+            (Architecture::X86_64, OperatingSystem::Linux) => {
+                Ok(Self::LinuxMulti(linux::LinuxMulti::default()?))
+            },
+            (Architecture::Aarch64(_), OperatingSystem::Linux) => {
+                Ok(Self::LinuxMulti(linux::LinuxMulti::default()?))
+            },
             (Architecture::X86_64, OperatingSystem::MacOSX { .. })
-            | (Architecture::X86_64, OperatingSystem::Darwin) => Ok(Self::DarwinMultiUser),
+            | (Architecture::X86_64, OperatingSystem::Darwin) => {
+                Ok(Self::DarwinMulti(darwin::DarwinMulti::default()?))
+            },
             (Architecture::Aarch64(_), OperatingSystem::MacOSX { .. })
-            | (Architecture::Aarch64(_), OperatingSystem::Darwin) => Ok(Self::DarwinMultiUser),
+            | (Architecture::Aarch64(_), OperatingSystem::Darwin) => {
+                Ok(Self::DarwinMulti(darwin::DarwinMulti::default()?))
+            },
             _ => Err(PlannerError::UnsupportedArchitecture(target_lexicon::HOST)),
         }
     }
 
-    pub async fn plan(self, settings: InstallSettings) -> Result<InstallPlan, PlannerError> {
+    pub async fn plan(self) -> Result<InstallPlan, PlannerError> {
         match self {
-            Planner::LinuxMultiUser => linux::LinuxMultiUser::plan(settings).await,
-            Planner::DarwinMultiUser => darwin::DarwinMultiUser::plan(settings).await,
-            Planner::SteamDeck => specific::SteamDeck::plan(settings).await,
+            BuiltinPlanner::LinuxMulti(planner) => planner.plan().await,
+            BuiltinPlanner::DarwinMulti(planner) => planner.plan().await,
+            BuiltinPlanner::SteamDeck(planner) => planner.plan().await,
         }
     }
 }
 
 #[async_trait::async_trait]
-trait Plannable: Into<Planner>
+trait Plannable: Into<BuiltinPlanner>
 where
     Self: Sized,
 {
     const DISPLAY_STRING: &'static str;
     const SLUG: &'static str;
 
-    async fn plan(settings: InstallSettings) -> Result<InstallPlan, PlannerError>;
+    fn default() -> Result<Self, PlannerError>;
+    async fn plan(self) -> Result<InstallPlan, PlannerError>;
 }
 
 #[derive(thiserror::Error, Debug)]
@@ -58,4 +64,6 @@ pub enum PlannerError {
         #[from]
         ActionError,
     ),
+    #[error(transparent)]
+    InstallSettings(#[from] InstallSettingsError),
 }

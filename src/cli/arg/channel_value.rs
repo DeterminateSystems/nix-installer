@@ -1,12 +1,19 @@
 use reqwest::Url;
+use serde::{Deserialize, Serialize};
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ChannelValue(pub String, pub Url);
 
 impl clap::builder::ValueParserFactory for ChannelValue {
     type Parser = ChannelValueParser;
     fn value_parser() -> Self::Parser {
         ChannelValueParser
+    }
+}
+
+impl From<(String, Url)> for ChannelValue {
+    fn from((string, url): (String, Url)) -> Self {
+        Self(string, url)
     }
 }
 

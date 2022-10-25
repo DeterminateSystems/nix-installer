@@ -53,10 +53,10 @@ impl Actionable for CreateOrAppendFile {
     fn describe_execute(&self) -> Vec<ActionDescription> {
         let Self {
             path,
-            user,
-            group,
-            mode,
-            buf,
+            user: _,
+            group: _,
+            mode: _,
+            buf: _,
             action_state: _,
         } = &self;
         if self.action_state == ActionState::Completed {

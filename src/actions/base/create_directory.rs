@@ -69,13 +69,13 @@ impl Actionable for CreateDirectory {
     fn describe_execute(&self) -> Vec<ActionDescription> {
         let Self {
             path,
-            user,
-            group,
-            mode,
+            user: _,
+            group: _,
+            mode: _,
             force_prune_on_revert: _,
-            action_state: _,
+            action_state,
         } = &self;
-        if self.action_state == ActionState::Completed {
+        if *action_state == ActionState::Completed {
             vec![]
         } else {
             vec![ActionDescription::new(

@@ -110,7 +110,7 @@ impl Actionable for CreateVolume {
     ))]
     async fn revert(&mut self) -> Result<(), Self::Error> {
         let Self {
-            disk,
+            disk: _,
             name,
             case_sensitive: _,
             action_state,

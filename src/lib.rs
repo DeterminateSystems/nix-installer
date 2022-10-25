@@ -1,19 +1,17 @@
 mod actions;
+pub mod cli;
 mod error;
+mod interaction;
 mod os;
 mod plan;
 mod planner;
 mod settings;
 
-use std::{
-    ffi::OsStr,
-    fmt::Display,
-    process::{ExitStatus, Output},
-};
+use std::{ffi::OsStr, fmt::Display, process::Output};
 
 pub use error::HarmonicError;
 pub use plan::InstallPlan;
-pub use planner::Planner;
+pub use planner::BuiltinPlanner;
 use serde::Serializer;
 pub use settings::InstallSettings;
 

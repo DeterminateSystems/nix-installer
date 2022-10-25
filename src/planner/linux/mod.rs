@@ -1,3 +1,3 @@
-mod multi_user;
+mod multi;
 
-pub use multi_user::LinuxMultiUser;
+pub use multi::LinuxMulti;

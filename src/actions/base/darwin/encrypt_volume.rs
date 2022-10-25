@@ -1,8 +1,5 @@
 use serde::Serialize;
 use std::path::{Path, PathBuf};
-use tokio::process::Command;
-
-use crate::execute_command;
 
 use crate::actions::{Action, ActionDescription, ActionState, Actionable};
 
@@ -47,8 +44,8 @@ impl Actionable for EncryptVolume {
     ))]
     async fn execute(&mut self) -> Result<(), Self::Error> {
         let Self {
-            disk,
-            password,
+            disk: _,
+            password: _,
             action_state,
         } = self;
         if *action_state == ActionState::Completed {
@@ -77,8 +74,8 @@ impl Actionable for EncryptVolume {
     ))]
     async fn revert(&mut self) -> Result<(), Self::Error> {
         let Self {
-            disk,
-            password,
+            disk: _,
+            password: _,
             action_state,
         } = self;
         if *action_state == ActionState::Uncompleted {

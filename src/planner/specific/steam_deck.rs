@@ -4,24 +4,30 @@ use crate::{
         meta::{CreateSystemdSysext, ProvisionNix},
         Action, ActionError,
     },
-    planner::Plannable,
-    InstallPlan, Planner,
+    planner::{Plannable, PlannerError},
+    BuiltinPlanner, InstallPlan, InstallSettings,
 };
 
-#[derive(Debug, Clone, serde::Serialize, serde::Deserialize, Default)]
-pub struct SteamDeck;
+#[derive(Debug, Clone, clap::Parser, serde::Serialize, serde::Deserialize)]
+pub struct SteamDeck {
+    #[clap(flatten)]
+    settings: InstallSettings,
+}
 
 #[async_trait::async_trait]
 impl Plannable for SteamDeck {
     const DISPLAY_STRING: &'static str = "Steam Deck (x86_64 Linux Multi-User)";
     const SLUG: &'static str = "steam-deck";
 
-    async fn plan(
-        settings: crate::InstallSettings,
-    ) -> Result<crate::InstallPlan, crate::planner::PlannerError> {
+    fn default() -> Result<Self, PlannerError> {
+        Ok(Self {
+            settings: InstallSettings::default()?,
+        })
+    }
+
+    async fn plan(self) -> Result<crate::InstallPlan, PlannerError> {
         Ok(InstallPlan {
-            planner: Self.into(),
-            settings: settings.clone(),
+            planner: self.clone().into(),
             actions: vec![
                 CreateSystemdSysext::plan("/var/lib/extensions")
                     .await
@@ -31,7 +37,7 @@ impl Plannable for SteamDeck {
                     .await
                     .map(Action::from)
                     .map_err(ActionError::from)?,
-                ProvisionNix::plan(settings.clone())
+                ProvisionNix::plan(self.settings.clone())
                     .await
                     .map(Action::from)
                     .map_err(ActionError::from)?,
@@ -44,8 +50,8 @@ impl Plannable for SteamDeck {
     }
 }
 
-impl Into<Planner> for SteamDeck {
-    fn into(self) -> Planner {
-        Planner::SteamDeck
+impl Into<BuiltinPlanner> for SteamDeck {
+    fn into(self) -> BuiltinPlanner {
+        BuiltinPlanner::SteamDeck(self)
     }
 }

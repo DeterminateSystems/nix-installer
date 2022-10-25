@@ -2,32 +2,20 @@ use std::path::PathBuf;
 
 use crate::{
     actions::{Action, ActionDescription, ActionError, Actionable},
-    planner::PlannerError,
-    settings::InstallSettings,
-    HarmonicError, Planner,
+    BuiltinPlanner, HarmonicError,
 };
 
 #[derive(Debug, serde::Deserialize, serde::Serialize, Clone)]
 pub struct InstallPlan {
-    pub(crate) settings: InstallSettings,
-
     pub(crate) actions: Vec<Action>,
 
-    pub(crate) planner: Planner,
+    pub(crate) planner: BuiltinPlanner,
 }
 
 impl InstallPlan {
-    pub async fn new(planner: Planner, settings: InstallSettings) -> Result<Self, PlannerError> {
-        planner.plan(settings).await
-    }
-
     #[tracing::instrument(skip_all)]
     pub fn describe_execute(&self, explain: bool) -> String {
-        let Self {
-            planner,
-            settings,
-            actions,
-        } = self;
+        let Self { planner, actions } = self;
         format!(
             "\
             This Nix install is for:\n\
@@ -42,12 +30,7 @@ impl InstallPlan {
         ",
             os_type = "Linux",
             init_type = "systemd",
-            nix_channels = settings
-                .channels
-                .iter()
-                .map(|(name, url)| format!("{name}={url}"))
-                .collect::<Vec<_>>()
-                .join(","),
+            nix_channels = "todo",
             actions = actions
                 .iter()
                 .map(|v| v.describe_execute())
@@ -76,7 +59,6 @@ impl InstallPlan {
     pub async fn install(&mut self) -> Result<(), HarmonicError> {
         let Self {
             actions,
-            settings: _,
             planner: _,
         } = self;
 
@@ -97,11 +79,7 @@ impl InstallPlan {
 
     #[tracing::instrument(skip_all)]
     pub fn describe_revert(&self, explain: bool) -> String {
-        let Self {
-            planner,
-            settings,
-            actions,
-        } = self;
+        let Self { planner, actions } = self;
         format!(
             "\
             This Nix uninstall is for:\n\
@@ -116,12 +94,7 @@ impl InstallPlan {
         ",
             os_type = "Linux",
             init_type = "systemd",
-            nix_channels = settings
-                .channels
-                .iter()
-                .map(|(name, url)| format!("{name}={url}"))
-                .collect::<Vec<_>>()
-                .join(","),
+            nix_channels = "todo",
             actions = actions
                 .iter()
                 .map(|v| v.describe_revert())
@@ -150,7 +123,6 @@ impl InstallPlan {
     pub async fn revert(&mut self) -> Result<(), HarmonicError> {
         let Self {
             actions,
-            settings: _,
             planner: _,
         } = self;
 

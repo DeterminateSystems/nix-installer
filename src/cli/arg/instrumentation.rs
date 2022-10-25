@@ -9,11 +9,11 @@ use valuable::Valuable;
 pub struct Instrumentation {
     /// Enable debug logs, -vv for trace
     #[clap(short = 'v', long, action = clap::ArgAction::Count, global = true)]
-    pub(crate) verbose: u8,
+    pub verbose: u8,
 }
 
 impl<'a> Instrumentation {
-    pub(crate) fn log_level(&self) -> String {
+    pub fn log_level(&self) -> String {
         match self.verbose {
             0 => "info",
             1 => "debug",
@@ -22,7 +22,7 @@ impl<'a> Instrumentation {
         .to_string()
     }
 
-    pub(crate) fn setup<'b: 'a>(&'b self) -> eyre::Result<()> {
+    pub fn setup<'b: 'a>(&'b self) -> eyre::Result<()> {
         let fmt_layer = self.fmt_layer();
         let filter_layer = self.filter_layer()?;
 
@@ -35,7 +35,7 @@ impl<'a> Instrumentation {
         Ok(())
     }
 
-    pub(crate) fn fmt_layer<S>(&self) -> impl tracing_subscriber::layer::Layer<S>
+    pub fn fmt_layer<S>(&self) -> impl tracing_subscriber::layer::Layer<S>
     where
         S: tracing::Subscriber + for<'span> tracing_subscriber::registry::LookupSpan<'span>,
     {
@@ -45,7 +45,7 @@ impl<'a> Instrumentation {
             .pretty()
     }
 
-    pub(crate) fn filter_layer(&self) -> eyre::Result<EnvFilter> {
+    pub fn filter_layer(&self) -> eyre::Result<EnvFilter> {
         let filter_layer = match EnvFilter::try_from_default_env() {
             Ok(layer) => layer,
             Err(e) => {

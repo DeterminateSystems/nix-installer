@@ -1,3 +1,3 @@
-mod multi_user;
+mod multi;
 
-pub use multi_user::DarwinMultiUser;
+pub use multi::DarwinMulti;

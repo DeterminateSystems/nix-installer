@@ -4,8 +4,7 @@ use serde::Serialize;
 use tokio::task::JoinError;
 
 use crate::actions::base::{
-    CreateDirectory, CreateDirectoryError, FetchNix, FetchNixError, MoveUnpackedNix,
-    MoveUnpackedNixError,
+    CreateDirectoryError, FetchNix, FetchNixError, MoveUnpackedNix, MoveUnpackedNixError,
 };
 use crate::InstallSettings;
 

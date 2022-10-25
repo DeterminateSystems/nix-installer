@@ -1,17 +1,21 @@
+use reqwest::Url;
 use serde::Serialize;
 
-use crate::actions::{
-    base::{
-        ConfigureNixDaemonService, ConfigureNixDaemonServiceError, SetupDefaultProfile,
-        SetupDefaultProfileError,
-    },
-    meta::{
-        ConfigureShellProfile, ConfigureShellProfileError, PlaceChannelConfiguration,
-        PlaceChannelConfigurationError, PlaceNixConfiguration, PlaceNixConfigurationError,
-    },
-    Action, ActionState,
-};
 use crate::InstallSettings;
+use crate::{
+    actions::{
+        base::{
+            ConfigureNixDaemonService, ConfigureNixDaemonServiceError, SetupDefaultProfile,
+            SetupDefaultProfileError,
+        },
+        meta::{
+            ConfigureShellProfile, ConfigureShellProfileError, PlaceChannelConfiguration,
+            PlaceChannelConfigurationError, PlaceNixConfiguration, PlaceNixConfigurationError,
+        },
+        Action, ActionState,
+    },
+    cli::arg::ChannelValue,
+};
 
 use crate::actions::{ActionDescription, Actionable};
 
@@ -28,13 +32,14 @@ pub struct ConfigureNix {
 impl ConfigureNix {
     #[tracing::instrument(skip_all)]
     pub async fn plan(settings: InstallSettings) -> Result<Self, ConfigureNixError> {
-        let channels = settings
+        let channels: Vec<(String, Url)> = settings
             .channels
             .iter()
-            .map(|(channel, _)| channel.to_string())
+            .map(|ChannelValue(channel, url)| (channel.to_string(), url.clone()))
             .collect();
 
-        let setup_default_profile = SetupDefaultProfile::plan(channels).await?;
+        let setup_default_profile =
+            SetupDefaultProfile::plan(channels.iter().map(|(v, _k)| v.clone()).collect()).await?;
 
         let configure_shell_profile = if settings.modify_profile {
             Some(ConfigureShellProfile::plan().await?)
@@ -42,7 +47,7 @@ impl ConfigureNix {
             None
         };
         let place_channel_configuration =
-            PlaceChannelConfiguration::plan(settings.channels, settings.force).await?;
+            PlaceChannelConfiguration::plan(channels, settings.force).await?;
         let place_nix_configuration = PlaceNixConfiguration::plan(
             settings.nix_build_group_name,
             settings.extra_conf,

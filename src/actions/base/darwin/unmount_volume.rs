@@ -49,7 +49,7 @@ impl Actionable for UnmountVolume {
     ))]
     async fn execute(&mut self) -> Result<(), Self::Error> {
         let Self {
-            disk,
+            disk: _,
             name,
             action_state,
         } = self;
@@ -91,7 +91,7 @@ impl Actionable for UnmountVolume {
     ))]
     async fn revert(&mut self) -> Result<(), Self::Error> {
         let Self {
-            disk,
+            disk: _,
             name,
             action_state,
         } = self;

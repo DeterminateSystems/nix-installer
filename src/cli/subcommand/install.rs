@@ -1,41 +1,35 @@
 use std::{path::PathBuf, process::ExitCode};
 
+use crate::BuiltinPlanner;
 use clap::{ArgAction, Parser};
 use eyre::{eyre, WrapErr};
-use harmonic::{InstallPlan, InstallSettings, Planner};
 
-use crate::{
-    cli::{
-        arg::{ChannelValue, PlanOptions},
-        CommandExecute,
-    },
-    interaction,
-};
+use crate::{cli::CommandExecute, interaction};
 
 /// Execute an install (possibly using an existing plan)
 #[derive(Debug, Parser)]
-pub(crate) struct Install {
+#[command(args_conflicts_with_subcommands = true)]
+pub struct Install {
     #[clap(
         long,
         action(ArgAction::SetTrue),
         default_value = "false",
         global = true
     )]
-    no_confirm: bool,
-    #[clap(flatten)]
-    plan_options: PlanOptions,
+    pub no_confirm: bool,
+
     #[clap(
         long,
         action(ArgAction::SetTrue),
         default_value = "false",
         global = true
     )]
-    pub(crate) explain: bool,
-    #[clap(
-        conflicts_with_all = [ "plan_options" ],
-        env = "HARMONIC_PLAN",
-    )]
-    plan: Option<PathBuf>,
+    pub explain: bool,
+    #[clap(env = "HARMONIC_PLAN")]
+    pub plan: Option<PathBuf>,
+
+    #[clap(subcommand)]
+    pub planner: BuiltinPlanner,
 }
 
 #[async_trait::async_trait]
@@ -45,7 +39,7 @@ impl CommandExecute for Install {
         let Self {
             no_confirm,
             plan,
-            plan_options,
+            planner,
             explain,
         } = self;
 
@@ -56,26 +50,7 @@ impl CommandExecute for Install {
                     .wrap_err("Reading plan")?;
                 serde_json::from_str(&install_plan_string)?
             },
-            None => {
-                let mut settings = InstallSettings::default()?;
-
-                settings.force(plan_options.force);
-                settings.daemon_user_count(plan_options.daemon_user_count);
-                settings.channels(
-                    plan_options
-                        .channel
-                        .into_iter()
-                        .map(|ChannelValue(name, url)| (name, url)),
-                );
-                settings.modify_profile(!plan_options.no_modify_profile);
-
-                let planner = match plan_options.planner {
-                    Some(planner) => planner,
-                    None => Planner::default()?,
-                };
-
-                InstallPlan::new(planner, settings).await?
-            },
+            None => planner.plan().await?,
         };
 
         if !no_confirm {

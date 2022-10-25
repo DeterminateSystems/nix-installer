@@ -5,19 +5,15 @@ use std::{
 };
 use tokio::process::Command;
 
-use crate::actions::{base::darwin, Action, ActionDescription, ActionState, Actionable};
-use crate::{
-    actions::base::{
-        darwin::{
-            BootstrapVolume, BootstrapVolumeError, CreateSyntheticObjects,
-            CreateSyntheticObjectsError, CreateVolume, CreateVolumeError, EnableOwnership,
-            EnableOwnershipError, EncryptVolume, EncryptVolumeError, UnmountVolume,
-            UnmountVolumeError,
-        },
-        CreateFile, CreateFileError, CreateOrAppendFile, CreateOrAppendFileError,
+use crate::actions::base::{
+    darwin::{
+        BootstrapVolume, BootstrapVolumeError, CreateSyntheticObjects, CreateSyntheticObjectsError,
+        CreateVolume, CreateVolumeError, EnableOwnership, EnableOwnershipError, EncryptVolume,
+        EncryptVolumeError, UnmountVolume, UnmountVolumeError,
     },
-    execute_command,
+    CreateFile, CreateFileError, CreateOrAppendFile, CreateOrAppendFileError,
 };
+use crate::actions::{Action, ActionDescription, ActionState, Actionable};
 
 const NIX_VOLUME_MOUNTD_DEST: &str = "/Library/LaunchDaemons/org.nixos.darwin-store.plist";
 

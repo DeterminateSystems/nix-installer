@@ -7,7 +7,7 @@ use std::process::ExitCode;
 use self::subcommand::HarmonicSubcommand;
 
 #[async_trait::async_trait]
-pub(crate) trait CommandExecute {
+pub trait CommandExecute {
     async fn execute(self) -> eyre::Result<ExitCode>;
 }
 
@@ -16,12 +16,12 @@ pub(crate) trait CommandExecute {
 /// Plans a Nix install, prompts for confirmation, then executes it
 #[derive(Debug, Parser)]
 #[clap(version)]
-pub(crate) struct HarmonicCli {
+pub struct HarmonicCli {
     #[clap(flatten)]
-    pub(crate) instrumentation: arg::Instrumentation,
+    pub instrumentation: arg::Instrumentation,
 
     #[clap(subcommand)]
-    subcommand: HarmonicSubcommand,
+    pub subcommand: HarmonicSubcommand,
 }
 
 #[async_trait::async_trait]

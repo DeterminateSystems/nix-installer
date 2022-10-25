@@ -6,7 +6,7 @@ mod uninstall;
 use uninstall::Uninstall;
 
 #[derive(Debug, clap::Subcommand)]
-pub(crate) enum HarmonicSubcommand {
+pub enum HarmonicSubcommand {
     Plan(Plan),
     Install(Install),
     Uninstall(Uninstall),

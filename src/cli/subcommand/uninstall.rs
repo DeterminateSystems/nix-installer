@@ -1,30 +1,30 @@
 use std::{path::PathBuf, process::ExitCode};
 
+use crate::InstallPlan;
 use clap::{ArgAction, Parser};
 use eyre::WrapErr;
-use harmonic::InstallPlan;
 
 use crate::{cli::CommandExecute, interaction};
 
 /// Uninstall a previously installed Nix (only Harmonic done installs supported)
 #[derive(Debug, Parser)]
-pub(crate) struct Uninstall {
+pub struct Uninstall {
     #[clap(
         long,
         action(ArgAction::SetTrue),
         default_value = "false",
         global = true
     )]
-    no_confirm: bool,
+    pub no_confirm: bool,
     #[clap(
         long,
         action(ArgAction::SetTrue),
         default_value = "false",
         global = true
     )]
-    explain: bool,
+    pub explain: bool,
     #[clap(default_value = "/nix/receipt.json")]
-    receipt: PathBuf,
+    pub receipt: PathBuf,
 }
 
 #[async_trait::async_trait]

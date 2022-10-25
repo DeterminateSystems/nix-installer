@@ -1,11 +1,7 @@
-pub(crate) mod cli;
-
 use std::process::ExitCode;
 
-pub mod interaction;
-
 use clap::Parser;
-use cli::CommandExecute;
+use harmonic::cli::CommandExecute;
 
 #[tokio::main]
 async fn main() -> color_eyre::Result<ExitCode> {
@@ -17,7 +13,7 @@ async fn main() -> color_eyre::Result<ExitCode> {
         })
         .install()?;
 
-    let cli = cli::HarmonicCli::parse();
+    let cli = harmonic::cli::HarmonicCli::parse();
 
     cli.instrumentation.setup()?;
 

@@ -11,20 +11,27 @@ use crate::{
     execute_command,
     os::darwin::DiskUtilOutput,
     planner::{Plannable, PlannerError},
-    InstallPlan, Planner,
+    BuiltinPlanner, InstallPlan, InstallSettings,
 };
 
-#[derive(Debug, Clone, serde::Serialize, serde::Deserialize, Default)]
-pub struct DarwinMultiUser;
+#[derive(Debug, Clone, clap::Parser, serde::Serialize, serde::Deserialize)]
+pub struct DarwinMulti {
+    #[clap(flatten)]
+    settings: InstallSettings,
+}
 
 #[async_trait::async_trait]
-impl Plannable for DarwinMultiUser {
+impl Plannable for DarwinMulti {
     const DISPLAY_STRING: &'static str = "Darwin Multi-User";
     const SLUG: &'static str = "darwin-multi";
 
-    async fn plan(
-        settings: crate::InstallSettings,
-    ) -> Result<crate::InstallPlan, crate::planner::PlannerError> {
+    fn default() -> Result<Self, PlannerError> {
+        Ok(Self {
+            settings: InstallSettings::default()?,
+        })
+    }
+
+    async fn plan(self) -> Result<crate::InstallPlan, crate::planner::PlannerError> {
         let root_disk = {
             let buf =
                 execute_command(Command::new("/usr/sbin/diskutil").args(["info", "-plist", "/"]))
@@ -39,8 +46,7 @@ impl Plannable for DarwinMultiUser {
         let volume_label = "Nix Store".into();
 
         Ok(InstallPlan {
-            planner: Self.into(),
-            settings: settings.clone(),
+            planner: self.clone().into(),
             actions: vec![
                 // Create Volume step:
                 //
@@ -50,11 +56,11 @@ impl Plannable for DarwinMultiUser {
                     .await
                     .map(Action::from)
                     .map_err(ActionError::from)?,
-                ProvisionNix::plan(settings.clone())
+                ProvisionNix::plan(self.settings.clone())
                     .await
                     .map(Action::from)
                     .map_err(ActionError::from)?,
-                ConfigureNix::plan(settings)
+                ConfigureNix::plan(self.settings)
                     .await
                     .map(Action::from)
                     .map_err(ActionError::from)?,
@@ -67,8 +73,8 @@ impl Plannable for DarwinMultiUser {
     }
 }
 
-impl Into<Planner> for DarwinMultiUser {
-    fn into(self) -> Planner {
-        Planner::DarwinMultiUser
+impl Into<BuiltinPlanner> for DarwinMulti {
+    fn into(self) -> BuiltinPlanner {
+        BuiltinPlanner::DarwinMulti(self)
     }
 }
