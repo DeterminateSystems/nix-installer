@@ -25,7 +25,7 @@ impl CommandExecute for Plan {
 
         let planner = match planner {
             Some(planner) => planner,
-            None => BuiltinPlanner::default()?,
+            None => BuiltinPlanner::default().await?,
         };
 
         let install_plan = planner.plan().await?;

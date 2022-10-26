@@ -1,5 +1,4 @@
 use clap::ArgAction;
-use derivative::Derivative;
 use url::Url;
 
 pub const NIX_X64_64_LINUX_URL: &str =
@@ -13,7 +12,7 @@ pub const NIX_AARCH64_DARWIN_URL: &str =
 
 #[serde_with::serde_as]
 #[derive(Debug, serde::Deserialize, serde::Serialize, Clone, clap::Parser)]
-pub struct InstallSettings {
+pub struct CommonSettings {
     /// Channel(s) to add by default, pass multiple times for multiple channels
     #[clap(
         long,
@@ -24,6 +23,7 @@ pub struct InstallSettings {
         default_value = "nixpkgs=https://nixos.org/channels/nixpkgs-unstable",
     )]
     pub(crate) channels: Vec<crate::cli::arg::ChannelValue>,
+
     /// Modify the user profile to automatically load nix
     #[clap(
         long,
@@ -34,21 +34,27 @@ pub struct InstallSettings {
         name = "no-modify-profile"
     )]
     pub(crate) modify_profile: bool,
+
     /// Number of build users to create
     #[clap(long, default_value = "32", env = "HARMONIC_DAEMON_USER_COUNT")]
     pub(crate) daemon_user_count: usize,
+
     #[clap(long, default_value = "nixbld", env = "HARMONIC_NIX_BUILD_GROUP_NAME")]
     pub(crate) nix_build_group_name: String,
+
     #[clap(long, default_value_t = 3000, env = "HARMONIC_NIX_BUILD_GROUP_ID")]
     pub(crate) nix_build_group_id: usize,
+
     #[clap(long, env = "HARMONIC_NIX_BUILD_USER_PREFIX")]
     #[cfg_attr(target_os = "macos", clap(default_value = "_nixbld"))]
     #[cfg_attr(target_os = "linux", clap(default_value = "nixbld"))]
     pub(crate) nix_build_user_prefix: String,
+
     #[clap(long, env = "HARMONIC_NIX_BUILD_USER_ID_BASE")]
     #[cfg_attr(target_os = "macos", clap(default_value_t = 300))]
     #[cfg_attr(target_os = "linux", clap(default_value_t = 3000))]
     pub(crate) nix_build_user_id_base: usize,
+
     #[clap(long, env = "HARMONIC_NIX_PACKAGE_URL")]
     #[cfg_attr(
         all(target_os = "macos", target_arch = "x86_64"),
@@ -75,8 +81,10 @@ pub struct InstallSettings {
         )
     )]
     pub(crate) nix_package_url: Url,
+
     #[clap(long, env = "HARMONIC_EXTRA_CONF")]
     pub(crate) extra_conf: Option<String>,
+
     #[clap(
         long,
         action(ArgAction::SetTrue),
@@ -87,7 +95,7 @@ pub struct InstallSettings {
     pub(crate) force: bool,
 }
 
-impl InstallSettings {
+impl CommonSettings {
     pub fn default() -> Result<Self, InstallSettingsError> {
         let url;
         let nix_build_user_prefix;
@@ -140,7 +148,7 @@ impl InstallSettings {
 }
 
 // Builder Pattern
-impl InstallSettings {
+impl CommonSettings {
     pub fn daemon_user_count(&mut self, count: usize) -> &mut Self {
         self.daemon_user_count = count;
         self

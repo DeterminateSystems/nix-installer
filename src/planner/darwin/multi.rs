@@ -1,5 +1,6 @@
 use std::io::Cursor;
 
+use clap::ArgAction;
 use tokio::process::Command;
 
 use crate::{
@@ -11,13 +12,34 @@ use crate::{
     execute_command,
     os::darwin::DiskUtilOutput,
     planner::{Plannable, PlannerError},
-    BuiltinPlanner, InstallPlan, InstallSettings,
+    BuiltinPlanner, CommonSettings, InstallPlan,
 };
 
 #[derive(Debug, Clone, clap::Parser, serde::Serialize, serde::Deserialize)]
 pub struct DarwinMulti {
     #[clap(flatten)]
-    settings: InstallSettings,
+    settings: CommonSettings,
+    #[clap(
+        long,
+        action(ArgAction::SetTrue),
+        default_value = "false",
+        env = "HARMONIC_VOLUME_ENCRYPT"
+    )]
+    volume_encrypt: bool,
+    #[clap(long, default_value = "Nix Store", env = "HARMONIC_VOLUME_LABEL")]
+    volume_label: String,
+    #[clap(long, env = "HARMONIC_ROOT_DISK")]
+    root_disk: Option<String>,
+}
+
+async fn default_root_disk() -> Result<String, PlannerError> {
+    let buf = execute_command(Command::new("/usr/sbin/diskutil").args(["info", "-plist", "/"]))
+        .await
+        .unwrap()
+        .stdout;
+    let the_plist: DiskUtilOutput = plist::from_reader(Cursor::new(buf))?;
+
+    Ok(the_plist.parent_whole_disk)
 }
 
 #[async_trait::async_trait]
@@ -25,9 +47,12 @@ impl Plannable for DarwinMulti {
     const DISPLAY_STRING: &'static str = "Darwin Multi-User";
     const SLUG: &'static str = "darwin-multi";
 
-    fn default() -> Result<Self, PlannerError> {
+    async fn default() -> Result<Self, PlannerError> {
         Ok(Self {
-            settings: InstallSettings::default()?,
+            settings: CommonSettings::default()?,
+            root_disk: Some(default_root_disk().await?),
+            volume_encrypt: false,
+            volume_label: "Nix Store".into(),
         })
     }
 

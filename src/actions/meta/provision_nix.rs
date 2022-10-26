@@ -6,7 +6,7 @@ use tokio::task::JoinError;
 use crate::actions::base::{
     CreateDirectoryError, FetchNix, FetchNixError, MoveUnpackedNix, MoveUnpackedNixError,
 };
-use crate::InstallSettings;
+use crate::CommonSettings;
 
 use crate::actions::{Action, ActionDescription, ActionState, Actionable};
 
@@ -23,7 +23,7 @@ pub struct ProvisionNix {
 
 impl ProvisionNix {
     #[tracing::instrument(skip_all)]
-    pub async fn plan(settings: InstallSettings) -> Result<Self, ProvisionNixError> {
+    pub async fn plan(settings: CommonSettings) -> Result<Self, ProvisionNixError> {
         let fetch_nix = FetchNix::plan(
             settings.nix_package_url.clone(),
             PathBuf::from("/nix/temp-install-dir"),

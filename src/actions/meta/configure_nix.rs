@@ -1,7 +1,7 @@
 use reqwest::Url;
 use serde::Serialize;
 
-use crate::InstallSettings;
+use crate::CommonSettings;
 use crate::{
     actions::{
         base::{
@@ -31,7 +31,7 @@ pub struct ConfigureNix {
 
 impl ConfigureNix {
     #[tracing::instrument(skip_all)]
-    pub async fn plan(settings: InstallSettings) -> Result<Self, ConfigureNixError> {
+    pub async fn plan(settings: CommonSettings) -> Result<Self, ConfigureNixError> {
         let channels: Vec<(String, Url)> = settings
             .channels
             .iter()

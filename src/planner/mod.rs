@@ -12,22 +12,22 @@ pub enum BuiltinPlanner {
 }
 
 impl BuiltinPlanner {
-    pub fn default() -> Result<Self, PlannerError> {
+    pub async fn default() -> Result<Self, PlannerError> {
         use target_lexicon::{Architecture, OperatingSystem};
         match (Architecture::host(), OperatingSystem::host()) {
             (Architecture::X86_64, OperatingSystem::Linux) => {
-                Ok(Self::LinuxMulti(linux::LinuxMulti::default()?))
+                Ok(Self::LinuxMulti(linux::LinuxMulti::default().await?))
             },
             (Architecture::Aarch64(_), OperatingSystem::Linux) => {
-                Ok(Self::LinuxMulti(linux::LinuxMulti::default()?))
+                Ok(Self::LinuxMulti(linux::LinuxMulti::default().await?))
             },
             (Architecture::X86_64, OperatingSystem::MacOSX { .. })
             | (Architecture::X86_64, OperatingSystem::Darwin) => {
-                Ok(Self::DarwinMulti(darwin::DarwinMulti::default()?))
+                Ok(Self::DarwinMulti(darwin::DarwinMulti::default().await?))
             },
             (Architecture::Aarch64(_), OperatingSystem::MacOSX { .. })
             | (Architecture::Aarch64(_), OperatingSystem::Darwin) => {
-                Ok(Self::DarwinMulti(darwin::DarwinMulti::default()?))
+                Ok(Self::DarwinMulti(darwin::DarwinMulti::default().await?))
             },
             _ => Err(PlannerError::UnsupportedArchitecture(target_lexicon::HOST)),
         }
@@ -50,7 +50,7 @@ where
     const DISPLAY_STRING: &'static str;
     const SLUG: &'static str;
 
-    fn default() -> Result<Self, PlannerError>;
+    async fn default() -> Result<Self, PlannerError>;
     async fn plan(self) -> Result<InstallPlan, PlannerError>;
 }
 
@@ -66,4 +66,6 @@ pub enum PlannerError {
     ),
     #[error(transparent)]
     InstallSettings(#[from] InstallSettingsError),
+    #[error(transparent)]
+    Plist(#[from] plist::Error),
 }

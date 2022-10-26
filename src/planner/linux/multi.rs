@@ -5,13 +5,13 @@ use crate::{
         Action, ActionError,
     },
     planner::{Plannable, PlannerError},
-    BuiltinPlanner, InstallPlan, InstallSettings,
+    BuiltinPlanner, CommonSettings, InstallPlan,
 };
 
 #[derive(Debug, Clone, clap::Parser, serde::Serialize, serde::Deserialize)]
 pub struct LinuxMulti {
     #[clap(flatten)]
-    settings: InstallSettings,
+    settings: CommonSettings,
 }
 
 #[async_trait::async_trait]
@@ -19,9 +19,9 @@ impl Plannable for LinuxMulti {
     const DISPLAY_STRING: &'static str = "Linux Multi-User";
     const SLUG: &'static str = "linux-multi";
 
-    fn default() -> Result<Self, PlannerError> {
+    async fn default() -> Result<Self, PlannerError> {
         Ok(Self {
-            settings: InstallSettings::default()?,
+            settings: CommonSettings::default()?,
         })
     }
 

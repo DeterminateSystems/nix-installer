@@ -13,7 +13,7 @@ pub use error::HarmonicError;
 pub use plan::InstallPlan;
 pub use planner::BuiltinPlanner;
 use serde::Serializer;
-pub use settings::InstallSettings;
+pub use settings::CommonSettings;
 
 use tokio::process::Command;
 

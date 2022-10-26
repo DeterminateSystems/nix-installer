@@ -1,7 +1,7 @@
 use serde::Serialize;
 use tokio::task::{JoinError, JoinSet};
 
-use crate::InstallSettings;
+use crate::CommonSettings;
 
 use crate::actions::base::{CreateGroup, CreateGroupError, CreateUserError};
 use crate::actions::{Action, ActionDescription, ActionState, Actionable, CreateUser};
@@ -20,7 +20,7 @@ pub struct CreateUsersAndGroup {
 
 impl CreateUsersAndGroup {
     #[tracing::instrument(skip_all)]
-    pub async fn plan(settings: InstallSettings) -> Result<Self, CreateUsersAndGroupError> {
+    pub async fn plan(settings: CommonSettings) -> Result<Self, CreateUsersAndGroupError> {
         // TODO(@hoverbear): CHeck if it exist, error if so
         let create_group = CreateGroup::plan(
             settings.nix_build_group_name.clone(),
