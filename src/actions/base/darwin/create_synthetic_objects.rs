@@ -3,7 +3,7 @@ use tokio::process::Command;
 
 use crate::execute_command;
 
-use crate::actions::{Action, ActionDescription, ActionState, Actionable};
+use crate::actions::{ActionDescription, ActionError, ActionState, Actionable};
 
 #[derive(Debug, serde::Deserialize, serde::Serialize, Clone)]
 pub struct CreateSyntheticObjects {
@@ -12,7 +12,7 @@ pub struct CreateSyntheticObjects {
 
 impl CreateSyntheticObjects {
     #[tracing::instrument(skip_all)]
-    pub async fn plan() -> Result<Self, CreateSyntheticObjectsError> {
+    pub async fn plan() -> Result<Self, Box<dyn std::error::Error + Send + Sync>> {
         Ok(Self {
             action_state: ActionState::Uncompleted,
         })
@@ -20,9 +20,8 @@ impl CreateSyntheticObjects {
 }
 
 #[async_trait::async_trait]
+#[typetag::serde(name = "create-synthetic-objects")]
 impl Actionable for CreateSyntheticObjects {
-    type Error = CreateSyntheticObjectsError;
-
     fn describe_execute(&self) -> Vec<ActionDescription> {
         if self.action_state == ActionState::Completed {
             vec![]
@@ -35,7 +34,7 @@ impl Actionable for CreateSyntheticObjects {
     }
 
     #[tracing::instrument(skip_all, fields())]
-    async fn execute(&mut self) -> Result<(), Self::Error> {
+    async fn execute(&mut self) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
         let Self { action_state } = self;
         if *action_state == ActionState::Completed {
             tracing::trace!("Already completed: Creating synthetic objects");
@@ -74,7 +73,7 @@ impl Actionable for CreateSyntheticObjects {
     }
 
     #[tracing::instrument(skip_all, fields())]
-    async fn revert(&mut self) -> Result<(), Self::Error> {
+    async fn revert(&mut self) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
         let Self { action_state } = self;
         if *action_state == ActionState::Uncompleted {
             tracing::trace!("Already reverted: Refreshing synthetic objects");
@@ -99,12 +98,6 @@ impl Actionable for CreateSyntheticObjects {
         tracing::trace!("Refreshed synthetic objects");
         *action_state = ActionState::Completed;
         Ok(())
-    }
-}
-
-impl From<CreateSyntheticObjects> for Action {
-    fn from(v: CreateSyntheticObjects) -> Self {
-        Action::DarwinCreateSyntheticObjects(v)
     }
 }
 

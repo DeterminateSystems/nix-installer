@@ -12,12 +12,12 @@ use crate::{
             ConfigureShellProfile, ConfigureShellProfileError, PlaceChannelConfiguration,
             PlaceChannelConfigurationError, PlaceNixConfiguration, PlaceNixConfigurationError,
         },
-        Action, ActionState,
+        ActionState,
     },
     cli::arg::ChannelValue,
 };
 
-use crate::actions::{ActionDescription, Actionable};
+use crate::actions::{ActionDescription, ActionError, Actionable};
 
 #[derive(Debug, serde::Deserialize, serde::Serialize, Clone)]
 pub struct ConfigureNix {
@@ -31,7 +31,9 @@ pub struct ConfigureNix {
 
 impl ConfigureNix {
     #[tracing::instrument(skip_all)]
-    pub async fn plan(settings: CommonSettings) -> Result<Self, ConfigureNixError> {
+    pub async fn plan(
+        settings: CommonSettings,
+    ) -> Result<Self, Box<dyn std::error::Error + Send + Sync>> {
         let channels: Vec<(String, Url)> = settings
             .channels
             .iter()
@@ -39,7 +41,9 @@ impl ConfigureNix {
             .collect();
 
         let setup_default_profile =
-            SetupDefaultProfile::plan(channels.iter().map(|(v, _k)| v.clone()).collect()).await?;
+            SetupDefaultProfile::plan(channels.iter().map(|(v, _k)| v.clone()).collect())
+                .await
+                .map_err(|e| e.boxed())?;
 
         let configure_shell_profile = if settings.modify_profile {
             Some(ConfigureShellProfile::plan().await?)
@@ -68,8 +72,8 @@ impl ConfigureNix {
 }
 
 #[async_trait::async_trait]
+#[typetag::serde(name = "configure-nix")]
 impl Actionable for ConfigureNix {
-    type Error = ConfigureNixError;
     fn describe_execute(&self) -> Vec<ActionDescription> {
         let Self {
             setup_default_profile,
@@ -95,7 +99,7 @@ impl Actionable for ConfigureNix {
     }
 
     #[tracing::instrument(skip_all)]
-    async fn execute(&mut self) -> Result<(), Self::Error> {
+    async fn execute(&mut self) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
         let Self {
             setup_default_profile,
             configure_nix_daemon_service,
@@ -113,51 +117,16 @@ impl Actionable for ConfigureNix {
 
         if let Some(configure_shell_profile) = configure_shell_profile {
             tokio::try_join!(
-                async move {
-                    setup_default_profile
-                        .execute()
-                        .await
-                        .map_err(|e| ConfigureNixError::from(e))
-                },
-                async move {
-                    place_nix_configuration
-                        .execute()
-                        .await
-                        .map_err(|e| ConfigureNixError::from(e))
-                },
-                async move {
-                    place_channel_configuration
-                        .execute()
-                        .await
-                        .map_err(|e| ConfigureNixError::from(e))
-                },
-                async move {
-                    configure_shell_profile
-                        .execute()
-                        .await
-                        .map_err(|e| ConfigureNixError::from(e))
-                },
+                async move { setup_default_profile.execute().await },
+                async move { place_nix_configuration.execute().await },
+                async move { place_channel_configuration.execute().await },
+                async move { configure_shell_profile.execute().await },
             )?;
         } else {
             tokio::try_join!(
-                async move {
-                    setup_default_profile
-                        .execute()
-                        .await
-                        .map_err(|e| ConfigureNixError::from(e))
-                },
-                async move {
-                    place_nix_configuration
-                        .execute()
-                        .await
-                        .map_err(|e| ConfigureNixError::from(e))
-                },
-                async move {
-                    place_channel_configuration
-                        .execute()
-                        .await
-                        .map_err(|e| ConfigureNixError::from(e))
-                },
+                async move { setup_default_profile.execute().await },
+                async move { place_nix_configuration.execute().await },
+                async move { place_channel_configuration.execute().await },
             )?;
         };
         configure_nix_daemon_service.execute().await?;
@@ -194,7 +163,7 @@ impl Actionable for ConfigureNix {
     }
 
     #[tracing::instrument(skip_all)]
-    async fn revert(&mut self) -> Result<(), Self::Error> {
+    async fn revert(&mut self) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
         let Self {
             setup_default_profile,
             configure_nix_daemon_service,
@@ -222,44 +191,4 @@ impl Actionable for ConfigureNix {
         *action_state = ActionState::Uncompleted;
         Ok(())
     }
-}
-
-impl From<ConfigureNix> for Action {
-    fn from(v: ConfigureNix) -> Self {
-        Action::ConfigureNix(v)
-    }
-}
-
-#[derive(Debug, thiserror::Error, Serialize)]
-pub enum ConfigureNixError {
-    #[error("Setting up default profile")]
-    SetupDefaultProfile(
-        #[source]
-        #[from]
-        SetupDefaultProfileError,
-    ),
-    #[error("Placing Nix configuration")]
-    PlaceNixConfiguration(
-        #[source]
-        #[from]
-        PlaceNixConfigurationError,
-    ),
-    #[error("Placing channel configuration")]
-    PlaceChannelConfiguration(
-        #[source]
-        #[from]
-        PlaceChannelConfigurationError,
-    ),
-    #[error("Configuring Nix daemon")]
-    ConfigureNixDaemonService(
-        #[source]
-        #[from]
-        ConfigureNixDaemonServiceError,
-    ),
-    #[error("Configuring shell profile")]
-    ConfigureShellProfile(
-        #[source]
-        #[from]
-        ConfigureShellProfileError,
-    ),
 }

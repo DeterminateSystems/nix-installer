@@ -5,7 +5,7 @@ use reqwest::Url;
 use serde::Serialize;
 use tokio::task::JoinError;
 
-use crate::actions::{Action, ActionDescription, ActionState, Actionable};
+use crate::actions::{ActionDescription, ActionError, ActionState, Actionable};
 
 #[derive(Debug, serde::Deserialize, serde::Serialize, Clone)]
 pub struct FetchNix {
@@ -29,9 +29,8 @@ impl FetchNix {
 }
 
 #[async_trait::async_trait]
+#[typetag::serde(name = "fetch-nix")]
 impl Actionable for FetchNix {
-    type Error = FetchNixError;
-
     fn describe_execute(&self) -> Vec<ActionDescription> {
         let Self {
             url,
@@ -52,7 +51,7 @@ impl Actionable for FetchNix {
         url = %self.url,
         dest = %self.dest.display(),
     ))]
-    async fn execute(&mut self) -> Result<(), Self::Error> {
+    async fn execute(&mut self) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
         let Self {
             url,
             dest,
@@ -66,8 +65,11 @@ impl Actionable for FetchNix {
 
         let res = reqwest::get(url.clone())
             .await
-            .map_err(Self::Error::Reqwest)?;
-        let bytes = res.bytes().await.map_err(Self::Error::Reqwest)?;
+            .map_err(|e| FetchNixError::Reqwest(e).boxed())?;
+        let bytes = res
+            .bytes()
+            .await
+            .map_err(|e| FetchNixError::Reqwest(e).boxed())?;
         // TODO(@Hoverbear): Pick directory
         tracing::trace!("Unpacking tar.xz");
         let dest_clone = dest.clone();
@@ -76,7 +78,7 @@ impl Actionable for FetchNix {
         let mut archive = tar::Archive::new(decoder);
         archive
             .unpack(&dest_clone)
-            .map_err(Self::Error::Unarchive)?;
+            .map_err(|e| FetchNixError::Unarchive(e).boxed())?;
 
         tracing::trace!("Fetched Nix");
         *action_state = ActionState::Completed;
@@ -95,7 +97,7 @@ impl Actionable for FetchNix {
         url = %self.url,
         dest = %self.dest.display(),
     ))]
-    async fn revert(&mut self) -> Result<(), Self::Error> {
+    async fn revert(&mut self) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
         let Self {
             url: _,
             dest: _,
@@ -109,12 +111,6 @@ impl Actionable for FetchNix {
         tracing::debug!("Unfetch Nix (noop)");
         *action_state = ActionState::Uncompleted;
         Ok(())
-    }
-}
-
-impl From<FetchNix> for Action {
-    fn from(v: FetchNix) -> Self {
-        Action::FetchNix(v)
     }
 }
 

@@ -10,7 +10,7 @@ mod place_channel_configuration;
 mod place_nix_configuration;
 mod provision_nix;
 
-pub use configure_nix::{ConfigureNix, ConfigureNixError};
+pub use configure_nix::ConfigureNix;
 pub use configure_shell_profile::{ConfigureShellProfile, ConfigureShellProfileError};
 pub use create_nix_tree::{CreateNixTree, CreateNixTreeError};
 pub use create_systemd_sysext::{CreateSystemdSysext, CreateSystemdSysextError};

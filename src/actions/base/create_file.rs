@@ -6,7 +6,7 @@ use tokio::{
     io::AsyncWriteExt,
 };
 
-use crate::actions::{Action, ActionState};
+use crate::actions::{ActionError, ActionState};
 
 use crate::actions::{ActionDescription, Actionable};
 
@@ -30,11 +30,11 @@ impl CreateFile {
         mode: impl Into<Option<u32>>,
         buf: String,
         force: bool,
-    ) -> Result<Self, CreateFileError> {
+    ) -> Result<Self, Box<dyn std::error::Error + Send + Sync>> {
         let path = path.as_ref().to_path_buf();
 
         if path.exists() && !force {
-            return Err(CreateFileError::Exists(path.to_path_buf()));
+            return Err(CreateFileError::Exists(path.to_path_buf()).boxed());
         }
 
         Ok(Self {
@@ -50,9 +50,8 @@ impl CreateFile {
 }
 
 #[async_trait::async_trait]
+#[typetag::serde(name = "create-file")]
 impl Actionable for CreateFile {
-    type Error = CreateFileError;
-
     fn describe_execute(&self) -> Vec<ActionDescription> {
         let Self {
             path,
@@ -79,7 +78,7 @@ impl Actionable for CreateFile {
         group = self.group,
         mode = self.mode.map(|v| tracing::field::display(format!("{:#o}", v))),
     ))]
-    async fn execute(&mut self) -> Result<(), Self::Error> {
+    async fn execute(&mut self) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
         let Self {
             path,
             user,
@@ -105,17 +104,17 @@ impl Actionable for CreateFile {
         let mut file = options
             .open(&path)
             .await
-            .map_err(|e| Self::Error::OpenFile(path.to_owned(), e))?;
+            .map_err(|e| CreateFileError::OpenFile(path.to_owned(), e).boxed())?;
 
         file.write_all(buf.as_bytes())
             .await
-            .map_err(|e| Self::Error::WriteFile(path.to_owned(), e))?;
+            .map_err(|e| CreateFileError::WriteFile(path.to_owned(), e).boxed())?;
 
         let gid = if let Some(group) = group {
             Some(
                 Group::from_name(group.as_str())
-                    .map_err(|e| Self::Error::GroupId(group.clone(), e))?
-                    .ok_or(Self::Error::NoGroup(group.clone()))?
+                    .map_err(|e| CreateFileError::GroupId(group.clone(), e).boxed())?
+                    .ok_or(CreateFileError::NoGroup(group.clone()).boxed())?
                     .gid,
             )
         } else {
@@ -124,14 +123,14 @@ impl Actionable for CreateFile {
         let uid = if let Some(user) = user {
             Some(
                 User::from_name(user.as_str())
-                    .map_err(|e| Self::Error::UserId(user.clone(), e))?
-                    .ok_or(Self::Error::NoUser(user.clone()))?
+                    .map_err(|e| CreateFileError::UserId(user.clone(), e).boxed())?
+                    .ok_or(CreateFileError::NoUser(user.clone()).boxed())?
                     .uid,
             )
         } else {
             None
         };
-        chown(path, uid, gid).map_err(|e| Self::Error::Chown(path.clone(), e))?;
+        chown(path, uid, gid).map_err(|e| CreateFileError::Chown(path.clone(), e).boxed())?;
 
         tracing::trace!("Created file");
         *action_state = ActionState::Completed;
@@ -164,7 +163,7 @@ impl Actionable for CreateFile {
         group = self.group,
         mode = self.mode.map(|v| tracing::field::display(format!("{:#o}", v))),
     ))]
-    async fn revert(&mut self) -> Result<(), Self::Error> {
+    async fn revert(&mut self) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
         let Self {
             path,
             user: _,
@@ -182,17 +181,11 @@ impl Actionable for CreateFile {
 
         remove_file(&path)
             .await
-            .map_err(|e| Self::Error::RemoveFile(path.to_owned(), e))?;
+            .map_err(|e| CreateFileError::RemoveFile(path.to_owned(), e).boxed())?;
 
         tracing::trace!("Deleted file");
         *action_state = ActionState::Uncompleted;
         Ok(())
-    }
-}
-
-impl From<CreateFile> for Action {
-    fn from(v: CreateFile) -> Self {
-        Action::CreateFile(v)
     }
 }
 

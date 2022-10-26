@@ -12,7 +12,7 @@ pub enum BuiltinPlanner {
 }
 
 impl BuiltinPlanner {
-    pub async fn default() -> Result<Self, PlannerError> {
+    pub async fn default() -> Result<Self, BuiltinPlannerError> {
         use target_lexicon::{Architecture, OperatingSystem};
         match (Architecture::host(), OperatingSystem::host()) {
             (Architecture::X86_64, OperatingSystem::Linux) => {
@@ -29,11 +29,13 @@ impl BuiltinPlanner {
             | (Architecture::Aarch64(_), OperatingSystem::Darwin) => {
                 Ok(Self::DarwinMulti(darwin::DarwinMulti::default().await?))
             },
-            _ => Err(PlannerError::UnsupportedArchitecture(target_lexicon::HOST)),
+            _ => Err(BuiltinPlannerError::UnsupportedArchitecture(
+                target_lexicon::HOST,
+            )),
         }
     }
 
-    pub async fn plan(self) -> Result<InstallPlan, PlannerError> {
+    pub async fn plan(self) -> Result<InstallPlan, BuiltinPlannerError> {
         match self {
             BuiltinPlanner::LinuxMulti(planner) => planner.plan().await,
             BuiltinPlanner::DarwinMulti(planner) => planner.plan().await,
@@ -43,26 +45,27 @@ impl BuiltinPlanner {
 }
 
 #[async_trait::async_trait]
-trait Plannable: Into<BuiltinPlanner>
+trait Plannable
 where
     Self: Sized,
 {
     const DISPLAY_STRING: &'static str;
     const SLUG: &'static str;
+    type Error: std::error::Error;
 
-    async fn default() -> Result<Self, PlannerError>;
-    async fn plan(self) -> Result<InstallPlan, PlannerError>;
+    async fn default() -> Result<Self, Self::Error>;
+    async fn plan(self) -> Result<InstallPlan, Self::Error>;
 }
 
 #[derive(thiserror::Error, Debug)]
-pub enum PlannerError {
+pub enum BuiltinPlannerError {
     #[error("Harmonic does not have a default planner for the `{0}` architecture right now, pass a specific archetype")]
     UnsupportedArchitecture(target_lexicon::Triple),
     #[error("Error executing action")]
     ActionError(
         #[source]
         #[from]
-        ActionError,
+        Box<dyn std::error::Error + Send + Sync>,
     ),
     #[error(transparent)]
     InstallSettings(#[from] InstallSettingsError),

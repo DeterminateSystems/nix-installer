@@ -1,5 +1,5 @@
 use crate::{
-    actions::{Action, ActionState},
+    actions::{ActionError, ActionState},
     execute_command, set_env,
 };
 
@@ -26,9 +26,8 @@ impl SetupDefaultProfile {
 }
 
 #[async_trait::async_trait]
+#[typetag::serde(name = "setup-default-profile")]
 impl Actionable for SetupDefaultProfile {
-    type Error = SetupDefaultProfileError;
-
     fn describe_execute(&self) -> Vec<ActionDescription> {
         if self.action_state == ActionState::Completed {
             vec![]
@@ -43,7 +42,7 @@ impl Actionable for SetupDefaultProfile {
     #[tracing::instrument(skip_all, fields(
         channels = %self.channels.join(","),
     ))]
-    async fn execute(&mut self) -> Result<(), Self::Error> {
+    async fn execute(&mut self) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
         let Self {
             channels,
             action_state,
@@ -57,7 +56,9 @@ impl Actionable for SetupDefaultProfile {
         // Find an `nix` package
         let nix_pkg_glob = "/nix/store/*-nix-*";
         let mut found_nix_pkg = None;
-        for entry in glob(nix_pkg_glob).map_err(Self::Error::GlobPatternError)? {
+        for entry in
+            glob(nix_pkg_glob).map_err(|e| SetupDefaultProfileError::GlobPatternError(e).boxed())?
+        {
             match entry {
                 Ok(path) => {
                     // TODO(@Hoverbear): Should probably ensure is unique
@@ -70,13 +71,15 @@ impl Actionable for SetupDefaultProfile {
         let nix_pkg = if let Some(nix_pkg) = found_nix_pkg {
             nix_pkg
         } else {
-            return Err(Self::Error::NoNssCacert); // TODO(@hoverbear): Fix this error
+            return Err(Box::new(SetupDefaultProfileError::NoNssCacert)); // TODO(@hoverbear): Fix this error
         };
 
         // Find an `nss-cacert` package, add it too.
         let nss_ca_cert_pkg_glob = "/nix/store/*-nss-cacert-*";
         let mut found_nss_ca_cert_pkg = None;
-        for entry in glob(nss_ca_cert_pkg_glob).map_err(Self::Error::GlobPatternError)? {
+        for entry in glob(nss_ca_cert_pkg_glob)
+            .map_err(|e| SetupDefaultProfileError::GlobPatternError(e).boxed())?
+        {
             match entry {
                 Ok(path) => {
                     // TODO(@Hoverbear): Should probably ensure is unique
@@ -89,7 +92,7 @@ impl Actionable for SetupDefaultProfile {
         let nss_ca_cert_pkg = if let Some(nss_ca_cert_pkg) = found_nss_ca_cert_pkg {
             nss_ca_cert_pkg
         } else {
-            return Err(Self::Error::NoNssCacert);
+            return Err(Box::new(SetupDefaultProfileError::NoNssCacert));
         };
 
         // Install `nix` itself into the store
@@ -97,14 +100,17 @@ impl Actionable for SetupDefaultProfile {
             Command::new(nix_pkg.join("bin/nix-env"))
                 .arg("-i")
                 .arg(&nix_pkg)
-                .env("HOME", dirs::home_dir().ok_or(Self::Error::NoRootHome)?)
+                .env(
+                    "HOME",
+                    dirs::home_dir().ok_or_else(|| SetupDefaultProfileError::NoRootHome.boxed())?,
+                )
                 .env(
                     "NIX_SSL_CERT_FILE",
                     nss_ca_cert_pkg.join("etc/ssl/certs/ca-bundle.crt"),
                 ), /* This is apparently load bearing... */
         )
         .await
-        .map_err(SetupDefaultProfileError::Command)?;
+        .map_err(|e| SetupDefaultProfileError::Command(e).boxed())?;
 
         // Install `nss-cacert` into the store
         execute_command(
@@ -117,7 +123,7 @@ impl Actionable for SetupDefaultProfile {
                 ),
         )
         .await
-        .map_err(SetupDefaultProfileError::Command)?;
+        .map_err(|e| SetupDefaultProfileError::Command(e).boxed())?;
 
         set_env(
             "NIX_SSL_CERT_FILE",
@@ -137,7 +143,7 @@ impl Actionable for SetupDefaultProfile {
 
             execute_command(&mut command)
                 .await
-                .map_err(SetupDefaultProfileError::Command)?;
+                .map_err(|e| SetupDefaultProfileError::Command(e).boxed())?;
         }
 
         tracing::trace!("Set up default profile");
@@ -159,7 +165,7 @@ impl Actionable for SetupDefaultProfile {
     #[tracing::instrument(skip_all, fields(
         channels = %self.channels.join(","),
     ))]
-    async fn revert(&mut self) -> Result<(), Self::Error> {
+    async fn revert(&mut self) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
         let Self {
             channels: _,
             action_state,
@@ -175,12 +181,6 @@ impl Actionable for SetupDefaultProfile {
         tracing::trace!("Unset default profile (mostly noop)");
         *action_state = ActionState::Completed;
         Ok(())
-    }
-}
-
-impl From<SetupDefaultProfile> for Action {
-    fn from(v: SetupDefaultProfile) -> Self {
-        Action::SetupDefaultProfile(v)
     }
 }
 

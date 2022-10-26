@@ -8,7 +8,7 @@ use crate::actions::base::{
 };
 use crate::CommonSettings;
 
-use crate::actions::{Action, ActionDescription, ActionState, Actionable};
+use crate::actions::{ActionDescription, ActionError, ActionState, Actionable};
 
 use super::{CreateNixTree, CreateNixTreeError, CreateUsersAndGroup, CreateUsersAndGroupError};
 
@@ -23,16 +23,22 @@ pub struct ProvisionNix {
 
 impl ProvisionNix {
     #[tracing::instrument(skip_all)]
-    pub async fn plan(settings: CommonSettings) -> Result<Self, ProvisionNixError> {
+    pub async fn plan(
+        settings: CommonSettings,
+    ) -> Result<Self, Box<dyn std::error::Error + Send + Sync>> {
         let fetch_nix = FetchNix::plan(
             settings.nix_package_url.clone(),
             PathBuf::from("/nix/temp-install-dir"),
         )
-        .await?;
-        let create_users_and_group = CreateUsersAndGroup::plan(settings.clone()).await?;
+        .await
+        .map_err(|e| e.boxed())?;
+        let create_users_and_group = CreateUsersAndGroup::plan(settings.clone())
+            .await
+            .map_err(|e| e.boxed())?;
         let create_nix_tree = CreateNixTree::plan().await?;
-        let move_unpacked_nix =
-            MoveUnpackedNix::plan(PathBuf::from("/nix/temp-install-dir")).await?;
+        let move_unpacked_nix = MoveUnpackedNix::plan(PathBuf::from("/nix/temp-install-dir"))
+            .await
+            .map_err(|e| e.boxed())?;
         Ok(Self {
             fetch_nix,
             create_users_and_group,
@@ -44,8 +50,8 @@ impl ProvisionNix {
 }
 
 #[async_trait::async_trait]
+#[typetag::serde(name = "provision-nix")]
 impl Actionable for ProvisionNix {
-    type Error = ProvisionNixError;
     fn describe_execute(&self) -> Vec<ActionDescription> {
         let Self {
             fetch_nix,
@@ -68,7 +74,7 @@ impl Actionable for ProvisionNix {
     }
 
     #[tracing::instrument(skip_all)]
-    async fn execute(&mut self) -> Result<(), Self::Error> {
+    async fn execute(&mut self) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
         let Self {
             fetch_nix,
             create_nix_tree,
@@ -87,16 +93,13 @@ impl Actionable for ProvisionNix {
         let mut fetch_nix_clone = fetch_nix.clone();
         let fetch_nix_handle = tokio::task::spawn(async {
             fetch_nix_clone.execute().await?;
-            Result::<_, Self::Error>::Ok(fetch_nix_clone)
+            Result::<_, Box<dyn std::error::Error + Send + Sync>>::Ok(fetch_nix_clone)
         });
 
         create_users_and_group.execute().await?;
-        create_nix_tree
-            .execute()
-            .await
-            .map_err(ProvisionNixError::from)?;
+        create_nix_tree.execute().await?;
 
-        *fetch_nix = fetch_nix_handle.await.map_err(ProvisionNixError::from)??;
+        *fetch_nix = fetch_nix_handle.await.map_err(|e| e.boxed())??;
         move_unpacked_nix.execute().await?;
 
         tracing::trace!("Provisioned Nix");
@@ -125,7 +128,7 @@ impl Actionable for ProvisionNix {
     }
 
     #[tracing::instrument(skip_all)]
-    async fn revert(&mut self) -> Result<(), Self::Error> {
+    async fn revert(&mut self) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
         let Self {
             fetch_nix,
             create_nix_tree,
@@ -144,19 +147,19 @@ impl Actionable for ProvisionNix {
         let mut fetch_nix_clone = fetch_nix.clone();
         let fetch_nix_handle = tokio::task::spawn(async {
             fetch_nix_clone.revert().await?;
-            Result::<_, Self::Error>::Ok(fetch_nix_clone)
+            Result::<_, Box<dyn std::error::Error + Send + Sync>>::Ok(fetch_nix_clone)
         });
 
         if let Err(err) = create_users_and_group.revert().await {
             fetch_nix_handle.abort();
-            return Err(Self::Error::from(err));
+            return Err(err);
         }
         if let Err(err) = create_nix_tree.revert().await {
             fetch_nix_handle.abort();
-            return Err(Self::Error::from(err));
+            return Err(err);
         }
 
-        *fetch_nix = fetch_nix_handle.await.map_err(ProvisionNixError::from)??;
+        *fetch_nix = fetch_nix_handle.await.map_err(|e| e.boxed())??;
         move_unpacked_nix.revert().await?;
 
         tracing::trace!("Unprovisioned Nix");
@@ -165,13 +168,7 @@ impl Actionable for ProvisionNix {
     }
 }
 
-impl From<ProvisionNix> for Action {
-    fn from(v: ProvisionNix) -> Self {
-        Action::ProvisionNix(v)
-    }
-}
-
-#[derive(Debug, thiserror::Error, Serialize)]
+#[derive(Debug, thiserror::Error)]
 pub enum ProvisionNixError {
     #[error("Fetching Nix")]
     FetchNix(
@@ -183,7 +180,6 @@ pub enum ProvisionNixError {
     Join(
         #[source]
         #[from]
-        #[serde(serialize_with = "crate::serialize_error_to_display")]
         JoinError,
     ),
     #[error("Creating directory")]

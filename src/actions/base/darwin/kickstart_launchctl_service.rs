@@ -3,7 +3,7 @@ use tokio::process::Command;
 
 use crate::execute_command;
 
-use crate::actions::{Action, ActionDescription, ActionState, Actionable};
+use crate::actions::{ActionDescription, ActionError, ActionState, Actionable};
 
 #[derive(Debug, serde::Deserialize, serde::Serialize, Clone)]
 pub struct KickstartLaunchctlService {
@@ -13,7 +13,7 @@ pub struct KickstartLaunchctlService {
 
 impl KickstartLaunchctlService {
     #[tracing::instrument(skip_all)]
-    pub async fn plan(unit: String) -> Result<Self, KickstartLaunchctlServiceError> {
+    pub async fn plan(unit: String) -> Result<Self, Box<dyn std::error::Error + Send + Sync>> {
         Ok(Self {
             unit,
             action_state: ActionState::Uncompleted,
@@ -22,9 +22,8 @@ impl KickstartLaunchctlService {
 }
 
 #[async_trait::async_trait]
+#[typetag::serde(name = "kickstart-launchctl-service")]
 impl Actionable for KickstartLaunchctlService {
-    type Error = KickstartLaunchctlServiceError;
-
     fn describe_execute(&self) -> Vec<ActionDescription> {
         let Self { unit, action_state } = self;
         if *action_state == ActionState::Completed {
@@ -42,7 +41,7 @@ impl Actionable for KickstartLaunchctlService {
     #[tracing::instrument(skip_all, fields(
         unit = %self.unit,
     ))]
-    async fn execute(&mut self) -> Result<(), Self::Error> {
+    async fn execute(&mut self) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
         let Self { unit, action_state } = self;
         if *action_state == ActionState::Completed {
             tracing::trace!("Already completed: Kickstarting launchctl unit");
@@ -57,7 +56,7 @@ impl Actionable for KickstartLaunchctlService {
                 .arg(unit),
         )
         .await
-        .map_err(KickstartLaunchctlServiceError::Command)?;
+        .map_err(|e| KickstartLaunchctlServiceError::Command(e).boxed())?;
 
         tracing::trace!("Kickstarted launchctl unit");
         *action_state = ActionState::Completed;
@@ -80,7 +79,7 @@ impl Actionable for KickstartLaunchctlService {
     #[tracing::instrument(skip_all, fields(
         unit = %self.unit,
     ))]
-    async fn revert(&mut self) -> Result<(), Self::Error> {
+    async fn revert(&mut self) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
         let Self { unit, action_state } = self;
         if *action_state == ActionState::Uncompleted {
             tracing::trace!("Already reverted: Stopping launchctl unit");
@@ -90,17 +89,11 @@ impl Actionable for KickstartLaunchctlService {
 
         execute_command(Command::new("launchctl").arg("stop").arg(unit))
             .await
-            .map_err(KickstartLaunchctlServiceError::Command)?;
+            .map_err(|e| KickstartLaunchctlServiceError::Command(e).boxed())?;
 
         tracing::trace!("Stopped launchctl unit");
         *action_state = ActionState::Completed;
         Ok(())
-    }
-}
-
-impl From<KickstartLaunchctlService> for Action {
-    fn from(v: KickstartLaunchctlService) -> Self {
-        Action::DarwinKickStartLaunchctlService(v)
     }
 }
 

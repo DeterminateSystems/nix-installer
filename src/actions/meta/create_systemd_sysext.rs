@@ -2,7 +2,7 @@ use serde::Serialize;
 use std::path::{Path, PathBuf};
 
 use crate::actions::base::{CreateDirectory, CreateDirectoryError, CreateFile, CreateFileError};
-use crate::actions::{Action, ActionDescription, ActionState, Actionable};
+use crate::actions::{ActionDescription, ActionError, ActionState, Actionable};
 
 const PATHS: &[&str] = &[
     "usr",
@@ -23,7 +23,9 @@ pub struct CreateSystemdSysext {
 
 impl CreateSystemdSysext {
     #[tracing::instrument(skip_all)]
-    pub async fn plan(destination: impl AsRef<Path>) -> Result<Self, CreateSystemdSysextError> {
+    pub async fn plan(
+        destination: impl AsRef<Path>,
+    ) -> Result<Self, Box<dyn std::error::Error + Send + Sync>> {
         let destination = destination.as_ref();
 
         let mut create_directories =
@@ -43,8 +45,8 @@ impl CreateSystemdSysext {
                         false => None,
                     })
             })
-            .map_err(CreateSystemdSysextError::ReadingOsRelease)?
-            .ok_or(CreateSystemdSysextError::NoVersionId)?;
+            .map_err(|e| CreateSystemdSysextError::ReadingOsRelease(e).boxed())?
+            .ok_or_else(|| CreateSystemdSysextError::NoVersionId.boxed())?;
         let extension_release_buf =
             format!("SYSEXT_LEVEL=1.0\nID=steamos\nVERSION_ID={version_id}");
         let create_extension_release = CreateFile::plan(
@@ -88,9 +90,8 @@ impl CreateSystemdSysext {
 }
 
 #[async_trait::async_trait]
+#[typetag::serde(name = "create-systemd-sysext")]
 impl Actionable for CreateSystemdSysext {
-    type Error = CreateSystemdSysextError;
-
     fn describe_execute(&self) -> Vec<ActionDescription> {
         let Self {
             action_state: _,
@@ -112,7 +113,7 @@ impl Actionable for CreateSystemdSysext {
     }
 
     #[tracing::instrument(skip_all, fields(destination,))]
-    async fn execute(&mut self) -> Result<(), Self::Error> {
+    async fn execute(&mut self) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
         let Self {
             destination: _,
             action_state,
@@ -156,7 +157,7 @@ impl Actionable for CreateSystemdSysext {
     }
 
     #[tracing::instrument(skip_all, fields(destination,))]
-    async fn revert(&mut self) -> Result<(), Self::Error> {
+    async fn revert(&mut self) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
         let Self {
             destination: _,
             action_state,
@@ -181,12 +182,6 @@ impl Actionable for CreateSystemdSysext {
         tracing::trace!("Removed sysext");
         *action_state = ActionState::Uncompleted;
         Ok(())
-    }
-}
-
-impl From<CreateSystemdSysext> for Action {
-    fn from(v: CreateSystemdSysext) -> Self {
-        Action::CreateSystemdSysext(v)
     }
 }
 

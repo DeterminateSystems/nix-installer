@@ -5,7 +5,7 @@ use tokio::process::Command;
 
 use crate::execute_command;
 
-use crate::actions::{Action, ActionDescription, ActionState, Actionable};
+use crate::actions::{ActionDescription, ActionError, ActionState, Actionable};
 
 #[derive(Debug, serde::Deserialize, serde::Serialize, Clone)]
 pub struct CreateVolume {
@@ -21,7 +21,7 @@ impl CreateVolume {
         disk: impl AsRef<Path>,
         name: String,
         case_sensitive: bool,
-    ) -> Result<Self, CreateVolumeError> {
+    ) -> Result<Self, Box<dyn std::error::Error + Send + Sync>> {
         Ok(Self {
             disk: disk.as_ref().to_path_buf(),
             name,
@@ -32,9 +32,8 @@ impl CreateVolume {
 }
 
 #[async_trait::async_trait]
+#[typetag::serde(name = "create-volume")]
 impl Actionable for CreateVolume {
-    type Error = CreateVolumeError;
-
     fn describe_execute(&self) -> Vec<ActionDescription> {
         if self.action_state == ActionState::Completed {
             vec![]
@@ -55,7 +54,7 @@ impl Actionable for CreateVolume {
         name = %self.name,
         case_sensitive = %self.case_sensitive,
     ))]
-    async fn execute(&mut self) -> Result<(), Self::Error> {
+    async fn execute(&mut self) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
         let Self {
             disk,
             name,
@@ -81,7 +80,7 @@ impl Actionable for CreateVolume {
             "-nomount",
         ]))
         .await
-        .map_err(Self::Error::Command)?;
+        .map_err(|e| CreateVolumeError::Command(e).boxed())?;
 
         tracing::trace!("Created volume");
         *action_state = ActionState::Completed;
@@ -108,7 +107,7 @@ impl Actionable for CreateVolume {
         name = %self.name,
         case_sensitive = %self.case_sensitive,
     ))]
-    async fn revert(&mut self) -> Result<(), Self::Error> {
+    async fn revert(&mut self) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
         let Self {
             disk: _,
             name,
@@ -123,17 +122,11 @@ impl Actionable for CreateVolume {
 
         execute_command(Command::new("/usr/sbin/diskutil").args(["apfs", "deleteVolume", name]))
             .await
-            .map_err(Self::Error::Command)?;
+            .map_err(|e| CreateVolumeError::Command(e).boxed())?;
 
         tracing::trace!("Deleted volume");
         *action_state = ActionState::Completed;
         Ok(())
-    }
-}
-
-impl From<CreateVolume> for Action {
-    fn from(v: CreateVolume) -> Self {
-        Action::DarwinCreateVolume(v)
     }
 }
 

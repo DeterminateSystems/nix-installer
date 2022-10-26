@@ -1,7 +1,7 @@
 use serde::Serialize;
 
 use crate::actions::base::{CreateDirectory, CreateDirectoryError};
-use crate::actions::{Action, ActionDescription, ActionState, Actionable};
+use crate::actions::{ActionDescription, ActionError, ActionState, Actionable};
 
 const PATHS: &[&str] = &[
     "/nix/var",
@@ -27,7 +27,7 @@ pub struct CreateNixTree {
 
 impl CreateNixTree {
     #[tracing::instrument(skip_all)]
-    pub async fn plan() -> Result<Self, CreateNixTreeError> {
+    pub async fn plan() -> Result<Self, Box<dyn std::error::Error + Send + Sync>> {
         let mut create_directories = Vec::default();
         for path in PATHS {
             // We use `create_dir` over `create_dir_all` to ensure we always set permissions right
@@ -42,9 +42,8 @@ impl CreateNixTree {
 }
 
 #[async_trait::async_trait]
+#[typetag::serde(name = "creat-nix-tree")]
 impl Actionable for CreateNixTree {
-    type Error = CreateNixTreeError;
-
     fn describe_execute(&self) -> Vec<ActionDescription> {
         if self.action_state == ActionState::Completed {
             vec![]
@@ -69,7 +68,7 @@ impl Actionable for CreateNixTree {
     }
 
     #[tracing::instrument(skip_all)]
-    async fn execute(&mut self) -> Result<(), Self::Error> {
+    async fn execute(&mut self) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
         let Self {
             create_directories,
             action_state,
@@ -116,7 +115,7 @@ impl Actionable for CreateNixTree {
     }
 
     #[tracing::instrument(skip_all)]
-    async fn revert(&mut self) -> Result<(), Self::Error> {
+    async fn revert(&mut self) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
         let Self {
             create_directories,
             action_state,
@@ -136,12 +135,6 @@ impl Actionable for CreateNixTree {
         tracing::trace!("Deleted nix tree");
         *action_state = ActionState::Uncompleted;
         Ok(())
-    }
-}
-
-impl From<CreateNixTree> for Action {
-    fn from(v: CreateNixTree) -> Self {
-        Action::CreateNixTree(v)
     }
 }
 

@@ -7,7 +7,7 @@ use tokio::process::Command;
 
 use crate::execute_command;
 
-use crate::actions::{Action, ActionDescription, ActionState, Actionable};
+use crate::actions::{ActionDescription, ActionError, ActionState, Actionable};
 
 const SERVICE_SRC: &str = "/nix/var/nix/profiles/default/lib/systemd/system/nix-daemon.service";
 const SOCKET_SRC: &str = "/nix/var/nix/profiles/default/lib/systemd/system/nix-daemon.socket";
@@ -21,7 +21,7 @@ pub struct ConfigureNixDaemonService {
 
 impl ConfigureNixDaemonService {
     #[tracing::instrument(skip_all)]
-    pub async fn plan() -> Result<Self, ConfigureNixDaemonServiceError> {
+    pub async fn plan() -> Result<Self, Box<dyn std::error::Error + Send + Sync>> {
         match OperatingSystem::host() {
             OperatingSystem::MacOSX {
                 major: _,
@@ -31,7 +31,7 @@ impl ConfigureNixDaemonService {
             | OperatingSystem::Darwin => (),
             _ => {
                 if !Path::new("/run/systemd/system").exists() {
-                    return Err(ConfigureNixDaemonServiceError::InitNotSupported);
+                    return Err(ConfigureNixDaemonServiceError::InitNotSupported.boxed());
                 }
             },
         };
@@ -43,9 +43,8 @@ impl ConfigureNixDaemonService {
 }
 
 #[async_trait::async_trait]
+#[typetag::serde(name = "configure-nix-daemon")]
 impl Actionable for ConfigureNixDaemonService {
-    type Error = ConfigureNixDaemonServiceError;
-
     fn describe_execute(&self) -> Vec<ActionDescription> {
         if self.action_state == ActionState::Completed {
             vec![]
@@ -63,7 +62,7 @@ impl Actionable for ConfigureNixDaemonService {
     }
 
     #[tracing::instrument(skip_all)]
-    async fn execute(&mut self) -> Result<(), Self::Error> {
+    async fn execute(&mut self) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
         let Self { action_state } = self;
         if *action_state == ActionState::Completed {
             tracing::trace!("Already completed: Configuring nix daemon service");
@@ -85,11 +84,12 @@ impl Actionable for ConfigureNixDaemonService {
                 tokio::fs::copy(src.clone(), DARWIN_NIX_DAEMON_DEST)
                     .await
                     .map_err(|e| {
-                        Self::Error::Copy(
+                        ConfigureNixDaemonServiceError::Copy(
                             src.to_path_buf(),
                             PathBuf::from(DARWIN_NIX_DAEMON_DEST),
                             e,
                         )
+                        .boxed()
                     })?;
 
                 execute_command(
@@ -98,18 +98,19 @@ impl Actionable for ConfigureNixDaemonService {
                         .arg(DARWIN_NIX_DAEMON_DEST),
                 )
                 .await
-                .map_err(Self::Error::CommandFailed)?;
+                .map_err(|e| ConfigureNixDaemonServiceError::CommandFailed(e).boxed())?;
             },
             _ => {
                 tracing::trace!(src = TMPFILES_SRC, dest = TMPFILES_DEST, "Symlinking");
                 tokio::fs::symlink(TMPFILES_SRC, TMPFILES_DEST)
                     .await
                     .map_err(|e| {
-                        Self::Error::Symlink(
+                        ConfigureNixDaemonServiceError::Symlink(
                             PathBuf::from(TMPFILES_SRC),
                             PathBuf::from(TMPFILES_DEST),
                             e,
                         )
+                        .boxed()
                     })?;
 
                 execute_command(
@@ -118,19 +119,19 @@ impl Actionable for ConfigureNixDaemonService {
                         .arg("--prefix=/nix/var/nix"),
                 )
                 .await
-                .map_err(Self::Error::CommandFailed)?;
+                .map_err(|e| ConfigureNixDaemonServiceError::CommandFailed(e).boxed())?;
 
                 execute_command(Command::new("systemctl").arg("link").arg(SERVICE_SRC))
                     .await
-                    .map_err(Self::Error::CommandFailed)?;
+                    .map_err(|e| ConfigureNixDaemonServiceError::CommandFailed(e).boxed())?;
 
                 execute_command(Command::new("systemctl").arg("link").arg(SOCKET_SRC))
                     .await
-                    .map_err(Self::Error::CommandFailed)?;
+                    .map_err(|e| ConfigureNixDaemonServiceError::CommandFailed(e).boxed())?;
 
                 execute_command(Command::new("systemctl").arg("daemon-reload"))
                     .await
-                    .map_err(Self::Error::CommandFailed)?;
+                    .map_err(|e| ConfigureNixDaemonServiceError::CommandFailed(e).boxed())?;
             },
         };
 
@@ -156,7 +157,7 @@ impl Actionable for ConfigureNixDaemonService {
     }
 
     #[tracing::instrument(skip_all)]
-    async fn revert(&mut self) -> Result<(), Self::Error> {
+    async fn revert(&mut self) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
         let Self { action_state } = self;
         if *action_state == ActionState::Uncompleted {
             tracing::trace!("Already reverted: Unconfiguring nix daemon service");
@@ -167,11 +168,11 @@ impl Actionable for ConfigureNixDaemonService {
         // We don't need to do this! Systemd does it for us! (In fact, it's an error if we try to do this...)
         execute_command(Command::new("systemctl").args(["disable", SOCKET_SRC]))
             .await
-            .map_err(Self::Error::CommandFailed)?;
+            .map_err(|e| ConfigureNixDaemonServiceError::CommandFailed(e).boxed())?;
 
         execute_command(Command::new("systemctl").args(["disable", SERVICE_SRC]))
             .await
-            .map_err(Self::Error::CommandFailed)?;
+            .map_err(|e| ConfigureNixDaemonServiceError::CommandFailed(e).boxed())?;
 
         execute_command(
             Command::new("systemd-tmpfiles")
@@ -179,25 +180,19 @@ impl Actionable for ConfigureNixDaemonService {
                 .arg("--prefix=/nix/var/nix"),
         )
         .await
-        .map_err(Self::Error::CommandFailed)?;
+        .map_err(|e| ConfigureNixDaemonServiceError::CommandFailed(e).boxed())?;
 
-        remove_file(TMPFILES_DEST)
-            .await
-            .map_err(|e| Self::Error::RemoveFile(PathBuf::from(TMPFILES_DEST), e))?;
+        remove_file(TMPFILES_DEST).await.map_err(|e| {
+            ConfigureNixDaemonServiceError::RemoveFile(PathBuf::from(TMPFILES_DEST), e).boxed()
+        })?;
 
         execute_command(Command::new("systemctl").arg("daemon-reload"))
             .await
-            .map_err(Self::Error::CommandFailed)?;
+            .map_err(|e| ConfigureNixDaemonServiceError::CommandFailed(e).boxed())?;
 
         tracing::trace!("Unconfigured nix daemon service");
         *action_state = ActionState::Uncompleted;
         Ok(())
-    }
-}
-
-impl From<ConfigureNixDaemonService> for Action {
-    fn from(v: ConfigureNixDaemonService) -> Self {
-        Action::ConfigureNixDaemonService(v)
     }
 }
 

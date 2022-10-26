@@ -2,9 +2,8 @@ use crate::{
     actions::{
         base::{CreateDirectory, StartSystemdUnit},
         meta::{CreateSystemdSysext, ProvisionNix},
-        Action, ActionError,
     },
-    planner::{Plannable, PlannerError},
+    planner::{BuiltinPlannerError, Plannable},
     BuiltinPlanner, CommonSettings, InstallPlan,
 };
 
@@ -18,33 +17,22 @@ pub struct SteamDeck {
 impl Plannable for SteamDeck {
     const DISPLAY_STRING: &'static str = "Steam Deck (x86_64 Linux Multi-User)";
     const SLUG: &'static str = "steam-deck";
+    type Error = BuiltinPlannerError;
 
-    async fn default() -> Result<Self, PlannerError> {
+    async fn default() -> Result<Self, Self::Error> {
         Ok(Self {
             settings: CommonSettings::default()?,
         })
     }
 
-    async fn plan(self) -> Result<crate::InstallPlan, PlannerError> {
+    async fn plan(self) -> Result<crate::InstallPlan, Self::Error> {
         Ok(InstallPlan {
             planner: self.clone().into(),
             actions: vec![
-                CreateSystemdSysext::plan("/var/lib/extensions")
-                    .await
-                    .map(Action::from)
-                    .map_err(ActionError::from)?,
-                CreateDirectory::plan("/nix", None, None, 0o0755, true)
-                    .await
-                    .map(Action::from)
-                    .map_err(ActionError::from)?,
-                ProvisionNix::plan(self.settings.clone())
-                    .await
-                    .map(Action::from)
-                    .map_err(ActionError::from)?,
-                StartSystemdUnit::plan("nix-daemon.socket".into())
-                    .await
-                    .map(Action::from)
-                    .map_err(ActionError::from)?,
+                Box::new(CreateSystemdSysext::plan("/var/lib/extensions").await?),
+                Box::new(CreateDirectory::plan("/nix", None, None, 0o0755, true).await?),
+                Box::new(ProvisionNix::plan(self.settings.clone()).await?),
+                Box::new(StartSystemdUnit::plan("nix-daemon.socket".into()).await?),
             ],
         })
     }

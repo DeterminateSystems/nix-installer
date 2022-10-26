@@ -5,15 +5,19 @@ use std::{
 };
 use tokio::process::Command;
 
-use crate::actions::base::{
-    darwin::{
-        BootstrapVolume, BootstrapVolumeError, CreateSyntheticObjects, CreateSyntheticObjectsError,
-        CreateVolume, CreateVolumeError, EnableOwnership, EnableOwnershipError, EncryptVolume,
-        EncryptVolumeError, UnmountVolume, UnmountVolumeError,
+use crate::actions::{
+    base::{
+        darwin::{
+            BootstrapVolume, BootstrapVolumeError, CreateSyntheticObjects,
+            CreateSyntheticObjectsError, CreateVolume, CreateVolumeError, EnableOwnership,
+            EnableOwnershipError, EncryptVolume, EncryptVolumeError, UnmountVolume,
+            UnmountVolumeError,
+        },
+        CreateFile, CreateFileError, CreateOrAppendFile, CreateOrAppendFileError,
     },
-    CreateFile, CreateFileError, CreateOrAppendFile, CreateOrAppendFileError,
+    ActionError,
 };
-use crate::actions::{Action, ActionDescription, ActionState, Actionable};
+use crate::actions::{ActionDescription, ActionState, Actionable};
 
 const NIX_VOLUME_MOUNTD_DEST: &str = "/Library/LaunchDaemons/org.nixos.darwin-store.plist";
 
@@ -42,7 +46,7 @@ impl CreateApfsVolume {
         name: String,
         case_sensitive: bool,
         encrypt: Option<String>,
-    ) -> Result<Self, CreateApfsVolumeError> {
+    ) -> Result<Self, Box<dyn std::error::Error + Send + Sync>> {
         let disk = disk.as_ref();
         let create_or_append_synthetic_conf = CreateOrAppendFile::plan(
             "/etc/synthetic.conf",
@@ -51,7 +55,8 @@ impl CreateApfsVolume {
             0o0655,
             "nix\n".into(), /* The newline is required otherwise it segfaults */
         )
-        .await?;
+        .await
+        .map_err(|e| e.boxed())?;
 
         let create_synthetic_objects = CreateSyntheticObjects::plan().await?;
 
@@ -66,7 +71,8 @@ impl CreateApfsVolume {
             0o0655,
             format!("NAME=\"{name}\" /nix apfs rw,noauto,nobrowse,suid,owners"),
         )
-        .await?;
+        .await
+        .map_err(|e| e.boxed())?;
 
         let encrypt_volume = if let Some(password) = encrypt.as_ref() {
             Some(EncryptVolume::plan(disk, password.to_string()).await?)
@@ -140,9 +146,8 @@ impl CreateApfsVolume {
 }
 
 #[async_trait::async_trait]
+#[typetag::serde(name = "create-apfs-volume")]
 impl Actionable for CreateApfsVolume {
-    type Error = CreateApfsVolumeError;
-
     fn describe_execute(&self) -> Vec<ActionDescription> {
         let Self {
             disk,
@@ -163,7 +168,7 @@ impl Actionable for CreateApfsVolume {
     }
 
     #[tracing::instrument(skip_all, fields(destination,))]
-    async fn execute(&mut self) -> Result<(), Self::Error> {
+    async fn execute(&mut self) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
         let Self {
             disk: _,
             name: _,
@@ -207,7 +212,7 @@ impl Actionable for CreateApfsVolume {
                 .stdout(std::process::Stdio::null())
                 .status()
                 .await
-                .map_err(Self::Error::Command)?;
+                .map_err(|e| CreateApfsVolumeError::Command(e).boxed())?;
             if status.success() || retry_tokens == 0 {
                 break;
             } else {
@@ -243,7 +248,7 @@ impl Actionable for CreateApfsVolume {
     }
 
     #[tracing::instrument(skip_all, fields(disk, name))]
-    async fn revert(&mut self) -> Result<(), Self::Error> {
+    async fn revert(&mut self) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
         let Self {
             disk: _,
             name: _,
@@ -284,12 +289,6 @@ impl Actionable for CreateApfsVolume {
         tracing::trace!("Removed APFS volume");
         *action_state = ActionState::Uncompleted;
         Ok(())
-    }
-}
-
-impl From<CreateApfsVolume> for Action {
-    fn from(v: CreateApfsVolume) -> Self {
-        Action::CreateApfsVolume(v)
     }
 }
 

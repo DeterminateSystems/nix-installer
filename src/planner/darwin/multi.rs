@@ -7,11 +7,10 @@ use crate::{
     actions::{
         base::darwin::KickstartLaunchctlService,
         meta::{darwin::CreateApfsVolume, ConfigureNix, ProvisionNix},
-        Action, ActionError,
     },
     execute_command,
     os::darwin::DiskUtilOutput,
-    planner::{Plannable, PlannerError},
+    planner::{BuiltinPlannerError, Plannable},
     BuiltinPlanner, CommonSettings, InstallPlan,
 };
 
@@ -32,7 +31,7 @@ pub struct DarwinMulti {
     root_disk: Option<String>,
 }
 
-async fn default_root_disk() -> Result<String, PlannerError> {
+async fn default_root_disk() -> Result<String, BuiltinPlannerError> {
     let buf = execute_command(Command::new("/usr/sbin/diskutil").args(["info", "-plist", "/"]))
         .await
         .unwrap()
@@ -46,8 +45,9 @@ async fn default_root_disk() -> Result<String, PlannerError> {
 impl Plannable for DarwinMulti {
     const DISPLAY_STRING: &'static str = "Darwin Multi-User";
     const SLUG: &'static str = "darwin-multi";
+    type Error = BuiltinPlannerError;
 
-    async fn default() -> Result<Self, PlannerError> {
+    async fn default() -> Result<Self, Self::Error> {
         Ok(Self {
             settings: CommonSettings::default()?,
             root_disk: Some(default_root_disk().await?),
@@ -56,7 +56,7 @@ impl Plannable for DarwinMulti {
         })
     }
 
-    async fn plan(self) -> Result<crate::InstallPlan, crate::planner::PlannerError> {
+    async fn plan(self) -> Result<crate::InstallPlan, Self::Error> {
         let root_disk = {
             let buf =
                 execute_command(Command::new("/usr/sbin/diskutil").args(["info", "-plist", "/"]))
@@ -77,22 +77,12 @@ impl Plannable for DarwinMulti {
                 //
                 // setup_Synthetic -> create_synthetic_objects
                 // Unmount -> create_volume -> Setup_fstab -> maybe encrypt_volume -> launchctl bootstrap -> launchctl kickstart -> await_volume -> maybe enableOwnership
-                CreateApfsVolume::plan(root_disk, volume_label, false, None)
-                    .await
-                    .map(Action::from)
-                    .map_err(ActionError::from)?,
-                ProvisionNix::plan(self.settings.clone())
-                    .await
-                    .map(Action::from)
-                    .map_err(ActionError::from)?,
-                ConfigureNix::plan(self.settings)
-                    .await
-                    .map(Action::from)
-                    .map_err(ActionError::from)?,
-                KickstartLaunchctlService::plan("system/org.nixos.nix-daemon".into())
-                    .await
-                    .map(Action::from)
-                    .map_err(ActionError::from)?,
+                Box::new(CreateApfsVolume::plan(root_disk, volume_label, false, None).await?),
+                Box::new(ProvisionNix::plan(self.settings.clone()).await?),
+                Box::new(ConfigureNix::plan(self.settings).await?),
+                Box::new(
+                    KickstartLaunchctlService::plan("system/org.nixos.nix-daemon".into()).await?,
+                ),
             ],
         })
     }

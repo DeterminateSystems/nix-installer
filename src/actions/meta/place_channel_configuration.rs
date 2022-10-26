@@ -1,7 +1,7 @@
 use reqwest::Url;
 use serde::Serialize;
 
-use crate::actions::{Action, ActionDescription, ActionState, Actionable};
+use crate::actions::{ActionDescription, ActionError, ActionState, Actionable};
 
 use crate::actions::base::{CreateFile, CreateFileError};
 
@@ -17,7 +17,7 @@ impl PlaceChannelConfiguration {
     pub async fn plan(
         channels: Vec<(String, Url)>,
         force: bool,
-    ) -> Result<Self, PlaceChannelConfigurationError> {
+    ) -> Result<Self, Box<dyn std::error::Error + Send + Sync>> {
         let buf = channels
             .iter()
             .map(|(name, url)| format!("{} {}", url, name))
@@ -25,7 +25,7 @@ impl PlaceChannelConfiguration {
             .join("\n");
         let create_file = CreateFile::plan(
             dirs::home_dir()
-                .ok_or(PlaceChannelConfigurationError::NoRootHome)?
+                .ok_or_else(|| PlaceChannelConfigurationError::NoRootHome.boxed())?
                 .join(".nix-channels"),
             None,
             None,
@@ -43,9 +43,8 @@ impl PlaceChannelConfiguration {
 }
 
 #[async_trait::async_trait]
+#[typetag::serde(name = "place-channel-configuration")]
 impl Actionable for PlaceChannelConfiguration {
-    type Error = PlaceChannelConfigurationError;
-
     fn describe_execute(&self) -> Vec<ActionDescription> {
         let Self {
             channels: _,
@@ -68,7 +67,7 @@ impl Actionable for PlaceChannelConfiguration {
     #[tracing::instrument(skip_all, fields(
         channels = self.channels.iter().map(|(c, u)| format!("{c}={u}")).collect::<Vec<_>>().join(", "),
     ))]
-    async fn execute(&mut self) -> Result<(), Self::Error> {
+    async fn execute(&mut self) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
         let Self {
             create_file,
             channels: _,
@@ -110,7 +109,7 @@ impl Actionable for PlaceChannelConfiguration {
     #[tracing::instrument(skip_all, fields(
         channels = self.channels.iter().map(|(c, u)| format!("{c}={u}")).collect::<Vec<_>>().join(", "),
     ))]
-    async fn revert(&mut self) -> Result<(), Self::Error> {
+    async fn revert(&mut self) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
         let Self {
             create_file,
             channels: _,
@@ -128,12 +127,6 @@ impl Actionable for PlaceChannelConfiguration {
         tracing::debug!("Removed channel configuration");
         *action_state = ActionState::Uncompleted;
         Ok(())
-    }
-}
-
-impl From<PlaceChannelConfiguration> for Action {
-    fn from(v: PlaceChannelConfiguration) -> Self {
-        Action::PlaceChannelConfiguration(v)
     }
 }
 

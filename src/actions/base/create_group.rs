@@ -3,7 +3,7 @@ use tokio::process::Command;
 
 use crate::execute_command;
 
-use crate::actions::{Action, ActionDescription, ActionState, Actionable};
+use crate::actions::{ActionDescription, ActionError, ActionState, Actionable};
 
 #[derive(Debug, serde::Deserialize, serde::Serialize, Clone)]
 pub struct CreateGroup {
@@ -24,9 +24,8 @@ impl CreateGroup {
 }
 
 #[async_trait::async_trait]
+#[typetag::serde(name = "create-group")]
 impl Actionable for CreateGroup {
-    type Error = CreateGroupError;
-
     fn describe_execute(&self) -> Vec<ActionDescription> {
         let Self {
             name,
@@ -49,7 +48,7 @@ impl Actionable for CreateGroup {
         user = self.name,
         gid = self.gid,
     ))]
-    async fn execute(&mut self) -> Result<(), Self::Error> {
+    async fn execute(&mut self) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
         let Self {
             name,
             gid,
@@ -79,7 +78,7 @@ impl Actionable for CreateGroup {
                     name.as_str(),
                 ]))
                 .await
-                .map_err(Self::Error::Command)?;
+                .map_err(|e| CreateGroupError::Command(e).boxed())?;
             },
             _ => {
                 execute_command(Command::new("groupadd").args([
@@ -89,7 +88,7 @@ impl Actionable for CreateGroup {
                     &name,
                 ]))
                 .await
-                .map_err(CreateGroupError::Command)?;
+                .map_err(|e| CreateGroupError::Command(e).boxed())?;
             },
         };
 
@@ -120,7 +119,7 @@ impl Actionable for CreateGroup {
         user = self.name,
         gid = self.gid,
     ))]
-    async fn revert(&mut self) -> Result<(), Self::Error> {
+    async fn revert(&mut self) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
         let Self {
             name,
             gid: _,
@@ -142,24 +141,18 @@ impl Actionable for CreateGroup {
             | OperatingSystem::Darwin => {
                 execute_command(Command::new("groupdel").arg(&name))
                     .await
-                    .map_err(CreateGroupError::Command)?;
+                    .map_err(|e| CreateGroupError::Command(e).boxed())?;
             },
             _ => {
-                execute_command(Command::new("userdel").args([&name.to_string()]))
+                execute_command(Command::new("groupdel").arg(&name))
                     .await
-                    .map_err(Self::Error::Command)?;
+                    .map_err(|e| CreateGroupError::Command(e).boxed())?;
             },
         };
 
         tracing::trace!("Deleted group");
         *action_state = ActionState::Uncompleted;
         Ok(())
-    }
-}
-
-impl From<CreateGroup> for Action {
-    fn from(v: CreateGroup) -> Self {
-        Action::CreateGroup(v)
     }
 }
 

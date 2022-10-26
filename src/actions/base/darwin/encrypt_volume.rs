@@ -1,7 +1,7 @@
 use serde::Serialize;
 use std::path::{Path, PathBuf};
 
-use crate::actions::{Action, ActionDescription, ActionState, Actionable};
+use crate::actions::{ActionDescription, ActionError, ActionState, Actionable};
 
 #[derive(Debug, serde::Deserialize, serde::Serialize, Clone)]
 pub struct EncryptVolume {
@@ -15,7 +15,7 @@ impl EncryptVolume {
     pub async fn plan(
         disk: impl AsRef<Path>,
         password: String,
-    ) -> Result<Self, EncryptVolumeError> {
+    ) -> Result<Self, Box<dyn std::error::Error + Send + Sync>> {
         Ok(Self {
             disk: disk.as_ref().to_path_buf(),
             password,
@@ -25,9 +25,8 @@ impl EncryptVolume {
 }
 
 #[async_trait::async_trait]
+#[typetag::serde(name = "encrypt-volume")]
 impl Actionable for EncryptVolume {
-    type Error = EncryptVolumeError;
-
     fn describe_execute(&self) -> Vec<ActionDescription> {
         if self.action_state == ActionState::Completed {
             vec![]
@@ -42,7 +41,7 @@ impl Actionable for EncryptVolume {
     #[tracing::instrument(skip_all, fields(
         disk = %self.disk.display(),
     ))]
-    async fn execute(&mut self) -> Result<(), Self::Error> {
+    async fn execute(&mut self) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
         let Self {
             disk: _,
             password: _,
@@ -72,7 +71,7 @@ impl Actionable for EncryptVolume {
     #[tracing::instrument(skip_all, fields(
         disk = %self.disk.display(),
     ))]
-    async fn revert(&mut self) -> Result<(), Self::Error> {
+    async fn revert(&mut self) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
         let Self {
             disk: _,
             password: _,
@@ -87,12 +86,6 @@ impl Actionable for EncryptVolume {
         tracing::trace!("Unencrypted volume (noop)");
         *action_state = ActionState::Completed;
         Ok(())
-    }
-}
-
-impl From<EncryptVolume> for Action {
-    fn from(v: EncryptVolume) -> Self {
-        Action::DarwinEncryptVolume(v)
     }
 }
 

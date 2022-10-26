@@ -10,7 +10,7 @@ use tokio::{
     io::{AsyncReadExt, AsyncSeekExt, AsyncWriteExt},
 };
 
-use crate::actions::{Action, ActionState};
+use crate::actions::{ActionError, ActionState};
 
 use crate::actions::{ActionDescription, Actionable};
 
@@ -47,9 +47,8 @@ impl CreateOrAppendFile {
 }
 
 #[async_trait::async_trait]
+#[typetag::serde(name = "create-or-append-file")]
 impl Actionable for CreateOrAppendFile {
-    type Error = CreateOrAppendFileError;
-
     fn describe_execute(&self) -> Vec<ActionDescription> {
         let Self {
             path,
@@ -75,7 +74,7 @@ impl Actionable for CreateOrAppendFile {
         group = self.group,
         mode = self.mode.map(|v| tracing::field::display(format!("{:#o}", v))),
     ))]
-    async fn execute(&mut self) -> Result<(), Self::Error> {
+    async fn execute(&mut self) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
         let Self {
             path,
             user,
@@ -96,21 +95,21 @@ impl Actionable for CreateOrAppendFile {
             .read(true)
             .open(&path)
             .await
-            .map_err(|e| Self::Error::OpenFile(path.to_owned(), e))?;
+            .map_err(|e| CreateOrAppendFileError::OpenFile(path.to_owned(), e).boxed())?;
 
         file.seek(SeekFrom::End(0))
             .await
-            .map_err(|e| Self::Error::SeekFile(path.to_owned(), e))?;
+            .map_err(|e| CreateOrAppendFileError::SeekFile(path.to_owned(), e).boxed())?;
 
         file.write_all(buf.as_bytes())
             .await
-            .map_err(|e| Self::Error::WriteFile(path.to_owned(), e))?;
+            .map_err(|e| CreateOrAppendFileError::WriteFile(path.to_owned(), e).boxed())?;
 
         let gid = if let Some(group) = group {
             Some(
                 Group::from_name(group.as_str())
-                    .map_err(|e| Self::Error::GroupId(group.clone(), e))?
-                    .ok_or(Self::Error::NoGroup(group.clone()))?
+                    .map_err(|e| CreateOrAppendFileError::GroupId(group.clone(), e).boxed())?
+                    .ok_or(CreateOrAppendFileError::NoGroup(group.clone()).boxed())?
                     .gid,
             )
         } else {
@@ -119,8 +118,8 @@ impl Actionable for CreateOrAppendFile {
         let uid = if let Some(user) = user {
             Some(
                 User::from_name(user.as_str())
-                    .map_err(|e| Self::Error::UserId(user.clone(), e))?
-                    .ok_or(Self::Error::NoUser(user.clone()))?
+                    .map_err(|e| CreateOrAppendFileError::UserId(user.clone(), e).boxed())?
+                    .ok_or(CreateOrAppendFileError::NoUser(user.clone()).boxed())?
                     .uid,
             )
         } else {
@@ -130,10 +129,13 @@ impl Actionable for CreateOrAppendFile {
         if let Some(mode) = mode {
             tokio::fs::set_permissions(&path, PermissionsExt::from_mode(*mode))
                 .await
-                .map_err(|e| Self::Error::SetPermissions(*mode, path.to_owned(), e))?;
+                .map_err(|e| {
+                    CreateOrAppendFileError::SetPermissions(*mode, path.to_owned(), e).boxed()
+                })?;
         }
 
-        chown(path, uid, gid).map_err(|e| Self::Error::Chown(path.clone(), e))?;
+        chown(path, uid, gid)
+            .map_err(|e| CreateOrAppendFileError::Chown(path.clone(), e).boxed())?;
 
         tracing::trace!("Created or appended fragment to file");
         *action_state = ActionState::Completed;
@@ -168,7 +170,7 @@ impl Actionable for CreateOrAppendFile {
         group = self.group,
         mode = self.mode.map(|v| tracing::field::display(format!("{:#o}", v))),
     ))]
-    async fn revert(&mut self) -> Result<(), Self::Error> {
+    async fn revert(&mut self) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
         let Self {
             path,
             user: _,
@@ -189,12 +191,12 @@ impl Actionable for CreateOrAppendFile {
             .read(true)
             .open(&path)
             .await
-            .map_err(|e| Self::Error::ReadFile(path.to_owned(), e))?;
+            .map_err(|e| CreateOrAppendFileError::ReadFile(path.to_owned(), e).boxed())?;
 
         let mut file_contents = String::default();
         file.read_to_string(&mut file_contents)
             .await
-            .map_err(|e| Self::Error::SeekFile(path.to_owned(), e))?;
+            .map_err(|e| CreateOrAppendFileError::SeekFile(path.to_owned(), e).boxed())?;
 
         if let Some(start) = file_contents.rfind(buf.as_str()) {
             let end = start + buf.len();
@@ -204,27 +206,21 @@ impl Actionable for CreateOrAppendFile {
         if buf.is_empty() {
             remove_file(&path)
                 .await
-                .map_err(|e| Self::Error::RemoveFile(path.to_owned(), e))?;
+                .map_err(|e| CreateOrAppendFileError::RemoveFile(path.to_owned(), e).boxed())?;
 
             tracing::trace!("Removed file (since all content was removed)");
         } else {
             file.seek(SeekFrom::Start(0))
                 .await
-                .map_err(|e| Self::Error::SeekFile(path.to_owned(), e))?;
+                .map_err(|e| CreateOrAppendFileError::SeekFile(path.to_owned(), e).boxed())?;
             file.write_all(file_contents.as_bytes())
                 .await
-                .map_err(|e| Self::Error::WriteFile(path.to_owned(), e))?;
+                .map_err(|e| CreateOrAppendFileError::WriteFile(path.to_owned(), e).boxed())?;
 
             tracing::trace!("Removed fragment from from file");
         }
         *action_state = ActionState::Uncompleted;
         Ok(())
-    }
-}
-
-impl From<CreateOrAppendFile> for Action {
-    fn from(v: CreateOrAppendFile) -> Self {
-        Action::CreateOrAppendFile(v)
     }
 }
 

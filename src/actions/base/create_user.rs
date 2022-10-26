@@ -3,7 +3,7 @@ use tokio::process::Command;
 
 use crate::execute_command;
 
-use crate::actions::{Action, ActionDescription, ActionState, Actionable};
+use crate::actions::{ActionDescription, ActionError, ActionState, Actionable};
 
 #[derive(Debug, serde::Deserialize, serde::Serialize, Clone)]
 pub struct CreateUser {
@@ -28,9 +28,8 @@ impl CreateUser {
 }
 
 #[async_trait::async_trait]
+#[typetag::serde(name = "create-user")]
 impl Actionable for CreateUser {
-    type Error = CreateUserError;
-
     fn describe_execute(&self) -> Vec<ActionDescription> {
         if self.action_state == ActionState::Completed {
             vec![]
@@ -58,7 +57,7 @@ impl Actionable for CreateUser {
         groupname = self.groupname,
         gid = self.gid,
     ))]
-    async fn execute(&mut self) -> Result<(), Self::Error> {
+    async fn execute(&mut self) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
         let Self {
             name,
             uid,
@@ -86,7 +85,7 @@ impl Actionable for CreateUser {
                     &format!("/Users/{name}"),
                 ]))
                 .await
-                .map_err(Self::Error::Command)?;
+                .map_err(|e| CreateUserError::Command(e).boxed())?;
                 execute_command(Command::new("/usr/bin/dscl").args([
                     ".",
                     "-create",
@@ -95,7 +94,7 @@ impl Actionable for CreateUser {
                     &format!("{uid}"),
                 ]))
                 .await
-                .map_err(Self::Error::Command)?;
+                .map_err(|e| CreateUserError::Command(e).boxed())?;
                 execute_command(Command::new("/usr/bin/dscl").args([
                     ".",
                     "-create",
@@ -104,7 +103,7 @@ impl Actionable for CreateUser {
                     &format!("{gid}"),
                 ]))
                 .await
-                .map_err(Self::Error::Command)?;
+                .map_err(|e| CreateUserError::Command(e).boxed())?;
                 execute_command(Command::new("/usr/bin/dscl").args([
                     ".",
                     "-create",
@@ -113,7 +112,7 @@ impl Actionable for CreateUser {
                     "/var/empty",
                 ]))
                 .await
-                .map_err(Self::Error::Command)?;
+                .map_err(|e| CreateUserError::Command(e).boxed())?;
                 execute_command(Command::new("/usr/bin/dscl").args([
                     ".",
                     "-create",
@@ -122,7 +121,7 @@ impl Actionable for CreateUser {
                     "/sbin/nologin",
                 ]))
                 .await
-                .map_err(Self::Error::Command)?;
+                .map_err(|e| CreateUserError::Command(e).boxed())?;
                 execute_command(
                     Command::new("/usr/bin/dscl")
                         .args([
@@ -134,7 +133,7 @@ impl Actionable for CreateUser {
                         .arg(&name),
                 )
                 .await
-                .map_err(Self::Error::Command)?;
+                .map_err(|e| CreateUserError::Command(e).boxed())?;
                 execute_command(Command::new("/usr/bin/dscl").args([
                     ".",
                     "-create",
@@ -143,7 +142,7 @@ impl Actionable for CreateUser {
                     "1",
                 ]))
                 .await
-                .map_err(Self::Error::Command)?;
+                .map_err(|e| CreateUserError::Command(e).boxed())?;
                 execute_command(
                     Command::new("/usr/sbin/dseditgroup")
                         .args(["-o", "edit"])
@@ -154,7 +153,7 @@ impl Actionable for CreateUser {
                         .arg(groupname),
                 )
                 .await
-                .map_err(Self::Error::Command)?;
+                .map_err(|e| CreateUserError::Command(e).boxed())?;
             },
             _ => {
                 execute_command(Command::new("useradd").args([
@@ -177,7 +176,7 @@ impl Actionable for CreateUser {
                     &name.to_string(),
                 ]))
                 .await
-                .map_err(Self::Error::Command)?;
+                .map_err(|e| CreateUserError::Command(e).boxed())?;
             },
         }
 
@@ -212,7 +211,7 @@ impl Actionable for CreateUser {
         uid = self.uid,
         gid = self.gid,
     ))]
-    async fn revert(&mut self) -> Result<(), Self::Error> {
+    async fn revert(&mut self) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
         let Self {
             name,
             uid: _,
@@ -240,24 +239,18 @@ impl Actionable for CreateUser {
                     &format!("/Users/{name}"),
                 ]))
                 .await
-                .map_err(Self::Error::Command)?;
+                .map_err(|e| CreateUserError::Command(e).boxed())?;
             },
             _ => {
                 execute_command(Command::new("userdel").args([&name.to_string()]))
                     .await
-                    .map_err(Self::Error::Command)?;
+                    .map_err(|e| CreateUserError::Command(e).boxed())?;
             },
         };
 
         tracing::trace!("Deleted user");
         *action_state = ActionState::Uncompleted;
         Ok(())
-    }
-}
-
-impl From<CreateUser> for Action {
-    fn from(v: CreateUser) -> Self {
-        Action::CreateUser(v)
     }
 }
 

@@ -2,9 +2,8 @@ use crate::{
     actions::{
         base::{CreateDirectory, StartSystemdUnit},
         meta::{ConfigureNix, ProvisionNix},
-        Action, ActionError,
     },
-    planner::{Plannable, PlannerError},
+    planner::{BuiltinPlannerError, Plannable},
     BuiltinPlanner, CommonSettings, InstallPlan,
 };
 
@@ -18,33 +17,22 @@ pub struct LinuxMulti {
 impl Plannable for LinuxMulti {
     const DISPLAY_STRING: &'static str = "Linux Multi-User";
     const SLUG: &'static str = "linux-multi";
+    type Error = BuiltinPlannerError;
 
-    async fn default() -> Result<Self, PlannerError> {
+    async fn default() -> Result<Self, Self::Error> {
         Ok(Self {
             settings: CommonSettings::default()?,
         })
     }
 
-    async fn plan(self) -> Result<InstallPlan, PlannerError> {
+    async fn plan(self) -> Result<InstallPlan, Self::Error> {
         Ok(InstallPlan {
             planner: self.clone().into(),
             actions: vec![
-                CreateDirectory::plan("/nix", None, None, 0o0755, true)
-                    .await
-                    .map(Action::from)
-                    .map_err(ActionError::from)?,
-                ProvisionNix::plan(self.settings.clone())
-                    .await
-                    .map(Action::from)
-                    .map_err(ActionError::from)?,
-                ConfigureNix::plan(self.settings)
-                    .await
-                    .map(Action::from)
-                    .map_err(ActionError::from)?,
-                StartSystemdUnit::plan("nix-daemon.socket".into())
-                    .await
-                    .map(Action::from)
-                    .map_err(ActionError::from)?,
+                Box::new(CreateDirectory::plan("/nix", None, None, 0o0755, true).await?),
+                Box::new(ProvisionNix::plan(self.settings.clone()).await?),
+                Box::new(ConfigureNix::plan(self.settings).await?),
+                Box::new(StartSystemdUnit::plan("nix-daemon.socket".into()).await?),
             ],
         })
     }

@@ -4,7 +4,7 @@ use tokio::task::{JoinError, JoinSet};
 use crate::CommonSettings;
 
 use crate::actions::base::{CreateGroup, CreateGroupError, CreateUserError};
-use crate::actions::{Action, ActionDescription, ActionState, Actionable, CreateUser};
+use crate::actions::{ActionDescription, ActionError, ActionState, Actionable, CreateUser};
 
 #[derive(Debug, serde::Deserialize, serde::Serialize, Clone)]
 pub struct CreateUsersAndGroup {
@@ -51,9 +51,8 @@ impl CreateUsersAndGroup {
 }
 
 #[async_trait::async_trait]
+#[typetag::serde(name = "create-users-and-group")]
 impl Actionable for CreateUsersAndGroup {
-    type Error = CreateUsersAndGroupError;
-
     fn describe_execute(&self) -> Vec<ActionDescription> {
         let Self {
             daemon_user_count,
@@ -88,7 +87,7 @@ impl Actionable for CreateUsersAndGroup {
         nix_build_user_prefix = self.nix_build_user_prefix,
         nix_build_user_id_base = self.nix_build_user_id_base,
     ))]
-    async fn execute(&mut self) -> Result<(), Self::Error> {
+    async fn execute(&mut self) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
         let Self {
             create_users,
             create_group,
@@ -173,7 +172,7 @@ impl Actionable for CreateUsersAndGroup {
         nix_build_user_prefix = self.nix_build_user_prefix,
         nix_build_user_id_base = self.nix_build_user_id_base,
     ))]
-    async fn revert(&mut self) -> Result<(), Self::Error> {
+    async fn revert(&mut self) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
         let Self {
             create_users,
             create_group,
@@ -199,7 +198,7 @@ impl Actionable for CreateUsersAndGroup {
             let mut create_user_clone = create_user.clone();
             let _abort_handle = set.spawn(async move {
                 create_user_clone.revert().await?;
-                Result::<_, CreateUserError>::Ok((idx, create_user_clone))
+                Result::<_, Box<dyn std::error::Error + Send + Sync>>::Ok((idx, create_user_clone))
             });
         }
 
@@ -207,7 +206,7 @@ impl Actionable for CreateUsersAndGroup {
             match result {
                 Ok(Ok((idx, success))) => create_users[idx] = success,
                 Ok(Err(e)) => errors.push(e),
-                Err(e) => return Err(e)?,
+                Err(e) => return Err(e.boxed())?,
             };
         }
 
@@ -215,7 +214,7 @@ impl Actionable for CreateUsersAndGroup {
             if errors.len() == 1 {
                 return Err(errors.into_iter().next().unwrap().into());
             } else {
-                return Err(CreateUsersAndGroupError::CreateUsers(errors));
+                return Err(CreateUsersAndGroupError::CreateUsers(errors).boxed());
             }
         }
 
@@ -228,13 +227,7 @@ impl Actionable for CreateUsersAndGroup {
     }
 }
 
-impl From<CreateUsersAndGroup> for Action {
-    fn from(v: CreateUsersAndGroup) -> Self {
-        Action::CreateUsersAndGroup(v)
-    }
-}
-
-#[derive(Debug, thiserror::Error, Serialize)]
+#[derive(Debug, thiserror::Error)]
 pub enum CreateUsersAndGroupError {
     #[error("Creating user")]
     CreateUser(
@@ -243,7 +236,7 @@ pub enum CreateUsersAndGroupError {
         CreateUserError,
     ),
     #[error("Multiple errors: {}", .0.iter().map(|v| format!("{v}")).collect::<Vec<_>>().join(" & "))]
-    CreateUsers(Vec<CreateUserError>),
+    CreateUsers(Vec<Box<dyn std::error::Error + Send + Sync>>),
     #[error("Creating group")]
     CreateGroup(
         #[source]
@@ -254,7 +247,6 @@ pub enum CreateUsersAndGroupError {
     Join(
         #[source]
         #[from]
-        #[serde(serialize_with = "crate::serialize_error_to_display")]
         JoinError,
     ),
 }

@@ -5,7 +5,7 @@ use tokio::process::Command;
 
 use crate::execute_command;
 
-use crate::actions::{Action, ActionDescription, ActionState, Actionable};
+use crate::actions::{ActionDescription, ActionError, ActionState, Actionable};
 
 #[derive(Debug, serde::Deserialize, serde::Serialize, Clone)]
 pub struct SystemdSysextMerge {
@@ -24,9 +24,8 @@ impl SystemdSysextMerge {
 }
 
 #[async_trait::async_trait]
+#[typetag::serde(name = "systemd-sysext-merge")]
 impl Actionable for SystemdSysextMerge {
-    type Error = SystemdSysextMergeError;
-
     fn describe_execute(&self) -> Vec<ActionDescription> {
         let Self {
             action_state,
@@ -45,7 +44,7 @@ impl Actionable for SystemdSysextMerge {
     #[tracing::instrument(skip_all, fields(
         device = %self.device.display(),
     ))]
-    async fn execute(&mut self) -> Result<(), Self::Error> {
+    async fn execute(&mut self) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
         let Self {
             device,
             action_state,
@@ -58,7 +57,7 @@ impl Actionable for SystemdSysextMerge {
 
         execute_command(Command::new("systemd-sysext").arg("merge").arg(device))
             .await
-            .map_err(Self::Error::Command)?;
+            .map_err(|e| SystemdSysextMergeError::Command(e).boxed())?;
 
         tracing::trace!("Merged systemd-sysext");
         *action_state = ActionState::Completed;
@@ -81,7 +80,7 @@ impl Actionable for SystemdSysextMerge {
     #[tracing::instrument(skip_all, fields(
         device = %self.device.display(),
     ))]
-    async fn revert(&mut self) -> Result<(), Self::Error> {
+    async fn revert(&mut self) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
         let Self {
             device,
             action_state,
@@ -95,17 +94,11 @@ impl Actionable for SystemdSysextMerge {
         // TODO(@Hoverbear): Handle proxy vars
         execute_command(Command::new("systemd-sysext").arg("unmerge").arg(device))
             .await
-            .map_err(SystemdSysextMergeError::Command)?;
+            .map_err(|e| SystemdSysextMergeError::Command(e).boxed())?;
 
         tracing::trace!("Unmerged systemd-sysext");
         *action_state = ActionState::Completed;
         Ok(())
-    }
-}
-
-impl From<SystemdSysextMerge> for Action {
-    fn from(v: SystemdSysextMerge) -> Self {
-        Action::SystemdSysextMerge(v)
     }
 }
 

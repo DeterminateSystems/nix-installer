@@ -1,6 +1,6 @@
 use serde::Serialize;
 
-use crate::actions::{Action, ActionDescription, ActionState, Actionable};
+use crate::actions::{ActionDescription, ActionError, ActionState, Actionable};
 
 use crate::actions::base::{CreateDirectory, CreateDirectoryError, CreateFile, CreateFileError};
 
@@ -20,7 +20,7 @@ impl PlaceNixConfiguration {
         nix_build_group_name: String,
         extra_conf: Option<String>,
         force: bool,
-    ) -> Result<Self, PlaceNixConfigurationError> {
+    ) -> Result<Self, Box<dyn std::error::Error + Send + Sync>> {
         let buf = format!(
             "\
             {extra_conf}\n\
@@ -44,9 +44,8 @@ impl PlaceNixConfiguration {
 }
 
 #[async_trait::async_trait]
+#[typetag::serde(name = "place-nix-configuration")]
 impl Actionable for PlaceNixConfiguration {
-    type Error = PlaceNixConfigurationError;
-
     fn describe_execute(&self) -> Vec<ActionDescription> {
         if self.action_state == ActionState::Completed {
             vec![]
@@ -62,7 +61,7 @@ impl Actionable for PlaceNixConfiguration {
     }
 
     #[tracing::instrument(skip_all)]
-    async fn execute(&mut self) -> Result<(), Self::Error> {
+    async fn execute(&mut self) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
         let Self {
             create_file,
             create_directory,
@@ -98,7 +97,7 @@ impl Actionable for PlaceNixConfiguration {
     }
 
     #[tracing::instrument(skip_all)]
-    async fn revert(&mut self) -> Result<(), Self::Error> {
+    async fn revert(&mut self) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
         let Self {
             create_file,
             create_directory,
@@ -117,12 +116,6 @@ impl Actionable for PlaceNixConfiguration {
         tracing::trace!("Removed nix configuration");
         *action_state = ActionState::Uncompleted;
         Ok(())
-    }
-}
-
-impl From<PlaceNixConfiguration> for Action {
-    fn from(v: PlaceNixConfiguration) -> Self {
-        Action::PlaceNixConfiguration(v)
     }
 }
 

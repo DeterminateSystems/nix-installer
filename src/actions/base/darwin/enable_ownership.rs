@@ -6,7 +6,7 @@ use tokio::process::Command;
 
 use crate::execute_command;
 
-use crate::actions::{Action, ActionDescription, ActionState, Actionable};
+use crate::actions::{ActionDescription, ActionError, ActionState, Actionable};
 use crate::os::darwin::DiskUtilOutput;
 
 #[derive(Debug, serde::Deserialize, serde::Serialize, Clone)]
@@ -17,7 +17,9 @@ pub struct EnableOwnership {
 
 impl EnableOwnership {
     #[tracing::instrument(skip_all)]
-    pub async fn plan(path: impl AsRef<Path>) -> Result<Self, EnableOwnershipError> {
+    pub async fn plan(
+        path: impl AsRef<Path>,
+    ) -> Result<Self, Box<dyn std::error::Error + Send + Sync>> {
         Ok(Self {
             path: path.as_ref().to_path_buf(),
             action_state: ActionState::Uncompleted,
@@ -26,9 +28,8 @@ impl EnableOwnership {
 }
 
 #[async_trait::async_trait]
+#[typetag::serde(name = "enable-ownership")]
 impl Actionable for EnableOwnership {
-    type Error = EnableOwnershipError;
-
     fn describe_execute(&self) -> Vec<ActionDescription> {
         if self.action_state == ActionState::Completed {
             vec![]
@@ -43,7 +44,7 @@ impl Actionable for EnableOwnership {
     #[tracing::instrument(skip_all, fields(
         path = %self.path.display(),
     ))]
-    async fn execute(&mut self) -> Result<(), Self::Error> {
+    async fn execute(&mut self) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
         let Self { path, action_state } = self;
         if *action_state == ActionState::Completed {
             tracing::trace!("Already completed: Enabling ownership");
@@ -72,7 +73,7 @@ impl Actionable for EnableOwnership {
                     .arg(path),
             )
             .await
-            .map_err(Self::Error::Command)?;
+            .map_err(|e| EnableOwnershipError::Command(e).boxed())?;
         }
 
         tracing::trace!("Enabled ownership");
@@ -91,7 +92,7 @@ impl Actionable for EnableOwnership {
     #[tracing::instrument(skip_all, fields(
         path = %self.path.display(),
     ))]
-    async fn revert(&mut self) -> Result<(), Self::Error> {
+    async fn revert(&mut self) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
         let Self {
             path: _,
             action_state,
@@ -105,12 +106,6 @@ impl Actionable for EnableOwnership {
         tracing::trace!("Unenabled ownership (noop)");
         *action_state = ActionState::Completed;
         Ok(())
-    }
-}
-
-impl From<EnableOwnership> for Action {
-    fn from(v: EnableOwnership) -> Self {
-        Action::DarwinEnableOwnership(v)
     }
 }
 

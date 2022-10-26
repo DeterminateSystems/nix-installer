@@ -5,7 +5,7 @@ use nix::unistd::{chown, Group, User};
 use serde::Serialize;
 use tokio::fs::{create_dir, remove_dir_all};
 
-use crate::actions::{Action, ActionDescription, ActionState, Actionable};
+use crate::actions::{ActionDescription, ActionError, ActionState, Actionable};
 
 #[derive(Debug, serde::Deserialize, serde::Serialize, Clone)]
 pub struct CreateDirectory {
@@ -25,16 +25,16 @@ impl CreateDirectory {
         group: impl Into<Option<String>>,
         mode: impl Into<Option<u32>>,
         force_prune_on_revert: bool,
-    ) -> Result<Self, CreateDirectoryError> {
+    ) -> Result<Self, Box<dyn std::error::Error + Send + Sync>> {
         let path = path.as_ref();
         let user = user.into();
         let group = group.into();
         let mode = mode.into();
 
         let action_state = if path.exists() {
-            let metadata = tokio::fs::metadata(path)
-                .await
-                .map_err(|e| CreateDirectoryError::GettingMetadata(path.to_path_buf(), e))?;
+            let metadata = tokio::fs::metadata(path).await.map_err(|e| {
+                CreateDirectoryError::GettingMetadata(path.to_path_buf(), e).boxed()
+            })?;
             if metadata.is_dir() {
                 // TODO: Validate owner/group...
                 ActionState::Completed
@@ -45,7 +45,8 @@ impl CreateDirectory {
                         "Path `{}` already exists and is not directory",
                         path.display()
                     ),
-                )));
+                ))
+                .boxed());
             }
         } else {
             ActionState::Uncompleted
@@ -63,9 +64,8 @@ impl CreateDirectory {
 }
 
 #[async_trait::async_trait]
+#[typetag::serde(name = "create-directory")]
 impl Actionable for CreateDirectory {
-    type Error = CreateDirectoryError;
-
     fn describe_execute(&self) -> Vec<ActionDescription> {
         let Self {
             path,
@@ -91,7 +91,7 @@ impl Actionable for CreateDirectory {
         group = self.group,
         mode = self.mode.map(|v| tracing::field::display(format!("{:#o}", v))),
     ))]
-    async fn execute(&mut self) -> Result<(), Self::Error> {
+    async fn execute(&mut self) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
         let Self {
             path,
             user,
@@ -109,8 +109,8 @@ impl Actionable for CreateDirectory {
         let gid = if let Some(group) = group {
             Some(
                 Group::from_name(group.as_str())
-                    .map_err(|e| Self::Error::GroupId(group.clone(), e))?
-                    .ok_or(Self::Error::NoGroup(group.clone()))?
+                    .map_err(|e| CreateDirectoryError::GroupId(group.clone(), e).boxed())?
+                    .ok_or(CreateDirectoryError::NoGroup(group.clone()).boxed())?
                     .gid,
             )
         } else {
@@ -119,8 +119,8 @@ impl Actionable for CreateDirectory {
         let uid = if let Some(user) = user {
             Some(
                 User::from_name(user.as_str())
-                    .map_err(|e| Self::Error::UserId(user.clone(), e))?
-                    .ok_or(Self::Error::NoUser(user.clone()))?
+                    .map_err(|e| CreateDirectoryError::UserId(user.clone(), e).boxed())?
+                    .ok_or(CreateDirectoryError::NoUser(user.clone()).boxed())?
                     .uid,
             )
         } else {
@@ -129,13 +129,15 @@ impl Actionable for CreateDirectory {
 
         create_dir(path.clone())
             .await
-            .map_err(|e| Self::Error::Creating(path.clone(), e))?;
-        chown(path, uid, gid).map_err(|e| Self::Error::Chown(path.clone(), e))?;
+            .map_err(|e| CreateDirectoryError::Creating(path.clone(), e).boxed())?;
+        chown(path, uid, gid).map_err(|e| CreateDirectoryError::Chown(path.clone(), e).boxed())?;
 
         if let Some(mode) = mode {
             tokio::fs::set_permissions(&path, PermissionsExt::from_mode(*mode))
                 .await
-                .map_err(|e| Self::Error::SetPermissions(*mode, path.to_owned(), e))?;
+                .map_err(|e| {
+                    CreateDirectoryError::SetPermissions(*mode, path.to_owned(), e).boxed()
+                })?;
         }
 
         tracing::trace!("Created directory");
@@ -176,7 +178,7 @@ impl Actionable for CreateDirectory {
         group = self.group,
         mode = self.mode.map(|v| tracing::field::display(format!("{:#o}", v))),
     ))]
-    async fn revert(&mut self) -> Result<(), Self::Error> {
+    async fn revert(&mut self) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
         let Self {
             path,
             user: _,
@@ -195,25 +197,19 @@ impl Actionable for CreateDirectory {
 
         let is_empty = path
             .read_dir()
-            .map_err(|e| CreateDirectoryError::ReadDir(path.clone(), e))?
+            .map_err(|e| CreateDirectoryError::ReadDir(path.clone(), e).boxed())?
             .next()
             .is_some();
         match (is_empty, force_prune_on_revert) {
             (true, _) | (false, true) => remove_dir_all(path.clone())
                 .await
-                .map_err(|e| Self::Error::Removing(path.clone(), e))?,
+                .map_err(|e| CreateDirectoryError::Removing(path.clone(), e).boxed())?,
             (false, false) => {},
         };
 
         tracing::trace!("Removed directory");
         *action_state = ActionState::Uncompleted;
         Ok(())
-    }
-}
-
-impl From<CreateDirectory> for Action {
-    fn from(v: CreateDirectory) -> Self {
-        Action::CreateDirectory(v)
     }
 }
 

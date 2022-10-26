@@ -3,7 +3,7 @@ use tokio::process::Command;
 
 use crate::execute_command;
 
-use crate::actions::{Action, ActionDescription, ActionState, Actionable};
+use crate::actions::{ActionDescription, ActionError, ActionState, Actionable};
 
 #[derive(Debug, serde::Deserialize, serde::Serialize, Clone)]
 pub struct StartSystemdUnit {
@@ -13,7 +13,7 @@ pub struct StartSystemdUnit {
 
 impl StartSystemdUnit {
     #[tracing::instrument(skip_all)]
-    pub async fn plan(unit: String) -> Result<Self, StartSystemdUnitError> {
+    pub async fn plan(unit: String) -> Result<Self, Box<dyn std::error::Error + Send + Sync>> {
         Ok(Self {
             unit,
             action_state: ActionState::Uncompleted,
@@ -22,9 +22,8 @@ impl StartSystemdUnit {
 }
 
 #[async_trait::async_trait]
+#[typetag::serde(name = "start-systemd-unit")]
 impl Actionable for StartSystemdUnit {
-    type Error = StartSystemdUnitError;
-
     fn describe_execute(&self) -> Vec<ActionDescription> {
         if self.action_state == ActionState::Completed {
             vec![]
@@ -41,7 +40,7 @@ impl Actionable for StartSystemdUnit {
     #[tracing::instrument(skip_all, fields(
         unit = %self.unit,
     ))]
-    async fn execute(&mut self) -> Result<(), Self::Error> {
+    async fn execute(&mut self) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
         let Self { unit, action_state } = self;
         if *action_state == ActionState::Completed {
             tracing::trace!("Already completed: Starting systemd unit");
@@ -57,7 +56,7 @@ impl Actionable for StartSystemdUnit {
                 .arg(format!("{unit}")),
         )
         .await
-        .map_err(StartSystemdUnitError::Command)?;
+        .map_err(|e| StartSystemdUnitError::Command(e).boxed())?;
 
         tracing::trace!("Started systemd unit");
         *action_state = ActionState::Completed;
@@ -80,7 +79,7 @@ impl Actionable for StartSystemdUnit {
     #[tracing::instrument(skip_all, fields(
         unit = %self.unit,
     ))]
-    async fn revert(&mut self) -> Result<(), Self::Error> {
+    async fn revert(&mut self) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
         let Self { unit, action_state } = self;
         if *action_state == ActionState::Uncompleted {
             tracing::trace!("Already reverted: Stopping systemd unit");
@@ -91,17 +90,11 @@ impl Actionable for StartSystemdUnit {
         // TODO(@Hoverbear): Handle proxy vars
         execute_command(Command::new("systemctl").arg("stop").arg(format!("{unit}")))
             .await
-            .map_err(StartSystemdUnitError::Command)?;
+            .map_err(|e| StartSystemdUnitError::Command(e).boxed())?;
 
         tracing::trace!("Stopped systemd unit");
         *action_state = ActionState::Completed;
         Ok(())
-    }
-}
-
-impl From<StartSystemdUnit> for Action {
-    fn from(v: StartSystemdUnit) -> Self {
-        Action::StartSystemdUnit(v)
     }
 }
 

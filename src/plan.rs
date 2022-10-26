@@ -1,13 +1,13 @@
 use std::path::PathBuf;
 
 use crate::{
-    actions::{Action, ActionDescription, ActionError, Actionable},
+    actions::{ActionDescription, Actionable},
     BuiltinPlanner, HarmonicError,
 };
 
 #[derive(Debug, serde::Deserialize, serde::Serialize, Clone)]
 pub struct InstallPlan {
-    pub(crate) actions: Vec<Action>,
+    pub(crate) actions: Vec<Box<dyn Actionable>>,
 
     pub(crate) planner: BuiltinPlanner,
 }
@@ -70,11 +70,12 @@ impl InstallPlan {
                 if let Err(err) = write_receipt(self.clone()).await {
                     tracing::error!("Error saving receipt: {:?}", err);
                 }
-                return Err(ActionError::from(err).into());
+                return Err(HarmonicError::ActionError(err));
             }
         }
 
-        write_receipt(self.clone()).await
+        write_receipt(self.clone()).await?;
+        Ok(())
     }
 
     #[tracing::instrument(skip_all)]
@@ -134,7 +135,7 @@ impl InstallPlan {
                 if let Err(err) = write_receipt(self.clone()).await {
                     tracing::error!("Error saving receipt: {:?}", err);
                 }
-                return Err(ActionError::from(err).into());
+                return Err(HarmonicError::ActionError(err));
             }
         }
 

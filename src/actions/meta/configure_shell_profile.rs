@@ -4,7 +4,7 @@ use serde::Serialize;
 use tokio::task::{JoinError, JoinSet};
 
 use crate::actions::base::{CreateOrAppendFile, CreateOrAppendFileError};
-use crate::actions::{Action, ActionDescription, ActionState, Actionable};
+use crate::actions::{ActionDescription, ActionError, ActionState, Actionable};
 
 const PROFILE_TARGETS: &[&str] = &[
     "/etc/bashrc",
@@ -24,7 +24,7 @@ pub struct ConfigureShellProfile {
 
 impl ConfigureShellProfile {
     #[tracing::instrument(skip_all)]
-    pub async fn plan() -> Result<Self, ConfigureShellProfileError> {
+    pub async fn plan() -> Result<Self, Box<dyn std::error::Error + Send + Sync>> {
         let mut create_or_append_files = Vec::default();
         for profile_target in PROFILE_TARGETS {
             let path = Path::new(profile_target);
@@ -41,8 +41,11 @@ impl ConfigureShellProfile {
                 # End Nix\n
             \n",
             );
-            create_or_append_files
-                .push(CreateOrAppendFile::plan(path, None, None, 0o0644, buf).await?);
+            create_or_append_files.push(
+                CreateOrAppendFile::plan(path, None, None, 0o0644, buf)
+                    .await
+                    .map_err(|e| e.boxed())?,
+            );
         }
 
         Ok(Self {
@@ -53,9 +56,8 @@ impl ConfigureShellProfile {
 }
 
 #[async_trait::async_trait]
+#[typetag::serde(name = "configure-shell-profile")]
 impl Actionable for ConfigureShellProfile {
-    type Error = ConfigureShellProfileError;
-
     fn describe_execute(&self) -> Vec<ActionDescription> {
         if self.action_state == ActionState::Completed {
             vec![]
@@ -68,7 +70,7 @@ impl Actionable for ConfigureShellProfile {
     }
 
     #[tracing::instrument(skip_all)]
-    async fn execute(&mut self) -> Result<(), Self::Error> {
+    async fn execute(&mut self) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
         let Self {
             create_or_append_files,
             action_state,
@@ -87,7 +89,10 @@ impl Actionable for ConfigureShellProfile {
             let mut create_or_append_file_clone = create_or_append_file.clone();
             let _abort_handle = set.spawn(async move {
                 create_or_append_file_clone.execute().await?;
-                Result::<_, CreateOrAppendFileError>::Ok((idx, create_or_append_file_clone))
+                Result::<_, Box<dyn std::error::Error + Send + Sync>>::Ok((
+                    idx,
+                    create_or_append_file_clone,
+                ))
             });
         }
 
@@ -97,7 +102,7 @@ impl Actionable for ConfigureShellProfile {
                     create_or_append_files[idx] = create_or_append_file
                 },
                 Ok(Err(e)) => errors.push(e),
-                Err(e) => return Err(e.into()),
+                Err(e) => return Err(e.boxed()),
             };
         }
 
@@ -105,9 +110,7 @@ impl Actionable for ConfigureShellProfile {
             if errors.len() == 1 {
                 return Err(errors.into_iter().next().unwrap().into());
             } else {
-                return Err(ConfigureShellProfileError::MultipleCreateOrAppendFile(
-                    errors,
-                ));
+                return Err(ConfigureShellProfileError::MultipleCreateOrAppendFile(errors).boxed());
             }
         }
 
@@ -128,7 +131,7 @@ impl Actionable for ConfigureShellProfile {
     }
 
     #[tracing::instrument(skip_all)]
-    async fn revert(&mut self) -> Result<(), Self::Error> {
+    async fn revert(&mut self) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
         let Self {
             create_or_append_files,
             action_state,
@@ -147,7 +150,10 @@ impl Actionable for ConfigureShellProfile {
             let mut create_or_append_file_clone = create_or_append_file.clone();
             let _abort_handle = set.spawn(async move {
                 create_or_append_file_clone.revert().await?;
-                Result::<_, CreateOrAppendFileError>::Ok((idx, create_or_append_file_clone))
+                Result::<_, Box<dyn std::error::Error + Send + Sync>>::Ok((
+                    idx,
+                    create_or_append_file_clone,
+                ))
             });
         }
 
@@ -157,7 +163,7 @@ impl Actionable for ConfigureShellProfile {
                     create_or_append_files[idx] = create_or_append_file
                 },
                 Ok(Err(e)) => errors.push(e),
-                Err(e) => return Err(e.into()),
+                Err(e) => return Err(e.boxed()),
             };
         }
 
@@ -165,9 +171,7 @@ impl Actionable for ConfigureShellProfile {
             if errors.len() == 1 {
                 return Err(errors.into_iter().next().unwrap().into());
             } else {
-                return Err(ConfigureShellProfileError::MultipleCreateOrAppendFile(
-                    errors,
-                ));
+                return Err(ConfigureShellProfileError::MultipleCreateOrAppendFile(errors).boxed());
             }
         }
 
@@ -177,13 +181,7 @@ impl Actionable for ConfigureShellProfile {
     }
 }
 
-impl From<ConfigureShellProfile> for Action {
-    fn from(v: ConfigureShellProfile) -> Self {
-        Action::ConfigureShellProfile(v)
-    }
-}
-
-#[derive(Debug, thiserror::Error, Serialize)]
+#[derive(Debug, thiserror::Error)]
 pub enum ConfigureShellProfileError {
     #[error("Creating or appending to file")]
     CreateOrAppendFile(
@@ -192,12 +190,11 @@ pub enum ConfigureShellProfileError {
         CreateOrAppendFileError,
     ),
     #[error("Multiple errors: {}", .0.iter().map(|v| format!("{v}")).collect::<Vec<_>>().join(" & "))]
-    MultipleCreateOrAppendFile(Vec<CreateOrAppendFileError>),
+    MultipleCreateOrAppendFile(Vec<Box<dyn std::error::Error + Send + Sync>>),
     #[error("Joining spawned async task")]
     Join(
         #[source]
         #[from]
-        #[serde(serialize_with = "crate::serialize_error_to_display")]
         JoinError,
     ),
 }

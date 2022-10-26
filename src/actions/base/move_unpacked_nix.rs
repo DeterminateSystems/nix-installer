@@ -2,7 +2,7 @@ use std::path::{Path, PathBuf};
 
 use serde::Serialize;
 
-use crate::actions::{Action, ActionDescription, ActionState, Actionable};
+use crate::actions::{ActionDescription, ActionError, ActionState, Actionable};
 
 const DEST: &str = "/nix/store";
 
@@ -24,9 +24,8 @@ impl MoveUnpackedNix {
 }
 
 #[async_trait::async_trait]
+#[typetag::serde(name = "mount-unpacked-nix")]
 impl Actionable for MoveUnpackedNix {
-    type Error = MoveUnpackedNixError;
-
     fn describe_execute(&self) -> Vec<ActionDescription> {
         if self.action_state == ActionState::Completed {
             vec![]
@@ -45,7 +44,7 @@ impl Actionable for MoveUnpackedNix {
         src = %self.src.display(),
         dest = DEST,
     ))]
-    async fn execute(&mut self) -> Result<(), Self::Error> {
+    async fn execute(&mut self) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
         let Self { src, action_state } = self;
         if *action_state == ActionState::Completed {
             tracing::trace!("Already completed: Moving Nix");
@@ -54,8 +53,10 @@ impl Actionable for MoveUnpackedNix {
         tracing::debug!("Moving Nix");
 
         // TODO(@Hoverbear): I would like to make this less awful
-        let found_nix_paths =
-            glob::glob(&format!("{}/nix-*", src.display()))?.collect::<Result<Vec<_>, _>>()?;
+        let found_nix_paths = glob::glob(&format!("{}/nix-*", src.display()))
+            .map_err(|e| e.boxed())?
+            .collect::<Result<Vec<_>, _>>()
+            .map_err(|e| e.boxed())?;
         assert_eq!(
             found_nix_paths.len(),
             1,
@@ -67,11 +68,13 @@ impl Actionable for MoveUnpackedNix {
         let dest = Path::new(DEST);
         tokio::fs::rename(src_store.clone(), dest)
             .await
-            .map_err(|e| MoveUnpackedNixError::Rename(src_store.clone(), dest.to_owned(), e))?;
+            .map_err(|e| {
+                MoveUnpackedNixError::Rename(src_store.clone(), dest.to_owned(), e).boxed()
+            })?;
 
         tokio::fs::remove_dir_all(src)
             .await
-            .map_err(|e| MoveUnpackedNixError::Rename(src_store, dest.to_owned(), e))?;
+            .map_err(|e| MoveUnpackedNixError::Rename(src_store, dest.to_owned(), e).boxed())?;
         tracing::trace!("Moved Nix");
         *action_state = ActionState::Completed;
         Ok(())
@@ -89,7 +92,7 @@ impl Actionable for MoveUnpackedNix {
         src = %self.src.display(),
         dest = DEST,
     ))]
-    async fn revert(&mut self) -> Result<(), Self::Error> {
+    async fn revert(&mut self) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
         let Self {
             src: _,
             action_state,
@@ -101,12 +104,6 @@ impl Actionable for MoveUnpackedNix {
         tracing::debug!("Unmove Nix (noop)");
         *action_state = ActionState::Uncompleted;
         Ok(())
-    }
-}
-
-impl From<MoveUnpackedNix> for Action {
-    fn from(v: MoveUnpackedNix) -> Self {
-        Action::MoveUnpackedNix(v)
     }
 }
 
