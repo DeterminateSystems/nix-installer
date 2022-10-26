@@ -1,18 +1,18 @@
-mod actions;
+pub mod action;
 pub mod cli;
 mod error;
 mod interaction;
 mod os;
 mod plan;
-mod planner;
+pub mod planner;
 mod settings;
 
-use std::{ffi::OsStr, fmt::Display, process::Output};
+use std::{ffi::OsStr, process::Output};
 
 pub use error::HarmonicError;
 pub use plan::InstallPlan;
-pub use planner::BuiltinPlanner;
-use serde::Serializer;
+use planner::BuiltinPlanner;
+
 pub use settings::CommonSettings;
 
 use tokio::process::Command;
@@ -41,12 +41,4 @@ async fn execute_command(command: &mut Command) -> Result<Output, std::io::Error
 fn set_env(k: impl AsRef<OsStr>, v: impl AsRef<OsStr>) {
     tracing::trace!("Setting env");
     std::env::set_var(k.as_ref(), v.as_ref());
-}
-
-fn serialize_error_to_display<E, S>(err: &E, ser: S) -> Result<S::Ok, S::Error>
-where
-    E: Display,
-    S: Serializer,
-{
-    ser.serialize_str(&format!("{err:#}"))
 }

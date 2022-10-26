@@ -1,9 +1,9 @@
 use crate::{
-    actions::{
+    action::{
         base::{CreateDirectory, StartSystemdUnit},
         meta::{CreateSystemdSysext, ProvisionNix},
     },
-    planner::{BuiltinPlannerError, Plannable},
+    planner::{BuiltinPlannerError, Planner},
     BuiltinPlanner, CommonSettings, InstallPlan,
 };
 
@@ -14,20 +14,17 @@ pub struct SteamDeck {
 }
 
 #[async_trait::async_trait]
-impl Plannable for SteamDeck {
-    const DISPLAY_STRING: &'static str = "Steam Deck (x86_64 Linux Multi-User)";
-    const SLUG: &'static str = "steam-deck";
-    type Error = BuiltinPlannerError;
-
-    async fn default() -> Result<Self, Self::Error> {
+#[typetag::serde(name = "steam-deck")]
+impl Planner for SteamDeck {
+    async fn default() -> Result<Self, Box<dyn std::error::Error + Sync + Send>> {
         Ok(Self {
             settings: CommonSettings::default()?,
         })
     }
 
-    async fn plan(self) -> Result<crate::InstallPlan, Self::Error> {
+    async fn plan(self) -> Result<crate::InstallPlan, Box<dyn std::error::Error + Sync + Send>> {
         Ok(InstallPlan {
-            planner: self.clone().into(),
+            planner: Box::new(self.clone()),
             actions: vec![
                 Box::new(CreateSystemdSysext::plan("/var/lib/extensions").await?),
                 Box::new(CreateDirectory::plan("/nix", None, None, 0o0755, true).await?),

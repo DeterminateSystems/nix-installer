@@ -2,7 +2,18 @@ pub mod darwin;
 pub mod linux;
 pub mod specific;
 
-use crate::{actions::ActionError, settings::InstallSettingsError, InstallPlan};
+use crate::{action::ActionError, settings::InstallSettingsError, InstallPlan};
+
+#[async_trait::async_trait]
+#[typetag::serde(tag = "planner")]
+pub trait Planner: std::fmt::Debug + Send + Sync + dyn_clone::DynClone {
+    async fn default() -> Result<Self, Box<dyn std::error::Error + Sync + Send>>
+    where
+        Self: Sized;
+    async fn plan(self) -> Result<InstallPlan, Box<dyn std::error::Error + Sync + Send>>;
+}
+
+dyn_clone::clone_trait_object!(Planner);
 
 #[derive(Debug, Clone, clap::Subcommand, serde::Serialize, serde::Deserialize)]
 pub enum BuiltinPlanner {
@@ -12,7 +23,7 @@ pub enum BuiltinPlanner {
 }
 
 impl BuiltinPlanner {
-    pub async fn default() -> Result<Self, BuiltinPlannerError> {
+    pub async fn default() -> Result<Self, Box<dyn std::error::Error + Sync + Send>> {
         use target_lexicon::{Architecture, OperatingSystem};
         match (Architecture::host(), OperatingSystem::host()) {
             (Architecture::X86_64, OperatingSystem::Linux) => {
@@ -29,32 +40,17 @@ impl BuiltinPlanner {
             | (Architecture::Aarch64(_), OperatingSystem::Darwin) => {
                 Ok(Self::DarwinMulti(darwin::DarwinMulti::default().await?))
             },
-            _ => Err(BuiltinPlannerError::UnsupportedArchitecture(
-                target_lexicon::HOST,
-            )),
+            _ => Err(BuiltinPlannerError::UnsupportedArchitecture(target_lexicon::HOST).boxed()),
         }
     }
 
-    pub async fn plan(self) -> Result<InstallPlan, BuiltinPlannerError> {
+    pub async fn plan(self) -> Result<InstallPlan, Box<dyn std::error::Error + Sync + Send>> {
         match self {
             BuiltinPlanner::LinuxMulti(planner) => planner.plan().await,
             BuiltinPlanner::DarwinMulti(planner) => planner.plan().await,
             BuiltinPlanner::SteamDeck(planner) => planner.plan().await,
         }
     }
-}
-
-#[async_trait::async_trait]
-trait Plannable
-where
-    Self: Sized,
-{
-    const DISPLAY_STRING: &'static str;
-    const SLUG: &'static str;
-    type Error: std::error::Error;
-
-    async fn default() -> Result<Self, Self::Error>;
-    async fn plan(self) -> Result<InstallPlan, Self::Error>;
 }
 
 #[derive(thiserror::Error, Debug)]

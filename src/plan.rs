@@ -1,15 +1,16 @@
 use std::path::PathBuf;
 
 use crate::{
-    actions::{ActionDescription, Actionable},
+    action::{Action, ActionDescription},
+    planner::Planner,
     BuiltinPlanner, HarmonicError,
 };
 
 #[derive(Debug, serde::Deserialize, serde::Serialize, Clone)]
 pub struct InstallPlan {
-    pub(crate) actions: Vec<Box<dyn Actionable>>,
+    pub(crate) actions: Vec<Box<dyn Action>>,
 
-    pub(crate) planner: BuiltinPlanner,
+    pub(crate) planner: Box<dyn Planner>,
 }
 
 impl InstallPlan {

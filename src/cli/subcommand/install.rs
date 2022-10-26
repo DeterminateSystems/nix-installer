@@ -50,7 +50,7 @@ impl CommandExecute for Install {
                     .wrap_err("Reading plan")?;
                 serde_json::from_str(&install_plan_string)?
             },
-            None => planner.plan().await?,
+            None => planner.plan().await.map_err(|e| eyre!(e))?,
         };
 
         if !no_confirm {

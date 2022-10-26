@@ -25,10 +25,12 @@ impl CommandExecute for Plan {
 
         let planner = match planner {
             Some(planner) => planner,
-            None => BuiltinPlanner::default().await?,
+            None => BuiltinPlanner::default()
+                .await
+                .map_err(|e| eyre::eyre!(e))?,
         };
 
-        let install_plan = planner.plan().await?;
+        let install_plan = planner.plan().await.map_err(|e| eyre::eyre!(e))?;
 
         let json = serde_json::to_string_pretty(&install_plan)?;
         tokio::fs::write(plan, json)

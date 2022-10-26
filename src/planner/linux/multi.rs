@@ -1,9 +1,9 @@
 use crate::{
-    actions::{
+    action::{
         base::{CreateDirectory, StartSystemdUnit},
         meta::{ConfigureNix, ProvisionNix},
     },
-    planner::{BuiltinPlannerError, Plannable},
+    planner::{BuiltinPlannerError, Planner},
     BuiltinPlanner, CommonSettings, InstallPlan,
 };
 
@@ -14,20 +14,17 @@ pub struct LinuxMulti {
 }
 
 #[async_trait::async_trait]
-impl Plannable for LinuxMulti {
-    const DISPLAY_STRING: &'static str = "Linux Multi-User";
-    const SLUG: &'static str = "linux-multi";
-    type Error = BuiltinPlannerError;
-
-    async fn default() -> Result<Self, Self::Error> {
+#[typetag::serde(name = "linux-multi")]
+impl Planner for LinuxMulti {
+    async fn default() -> Result<Self, Box<dyn std::error::Error + Sync + Send>> {
         Ok(Self {
             settings: CommonSettings::default()?,
         })
     }
 
-    async fn plan(self) -> Result<InstallPlan, Self::Error> {
+    async fn plan(self) -> Result<InstallPlan, Box<dyn std::error::Error + Sync + Send>> {
         Ok(InstallPlan {
-            planner: self.clone().into(),
+            planner: Box::new(self.clone()),
             actions: vec![
                 Box::new(CreateDirectory::plan("/nix", None, None, 0o0755, true).await?),
                 Box::new(ProvisionNix::plan(self.settings.clone()).await?),

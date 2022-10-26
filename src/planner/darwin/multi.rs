@@ -4,13 +4,13 @@ use clap::ArgAction;
 use tokio::process::Command;
 
 use crate::{
-    actions::{
+    action::{
         base::darwin::KickstartLaunchctlService,
         meta::{darwin::CreateApfsVolume, ConfigureNix, ProvisionNix},
     },
     execute_command,
     os::darwin::DiskUtilOutput,
-    planner::{BuiltinPlannerError, Plannable},
+    planner::{BuiltinPlannerError, Planner},
     BuiltinPlanner, CommonSettings, InstallPlan,
 };
 
@@ -42,12 +42,9 @@ async fn default_root_disk() -> Result<String, BuiltinPlannerError> {
 }
 
 #[async_trait::async_trait]
-impl Plannable for DarwinMulti {
-    const DISPLAY_STRING: &'static str = "Darwin Multi-User";
-    const SLUG: &'static str = "darwin-multi";
-    type Error = BuiltinPlannerError;
-
-    async fn default() -> Result<Self, Self::Error> {
+#[typetag::serde(name = "darwin-multi")]
+impl Planner for DarwinMulti {
+    async fn default() -> Result<Self, Box<dyn std::error::Error + Sync + Send>> {
         Ok(Self {
             settings: CommonSettings::default()?,
             root_disk: Some(default_root_disk().await?),
@@ -56,7 +53,7 @@ impl Plannable for DarwinMulti {
         })
     }
 
-    async fn plan(self) -> Result<crate::InstallPlan, Self::Error> {
+    async fn plan(self) -> Result<crate::InstallPlan, Box<dyn std::error::Error + Sync + Send>> {
         let root_disk = {
             let buf =
                 execute_command(Command::new("/usr/sbin/diskutil").args(["info", "-plist", "/"]))
@@ -71,7 +68,7 @@ impl Plannable for DarwinMulti {
         let volume_label = "Nix Store".into();
 
         Ok(InstallPlan {
-            planner: self.clone().into(),
+            planner: Box::new(self.clone()),
             actions: vec![
                 // Create Volume step:
                 //
