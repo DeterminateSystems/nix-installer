@@ -19,7 +19,7 @@ glob = "0.3.0"
 nix = { version = "0.25.0", features = ["user", "fs"], default-features = false }
 owo-colors = { version = "3.5.0", features = [ "supports-colors" ] }
 reqwest = { version = "0.11.11", default-features = false, features = ["rustls-tls", "stream"] }
-serde = { version = "1.0.144", features = ["derive"] }
+serde = { version = "1.0.147", features = ["derive"] }
 serde_json = "1.0.85"
 serde_with = "2.0.1"
 tar = "0.4.38"
