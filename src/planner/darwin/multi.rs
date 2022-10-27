@@ -53,16 +53,22 @@ impl Planner for DarwinMulti {
         })
     }
 
-    async fn plan(self) -> Result<crate::InstallPlan, Box<dyn std::error::Error + Sync + Send>> {
-        let root_disk = {
-            let buf =
-                execute_command(Command::new("/usr/sbin/diskutil").args(["info", "-plist", "/"]))
-                    .await
-                    .unwrap()
-                    .stdout;
-            let the_plist: DiskUtilOutput = plist::from_reader(Cursor::new(buf)).unwrap();
+    async fn plan(
+        mut self,
+    ) -> Result<crate::InstallPlan, Box<dyn std::error::Error + Sync + Send>> {
+        self.root_disk = match self.root_disk {
+            root_disk @ Some(_) => root_disk,
+            None => {
+                let buf = execute_command(
+                    Command::new("/usr/sbin/diskutil").args(["info", "-plist", "/"]),
+                )
+                .await
+                .unwrap()
+                .stdout;
+                let the_plist: DiskUtilOutput = plist::from_reader(Cursor::new(buf)).unwrap();
 
-            the_plist.parent_whole_disk
+                Some(the_plist.parent_whole_disk)
+            },
         };
 
         let volume_label = "Nix Store".into();
@@ -74,7 +80,15 @@ impl Planner for DarwinMulti {
                 //
                 // setup_Synthetic -> create_synthetic_objects
                 // Unmount -> create_volume -> Setup_fstab -> maybe encrypt_volume -> launchctl bootstrap -> launchctl kickstart -> await_volume -> maybe enableOwnership
-                Box::new(CreateApfsVolume::plan(root_disk, volume_label, false, None).await?),
+                Box::new(
+                    CreateApfsVolume::plan(
+                        self.root_disk.unwrap(), /* We just ensured it was populated */
+                        volume_label,
+                        false,
+                        None,
+                    )
+                    .await?,
+                ),
                 Box::new(ProvisionNix::plan(self.settings.clone()).await?),
                 Box::new(ConfigureNix::plan(self.settings).await?),
                 Box::new(

@@ -3,17 +3,6 @@ pub mod meta;
 
 use serde::{Deserialize, Serialize};
 
-pub trait ActionError: std::error::Error + Send + Sync {
-    fn boxed(self) -> Box<dyn std::error::Error + Send + Sync>
-    where
-        Self: Sized + 'static,
-    {
-        Box::new(self)
-    }
-}
-
-impl<E> ActionError for E where E: std::error::Error + Send + Sized + Sync {}
-
 #[async_trait::async_trait]
 #[typetag::serde(tag = "action")]
 pub trait Action: Send + Sync + std::fmt::Debug + dyn_clone::DynClone {

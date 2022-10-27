@@ -7,7 +7,10 @@ use crate::action::base::{
 };
 use crate::CommonSettings;
 
-use crate::action::{Action, ActionDescription, ActionError, ActionState};
+use crate::{
+    action::{Action, ActionDescription, ActionState},
+    BoxableError,
+};
 
 use super::{CreateNixTree, CreateNixTreeError, CreateUsersAndGroup, CreateUsersAndGroupError};
 

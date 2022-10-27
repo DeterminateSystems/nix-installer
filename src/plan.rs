@@ -99,6 +99,7 @@ impl InstallPlan {
             nix_channels = "todo",
             actions = actions
                 .iter()
+                .rev()
                 .map(|v| v.describe_revert())
                 .flatten()
                 .map(|desc| {
@@ -131,7 +132,7 @@ impl InstallPlan {
         // This is **deliberately sequential**.
         // Actions which are parallelizable are represented by "group actions" like CreateUsers
         // The plan itself represents the concept of the sequence of stages.
-        for action in actions {
+        for action in actions.iter_mut().rev() {
             if let Err(err) = action.revert().await {
                 if let Err(err) = write_receipt(self.clone()).await {
                     tracing::error!("Error saving receipt: {:?}", err);

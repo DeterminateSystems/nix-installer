@@ -5,7 +5,10 @@ use nix::unistd::{chown, Group, User};
 
 use tokio::fs::{create_dir, remove_dir_all};
 
-use crate::action::{Action, ActionDescription, ActionError, ActionState};
+use crate::{
+    action::{Action, ActionDescription, ActionState},
+    BoxableError,
+};
 
 #[derive(Debug, serde::Deserialize, serde::Serialize, Clone)]
 pub struct CreateDirectory {

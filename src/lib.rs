@@ -42,3 +42,14 @@ fn set_env(k: impl AsRef<OsStr>, v: impl AsRef<OsStr>) {
     tracing::trace!("Setting env");
     std::env::set_var(k.as_ref(), v.as_ref());
 }
+
+pub trait BoxableError: std::error::Error + Send + Sync {
+    fn boxed(self) -> Box<dyn std::error::Error + Send + Sync>
+    where
+        Self: Sized + 'static,
+    {
+        Box::new(self)
+    }
+}
+
+impl<E> BoxableError for E where E: std::error::Error + Send + Sized + Sync {}

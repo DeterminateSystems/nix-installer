@@ -10,9 +10,10 @@ use tokio::{
     io::{AsyncReadExt, AsyncSeekExt, AsyncWriteExt},
 };
 
-use crate::action::{ActionError, ActionState};
-
-use crate::action::{Action, ActionDescription};
+use crate::{
+    action::{Action, ActionDescription, ActionState},
+    BoxableError,
+};
 
 #[derive(Debug, serde::Deserialize, serde::Serialize, Clone)]
 pub struct CreateOrAppendFile {

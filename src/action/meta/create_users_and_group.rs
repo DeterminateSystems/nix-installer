@@ -2,9 +2,12 @@ use tokio::task::{JoinError, JoinSet};
 
 use crate::CommonSettings;
 
-use crate::action::{
-    base::{CreateGroup, CreateGroupError, CreateUser, CreateUserError},
-    Action, ActionDescription, ActionError, ActionState,
+use crate::{
+    action::{
+        base::{CreateGroup, CreateGroupError, CreateUser, CreateUserError},
+        Action, ActionDescription, ActionState,
+    },
+    BoxableError,
 };
 
 #[derive(Debug, serde::Deserialize, serde::Serialize, Clone)]

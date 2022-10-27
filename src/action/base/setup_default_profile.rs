@@ -1,7 +1,4 @@
-use crate::{
-    action::{ActionError, ActionState},
-    execute_command, set_env,
-};
+use crate::{action::ActionState, execute_command, set_env, BoxableError};
 
 use glob::glob;
 

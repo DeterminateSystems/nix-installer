@@ -4,7 +4,10 @@ use tokio::process::Command;
 
 use crate::execute_command;
 
-use crate::action::{Action, ActionDescription, ActionError, ActionState};
+use crate::{
+    action::{Action, ActionDescription, ActionState},
+    BoxableError,
+};
 
 #[derive(Debug, serde::Deserialize, serde::Serialize, Clone)]
 pub struct SystemdSysextMerge {

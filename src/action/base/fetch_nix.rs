@@ -5,7 +5,10 @@ use reqwest::Url;
 
 use tokio::task::JoinError;
 
-use crate::action::{Action, ActionDescription, ActionError, ActionState};
+use crate::{
+    action::{Action, ActionDescription, ActionState},
+    BoxableError,
+};
 
 #[derive(Debug, serde::Deserialize, serde::Serialize, Clone)]
 pub struct FetchNix {

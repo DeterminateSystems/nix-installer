@@ -21,24 +21,30 @@ pub(crate) async fn confirm(question: impl AsRef<str>) -> eyre::Result<bool> {
     stdout.write_all(with_confirm.as_bytes()).await?;
     stdout.flush().await?;
 
-    crossterm::terminal::enable_raw_mode()?;
+    // crossterm::terminal::enable_raw_mode()?;
     let mut reader = EventStream::new();
+
     let retval = loop {
         let event = reader.next().fuse().await;
         match event {
             Some(Ok(event)) => {
                 if let crossterm::event::Event::Key(key) = event {
                     match key.code {
-                        KeyCode::Enter => continue, // Many users will hit enter accidentally when they are agreeing/declining prompts.
-                        // TODO(@hoverbear): Should maybe actually even wait for it?
-                        KeyCode::Char('y') => break Ok(true),
-                        _ => {
+                        KeyCode::Char('y') | KeyCode::Char('Y') => {
                             stdout
-                                .write_all("Cancelled!".red().to_string().as_bytes())
+                                .write_all("Confirmed!\n".green().to_string().as_bytes())
+                                .await?;
+                            stdout.flush().await?;
+                            break Ok(true);
+                        },
+                        KeyCode::Char('N') | KeyCode::Char('n') => {
+                            stdout
+                                .write_all("Cancelled!\n".red().to_string().as_bytes())
                                 .await?;
                             stdout.flush().await?;
                             break Ok(false);
                         },
+                        KeyCode::Enter | _ => continue,
                     }
                 }
             },
@@ -46,7 +52,7 @@ pub(crate) async fn confirm(question: impl AsRef<str>) -> eyre::Result<bool> {
             None => break Err(eyre!("Bailed, no confirmation event")),
         }
     };
-    crossterm::terminal::disable_raw_mode()?;
+    // crossterm::terminal::disable_raw_mode()?;
     retval
 }
 

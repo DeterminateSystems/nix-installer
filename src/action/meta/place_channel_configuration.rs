@@ -1,6 +1,9 @@
 use reqwest::Url;
 
-use crate::action::{Action, ActionDescription, ActionError, ActionState};
+use crate::{
+    action::{Action, ActionDescription, ActionState},
+    BoxableError,
+};
 
 use crate::action::base::{CreateFile, CreateFileError};
 

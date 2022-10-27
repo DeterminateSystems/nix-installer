@@ -1,6 +1,9 @@
 use std::path::{Path, PathBuf};
 
-use crate::action::{Action, ActionDescription, ActionError, ActionState};
+use crate::{
+    action::{Action, ActionDescription, ActionState},
+    BoxableError,
+};
 
 const DEST: &str = "/nix/store";
 

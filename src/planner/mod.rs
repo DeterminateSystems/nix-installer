@@ -2,7 +2,7 @@ pub mod darwin;
 pub mod linux;
 pub mod specific;
 
-use crate::{action::ActionError, settings::InstallSettingsError, InstallPlan};
+use crate::{settings::InstallSettingsError, BoxableError, InstallPlan};
 
 #[async_trait::async_trait]
 #[typetag::serde(tag = "planner")]

@@ -1,16 +1,14 @@
 use reqwest::Url;
 
-use crate::CommonSettings;
 use crate::{
     action::{
         base::{ConfigureNixDaemonService, SetupDefaultProfile},
         meta::{ConfigureShellProfile, PlaceChannelConfiguration, PlaceNixConfiguration},
-        ActionState,
+        Action, ActionDescription, ActionState,
     },
     cli::arg::ChannelValue,
+    BoxableError, CommonSettings,
 };
-
-use crate::action::{Action, ActionDescription, ActionError};
 
 #[derive(Debug, serde::Deserialize, serde::Serialize, Clone)]
 pub struct ConfigureNix {
