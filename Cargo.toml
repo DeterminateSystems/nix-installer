@@ -25,7 +25,7 @@ serde_with = "2.0.1"
 tar = "0.4.38"
 target-lexicon = "0.12.4"
 tempdir = { version  = "0.3.7"}
-thiserror = "1.0.33"
+thiserror = "1.0.37"
 tokio = { version = "1.21.0", features = ["time", "io-std", "process", "fs", "tracing", "rt-multi-thread", "macros", "io-util"] }
 tokio-util = { version = "0.7", features = ["io"] }
 tracing = { version = "0.1.36", features = [ "valuable" ] }
