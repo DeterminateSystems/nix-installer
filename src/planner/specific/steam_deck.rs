@@ -3,7 +3,7 @@ use crate::{
         base::{CreateDirectory, StartSystemdUnit},
         meta::{CreateSystemdSysext, ProvisionNix},
     },
-    planner::{BuiltinPlannerError, Planner},
+    planner::Planner,
     BuiltinPlanner, CommonSettings, InstallPlan,
 };
 
