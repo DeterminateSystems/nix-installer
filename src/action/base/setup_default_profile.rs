@@ -97,6 +97,8 @@ impl Action for SetupDefaultProfile {
             Command::new(nix_pkg.join("bin/nix-env"))
                 .arg("-i")
                 .arg(&nix_pkg)
+                .arg("-i")
+                .arg(&nss_ca_cert_pkg)
                 .env(
                     "HOME",
                     dirs::home_dir().ok_or_else(|| SetupDefaultProfileError::NoRootHome.boxed())?,
@@ -110,17 +112,17 @@ impl Action for SetupDefaultProfile {
         .map_err(|e| SetupDefaultProfileError::Command(e).boxed())?;
 
         // Install `nss-cacert` into the store
-        execute_command(
-            Command::new(nix_pkg.join("bin/nix-env"))
-                .arg("-i")
-                .arg(&nss_ca_cert_pkg)
-                .env(
-                    "NIX_SSL_CERT_FILE",
-                    nss_ca_cert_pkg.join("etc/ssl/certs/ca-bundle.crt"),
-                ),
-        )
-        .await
-        .map_err(|e| SetupDefaultProfileError::Command(e).boxed())?;
+        // execute_command(
+        //     Command::new(nix_pkg.join("bin/nix-env"))
+        //         .arg("-i")
+        //         .arg(&nss_ca_cert_pkg)
+        //         .env(
+        //             "NIX_SSL_CERT_FILE",
+        //             nss_ca_cert_pkg.join("etc/ssl/certs/ca-bundle.crt"),
+        //         ),
+        // )
+        // .await
+        // .map_err(|e| SetupDefaultProfileError::Command(e).boxed())?;
 
         set_env(
             "NIX_SSL_CERT_FILE",
