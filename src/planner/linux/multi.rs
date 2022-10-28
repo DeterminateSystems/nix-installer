@@ -1,9 +1,9 @@
 use crate::{
     action::{
-        base::{CreateDirectory, StartSystemdUnit},
-        meta::{ConfigureNix, ProvisionNix},
+        common::{ConfigureNix, CreateDirectory, ProvisionNix},
+        linux::StartSystemdUnit,
     },
-    planner::{BuiltinPlannerError, Planner},
+    planner::Planner,
     BuiltinPlanner, CommonSettings, InstallPlan,
 };
 

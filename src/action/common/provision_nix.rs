@@ -2,7 +2,7 @@ use std::path::PathBuf;
 
 use tokio::task::JoinError;
 
-use crate::action::base::{
+use crate::action::common::{
     CreateDirectoryError, FetchNix, FetchNixError, MoveUnpackedNix, MoveUnpackedNixError,
 };
 use crate::CommonSettings;

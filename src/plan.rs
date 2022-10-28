@@ -3,7 +3,7 @@ use std::path::PathBuf;
 use crate::{
     action::{Action, ActionDescription},
     planner::Planner,
-    BuiltinPlanner, HarmonicError,
+    HarmonicError,
 };
 
 #[derive(Debug, serde::Deserialize, serde::Serialize, Clone)]

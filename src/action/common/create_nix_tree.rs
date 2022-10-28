@@ -1,4 +1,4 @@
-use crate::action::base::{CreateDirectory, CreateDirectoryError};
+use crate::action::common::{CreateDirectory, CreateDirectoryError};
 use crate::action::{Action, ActionDescription, ActionState};
 
 const PATHS: &[&str] = &[

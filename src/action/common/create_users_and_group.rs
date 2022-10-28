@@ -4,7 +4,7 @@ use crate::CommonSettings;
 
 use crate::{
     action::{
-        base::{CreateGroup, CreateGroupError, CreateUser, CreateUserError},
+        common::{CreateGroup, CreateGroupError, CreateUser, CreateUserError},
         Action, ActionDescription, ActionState,
     },
     BoxableError,

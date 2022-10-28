@@ -1,6 +1,6 @@
 use std::path::{Path, PathBuf};
 
-use crate::action::base::{CreateDirectory, CreateDirectoryError, CreateFile, CreateFileError};
+use crate::action::common::{CreateDirectory, CreateDirectoryError, CreateFile, CreateFileError};
 use crate::{
     action::{Action, ActionDescription, ActionState},
     BoxableError,

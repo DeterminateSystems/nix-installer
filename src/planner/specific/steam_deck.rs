@@ -1,7 +1,7 @@
 use crate::{
     action::{
-        base::{CreateDirectory, StartSystemdUnit},
-        meta::{CreateSystemdSysext, ProvisionNix},
+        common::{CreateDirectory, ProvisionNix},
+        linux::{CreateSystemdSysext, StartSystemdUnit},
     },
     planner::Planner,
     BuiltinPlanner, CommonSettings, InstallPlan,

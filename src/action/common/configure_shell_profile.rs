@@ -2,7 +2,7 @@ use std::path::Path;
 
 use tokio::task::{JoinError, JoinSet};
 
-use crate::action::base::{CreateOrAppendFile, CreateOrAppendFileError};
+use crate::action::common::{CreateOrAppendFile, CreateOrAppendFileError};
 use crate::{
     action::{Action, ActionDescription, ActionState},
     BoxableError,

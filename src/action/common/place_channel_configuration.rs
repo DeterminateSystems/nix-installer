@@ -5,7 +5,7 @@ use crate::{
     BoxableError,
 };
 
-use crate::action::base::{CreateFile, CreateFileError};
+use crate::action::common::{CreateFile, CreateFileError};
 
 #[derive(Debug, serde::Deserialize, serde::Serialize, Clone)]
 pub struct PlaceChannelConfiguration {

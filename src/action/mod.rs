@@ -1,5 +1,6 @@
-pub mod base;
-pub mod meta;
+pub mod common;
+pub mod darwin;
+pub mod linux;
 
 use serde::{Deserialize, Serialize};
 

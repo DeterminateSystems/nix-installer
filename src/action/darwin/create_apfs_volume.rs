@@ -6,14 +6,12 @@ use tokio::process::Command;
 
 use crate::{
     action::{
-        base::{
-            darwin::{
-                BootstrapVolume, BootstrapVolumeError, CreateSyntheticObjects,
-                CreateSyntheticObjectsError, CreateVolume, CreateVolumeError, EnableOwnership,
-                EnableOwnershipError, EncryptVolume, EncryptVolumeError, UnmountVolume,
-                UnmountVolumeError,
-            },
-            CreateFile, CreateFileError, CreateOrAppendFile, CreateOrAppendFileError,
+        common::{CreateFile, CreateFileError, CreateOrAppendFile, CreateOrAppendFileError},
+        darwin::{
+            BootstrapVolume, BootstrapVolumeError, CreateSyntheticObjects,
+            CreateSyntheticObjectsError, CreateVolume, CreateVolumeError, EnableOwnership,
+            EnableOwnershipError, EncryptVolume, EncryptVolumeError, UnmountVolume,
+            UnmountVolumeError,
         },
         Action, ActionDescription, ActionState,
     },

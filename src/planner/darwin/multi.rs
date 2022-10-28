@@ -5,8 +5,8 @@ use tokio::process::Command;
 
 use crate::{
     action::{
-        base::darwin::KickstartLaunchctlService,
-        meta::{darwin::CreateApfsVolume, ConfigureNix, ProvisionNix},
+        common::{ConfigureNix, ProvisionNix},
+        darwin::{CreateApfsVolume, KickstartLaunchctlService},
     },
     execute_command,
     os::darwin::DiskUtilOutput,
