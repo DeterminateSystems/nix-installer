@@ -3,10 +3,9 @@ use reqwest::Url;
 use crate::{
     action::{
         common::{
-            ConfigureShellProfile, PlaceChannelConfiguration, PlaceNixConfiguration,
-            SetupDefaultProfile,
+            ConfigureNixDaemonService, ConfigureShellProfile, PlaceChannelConfiguration,
+            PlaceNixConfiguration, SetupDefaultProfile,
         },
-        linux::ConfigureNixDaemonService,
         Action, ActionDescription, ActionState,
     },
     cli::arg::ChannelValue,

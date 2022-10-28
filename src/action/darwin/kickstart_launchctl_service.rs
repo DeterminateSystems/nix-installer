@@ -84,16 +84,12 @@ impl Action for KickstartLaunchctlService {
     async fn revert(&mut self) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
         let Self { unit, action_state } = self;
         if *action_state == ActionState::Uncompleted {
-            tracing::trace!("Already reverted: Stopping launchctl unit");
+            tracing::trace!("Already reverted: Unkickstart launchctl unit (noop)");
             return Ok(());
         }
-        tracing::debug!("Stopping launchctl unit");
+        tracing::debug!("Unkickstart launchctl unit (noop)");
 
-        execute_command(Command::new("launchctl").arg("stop").arg(unit))
-            .await
-            .map_err(|e| KickstartLaunchctlServiceError::Command(e).boxed())?;
-
-        tracing::trace!("Stopped launchctl unit");
+        tracing::trace!("Unkickstart launchctl unit (noop)");
         *action_state = ActionState::Completed;
         Ok(())
     }

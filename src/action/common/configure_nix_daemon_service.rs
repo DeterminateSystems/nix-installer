@@ -100,7 +100,7 @@ impl Action for ConfigureNixDaemonService {
                         .arg(DARWIN_NIX_DAEMON_DEST),
                 )
                 .await
-                .map_err(|e| ConfigureNixDaemonServiceError::CommandFailed(e).boxed())?;
+                .map_err(|e| ConfigureNixDaemonServiceError::Command(e).boxed())?;
             },
             _ => {
                 tracing::trace!(src = TMPFILES_SRC, dest = TMPFILES_DEST, "Symlinking");
@@ -121,19 +121,19 @@ impl Action for ConfigureNixDaemonService {
                         .arg("--prefix=/nix/var/nix"),
                 )
                 .await
-                .map_err(|e| ConfigureNixDaemonServiceError::CommandFailed(e).boxed())?;
+                .map_err(|e| ConfigureNixDaemonServiceError::Command(e).boxed())?;
 
                 execute_command(Command::new("systemctl").arg("link").arg(SERVICE_SRC))
                     .await
-                    .map_err(|e| ConfigureNixDaemonServiceError::CommandFailed(e).boxed())?;
+                    .map_err(|e| ConfigureNixDaemonServiceError::Command(e).boxed())?;
 
                 execute_command(Command::new("systemctl").arg("link").arg(SOCKET_SRC))
                     .await
-                    .map_err(|e| ConfigureNixDaemonServiceError::CommandFailed(e).boxed())?;
+                    .map_err(|e| ConfigureNixDaemonServiceError::Command(e).boxed())?;
 
                 execute_command(Command::new("systemctl").arg("daemon-reload"))
                     .await
-                    .map_err(|e| ConfigureNixDaemonServiceError::CommandFailed(e).boxed())?;
+                    .map_err(|e| ConfigureNixDaemonServiceError::Command(e).boxed())?;
             },
         };
 
@@ -167,30 +167,48 @@ impl Action for ConfigureNixDaemonService {
         }
         tracing::debug!("Unconfiguring nix daemon service");
 
-        // We don't need to do this! Systemd does it for us! (In fact, it's an error if we try to do this...)
-        execute_command(Command::new("systemctl").args(["disable", SOCKET_SRC]))
-            .await
-            .map_err(|e| ConfigureNixDaemonServiceError::CommandFailed(e).boxed())?;
+        match OperatingSystem::host() {
+            OperatingSystem::MacOSX {
+                major: _,
+                minor: _,
+                patch: _,
+            }
+            | OperatingSystem::Darwin => {
+                execute_command(
+                    Command::new("launchctl")
+                        .arg("unload")
+                        .arg("system/org.nixos.nix-daemon"),
+                )
+                .await
+                .map_err(|e| ConfigureNixDaemonServiceError::Command(e).boxed())?;
+            },
+            _ => {
+                execute_command(Command::new("systemctl").args(["disable", SOCKET_SRC]))
+                    .await
+                    .map_err(|e| ConfigureNixDaemonServiceError::Command(e).boxed())?;
 
-        execute_command(Command::new("systemctl").args(["disable", SERVICE_SRC]))
-            .await
-            .map_err(|e| ConfigureNixDaemonServiceError::CommandFailed(e).boxed())?;
+                execute_command(Command::new("systemctl").args(["disable", SERVICE_SRC]))
+                    .await
+                    .map_err(|e| ConfigureNixDaemonServiceError::Command(e).boxed())?;
 
-        execute_command(
-            Command::new("systemd-tmpfiles")
-                .arg("--remove")
-                .arg("--prefix=/nix/var/nix"),
-        )
-        .await
-        .map_err(|e| ConfigureNixDaemonServiceError::CommandFailed(e).boxed())?;
+                execute_command(
+                    Command::new("systemd-tmpfiles")
+                        .arg("--remove")
+                        .arg("--prefix=/nix/var/nix"),
+                )
+                .await
+                .map_err(|e| ConfigureNixDaemonServiceError::Command(e).boxed())?;
 
-        remove_file(TMPFILES_DEST).await.map_err(|e| {
-            ConfigureNixDaemonServiceError::RemoveFile(PathBuf::from(TMPFILES_DEST), e).boxed()
-        })?;
+                remove_file(TMPFILES_DEST).await.map_err(|e| {
+                    ConfigureNixDaemonServiceError::RemoveFile(PathBuf::from(TMPFILES_DEST), e)
+                        .boxed()
+                })?;
 
-        execute_command(Command::new("systemctl").arg("daemon-reload"))
-            .await
-            .map_err(|e| ConfigureNixDaemonServiceError::CommandFailed(e).boxed())?;
+                execute_command(Command::new("systemctl").arg("daemon-reload"))
+                    .await
+                    .map_err(|e| ConfigureNixDaemonServiceError::Command(e).boxed())?;
+            },
+        };
 
         tracing::trace!("Unconfigured nix daemon service");
         *action_state = ActionState::Uncompleted;
@@ -207,7 +225,7 @@ pub enum ConfigureNixDaemonServiceError {
         #[source] std::io::Error,
     ),
     #[error("Command failed to execute")]
-    CommandFailed(#[source] std::io::Error),
+    Command(#[source] std::io::Error),
     #[error("Remove file `{0}`")]
     RemoveFile(std::path::PathBuf, #[source] std::io::Error),
     #[error("Copying file `{0}` to `{1}`")]

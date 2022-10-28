@@ -141,9 +141,13 @@ impl Action for CreateGroup {
                 patch: _,
             }
             | OperatingSystem::Darwin => {
-                execute_command(Command::new("groupdel").arg(&name))
-                    .await
-                    .map_err(|e| CreateGroupError::Command(e).boxed())?;
+                execute_command(Command::new("/usr/bin/dscl").args([
+                    ".",
+                    "-delete",
+                    &format!("/Groups/{name}"),
+                ]))
+                .await
+                .map_err(|e| CreateGroupError::Command(e).boxed())?;
             },
             _ => {
                 execute_command(Command::new("groupdel").arg(&name))
