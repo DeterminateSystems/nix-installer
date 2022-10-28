@@ -55,7 +55,7 @@ impl CreateUsersAndGroup {
 }
 
 #[async_trait::async_trait]
-#[typetag::serde(name = "create-users-and-group")]
+#[typetag::serde(name = "create_users_and_group")]
 impl Action for CreateUsersAndGroup {
     fn describe_execute(&self) -> Vec<ActionDescription> {
         let Self {

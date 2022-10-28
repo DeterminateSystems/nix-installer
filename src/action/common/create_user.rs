@@ -30,7 +30,7 @@ impl CreateUser {
 }
 
 #[async_trait::async_trait]
-#[typetag::serde(name = "create-user")]
+#[typetag::serde(name = "create_user")]
 impl Action for CreateUser {
     fn describe_execute(&self) -> Vec<ActionDescription> {
         if self.action_state == ActionState::Completed {

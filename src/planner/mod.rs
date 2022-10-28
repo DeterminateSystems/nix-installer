@@ -2,6 +2,8 @@ pub mod darwin;
 pub mod linux;
 pub mod specific;
 
+use std::collections::HashMap;
+
 use crate::{settings::InstallSettingsError, BoxableError, InstallPlan};
 
 #[async_trait::async_trait]
@@ -11,6 +13,9 @@ pub trait Planner: std::fmt::Debug + Send + Sync + dyn_clone::DynClone {
     where
         Self: Sized;
     async fn plan(self) -> Result<InstallPlan, Box<dyn std::error::Error + Sync + Send>>;
+    fn describe(
+        &self,
+    ) -> Result<HashMap<String, serde_json::Value>, Box<dyn std::error::Error + Sync + Send>>;
 }
 
 dyn_clone::clone_trait_object!(Planner);

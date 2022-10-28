@@ -26,7 +26,7 @@ impl SystemdSysextMerge {
 }
 
 #[async_trait::async_trait]
-#[typetag::serde(name = "systemd-sysext-merge")]
+#[typetag::serde(name = "systemd_sysext_merge")]
 impl Action for SystemdSysextMerge {
     fn describe_execute(&self) -> Vec<ActionDescription> {
         let Self {

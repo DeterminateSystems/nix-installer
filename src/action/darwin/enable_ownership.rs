@@ -30,7 +30,7 @@ impl EnableOwnership {
 }
 
 #[async_trait::async_trait]
-#[typetag::serde(name = "enable-ownership")]
+#[typetag::serde(name = "enable_ownership")]
 impl Action for EnableOwnership {
     fn describe_execute(&self) -> Vec<ActionDescription> {
         if self.action_state == ActionState::Completed {

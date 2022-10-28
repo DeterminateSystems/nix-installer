@@ -28,7 +28,7 @@ impl BootstrapVolume {
 }
 
 #[async_trait::async_trait]
-#[typetag::serde(name = "bootstrap-volume")]
+#[typetag::serde(name = "bootstrap_volume")]
 impl Action for BootstrapVolume {
     fn describe_execute(&self) -> Vec<ActionDescription> {
         if self.action_state == ActionState::Completed {

@@ -24,7 +24,7 @@ impl StartSystemdUnit {
 }
 
 #[async_trait::async_trait]
-#[typetag::serde(name = "start-systemd-unit")]
+#[typetag::serde(name = "start_systemd_unit")]
 impl Action for StartSystemdUnit {
     fn describe_execute(&self) -> Vec<ActionDescription> {
         if self.action_state == ActionState::Completed {

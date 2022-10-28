@@ -92,7 +92,7 @@ impl CreateSystemdSysext {
 }
 
 #[async_trait::async_trait]
-#[typetag::serde(name = "create-systemd-sysext")]
+#[typetag::serde(name = "create_systemd_sysext")]
 impl Action for CreateSystemdSysext {
     fn describe_execute(&self) -> Vec<ActionDescription> {
         let Self {

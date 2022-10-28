@@ -1,5 +1,7 @@
 use std::path::PathBuf;
 
+use crossterm::style::Stylize;
+
 use crate::{
     action::{Action, ActionDescription},
     planner::Planner,
@@ -15,23 +17,37 @@ pub struct InstallPlan {
 
 impl InstallPlan {
     #[tracing::instrument(skip_all)]
-    pub fn describe_execute(&self, explain: bool) -> String {
+    pub fn describe_execute(
+        &self,
+        explain: bool,
+    ) -> Result<String, Box<dyn std::error::Error + Sync + Send>> {
         let Self { planner, actions } = self;
-        format!(
+        let buf = format!(
             "\
-            This Nix install is for:\n\
-              Operating System: {os_type}\n\
-              Init system: {init_type}\n\
-              Nix channels: {nix_channels}\n\
+            Nix install plan\n\
             \n\
-            Created by planner: {planner:?}
+            Planner: {planner}\n\
             \n\
-            The following actions will be taken:\n\
-            {actions}
+            Planner settings:\n\
+            \n\
+            {plan_settings}\n\
+            \n\
+            The following actions will be taken{maybe_explain}:\n\
+            \n\
+            {actions}\n\
         ",
-            os_type = "Linux",
-            init_type = "systemd",
-            nix_channels = "todo",
+            maybe_explain = if !explain {
+                " (`--explain` for more context)"
+            } else {
+                ""
+            },
+            planner = planner.typetag_name(),
+            plan_settings = planner
+                .describe()?
+                .into_iter()
+                .map(|(k, v)| format!("* {k}: {v}", k = k.bold().white()))
+                .collect::<Vec<_>>()
+                .join("\n"),
             actions = actions
                 .iter()
                 .map(|v| v.describe_execute())
@@ -43,17 +59,18 @@ impl InstallPlan {
                     } = desc;
 
                     let mut buf = String::default();
-                    buf.push_str(&format!("* {description}\n"));
+                    buf.push_str(&format!("* {description}"));
                     if explain {
                         for line in explanation {
-                            buf.push_str(&format!("  {line}\n"));
+                            buf.push_str(&format!("\n  {line}"));
                         }
                     }
                     buf
                 })
                 .collect::<Vec<_>>()
                 .join("\n"),
-        )
+        );
+        Ok(buf)
     }
 
     #[tracing::instrument(skip_all)]

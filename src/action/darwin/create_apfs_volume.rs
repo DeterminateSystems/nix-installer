@@ -145,7 +145,7 @@ impl CreateApfsVolume {
 }
 
 #[async_trait::async_trait]
-#[typetag::serde(name = "create-apfs-volume")]
+#[typetag::serde(name = "create_apfs_volume")]
 impl Action for CreateApfsVolume {
     fn describe_execute(&self) -> Vec<ActionDescription> {
         let Self {

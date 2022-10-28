@@ -24,7 +24,7 @@ impl EncryptVolume {
 }
 
 #[async_trait::async_trait]
-#[typetag::serde(name = "encrypt-volume")]
+#[typetag::serde(name = "encrypt_volume")]
 impl Action for EncryptVolume {
     fn describe_execute(&self) -> Vec<ActionDescription> {
         if self.action_state == ActionState::Completed {

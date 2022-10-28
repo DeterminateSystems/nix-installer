@@ -1,5 +1,9 @@
+use std::collections::HashMap;
+
 use clap::ArgAction;
 use url::Url;
+
+use crate::cli::arg::ChannelValue;
 
 pub const NIX_X64_64_LINUX_URL: &str =
     "https://releases.nixos.org/nix/nix-2.11.0/nix-2.11.0-x86_64-linux.tar.xz";
@@ -144,6 +148,66 @@ impl CommonSettings {
             extra_conf: Default::default(),
             force: false,
         })
+    }
+
+    pub fn describe(
+        &self,
+    ) -> Result<HashMap<String, serde_json::Value>, Box<dyn std::error::Error + Sync + Send>> {
+        let Self {
+            channels,
+            modify_profile,
+            daemon_user_count,
+            nix_build_group_name,
+            nix_build_group_id,
+            nix_build_user_prefix,
+            nix_build_user_id_base,
+            nix_package_url,
+            extra_conf,
+            force,
+        } = self;
+        let mut map = HashMap::default();
+
+        map.insert(
+            "channels".into(),
+            serde_json::to_value(
+                channels
+                    .iter()
+                    .map(|ChannelValue(k, v)| format!("{k}={v}"))
+                    .collect::<Vec<_>>(),
+            )?,
+        );
+        map.insert(
+            "modify_profile".into(),
+            serde_json::to_value(modify_profile)?,
+        );
+        map.insert(
+            "daemon_user_count".into(),
+            serde_json::to_value(daemon_user_count)?,
+        );
+        map.insert(
+            "nix_build_group_name".into(),
+            serde_json::to_value(nix_build_group_name)?,
+        );
+        map.insert(
+            "nix_build_group_id".into(),
+            serde_json::to_value(nix_build_group_id)?,
+        );
+        map.insert(
+            "nix_build_user_prefix".into(),
+            serde_json::to_value(nix_build_user_prefix)?,
+        );
+        map.insert(
+            "nix_build_user_id_base".into(),
+            serde_json::to_value(nix_build_user_id_base)?,
+        );
+        map.insert(
+            "nix_package_url".into(),
+            serde_json::to_value(nix_package_url)?,
+        );
+        map.insert("extra_conf".into(), serde_json::to_value(extra_conf)?);
+        map.insert("force".into(), serde_json::to_value(force)?);
+
+        Ok(map)
     }
 }
 

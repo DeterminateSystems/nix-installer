@@ -1,3 +1,7 @@
+use std::collections::HashMap;
+
+use serde_json::json;
+
 use crate::{
     action::{
         common::{CreateDirectory, ProvisionNix},
@@ -32,6 +36,17 @@ impl Planner for SteamDeck {
                 Box::new(StartSystemdUnit::plan("nix-daemon.socket".into()).await?),
             ],
         })
+    }
+
+    fn describe(
+        &self,
+    ) -> Result<HashMap<String, serde_json::Value>, Box<dyn std::error::Error + Sync + Send>> {
+        let Self { settings } = self;
+        let mut map = HashMap::default();
+
+        map.extend(settings.describe()?.into_iter());
+
+        Ok(map)
     }
 }
 

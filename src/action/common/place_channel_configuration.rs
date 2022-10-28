@@ -45,7 +45,7 @@ impl PlaceChannelConfiguration {
 }
 
 #[async_trait::async_trait]
-#[typetag::serde(name = "place-channel-configuration")]
+#[typetag::serde(name = "place_channel_configuration")]
 impl Action for PlaceChannelConfiguration {
     fn describe_execute(&self) -> Vec<ActionDescription> {
         let Self {

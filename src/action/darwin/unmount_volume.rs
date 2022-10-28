@@ -32,7 +32,7 @@ impl UnmountVolume {
 }
 
 #[async_trait::async_trait]
-#[typetag::serde(name = "unmount-volume")]
+#[typetag::serde(name = "unmount_volume")]
 impl Action for UnmountVolume {
     fn describe_execute(&self) -> Vec<ActionDescription> {
         if self.action_state == ActionState::Completed {

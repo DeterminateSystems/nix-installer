@@ -42,7 +42,7 @@ impl PlaceNixConfiguration {
 }
 
 #[async_trait::async_trait]
-#[typetag::serde(name = "place-nix-configuration")]
+#[typetag::serde(name = "place_nix_configuration")]
 impl Action for PlaceNixConfiguration {
     fn describe_execute(&self) -> Vec<ActionDescription> {
         if self.action_state == ActionState::Completed {

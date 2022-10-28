@@ -58,7 +58,7 @@ impl ConfigureShellProfile {
 }
 
 #[async_trait::async_trait]
-#[typetag::serde(name = "configure-shell-profile")]
+#[typetag::serde(name = "configure_shell_profile")]
 impl Action for ConfigureShellProfile {
     fn describe_execute(&self) -> Vec<ActionDescription> {
         if self.action_state == ActionState::Completed {

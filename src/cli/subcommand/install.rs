@@ -54,7 +54,7 @@ impl CommandExecute for Install {
         };
 
         if !no_confirm {
-            if !interaction::confirm(plan.describe_execute(explain)).await? {
+            if !interaction::confirm(plan.describe_execute(explain).map_err(|e| eyre!(e))?).await? {
                 interaction::clean_exit_with_message("Okay, didn't do anything! Bye!").await;
             }
         }

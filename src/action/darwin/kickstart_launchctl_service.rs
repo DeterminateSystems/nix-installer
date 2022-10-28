@@ -24,7 +24,7 @@ impl KickstartLaunchctlService {
 }
 
 #[async_trait::async_trait]
-#[typetag::serde(name = "kickstart-launchctl-service")]
+#[typetag::serde(name = "kickstart_launchctl_service")]
 impl Action for KickstartLaunchctlService {
     fn describe_execute(&self) -> Vec<ActionDescription> {
         let Self { unit, action_state } = self;

@@ -40,7 +40,7 @@ impl CreateNixTree {
 }
 
 #[async_trait::async_trait]
-#[typetag::serde(name = "creat-nix-tree")]
+#[typetag::serde(name = "create_nix_tree")]
 impl Action for CreateNixTree {
     fn describe_execute(&self) -> Vec<ActionDescription> {
         if self.action_state == ActionState::Completed {

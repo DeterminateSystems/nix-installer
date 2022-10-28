@@ -1,4 +1,4 @@
-use std::io::Cursor;
+use std::{collections::HashMap, io::Cursor};
 
 use clap::ArgAction;
 use tokio::process::Command;
@@ -96,6 +96,28 @@ impl Planner for DarwinMulti {
                 ),
             ],
         })
+    }
+
+    fn describe(
+        &self,
+    ) -> Result<HashMap<String, serde_json::Value>, Box<dyn std::error::Error + Sync + Send>> {
+        let Self {
+            settings,
+            volume_encrypt,
+            volume_label,
+            root_disk,
+        } = self;
+        let mut map = HashMap::default();
+
+        map.extend(settings.describe()?.into_iter());
+        map.insert(
+            "volume_encrypt".into(),
+            serde_json::to_value(volume_encrypt)?,
+        );
+        map.insert("volume_label".into(), serde_json::to_value(volume_label)?);
+        map.insert("root_disk".into(), serde_json::to_value(root_disk)?);
+
+        Ok(map)
     }
 }
 

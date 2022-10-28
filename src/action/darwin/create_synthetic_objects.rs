@@ -19,7 +19,7 @@ impl CreateSyntheticObjects {
 }
 
 #[async_trait::async_trait]
-#[typetag::serde(name = "create-synthetic-objects")]
+#[typetag::serde(name = "create_synthetic_objects")]
 impl Action for CreateSyntheticObjects {
     fn describe_execute(&self) -> Vec<ActionDescription> {
         if self.action_state == ActionState::Completed {

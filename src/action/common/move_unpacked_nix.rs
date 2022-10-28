@@ -25,7 +25,7 @@ impl MoveUnpackedNix {
 }
 
 #[async_trait::async_trait]
-#[typetag::serde(name = "mount-unpacked-nix")]
+#[typetag::serde(name = "mount_unpacked_nix")]
 impl Action for MoveUnpackedNix {
     fn describe_execute(&self) -> Vec<ActionDescription> {
         if self.action_state == ActionState::Completed {

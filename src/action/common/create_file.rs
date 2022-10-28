@@ -51,7 +51,7 @@ impl CreateFile {
 }
 
 #[async_trait::async_trait]
-#[typetag::serde(name = "create-file")]
+#[typetag::serde(name = "create_file")]
 impl Action for CreateFile {
     fn describe_execute(&self) -> Vec<ActionDescription> {
         let Self {

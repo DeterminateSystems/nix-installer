@@ -32,7 +32,7 @@ impl FetchNix {
 }
 
 #[async_trait::async_trait]
-#[typetag::serde(name = "fetch-nix")]
+#[typetag::serde(name = "fetch_nix")]
 impl Action for FetchNix {
     fn describe_execute(&self) -> Vec<ActionDescription> {
         let Self {

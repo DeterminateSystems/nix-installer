@@ -65,7 +65,7 @@ impl ConfigureNix {
 }
 
 #[async_trait::async_trait]
-#[typetag::serde(name = "configure-nix")]
+#[typetag::serde(name = "configure_nix")]
 impl Action for ConfigureNix {
     fn describe_execute(&self) -> Vec<ActionDescription> {
         let Self {

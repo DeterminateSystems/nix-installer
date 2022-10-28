@@ -34,7 +34,7 @@ impl CreateVolume {
 }
 
 #[async_trait::async_trait]
-#[typetag::serde(name = "create-volume")]
+#[typetag::serde(name = "create_volume")]
 impl Action for CreateVolume {
     fn describe_execute(&self) -> Vec<ActionDescription> {
         if self.action_state == ActionState::Completed {

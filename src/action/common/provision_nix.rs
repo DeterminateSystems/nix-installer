@@ -52,7 +52,7 @@ impl ProvisionNix {
 }
 
 #[async_trait::async_trait]
-#[typetag::serde(name = "provision-nix")]
+#[typetag::serde(name = "provision_nix")]
 impl Action for ProvisionNix {
     fn describe_execute(&self) -> Vec<ActionDescription> {
         let Self {

@@ -23,7 +23,7 @@ impl SetupDefaultProfile {
 }
 
 #[async_trait::async_trait]
-#[typetag::serde(name = "setup-default-profile")]
+#[typetag::serde(name = "setup_default_profile")]
 impl Action for SetupDefaultProfile {
     fn describe_execute(&self) -> Vec<ActionDescription> {
         if self.action_state == ActionState::Completed {

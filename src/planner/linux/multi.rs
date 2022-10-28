@@ -1,3 +1,5 @@
+use std::collections::HashMap;
+
 use crate::{
     action::{
         common::{ConfigureNix, CreateDirectory, ProvisionNix},
@@ -32,6 +34,17 @@ impl Planner for LinuxMulti {
                 Box::new(StartSystemdUnit::plan("nix-daemon.socket".into()).await?),
             ],
         })
+    }
+
+    fn describe(
+        &self,
+    ) -> Result<HashMap<String, serde_json::Value>, Box<dyn std::error::Error + Sync + Send>> {
+        let Self { settings } = self;
+        let mut map = HashMap::default();
+
+        map.extend(settings.describe()?.into_iter());
+
+        Ok(map)
     }
 }
 

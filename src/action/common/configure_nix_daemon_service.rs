@@ -45,7 +45,7 @@ impl ConfigureNixDaemonService {
 }
 
 #[async_trait::async_trait]
-#[typetag::serde(name = "configure-nix-daemon")]
+#[typetag::serde(name = "configure_nix_daemon")]
 impl Action for ConfigureNixDaemonService {
     fn describe_execute(&self) -> Vec<ActionDescription> {
         if self.action_state == ActionState::Completed {

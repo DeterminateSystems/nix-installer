@@ -48,7 +48,7 @@ impl CreateOrAppendFile {
 }
 
 #[async_trait::async_trait]
-#[typetag::serde(name = "create-or-append-file")]
+#[typetag::serde(name = "create_or_append_file")]
 impl Action for CreateOrAppendFile {
     fn describe_execute(&self) -> Vec<ActionDescription> {
         let Self {
