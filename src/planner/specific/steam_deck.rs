@@ -1,7 +1,5 @@
 use std::collections::HashMap;
 
-use serde_json::json;
-
 use crate::{
     action::{
         common::{CreateDirectory, ProvisionNix},
@@ -14,7 +12,7 @@ use crate::{
 #[derive(Debug, Clone, clap::Parser, serde::Serialize, serde::Deserialize)]
 pub struct SteamDeck {
     #[clap(flatten)]
-    settings: CommonSettings,
+    pub settings: CommonSettings,
 }
 
 #[async_trait::async_trait]
@@ -30,7 +28,7 @@ impl Planner for SteamDeck {
         Ok(InstallPlan {
             planner: Box::new(self.clone()),
             actions: vec![
-                Box::new(CreateSystemdSysext::plan("/var/lib/extensions").await?),
+                Box::new(CreateSystemdSysext::plan("/var/lib/extensions/nix").await?),
                 Box::new(CreateDirectory::plan("/nix", None, None, 0o0755, true).await?),
                 Box::new(ProvisionNix::plan(self.settings.clone()).await?),
                 Box::new(StartSystemdUnit::plan("nix-daemon.socket".into()).await?),

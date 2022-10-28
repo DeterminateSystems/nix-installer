@@ -1,4 +1,5 @@
 pub mod action;
+pub mod channel_value;
 pub mod cli;
 mod error;
 mod interaction;
@@ -8,6 +9,9 @@ pub mod planner;
 mod settings;
 
 use std::{ffi::OsStr, process::Output};
+
+pub use action::Action;
+pub use planner::Planner;
 
 pub use error::HarmonicError;
 pub use plan::InstallPlan;
@@ -43,7 +47,7 @@ fn set_env(k: impl AsRef<OsStr>, v: impl AsRef<OsStr>) {
     std::env::set_var(k.as_ref(), v.as_ref());
 }
 
-pub trait BoxableError: std::error::Error + Send + Sync {
+trait BoxableError: std::error::Error + Send + Sync {
     fn boxed(self) -> Box<dyn std::error::Error + Send + Sync>
     where
         Self: Sized + 'static,

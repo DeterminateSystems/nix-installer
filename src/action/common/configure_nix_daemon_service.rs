@@ -15,6 +15,7 @@ const SERVICE_SRC: &str = "/nix/var/nix/profiles/default/lib/systemd/system/nix-
 const SOCKET_SRC: &str = "/nix/var/nix/profiles/default/lib/systemd/system/nix-daemon.socket";
 const TMPFILES_SRC: &str = "/nix/var/nix/profiles/default//lib/tmpfiles.d/nix-daemon.conf";
 const TMPFILES_DEST: &str = "/etc/tmpfiles.d/nix-daemon.conf";
+const DARWIN_NIX_DAEMON_DEST: &str = "/Library/LaunchDaemons/org.nixos.nix-daemon.plist";
 
 #[derive(Debug, serde::Deserialize, serde::Serialize, Clone)]
 pub struct ConfigureNixDaemonService {
@@ -79,9 +80,6 @@ impl Action for ConfigureNixDaemonService {
                 patch: _,
             }
             | OperatingSystem::Darwin => {
-                const DARWIN_NIX_DAEMON_DEST: &str =
-                    "/Library/LaunchDaemons/org.nixos.nix-daemon.plist";
-
                 let src = Path::new("/nix/var/nix/profiles/default/Library/LaunchDaemons/org.nixos.nix-daemon.plist");
                 tokio::fs::copy(src.clone(), DARWIN_NIX_DAEMON_DEST)
                     .await
@@ -177,7 +175,7 @@ impl Action for ConfigureNixDaemonService {
                 execute_command(
                     Command::new("launchctl")
                         .arg("unload")
-                        .arg("system/org.nixos.nix-daemon"),
+                        .arg(DARWIN_NIX_DAEMON_DEST),
                 )
                 .await
                 .map_err(|e| ConfigureNixDaemonServiceError::Command(e).boxed())?;

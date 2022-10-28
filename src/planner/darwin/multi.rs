@@ -17,18 +17,18 @@ use crate::{
 #[derive(Debug, Clone, clap::Parser, serde::Serialize, serde::Deserialize)]
 pub struct DarwinMulti {
     #[clap(flatten)]
-    settings: CommonSettings,
+    pub settings: CommonSettings,
     #[clap(
         long,
         action(ArgAction::SetTrue),
         default_value = "false",
         env = "HARMONIC_VOLUME_ENCRYPT"
     )]
-    volume_encrypt: bool,
+    pub volume_encrypt: bool,
     #[clap(long, default_value = "Nix Store", env = "HARMONIC_VOLUME_LABEL")]
-    volume_label: String,
+    pub volume_label: String,
     #[clap(long, env = "HARMONIC_ROOT_DISK")]
-    root_disk: Option<String>,
+    pub root_disk: Option<String>,
 }
 
 async fn default_root_disk() -> Result<String, BuiltinPlannerError> {

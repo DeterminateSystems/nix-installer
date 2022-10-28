@@ -10,7 +10,7 @@ pub trait Action: Send + Sync + std::fmt::Debug + dyn_clone::DynClone {
     fn describe_execute(&self) -> Vec<ActionDescription>;
     fn describe_revert(&self) -> Vec<ActionDescription>;
 
-    // They should also have an `async fn plan(args...) -> Result<ActionState<Self>, Self::Error>;`
+    // They should also have an `async fn plan(args...) -> Result<ActionState<Self>, Box<dyn std::error::Error + Send + Sync>>;`
     async fn execute(&mut self) -> Result<(), Box<dyn std::error::Error + Send + Sync>>;
     async fn revert(&mut self) -> Result<(), Box<dyn std::error::Error + Send + Sync>>;
 }

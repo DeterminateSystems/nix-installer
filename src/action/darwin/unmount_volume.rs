@@ -100,10 +100,10 @@ impl Action for UnmountVolume {
             action_state,
         } = self;
         if *action_state == ActionState::Uncompleted {
-            tracing::trace!("Already reverted: Stopping systemd unit");
+            tracing::trace!("Already reverted: Unmounting Nix Store volume");
             return Ok(());
         }
-        tracing::debug!("Stopping systemd unit");
+        tracing::debug!("Unmounting Nix Store volume");
 
         execute_command(
             Command::new(" /usr/sbin/diskutil")
@@ -113,7 +113,7 @@ impl Action for UnmountVolume {
         .await
         .map_err(|e| UnmountVolumeError::Command(e).boxed())?;
 
-        tracing::trace!("Stopped systemd unit");
+        tracing::trace!("Unmounted Nix Store volume");
         *action_state = ActionState::Completed;
         Ok(())
     }

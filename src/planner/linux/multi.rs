@@ -12,7 +12,7 @@ use crate::{
 #[derive(Debug, Clone, clap::Parser, serde::Serialize, serde::Deserialize)]
 pub struct LinuxMulti {
     #[clap(flatten)]
-    settings: CommonSettings,
+    pub settings: CommonSettings,
 }
 
 #[async_trait::async_trait]

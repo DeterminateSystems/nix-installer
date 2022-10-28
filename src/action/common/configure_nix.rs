@@ -8,7 +8,7 @@ use crate::{
         },
         Action, ActionDescription, ActionState,
     },
-    cli::arg::ChannelValue,
+    channel_value::ChannelValue,
     BoxableError, CommonSettings,
 };
 

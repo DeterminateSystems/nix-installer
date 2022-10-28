@@ -3,7 +3,7 @@ use std::collections::HashMap;
 use clap::ArgAction;
 use url::Url;
 
-use crate::cli::arg::ChannelValue;
+use crate::channel_value::ChannelValue;
 
 pub const NIX_X64_64_LINUX_URL: &str =
     "https://releases.nixos.org/nix/nix-2.11.0/nix-2.11.0-x86_64-linux.tar.xz";
@@ -26,7 +26,7 @@ pub struct CommonSettings {
         env = "HARMONIC_CHANNEL",
         default_value = "nixpkgs=https://nixos.org/channels/nixpkgs-unstable",
     )]
-    pub(crate) channels: Vec<crate::cli::arg::ChannelValue>,
+    pub channels: Vec<ChannelValue>,
 
     /// Modify the user profile to automatically load nix
     #[clap(
@@ -37,27 +37,27 @@ pub struct CommonSettings {
         env = "HARMONIC_NO_MODIFY_PROFILE",
         name = "no-modify-profile"
     )]
-    pub(crate) modify_profile: bool,
+    pub modify_profile: bool,
 
     /// Number of build users to create
     #[clap(long, default_value = "32", env = "HARMONIC_DAEMON_USER_COUNT")]
-    pub(crate) daemon_user_count: usize,
+    pub daemon_user_count: usize,
 
     #[clap(long, default_value = "nixbld", env = "HARMONIC_NIX_BUILD_GROUP_NAME")]
-    pub(crate) nix_build_group_name: String,
+    pub nix_build_group_name: String,
 
     #[clap(long, default_value_t = 3000, env = "HARMONIC_NIX_BUILD_GROUP_ID")]
-    pub(crate) nix_build_group_id: usize,
+    pub nix_build_group_id: usize,
 
     #[clap(long, env = "HARMONIC_NIX_BUILD_USER_PREFIX")]
     #[cfg_attr(target_os = "macos", clap(default_value = "_nixbld"))]
     #[cfg_attr(target_os = "linux", clap(default_value = "nixbld"))]
-    pub(crate) nix_build_user_prefix: String,
+    pub nix_build_user_prefix: String,
 
     #[clap(long, env = "HARMONIC_NIX_BUILD_USER_ID_BASE")]
     #[cfg_attr(target_os = "macos", clap(default_value_t = 300))]
     #[cfg_attr(target_os = "linux", clap(default_value_t = 3000))]
-    pub(crate) nix_build_user_id_base: usize,
+    pub nix_build_user_id_base: usize,
 
     #[clap(long, env = "HARMONIC_NIX_PACKAGE_URL")]
     #[cfg_attr(
@@ -84,10 +84,10 @@ pub struct CommonSettings {
             default_value = NIX_AARCH64_LINUX_URL,
         )
     )]
-    pub(crate) nix_package_url: Url,
+    pub nix_package_url: Url,
 
     #[clap(long, env = "HARMONIC_EXTRA_CONF")]
-    pub(crate) extra_conf: Option<String>,
+    pub extra_conf: Option<String>,
 
     #[clap(
         long,
@@ -96,7 +96,7 @@ pub struct CommonSettings {
         global = true,
         env = "HARMONIC_FORCE"
     )]
-    pub(crate) force: bool,
+    pub force: bool,
 }
 
 impl CommonSettings {
