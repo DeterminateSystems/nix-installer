@@ -79,13 +79,15 @@ impl CreateApfsVolume {
             None
         };
 
+        let name_with_qoutes = format!("\"{name}\"");
         let mount_command = if encrypt {
             vec![
                 "/bin/sh",
                 "-c",
-                "/usr/bin/security find-generic-password",
+                "/usr/bin/security",
+                "find-generic-password",
                 "-s",
-                "{name}",
+                name_with_qoutes.as_str(),
                 "-w",
                 "|",
                 "/usr/sbin/diskutil",

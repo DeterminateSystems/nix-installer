@@ -75,12 +75,14 @@ impl Action for EncryptVolume {
 
         let disk_str = disk.to_str().expect("Could not turn disk into string"); /* Should not reasonably ever fail */
 
+        execute_command(Command::new("/usr/sbin/diskutil").arg("mount").arg(&name)).await?;
+
         // Add the password to the user keychain so they can unlock it later.
-        let _password_output = execute_command(
+        execute_command(
             Command::new("/usr/bin/security").args([
                 "add-generic-password",
                 "-a",
-                disk_str,
+                name.as_str(),
                 "-s",
                 name.as_str(),
                 "-l",
@@ -109,12 +111,20 @@ impl Action for EncryptVolume {
         execute_command(Command::new("/usr/sbin/diskutil").args([
             "apfs",
             "encryptVolume",
-            disk_str,
+            name.as_str(),
             "-user",
             "disk",
             "-passphrase",
             password.as_str(),
         ]))
+        .await?;
+
+        execute_command(
+            Command::new("/usr/sbin/diskutil")
+                .arg("unmount")
+                .arg("force")
+                .arg(&name),
+        )
         .await?;
 
         tracing::trace!("Encrypted volume");
@@ -135,17 +145,40 @@ impl Action for EncryptVolume {
     ))]
     async fn revert(&mut self) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
         let Self {
-            disk: _,
-            name: _,
+            disk,
+            name,
             action_state,
         } = self;
         if *action_state == ActionState::Uncompleted {
-            tracing::trace!("Already reverted: Unencrypted volume (noop)");
+            tracing::trace!("Already reverted: Unencrypted volume");
             return Ok(());
         }
-        tracing::debug!("Unencrypted volume (noop)");
+        tracing::debug!("Unencrypted volume");
 
-        tracing::trace!("Unencrypted volume (noop)");
+        let disk_str = disk.to_str().expect("Could not turn disk into string"); /* Should not reasonably ever fail */
+
+        // TODO: This seems very rough and unsafe
+        execute_command(
+            Command::new("/usr/bin/security").args([
+                "delete-generic-password",
+                "-a",
+                name.as_str(),
+                "-s",
+                name.as_str(),
+                "-l",
+                format!("{} encryption password", disk_str).as_str(),
+                "-D",
+                "Encrypted volume password",
+                "-j",
+                format!(
+                    "Added automatically by the Nix installer for use by {NIX_VOLUME_MOUNTD_DEST}"
+                )
+                .as_str(),
+            ]),
+        )
+        .await?;
+
+        tracing::trace!("Unencrypted volume");
         *action_state = ActionState::Completed;
         Ok(())
     }
