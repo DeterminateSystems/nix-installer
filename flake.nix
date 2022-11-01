@@ -73,6 +73,7 @@
               toolchain
               openssl
               rust-analyzer
+              cargo-outdated
 
               # CI dependencies
               jq
