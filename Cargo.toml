@@ -5,6 +5,12 @@ version = "0.0.0-unreleased"
 edition = "2021"
 resolver = "2"
 
+[package.metadata.riff.targets.aarch64-apple-darwin]
+build-inputs = ["darwin.apple_sdk.frameworks.Security"]
+
+[package.metadata.riff.targets.x86_64-apple-darwin]
+build-inputs = ["darwin.apple_sdk.frameworks.Security"]
+
 [dependencies]
 async-tar = "0.4.2"
 async-trait = "0.1.57"
