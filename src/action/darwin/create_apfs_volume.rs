@@ -18,14 +18,14 @@ use crate::{
     BoxableError,
 };
 
-const NIX_VOLUME_MOUNTD_DEST: &str = "/Library/LaunchDaemons/org.nixos.darwin-store.plist";
+pub const NIX_VOLUME_MOUNTD_DEST: &str = "/Library/LaunchDaemons/org.nixos.darwin-store.plist";
 
 #[derive(Debug, serde::Deserialize, serde::Serialize, Clone)]
 pub struct CreateApfsVolume {
     disk: PathBuf,
     name: String,
     case_sensitive: bool,
-    encrypt: Option<String>,
+    encrypt: bool,
     create_or_append_synthetic_conf: CreateOrAppendFile,
     create_synthetic_objects: CreateSyntheticObjects,
     unmount_volume: UnmountVolume,
@@ -44,7 +44,7 @@ impl CreateApfsVolume {
         disk: impl AsRef<Path>,
         name: String,
         case_sensitive: bool,
-        encrypt: Option<String>,
+        encrypt: bool,
     ) -> Result<Self, Box<dyn std::error::Error + Send + Sync>> {
         let disk = disk.as_ref();
         let create_or_append_synthetic_conf = CreateOrAppendFile::plan(
@@ -73,13 +73,13 @@ impl CreateApfsVolume {
         .await
         .map_err(|e| e.boxed())?;
 
-        let encrypt_volume = if let Some(password) = encrypt.as_ref() {
-            Some(EncryptVolume::plan(disk, password.to_string()).await?)
+        let encrypt_volume = if encrypt {
+            Some(EncryptVolume::plan(disk, &name).await?)
         } else {
             None
         };
 
-        let mount_command = if encrypt.is_some() {
+        let mount_command = if encrypt {
             vec![
                 "/bin/sh",
                 "-c",
