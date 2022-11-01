@@ -12,7 +12,8 @@ Planned support:
 
 * [x] Multi-user x86_64 Linux with systemd init
 * [ ] Multi-user aarch64 Linux with systemd init
-* [ ] Multi-user x86_64 MacOS
+* [x] Multi-user x86_64 MacOS
+    + Note: Uninstall and encrypted volume support are incomplete
 * [ ] Single-user x86_64 Linux with systemd init
 * [ ] Single-user aarch64 Linux with systemd init
 * [ ] Multi-user aarch64 MacOS
@@ -59,9 +60,23 @@ Harmonic must be run as `root`, as it needs to alter the system and cannot eleva
 Install Nix with default options:
 
 ```bash
-./harmonic
+# Linux
+./harmonic install linux-multi
+
+# Mac
+./harmonic install darwin-multi
 ```
 
 To observe verbose logging, either use `harmonic -v`, this tool [also respects the `RUST_LOG` environment](https://docs.rs/tracing-subscriber/latest/tracing_subscriber/filter/struct.EnvFilter.html#directives). (Eg `RUST_LOG=harmonic=trace harmonic`).
 
 Harmonic supports many of the options the current official Nix installer scripts. Review `harmonic --help` for details.
+
+# Uninstalling
+
+You can remove a Harmonic-installed Nix by running
+
+```bash
+./harmonic uninstall
+```
+
+If you're on Mac and trying to run this over SSH, ensure you enable `root` by running `dsenableroot`, running the uninstall, then running `dsenableroot -d` to disable `root` again.

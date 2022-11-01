@@ -42,7 +42,7 @@ impl Action for CreateVolume {
         } else {
             vec![ActionDescription::new(
                 format!(
-                    "Create a volumne on `{}` named `{}`",
+                    "Create a volume on `{}` named `{}`",
                     self.disk.display(),
                     self.name
                 ),
