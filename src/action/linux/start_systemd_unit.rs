@@ -15,9 +15,11 @@ pub struct StartSystemdUnit {
 
 impl StartSystemdUnit {
     #[tracing::instrument(skip_all)]
-    pub async fn plan(unit: String) -> Result<Self, Box<dyn std::error::Error + Send + Sync>> {
+    pub async fn plan(
+        unit: impl AsRef<str>,
+    ) -> Result<Self, Box<dyn std::error::Error + Send + Sync>> {
         Ok(Self {
-            unit,
+            unit: unit.as_ref().to_string(),
             action_state: ActionState::Uncompleted,
         })
     }

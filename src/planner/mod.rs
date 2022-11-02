@@ -1,6 +1,5 @@
 pub mod darwin;
 pub mod linux;
-pub mod specific;
 
 use std::collections::HashMap;
 
@@ -24,7 +23,7 @@ dyn_clone::clone_trait_object!(Planner);
 pub enum BuiltinPlanner {
     LinuxMulti(linux::LinuxMulti),
     DarwinMulti(darwin::DarwinMulti),
-    SteamDeck(specific::SteamDeck),
+    SteamDeck(linux::SteamDeck),
 }
 
 impl BuiltinPlanner {

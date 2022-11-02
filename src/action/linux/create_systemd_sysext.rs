@@ -17,6 +17,7 @@ const PATHS: &[&str] = &[
 #[derive(Debug, serde::Deserialize, serde::Serialize, Clone)]
 pub struct CreateSystemdSysext {
     destination: PathBuf,
+    persistence: PathBuf,
     create_directories: Vec<CreateDirectory>,
     create_extension_release: CreateFile,
     create_bind_mount_unit: CreateFile,
@@ -27,8 +28,10 @@ impl CreateSystemdSysext {
     #[tracing::instrument(skip_all)]
     pub async fn plan(
         destination: impl AsRef<Path>,
+        persistence: impl AsRef<Path>,
     ) -> Result<Self, Box<dyn std::error::Error + Send + Sync>> {
         let destination = destination.as_ref();
+        let persistence = persistence.as_ref();
 
         let mut create_directories =
             vec![CreateDirectory::plan(destination, None, None, 0o0755, true).await?];
@@ -69,7 +72,7 @@ impl CreateSystemdSysext {
             Type=none\n\
             Options=bind\n\
         ",
-            destination.display(),
+            persistence.display(),
         );
         let create_bind_mount_unit = CreateFile::plan(
             destination.join("usr/lib/systemd/system/nix.mount"),
@@ -83,6 +86,7 @@ impl CreateSystemdSysext {
 
         Ok(Self {
             destination: destination.to_path_buf(),
+            persistence: persistence.to_path_buf(),
             create_directories,
             create_extension_release,
             create_bind_mount_unit,
@@ -98,6 +102,7 @@ impl Action for CreateSystemdSysext {
         let Self {
             action_state: _,
             destination,
+            persistence,
             create_bind_mount_unit: _,
             create_directories: _,
             create_extension_release: _,
@@ -118,6 +123,7 @@ impl Action for CreateSystemdSysext {
     async fn execute(&mut self) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
         let Self {
             destination: _,
+            persistence: _,
             action_state,
             create_directories,
             create_extension_release,
@@ -143,6 +149,7 @@ impl Action for CreateSystemdSysext {
     fn describe_revert(&self) -> Vec<ActionDescription> {
         let Self {
             destination,
+            persistence,
             action_state: _,
             create_directories: _,
             create_extension_release: _,
@@ -162,6 +169,7 @@ impl Action for CreateSystemdSysext {
     async fn revert(&mut self) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
         let Self {
             destination: _,
+            persistence: _,
             action_state,
             create_directories,
             create_extension_release,

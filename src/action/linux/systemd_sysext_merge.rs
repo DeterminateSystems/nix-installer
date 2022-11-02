@@ -11,15 +11,13 @@ use crate::{
 
 #[derive(Debug, serde::Deserialize, serde::Serialize, Clone)]
 pub struct SystemdSysextMerge {
-    device: PathBuf,
     action_state: ActionState,
 }
 
 impl SystemdSysextMerge {
     #[tracing::instrument(skip_all)]
-    pub async fn plan(device: PathBuf) -> Result<Self, SystemdSysextMergeError> {
+    pub async fn plan() -> Result<Self, SystemdSysextMergeError> {
         Ok(Self {
-            device,
             action_state: ActionState::Uncompleted,
         })
     }
@@ -29,35 +27,27 @@ impl SystemdSysextMerge {
 #[typetag::serde(name = "systemd_sysext_merge")]
 impl Action for SystemdSysextMerge {
     fn describe_execute(&self) -> Vec<ActionDescription> {
-        let Self {
-            action_state,
-            device,
-        } = self;
+        let Self { action_state } = self;
         if *action_state == ActionState::Completed {
             vec![]
         } else {
             vec![ActionDescription::new(
-                format!("Run `systemd-sysext merge `{}`", device.display()),
+                format!("Run `systemd-sysext merge`"),
                 vec![],
             )]
         }
     }
 
-    #[tracing::instrument(skip_all, fields(
-        device = %self.device.display(),
-    ))]
+    #[tracing::instrument(skip_all, fields())]
     async fn execute(&mut self) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
-        let Self {
-            device,
-            action_state,
-        } = self;
+        let Self { action_state } = self;
         if *action_state == ActionState::Completed {
             tracing::trace!("Already completed: Merging systemd-sysext");
             return Ok(());
         }
         tracing::debug!("Merging systemd-sysext");
 
-        execute_command(Command::new("systemd-sysext").arg("merge").arg(device))
+        execute_command(Command::new("systemd-sysext").arg("merge"))
             .await
             .map_err(|e| SystemdSysextMergeError::Command(e).boxed())?;
 
@@ -79,22 +69,17 @@ impl Action for SystemdSysextMerge {
         }
     }
 
-    #[tracing::instrument(skip_all, fields(
-        device = %self.device.display(),
-    ))]
+    #[tracing::instrument(skip_all, fields())]
     async fn revert(&mut self) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
-        let Self {
-            device,
-            action_state,
-        } = self;
+        let Self { action_state } = self;
         if *action_state == ActionState::Uncompleted {
             tracing::trace!("Already reverted: Stopping systemd unit");
             return Ok(());
         }
-        tracing::debug!("Unmrging systemd-sysext");
+        tracing::debug!("Unmerging systemd-sysext");
 
         // TODO(@Hoverbear): Handle proxy vars
-        execute_command(Command::new("systemd-sysext").arg("unmerge").arg(device))
+        execute_command(Command::new("systemd-sysext").arg("refresh"))
             .await
             .map_err(|e| SystemdSysextMergeError::Command(e).boxed())?;
 
