@@ -25,7 +25,7 @@ pub struct DarwinMulti {
         default_value = "false",
         env = "HARMONIC_ENCRYPT"
     )]
-    pub encrypt: bool,
+    pub encrypt: Option<bool>,
     /// Use a case sensitive volume
     #[clap(
         long,
@@ -58,7 +58,7 @@ impl Planner for DarwinMulti {
             settings: CommonSettings::default()?,
             root_disk: Some(default_root_disk().await?),
             case_sensitive: false,
-            encrypt: false,
+            encrypt: None,
             volume_label: "Nix Store".into(),
         })
     }
@@ -81,15 +81,17 @@ impl Planner for DarwinMulti {
             },
         };
 
-        if self.encrypt == false {
-            self.encrypt = Command::new("/usr/bin/fdesetup")
+        let encrypt = if self.encrypt == None {
+            Command::new("/usr/bin/fdesetup")
                 .arg("isactive")
                 .status()
                 .await?
                 .code()
                 .map(|v| if v == 0 { false } else { true })
                 .unwrap_or(false)
-        }
+        } else {
+            false
+        };
 
         Ok(InstallPlan {
             planner: Box::new(self.clone()),
@@ -103,7 +105,7 @@ impl Planner for DarwinMulti {
                         self.root_disk.unwrap(), /* We just ensured it was populated */
                         self.volume_label,
                         false,
-                        self.encrypt,
+                        encrypt,
                     )
                     .await?,
                 ),
