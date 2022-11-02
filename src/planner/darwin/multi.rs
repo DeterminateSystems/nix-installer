@@ -21,7 +21,7 @@ pub struct DarwinMulti {
     /// Force encryption on the volume
     #[clap(
         long,
-        action(ArgAction::SetTrue),
+        action(ArgAction::Set),
         default_value = "false",
         env = "HARMONIC_ENCRYPT"
     )]
