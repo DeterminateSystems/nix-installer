@@ -4,9 +4,9 @@ use clap::ArgAction;
 use tokio::process::Command;
 
 use crate::{
-    action::{
-        common::{ConfigureNix, ProvisionNix},
+    action::top_level::{
         darwin::{CreateApfsVolume, KickstartLaunchctlService},
+        ConfigureNix, ProvisionNix,
     },
     execute_command,
     os::darwin::DiskUtilOutput,

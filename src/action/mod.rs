@@ -1,6 +1,8 @@
-pub mod common;
-pub mod darwin;
-pub mod linux;
+pub mod top_level;
+
+pub(self) mod common;
+pub(self) mod darwin;
+pub(self) mod linux;
 
 use serde::{Deserialize, Serialize};
 

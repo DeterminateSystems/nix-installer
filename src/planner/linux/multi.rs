@@ -1,10 +1,7 @@
 use std::collections::HashMap;
 
 use crate::{
-    action::{
-        common::{ConfigureNix, CreateDirectory, ProvisionNix},
-        linux::StartSystemdUnit,
-    },
+    action::top_level::{linux::StartSystemdUnit, ConfigureNix, CreateDirectory, ProvisionNix},
     planner::Planner,
     BuiltinPlanner, CommonSettings, InstallPlan,
 };

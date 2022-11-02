@@ -1,6 +1,8 @@
-use crate::action::{Action, ActionDescription, ActionState};
-
-use crate::action::common::{CreateDirectory, CreateDirectoryError, CreateFile, CreateFileError};
+use crate::action::{
+    common::{CreateFile, CreateFileError},
+    top_level::{CreateDirectory, CreateDirectoryError},
+    Action, ActionDescription, ActionState,
+};
 
 const NIX_CONF_FOLDER: &str = "/etc/nix";
 const NIX_CONF: &str = "/etc/nix/nix.conf";

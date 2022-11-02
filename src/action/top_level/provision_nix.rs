@@ -1,18 +1,16 @@
-use std::path::PathBuf;
-
-use tokio::task::JoinError;
-
-use crate::action::common::{
-    CreateDirectoryError, FetchNix, FetchNixError, MoveUnpackedNix, MoveUnpackedNixError,
+use crate::action::{
+    common::{
+        CreateNixTree, CreateNixTreeError, CreateUsersAndGroup, CreateUsersAndGroupError, FetchNix,
+        FetchNixError, MoveUnpackedNix, MoveUnpackedNixError,
+    },
+    top_level::CreateDirectoryError,
 };
-use crate::CommonSettings;
-
 use crate::{
     action::{Action, ActionDescription, ActionState},
-    BoxableError,
+    BoxableError, CommonSettings,
 };
-
-use super::{CreateNixTree, CreateNixTreeError, CreateUsersAndGroup, CreateUsersAndGroupError};
+use std::path::PathBuf;
+use tokio::task::JoinError;
 
 #[derive(Debug, serde::Deserialize, serde::Serialize, Clone)]
 pub struct ProvisionNix {

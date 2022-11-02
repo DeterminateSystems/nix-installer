@@ -1,10 +1,10 @@
-use std::path::{Path, PathBuf};
-
-use crate::action::common::{CreateDirectory, CreateDirectoryError, CreateFile, CreateFileError};
-use crate::{
-    action::{Action, ActionDescription, ActionState},
-    BoxableError,
+use crate::action::{
+    common::{CreateFile, CreateFileError},
+    top_level::{CreateDirectory, CreateDirectoryError},
+    Action, ActionDescription, ActionState,
 };
+use crate::BoxableError;
+use std::path::{Path, PathBuf};
 
 const PATHS: &[&str] = &[
     "usr",

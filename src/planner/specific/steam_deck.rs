@@ -1,9 +1,9 @@
 use std::collections::HashMap;
 
 use crate::{
-    action::{
-        common::{CreateDirectory, ProvisionNix},
+    action::top_level::{
         linux::{CreateSystemdSysext, StartSystemdUnit},
+        CreateDirectory, ProvisionNix,
     },
     planner::Planner,
     BuiltinPlanner, CommonSettings, InstallPlan,
