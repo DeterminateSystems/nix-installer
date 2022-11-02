@@ -80,26 +80,18 @@ impl CreateApfsVolume {
         };
 
         let name_with_qoutes = format!("\"{name}\"");
+        let encrypted_command;
         let mount_command = if encrypt {
-            vec![
-                "/bin/sh",
-                "-c",
-                "/usr/bin/security",
-                "find-generic-password",
-                "-s",
-                name_with_qoutes.as_str(),
-                "-w",
-                "|",
-                "/usr/sbin/diskutil",
-                "apfs",
-                "unlockVolume",
-                &name,
-                "-mountpoint",
-                "/nix",
-                "-stdinpassphrase",
-            ]
+            encrypted_command = format!("/usr/bin/security find-generic-password -s {name_with_qoutes} -w |  /usr/sbin/diskutil apfs unlockVolume {name_with_qoutes} -mountpoint /nix -stdinpassphrase");
+            vec!["/bin/sh", "-c", encrypted_command.as_str()]
         } else {
-            vec!["/usr/sbin/diskutil", "mount", "-mountPoint", "/nix", &name]
+            vec![
+                "/usr/sbin/diskutil",
+                "mount",
+                "-mountPoint",
+                "/nix",
+                name_with_qoutes.as_str(),
+            ]
         };
         // TODO(@hoverbear): Use plist lib we have in tree...
         let mount_plist = format!(

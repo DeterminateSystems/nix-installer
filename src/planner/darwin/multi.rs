@@ -82,9 +82,10 @@ impl Planner for DarwinMulti {
         };
 
         if self.volume_encrypt == false {
-            self.volume_encrypt = execute_command(Command::new("/usr/bin/fdesetup").arg("isactive"))
+            self.volume_encrypt = Command::new("/usr/bin/fdesetup")
+                .arg("isactive")
+                .status()
                 .await?
-                .status
                 .code()
                 .map(|v| if v == 0 { false } else { true })
                 .unwrap_or(false)
