@@ -90,7 +90,7 @@ impl CreateApfsVolume {
                 "mount",
                 "-mountPoint",
                 "/nix",
-                name_with_qoutes.as_str(),
+                name.as_str(),
             ]
         };
         // TODO(@hoverbear): Use plist lib we have in tree...
