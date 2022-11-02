@@ -23,9 +23,9 @@ pub struct DarwinMulti {
         long,
         action(ArgAction::SetTrue),
         default_value = "false",
-        env = "HARMONIC_VOLUME_ENCRYPT"
+        env = "HARMONIC_ENCRYPT"
     )]
-    pub volume_encrypt: bool,
+    pub encrypt: bool,
     /// Use a case sensitive volume
     #[clap(
         long,
@@ -58,7 +58,7 @@ impl Planner for DarwinMulti {
             settings: CommonSettings::default()?,
             root_disk: Some(default_root_disk().await?),
             case_sensitive: false,
-            volume_encrypt: false,
+            encrypt: false,
             volume_label: "Nix Store".into(),
         })
     }
@@ -81,8 +81,8 @@ impl Planner for DarwinMulti {
             },
         };
 
-        if self.volume_encrypt == false {
-            self.volume_encrypt = Command::new("/usr/bin/fdesetup")
+        if self.encrypt == false {
+            self.encrypt = Command::new("/usr/bin/fdesetup")
                 .arg("isactive")
                 .status()
                 .await?
@@ -103,7 +103,7 @@ impl Planner for DarwinMulti {
                         self.root_disk.unwrap(), /* We just ensured it was populated */
                         self.volume_label,
                         false,
-                        self.volume_encrypt,
+                        self.encrypt,
                     )
                     .await?,
                 ),
@@ -121,7 +121,7 @@ impl Planner for DarwinMulti {
     ) -> Result<HashMap<String, serde_json::Value>, Box<dyn std::error::Error + Sync + Send>> {
         let Self {
             settings,
-            volume_encrypt,
+            encrypt,
             volume_label,
             case_sensitive,
             root_disk,
@@ -129,10 +129,7 @@ impl Planner for DarwinMulti {
         let mut map = HashMap::default();
 
         map.extend(settings.describe()?.into_iter());
-        map.insert(
-            "volume_encrypt".into(),
-            serde_json::to_value(volume_encrypt)?,
-        );
+        map.insert("volume_encrypt".into(), serde_json::to_value(encrypt)?);
         map.insert("volume_label".into(), serde_json::to_value(volume_label)?);
         map.insert("root_disk".into(), serde_json::to_value(root_disk)?);
         map.insert(
