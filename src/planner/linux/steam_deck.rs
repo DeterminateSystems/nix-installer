@@ -32,9 +32,9 @@ impl Planner for SteamDeck {
         Ok(InstallPlan {
             planner: Box::new(self.clone()),
             actions: vec![
-                Box::new(SteamosReadonly::plan(false).await?),
-                Box::new(CreateDirectory::plan("/nix", None, None, None, true).await?),
-                Box::new(SteamosReadonly::plan(true).await?),
+                // Box::new(SteamosReadonly::plan(false).await?),
+                // Box::new(CreateDirectory::plan("/nix", None, None, None, true).await?),
+                // Box::new(SteamosReadonly::plan(true).await?),
                 Box::new(
                     CreateDirectory::plan("/var/lib/extensions/", None, None, None, true).await?,
                 ),

@@ -32,7 +32,7 @@ impl Action for SystemdSysextMerge {
             vec![]
         } else {
             vec![ActionDescription::new(
-                format!("Run `systemd-sysext merge`"),
+                format!("Run `systemd-sysext refresh`"),
                 vec![],
             )]
         }
@@ -47,7 +47,7 @@ impl Action for SystemdSysextMerge {
         }
         tracing::debug!("Merging systemd-sysext");
 
-        execute_command(Command::new("systemd-sysext").arg("merge"))
+        execute_command(Command::new("systemd-sysext").arg("refresh"))
             .await
             .map_err(|e| SystemdSysextMergeError::Command(e).boxed())?;
 

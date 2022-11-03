@@ -20,6 +20,7 @@ pub struct CreateSystemdSysext {
     persistence: PathBuf,
     create_directories: Vec<CreateDirectory>,
     create_extension_release: CreateFile,
+    nix_directory_unit: CreateFile,
     create_bind_mount_unit: CreateFile,
     action_state: ActionState,
 }
@@ -64,15 +65,50 @@ impl CreateSystemdSysext {
         )
         .await?;
 
+        let nix_directory_buf = format!(
+            "
+            [Unit]\n\
+            Description=Create a `/nix` directory to be used for bind mounting\n\
+            \n\
+            [Service]\n\
+            Type=oneshot\n\
+            ExecCondition=sh -c \"if [ -d /nix ]; then exit 1; else exit 0; fi\"
+            ExecStart=steamos-readonly disable\n\
+            ExecStart=mkdir /nix\n\
+            ExecStart=steamos-readonly enable\n\
+            ExecStop=steamos-readonly disable\n\
+            ExecStop=rmdir /nix\n\
+            ExecStop=steamos-readonly enable\n\
+            RemainAfterExit=true\n\
+        "
+        );
+        let nix_directory_unit = CreateFile::plan(
+            destination.join("usr/lib/systemd/system/nix-directory.service"),
+            None,
+            None,
+            0o0755,
+            nix_directory_buf,
+            false,
+        )
+        .await?;
+
         let create_bind_mount_buf = format!(
             "
+            [Unit]\n\
+            Description=Mount `{persistence}` on `/nix`\n\
+            After=nix-directory.service\n\
+            Requires=nix-directory.service\n\
+            Before=nix-daemon.service\n\
+            Before=nix-daemon.socket\n\
+            ConditionPathIsDirectory=/nix\n\
+            \n\
             [Mount]\n\
-            What={}\n\
+            What={persistence}\n\
             Where=/nix\n\
             Type=none\n\
             Options=bind\n\
         ",
-            persistence.display(),
+            persistence = persistence.display(),
         );
         let create_bind_mount_unit = CreateFile::plan(
             destination.join("usr/lib/systemd/system/nix.mount"),
@@ -89,6 +125,7 @@ impl CreateSystemdSysext {
             persistence: persistence.to_path_buf(),
             create_directories,
             create_extension_release,
+            nix_directory_unit,
             create_bind_mount_unit,
             action_state: ActionState::Uncompleted,
         })
@@ -102,8 +139,9 @@ impl Action for CreateSystemdSysext {
         let Self {
             action_state: _,
             destination,
-            persistence,
+            persistence: _,
             create_bind_mount_unit: _,
+            nix_directory_unit: _,
             create_directories: _,
             create_extension_release: _,
         } = &self;
@@ -127,6 +165,7 @@ impl Action for CreateSystemdSysext {
             action_state,
             create_directories,
             create_extension_release,
+            nix_directory_unit,
             create_bind_mount_unit,
         } = self;
         if *action_state == ActionState::Completed {
@@ -139,6 +178,7 @@ impl Action for CreateSystemdSysext {
             create_directory.execute().await?;
         }
         create_extension_release.execute().await?;
+        nix_directory_unit.execute().await?;
         create_bind_mount_unit.execute().await?;
 
         tracing::trace!("Created sysext");
@@ -149,10 +189,11 @@ impl Action for CreateSystemdSysext {
     fn describe_revert(&self) -> Vec<ActionDescription> {
         let Self {
             destination,
-            persistence,
+            persistence: _,
             action_state: _,
             create_directories: _,
             create_extension_release: _,
+            nix_directory_unit: _,
             create_bind_mount_unit: _,
         } = &self;
         if self.action_state == ActionState::Uncompleted {
@@ -173,6 +214,7 @@ impl Action for CreateSystemdSysext {
             action_state,
             create_directories,
             create_extension_release,
+            nix_directory_unit,
             create_bind_mount_unit,
         } = self;
         if *action_state == ActionState::Uncompleted {
@@ -181,6 +223,7 @@ impl Action for CreateSystemdSysext {
         }
         tracing::debug!("Removing sysext");
 
+        nix_directory_unit.revert().await?;
         create_bind_mount_unit.revert().await?;
 
         create_extension_release.revert().await?;

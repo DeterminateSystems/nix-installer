@@ -26,7 +26,7 @@ impl SteamosReadonly {
 }
 
 #[async_trait::async_trait]
-#[typetag::serde(name = "systemd_sysext_merge")]
+#[typetag::serde(name = "steamos_readonly")]
 impl Action for SteamosReadonly {
     fn describe_execute(&self) -> Vec<ActionDescription> {
         let Self {
