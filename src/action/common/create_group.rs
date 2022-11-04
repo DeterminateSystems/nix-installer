@@ -70,17 +70,29 @@ impl Action for CreateGroup {
                 patch: _,
             }
             | OperatingSystem::Darwin => {
-                execute_command(Command::new("/usr/sbin/dseditgroup").args([
-                    "-o",
-                    "create",
-                    "-r",
-                    "Nix build group for nix-daemon",
-                    "-i",
-                    &format!("{gid}"),
-                    name.as_str(),
-                ]))
-                .await
-                .map_err(|e| CreateGroupError::Command(e).boxed())?;
+                // TODO(@hoverbear): Make this actually work...
+                // Right now, our test machines do not have a secure token and cannot delete users.
+
+                if Command::new("/usr/bin/dscl")
+                    .args([".", "-read", &format!("/Groups/{name}")])
+                    .status()
+                    .await?
+                    .success()
+                {
+                    ()
+                } else {
+                    execute_command(Command::new("/usr/sbin/dseditgroup").args([
+                        "-o",
+                        "create",
+                        "-r",
+                        "Nix build group for nix-daemon",
+                        "-i",
+                        &format!("{gid}"),
+                        name.as_str(),
+                    ]))
+                    .await
+                    .map_err(|e| CreateGroupError::Command(e).boxed())?;
+                }
             },
             _ => {
                 execute_command(Command::new("groupadd").args([
@@ -141,13 +153,16 @@ impl Action for CreateGroup {
                 patch: _,
             }
             | OperatingSystem::Darwin => {
-                execute_command(Command::new("/usr/bin/dscl").args([
-                    ".",
-                    "-delete",
-                    &format!("/Groups/{name}"),
-                ]))
-                .await
-                .map_err(|e| CreateGroupError::Command(e).boxed())?;
+                // TODO(@hoverbear): Make this actually work...
+                // Right now, our test machines do not have a secure token and cannot delete users.
+
+                // execute_command(Command::new("/usr/bin/dscl").args([
+                //     ".",
+                //     "-delete",
+                //     &format!("/Groups/{name}"),
+                // ]))
+                // .await
+                // .map_err(|e| CreateGroupError::Command(e).boxed())?;
             },
             _ => {
                 execute_command(Command::new("groupdel").arg(&name))

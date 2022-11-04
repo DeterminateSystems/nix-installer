@@ -13,10 +13,11 @@ Planned support:
 * [x] Multi-user x86_64 Linux with systemd init
 * [ ] Multi-user aarch64 Linux with systemd init
 * [x] Multi-user x86_64 MacOS
-    + Note: Uninstall and encrypted volume support are incomplete
+    + Note: user deletion is still buggy
+* [x] Multi-user aarch64 MacOS
+    + Note: user deletion is still buggy
 * [ ] Single-user x86_64 Linux with systemd init
 * [ ] Single-user aarch64 Linux with systemd init
-* [ ] Multi-user aarch64 MacOS
 * [ ] Others...
 
 ## Installation Differences
