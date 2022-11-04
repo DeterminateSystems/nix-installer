@@ -1,3 +1,5 @@
+use std::path::{Path, PathBuf};
+
 use reqwest::Url;
 
 use crate::{
@@ -26,6 +28,7 @@ impl ConfigureNix {
     #[tracing::instrument(skip_all)]
     pub async fn plan(
         settings: CommonSettings,
+        sysext: impl Into<Option<PathBuf>>,
     ) -> Result<Self, Box<dyn std::error::Error + Send + Sync>> {
         let channels: Vec<(String, Url)> = settings
             .channels
@@ -51,7 +54,7 @@ impl ConfigureNix {
             settings.force,
         )
         .await?;
-        let configure_nix_daemon_service = ConfigureNixDaemonService::plan().await?;
+        let configure_nix_daemon_service = ConfigureNixDaemonService::plan(sysext).await?;
 
         Ok(Self {
             place_channel_configuration,

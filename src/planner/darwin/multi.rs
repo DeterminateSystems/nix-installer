@@ -90,7 +90,7 @@ impl Planner for DarwinMulti {
                     .await?,
                 ),
                 Box::new(ProvisionNix::plan(self.settings.clone()).await?),
-                Box::new(ConfigureNix::plan(self.settings).await?),
+                Box::new(ConfigureNix::plan(self.settings, None).await?),
                 Box::new(
                     KickstartLaunchctlService::plan("system/org.nixos.nix-daemon".into()).await?,
                 ),

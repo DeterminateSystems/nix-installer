@@ -99,9 +99,11 @@ impl CreateSystemdSysext {
             PropagatesStopTo=nix-daemon.service\n\
             After=nix-directory.service\n\
             Requires=nix-directory.service\n\
-            Before=nix-daemon.service\n\
-            Before=nix-daemon.socket\n\
             ConditionPathIsDirectory=/nix\n\
+            \n\
+            [Install]
+            RequiredBy=nix-daemon.service\n\
+            RequiredBy=nix-daemon.socket\n\
             \n\
             [Mount]\n\
             What={persistence}\n\
