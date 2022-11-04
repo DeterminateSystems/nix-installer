@@ -96,6 +96,7 @@ impl CreateSystemdSysext {
             "
             [Unit]\n\
             Description=Mount `{persistence}` on `/nix`\n\
+            PropagatesStopTo=nix-daemon.service\n\
             After=nix-directory.service\n\
             Requires=nix-directory.service\n\
             Before=nix-daemon.service\n\
