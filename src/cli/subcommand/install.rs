@@ -65,8 +65,10 @@ impl CommandExecute for Install {
                 if !interaction::confirm(plan.describe_revert(explain)).await? {
                     interaction::clean_exit_with_message("Okay, didn't do anything! Bye!").await;
                 }
+                plan.revert().await?
+            } else {
+                return Err(err).wrap_err("Install failure");
             }
-            plan.revert().await?
         }
 
         Ok(ExitCode::SUCCESS)
