@@ -3,7 +3,7 @@ use std::{
     process::ExitCode,
 };
 
-use crate::{plan::RECEIPT_LOCATION, BuiltinPlanner, InstallPlan, Planner, action::ActionState};
+use crate::{action::ActionState, plan::RECEIPT_LOCATION, BuiltinPlanner, InstallPlan, Planner};
 use clap::{ArgAction, Parser};
 use eyre::{eyre, WrapErr};
 
@@ -71,7 +71,6 @@ impl CommandExecute for Install {
                         if existing_receipt.actions.iter().all(|v| v.action_state() == ActionState::Completed) {
                             return Err(eyre!("Found existing plan in `/nix/receipt.json`, with the same settings, already completed, try uninstalling and reinstalling if Nix isn't working"))
                         }
-                        
                         existing_receipt
                     } ,
                     None => {
