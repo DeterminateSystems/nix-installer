@@ -95,7 +95,7 @@ jobs:
         run: sudo RUST_LOG=harmonic=trace RUST_BACKTRACE=full ./harmonic install linux-multi --no-confirm
       - name: Test run
         run: |
-          source
+          . /nix/var/nix/profiles/default/etc/profile.d/nix-daemon.sh
           nix run nixpkgs#fortune
       - name: Initial uninstall
         run: sudo RUST_LOG=harmonic=trace RUST_BACKTRACE=full ./harmonic uninstall --no-confirm
@@ -134,7 +134,7 @@ jobs:
         run: sudo RUST_LOG=harmonic=trace RUST_BACKTRACE=full ./harmonic install darwin-multi --no-confirm
       - name: Test run
         run: |
-          source
+          . /nix/var/nix/profiles/default/etc/profile.d/nix-daemon.sh
           nix run nixpkgs#fortune
       - name: Initial uninstall
         run: sudo RUST_LOG=harmonic=trace RUST_BACKTRACE=full ./harmonic uninstall --no-confirm
