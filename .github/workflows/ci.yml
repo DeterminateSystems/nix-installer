@@ -95,15 +95,15 @@ jobs:
       - name: Set executable
         run: chmod +x ./harmonic
       - name: Initial install
-        run: ./harmonic install linux-multi --no-confirm
+        run: sudo ./harmonic install linux-multi --no-confirm
       - name: Test run
         run: nix run nixpkgs#fortune
       - name: Initial uninstall
-        run: ./harmonic uninstall --no-confirm
+        run: sudo ./harmonic uninstall --no-confirm
       - name: Repeated install
-        run: ./harmonic install linux-multi --no-confirm
+        run: sudo ./harmonic install linux-multi --no-confirm
       - name: Repeated uninstall
-        run: ./harmonic uninstall --no-confirm
+        run: sudo ./harmonic uninstall --no-confirm
         
 
   BuildX86Darwin:
