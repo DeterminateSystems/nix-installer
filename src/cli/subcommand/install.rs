@@ -60,14 +60,15 @@ impl CommandExecute for Install {
         }
 
         if let Err(err) = plan.install().await {
-            tracing::error!("{:?}", eyre!(err));
+            let error = eyre!(err).wrap_err("Install failure");
             if !no_confirm {
+                tracing::error!("{:?}", error);
                 if !interaction::confirm(plan.describe_revert(explain)).await? {
                     interaction::clean_exit_with_message("Okay, didn't do anything! Bye!").await;
                 }
                 plan.revert().await?
             } else {
-                return Err(err).wrap_err("Install failure");
+                return Err(error);
             }
         }
 
