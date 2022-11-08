@@ -45,7 +45,7 @@ impl InstallPlan {
             },
             planner = planner.typetag_name(),
             plan_settings = planner
-                .describe()?
+                .settings()?
                 .into_iter()
                 .map(|(k, v)| format!("* {k}: {v}", k = k.bold().white()))
                 .collect::<Vec<_>>()

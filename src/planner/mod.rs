@@ -13,7 +13,7 @@ pub trait Planner: std::fmt::Debug + Send + Sync + dyn_clone::DynClone {
     where
         Self: Sized;
     async fn plan(self) -> Result<InstallPlan, Box<dyn std::error::Error + Sync + Send>>;
-    fn describe(
+    fn settings(
         &self,
     ) -> Result<HashMap<String, serde_json::Value>, Box<dyn std::error::Error + Sync + Send>>;
     fn boxed(self) -> Box<dyn Planner>

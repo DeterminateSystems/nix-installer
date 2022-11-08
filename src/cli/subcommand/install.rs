@@ -3,7 +3,7 @@ use std::{
     process::ExitCode,
 };
 
-use crate::{plan::RECEIPT_LOCATION, BuiltinPlanner, InstallPlan, Planner};
+use crate::{plan::RECEIPT_LOCATION, BuiltinPlanner, InstallPlan, Planner, action::ActionState};
 use clap::{ArgAction, Parser};
 use eyre::{eyre, WrapErr};
 
@@ -62,11 +62,17 @@ impl CommandExecute for Install {
 
                 match existing_receipt {
                     Some(existing_receipt) => {
-                        if existing_receipt.planner.typetag_name() == chosen_planner.typetag_name() {
-                            existing_receipt
-                        } else {
+                        if existing_receipt.planner.typetag_name() != chosen_planner.typetag_name() {
                             return Err(eyre!("Found existing plan in `/nix/receipt.json` which used a different planner, try uninstalling the existing install"))
                         }
+                        if existing_receipt.planner.settings().map_err(|e| eyre!(e))? != chosen_planner.settings().map_err(|e| eyre!(e))? {
+                            return Err(eyre!("Found existing plan in `/nix/receipt.json` which used different planner settings, try uninstalling the existing install"))
+                        }
+                        if existing_receipt.actions.iter().all(|v| v.action_state() == ActionState::Completed) {
+                            return Err(eyre!("Found existing plan in `/nix/receipt.json`, with the same settings, already completed, try uninstalling and reinstalling if Nix isn't working"))
+                        }
+                        
+                        existing_receipt
                     } ,
                     None => {
                         planner.plan().await.map_err(|e| eyre!(e))?

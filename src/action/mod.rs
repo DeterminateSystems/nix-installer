@@ -13,11 +13,12 @@ pub trait Action: Send + Sync + std::fmt::Debug + dyn_clone::DynClone {
     // They should also have an `async fn plan(args...) -> Result<ActionState<Self>, Box<dyn std::error::Error + Send + Sync>>;`
     async fn execute(&mut self) -> Result<(), Box<dyn std::error::Error + Send + Sync>>;
     async fn revert(&mut self) -> Result<(), Box<dyn std::error::Error + Send + Sync>>;
+    fn action_state(&self) -> ActionState;
 }
 
 dyn_clone::clone_trait_object!(Action);
 
-#[derive(Debug, Serialize, Deserialize, Clone, PartialEq, Eq)]
+#[derive(Debug, Serialize, Deserialize, Clone, PartialEq, Eq, Copy)]
 pub enum ActionState {
     Completed,
     // Only applicable to meta-actions that start multiple sub-actions.
