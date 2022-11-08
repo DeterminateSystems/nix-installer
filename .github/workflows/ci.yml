@@ -135,13 +135,13 @@ jobs:
         with:
           name: harmonic-x86_64-darwin
       - name: Initial install
-        run: ./harmonic install darwin-multi --no-confirm
+        run: sudo ./harmonic install darwin-multi --no-confirm
       - name: Test run
         run: nix run nixpkgs#fortune
       - name: Initial uninstall
-        run: ./harmonic uninstall --no-confirm
+        run: sudo ./harmonic uninstall --no-confirm
       - name: Repeated install
-        run: ./harmonic install darwin-multi --no-confirm
+        run: sudo ./harmonic install darwin-multi --no-confirm
       - name: Repeated uninstall
-        run: ./harmonic uninstall --no-confirm
+        run: sudo ./harmonic uninstall --no-confirm
         
