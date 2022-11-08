@@ -92,7 +92,10 @@ jobs:
       - uses: actions/download-artifact@v3
         with:
           name: harmonic-x86_64-linux
-          path: harmonic
+      - name: Rename artifact
+        run: |
+          ls -R
+          mv harmonic-x86_64-linux harmonic
       - name: Set executable
         run: chmod +x ./harmonic
       - name: Initial install
@@ -135,7 +138,10 @@ jobs:
       - uses: actions/download-artifact@v3
         with:
           name: harmonic-x86_64-darwin
-          path: harmonic
+      - name: Rename artifact
+        run: |
+          ls -R
+          mv harmonic-x86_64-darwin harmonic
       - name: Initial install
         run: ./harmonic install darwin-multi --no-confirm
       - name: Test run
