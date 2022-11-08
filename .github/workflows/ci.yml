@@ -82,6 +82,31 @@ jobs:
           path: |
             result/bin/harmonic
 
+    RunX86Linux:
+      runs-on: ubuntu-latest
+      needs: BuildX86Linux
+      env:
+        RUST_LOG: harmonic=trace
+        RUST_BACKTRACE: full
+      steps:
+        - uses: actions/download-artifact@v3
+          with:
+            name: harmonic-x86_64-linux
+            path: harmonic
+        - name: Set executable
+          run: chmod +x ./harmonic
+        - name: Initial install
+          run: ./harmonic install linux-multi --no-confirm
+        - name: Test run
+          run: nix run nixpkgs#fortune
+        - name: Initial uninstall
+          run: ./harmonic uninstall --no-confirm
+        - name: Repeated install
+          run: ./harmonic install linux-multi --no-confirm
+        - name: Repeated uninstall
+          run: ./harmonic uninstall --no-confirm
+        
+
   BuildX86Darwin:
     runs-on: macos-latest
     steps:
@@ -99,3 +124,26 @@ jobs:
           name: harmonic-x86_64-darwin
           path: |
             result/bin/harmonic
+
+    RunX86Darwin:
+      runs-on: macos-latest
+      needs: BuildX86Darwin
+      env:
+        RUST_LOG: harmonic=trace
+        RUST_BACKTRACE: full
+      steps:
+        - uses: actions/download-artifact@v3
+          with:
+            name: harmonic-x86_64-darwin
+            path: harmonic
+        - name: Initial install
+          run: ./harmonic install darwin-multi --no-confirm
+        - name: Test run
+          run: nix run nixpkgs#fortune
+        - name: Initial uninstall
+          run: ./harmonic uninstall --no-confirm
+        - name: Repeated install
+          run: ./harmonic install darwin-multi --no-confirm
+        - name: Repeated uninstall
+          run: ./harmonic uninstall --no-confirm
+        
