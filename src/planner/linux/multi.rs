@@ -31,7 +31,6 @@ impl Planner for LinuxMulti {
                 Box::new(CreateDirectory::plan("/nix", None, None, 0o0755, true).await?),
                 Box::new(ProvisionNix::plan(self.settings.clone()).await?),
                 Box::new(ConfigureNix::plan(self.settings).await?),
-                // Box::new(StartSystemdUnit::plan("nix-daemon.socket".into()).await?),
             ],
         })
     }
