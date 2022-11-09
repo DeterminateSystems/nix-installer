@@ -69,18 +69,22 @@ impl Action for CreateVolume {
         }
         tracing::debug!("Creating volume");
 
-        execute_command(Command::new("/usr/sbin/diskutil").args([
-            "apfs",
-            "addVolume",
-            &format!("{}", disk.display()),
-            if !*case_sensitive {
-                "APFS"
-            } else {
-                "Case-sensitive APFS"
-            },
-            name,
-            "-nomount",
-        ]))
+        execute_command(
+            Command::new("/usr/sbin/diskutil")
+                .args([
+                    "apfs",
+                    "addVolume",
+                    &format!("{}", disk.display()),
+                    if !*case_sensitive {
+                        "APFS"
+                    } else {
+                        "Case-sensitive APFS"
+                    },
+                    name,
+                    "-nomount",
+                ])
+                .stdin(std::process::Stdio::null()),
+        )
         .await
         .map_err(|e| CreateVolumeError::Command(e).boxed())?;
 
@@ -122,9 +126,13 @@ impl Action for CreateVolume {
         }
         tracing::debug!("Deleting volume");
 
-        execute_command(Command::new("/usr/sbin/diskutil").args(["apfs", "deleteVolume", name]))
-            .await
-            .map_err(|e| CreateVolumeError::Command(e).boxed())?;
+        execute_command(
+            Command::new("/usr/sbin/diskutil")
+                .args(["apfs", "deleteVolume", name])
+                .stdin(std::process::Stdio::null()),
+        )
+        .await
+        .map_err(|e| CreateVolumeError::Command(e).boxed())?;
 
         tracing::trace!("Deleted volume");
         *action_state = ActionState::Completed;

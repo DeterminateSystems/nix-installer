@@ -70,25 +70,28 @@ impl Action for CreateGroup {
                 patch: _,
             }
             | OperatingSystem::Darwin => {
-                execute_command(Command::new("/usr/sbin/dseditgroup").args([
-                    "-o",
-                    "create",
-                    "-r",
-                    "Nix build group for nix-daemon",
-                    "-i",
-                    &format!("{gid}"),
-                    name.as_str(),
-                ]))
+                execute_command(
+                    Command::new("/usr/sbin/dseditgroup")
+                        .args([
+                            "-o",
+                            "create",
+                            "-r",
+                            "Nix build group for nix-daemon",
+                            "-i",
+                            &format!("{gid}"),
+                            name.as_str(),
+                        ])
+                        .stdin(std::process::Stdio::null()),
+                )
                 .await
                 .map_err(|e| CreateGroupError::Command(e).boxed())?;
             },
             _ => {
-                execute_command(Command::new("groupadd").args([
-                    "-g",
-                    &gid.to_string(),
-                    "--system",
-                    &name,
-                ]))
+                execute_command(
+                    Command::new("groupadd")
+                        .args(["-g", &gid.to_string(), "--system", &name])
+                        .stdin(std::process::Stdio::null()),
+                )
                 .await
                 .map_err(|e| CreateGroupError::Command(e).boxed())?;
             },
@@ -141,18 +144,22 @@ impl Action for CreateGroup {
                 patch: _,
             }
             | OperatingSystem::Darwin => {
-                execute_command(Command::new("/usr/bin/dscl").args([
-                    ".",
-                    "-delete",
-                    &format!("/Groups/{name}"),
-                ]))
+                execute_command(
+                    Command::new("/usr/bin/dscl")
+                        .args([".", "-delete", &format!("/Groups/{name}")])
+                        .stdin(std::process::Stdio::null()),
+                )
                 .await
                 .map_err(|e| CreateGroupError::Command(e).boxed())?;
             },
             _ => {
-                execute_command(Command::new("groupdel").arg(&name))
-                    .await
-                    .map_err(|e| CreateGroupError::Command(e).boxed())?;
+                execute_command(
+                    Command::new("groupdel")
+                        .arg(&name)
+                        .stdin(std::process::Stdio::null()),
+                )
+                .await
+                .map_err(|e| CreateGroupError::Command(e).boxed())?;
             },
         };
 

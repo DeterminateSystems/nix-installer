@@ -12,4 +12,6 @@ pub enum HarmonicError {
     RecordingReceipt(PathBuf, #[source] std::io::Error),
     #[error(transparent)]
     SerializingReceipt(serde_json::Error),
+    #[error("Cancelled by user")]
+    Cancelled,
 }

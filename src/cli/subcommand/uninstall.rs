@@ -1,6 +1,6 @@
 use std::{path::PathBuf, process::ExitCode};
 
-use crate::InstallPlan;
+use crate::{cli::signal_channel, InstallPlan};
 use clap::{ArgAction, Parser};
 use eyre::WrapErr;
 
@@ -48,7 +48,9 @@ impl CommandExecute for Uninstall {
             }
         }
 
-        plan.revert().await?;
+        let (tx, rx) = signal_channel().await?;
+
+        plan.revert(rx).await?;
         // TODO(@hoverbear): It would be so nice to catch errors and offer the user a way to keep going...
         //                   However that will require being able to link error -> step and manually setting that step as `Uncompleted`.
 

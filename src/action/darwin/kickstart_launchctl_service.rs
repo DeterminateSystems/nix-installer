@@ -55,7 +55,8 @@ impl Action for KickstartLaunchctlService {
             Command::new("launchctl")
                 .arg("kickstart")
                 .arg("-k")
-                .arg(unit),
+                .arg(unit)
+                .stdin(std::process::Stdio::null()),
         )
         .await
         .map_err(|e| KickstartLaunchctlServiceError::Command(e).boxed())?;

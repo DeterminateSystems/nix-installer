@@ -1,8 +1,9 @@
 use std::{path::PathBuf, process::ExitCode};
 
-use crate::BuiltinPlanner;
+use crate::{cli::signal_channel, BuiltinPlanner, HarmonicError};
 use clap::{ArgAction, Parser};
 use eyre::{eyre, WrapErr};
+use tokio_util::sync::CancellationToken;
 
 use crate::{cli::CommandExecute, interaction};
 
@@ -59,12 +60,21 @@ impl CommandExecute for Install {
             }
         }
 
-        if let Err(err) = plan.install().await {
-            tracing::error!("{:?}", eyre!(err));
-            if !interaction::confirm(plan.describe_revert(explain)).await? {
-                interaction::clean_exit_with_message("Okay, didn't do anything! Bye!").await;
+        let (tx, rx1) = signal_channel().await?;
+
+        if let Err(err) = plan.install(rx1).await {
+            match err {
+                HarmonicError::Cancelled => {},
+                err => {
+                    tracing::error!("{:?}", eyre!(err));
+                    if !interaction::confirm(plan.describe_revert(explain)).await? {
+                        interaction::clean_exit_with_message("Okay, didn't do anything! Bye!")
+                            .await;
+                    }
+                    let rx2 = tx.subscribe();
+                    plan.revert(rx2).await?
+                },
             }
-            plan.revert().await?
         }
 
         Ok(ExitCode::SUCCESS)

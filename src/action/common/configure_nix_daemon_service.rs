@@ -95,7 +95,8 @@ impl Action for ConfigureNixDaemonService {
                 execute_command(
                     Command::new("launchctl")
                         .arg("load")
-                        .arg(DARWIN_NIX_DAEMON_DEST),
+                        .arg(DARWIN_NIX_DAEMON_DEST)
+                        .stdin(std::process::Stdio::null()),
                 )
                 .await
                 .map_err(|e| ConfigureNixDaemonServiceError::Command(e).boxed())?;
@@ -116,22 +117,37 @@ impl Action for ConfigureNixDaemonService {
                 execute_command(
                     Command::new("systemd-tmpfiles")
                         .arg("--create")
-                        .arg("--prefix=/nix/var/nix"),
+                        .arg("--prefix=/nix/var/nix")
+                        .stdin(std::process::Stdio::null()),
                 )
                 .await
                 .map_err(|e| ConfigureNixDaemonServiceError::Command(e).boxed())?;
 
-                execute_command(Command::new("systemctl").arg("link").arg(SERVICE_SRC))
-                    .await
-                    .map_err(|e| ConfigureNixDaemonServiceError::Command(e).boxed())?;
+                execute_command(
+                    Command::new("systemctl")
+                        .arg("link")
+                        .arg(SERVICE_SRC)
+                        .stdin(std::process::Stdio::null()),
+                )
+                .await
+                .map_err(|e| ConfigureNixDaemonServiceError::Command(e).boxed())?;
 
-                execute_command(Command::new("systemctl").arg("link").arg(SOCKET_SRC))
-                    .await
-                    .map_err(|e| ConfigureNixDaemonServiceError::Command(e).boxed())?;
+                execute_command(
+                    Command::new("systemctl")
+                        .arg("link")
+                        .arg(SOCKET_SRC)
+                        .stdin(std::process::Stdio::null()),
+                )
+                .await
+                .map_err(|e| ConfigureNixDaemonServiceError::Command(e).boxed())?;
 
-                execute_command(Command::new("systemctl").arg("daemon-reload"))
-                    .await
-                    .map_err(|e| ConfigureNixDaemonServiceError::Command(e).boxed())?;
+                execute_command(
+                    Command::new("systemctl")
+                        .arg("daemon-reload")
+                        .stdin(std::process::Stdio::null()),
+                )
+                .await
+                .map_err(|e| ConfigureNixDaemonServiceError::Command(e).boxed())?;
             },
         };
 
@@ -181,18 +197,27 @@ impl Action for ConfigureNixDaemonService {
                 .map_err(|e| ConfigureNixDaemonServiceError::Command(e).boxed())?;
             },
             _ => {
-                execute_command(Command::new("systemctl").args(["disable", SOCKET_SRC]))
-                    .await
-                    .map_err(|e| ConfigureNixDaemonServiceError::Command(e).boxed())?;
+                execute_command(
+                    Command::new("systemctl")
+                        .args(["disable", SOCKET_SRC])
+                        .stdin(std::process::Stdio::null()),
+                )
+                .await
+                .map_err(|e| ConfigureNixDaemonServiceError::Command(e).boxed())?;
 
-                execute_command(Command::new("systemctl").args(["disable", SERVICE_SRC]))
-                    .await
-                    .map_err(|e| ConfigureNixDaemonServiceError::Command(e).boxed())?;
+                execute_command(
+                    Command::new("systemctl")
+                        .args(["disable", SERVICE_SRC])
+                        .stdin(std::process::Stdio::null()),
+                )
+                .await
+                .map_err(|e| ConfigureNixDaemonServiceError::Command(e).boxed())?;
 
                 execute_command(
                     Command::new("systemd-tmpfiles")
                         .arg("--remove")
-                        .arg("--prefix=/nix/var/nix"),
+                        .arg("--prefix=/nix/var/nix")
+                        .stdin(std::process::Stdio::null()),
                 )
                 .await
                 .map_err(|e| ConfigureNixDaemonServiceError::Command(e).boxed())?;
@@ -202,9 +227,13 @@ impl Action for ConfigureNixDaemonService {
                         .boxed()
                 })?;
 
-                execute_command(Command::new("systemctl").arg("daemon-reload"))
-                    .await
-                    .map_err(|e| ConfigureNixDaemonServiceError::Command(e).boxed())?;
+                execute_command(
+                    Command::new("systemctl")
+                        .arg("daemon-reload")
+                        .stdin(std::process::Stdio::null()),
+                )
+                .await
+                .map_err(|e| ConfigureNixDaemonServiceError::Command(e).boxed())?;
             },
         };
 

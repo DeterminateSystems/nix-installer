@@ -58,7 +58,8 @@ impl Action for EnableOwnership {
             let buf = execute_command(
                 Command::new("/usr/sbin/diskutil")
                     .args(["info", "-plist"])
-                    .arg(&path),
+                    .arg(&path)
+                    .stdin(std::process::Stdio::null()),
             )
             .await
             .unwrap()
@@ -72,7 +73,8 @@ impl Action for EnableOwnership {
             execute_command(
                 Command::new("/usr/sbin/diskutil")
                     .arg("enableOwnership")
-                    .arg(path),
+                    .arg(path)
+                    .stdin(std::process::Stdio::null()),
             )
             .await
             .map_err(|e| EnableOwnershipError::Command(e).boxed())?;

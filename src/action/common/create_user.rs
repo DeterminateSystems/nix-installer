@@ -81,47 +81,63 @@ impl Action for CreateUser {
                 patch: _,
             }
             | OperatingSystem::Darwin => {
-                execute_command(Command::new("/usr/bin/dscl").args([
-                    ".",
-                    "-create",
-                    &format!("/Users/{name}"),
-                ]))
+                execute_command(
+                    Command::new("/usr/bin/dscl")
+                        .args([".", "-create", &format!("/Users/{name}")])
+                        .stdin(std::process::Stdio::null()),
+                )
                 .await
                 .map_err(|e| CreateUserError::Command(e).boxed())?;
-                execute_command(Command::new("/usr/bin/dscl").args([
-                    ".",
-                    "-create",
-                    &format!("/Users/{name}"),
-                    "UniqueID",
-                    &format!("{uid}"),
-                ]))
+                execute_command(
+                    Command::new("/usr/bin/dscl")
+                        .args([
+                            ".",
+                            "-create",
+                            &format!("/Users/{name}"),
+                            "UniqueID",
+                            &format!("{uid}"),
+                        ])
+                        .stdin(std::process::Stdio::null()),
+                )
                 .await
                 .map_err(|e| CreateUserError::Command(e).boxed())?;
-                execute_command(Command::new("/usr/bin/dscl").args([
-                    ".",
-                    "-create",
-                    &format!("/Users/{name}"),
-                    "PrimaryGroupID",
-                    &format!("{gid}"),
-                ]))
+                execute_command(
+                    Command::new("/usr/bin/dscl")
+                        .args([
+                            ".",
+                            "-create",
+                            &format!("/Users/{name}"),
+                            "PrimaryGroupID",
+                            &format!("{gid}"),
+                        ])
+                        .stdin(std::process::Stdio::null()),
+                )
                 .await
                 .map_err(|e| CreateUserError::Command(e).boxed())?;
-                execute_command(Command::new("/usr/bin/dscl").args([
-                    ".",
-                    "-create",
-                    &format!("/Users/{name}"),
-                    "NFSHomeDirectory",
-                    "/var/empty",
-                ]))
+                execute_command(
+                    Command::new("/usr/bin/dscl")
+                        .args([
+                            ".",
+                            "-create",
+                            &format!("/Users/{name}"),
+                            "NFSHomeDirectory",
+                            "/var/empty",
+                        ])
+                        .stdin(std::process::Stdio::null()),
+                )
                 .await
                 .map_err(|e| CreateUserError::Command(e).boxed())?;
-                execute_command(Command::new("/usr/bin/dscl").args([
-                    ".",
-                    "-create",
-                    &format!("/Users/{name}"),
-                    "UserShell",
-                    "/sbin/nologin",
-                ]))
+                execute_command(
+                    Command::new("/usr/bin/dscl")
+                        .args([
+                            ".",
+                            "-create",
+                            &format!("/Users/{name}"),
+                            "UserShell",
+                            "/sbin/nologin",
+                        ])
+                        .stdin(std::process::Stdio::null()),
+                )
                 .await
                 .map_err(|e| CreateUserError::Command(e).boxed())?;
                 execute_command(
@@ -132,17 +148,16 @@ impl Action for CreateUser {
                             &format!("/Groups/{groupname}"),
                             "GroupMembership",
                         ])
-                        .arg(&name),
+                        .arg(&name)
+                        .stdin(std::process::Stdio::null()),
                 )
                 .await
                 .map_err(|e| CreateUserError::Command(e).boxed())?;
-                execute_command(Command::new("/usr/bin/dscl").args([
-                    ".",
-                    "-create",
-                    &format!("/Users/{name}"),
-                    "IsHidden",
-                    "1",
-                ]))
+                execute_command(
+                    Command::new("/usr/bin/dscl")
+                        .args([".", "-create", &format!("/Users/{name}"), "IsHidden", "1"])
+                        .stdin(std::process::Stdio::null()),
+                )
                 .await
                 .map_err(|e| CreateUserError::Command(e).boxed())?;
                 execute_command(
@@ -152,31 +167,36 @@ impl Action for CreateUser {
                         .arg(&name)
                         .arg("-t")
                         .arg(&name)
-                        .arg(groupname),
+                        .arg(groupname)
+                        .stdin(std::process::Stdio::null()),
                 )
                 .await
                 .map_err(|e| CreateUserError::Command(e).boxed())?;
             },
             _ => {
-                execute_command(Command::new("useradd").args([
-                    "--home-dir",
-                    "/var/empty",
-                    "--comment",
-                    &format!("\"Nix build user\""),
-                    "--gid",
-                    &gid.to_string(),
-                    "--groups",
-                    &gid.to_string(),
-                    "--no-user-group",
-                    "--system",
-                    "--shell",
-                    "/sbin/nologin",
-                    "--uid",
-                    &uid.to_string(),
-                    "--password",
-                    "\"!\"",
-                    &name.to_string(),
-                ]))
+                execute_command(
+                    Command::new("useradd")
+                        .args([
+                            "--home-dir",
+                            "/var/empty",
+                            "--comment",
+                            &format!("\"Nix build user\""),
+                            "--gid",
+                            &gid.to_string(),
+                            "--groups",
+                            &gid.to_string(),
+                            "--no-user-group",
+                            "--system",
+                            "--shell",
+                            "/sbin/nologin",
+                            "--uid",
+                            &uid.to_string(),
+                            "--password",
+                            "\"!\"",
+                            &name.to_string(),
+                        ])
+                        .stdin(std::process::Stdio::null()),
+                )
                 .await
                 .map_err(|e| CreateUserError::Command(e).boxed())?;
             },
@@ -235,18 +255,22 @@ impl Action for CreateUser {
                 patch: _,
             }
             | OperatingSystem::Darwin => {
-                execute_command(Command::new("/usr/bin/dscl").args([
-                    ".",
-                    "-delete",
-                    &format!("/Users/{name}"),
-                ]))
+                execute_command(
+                    Command::new("/usr/bin/dscl")
+                        .args([".", "-delete", &format!("/Users/{name}")])
+                        .stdin(std::process::Stdio::null()),
+                )
                 .await
                 .map_err(|e| CreateUserError::Command(e).boxed())?;
             },
             _ => {
-                execute_command(Command::new("userdel").args([&name.to_string()]))
-                    .await
-                    .map_err(|e| CreateUserError::Command(e).boxed())?;
+                execute_command(
+                    Command::new("userdel")
+                        .args([&name.to_string()])
+                        .stdin(std::process::Stdio::null()),
+                )
+                .await
+                .map_err(|e| CreateUserError::Command(e).boxed())?;
             },
         };
 

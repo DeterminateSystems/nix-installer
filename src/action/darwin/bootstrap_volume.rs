@@ -55,15 +55,16 @@ impl Action for BootstrapVolume {
         execute_command(
             Command::new("launchctl")
                 .args(["bootstrap", "system"])
-                .arg(path),
+                .arg(path)
+                .stdin(std::process::Stdio::null()),
         )
         .await
         .map_err(|e| BootstrapVolumeError::Command(e).boxed())?;
-        execute_command(Command::new("launchctl").args([
-            "kickstart",
-            "-k",
-            "system/org.nixos.darwin-store",
-        ]))
+        execute_command(
+            Command::new("launchctl")
+                .args(["kickstart", "-k", "system/org.nixos.darwin-store"])
+                .stdin(std::process::Stdio::null()),
+        )
         .await
         .map_err(|e| BootstrapVolumeError::Command(e).boxed())?;
 
@@ -97,7 +98,8 @@ impl Action for BootstrapVolume {
         execute_command(
             Command::new("launchctl")
                 .args(["bootout", "system"])
-                .arg(path),
+                .arg(path)
+                .stdin(std::process::Stdio::null()),
         )
         .await
         .map_err(|e| BootstrapVolumeError::Command(e).boxed())?;

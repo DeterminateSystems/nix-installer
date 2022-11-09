@@ -3,6 +3,8 @@ pub(crate) mod subcommand;
 
 use clap::Parser;
 use std::process::ExitCode;
+use tokio::sync::broadcast::{Receiver, Sender};
+use tokio_util::sync::CancellationToken;
 
 use self::subcommand::HarmonicSubcommand;
 
@@ -39,4 +41,33 @@ impl CommandExecute for HarmonicCli {
             HarmonicSubcommand::Uninstall(revert) => revert.execute().await,
         }
     }
+}
+
+pub(crate) async fn signal_channel() -> eyre::Result<(Sender<()>, Receiver<()>)> {
+    let (sender, reciever) = tokio::sync::broadcast::channel(100);
+
+    let sender_cloned = sender.clone();
+    let _guard = tokio::spawn(async move {
+        let mut ctrl_c = tokio::signal::unix::signal(tokio::signal::unix::SignalKind::interrupt())
+            .expect("failed to install signal handler");
+
+        let mut terminate =
+            tokio::signal::unix::signal(tokio::signal::unix::SignalKind::terminate())
+                .expect("failed to install signal handler");
+
+        loop {
+            tokio::select! {
+                    Some(()) = ctrl_c.recv() => {
+                        tracing::warn!("Got SIGINT signal");
+                        sender_cloned.send(()).ok();
+                    },
+                    Some(()) = terminate.recv() => {
+                        tracing::warn!("Got SIGTERM signal");
+                        sender_cloned.send(()).ok();
+                    },
+            }
+        }
+    });
+
+    Ok((sender, reciever))
 }

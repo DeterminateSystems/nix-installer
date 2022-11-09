@@ -55,7 +55,8 @@ impl Action for StartSystemdUnit {
             Command::new("systemctl")
                 .arg("enable")
                 .arg("--now")
-                .arg(format!("{unit}")),
+                .arg(format!("{unit}"))
+                .stdin(std::process::Stdio::null()),
         )
         .await
         .map_err(|e| StartSystemdUnitError::Command(e).boxed())?;
@@ -90,9 +91,14 @@ impl Action for StartSystemdUnit {
         tracing::debug!("Stopping systemd unit");
 
         // TODO(@Hoverbear): Handle proxy vars
-        execute_command(Command::new("systemctl").arg("stop").arg(format!("{unit}")))
-            .await
-            .map_err(|e| StartSystemdUnitError::Command(e).boxed())?;
+        execute_command(
+            Command::new("systemctl")
+                .arg("stop")
+                .arg(format!("{unit}"))
+                .stdin(std::process::Stdio::null()),
+        )
+        .await
+        .map_err(|e| StartSystemdUnitError::Command(e).boxed())?;
 
         tracing::trace!("Stopped systemd unit");
         *action_state = ActionState::Completed;
