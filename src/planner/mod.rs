@@ -13,9 +13,15 @@ pub trait Planner: std::fmt::Debug + Send + Sync + dyn_clone::DynClone {
     where
         Self: Sized;
     async fn plan(self) -> Result<InstallPlan, Box<dyn std::error::Error + Sync + Send>>;
-    fn describe(
+    fn settings(
         &self,
     ) -> Result<HashMap<String, serde_json::Value>, Box<dyn std::error::Error + Sync + Send>>;
+    fn boxed(self) -> Box<dyn Planner>
+    where
+        Self: Sized + 'static,
+    {
+        Box::new(self)
+    }
 }
 
 dyn_clone::clone_trait_object!(Planner);
@@ -54,6 +60,13 @@ impl BuiltinPlanner {
             BuiltinPlanner::LinuxMulti(planner) => planner.plan().await,
             BuiltinPlanner::DarwinMulti(planner) => planner.plan().await,
             BuiltinPlanner::SteamDeck(planner) => planner.plan().await,
+        }
+    }
+    pub fn boxed(self) -> Box<dyn Planner> {
+        match self {
+            BuiltinPlanner::LinuxMulti(i) => i.boxed(),
+            BuiltinPlanner::DarwinMulti(i) => i.boxed(),
+            BuiltinPlanner::SteamDeck(i) => i.boxed(),
         }
     }
 }
