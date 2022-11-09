@@ -132,6 +132,15 @@ impl Action for ConfigureNixDaemonService {
                 execute_command(Command::new("systemctl").arg("daemon-reload"))
                     .await
                     .map_err(|e| ConfigureNixDaemonServiceError::Command(e).boxed())?;
+
+                execute_command(
+                    Command::new("systemctl")
+                        .arg("enable")
+                        .arg("--now")
+                        .arg("nix-daemon.socket"),
+                )
+                .await
+                .map_err(|e| ConfigureNixDaemonServiceError::Command(e).boxed())?;
             },
         };
 
@@ -181,11 +190,11 @@ impl Action for ConfigureNixDaemonService {
                 .map_err(|e| ConfigureNixDaemonServiceError::Command(e).boxed())?;
             },
             _ => {
-                execute_command(Command::new("systemctl").args(["disable", SOCKET_SRC]))
+                execute_command(Command::new("systemctl").args(["disable", SOCKET_SRC, "--now"]))
                     .await
                     .map_err(|e| ConfigureNixDaemonServiceError::Command(e).boxed())?;
 
-                execute_command(Command::new("systemctl").args(["disable", SERVICE_SRC]))
+                execute_command(Command::new("systemctl").args(["disable", SERVICE_SRC, "--now"]))
                     .await
                     .map_err(|e| ConfigureNixDaemonServiceError::Command(e).boxed())?;
 
