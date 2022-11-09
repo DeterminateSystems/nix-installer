@@ -29,7 +29,7 @@ pub struct Install {
     pub plan: Option<PathBuf>,
 
     #[clap(subcommand)]
-    pub planner: BuiltinPlanner,
+    pub planner: Option<BuiltinPlanner>,
 }
 
 #[async_trait::async_trait]
@@ -42,6 +42,13 @@ impl CommandExecute for Install {
             planner,
             explain,
         } = self;
+
+        let planner = match planner {
+            Some(planner) => planner,
+            None => BuiltinPlanner::default()
+                .await
+                .map_err(|e| eyre::eyre!(e))?,
+        };
 
         let mut plan = match &plan {
             Some(plan_path) => {

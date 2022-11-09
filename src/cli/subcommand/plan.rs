@@ -9,11 +9,10 @@ use crate::cli::CommandExecute;
 
 /// Plan an install that can be repeated on an identical host later
 #[derive(Debug, Parser)]
-#[command(args_conflicts_with_subcommands = true, arg_required_else_help = true)]
 pub struct Plan {
     #[clap(subcommand)]
     pub planner: Option<BuiltinPlanner>,
-    #[clap(env = "HARMONIC_PLAN")]
+    #[clap(env = "HARMONIC_PLAN", default_value = "/dev/stdout")]
     pub output: PathBuf,
 }
 
