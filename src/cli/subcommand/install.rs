@@ -1,6 +1,6 @@
 use std::{path::PathBuf, process::ExitCode};
 
-use crate::BuiltinPlanner;
+use crate::{cli::is_root, BuiltinPlanner};
 use clap::{ArgAction, Parser};
 use eyre::{eyre, WrapErr};
 
@@ -42,6 +42,12 @@ impl CommandExecute for Install {
             planner,
             explain,
         } = self;
+
+        if !is_root() {
+            return Err(eyre!(
+                "`harmonic install` must be run as `root`, try `sudo harmonic install`"
+            ));
+        }
 
         let mut plan = match &plan {
             Some(plan_path) => {

@@ -1,8 +1,8 @@
 use std::{path::PathBuf, process::ExitCode};
 
-use crate::InstallPlan;
+use crate::{cli::is_root, InstallPlan};
 use clap::{ArgAction, Parser};
-use eyre::WrapErr;
+use eyre::{eyre, WrapErr};
 
 use crate::{cli::CommandExecute, interaction};
 
@@ -36,6 +36,12 @@ impl CommandExecute for Uninstall {
             receipt,
             explain,
         } = self;
+
+        if !is_root() {
+            return Err(eyre!(
+                "`harmonic install` must be run as `root`, try `sudo harmonic install`"
+            ));
+        }
 
         let install_receipt_string = tokio::fs::read_to_string(receipt)
             .await
