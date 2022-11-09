@@ -63,13 +63,13 @@ impl CommandExecute for Install {
                 match existing_receipt {
                     Some(existing_receipt) => {
                         if existing_receipt.planner.typetag_name() != chosen_planner.typetag_name() {
-                            return Err(eyre!("Found existing plan in `/nix/receipt.json` which used a different planner, try uninstalling the existing install"))
+                            return Err(eyre!("Found existing plan in `{RECEIPT_LOCATION}` which used a different planner, try uninstalling the existing install"))
                         }
                         if existing_receipt.planner.settings().map_err(|e| eyre!(e))? != chosen_planner.settings().map_err(|e| eyre!(e))? {
-                            return Err(eyre!("Found existing plan in `/nix/receipt.json` which used different planner settings, try uninstalling the existing install"))
+                            return Err(eyre!("Found existing plan in `{RECEIPT_LOCATION}` which used different planner settings, try uninstalling the existing install"))
                         }
                         if existing_receipt.actions.iter().all(|v| v.action_state() == ActionState::Completed) {
-                            return Err(eyre!("Found existing plan in `/nix/receipt.json`, with the same settings, already completed, try uninstalling and reinstalling if Nix isn't working"))
+                            return Err(eyre!("Found existing plan in `{RECEIPT_LOCATION}`, with the same settings, already completed, try uninstalling and reinstalling if Nix isn't working"))
                         }
                         existing_receipt
                     } ,
