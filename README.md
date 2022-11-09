@@ -13,9 +13,9 @@ Planned support:
 * [x] Multi-user x86_64 Linux with systemd init
 * [ ] Multi-user aarch64 Linux with systemd init
 * [x] Multi-user x86_64 MacOS
-    + Note: user deletion is still buggy
+    + Note: User deletion is currently unimplemented, you need to use a user with a secure token and `dscl . -delete /Users/_nixbuild*` where `*` is each user number.
 * [x] Multi-user aarch64 MacOS
-    + Note: user deletion is still buggy
+    + Note: User deletion is currently unimplemented, you need to use a user with a secure token and `dscl . -delete /Users/_nixbuild*` where `*` is each user number.
 * [ ] Single-user x86_64 Linux with systemd init
 * [ ] Single-user aarch64 Linux with systemd init
 * [ ] Others...
