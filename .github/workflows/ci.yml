@@ -134,6 +134,8 @@ jobs:
       - uses: actions/download-artifact@v3
         with:
           name: harmonic-x86_64-darwin
+      - name: Set executable
+        run: chmod +x ./harmonic
       - name: Initial install
         run: sudo RUST_LOG=harmonic=trace RUST_BACKTRACE=full ./harmonic install darwin-multi --no-confirm
       - name: Test run
