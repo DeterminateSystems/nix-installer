@@ -90,7 +90,7 @@ impl InstallPlan {
                 if let Err(err) = write_receipt(self.clone()).await {
                     tracing::error!("Error saving receipt: {:?}", err);
                 }
-                return Err(HarmonicError::ActionError(err));
+                return Err(HarmonicError::Action(err));
             }
         }
 
@@ -156,7 +156,7 @@ impl InstallPlan {
                 if let Err(err) = write_receipt(self.clone()).await {
                     tracing::error!("Error saving receipt: {:?}", err);
                 }
-                return Err(HarmonicError::ActionError(err));
+                return Err(HarmonicError::Action(err));
             }
         }
 

@@ -6,7 +6,7 @@ use crate::{
     planner::Planner,
     BuiltinPlanner, CommonSettings, InstallPlan,
 };
-use std::collections::HashMap;
+use std::{collections::HashMap, path::Path};
 
 #[derive(Debug, Clone, clap::Parser, serde::Serialize, serde::Deserialize)]
 pub struct LinuxMulti {
@@ -24,12 +24,29 @@ impl Planner for LinuxMulti {
     }
 
     async fn plan(self) -> Result<InstallPlan, Box<dyn std::error::Error + Sync + Send>> {
+        // If on NixOS, running `harmonic` is pointless
+        if Path::new("/etc/NIXOS").exists() {
+            return Err(Error::NixOs.into());
+        }
+
         Ok(InstallPlan {
             planner: Box::new(self.clone()),
             actions: vec![
-                Box::new(CreateDirectory::plan("/nix", None, None, 0o0755, true).await?),
-                Box::new(ProvisionNix::plan(self.settings.clone()).await?),
-                Box::new(ConfigureNix::plan(self.settings).await?),
+                Box::new(
+                    CreateDirectory::plan("/nix", None, None, 0o0755, true)
+                        .await
+                        .map_err(|v| Error::Action(v.into()))?,
+                ),
+                Box::new(
+                    ProvisionNix::plan(self.settings.clone())
+                        .await
+                        .map_err(|v| Error::Action(v.into()))?,
+                ),
+                Box::new(
+                    ConfigureNix::plan(self.settings)
+                        .await
+                        .map_err(|v| Error::Action(v.into()))?,
+                ),
             ],
         })
     }
@@ -50,4 +67,16 @@ impl Into<BuiltinPlanner> for LinuxMulti {
     fn into(self) -> BuiltinPlanner {
         BuiltinPlanner::LinuxMulti(self)
     }
+}
+
+#[derive(thiserror::Error, Debug)]
+enum Error {
+    #[error("NixOS already has Nix installed")]
+    NixOs,
+    #[error("Error planning action")]
+    Action(
+        #[source]
+        #[from]
+        Box<dyn std::error::Error + Send + Sync>,
+    ),
 }
