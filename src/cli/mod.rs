@@ -44,7 +44,7 @@ impl CommandExecute for HarmonicCli {
 }
 
 pub(crate) async fn signal_channel() -> eyre::Result<(Sender<()>, Receiver<()>)> {
-    let (sender, reciever) = tokio::sync::broadcast::channel(100);
+    let (sender, receiver) = tokio::sync::broadcast::channel(100);
 
     let sender_cloned = sender.clone();
     let _guard = tokio::spawn(async move {
@@ -69,7 +69,7 @@ pub(crate) async fn signal_channel() -> eyre::Result<(Sender<()>, Receiver<()>)>
         }
     });
 
-    Ok((sender, reciever))
+    Ok((sender, receiver))
 }
 
 pub fn is_root() -> bool {
