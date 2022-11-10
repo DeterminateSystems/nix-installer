@@ -60,8 +60,7 @@ impl Action for EnableOwnership {
                     .args(["info", "-plist"])
                     .arg(&path),
             )
-            .await
-            .unwrap()
+            .await?
             .stdout;
             let the_plist: DiskUtilOutput = plist::from_reader(Cursor::new(buf)).unwrap();
 
