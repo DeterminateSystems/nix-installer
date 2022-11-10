@@ -10,8 +10,10 @@ use eyre::{eyre, WrapErr};
 use crate::{cli::CommandExecute, interaction};
 
 /// Execute an install (possibly using an existing plan)
+///
+/// To pass custom options, select a planner, for example `harmonic install linux-multi --help`
 #[derive(Debug, Parser)]
-#[command(args_conflicts_with_subcommands = true, arg_required_else_help = true)]
+#[command(args_conflicts_with_subcommands = true)]
 pub struct Install {
     #[clap(
         long,
