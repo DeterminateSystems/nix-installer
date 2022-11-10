@@ -3,7 +3,9 @@ use std::{
     process::ExitCode,
 };
 
-use crate::{action::ActionState, plan::RECEIPT_LOCATION, BuiltinPlanner, InstallPlan, Planner};
+use crate::{
+    action::ActionState, cli::is_root, plan::RECEIPT_LOCATION, BuiltinPlanner, InstallPlan, Planner,
+};
 use clap::{ArgAction, Parser};
 use eyre::{eyre, WrapErr};
 
@@ -47,6 +49,12 @@ impl CommandExecute for Install {
             planner,
             explain,
         } = self;
+
+        if !is_root() {
+            return Err(eyre!(
+                "`harmonic install` must be run as `root`, try `sudo harmonic install`"
+            ));
+        }
 
         let existing_receipt: Option<InstallPlan> = match Path::new(RECEIPT_LOCATION).exists() {
             true => {

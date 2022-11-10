@@ -40,3 +40,7 @@ impl CommandExecute for HarmonicCli {
         }
     }
 }
+
+pub fn is_root() -> bool {
+    nix::unistd::getuid() == nix::unistd::Uid::from_raw(0)
+}
