@@ -1,13 +1,12 @@
-use std::collections::HashMap;
-
 use crate::{
     action::{
-        common::{ConfigureNix, CreateDirectory, ProvisionNix},
-        linux::StartSystemdUnit,
+        base::CreateDirectory,
+        common::{ConfigureNix, ProvisionNix},
     },
     planner::Planner,
     BuiltinPlanner, CommonSettings, InstallPlan,
 };
+use std::collections::HashMap;
 
 #[derive(Debug, Clone, clap::Parser, serde::Serialize, serde::Deserialize)]
 pub struct LinuxMulti {
@@ -31,12 +30,11 @@ impl Planner for LinuxMulti {
                 Box::new(CreateDirectory::plan("/nix", None, None, 0o0755, true).await?),
                 Box::new(ProvisionNix::plan(self.settings.clone()).await?),
                 Box::new(ConfigureNix::plan(self.settings).await?),
-                Box::new(StartSystemdUnit::plan("nix-daemon.socket".into()).await?),
             ],
         })
     }
 
-    fn describe(
+    fn settings(
         &self,
     ) -> Result<HashMap<String, serde_json::Value>, Box<dyn std::error::Error + Sync + Send>> {
         let Self { settings } = self;

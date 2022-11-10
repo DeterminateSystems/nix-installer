@@ -1,4 +1,4 @@
-use crate::action::common::{CreateDirectory, CreateDirectoryError};
+use crate::action::base::{CreateDirectory, CreateDirectoryError};
 use crate::action::{Action, ActionDescription, ActionState};
 
 const PATHS: &[&str] = &[
@@ -133,6 +133,10 @@ impl Action for CreateNixTree {
         tracing::trace!("Deleted nix tree");
         *action_state = ActionState::Uncompleted;
         Ok(())
+    }
+
+    fn action_state(&self) -> ActionState {
+        self.action_state
     }
 }
 

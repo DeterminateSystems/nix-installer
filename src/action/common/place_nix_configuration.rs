@@ -1,6 +1,5 @@
+use crate::action::base::{CreateDirectory, CreateDirectoryError, CreateFile, CreateFileError};
 use crate::action::{Action, ActionDescription, ActionState};
-
-use crate::action::common::{CreateDirectory, CreateDirectoryError, CreateFile, CreateFileError};
 
 const NIX_CONF_FOLDER: &str = "/etc/nix";
 const NIX_CONF: &str = "/etc/nix/nix.conf";
@@ -114,6 +113,10 @@ impl Action for PlaceNixConfiguration {
         tracing::trace!("Removed nix configuration");
         *action_state = ActionState::Uncompleted;
         Ok(())
+    }
+
+    fn action_state(&self) -> ActionState {
+        self.action_state
     }
 }
 
