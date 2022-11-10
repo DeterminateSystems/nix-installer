@@ -71,3 +71,7 @@ pub(crate) async fn signal_channel() -> eyre::Result<(Sender<()>, Receiver<()>)>
 
     Ok((sender, reciever))
 }
+
+pub fn is_root() -> bool {
+    nix::unistd::getuid() == nix::unistd::Uid::from_raw(0)
+}

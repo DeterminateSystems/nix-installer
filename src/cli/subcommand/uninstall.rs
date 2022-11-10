@@ -1,8 +1,12 @@
 use std::{path::PathBuf, process::ExitCode};
 
-use crate::{cli::signal_channel, InstallPlan};
+use crate::{
+    cli::{is_root, signal_channel},
+    plan::RECEIPT_LOCATION,
+    InstallPlan,
+};
 use clap::{ArgAction, Parser};
-use eyre::WrapErr;
+use eyre::{eyre, WrapErr};
 
 use crate::{cli::CommandExecute, interaction};
 
@@ -23,7 +27,7 @@ pub struct Uninstall {
         global = true
     )]
     pub explain: bool,
-    #[clap(default_value = "/nix/receipt.json")]
+    #[clap(default_value = RECEIPT_LOCATION)]
     pub receipt: PathBuf,
 }
 
@@ -36,6 +40,12 @@ impl CommandExecute for Uninstall {
             receipt,
             explain,
         } = self;
+
+        if !is_root() {
+            return Err(eyre!(
+                "`harmonic install` must be run as `root`, try `sudo harmonic install`"
+            ));
+        }
 
         let install_receipt_string = tokio::fs::read_to_string(receipt)
             .await

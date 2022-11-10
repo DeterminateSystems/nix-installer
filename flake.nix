@@ -1,5 +1,5 @@
 {
-  description = "riff";
+  description = "harmonic";
 
   inputs = {
     nixpkgs.url = "github:nixos/nixpkgs/nixos-22.05";

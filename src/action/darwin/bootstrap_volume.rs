@@ -108,6 +108,10 @@ impl Action for BootstrapVolume {
         *action_state = ActionState::Completed;
         Ok(())
     }
+
+    fn action_state(&self) -> ActionState {
+        self.action_state
+    }
 }
 
 #[derive(Debug, thiserror::Error)]

@@ -2,7 +2,8 @@ use std::collections::HashMap;
 
 use crate::{
     action::{
-        common::{CreateDirectory, ProvisionNix},
+        base::CreateDirectory,
+        common::ProvisionNix,
         linux::{CreateSystemdSysext, StartSystemdUnit},
     },
     planner::Planner,
@@ -36,7 +37,7 @@ impl Planner for SteamDeck {
         })
     }
 
-    fn describe(
+    fn settings(
         &self,
     ) -> Result<HashMap<String, serde_json::Value>, Box<dyn std::error::Error + Sync + Send>> {
         let Self { settings } = self;

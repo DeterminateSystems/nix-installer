@@ -82,6 +82,33 @@ jobs:
           path: |
             result/bin/harmonic
 
+  RunX86Linux:
+    runs-on: ubuntu-latest
+    needs: BuildX86Linux
+    steps:
+      - uses: actions/download-artifact@v3
+        with:
+          name: harmonic-x86_64-linux
+      - name: Set executable
+        run: chmod +x ./harmonic
+      - name: Initial install
+        run: sudo RUST_LOG=harmonic=trace RUST_BACKTRACE=full ./harmonic install linux-multi --no-confirm
+      - name: Test run
+        run: |
+          . /nix/var/nix/profiles/default/etc/profile.d/nix-daemon.sh
+          nix run nixpkgs#fortune
+      - name: Initial uninstall
+        run: sudo RUST_LOG=harmonic=trace RUST_BACKTRACE=full ./harmonic uninstall --no-confirm
+      - name: Repeated install
+        run: sudo RUST_LOG=harmonic=trace RUST_BACKTRACE=full ./harmonic install linux-multi --no-confirm
+      - name: Repeated test run
+        run: |
+          . /nix/var/nix/profiles/default/etc/profile.d/nix-daemon.sh
+          nix run nixpkgs#fortune
+      - name: Repeated uninstall
+        run: sudo RUST_LOG=harmonic=trace RUST_BACKTRACE=full ./harmonic uninstall --no-confirm
+        
+
   BuildX86Darwin:
     runs-on: macos-latest
     steps:
@@ -99,3 +126,30 @@ jobs:
           name: harmonic-x86_64-darwin
           path: |
             result/bin/harmonic
+
+  RunX86Darwin:
+    runs-on: macos-latest
+    needs: BuildX86Darwin
+    steps:
+      - uses: actions/download-artifact@v3
+        with:
+          name: harmonic-x86_64-darwin
+      - name: Set executable
+        run: chmod +x ./harmonic
+      - name: Initial install
+        run: sudo RUST_LOG=harmonic=trace RUST_BACKTRACE=full ./harmonic install darwin-multi --no-confirm
+      - name: Test run
+        run: |
+          . /nix/var/nix/profiles/default/etc/profile.d/nix-daemon.sh
+          nix run nixpkgs#fortune
+      - name: Initial uninstall
+        run: sudo RUST_LOG=harmonic=trace RUST_BACKTRACE=full ./harmonic uninstall --no-confirm
+      - name: Repeated install
+        run: sudo RUST_LOG=harmonic=trace RUST_BACKTRACE=full ./harmonic install darwin-multi --no-confirm
+      - name: Repeated test run
+        run: |
+          . /nix/var/nix/profiles/default/etc/profile.d/nix-daemon.sh
+          nix run nixpkgs#fortune
+      - name: Repeated uninstall
+        run: sudo RUST_LOG=harmonic=trace RUST_BACKTRACE=full ./harmonic uninstall --no-confirm
+        

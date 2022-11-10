@@ -10,6 +10,8 @@ use crate::{
     HarmonicError,
 };
 
+pub const RECEIPT_LOCATION: &str = "/nix/receipt.json";
+
 #[derive(Debug, serde::Deserialize, serde::Serialize, Clone)]
 pub struct InstallPlan {
     pub(crate) actions: Vec<Box<dyn Action>>,
@@ -45,7 +47,7 @@ impl InstallPlan {
             },
             planner = planner.typetag_name(),
             plan_settings = planner
-                .describe()?
+                .settings()?
                 .into_iter()
                 .map(|(k, v)| format!("* {k}: {v}", k = k.bold().white()))
                 .collect::<Vec<_>>()
@@ -198,7 +200,7 @@ async fn write_receipt(plan: InstallPlan) -> Result<(), HarmonicError> {
     tokio::fs::create_dir_all("/nix")
         .await
         .map_err(|e| HarmonicError::RecordingReceipt(PathBuf::from("/nix"), e))?;
-    let install_receipt_path = PathBuf::from("/nix/receipt.json");
+    let install_receipt_path = PathBuf::from(RECEIPT_LOCATION);
     let self_json =
         serde_json::to_string_pretty(&plan).map_err(HarmonicError::SerializingReceipt)?;
     tokio::fs::write(&install_receipt_path, self_json)

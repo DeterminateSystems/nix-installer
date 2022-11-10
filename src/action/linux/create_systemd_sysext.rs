@@ -1,10 +1,9 @@
-use std::path::{Path, PathBuf};
-
-use crate::action::common::{CreateDirectory, CreateDirectoryError, CreateFile, CreateFileError};
+use crate::action::base::{CreateDirectory, CreateDirectoryError, CreateFile, CreateFileError};
 use crate::{
     action::{Action, ActionDescription, ActionState},
     BoxableError,
 };
+use std::path::{Path, PathBuf};
 
 const PATHS: &[&str] = &[
     "usr",
@@ -184,6 +183,10 @@ impl Action for CreateSystemdSysext {
         tracing::trace!("Removed sysext");
         *action_state = ActionState::Uncompleted;
         Ok(())
+    }
+
+    fn action_state(&self) -> ActionState {
+        self.action_state
     }
 }
 

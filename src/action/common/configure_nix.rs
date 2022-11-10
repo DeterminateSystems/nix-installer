@@ -1,16 +1,14 @@
-use reqwest::Url;
-
 use crate::{
     action::{
-        common::{
-            ConfigureNixDaemonService, ConfigureShellProfile, PlaceChannelConfiguration,
-            PlaceNixConfiguration, SetupDefaultProfile,
-        },
+        base::{ConfigureNixDaemonService, SetupDefaultProfile},
+        common::{ConfigureShellProfile, PlaceChannelConfiguration, PlaceNixConfiguration},
         Action, ActionDescription, ActionState,
     },
     channel_value::ChannelValue,
     BoxableError, CommonSettings,
 };
+
+use reqwest::Url;
 
 #[derive(Debug, serde::Deserialize, serde::Serialize, Clone)]
 pub struct ConfigureNix {
@@ -183,5 +181,9 @@ impl Action for ConfigureNix {
         tracing::trace!("Unconfigured nix");
         *action_state = ActionState::Uncompleted;
         Ok(())
+    }
+
+    fn action_state(&self) -> ActionState {
+        self.action_state
     }
 }

@@ -93,7 +93,7 @@ impl Action for StartSystemdUnit {
         // TODO(@Hoverbear): Handle proxy vars
         execute_command(
             Command::new("systemctl")
-                .arg("stop")
+                .arg("disable")
                 .arg(format!("{unit}"))
                 .stdin(std::process::Stdio::null()),
         )
@@ -103,6 +103,10 @@ impl Action for StartSystemdUnit {
         tracing::trace!("Stopped systemd unit");
         *action_state = ActionState::Completed;
         Ok(())
+    }
+
+    fn action_state(&self) -> ActionState {
+        self.action_state
     }
 }
 

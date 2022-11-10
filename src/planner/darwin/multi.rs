@@ -104,7 +104,7 @@ impl Planner for DarwinMulti {
         })
     }
 
-    fn describe(
+    fn settings(
         &self,
     ) -> Result<HashMap<String, serde_json::Value>, Box<dyn std::error::Error + Sync + Send>> {
         let Self {
