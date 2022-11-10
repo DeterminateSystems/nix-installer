@@ -1,13 +1,10 @@
-use std::path::PathBuf;
-
-use tokio::process::Command;
-
 use crate::execute_command;
-
 use crate::{
     action::{Action, ActionDescription, ActionState},
     BoxableError,
 };
+use std::path::PathBuf;
+use tokio::process::Command;
 
 #[derive(Debug, serde::Deserialize, serde::Serialize, Clone)]
 pub struct SystemdSysextMerge {
@@ -101,6 +98,10 @@ impl Action for SystemdSysextMerge {
         tracing::trace!("Unmerged systemd-sysext");
         *action_state = ActionState::Completed;
         Ok(())
+    }
+
+    fn action_state(&self) -> ActionState {
+        self.action_state
     }
 }
 

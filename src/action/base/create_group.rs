@@ -175,6 +175,10 @@ impl Action for CreateGroup {
         *action_state = ActionState::Uncompleted;
         Ok(())
     }
+
+    fn action_state(&self) -> ActionState {
+        self.action_state
+    }
 }
 
 #[derive(Debug, thiserror::Error)]
