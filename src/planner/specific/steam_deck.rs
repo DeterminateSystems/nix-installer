@@ -2,7 +2,8 @@ use std::collections::HashMap;
 
 use crate::{
     action::{
-        common::{CreateDirectory, ProvisionNix},
+        base::CreateDirectory,
+        common::ProvisionNix,
         linux::{CreateSystemdSysext, StartSystemdUnit},
     },
     planner::Planner,

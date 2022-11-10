@@ -1,13 +1,12 @@
-use std::collections::HashMap;
-
 use crate::{
     action::{
-        common::{ConfigureNix, CreateDirectory, ProvisionNix},
-        linux::StartSystemdUnit,
+        base::CreateDirectory,
+        common::{ConfigureNix, ProvisionNix},
     },
     planner::Planner,
     BuiltinPlanner, CommonSettings, InstallPlan,
 };
+use std::collections::HashMap;
 
 #[derive(Debug, Clone, clap::Parser, serde::Serialize, serde::Deserialize)]
 pub struct LinuxMulti {

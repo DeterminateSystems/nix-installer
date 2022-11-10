@@ -1,11 +1,9 @@
-use reqwest::Url;
-
+use crate::action::base::{CreateFile, CreateFileError};
 use crate::{
     action::{Action, ActionDescription, ActionState},
     BoxableError,
 };
-
-use crate::action::common::{CreateFile, CreateFileError};
+use reqwest::Url;
 
 #[derive(Debug, serde::Deserialize, serde::Serialize, Clone)]
 pub struct PlaceChannelConfiguration {
