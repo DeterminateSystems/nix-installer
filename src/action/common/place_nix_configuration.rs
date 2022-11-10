@@ -21,6 +21,7 @@ impl PlaceNixConfiguration {
         let buf = format!(
             "\
             {extra_conf}\n\
+            \n\
             build-users-group = {nix_build_group_name}\n\
             \n\
             experimental-features = nix-command flakes\n\

@@ -92,7 +92,7 @@ jobs:
       - name: Set executable
         run: chmod +x ./harmonic
       - name: Initial install
-        run: sudo RUST_LOG=harmonic=trace RUST_BACKTRACE=full ./harmonic install linux-multi --no-confirm
+        run: sudo RUST_LOG=harmonic=trace RUST_BACKTRACE=full ./harmonic install linux-multi --extra-conf "access-tokens = github.com=${{ secrets.GITHUB_TOKEN }}" --no-confirm
       - name: Test run
         run: |
           . /nix/var/nix/profiles/default/etc/profile.d/nix-daemon.sh
@@ -100,7 +100,7 @@ jobs:
       - name: Initial uninstall
         run: sudo RUST_LOG=harmonic=trace RUST_BACKTRACE=full ./harmonic uninstall --no-confirm
       - name: Repeated install
-        run: sudo RUST_LOG=harmonic=trace RUST_BACKTRACE=full ./harmonic install linux-multi --no-confirm
+        run: sudo RUST_LOG=harmonic=trace RUST_BACKTRACE=full ./harmonic install linux-multi --extra-conf "access-tokens = github.com=${{ secrets.GITHUB_TOKEN }}" --no-confirm
       - name: Repeated test run
         run: |
           . /nix/var/nix/profiles/default/etc/profile.d/nix-daemon.sh
@@ -137,7 +137,7 @@ jobs:
       - name: Set executable
         run: chmod +x ./harmonic
       - name: Initial install
-        run: sudo RUST_LOG=harmonic=trace RUST_BACKTRACE=full ./harmonic install darwin-multi --no-confirm
+        run: sudo RUST_LOG=harmonic=trace RUST_BACKTRACE=full ./harmonic install darwin-multi --extra-conf "access-tokens = github.com=${{ secrets.GITHUB_TOKEN }}" --no-confirm
       - name: Test run
         run: |
           . /nix/var/nix/profiles/default/etc/profile.d/nix-daemon.sh
@@ -145,7 +145,7 @@ jobs:
       - name: Initial uninstall
         run: sudo RUST_LOG=harmonic=trace RUST_BACKTRACE=full ./harmonic uninstall --no-confirm
       - name: Repeated install
-        run: sudo RUST_LOG=harmonic=trace RUST_BACKTRACE=full ./harmonic install darwin-multi --no-confirm
+        run: sudo RUST_LOG=harmonic=trace RUST_BACKTRACE=full ./harmonic install darwin-multi --extra-conf "access-tokens = github.com=${{ secrets.GITHUB_TOKEN }}" --no-confirm
       - name: Repeated test run
         run: |
           . /nix/var/nix/profiles/default/etc/profile.d/nix-daemon.sh
