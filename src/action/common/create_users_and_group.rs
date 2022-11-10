@@ -1,14 +1,12 @@
-use tokio::task::{JoinError, JoinSet};
-
 use crate::CommonSettings;
-
 use crate::{
     action::{
-        common::{CreateGroup, CreateGroupError, CreateUser, CreateUserError},
+        base::{CreateGroup, CreateGroupError, CreateUser, CreateUserError},
         Action, ActionDescription, ActionState,
     },
     BoxableError,
 };
+use tokio::task::{JoinError, JoinSet};
 
 #[derive(Debug, serde::Deserialize, serde::Serialize, Clone)]
 pub struct CreateUsersAndGroup {
@@ -228,6 +226,10 @@ impl Action for CreateUsersAndGroup {
         tracing::trace!("Deleted users and groups");
         *action_state = ActionState::Uncompleted;
         Ok(())
+    }
+
+    fn action_state(&self) -> ActionState {
+        self.action_state
     }
 }
 

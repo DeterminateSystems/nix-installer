@@ -1,6 +1,6 @@
 use std::{path::PathBuf, process::ExitCode};
 
-use crate::{cli::is_root, InstallPlan};
+use crate::{cli::is_root, plan::RECEIPT_LOCATION, InstallPlan};
 use clap::{ArgAction, Parser};
 use eyre::{eyre, WrapErr};
 
@@ -23,7 +23,7 @@ pub struct Uninstall {
         global = true
     )]
     pub explain: bool,
-    #[clap(default_value = "/nix/receipt.json")]
+    #[clap(default_value = RECEIPT_LOCATION)]
     pub receipt: PathBuf,
 }
 

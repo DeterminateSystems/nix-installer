@@ -1,12 +1,9 @@
+use crate::action::base::{CreateOrAppendFile, CreateOrAppendFileError};
+use crate::action::{Action, ActionDescription, ActionState};
+use crate::BoxableError;
+
 use std::path::Path;
-
 use tokio::task::{JoinError, JoinSet};
-
-use crate::action::common::{CreateOrAppendFile, CreateOrAppendFileError};
-use crate::{
-    action::{Action, ActionDescription, ActionState},
-    BoxableError,
-};
 
 const PROFILE_TARGETS: &[&str] = &[
     "/etc/bashrc",
@@ -180,6 +177,10 @@ impl Action for ConfigureShellProfile {
         tracing::trace!("Unconfigured shell profile");
         *action_state = ActionState::Uncompleted;
         Ok(())
+    }
+
+    fn action_state(&self) -> ActionState {
+        self.action_state
     }
 }
 
