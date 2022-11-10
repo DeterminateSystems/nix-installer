@@ -9,7 +9,6 @@ use crate::cli::CommandExecute;
 
 /// Plan an install that can be repeated on an identical host later
 #[derive(Debug, Parser)]
-#[command(arg_required_else_help = true)]
 pub struct Plan {
     #[clap(subcommand)]
     pub planner: Option<BuiltinPlanner>,

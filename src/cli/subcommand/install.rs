@@ -12,8 +12,10 @@ use eyre::{eyre, WrapErr};
 use crate::{cli::CommandExecute, interaction};
 
 /// Execute an install (possibly using an existing plan)
+///
+/// To pass custom options, select a planner, for example `harmonic install linux-multi --help`
 #[derive(Debug, Parser)]
-#[command(args_conflicts_with_subcommands = true, arg_required_else_help = true)]
+#[command(args_conflicts_with_subcommands = true)]
 pub struct Install {
     #[clap(
         long,
@@ -92,7 +94,12 @@ impl CommandExecute for Install {
                 .wrap_err("Reading plan")?;
                 serde_json::from_str(&install_plan_string)?
             },
-            (None, None) => return Err(eyre!("`--plan` or a planner is required")),
+            (None, None) => {
+                let builtin_planner = BuiltinPlanner::default()
+                    .await
+                    .map_err(|e| eyre::eyre!(e))?;
+                builtin_planner.plan().await.map_err(|e| eyre!(e))?
+            },
             (Some(_), Some(_)) => return Err(eyre!("`--plan` conflicts with passing a planner, a planner creates plans, so passing an existing plan doesn't make sense")),
         };
 
