@@ -1,12 +1,6 @@
-use std::{
-    path::{Path, PathBuf},
-    time::Duration,
-};
-use tokio::process::Command;
-
 use crate::{
     action::{
-        common::{CreateFile, CreateFileError, CreateOrAppendFile, CreateOrAppendFileError},
+        base::{CreateFile, CreateFileError, CreateOrAppendFile, CreateOrAppendFileError},
         darwin::{
             BootstrapVolume, BootstrapVolumeError, CreateSyntheticObjects,
             CreateSyntheticObjectsError, CreateVolume, CreateVolumeError, EnableOwnership,
@@ -17,6 +11,11 @@ use crate::{
     },
     BoxableError,
 };
+use std::{
+    path::{Path, PathBuf},
+    time::Duration,
+};
+use tokio::process::Command;
 
 const NIX_VOLUME_MOUNTD_DEST: &str = "/Library/LaunchDaemons/org.nixos.darwin-store.plist";
 

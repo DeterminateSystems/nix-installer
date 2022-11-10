@@ -1,16 +1,13 @@
-use std::path::PathBuf;
-
-use tokio::task::JoinError;
-
-use crate::action::common::{
+use crate::action::base::{
     CreateDirectoryError, FetchNix, FetchNixError, MoveUnpackedNix, MoveUnpackedNixError,
 };
 use crate::CommonSettings;
-
 use crate::{
     action::{Action, ActionDescription, ActionState},
     BoxableError,
 };
+use std::path::PathBuf;
+use tokio::task::JoinError;
 
 use super::{CreateNixTree, CreateNixTreeError, CreateUsersAndGroup, CreateUsersAndGroupError};
 
