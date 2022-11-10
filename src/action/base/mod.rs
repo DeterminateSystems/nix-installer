@@ -19,4 +19,3 @@ pub use create_user::{CreateUser, CreateUserError};
 pub use fetch_nix::{FetchNix, FetchNixError};
 pub use move_unpacked_nix::{MoveUnpackedNix, MoveUnpackedNixError};
 pub use setup_default_profile::{SetupDefaultProfile, SetupDefaultProfileError};
-

@@ -1,8 +1,8 @@
 /*! Actions which only call other base plugins. */
 
 mod configure_nix;
-mod create_nix_tree;
 mod configure_shell_profile;
+mod create_nix_tree;
 mod create_users_and_group;
 mod place_channel_configuration;
 mod place_nix_configuration;
