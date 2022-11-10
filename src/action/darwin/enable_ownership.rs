@@ -61,8 +61,7 @@ impl Action for EnableOwnership {
                     .arg(&path)
                     .stdin(std::process::Stdio::null()),
             )
-            .await
-            .unwrap()
+            .await?
             .stdout;
             let the_plist: DiskUtilOutput = plist::from_reader(Cursor::new(buf)).unwrap();
 

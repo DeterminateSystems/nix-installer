@@ -18,13 +18,22 @@ use crate::{
 pub struct DarwinMulti {
     #[clap(flatten)]
     pub settings: CommonSettings,
+    /// Force encryption on the volume
+    #[clap(
+        long,
+        action(ArgAction::Set),
+        default_value = "false",
+        env = "HARMONIC_ENCRYPT"
+    )]
+    pub encrypt: Option<bool>,
+    /// Use a case sensitive volume
     #[clap(
         long,
         action(ArgAction::SetTrue),
         default_value = "false",
-        env = "HARMONIC_VOLUME_ENCRYPT"
+        env = "HARMONIC_CASE_SENSITIVE"
     )]
-    pub volume_encrypt: bool,
+    pub case_sensitive: bool,
     #[clap(long, default_value = "Nix Store", env = "HARMONIC_VOLUME_LABEL")]
     pub volume_label: String,
     #[clap(long, env = "HARMONIC_ROOT_DISK")]
@@ -52,7 +61,8 @@ impl Planner for DarwinMulti {
         Ok(Self {
             settings: CommonSettings::default()?,
             root_disk: Some(default_root_disk().await?),
-            volume_encrypt: false,
+            case_sensitive: false,
+            encrypt: None,
             volume_label: "Nix Store".into(),
         })
     }
@@ -77,7 +87,17 @@ impl Planner for DarwinMulti {
             },
         };
 
-        let volume_label = "Nix Store".into();
+        let encrypt = if self.encrypt == None {
+            Command::new("/usr/bin/fdesetup")
+                .arg("isactive")
+                .status()
+                .await?
+                .code()
+                .map(|v| if v == 0 { false } else { true })
+                .unwrap_or(false)
+        } else {
+            false
+        };
 
         Ok(InstallPlan {
             planner: Box::new(self.clone()),
@@ -89,9 +109,9 @@ impl Planner for DarwinMulti {
                 Box::new(
                     CreateApfsVolume::plan(
                         self.root_disk.unwrap(), /* We just ensured it was populated */
-                        volume_label,
+                        self.volume_label,
                         false,
-                        None,
+                        encrypt,
                     )
                     .await?,
                 ),
@@ -109,19 +129,21 @@ impl Planner for DarwinMulti {
     ) -> Result<HashMap<String, serde_json::Value>, Box<dyn std::error::Error + Sync + Send>> {
         let Self {
             settings,
-            volume_encrypt,
+            encrypt,
             volume_label,
+            case_sensitive,
             root_disk,
         } = self;
         let mut map = HashMap::default();
 
         map.extend(settings.describe()?.into_iter());
-        map.insert(
-            "volume_encrypt".into(),
-            serde_json::to_value(volume_encrypt)?,
-        );
+        map.insert("volume_encrypt".into(), serde_json::to_value(encrypt)?);
         map.insert("volume_label".into(), serde_json::to_value(volume_label)?);
         map.insert("root_disk".into(), serde_json::to_value(root_disk)?);
+        map.insert(
+            "case_sensitive".into(),
+            serde_json::to_value(case_sensitive)?,
+        );
 
         Ok(map)
     }

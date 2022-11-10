@@ -81,97 +81,110 @@ impl Action for CreateUser {
                 patch: _,
             }
             | OperatingSystem::Darwin => {
-                execute_command(
-                    Command::new("/usr/bin/dscl")
-                        .args([".", "-create", &format!("/Users/{name}")])
-                        .stdin(std::process::Stdio::null()),
-                )
-                .await
-                .map_err(|e| CreateUserError::Command(e).boxed())?;
-                execute_command(
-                    Command::new("/usr/bin/dscl")
-                        .args([
-                            ".",
-                            "-create",
-                            &format!("/Users/{name}"),
-                            "UniqueID",
-                            &format!("{uid}"),
-                        ])
-                        .stdin(std::process::Stdio::null()),
-                )
-                .await
-                .map_err(|e| CreateUserError::Command(e).boxed())?;
-                execute_command(
-                    Command::new("/usr/bin/dscl")
-                        .args([
-                            ".",
-                            "-create",
-                            &format!("/Users/{name}"),
-                            "PrimaryGroupID",
-                            &format!("{gid}"),
-                        ])
-                        .stdin(std::process::Stdio::null()),
-                )
-                .await
-                .map_err(|e| CreateUserError::Command(e).boxed())?;
-                execute_command(
-                    Command::new("/usr/bin/dscl")
-                        .args([
-                            ".",
-                            "-create",
-                            &format!("/Users/{name}"),
-                            "NFSHomeDirectory",
-                            "/var/empty",
-                        ])
-                        .stdin(std::process::Stdio::null()),
-                )
-                .await
-                .map_err(|e| CreateUserError::Command(e).boxed())?;
-                execute_command(
-                    Command::new("/usr/bin/dscl")
-                        .args([
-                            ".",
-                            "-create",
-                            &format!("/Users/{name}"),
-                            "UserShell",
-                            "/sbin/nologin",
-                        ])
-                        .stdin(std::process::Stdio::null()),
-                )
-                .await
-                .map_err(|e| CreateUserError::Command(e).boxed())?;
-                execute_command(
-                    Command::new("/usr/bin/dscl")
-                        .args([
-                            ".",
-                            "-append",
-                            &format!("/Groups/{groupname}"),
-                            "GroupMembership",
-                        ])
-                        .arg(&name)
-                        .stdin(std::process::Stdio::null()),
-                )
-                .await
-                .map_err(|e| CreateUserError::Command(e).boxed())?;
-                execute_command(
-                    Command::new("/usr/bin/dscl")
-                        .args([".", "-create", &format!("/Users/{name}"), "IsHidden", "1"])
-                        .stdin(std::process::Stdio::null()),
-                )
-                .await
-                .map_err(|e| CreateUserError::Command(e).boxed())?;
-                execute_command(
-                    Command::new("/usr/sbin/dseditgroup")
-                        .args(["-o", "edit"])
-                        .arg("-a")
-                        .arg(&name)
-                        .arg("-t")
-                        .arg(&name)
-                        .arg(groupname)
-                        .stdin(std::process::Stdio::null()),
-                )
-                .await
-                .map_err(|e| CreateUserError::Command(e).boxed())?;
+                // TODO(@hoverbear): Make this actually work...
+                // Right now, our test machines do not have a secure token and cannot delete users.
+
+                if Command::new("/usr/bin/dscl")
+                    .args([".", "-read", &format!("/Users/{name}")])
+                    .stdin(std::process::Stdio::null())
+                    .status()
+                    .await?
+                    .success()
+                {
+                    ()
+                } else {
+                    execute_command(
+                        Command::new("/usr/bin/dscl")
+                            .args([".", "-create", &format!("/Users/{name}")])
+                            .stdin(std::process::Stdio::null()),
+                    )
+                    .await
+                    .map_err(|e| CreateUserError::Command(e).boxed())?;
+                    execute_command(
+                        Command::new("/usr/bin/dscl")
+                            .args([
+                                ".",
+                                "-create",
+                                &format!("/Users/{name}"),
+                                "UniqueID",
+                                &format!("{uid}"),
+                            ])
+                            .stdin(std::process::Stdio::null()),
+                    )
+                    .await
+                    .map_err(|e| CreateUserError::Command(e).boxed())?;
+                    execute_command(
+                        Command::new("/usr/bin/dscl")
+                            .args([
+                                ".",
+                                "-create",
+                                &format!("/Users/{name}"),
+                                "PrimaryGroupID",
+                                &format!("{gid}"),
+                            ])
+                            .stdin(std::process::Stdio::null()),
+                    )
+                    .await
+                    .map_err(|e| CreateUserError::Command(e).boxed())?;
+                    execute_command(
+                        Command::new("/usr/bin/dscl")
+                            .args([
+                                ".",
+                                "-create",
+                                &format!("/Users/{name}"),
+                                "NFSHomeDirectory",
+                                "/var/empty",
+                            ])
+                            .stdin(std::process::Stdio::null()),
+                    )
+                    .await
+                    .map_err(|e| CreateUserError::Command(e).boxed())?;
+                    execute_command(
+                        Command::new("/usr/bin/dscl")
+                            .args([
+                                ".",
+                                "-create",
+                                &format!("/Users/{name}"),
+                                "UserShell",
+                                "/sbin/nologin",
+                            ])
+                            .stdin(std::process::Stdio::null()),
+                    )
+                    .await
+                    .map_err(|e| CreateUserError::Command(e).boxed())?;
+                    execute_command(
+                        Command::new("/usr/bin/dscl")
+                            .args([
+                                ".",
+                                "-append",
+                                &format!("/Groups/{groupname}"),
+                                "GroupMembership",
+                            ])
+                            .arg(&name)
+                            .stdin(std::process::Stdio::null()),
+                    )
+                    .await
+                    .map_err(|e| CreateUserError::Command(e).boxed())?;
+                    execute_command(
+                        Command::new("/usr/bin/dscl")
+                            .args([".", "-create", &format!("/Users/{name}"), "IsHidden", "1"])
+                            .stdin(std::process::Stdio::null()),
+                    )
+                    .await
+                    .map_err(|e| CreateUserError::Command(e).boxed())?;
+                    execute_command(
+                        Command::new("/usr/sbin/dseditgroup")
+                            .args(["-o", "edit"])
+                            .arg("-a")
+                            .arg(&name)
+                            .arg("-t")
+                            .arg(&name)
+                            .arg(groupname)
+                            .stdin(std::process::Stdio::null()),
+                    )
+                    .await
+                    .map_err(|e| CreateUserError::Command(e).boxed())?;
+                }
             },
             _ => {
                 execute_command(
@@ -255,13 +268,16 @@ impl Action for CreateUser {
                 patch: _,
             }
             | OperatingSystem::Darwin => {
-                execute_command(
-                    Command::new("/usr/bin/dscl")
-                        .args([".", "-delete", &format!("/Users/{name}")])
-                        .stdin(std::process::Stdio::null()),
-                )
-                .await
-                .map_err(|e| CreateUserError::Command(e).boxed())?;
+                // TODO(@hoverbear): Make this actually work...
+                // Right now, our test machines do not have a secure token and cannot delete users.
+                tracing::warn!("Harmonic currently cannot delete groups on Mac due to https://github.com/DeterminateSystems/harmonic/issues/33. This is a no-op, installing with harmonic again will use the existing user.");
+                // execute_command(Command::new("/usr/bin/dscl").args([
+                //     ".",
+                //     "-delete",
+                //     &format!("/Users/{name}"),
+                // ]).stdin(std::process::Stdio::null()))
+                // .await
+                // .map_err(|e| CreateUserError::Command(e).boxed())?;
             },
             _ => {
                 execute_command(
