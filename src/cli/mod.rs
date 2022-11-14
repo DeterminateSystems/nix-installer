@@ -4,7 +4,6 @@ pub(crate) mod subcommand;
 use clap::Parser;
 use std::process::ExitCode;
 use tokio::sync::broadcast::{Receiver, Sender};
-use tokio_util::sync::CancellationToken;
 
 use self::subcommand::HarmonicSubcommand;
 

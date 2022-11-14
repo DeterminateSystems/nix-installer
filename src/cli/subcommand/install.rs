@@ -4,14 +4,11 @@ use std::{
 };
 
 use crate::{
-    action::ActionState, cli::is_root, cli::signal_channel, plan::RECEIPT_LOCATION, BuiltinPlanner,
-    InstallPlan, Planner,
+    action::ActionState, cli::is_root, cli::signal_channel, cli::CommandExecute, interaction,
+    plan::RECEIPT_LOCATION, BuiltinPlanner, InstallPlan, Planner,
 };
 use clap::{ArgAction, Parser};
 use eyre::{eyre, WrapErr};
-use tokio_util::sync::CancellationToken;
-
-use crate::{cli::CommandExecute, interaction};
 
 /// Execute an install (possibly using an existing plan)
 ///
