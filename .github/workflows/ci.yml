@@ -6,7 +6,8 @@ on:
     branches: [main]
 
 jobs:
-  Format:
+  links:
+    name: Lints
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
@@ -23,7 +24,8 @@ jobs:
       - name: Check EditorConfig conformance
         run: nix develop --command ci-check-editorconfig
 
-  BuildX86Linux:
+  build-x86_64-linux:
+    name: Build x86_64 Linux
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
@@ -43,9 +45,10 @@ jobs:
           path: |
             result/bin/harmonic
 
-  RunX86Linux:
+  run-x86_64-linux:
+    name: Run x86_64 Linux
     runs-on: ubuntu-latest
-    needs: BuildX86Linux
+    needs: build-x86_64-linux
     steps:
       - uses: actions/download-artifact@v3
         with:
@@ -70,7 +73,8 @@ jobs:
         run: sudo RUST_LOG=harmonic=trace RUST_BACKTRACE=full ./harmonic uninstall --no-confirm
         
 
-  BuildX86Darwin:
+  build-x86_64-darwin:
+    name: Build x86_64 Darwin
     runs-on: macos-latest
     steps:
       - uses: actions/checkout@v3
@@ -88,7 +92,8 @@ jobs:
           path: |
             result/bin/harmonic
 
-  RunX86Darwin:
+  run-x86_64-darwin:
+    name: Run x86_64 Darwin
     runs-on: macos-latest
     needs: BuildX86Darwin
     steps:
