@@ -95,7 +95,7 @@ jobs:
   run-x86_64-darwin:
     name: Run x86_64 Darwin
     runs-on: macos-latest
-    needs: BuildX86Darwin
+    needs: build-x86_64-darwin
     steps:
       - uses: actions/download-artifact@v3
         with:
