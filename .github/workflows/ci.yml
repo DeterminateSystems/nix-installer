@@ -6,7 +6,7 @@ on:
     branches: [main]
 
 jobs:
-  links:
+  lints:
     name: Lints
     runs-on: ubuntu-latest
     steps:
