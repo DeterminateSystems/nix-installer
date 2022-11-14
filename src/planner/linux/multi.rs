@@ -31,7 +31,8 @@ impl Planner for LinuxMulti {
         }
 
         // For now, we don't try to repair the user's Nix install or anything special.
-        if let Ok(_) = tokio::process::Command::new("nix")
+        if let Ok(_) = tokio::process::Command::new("nix-env")
+            .arg("--version")
             .stdin(std::process::Stdio::null())
             .status()
             .await
