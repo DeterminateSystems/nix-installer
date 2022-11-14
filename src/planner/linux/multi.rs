@@ -25,6 +25,7 @@ impl Planner for LinuxMulti {
 
     async fn plan(self) -> Result<InstallPlan, Box<dyn std::error::Error + Sync + Send>> {
         // If on NixOS, running `harmonic` is pointless
+        // NixOS always sets up this file as part of setting up /etc itself: https://github.com/NixOS/nixpkgs/blob/bdd39e5757d858bd6ea58ed65b4a2e52c8ed11ca/nixos/modules/system/etc/setup-etc.pl#L145
         if Path::new("/etc/NIXOS").exists() {
             return Err(Error::NixOs.into());
         }
