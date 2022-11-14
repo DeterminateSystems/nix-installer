@@ -254,23 +254,21 @@ impl Action for ConfigureNixDaemonService {
                 .map_err(|e| ConfigureNixDaemonServiceError::Command(e).boxed())?;
             },
             _ => {
-                if let Some(sysext) = sysext {
-                    tracing::warn!("Todo")
-                } else {
-                    execute_command(
-                        Command::new("systemctl").args(["disable", SOCKET_SRC, "--now"]),
-                    )
-                    .await
-                    .map_err(|e| ConfigureNixDaemonServiceError::Command(e).boxed())?;
+                execute_command(Command::new("systemctl").args([
+                    "disable",
+                    "nix-daemon.socket",
+                    "--now",
+                ]))
+                .await
+                .map_err(|e| ConfigureNixDaemonServiceError::Command(e).boxed())?;
 
-                    execute_command(Command::new("systemctl").args([
-                        "disable",
-                        SERVICE_SRC,
-                        "--now",
-                    ]))
-                    .await
-                    .map_err(|e| ConfigureNixDaemonServiceError::Command(e).boxed())?;
-                }
+                execute_command(Command::new("systemctl").args([
+                    "disable",
+                    "nix-daemon.service",
+                    "--now",
+                ]))
+                .await
+                .map_err(|e| ConfigureNixDaemonServiceError::Command(e).boxed())?;
 
                 execute_command(
                     Command::new("systemd-tmpfiles")

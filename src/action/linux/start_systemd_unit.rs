@@ -102,6 +102,16 @@ impl Action for StartSystemdUnit {
         .await
         .map_err(|e| StartSystemdUnitError::Command(e).boxed())?;
 
+        // We do both to avoid an error doing `disable --now` if the user did stop it already somehow.
+        execute_command(
+            Command::new("systemctl")
+                .arg("stop")
+                .arg(format!("{unit}"))
+                .stdin(std::process::Stdio::null()),
+        )
+        .await
+        .map_err(|e| StartSystemdUnitError::Command(e).boxed())?;
+
         tracing::trace!("Stopped systemd unit");
         *action_state = ActionState::Completed;
         Ok(())

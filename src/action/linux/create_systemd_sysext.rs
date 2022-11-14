@@ -1,4 +1,7 @@
+use tokio::process::Command;
+
 use crate::action::base::{CreateDirectory, CreateDirectoryError, CreateFile, CreateFileError};
+use crate::execute_command;
 use crate::{
     action::{Action, ActionDescription, ActionState},
     BoxableError,
@@ -235,6 +238,13 @@ impl Action for CreateSystemdSysext {
             create_directory.revert().await?;
         }
 
+        execute_command(Command::new("systemd-sysext").arg("refresh"))
+            .await
+            .map_err(|e| CreateSystemdSysextError::Command(e).boxed())?;
+        execute_command(Command::new("systemctl").arg("daemon-reload"))
+            .await
+            .map_err(|e| CreateSystemdSysextError::Command(e).boxed())?;
+
         tracing::trace!("Removed sysext");
         *action_state = ActionState::Uncompleted;
         Ok(())
@@ -247,6 +257,8 @@ impl Action for CreateSystemdSysext {
 
 #[derive(Debug, thiserror::Error)]
 pub enum CreateSystemdSysextError {
+    #[error("Command failed to execute")]
+    Command(#[source] std::io::Error),
     #[error(transparent)]
     CreateDirectory(#[from] CreateDirectoryError),
     #[error(transparent)]

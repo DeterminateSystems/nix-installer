@@ -93,7 +93,7 @@ impl Planner for SteamDeck {
             planner: Box::new(self.clone()),
             actions: vec![
                 Box::new(
-                    CreateDirectory::plan("/var/lib/extensions/", None, None, None, true).await?,
+                    CreateDirectory::plan("/var/lib/extensions/", None, None, None, false).await?,
                 ),
                 Box::new(CreateDirectory::plan("/home/nix", None, None, None, true).await?),
                 Box::new(CreateSystemdSysext::plan(sysext, "/home/nix").await?),
