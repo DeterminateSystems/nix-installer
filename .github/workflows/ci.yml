@@ -16,51 +16,12 @@ jobs:
             access-tokens = github.com=${{ secrets.GITHUB_TOKEN }}
       - name: Check rustfmt
         run: nix develop --command ci-check-rustfmt
-
-  Spelling:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v3
-      - uses: cachix/install-nix-action@v17
-        with:
-          extra_nix_config: |
-            access-tokens = github.com=${{ secrets.GITHUB_TOKEN }}
       - name: Check Spelling
         run: nix develop --command ci-check-spelling
-
-  NixFormatting:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v3
-      - uses: cachix/install-nix-action@v17
-        with:
-          extra_nix_config: |
-            access-tokens = github.com=${{ secrets.GITHUB_TOKEN }}
       - name: Check nixpkgs-fmt formatting
         run: nix develop --command ci-check-nixpkgs-fmt
-
-  EditorConfig:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v3
-      - uses: cachix/install-nix-action@v17
-        with:
-          extra_nix_config: |
-            access-tokens = github.com=${{ secrets.GITHUB_TOKEN }}
       - name: Check EditorConfig conformance
         run: nix develop --command ci-check-editorconfig
-
-  Test:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v3
-      - uses: cachix/install-nix-action@v17
-        with:
-          extra_nix_config: |
-            access-tokens = github.com=${{ secrets.GITHUB_TOKEN }}
-      - name: Run tests
-        run: nix develop --command ci-test-rust
-        # run: nix develop -c -- cargo test -- --include-ignored
 
   BuildX86Linux:
     runs-on: ubuntu-latest
