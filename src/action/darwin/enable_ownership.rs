@@ -60,8 +60,7 @@ impl Action for EnableOwnership {
                     .args(["info", "-plist"])
                     .arg(&path),
             )
-            .await
-            .unwrap()
+            .await?
             .stdout;
             let the_plist: DiskUtilOutput = plist::from_reader(Cursor::new(buf)).unwrap();
 
@@ -108,6 +107,10 @@ impl Action for EnableOwnership {
         tracing::trace!("Unenabled ownership (noop)");
         *action_state = ActionState::Completed;
         Ok(())
+    }
+
+    fn action_state(&self) -> ActionState {
+        self.action_state
     }
 }
 

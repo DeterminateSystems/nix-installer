@@ -1,12 +1,6 @@
-use std::{
-    path::{Path, PathBuf},
-    time::Duration,
-};
-use tokio::process::Command;
-
 use crate::{
     action::{
-        common::{CreateFile, CreateFileError, CreateOrAppendFile, CreateOrAppendFileError},
+        base::{CreateFile, CreateFileError, CreateOrAppendFile, CreateOrAppendFileError},
         darwin::{
             BootstrapVolume, BootstrapVolumeError, CreateSyntheticObjects,
             CreateSyntheticObjectsError, CreateVolume, CreateVolumeError, EnableOwnership,
@@ -17,15 +11,20 @@ use crate::{
     },
     BoxableError,
 };
+use std::{
+    path::{Path, PathBuf},
+    time::Duration,
+};
+use tokio::process::Command;
 
-const NIX_VOLUME_MOUNTD_DEST: &str = "/Library/LaunchDaemons/org.nixos.darwin-store.plist";
+pub const NIX_VOLUME_MOUNTD_DEST: &str = "/Library/LaunchDaemons/org.nixos.darwin-store.plist";
 
 #[derive(Debug, serde::Deserialize, serde::Serialize, Clone)]
 pub struct CreateApfsVolume {
     disk: PathBuf,
     name: String,
     case_sensitive: bool,
-    encrypt: Option<String>,
+    encrypt: bool,
     create_or_append_synthetic_conf: CreateOrAppendFile,
     create_synthetic_objects: CreateSyntheticObjects,
     unmount_volume: UnmountVolume,
@@ -44,7 +43,7 @@ impl CreateApfsVolume {
         disk: impl AsRef<Path>,
         name: String,
         case_sensitive: bool,
-        encrypt: Option<String>,
+        encrypt: bool,
     ) -> Result<Self, Box<dyn std::error::Error + Send + Sync>> {
         let disk = disk.as_ref();
         let create_or_append_synthetic_conf = CreateOrAppendFile::plan(
@@ -73,31 +72,25 @@ impl CreateApfsVolume {
         .await
         .map_err(|e| e.boxed())?;
 
-        let encrypt_volume = if let Some(password) = encrypt.as_ref() {
-            Some(EncryptVolume::plan(disk, password.to_string()).await?)
+        let encrypt_volume = if encrypt {
+            Some(EncryptVolume::plan(disk, &name).await?)
         } else {
             None
         };
 
-        let mount_command = if encrypt.is_some() {
-            vec![
-                "/bin/sh",
-                "-c",
-                "/usr/bin/security find-generic-password",
-                "-s",
-                "{name}",
-                "-w",
-                "|",
-                "/usr/sbin/diskutil",
-                "apfs",
-                "unlockVolume",
-                &name,
-                "-mountpoint",
-                "/nix",
-                "-stdinpassphrase",
-            ]
+        let name_with_qoutes = format!("\"{name}\"");
+        let encrypted_command;
+        let mount_command = if encrypt {
+            encrypted_command = format!("/usr/bin/security find-generic-password -s {name_with_qoutes} -w |  /usr/sbin/diskutil apfs unlockVolume {name_with_qoutes} -mountpoint /nix -stdinpassphrase");
+            vec!["/bin/sh", "-c", encrypted_command.as_str()]
         } else {
-            vec!["/usr/sbin/diskutil", "mount", "-mountPoint", "/nix", &name]
+            vec![
+                "/usr/sbin/diskutil",
+                "mount",
+                "-mountPoint",
+                "/nix",
+                name.as_str(),
+            ]
         };
         // TODO(@hoverbear): Use plist lib we have in tree...
         let mount_plist = format!(
@@ -288,6 +281,10 @@ impl Action for CreateApfsVolume {
         tracing::trace!("Removed APFS volume");
         *action_state = ActionState::Uncompleted;
         Ok(())
+    }
+
+    fn action_state(&self) -> ActionState {
+        self.action_state
     }
 }
 

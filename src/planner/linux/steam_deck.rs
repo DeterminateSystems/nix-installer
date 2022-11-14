@@ -2,8 +2,9 @@ use std::collections::HashMap;
 
 use crate::{
     action::{
-        common::{ConfigureNix, CreateDirectory, ProvisionNix},
-        linux::{CreateSystemdSysext, StartSystemdUnit, SteamosReadonly, SteamosReadonlyError},
+        base::CreateDirectory,
+        common::{ConfigureNix, ProvisionNix},
+        linux::{CreateSystemdSysext, StartSystemdUnit},
     },
     planner::Planner,
     BuiltinPlanner, CommonSettings, InstallPlan,
@@ -38,13 +39,13 @@ impl Planner for SteamDeck {
                 Box::new(StartSystemdUnit::plan("systemd-sysext.service".to_string()).await?), // TODO: We should not disable this during uninstall if it's already on
                 Box::new(StartSystemdUnit::plan("nix.mount").await?),
                 Box::new(ProvisionNix::plan(self.settings.clone()).await?),
-                Box::new(ConfigureNix::plan(self.settings, Some(sysext.into())).await?),
+                Box::new(ConfigureNix::plan(self.settings, Some(sysext)).await?),
                 Box::new(StartSystemdUnit::plan("nix-daemon.service".to_string()).await?),
             ],
         })
     }
 
-    fn describe(
+    fn settings(
         &self,
     ) -> Result<HashMap<String, serde_json::Value>, Box<dyn std::error::Error + Sync + Send>> {
         let Self { settings } = self;

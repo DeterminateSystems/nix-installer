@@ -9,19 +9,18 @@ use crate::cli::CommandExecute;
 
 /// Plan an install that can be repeated on an identical host later
 #[derive(Debug, Parser)]
-#[command(multicall = true)]
 pub struct Plan {
     #[clap(subcommand)]
     pub planner: Option<BuiltinPlanner>,
-    #[clap(env = "HARMONIC_PLAN")]
-    pub plan: PathBuf,
+    #[clap(env = "HARMONIC_PLAN", default_value = "/dev/stdout")]
+    pub output: PathBuf,
 }
 
 #[async_trait::async_trait]
 impl CommandExecute for Plan {
     #[tracing::instrument(skip_all, fields())]
     async fn execute(self) -> eyre::Result<ExitCode> {
-        let Self { planner, plan } = self;
+        let Self { planner, output } = self;
 
         let planner = match planner {
             Some(planner) => planner,
@@ -33,7 +32,7 @@ impl CommandExecute for Plan {
         let install_plan = planner.plan().await.map_err(|e| eyre::eyre!(e))?;
 
         let json = serde_json::to_string_pretty(&install_plan)?;
-        tokio::fs::write(plan, json)
+        tokio::fs::write(output, json)
             .await
             .wrap_err("Writing plan")?;
 

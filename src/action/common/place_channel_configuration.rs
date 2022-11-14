@@ -1,11 +1,9 @@
-use reqwest::Url;
-
+use crate::action::base::{CreateFile, CreateFileError};
 use crate::{
     action::{Action, ActionDescription, ActionState},
     BoxableError,
 };
-
-use crate::action::common::{CreateFile, CreateFileError};
+use reqwest::Url;
 
 #[derive(Debug, serde::Deserialize, serde::Serialize, Clone)]
 pub struct PlaceChannelConfiguration {
@@ -129,6 +127,10 @@ impl Action for PlaceChannelConfiguration {
         tracing::debug!("Removed channel configuration");
         *action_state = ActionState::Uncompleted;
         Ok(())
+    }
+
+    fn action_state(&self) -> ActionState {
+        self.action_state
     }
 }
 

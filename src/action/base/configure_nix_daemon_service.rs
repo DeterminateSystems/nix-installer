@@ -175,6 +175,15 @@ impl Action for ConfigureNixDaemonService {
                         execute_command(Command::new("systemctl").arg("daemon-reload"))
                             .await
                             .map_err(|e| ConfigureNixDaemonServiceError::Command(e).boxed())?;
+
+                        execute_command(
+                            Command::new("systemctl")
+                                .arg("enable")
+                                .arg("--now")
+                                .arg("nix-daemon.socket"),
+                        )
+                        .await
+                        .map_err(|e| ConfigureNixDaemonServiceError::Command(e).boxed())?;
                     },
                 };
             },
@@ -232,13 +241,19 @@ impl Action for ConfigureNixDaemonService {
                 if let Some(sysext) = sysext {
                     tracing::warn!("Todo")
                 } else {
-                    execute_command(Command::new("systemctl").args(["disable", SOCKET_SRC]))
-                        .await
-                        .map_err(|e| ConfigureNixDaemonServiceError::Command(e).boxed())?;
+                    execute_command(
+                        Command::new("systemctl").args(["disable", SOCKET_SRC, "--now"]),
+                    )
+                    .await
+                    .map_err(|e| ConfigureNixDaemonServiceError::Command(e).boxed())?;
 
-                    execute_command(Command::new("systemctl").args(["disable", SERVICE_SRC]))
-                        .await
-                        .map_err(|e| ConfigureNixDaemonServiceError::Command(e).boxed())?;
+                    execute_command(Command::new("systemctl").args([
+                        "disable",
+                        SERVICE_SRC,
+                        "--now",
+                    ]))
+                    .await
+                    .map_err(|e| ConfigureNixDaemonServiceError::Command(e).boxed())?;
                 }
 
                 execute_command(
@@ -263,6 +278,10 @@ impl Action for ConfigureNixDaemonService {
         tracing::trace!("Unconfigured nix daemon service");
         *action_state = ActionState::Uncompleted;
         Ok(())
+    }
+
+    fn action_state(&self) -> ActionState {
+        self.action_state
     }
 }
 

@@ -1,13 +1,10 @@
-use std::path::PathBuf;
-
-use tokio::process::Command;
-
 use crate::execute_command;
-
 use crate::{
     action::{Action, ActionDescription, ActionState},
     BoxableError,
 };
+use std::path::PathBuf;
+use tokio::process::Command;
 
 #[derive(Debug, serde::Deserialize, serde::Serialize, Clone)]
 pub struct SteamosReadonly {
@@ -112,6 +109,10 @@ impl Action for SteamosReadonly {
         tracing::trace!("Ran `steamos-readonly`");
         *action_state = ActionState::Completed;
         Ok(())
+    }
+
+    fn action_state(&self) -> ActionState {
+        self.action_state
     }
 }
 
