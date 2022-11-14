@@ -54,9 +54,14 @@ impl Action for SystemdSysextMerge {
         }
         tracing::debug!("Merging systemd-sysext");
 
-        execute_command(Command::new("systemd-sysext").arg("merge").arg(device))
-            .await
-            .map_err(|e| SystemdSysextMergeError::Command(e).boxed())?;
+        execute_command(
+            Command::new("systemd-sysext")
+                .arg("merge")
+                .arg(device)
+                .stdin(std::process::Stdio::null()),
+        )
+        .await
+        .map_err(|e| SystemdSysextMergeError::Command(e).boxed())?;
 
         tracing::trace!("Merged systemd-sysext");
         *action_state = ActionState::Completed;
@@ -91,9 +96,14 @@ impl Action for SystemdSysextMerge {
         tracing::debug!("Unmrging systemd-sysext");
 
         // TODO(@Hoverbear): Handle proxy vars
-        execute_command(Command::new("systemd-sysext").arg("unmerge").arg(device))
-            .await
-            .map_err(|e| SystemdSysextMergeError::Command(e).boxed())?;
+        execute_command(
+            Command::new("systemd-sysext")
+                .arg("unmerge")
+                .arg(device)
+                .stdin(std::process::Stdio::null()),
+        )
+        .await
+        .map_err(|e| SystemdSysextMergeError::Command(e).boxed())?;
 
         tracing::trace!("Unmerged systemd-sysext");
         *action_state = ActionState::Completed;

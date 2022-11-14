@@ -99,6 +99,7 @@ impl Action for SetupDefaultProfile {
                 .arg(&nix_pkg)
                 .arg("-i")
                 .arg(&nss_ca_cert_pkg)
+                .stdin(std::process::Stdio::null())
                 .env(
                     "HOME",
                     dirs::home_dir().ok_or_else(|| SetupDefaultProfileError::NoRootHome.boxed())?,
@@ -139,6 +140,7 @@ impl Action for SetupDefaultProfile {
                 "NIX_SSL_CERT_FILE",
                 "/nix/var/nix/profiles/default/etc/ssl/certs/ca-bundle.crt",
             );
+            command.stdin(std::process::Stdio::null());
 
             execute_command(&mut command)
                 .await

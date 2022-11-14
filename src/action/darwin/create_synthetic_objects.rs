@@ -44,13 +44,15 @@ impl Action for CreateSyntheticObjects {
         // Yup we literally call both and ignore the error! Reasoning: https://github.com/NixOS/nix/blob/95331cb9c99151cbd790ceb6ddaf49fc1c0da4b3/scripts/create-darwin-volume.sh#L261
         execute_command(
             Command::new("/System/Library/Filesystems/apfs.fs/Contents/Resources/apfs.util")
-                .arg("-t"),
+                .arg("-t")
+                .stdin(std::process::Stdio::null()),
         )
         .await
         .ok(); // Deliberate
         execute_command(
             Command::new("/System/Library/Filesystems/apfs.fs/Contents/Resources/apfs.util")
-                .arg("-B"),
+                .arg("-B")
+                .stdin(std::process::Stdio::null()),
         )
         .await
         .ok(); // Deliberate
@@ -83,13 +85,15 @@ impl Action for CreateSyntheticObjects {
         // Yup we literally call both and ignore the error! Reasoning: https://github.com/NixOS/nix/blob/95331cb9c99151cbd790ceb6ddaf49fc1c0da4b3/scripts/create-darwin-volume.sh#L261
         execute_command(
             Command::new("/System/Library/Filesystems/apfs.fs/Contents/Resources/apfs.util")
-                .arg("-t"),
+                .arg("-t")
+                .stdin(std::process::Stdio::null()),
         )
         .await
         .ok(); // Deliberate
         execute_command(
             Command::new("/System/Library/Filesystems/apfs.fs/Contents/Resources/apfs.util")
-                .arg("-B"),
+                .arg("-B")
+                .stdin(std::process::Stdio::null()),
         )
         .await
         .ok(); // Deliberate

@@ -66,7 +66,8 @@ impl Action for UnmountVolume {
         execute_command(
             Command::new("/usr/sbin/diskutil")
                 .args(["unmount", "force"])
-                .arg(name),
+                .arg(name)
+                .stdin(std::process::Stdio::null()),
         )
         .await
         .map_err(|e| UnmountVolumeError::Command(e).boxed())?;
@@ -108,7 +109,8 @@ impl Action for UnmountVolume {
         execute_command(
             Command::new(" /usr/sbin/diskutil")
                 .args(["unmount", "force"])
-                .arg(name),
+                .arg(name)
+                .stdin(std::process::Stdio::null()),
         )
         .await
         .map_err(|e| UnmountVolumeError::Command(e).boxed())?;

@@ -55,7 +55,8 @@ impl Action for StartSystemdUnit {
             Command::new("systemctl")
                 .arg("enable")
                 .arg("--now")
-                .arg(format!("{unit}")),
+                .arg(format!("{unit}"))
+                .stdin(std::process::Stdio::null()),
         )
         .await
         .map_err(|e| StartSystemdUnitError::Command(e).boxed())?;
@@ -93,7 +94,8 @@ impl Action for StartSystemdUnit {
         execute_command(
             Command::new("systemctl")
                 .arg("disable")
-                .arg(format!("{unit}")),
+                .arg(format!("{unit}"))
+                .stdin(std::process::Stdio::null()),
         )
         .await
         .map_err(|e| StartSystemdUnitError::Command(e).boxed())?;

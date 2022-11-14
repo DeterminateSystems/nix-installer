@@ -41,10 +41,14 @@ pub struct DarwinMulti {
 }
 
 async fn default_root_disk() -> Result<String, BuiltinPlannerError> {
-    let buf = execute_command(Command::new("/usr/sbin/diskutil").args(["info", "-plist", "/"]))
-        .await
-        .unwrap()
-        .stdout;
+    let buf = execute_command(
+        Command::new("/usr/sbin/diskutil")
+            .args(["info", "-plist", "/"])
+            .stdin(std::process::Stdio::null()),
+    )
+    .await
+    .unwrap()
+    .stdout;
     let the_plist: DiskUtilOutput = plist::from_reader(Cursor::new(buf))?;
 
     Ok(the_plist.parent_whole_disk)
@@ -70,7 +74,9 @@ impl Planner for DarwinMulti {
             root_disk @ Some(_) => root_disk,
             None => {
                 let buf = execute_command(
-                    Command::new("/usr/sbin/diskutil").args(["info", "-plist", "/"]),
+                    Command::new("/usr/sbin/diskutil")
+                        .args(["info", "-plist", "/"])
+                        .stdin(std::process::Stdio::null()),
                 )
                 .await
                 .unwrap()
