@@ -16,6 +16,8 @@ Planned support:
     + Note: User deletion is currently unimplemented, you need to use a user with a secure token and `dscl . -delete /Users/_nixbuild*` where `*` is each user number.
 * [x] Multi-user aarch64 MacOS
     + Note: User deletion is currently unimplemented, you need to use a user with a secure token and `dscl . -delete /Users/_nixbuild*` where `*` is each user number.
+* [x] The Valve Steam Deck
+    + Note: Valve does not ship the steam deck with a `systemd-sysext` workaround ala https://github.com/flatcar/init/pull/65, so we employ a KDE autostart script to kickstart them.
 * [ ] Single-user x86_64 Linux with systemd init
 * [ ] Single-user aarch64 Linux with systemd init
 * [ ] Others...

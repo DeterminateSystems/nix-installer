@@ -159,6 +159,20 @@ impl Action for ConfigureNixDaemonService {
                                 .boxed()
                             })?;
 
+                        let wants_path = sysext.join(
+                            "usr/lib/systemd/system/multi-user.target.wants/nix-daemon.service",
+                        );
+                        tokio::fs::symlink(&service_path, &wants_path)
+                            .await
+                            .map_err(|e| {
+                                ConfigureNixDaemonServiceError::Symlink(
+                                    PathBuf::from(&service_path),
+                                    PathBuf::from(&wants_path),
+                                    e,
+                                )
+                                .boxed()
+                            })?;
+
                         execute_command(Command::new("systemd-sysext").arg("refresh"))
                             .await
                             .map_err(|e| ConfigureNixDaemonServiceError::Command(e).boxed())?;

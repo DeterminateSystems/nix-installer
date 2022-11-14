@@ -11,6 +11,7 @@ const PATHS: &[&str] = &[
     "usr/lib/extension-release.d",
     "usr/lib/systemd",
     "usr/lib/systemd/system",
+    "usr/lib/systemd/system/multi-user.target.wants",
 ];
 
 #[derive(Debug, serde::Deserialize, serde::Serialize, Clone)]

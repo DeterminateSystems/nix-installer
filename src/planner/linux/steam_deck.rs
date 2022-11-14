@@ -63,7 +63,7 @@ use std::collections::HashMap;
 
 use crate::{
     action::{
-        base::CreateDirectory,
+        base::{CreateDirectory, CreateFile},
         common::{ConfigureNix, ProvisionNix},
         linux::{CreateSystemdSysext, StartSystemdUnit},
     },
@@ -101,6 +101,27 @@ impl Planner for SteamDeck {
                 Box::new(StartSystemdUnit::plan("nix.mount").await?),
                 Box::new(ProvisionNix::plan(self.settings.clone()).await?),
                 Box::new(ConfigureNix::plan(self.settings, Some(sysext)).await?),
+                // Valve does not ship the steam deck with a `systemd-sysext` workaround ala https://github.com/flatcar/init/pull/65.
+                Box::new(
+                    CreateFile::plan(
+                        "/home/deck/.config/autostart/nix.desktop",
+                        "deck".to_string(),
+                        "deck".to_string(),
+                        None,
+                        "\
+                    [Desktop Entry]\n\
+                    Exec=kdesu -u deck -- systemctl start nix.mount nix-daemon.socket\n\
+                    Icon=dialog-scripts\n\
+                    Name=Nix mount & socket binding\n\
+                    Path=\n\
+                    Type=Application\n\
+                    X-KDE-AutostartScript=true\n\
+                "
+                        .to_string(),
+                        false,
+                    )
+                    .await?,
+                ),
                 Box::new(StartSystemdUnit::plan("nix-daemon.service".to_string()).await?),
             ],
         })
