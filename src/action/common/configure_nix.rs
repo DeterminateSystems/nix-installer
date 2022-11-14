@@ -1,3 +1,5 @@
+use std::path::Path;
+
 use crate::{
     action::{
         base::{ConfigureNixDaemonService, SetupDefaultProfile},
@@ -24,7 +26,7 @@ impl ConfigureNix {
     #[tracing::instrument(skip_all)]
     pub async fn plan(
         settings: CommonSettings,
-        sysext: impl Into<Option<PathBuf>>,
+        sysext: Option<impl AsRef<Path>>,
     ) -> Result<Self, Box<dyn std::error::Error + Send + Sync>> {
         let channels: Vec<(String, Url)> = settings
             .channels

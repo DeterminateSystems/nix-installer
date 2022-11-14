@@ -27,7 +27,7 @@ pub struct ConfigureNixDaemonService {
 impl ConfigureNixDaemonService {
     #[tracing::instrument(skip_all)]
     pub async fn plan(
-        sysext: impl Into<Option<PathBuf>>,
+        sysext: Option<impl AsRef<Path>>,
     ) -> Result<Self, Box<dyn std::error::Error + Send + Sync>> {
         match OperatingSystem::host() {
             OperatingSystem::MacOSX {
@@ -44,7 +44,7 @@ impl ConfigureNixDaemonService {
         };
 
         Ok(Self {
-            sysext: sysext.into(),
+            sysext: sysext.map(|v| v.as_ref().to_path_buf()),
             action_state: ActionState::Uncompleted,
         })
     }
