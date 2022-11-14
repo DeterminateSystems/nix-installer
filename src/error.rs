@@ -3,7 +3,7 @@ use std::path::PathBuf;
 #[derive(thiserror::Error, Debug)]
 pub enum HarmonicError {
     #[error("Error executing action")]
-    ActionError(
+    Action(
         #[source]
         #[from]
         Box<dyn std::error::Error + Send + Sync>,
