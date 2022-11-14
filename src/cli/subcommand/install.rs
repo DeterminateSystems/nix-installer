@@ -4,12 +4,11 @@ use std::{
 };
 
 use crate::{
-    action::ActionState, cli::is_root, plan::RECEIPT_LOCATION, BuiltinPlanner, InstallPlan, Planner,
+    action::ActionState, cli::is_root, cli::signal_channel, cli::CommandExecute, interaction,
+    plan::RECEIPT_LOCATION, BuiltinPlanner, InstallPlan, Planner,
 };
 use clap::{ArgAction, Parser};
 use eyre::{eyre, WrapErr};
-
-use crate::{cli::CommandExecute, interaction};
 
 /// Execute an install (possibly using an existing plan)
 ///
@@ -115,14 +114,17 @@ impl CommandExecute for Install {
             }
         }
 
-        if let Err(err) = install_plan.install().await {
+        let (tx, rx1) = signal_channel().await?;
+
+        if let Err(err) = install_plan.install(rx1).await {
             let error = eyre!(err).wrap_err("Install failure");
             if !no_confirm {
                 tracing::error!("{:?}", error);
                 if !interaction::confirm(install_plan.describe_revert(explain)).await? {
                     interaction::clean_exit_with_message("Okay, didn't do anything! Bye!").await;
                 }
-                install_plan.revert().await?
+                let rx2 = tx.subscribe();
+                install_plan.revert(rx2).await?
             } else {
                 return Err(error);
             }

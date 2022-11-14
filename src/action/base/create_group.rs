@@ -72,32 +72,36 @@ impl Action for CreateGroup {
             | OperatingSystem::Darwin => {
                 if Command::new("/usr/bin/dscl")
                     .args([".", "-read", &format!("/Groups/{name}")])
+                    .stdin(std::process::Stdio::null())
                     .status()
                     .await?
                     .success()
                 {
                     ()
                 } else {
-                    execute_command(Command::new("/usr/sbin/dseditgroup").args([
-                        "-o",
-                        "create",
-                        "-r",
-                        "Nix build group for nix-daemon",
-                        "-i",
-                        &format!("{gid}"),
-                        name.as_str(),
-                    ]))
+                    execute_command(
+                        Command::new("/usr/sbin/dseditgroup")
+                            .args([
+                                "-o",
+                                "create",
+                                "-r",
+                                "Nix build group for nix-daemon",
+                                "-i",
+                                &format!("{gid}"),
+                                name.as_str(),
+                            ])
+                            .stdin(std::process::Stdio::null()),
+                    )
                     .await
                     .map_err(|e| CreateGroupError::Command(e).boxed())?;
                 }
             },
             _ => {
-                execute_command(Command::new("groupadd").args([
-                    "-g",
-                    &gid.to_string(),
-                    "--system",
-                    &name,
-                ]))
+                execute_command(
+                    Command::new("groupadd")
+                        .args(["-g", &gid.to_string(), "--system", &name])
+                        .stdin(std::process::Stdio::null()),
+                )
                 .await
                 .map_err(|e| CreateGroupError::Command(e).boxed())?;
             },
@@ -157,14 +161,18 @@ impl Action for CreateGroup {
                 //     ".",
                 //     "-delete",
                 //     &format!("/Groups/{name}"),
-                // ]))
+                // ]).stdin(std::process::Stdio::null()))
                 // .await
                 // .map_err(|e| CreateGroupError::Command(e).boxed())?;
             },
             _ => {
-                execute_command(Command::new("groupdel").arg(&name))
-                    .await
-                    .map_err(|e| CreateGroupError::Command(e).boxed())?;
+                execute_command(
+                    Command::new("groupdel")
+                        .arg(&name)
+                        .stdin(std::process::Stdio::null()),
+                )
+                .await
+                .map_err(|e| CreateGroupError::Command(e).boxed())?;
             },
         };
 

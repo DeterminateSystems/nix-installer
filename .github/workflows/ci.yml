@@ -6,7 +6,8 @@ on:
     branches: [main]
 
 jobs:
-  Format:
+  lints:
+    name: Lints
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
@@ -16,53 +17,15 @@ jobs:
             access-tokens = github.com=${{ secrets.GITHUB_TOKEN }}
       - name: Check rustfmt
         run: nix develop --command ci-check-rustfmt
-
-  Spelling:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v3
-      - uses: cachix/install-nix-action@v17
-        with:
-          extra_nix_config: |
-            access-tokens = github.com=${{ secrets.GITHUB_TOKEN }}
       - name: Check Spelling
         run: nix develop --command ci-check-spelling
-
-  NixFormatting:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v3
-      - uses: cachix/install-nix-action@v17
-        with:
-          extra_nix_config: |
-            access-tokens = github.com=${{ secrets.GITHUB_TOKEN }}
       - name: Check nixpkgs-fmt formatting
         run: nix develop --command ci-check-nixpkgs-fmt
-
-  EditorConfig:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v3
-      - uses: cachix/install-nix-action@v17
-        with:
-          extra_nix_config: |
-            access-tokens = github.com=${{ secrets.GITHUB_TOKEN }}
       - name: Check EditorConfig conformance
         run: nix develop --command ci-check-editorconfig
 
-  Test:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v3
-      - uses: cachix/install-nix-action@v17
-        with:
-          extra_nix_config: |
-            access-tokens = github.com=${{ secrets.GITHUB_TOKEN }}
-      - name: Run tests
-        run: nix develop --command ci-test-rust
-        # run: nix develop -c -- cargo test -- --include-ignored
-
-  BuildX86Linux:
+  build-x86_64-linux:
+    name: Build x86_64 Linux
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
@@ -82,9 +45,10 @@ jobs:
           path: |
             result/bin/harmonic
 
-  RunX86Linux:
+  run-x86_64-linux:
+    name: Run x86_64 Linux
     runs-on: ubuntu-latest
-    needs: BuildX86Linux
+    needs: build-x86_64-linux
     steps:
       - uses: actions/download-artifact@v3
         with:
@@ -109,7 +73,8 @@ jobs:
         run: sudo RUST_LOG=harmonic=trace RUST_BACKTRACE=full ./harmonic uninstall --no-confirm
         
 
-  BuildX86Darwin:
+  build-x86_64-darwin:
+    name: Build x86_64 Darwin
     runs-on: macos-latest
     steps:
       - uses: actions/checkout@v3
@@ -127,9 +92,10 @@ jobs:
           path: |
             result/bin/harmonic
 
-  RunX86Darwin:
+  run-x86_64-darwin:
+    name: Run x86_64 Darwin
     runs-on: macos-latest
-    needs: BuildX86Darwin
+    needs: build-x86_64-darwin
     steps:
       - uses: actions/download-artifact@v3
         with:

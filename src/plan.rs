@@ -1,6 +1,8 @@
 use std::path::PathBuf;
 
 use crossterm::style::Stylize;
+use tokio::sync::broadcast::Receiver;
+use tokio_util::sync::CancellationToken;
 
 use crate::{
     action::{Action, ActionDescription},
@@ -76,16 +78,31 @@ impl InstallPlan {
     }
 
     #[tracing::instrument(skip_all)]
-    pub async fn install(&mut self) -> Result<(), HarmonicError> {
+    pub async fn install(
+        &mut self,
+        cancel_channel: impl Into<Option<Receiver<()>>>,
+    ) -> Result<(), HarmonicError> {
         let Self {
             actions,
             planner: _,
         } = self;
+        let mut cancel_channel = cancel_channel.into();
 
         // This is **deliberately sequential**.
         // Actions which are parallelizable are represented by "group actions" like CreateUsers
         // The plan itself represents the concept of the sequence of stages.
         for action in actions {
+            if let Some(ref mut cancel_channel) = cancel_channel {
+                if cancel_channel.try_recv()
+                    != Err(tokio::sync::broadcast::error::TryRecvError::Empty)
+                {
+                    if let Err(err) = write_receipt(self.clone()).await {
+                        tracing::error!("Error saving receipt: {:?}", err);
+                    }
+                    return Err(HarmonicError::Cancelled);
+                }
+            }
+
             if let Err(err) = action.execute().await {
                 if let Err(err) = write_receipt(self.clone()).await {
                     tracing::error!("Error saving receipt: {:?}", err);
@@ -142,16 +159,31 @@ impl InstallPlan {
     }
 
     #[tracing::instrument(skip_all)]
-    pub async fn revert(&mut self) -> Result<(), HarmonicError> {
+    pub async fn revert(
+        &mut self,
+        cancel_channel: impl Into<Option<Receiver<()>>>,
+    ) -> Result<(), HarmonicError> {
         let Self {
             actions,
             planner: _,
         } = self;
+        let mut cancel_channel = cancel_channel.into();
 
         // This is **deliberately sequential**.
         // Actions which are parallelizable are represented by "group actions" like CreateUsers
         // The plan itself represents the concept of the sequence of stages.
         for action in actions.iter_mut().rev() {
+            if let Some(ref mut cancel_channel) = cancel_channel {
+                if cancel_channel.try_recv()
+                    != Err(tokio::sync::broadcast::error::TryRecvError::Empty)
+                {
+                    if let Err(err) = write_receipt(self.clone()).await {
+                        tracing::error!("Error saving receipt: {:?}", err);
+                    }
+                    return Err(HarmonicError::Cancelled);
+                }
+            }
+
             if let Err(err) = action.revert().await {
                 if let Err(err) = write_receipt(self.clone()).await {
                     tracing::error!("Error saving receipt: {:?}", err);
