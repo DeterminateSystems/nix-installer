@@ -30,6 +30,16 @@ impl Planner for LinuxMulti {
             return Err(Error::NixOs.into());
         }
 
+        // For now, we don't try to repair the user's Nix install or anything special.
+        if let Ok(_) = tokio::process::Command::new("nix-env")
+            .arg("--version")
+            .stdin(std::process::Stdio::null())
+            .status()
+            .await
+        {
+            return Err(Error::NixExists.into());
+        }
+
         Ok(InstallPlan {
             planner: Box::new(self.clone()),
             actions: vec![
@@ -74,6 +84,8 @@ impl Into<BuiltinPlanner> for LinuxMulti {
 enum Error {
     #[error("NixOS already has Nix installed")]
     NixOs,
+    #[error("`nix` is already a valid command, so it is installed")]
+    NixExists,
     #[error("Error planning action")]
     Action(
         #[source]
