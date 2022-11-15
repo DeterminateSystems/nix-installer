@@ -45,19 +45,29 @@ impl CreateSystemdSysext {
             )
         }
 
-        let version_id = tokio::fs::read_to_string("/etc/os-release")
+        let mut version_id = None;
+        let mut id = None;
+
+        let os_release = tokio::fs::read_to_string("/etc/os-release")
             .await
-            .map(|buf| {
-                buf.lines()
-                    .find_map(|line| match line.starts_with("VERSION_ID") {
-                        true => line.rsplit("=").next().map(|inner| inner.to_owned()),
-                        false => None,
-                    })
-            })
-            .map_err(|e| CreateSystemdSysextError::ReadingOsRelease(e).boxed())?
-            .ok_or_else(|| CreateSystemdSysextError::NoVersionId.boxed())?;
-        let extension_release_buf =
-            format!("SYSEXT_LEVEL=1.0\nID=steamos\nVERSION_ID={version_id}");
+            .map_err(|e| CreateSystemdSysextError::ReadingOsRelease(e).boxed())?;
+
+        os_release.lines().for_each(|line| {
+            let mut iter = line.split("=");
+            let key = iter.next();
+            let value = iter.next();
+
+            match key {
+                Some("VERSION_ID") => version_id = value,
+                Some("ID") => id = value,
+                _ => (),
+            }
+        });
+
+        let version_id = version_id.ok_or_else(|| CreateSystemdSysextError::NoVersionId.boxed())?;
+        let id = id.ok_or_else(|| CreateSystemdSysextError::NoId.boxed())?;
+
+        let extension_release_buf = format!("SYSEXT_LEVEL=1.0\nID={id}\nVERSION_ID={version_id}");
         let create_extension_release = CreateFile::plan(
             destination.join("usr/lib/extension-release.d/extension-release.nix"),
             None,
@@ -271,4 +281,6 @@ pub enum CreateSystemdSysextError {
     ),
     #[error("No `VERSION_ID` line in /etc/os-release")]
     NoVersionId,
+    #[error("No `ID` line in /etc/os-release")]
+    NoId,
 }
