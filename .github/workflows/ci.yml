@@ -16,13 +16,13 @@ jobs:
           extra_nix_config: |
             access-tokens = github.com=${{ secrets.GITHUB_TOKEN }}
       - name: Check rustfmt
-        run: nix develop --store ./store --command ci-check-rustfmt
+        run: nix develop --command ci-check-rustfmt
       - name: Check Spelling
-        run: nix develop --store ./store --command ci-check-spelling
+        run: nix develop --command ci-check-spelling
       - name: Check nixpkgs-fmt formatting
-        run: nix develop --store ./store --command ci-check-nixpkgs-fmt
+        run: nix develop --command ci-check-nixpkgs-fmt
       - name: Check EditorConfig conformance
-        run: nix develop --store ./store --command ci-check-editorconfig
+        run: nix develop --command ci-check-editorconfig
 
   build-x86_64-linux:
     name: Build x86_64 Linux
