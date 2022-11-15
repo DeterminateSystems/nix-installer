@@ -96,10 +96,10 @@ main() {
     local need_tty=yes
     for arg in "$@"; do
         case "$arg" in
-            --help)
-                usage
-                exit 0
-                ;;
+            # --help)
+            #     usage
+            #     exit 0
+            #     ;;
             *)
                 OPTIND=1
                 if [ "${arg%%--*}" = "" ]; then
@@ -499,6 +499,7 @@ downloader() {
         get_ciphersuites_for_curl
         _ciphersuites="$RETVAL"
         if [ -n "$_ciphersuites" ]; then
+            # _err=$(curl $_retry --silent --show-error --fail --location "$1" --output "$2" 2>&1)
             _err=$(curl $_retry --proto '=https' --tlsv1.2 --ciphers "$_ciphersuites" --silent --show-error --fail --location "$1" --output "$2" 2>&1)
             _status=$?
         else
