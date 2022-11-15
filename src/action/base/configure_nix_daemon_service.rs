@@ -254,6 +254,35 @@ impl Action for ConfigureNixDaemonService {
                 .map_err(|e| ConfigureNixDaemonServiceError::Command(e).boxed())?;
             },
             _ => {
+                // Don't use `--now` since it will error if it's been stopped or removed.
+                execute_command(Command::new("systemctl").args(["disable", "nix-daemon.service"]))
+                    .await
+                    .map_err(|e| ConfigureNixDaemonServiceError::Command(e).boxed()).map_err(|e| {
+                        tracing::warn!(err = e, "Disabling `nix-daemon.service` failed -- presuming it's already disabled by the user");
+                        e
+                    }).ok();
+
+                execute_command(Command::new("systemctl").args(["stop", "nix-daemon.service"]))
+                    .await
+                    .map_err(|e| ConfigureNixDaemonServiceError::Command(e).boxed()).map_err(|e| {
+                        tracing::warn!(err = e, "Stopping `nix-daemon.service` failed -- presuming it's already stopped");
+                        e
+                    }).ok();
+
+                if sysext.is_some() {
+                    execute_command(Command::new("systemctl").args(["stop", "nix.mount"]))
+                        .await
+                        .map_err(|e| ConfigureNixDaemonServiceError::Command(e).boxed())
+                        .map_err(|e| {
+                            tracing::warn!(
+                                err = e,
+                                "Stopping `nix.mount` failed -- presuming it's already stopped"
+                            );
+                            e
+                        })
+                        .ok();
+                }
+
                 execute_command(
                     Command::new("systemd-tmpfiles")
                         .arg("--remove")

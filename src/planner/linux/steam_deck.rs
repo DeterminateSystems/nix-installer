@@ -122,7 +122,7 @@ impl Planner for SteamDeck {
                     )
                     .await?,
                 ),
-                Box::new(StartSystemdUnit::plan("nix-daemon.service".to_string()).await?),
+                Box::new(StartSystemdUnit::plan("nix-daemon.socket".to_string()).await?),
             ],
         })
     }
