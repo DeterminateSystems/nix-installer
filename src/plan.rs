@@ -2,7 +2,6 @@ use std::path::PathBuf;
 
 use crossterm::style::Stylize;
 use tokio::sync::broadcast::Receiver;
-use tokio_util::sync::CancellationToken;
 
 use crate::{
     action::{Action, ActionDescription},
