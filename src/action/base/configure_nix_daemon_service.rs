@@ -254,23 +254,6 @@ impl Action for ConfigureNixDaemonService {
                 .map_err(|e| ConfigureNixDaemonServiceError::Command(e).boxed())?;
             },
             _ => {
-                // Don't use `--now` since it will error if it's been stopped or removed.
-                execute_command(Command::new("systemctl").args(["disable", "nix-daemon.socket"]))
-                    .await
-                    .map_err(|e| ConfigureNixDaemonServiceError::Command(e).boxed())?;
-
-                execute_command(Command::new("systemctl").args(["stop", "nix-daemon.socket"]))
-                    .await
-                    .map_err(|e| ConfigureNixDaemonServiceError::Command(e).boxed())?;
-
-                execute_command(Command::new("systemctl").args(["disable", "nix-daemon.service"]))
-                    .await
-                    .map_err(|e| ConfigureNixDaemonServiceError::Command(e).boxed())?;
-
-                execute_command(Command::new("systemctl").args(["stop", "nix-daemon.service"]))
-                    .await
-                    .map_err(|e| ConfigureNixDaemonServiceError::Command(e).boxed())?;
-
                 execute_command(
                     Command::new("systemd-tmpfiles")
                         .arg("--remove")

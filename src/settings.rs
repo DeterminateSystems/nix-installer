@@ -137,8 +137,11 @@ impl CommonSettings {
         };
 
         Ok(Self {
-            daemon_user_count: Default::default(),
-            channels: Vec::default(),
+            daemon_user_count: 32,
+            channels: vec![ChannelValue(
+                "nixpkgs".into(),
+                "https://nixos.org/channels/nixpkgs-unstable".into(),
+            )],
             modify_profile: true,
             nix_build_group_name: String::from("nixbld"),
             nix_build_group_id: 3000,
