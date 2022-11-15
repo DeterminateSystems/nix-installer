@@ -22,13 +22,13 @@ jobs:
           extra_nix_config: |
             access-tokens = github.com=${{ secrets.GITHUB_TOKEN }}
       - name: Check rustfmt
-        run: nix develop --store store --command ci-check-rustfmt
+        run: nix develop --store ./store --command ci-check-rustfmt
       - name: Check Spelling
-        run: nix develop --store store --command ci-check-spelling
+        run: nix develop --store ./store --command ci-check-spelling
       - name: Check nixpkgs-fmt formatting
-        run: nix develop --store store --command ci-check-nixpkgs-fmt
+        run: nix develop --store ./store --command ci-check-nixpkgs-fmt
       - name: Check EditorConfig conformance
-        run: nix develop --store store --command ci-check-editorconfig
+        run: nix develop --store ./store --command ci-check-editorconfig
 
   build-x86_64-linux:
     name: Build x86_64 Linux
@@ -47,9 +47,9 @@ jobs:
             access-tokens = github.com=${{ secrets.GITHUB_TOKEN }}
       # Runs clippy as part of the preBuild.
       - name: Build harmonic
-        run: nix build --store store --print-build-logs .#packages.x86_64-linux.harmonic
+        run: nix build --store ./store --print-build-logs .#packages.x86_64-linux.harmonic
       - name: Build harmonicStatic
-        run: nix build --store store --print-build-logs .#packages.x86_64-linux.harmonicStatic
+        run: nix build --store ./store --print-build-logs .#packages.x86_64-linux.harmonicStatic
       - name: Create artifact for x86_64-linux harmonicStatic
         uses: actions/upload-artifact@v3
         with:
