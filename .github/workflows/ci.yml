@@ -100,7 +100,6 @@ jobs:
           mkdir -p ~/bin
           echo -e "#! /bin/sh\nexit 0" | sudo tee -a /bin/steamos-readonly
           sudo chmod +x /bin/steamos-readonly
-          sudo groupadd deck
           sudo useradd -m deck
           sudo mkdir -p /home/deck/.config/autostart
 
