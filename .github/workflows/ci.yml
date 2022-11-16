@@ -16,7 +16,7 @@ jobs:
           extra_nix_config: |
             access-tokens = github.com=${{ secrets.GITHUB_TOKEN }}
       - name: Cache lint store (x86_64-linux)
-        id: build-store-x86_64-linux
+        id: lint-store-x86_64-linux
         uses: actions/cache@v3
         with:
           path: ~/.ci-store
