@@ -209,6 +209,15 @@ impl Action for CreateSystemdSysext {
         create_bind_mount_unit.execute().await?;
 
         start_systemd_sysext_unit.execute().await?;
+
+        execute_command(
+            Command::new("systemd-sysext")
+                .arg("refresh")
+                .stdin(std::process::Stdio::null()),
+        )
+        .await
+        .map_err(|e| CreateSystemdSysextError::Command(e).boxed())?;
+
         // We just need this up to continue, not enabled for the user.
         execute_command(
             Command::new("systemctl")
@@ -277,6 +286,14 @@ impl Action for CreateSystemdSysext {
             Command::new("systemctl")
                 .arg("stop")
                 .arg("nix.mount")
+                .stdin(std::process::Stdio::null()),
+        )
+        .await
+        .map_err(|e| CreateSystemdSysextError::Command(e).boxed())?;
+
+        execute_command(
+            Command::new("systemd-sysext")
+                .arg("refresh")
                 .stdin(std::process::Stdio::null()),
         )
         .await
