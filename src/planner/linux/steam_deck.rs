@@ -97,8 +97,6 @@ impl Planner for SteamDeck {
                 ),
                 Box::new(CreateDirectory::plan("/home/nix", None, None, None, true).await?),
                 Box::new(CreateSystemdSysext::plan(sysext, "/home/nix").await?),
-                Box::new(StartSystemdUnit::plan("systemd-sysext.service".to_string()).await?), // TODO: We should not disable this during uninstall if it's already on
-                Box::new(StartSystemdUnit::plan("nix.mount").await?),
                 Box::new(ProvisionNix::plan(self.settings.clone()).await?),
                 Box::new(ConfigureNix::plan(self.settings, Some(sysext)).await?),
                 // Valve does not ship the steam deck with a `systemd-sysext` workaround ala https://github.com/flatcar/init/pull/65.

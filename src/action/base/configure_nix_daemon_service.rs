@@ -269,20 +269,6 @@ impl Action for ConfigureNixDaemonService {
                         e
                     }).ok();
 
-                if sysext.is_some() {
-                    execute_command(Command::new("systemctl").args(["stop", "nix.mount"]))
-                        .await
-                        .map_err(|e| ConfigureNixDaemonServiceError::Command(e).boxed())
-                        .map_err(|e| {
-                            tracing::warn!(
-                                err = e,
-                                "Stopping `nix.mount` failed -- presuming it's already stopped"
-                            );
-                            e
-                        })
-                        .ok();
-                }
-
                 execute_command(
                     Command::new("systemd-tmpfiles")
                         .arg("--remove")

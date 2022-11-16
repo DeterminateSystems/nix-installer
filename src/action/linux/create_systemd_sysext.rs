@@ -8,6 +8,8 @@ use crate::{
 };
 use std::path::{Path, PathBuf};
 
+use super::StartSystemdUnit;
+
 const PATHS: &[&str] = &[
     "usr",
     "usr/lib",
@@ -25,6 +27,7 @@ pub struct CreateSystemdSysext {
     create_extension_release: CreateFile,
     nix_directory_unit: CreateFile,
     create_bind_mount_unit: CreateFile,
+    start_systemd_sysext_unit: StartSystemdUnit,
     action_state: ActionState,
 }
 
@@ -82,12 +85,13 @@ impl CreateSystemdSysext {
             "
             [Unit]\n\
             Description=Create a `/nix` directory to be used for bind mounting\n\
+            PropagatesStopTo=nix-daemon.service\n\
             \n\
             [Service]\n\
             Type=oneshot\n\
             ExecCondition=sh -c \"if [ -d /nix ]; then exit 1; else exit 0; fi\"
             ExecStart=steamos-readonly disable\n\
-            ExecStart=mkdir /nix\n\
+            ExecStart=mkdir -p /nix\n\
             ExecStart=steamos-readonly enable\n\
             ExecStop=steamos-readonly disable\n\
             ExecStop=rmdir /nix\n\
@@ -110,6 +114,7 @@ impl CreateSystemdSysext {
             [Unit]\n\
             Description=Mount `{persistence}` on `/nix`\n\
             PropagatesStopTo=nix-daemon.service\n\
+            PropagatesStopTo=nix-directory.service\n\
             After=nix-directory.service\n\
             Requires=nix-directory.service\n\
             ConditionPathIsDirectory=/nix\n\
@@ -136,6 +141,9 @@ impl CreateSystemdSysext {
         )
         .await?;
 
+        let start_systemd_sysext_unit =
+            StartSystemdUnit::plan("systemd-sysext.service".to_string()).await?; // TODO: We should not disable this during uninstall if it's already on
+
         Ok(Self {
             destination: destination.to_path_buf(),
             persistence: persistence.to_path_buf(),
@@ -143,6 +151,7 @@ impl CreateSystemdSysext {
             create_extension_release,
             nix_directory_unit,
             create_bind_mount_unit,
+            start_systemd_sysext_unit,
             action_state: ActionState::Uncompleted,
         })
     }
@@ -160,6 +169,7 @@ impl Action for CreateSystemdSysext {
             nix_directory_unit: _,
             create_directories: _,
             create_extension_release: _,
+            start_systemd_sysext_unit: _,
         } = &self;
         if self.action_state == ActionState::Completed {
             vec![]
@@ -183,6 +193,7 @@ impl Action for CreateSystemdSysext {
             create_extension_release,
             nix_directory_unit,
             create_bind_mount_unit,
+            start_systemd_sysext_unit,
         } = self;
         if *action_state == ActionState::Completed {
             tracing::trace!("Already completed: Creating sysext");
@@ -196,6 +207,17 @@ impl Action for CreateSystemdSysext {
         create_extension_release.execute().await?;
         nix_directory_unit.execute().await?;
         create_bind_mount_unit.execute().await?;
+
+        start_systemd_sysext_unit.execute().await?;
+        // We just need this up to continue, not enabled for the user.
+        execute_command(
+            Command::new("systemctl")
+                .arg("start")
+                .arg("nix.mount")
+                .stdin(std::process::Stdio::null()),
+        )
+        .await
+        .map_err(|e| CreateSystemdSysextError::Command(e).boxed())?;
 
         tracing::trace!("Created sysext");
         *action_state = ActionState::Completed;
@@ -211,6 +233,7 @@ impl Action for CreateSystemdSysext {
             create_extension_release: _,
             nix_directory_unit: _,
             create_bind_mount_unit: _,
+            start_systemd_sysext_unit: _,
         } = &self;
         if self.action_state == ActionState::Uncompleted {
             vec![]
@@ -232,6 +255,7 @@ impl Action for CreateSystemdSysext {
             create_extension_release,
             nix_directory_unit,
             create_bind_mount_unit,
+            start_systemd_sysext_unit,
         } = self;
         if *action_state == ActionState::Uncompleted {
             tracing::trace!("Already reverted: Removing sysext");
@@ -247,6 +271,18 @@ impl Action for CreateSystemdSysext {
         for create_directory in create_directories.iter_mut().rev() {
             create_directory.revert().await?;
         }
+
+        // We just need this up to continue, not enabled for the user.
+        execute_command(
+            Command::new("systemctl")
+                .arg("stop")
+                .arg("nix.mount")
+                .stdin(std::process::Stdio::null()),
+        )
+        .await
+        .map_err(|e| CreateSystemdSysextError::Command(e).boxed())?;
+
+        start_systemd_sysext_unit.revert().await?;
 
         execute_command(Command::new("systemd-sysext").arg("refresh"))
             .await
