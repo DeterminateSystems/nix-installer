@@ -8,46 +8,61 @@ on:
 jobs:
   lints:
     name: Lints
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-22.04
     steps:
       - uses: actions/checkout@v3
       - uses: cachix/install-nix-action@v17
         with:
           extra_nix_config: |
             access-tokens = github.com=${{ secrets.GITHUB_TOKEN }}
+      - name: Cache lint store (x86_64-linux)
+        id: lint-store-x86_64-linux
+        uses: actions/cache@v3
+        with:
+          path: ~/.ci-store
+          key: lint-store-x86_64-linux-${{ hashFiles('**/Cargo.lock', '**/flake.lock') }}-v1
       - name: Check rustfmt
-        run: nix develop --command ci-check-rustfmt
+        run: nix develop --store ~/.ci-store --command ci-check-rustfmt
       - name: Check Spelling
-        run: nix develop --command ci-check-spelling
+        run: nix develop --store ~/.ci-store --command ci-check-spelling
       - name: Check nixpkgs-fmt formatting
-        run: nix develop --command ci-check-nixpkgs-fmt
+        run: nix develop --store ~/.ci-store --command ci-check-nixpkgs-fmt
       - name: Check EditorConfig conformance
-        run: nix develop --command ci-check-editorconfig
+        run: nix develop --store ~/.ci-store --command ci-check-editorconfig
 
   build-x86_64-linux:
     name: Build x86_64 Linux
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-22.04
     steps:
       - uses: actions/checkout@v3
       - uses: cachix/install-nix-action@v17
         with:
           extra_nix_config: |
             access-tokens = github.com=${{ secrets.GITHUB_TOKEN }}
-      # Runs clippy as part of the preBuild.
+      - name: Cache build store (x86_64-linux)
+        id: build-store-x86_64-linux
+        uses: actions/cache@v3
+        with:
+          path: ~/.ci-store
+          key: build-store-x86_64-linux-${{ hashFiles('**/Cargo.lock', '**/flake.lock') }}-v1
       - name: Build harmonic
-        run: nix build .#packages.x86_64-linux.harmonic -L
+        run: nix build --store ~/.ci-store --print-build-logs .#packages.x86_64-linux.harmonic
       - name: Build harmonicStatic
-        run: nix build .#packages.x86_64-linux.harmonicStatic -L
+        run: nix build --store ~/.ci-store --print-build-logs .#packages.x86_64-linux.harmonicStatic
+      - name: Copy artifact
+        run: |
+          RESULT=$(nix eval --raw --store ~/.ci-store --print-build-logs .#packages.x86_64-linux.harmonicStatic --apply "x: \"$HOME/.ci-store\${x}\"")
+          cp $RESULT/bin/harmonic harmonic
       - name: Create artifact for x86_64-linux harmonicStatic
         uses: actions/upload-artifact@v3
         with:
           name: harmonic-x86_64-linux
           path: |
-            result/bin/harmonic
+            harmonic
 
   run-x86_64-linux:
     name: Run x86_64 Linux
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-22.04
     needs: build-x86_64-linux
     steps:
       - uses: actions/download-artifact@v3
@@ -63,19 +78,10 @@ jobs:
           nix run nixpkgs#fortune
       - name: Initial uninstall
         run: sudo RUST_LOG=harmonic=trace RUST_BACKTRACE=full ./harmonic uninstall --no-confirm
-      - name: Repeated install
-        run: sudo RUST_LOG=harmonic=trace RUST_BACKTRACE=full ./harmonic install linux-multi --extra-conf "access-tokens = github.com=${{ secrets.GITHUB_TOKEN }}" --no-confirm
-      - name: Repeated test run
-        run: |
-          . /nix/var/nix/profiles/default/etc/profile.d/nix-daemon.sh
-          nix run nixpkgs#fortune
-      - name: Repeated uninstall
-        run: sudo RUST_LOG=harmonic=trace RUST_BACKTRACE=full ./harmonic uninstall --no-confirm
-        
 
   build-x86_64-darwin:
     name: Build x86_64 Darwin
-    runs-on: macos-latest
+    runs-on: macos-12
     steps:
       - uses: actions/checkout@v3
       - uses: cachix/install-nix-action@v17
@@ -94,7 +100,7 @@ jobs:
 
   run-x86_64-darwin:
     name: Run x86_64 Darwin
-    runs-on: macos-latest
+    runs-on: macos-12
     needs: build-x86_64-darwin
     steps:
       - uses: actions/download-artifact@v3
