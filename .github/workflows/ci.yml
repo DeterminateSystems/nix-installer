@@ -50,7 +50,9 @@ jobs:
       - name: Build harmonicStatic
         run: nix build --store ~/.ci-store --print-build-logs .#packages.x86_64-linux.harmonicStatic
       - name: Copy artifact
-        run: cp result/bin/harmonic harmonic
+        run: |
+          RESULT=$(nix eval --raw --store ~/.ci-store --print-build-logs .#packages.x86_64-linux.harmonicStatic --apply "x: \"$HOME/.ci-store\${x}\"")
+          cp $RESULT/bin/harmonic harmonic
       - name: Create artifact for x86_64-linux harmonicStatic
         uses: actions/upload-artifact@v3
         with:
