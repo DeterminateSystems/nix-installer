@@ -96,32 +96,11 @@ main() {
     local need_tty=yes
     for arg in "$@"; do
         case "$arg" in
-            --help)
-                usage
-                exit 0
+            --no-confirm)
+                need_tty=no
                 ;;
             *)
-                OPTIND=1
-                if [ "${arg%%--*}" = "" ]; then
-                    # Long option (other than --help);
-                    # don't attempt to interpret it.
-                    continue
-                fi
-                while getopts :hy sub_arg "$arg"; do
-                    case "$sub_arg" in
-                        h)
-                            usage
-                            exit 0
-                            ;;
-                        y)
-                            # user wants to skip the prompt --
-                            # we don't need /dev/tty
-                            need_tty=no
-                            ;;
-                        *)
-                            ;;
-                        esac
-                done
+                continue
                 ;;
         esac
     done
@@ -499,7 +478,11 @@ downloader() {
         get_ciphersuites_for_curl
         _ciphersuites="$RETVAL"
         if [ -n "$_ciphersuites" ]; then
-            _err=$(curl $_retry --proto '=https' --tlsv1.2 --ciphers "$_ciphersuites" --silent --show-error --fail --location "$1" --output "$2" 2>&1)
+            if [ -n "$NIX_INSTALL_FORCE_ALLOW_HTTP" ]; then
+                _err=$(curl $_retry --silent --show-error --fail --location "$1" --output "$2" 2>&1)
+            else
+                _err=$(curl $_retry --proto '=https' --tlsv1.2 --ciphers "$_ciphersuites" --silent --show-error --fail --location "$1" --output "$2" 2>&1)
+            fi
             _status=$?
         else
             echo "Warning: Not enforcing strong cipher suites for TLS, this is potentially less secure"
