@@ -84,7 +84,7 @@ jobs:
         run: |
           mkdir -p ~/bin
           echo -e "#! /bin/sh\nexit 0" | sudo tee -a /bin/steamos-readonly
-          chmod +x /bin/steamos-readonly
+          sudo chmod +x /bin/steamos-readonly
 
       - name: Initial install
         run: sudo PATH=$PATH:$HOME/bin RUST_LOG=harmonic=trace RUST_BACKTRACE=full ./harmonic install steam-deck --extra-conf "access-tokens = github.com=${{ secrets.GITHUB_TOKEN }}" --no-confirm
