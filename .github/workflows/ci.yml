@@ -45,17 +45,18 @@ jobs:
         with:
           path: ~/.ci-store
           key: build-store-x86_64-linux-${{ hashFiles('**/Cargo.lock', '**/Flake.lock') }}-v1
-      # Runs clippy as part of the preBuild.
       - name: Build harmonic
         run: nix build --store ~/.ci-store --print-build-logs .#packages.x86_64-linux.harmonic
       - name: Build harmonicStatic
         run: nix build --store ~/.ci-store --print-build-logs .#packages.x86_64-linux.harmonicStatic
+      - name: Copy artifact
+        run: cp result/bin/harmonic harmonic
       - name: Create artifact for x86_64-linux harmonicStatic
         uses: actions/upload-artifact@v3
         with:
           name: harmonic-x86_64-linux
           path: |
-            result/bin/harmonic
+            harmonic
 
   run-x86_64-linux:
     name: Run x86_64 Linux
