@@ -76,32 +76,6 @@ jobs:
       - name: Initial uninstall
         run: sudo RUST_LOG=harmonic=trace RUST_BACKTRACE=full ./harmonic uninstall --no-confirm
 
-  run-steam-deck:
-    name: Run Steam Deck (mock)
-    runs-on: ubuntu-22.04
-    needs: build-x86_64-linux
-    steps:
-      - uses: actions/download-artifact@v3
-        with:
-          name: harmonic-x86_64-linux
-      - name: Set executable
-        run: chmod +x ./harmonic
-
-      - name: Initial install
-        run: sudo RUST_LOG=harmonic=trace RUST_BACKTRACE=full ./harmonic install steam-deck --extra-conf "access-tokens = github.com=${{ secrets.GITHUB_TOKEN }}" --no-confirm
-      - name: Initial uninstall (without a `nix run` first)
-        run: sudo RUST_LOG=harmonic=trace RUST_BACKTRACE=full ./harmonic uninstall --no-confirm
-
-      - name: Repeated install
-        run: sudo RUST_LOG=harmonic=trace RUST_BACKTRACE=full ./harmonic install linux-multi --extra-conf "access-tokens = github.com=${{ secrets.GITHUB_TOKEN }}" --no-confirm
-      - name: Repeated test run
-        run: |
-          . /nix/var/nix/profiles/default/etc/profile.d/nix-daemon.sh
-          nix run nixpkgs#fortune
-      - name: Repeated uninstall
-        run: sudo RUST_LOG=harmonic=trace RUST_BACKTRACE=full ./harmonic uninstall --no-confirm
-        
-
   build-x86_64-darwin:
     name: Build x86_64 Darwin
     runs-on: macos-12
