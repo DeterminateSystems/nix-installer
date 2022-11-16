@@ -1,14 +1,13 @@
-use tokio::process::Command;
-
-use crate::action::base::{CreateDirectory, CreateDirectoryError, CreateFile, CreateFileError};
-use crate::execute_command;
 use crate::{
-    action::{Action, ActionDescription, ActionState},
-    BoxableError,
+    action::{
+        base::{CreateDirectory, CreateDirectoryError, CreateFile, CreateFileError},
+        linux::StartSystemdUnit,
+        Action, ActionDescription, ActionState,
+    },
+    execute_command, BoxableError,
 };
 use std::path::{Path, PathBuf};
-
-use super::StartSystemdUnit;
+use tokio::process::Command;
 
 const PATHS: &[&str] = &[
     "usr",
