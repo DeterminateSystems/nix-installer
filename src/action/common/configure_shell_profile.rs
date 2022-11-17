@@ -57,15 +57,15 @@ impl ConfigureShellProfile {
 #[async_trait::async_trait]
 #[typetag::serde(name = "configure_shell_profile")]
 impl Action for ConfigureShellProfile {
-    fn describe_execute(&self) -> Vec<ActionDescription> {
-        if self.action_state == ActionState::Completed {
-            vec![]
-        } else {
-            vec![ActionDescription::new(
-                "Configure the shell profiles".to_string(),
-                vec!["Update shell profiles to import Nix".to_string()],
-            )]
-        }
+    fn tracing_synopsis(&self) -> String {
+        "Configure the shell profiles".to_string()
+    }
+
+    fn execute_description(&self) -> Vec<ActionDescription> {
+        vec![ActionDescription::new(
+            self.tracing_synopsis(),
+            vec!["Update shell profiles to import Nix".to_string()],
+        )]
     }
 
     #[tracing::instrument(skip_all)]
@@ -74,12 +74,6 @@ impl Action for ConfigureShellProfile {
             create_or_append_files,
             action_state,
         } = self;
-        if *action_state == ActionState::Completed {
-            tracing::trace!("Already completed: Configuring shell profile");
-            return Ok(());
-        }
-        *action_state = ActionState::Progress;
-        tracing::debug!("Configuring shell profile");
 
         let mut set = JoinSet::new();
         let mut errors = Vec::default();
@@ -113,20 +107,14 @@ impl Action for ConfigureShellProfile {
             }
         }
 
-        tracing::trace!("Configured shell profile");
-        *action_state = ActionState::Completed;
         Ok(())
     }
 
-    fn describe_revert(&self) -> Vec<ActionDescription> {
-        if self.action_state == ActionState::Uncompleted {
-            vec![]
-        } else {
-            vec![ActionDescription::new(
-                "Unconfigure the shell profiles".to_string(),
-                vec!["Update shell profiles to no longer import Nix".to_string()],
-            )]
-        }
+    fn revert_description(&self) -> Vec<ActionDescription> {
+        vec![ActionDescription::new(
+            "Unconfigure the shell profiles".to_string(),
+            vec!["Update shell profiles to no longer import Nix".to_string()],
+        )]
     }
 
     #[tracing::instrument(skip_all)]
@@ -135,12 +123,6 @@ impl Action for ConfigureShellProfile {
             create_or_append_files,
             action_state,
         } = self;
-        if *action_state == ActionState::Uncompleted {
-            tracing::trace!("Already reverted: Unconfiguring shell profile");
-            return Ok(());
-        }
-        *action_state = ActionState::Progress;
-        tracing::debug!("Unconfiguring shell profile");
 
         let mut set = JoinSet::new();
         let mut errors = Vec::default();
@@ -174,13 +156,15 @@ impl Action for ConfigureShellProfile {
             }
         }
 
-        tracing::trace!("Unconfigured shell profile");
-        *action_state = ActionState::Uncompleted;
         Ok(())
     }
 
     fn action_state(&self) -> ActionState {
         self.action_state
+    }
+
+    fn set_action_state(&mut self, action_state: ActionState) {
+        self.action_state = action_state;
     }
 }
 

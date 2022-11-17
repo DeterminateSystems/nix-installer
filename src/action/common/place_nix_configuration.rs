@@ -44,18 +44,18 @@ impl PlaceNixConfiguration {
 #[async_trait::async_trait]
 #[typetag::serde(name = "place_nix_configuration")]
 impl Action for PlaceNixConfiguration {
-    fn describe_execute(&self) -> Vec<ActionDescription> {
-        if self.action_state == ActionState::Completed {
-            vec![]
-        } else {
-            vec![ActionDescription::new(
-                format!("Place the nix configuration in `{NIX_CONF}`"),
-                vec![
-                    "This file is read by the Nix daemon to set its configuration options at runtime."
-                        .to_string(),
-                ],
-            )]
-        }
+    fn tracing_synopsis(&self) -> String {
+        format!("Place the nix configuration in `{NIX_CONF}`")
+    }
+
+    fn execute_description(&self) -> Vec<ActionDescription> {
+        vec![ActionDescription::new(
+            self.tracing_synopsis(),
+            vec![
+                "This file is read by the Nix daemon to set its configuration options at runtime."
+                    .to_string(),
+            ],
+        )]
     }
 
     #[tracing::instrument(skip_all)]
@@ -65,33 +65,21 @@ impl Action for PlaceNixConfiguration {
             create_directory,
             action_state,
         } = self;
-        if *action_state == ActionState::Completed {
-            tracing::trace!("Already completed: Placing Nix configuration");
-            return Ok(());
-        }
-        *action_state = ActionState::Progress;
-        tracing::debug!("Placing Nix configuration");
 
         create_directory.execute().await?;
         create_file.execute().await?;
 
-        tracing::trace!("Placed Nix configuration");
-        *action_state = ActionState::Completed;
         Ok(())
     }
 
-    fn describe_revert(&self) -> Vec<ActionDescription> {
-        if self.action_state == ActionState::Uncompleted {
-            vec![]
-        } else {
-            vec![ActionDescription::new(
-                format!("Remove the nix configuration in `{NIX_CONF}`"),
-                vec![
-                    "This file is read by the Nix daemon to set its configuration options at runtime."
-                        .to_string(),
-                ],
-            )]
-        }
+    fn revert_description(&self) -> Vec<ActionDescription> {
+        vec![ActionDescription::new(
+            format!("Remove the nix configuration in `{NIX_CONF}`"),
+            vec![
+                "This file is read by the Nix daemon to set its configuration options at runtime."
+                    .to_string(),
+            ],
+        )]
     }
 
     #[tracing::instrument(skip_all)]
@@ -101,23 +89,19 @@ impl Action for PlaceNixConfiguration {
             create_directory,
             action_state,
         } = self;
-        if *action_state == ActionState::Uncompleted {
-            tracing::trace!("Already reverted: Remove nix configuration");
-            return Ok(());
-        }
-        *action_state = ActionState::Progress;
-        tracing::debug!("Remove nix configuration");
 
         create_file.revert().await?;
         create_directory.revert().await?;
 
-        tracing::trace!("Removed nix configuration");
-        *action_state = ActionState::Uncompleted;
         Ok(())
     }
 
     fn action_state(&self) -> ActionState {
         self.action_state
+    }
+
+    fn set_action_state(&mut self, action_state: ActionState) {
+        self.action_state = action_state;
     }
 }
 

@@ -140,23 +140,22 @@ impl CreateApfsVolume {
 #[async_trait::async_trait]
 #[typetag::serde(name = "create_apfs_volume")]
 impl Action for CreateApfsVolume {
-    fn describe_execute(&self) -> Vec<ActionDescription> {
-        let Self {
-            disk,
-            name,
-            action_state: _,
-            ..
-        } = &self;
-        if self.action_state == ActionState::Completed {
-            vec![]
-        } else {
-            vec![ActionDescription::new(
-                format!("Create an APFS volume `{name}` on `{}`", disk.display()),
-                vec![format!(
-                    "Create a writable, persistent systemd system extension.",
-                )],
-            )]
-        }
+    fn tracing_synopsis(&self) -> String {
+        format!(
+            "Create an APFS volume `{}` on `{}`",
+            self.name,
+            self.disk.display()
+        )
+    }
+
+    fn execute_description(&self) -> Vec<ActionDescription> {
+        let Self { disk, name, .. } = &self;
+        vec![ActionDescription::new(
+            self.tracing_synopsis(),
+            vec![format!(
+                "Create a writable, persistent systemd system extension.",
+            )],
+        )]
     }
 
     #[tracing::instrument(skip_all, fields(destination,))]
@@ -220,23 +219,14 @@ impl Action for CreateApfsVolume {
         Ok(())
     }
 
-    fn describe_revert(&self) -> Vec<ActionDescription> {
-        let Self {
-            disk,
-            name,
-            action_state,
-            ..
-        } = &self;
-        if *action_state == ActionState::Uncompleted {
-            vec![]
-        } else {
-            vec![ActionDescription::new(
-                format!("Remove the APFS volume `{name}` on `{}`", disk.display()),
-                vec![format!(
-                    "Create a writable, persistent systemd system extension.",
-                )],
-            )]
-        }
+    fn revert_description(&self) -> Vec<ActionDescription> {
+        let Self { disk, name, .. } = &self;
+        vec![ActionDescription::new(
+            format!("Remove the APFS volume `{name}` on `{}`", disk.display()),
+            vec![format!(
+                "Create a writable, persistent systemd system extension.",
+            )],
+        )]
     }
 
     #[tracing::instrument(skip_all, fields(disk, name))]
@@ -285,6 +275,10 @@ impl Action for CreateApfsVolume {
 
     fn action_state(&self) -> ActionState {
         self.action_state
+    }
+
+    fn set_action_state(&mut self, action_state: ActionState) {
+        self.action_state = action_state;
     }
 }
 

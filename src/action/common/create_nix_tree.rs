@@ -42,27 +42,27 @@ impl CreateNixTree {
 #[async_trait::async_trait]
 #[typetag::serde(name = "create_nix_tree")]
 impl Action for CreateNixTree {
-    fn describe_execute(&self) -> Vec<ActionDescription> {
-        if self.action_state == ActionState::Completed {
-            vec![]
-        } else {
-            vec![ActionDescription::new(
-                format!("Create a directory tree in `/nix`"),
-                vec![
-                    format!(
-                        "Nix and the Nix daemon require a Nix Store, which will be stored at `/nix`"
-                    ),
-                    format!(
-                        "Creates: {}",
-                        PATHS
-                            .iter()
-                            .map(|v| format!("`{v}`"))
-                            .collect::<Vec<_>>()
-                            .join(", ")
-                    ),
-                ],
-            )]
-        }
+    fn tracing_synopsis(&self) -> String {
+        "Create a directory tree in `/nix`".to_string()
+    }
+
+    fn execute_description(&self) -> Vec<ActionDescription> {
+        vec![ActionDescription::new(
+            self.tracing_synopsis(),
+            vec![
+                format!(
+                    "Nix and the Nix daemon require a Nix Store, which will be stored at `/nix`"
+                ),
+                format!(
+                    "Creates: {}",
+                    PATHS
+                        .iter()
+                        .map(|v| format!("`{v}`"))
+                        .collect::<Vec<_>>()
+                        .join(", ")
+                ),
+            ],
+        )]
     }
 
     #[tracing::instrument(skip_all)]
@@ -71,45 +71,33 @@ impl Action for CreateNixTree {
             create_directories,
             action_state,
         } = self;
-        if *action_state == ActionState::Completed {
-            tracing::trace!("Already completed: Creating nix tree");
-            return Ok(());
-        }
-        *action_state = ActionState::Progress;
-        tracing::debug!("Creating nix tree");
 
         // Just do sequential since parallelizing this will have little benefit
         for create_directory in create_directories {
             create_directory.execute().await?
         }
 
-        tracing::trace!("Created nix tree");
-        *action_state = ActionState::Completed;
         Ok(())
     }
 
-    fn describe_revert(&self) -> Vec<ActionDescription> {
-        if self.action_state == ActionState::Uncompleted {
-            vec![]
-        } else {
-            vec![ActionDescription::new(
-                format!("Remove the directory tree in `/nix`"),
-                vec![
-                    format!(
-                        "Nix and the Nix daemon require a Nix Store, which will be stored at `/nix`"
-                    ),
-                    format!(
-                        "Removes: {}",
-                        PATHS
-                            .iter()
-                            .rev()
-                            .map(|v| format!("`{v}`"))
-                            .collect::<Vec<_>>()
-                            .join(", ")
-                    ),
-                ],
-            )]
-        }
+    fn revert_description(&self) -> Vec<ActionDescription> {
+        vec![ActionDescription::new(
+            format!("Remove the directory tree in `/nix`"),
+            vec![
+                format!(
+                    "Nix and the Nix daemon require a Nix Store, which will be stored at `/nix`"
+                ),
+                format!(
+                    "Removes: {}",
+                    PATHS
+                        .iter()
+                        .rev()
+                        .map(|v| format!("`{v}`"))
+                        .collect::<Vec<_>>()
+                        .join(", ")
+                ),
+            ],
+        )]
     }
 
     #[tracing::instrument(skip_all)]
@@ -118,25 +106,21 @@ impl Action for CreateNixTree {
             create_directories,
             action_state,
         } = self;
-        if *action_state == ActionState::Uncompleted {
-            tracing::trace!("Already reverted: Deleting nix tree");
-            return Ok(());
-        }
-        *action_state = ActionState::Progress;
-        tracing::debug!("Deleting nix tree");
 
         // Just do sequential since parallelizing this will have little benefit
         for create_directory in create_directories.iter_mut().rev() {
             create_directory.revert().await?
         }
 
-        tracing::trace!("Deleted nix tree");
-        *action_state = ActionState::Uncompleted;
         Ok(())
     }
 
     fn action_state(&self) -> ActionState {
         self.action_state
+    }
+
+    fn set_action_state(&mut self, action_state: ActionState) {
+        self.action_state = action_state;
     }
 }
 

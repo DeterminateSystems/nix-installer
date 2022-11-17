@@ -55,7 +55,11 @@ impl CreateUsersAndGroup {
 #[async_trait::async_trait]
 #[typetag::serde(name = "create_users_and_group")]
 impl Action for CreateUsersAndGroup {
-    fn describe_execute(&self) -> Vec<ActionDescription> {
+    fn tracing_synopsis(&self) -> String {
+        "Create build users and group".to_string()
+    }
+
+    fn execute_description(&self) -> Vec<ActionDescription> {
         let Self {
             daemon_user_count,
             nix_build_group_name,
@@ -66,20 +70,17 @@ impl Action for CreateUsersAndGroup {
             create_users: _,
             action_state: _,
         } = &self;
-        if self.action_state == ActionState::Completed {
-            vec![]
-        } else {
-            vec![
-                ActionDescription::new(
-                    format!("Create build users and group"),
-                    vec![
-                        format!("The nix daemon requires system users (and a group they share) which it can act as in order to build"),
-                        format!("Create group `{nix_build_group_name}` with uid `{nix_build_group_id}`"),
-                        format!("Create {daemon_user_count} users with prefix `{nix_build_user_prefix}` starting at uid `{nix_build_user_id_base}`"),
-                    ],
-                )
-            ]
-        }
+
+        vec![
+            ActionDescription::new(
+                self.tracing_synopsis(),
+                vec![
+                    format!("The nix daemon requires system users (and a group they share) which it can act as in order to build"),
+                    format!("Create group `{nix_build_group_name}` with uid `{nix_build_group_id}`"),
+                    format!("Create {daemon_user_count} users with prefix `{nix_build_user_prefix}` starting at uid `{nix_build_user_id_base}`"),
+                ],
+            )
+        ]
     }
 
     #[tracing::instrument(skip_all, fields(
@@ -100,12 +101,6 @@ impl Action for CreateUsersAndGroup {
             nix_build_user_id_base: _,
             action_state,
         } = self;
-        if *action_state == ActionState::Completed {
-            tracing::trace!("Already completed: Creating users and groups");
-            return Ok(());
-        }
-        *action_state = ActionState::Progress;
-        tracing::debug!("Creating users and groups");
 
         // Create group
         create_group.execute().await?;
@@ -135,12 +130,10 @@ impl Action for CreateUsersAndGroup {
         //     }
         // }
 
-        tracing::trace!("Created users and groups");
-        *action_state = ActionState::Completed;
         Ok(())
     }
 
-    fn describe_revert(&self) -> Vec<ActionDescription> {
+    fn revert_description(&self) -> Vec<ActionDescription> {
         let Self {
             daemon_user_count,
             nix_build_group_name,
@@ -185,13 +178,6 @@ impl Action for CreateUsersAndGroup {
             nix_build_user_id_base: _,
             action_state,
         } = self;
-        if *action_state == ActionState::Uncompleted {
-            tracing::trace!("Already reverted: Delete users and groups");
-            return Ok(());
-        }
-        *action_state = ActionState::Progress;
-        tracing::debug!("Delete users and groups");
-
         let mut set = JoinSet::new();
 
         let mut errors = Vec::default();
@@ -223,13 +209,15 @@ impl Action for CreateUsersAndGroup {
         // Create group
         create_group.revert().await?;
 
-        tracing::trace!("Deleted users and groups");
-        *action_state = ActionState::Uncompleted;
         Ok(())
     }
 
     fn action_state(&self) -> ActionState {
         self.action_state
+    }
+
+    fn set_action_state(&mut self, action_state: ActionState) {
+        self.action_state = action_state;
     }
 }
 

@@ -25,15 +25,12 @@ impl SetupDefaultProfile {
 #[async_trait::async_trait]
 #[typetag::serde(name = "setup_default_profile")]
 impl Action for SetupDefaultProfile {
-    fn describe_execute(&self) -> Vec<ActionDescription> {
-        if self.action_state == ActionState::Completed {
-            vec![]
-        } else {
-            vec![ActionDescription::new(
-                "Setup the default Nix profile".to_string(),
-                vec!["TODO".to_string()],
-            )]
-        }
+    fn tracing_synopsis(&self) -> String {
+        "Setup the default Nix profile".to_string()
+    }
+
+    fn execute_description(&self) -> Vec<ActionDescription> {
+        vec![ActionDescription::new(self.tracing_synopsis(), vec![])]
     }
 
     #[tracing::instrument(skip_all, fields(
@@ -44,11 +41,6 @@ impl Action for SetupDefaultProfile {
             channels,
             action_state,
         } = self;
-        if *action_state == ActionState::Completed {
-            tracing::trace!("Already completed: Setting up default profile");
-            return Ok(());
-        }
-        tracing::debug!("Setting up default profile");
 
         // Find an `nix` package
         let nix_pkg_glob = "/nix/store/*-nix-*";
@@ -147,45 +139,31 @@ impl Action for SetupDefaultProfile {
                 .map_err(|e| SetupDefaultProfileError::Command(e).boxed())?;
         }
 
-        tracing::trace!("Set up default profile");
-        *action_state = ActionState::Completed;
         Ok(())
     }
 
-    fn describe_revert(&self) -> Vec<ActionDescription> {
-        if self.action_state == ActionState::Uncompleted {
-            vec![]
-        } else {
-            vec![ActionDescription::new(
-                "Unset the default Nix profile".to_string(),
-                vec!["TODO".to_string()],
-            )]
-        }
+    fn revert_description(&self) -> Vec<ActionDescription> {
+        vec![ActionDescription::new(
+            "Unset the default Nix profile".to_string(),
+            vec!["TODO".to_string()],
+        )]
     }
 
     #[tracing::instrument(skip_all, fields(
         channels = %self.channels.join(","),
     ))]
     async fn revert(&mut self) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
-        let Self {
-            channels: _,
-            action_state,
-        } = self;
-        if *action_state == ActionState::Uncompleted {
-            tracing::trace!("Already reverted: Unset default profile");
-            return Ok(());
-        }
-        tracing::debug!("Unsetting default profile (mostly noop)");
-
         std::env::remove_var("NIX_SSL_CERT_FILE");
 
-        tracing::trace!("Unset default profile (mostly noop)");
-        *action_state = ActionState::Completed;
         Ok(())
     }
 
     fn action_state(&self) -> ActionState {
         self.action_state
+    }
+
+    fn set_action_state(&mut self, action_state: ActionState) {
+        self.action_state = action_state;
     }
 }
 

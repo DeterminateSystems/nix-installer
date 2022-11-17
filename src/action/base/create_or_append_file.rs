@@ -50,23 +50,12 @@ impl CreateOrAppendFile {
 #[async_trait::async_trait]
 #[typetag::serde(name = "create_or_append_file")]
 impl Action for CreateOrAppendFile {
-    fn describe_execute(&self) -> Vec<ActionDescription> {
-        let Self {
-            path,
-            user: _,
-            group: _,
-            mode: _,
-            buf: _,
-            action_state: _,
-        } = &self;
-        if self.action_state == ActionState::Completed {
-            vec![]
-        } else {
-            vec![ActionDescription::new(
-                format!("Create or append file `{}`", path.display()),
-                vec![],
-            )]
-        }
+    fn tracing_synopsis(&self) -> String {
+        format!("Create or append file `{}`", self.path.display())
+    }
+
+    fn execute_description(&self) -> Vec<ActionDescription> {
+        vec![ActionDescription::new(self.tracing_synopsis(), vec![])]
     }
 
     #[tracing::instrument(skip_all, fields(
@@ -84,11 +73,6 @@ impl Action for CreateOrAppendFile {
             buf,
             action_state,
         } = self;
-        if *action_state == ActionState::Completed {
-            tracing::trace!("Already completed: Creating or appending fragment to file");
-            return Ok(());
-        }
-        tracing::debug!("Creating or appending fragment to file");
 
         let mut file = OpenOptions::new()
             .create(true)
@@ -138,12 +122,10 @@ impl Action for CreateOrAppendFile {
         chown(path, uid, gid)
             .map_err(|e| CreateOrAppendFileError::Chown(path.clone(), e).boxed())?;
 
-        tracing::trace!("Created or appended fragment to file");
-        *action_state = ActionState::Completed;
         Ok(())
     }
 
-    fn describe_revert(&self) -> Vec<ActionDescription> {
+    fn revert_description(&self) -> Vec<ActionDescription> {
         let Self {
             path,
             user: _,
@@ -152,17 +134,13 @@ impl Action for CreateOrAppendFile {
             buf,
             action_state: _,
         } = &self;
-        if self.action_state == ActionState::Uncompleted {
-            vec![]
-        } else {
-            vec![ActionDescription::new(
-                format!("Delete Nix related fragment from file `{}`", path.display()),
-                vec![format!(
-                    "Delete Nix related fragment from file `{}`. Fragment: `{buf}`",
-                    path.display()
-                )],
-            )]
-        }
+        vec![ActionDescription::new(
+            format!("Delete Nix related fragment from file `{}`", path.display()),
+            vec![format!(
+                "Delete Nix related fragment from file `{}`. Fragment: `{buf}`",
+                path.display()
+            )],
+        )]
     }
 
     #[tracing::instrument(skip_all, fields(
@@ -180,12 +158,6 @@ impl Action for CreateOrAppendFile {
             buf,
             action_state,
         } = self;
-        if *action_state == ActionState::Uncompleted {
-            tracing::trace!("Already completed: Removing fragment from file (and deleting it if it becomes empty)");
-            return Ok(());
-        }
-        tracing::debug!("Removing fragment from file (and deleting it if it becomes empty)");
-
         let mut file = OpenOptions::new()
             .create(false)
             .write(true)
@@ -208,8 +180,6 @@ impl Action for CreateOrAppendFile {
             remove_file(&path)
                 .await
                 .map_err(|e| CreateOrAppendFileError::RemoveFile(path.to_owned(), e).boxed())?;
-
-            tracing::trace!("Removed file (since all content was removed)");
         } else {
             file.seek(SeekFrom::Start(0))
                 .await
@@ -217,15 +187,16 @@ impl Action for CreateOrAppendFile {
             file.write_all(file_contents.as_bytes())
                 .await
                 .map_err(|e| CreateOrAppendFileError::WriteFile(path.to_owned(), e).boxed())?;
-
-            tracing::trace!("Removed fragment from from file");
         }
-        *action_state = ActionState::Uncompleted;
         Ok(())
     }
 
     fn action_state(&self) -> ActionState {
         self.action_state
+    }
+
+    fn set_action_state(&mut self, action_state: ActionState) {
+        self.action_state = action_state;
     }
 }
 

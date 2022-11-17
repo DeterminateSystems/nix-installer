@@ -34,20 +34,18 @@ impl FetchNix {
 #[async_trait::async_trait]
 #[typetag::serde(name = "fetch_nix")]
 impl Action for FetchNix {
-    fn describe_execute(&self) -> Vec<ActionDescription> {
-        let Self {
-            url,
-            dest,
-            action_state: _,
-        } = &self;
-        if self.action_state == ActionState::Completed {
-            vec![]
-        } else {
-            vec![ActionDescription::new(
-                format!("Fetch Nix from `{url}`"),
-                vec![format!("Unpack it to `{}` (moved later)", dest.display())],
-            )]
-        }
+    fn tracing_synopsis(&self) -> String {
+        format!("Fetch Nix from `{}`", self.url)
+    }
+
+    fn execute_description(&self) -> Vec<ActionDescription> {
+        vec![ActionDescription::new(
+            self.tracing_synopsis(),
+            vec![format!(
+                "Unpack it to `{}` (moved later)",
+                self.dest.display()
+            )],
+        )]
     }
 
     #[tracing::instrument(skip_all, fields(
@@ -60,11 +58,6 @@ impl Action for FetchNix {
             dest,
             action_state,
         } = self;
-        if *action_state == ActionState::Completed {
-            tracing::trace!("Already completed: Fetching Nix");
-            return Ok(());
-        }
-        tracing::debug!("Fetching Nix");
 
         let res = reqwest::get(url.clone())
             .await
@@ -83,17 +76,11 @@ impl Action for FetchNix {
             .unpack(&dest_clone)
             .map_err(|e| FetchNixError::Unarchive(e).boxed())?;
 
-        tracing::trace!("Fetched Nix");
-        *action_state = ActionState::Completed;
         Ok(())
     }
 
-    fn describe_revert(&self) -> Vec<ActionDescription> {
-        if self.action_state == ActionState::Uncompleted {
-            vec![]
-        } else {
-            vec![/* Deliberately empty -- this is a noop */]
-        }
+    fn revert_description(&self) -> Vec<ActionDescription> {
+        vec![/* Deliberately empty -- this is a noop */]
     }
 
     #[tracing::instrument(skip_all, fields(
@@ -107,17 +94,15 @@ impl Action for FetchNix {
             action_state,
         } = self;
 
-        if *action_state == ActionState::Uncompleted {
-            tracing::trace!("Already reverted: Unfetch Nix (noop)");
-            return Ok(());
-        }
-        tracing::debug!("Unfetch Nix (noop)");
-        *action_state = ActionState::Uncompleted;
         Ok(())
     }
 
     fn action_state(&self) -> ActionState {
         self.action_state
+    }
+
+    fn set_action_state(&mut self, action_state: ActionState) {
+        self.action_state = action_state;
     }
 }
 

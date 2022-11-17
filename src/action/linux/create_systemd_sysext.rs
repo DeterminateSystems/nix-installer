@@ -93,24 +93,20 @@ impl CreateSystemdSysext {
 #[async_trait::async_trait]
 #[typetag::serde(name = "create_systemd_sysext")]
 impl Action for CreateSystemdSysext {
-    fn describe_execute(&self) -> Vec<ActionDescription> {
-        let Self {
-            action_state: _,
-            destination,
-            create_bind_mount_unit: _,
-            create_directories: _,
-            create_extension_release: _,
-        } = &self;
-        if self.action_state == ActionState::Completed {
-            vec![]
-        } else {
-            vec![ActionDescription::new(
-                format!("Create a systemd sysext at `{}`", destination.display()),
-                vec![format!(
-                    "Create a writable, persistent systemd system extension.",
-                )],
-            )]
-        }
+    fn tracing_synopsis(&self) -> String {
+        format!(
+            "Create a systemd sysext at `{}`",
+            self.destination.display()
+        )
+    }
+
+    fn execute_description(&self) -> Vec<ActionDescription> {
+        vec![ActionDescription::new(
+            self.tracing_synopsis(),
+            vec![format!(
+                "Create a writable, persistent systemd system extension.",
+            )],
+        )]
     }
 
     #[tracing::instrument(skip_all, fields(destination,))]
@@ -139,22 +135,14 @@ impl Action for CreateSystemdSysext {
         Ok(())
     }
 
-    fn describe_revert(&self) -> Vec<ActionDescription> {
-        let Self {
-            destination,
-            action_state: _,
-            create_directories: _,
-            create_extension_release: _,
-            create_bind_mount_unit: _,
-        } = &self;
-        if self.action_state == ActionState::Uncompleted {
-            vec![]
-        } else {
-            vec![ActionDescription::new(
-                format!("Remove the sysext located at `{}`", destination.display()),
-                vec![],
-            )]
-        }
+    fn revert_description(&self) -> Vec<ActionDescription> {
+        vec![ActionDescription::new(
+            format!(
+                "Remove the sysext located at `{}`",
+                self.destination.display()
+            ),
+            vec![],
+        )]
     }
 
     #[tracing::instrument(skip_all, fields(destination,))]
@@ -187,6 +175,10 @@ impl Action for CreateSystemdSysext {
 
     fn action_state(&self) -> ActionState {
         self.action_state
+    }
+
+    fn set_action_state(&mut self, action_state: ActionState) {
+        self.action_state = action_state;
     }
 }
 

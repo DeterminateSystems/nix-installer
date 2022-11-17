@@ -45,23 +45,15 @@ impl PlaceChannelConfiguration {
 #[async_trait::async_trait]
 #[typetag::serde(name = "place_channel_configuration")]
 impl Action for PlaceChannelConfiguration {
-    fn describe_execute(&self) -> Vec<ActionDescription> {
-        let Self {
-            channels: _,
-            create_file,
-            action_state: _,
-        } = self;
-        if self.action_state == ActionState::Completed {
-            vec![]
-        } else {
-            vec![ActionDescription::new(
-                format!(
-                    "Place channel configuration at `{}`",
-                    create_file.path.display()
-                ),
-                vec![],
-            )]
-        }
+    fn tracing_synopsis(&self) -> String {
+        format!(
+            "Place channel configuration at `{}`",
+            self.create_file.path.display()
+        )
+    }
+
+    fn execute_description(&self) -> Vec<ActionDescription> {
+        vec![ActionDescription::new(self.tracing_synopsis(), vec![])]
     }
 
     #[tracing::instrument(skip_all, fields(
@@ -71,39 +63,22 @@ impl Action for PlaceChannelConfiguration {
         let Self {
             create_file,
             channels: _,
-            action_state,
+            action_state: _,
         } = self;
-        if *action_state == ActionState::Completed {
-            tracing::trace!("Already completed: Placing channel configuration");
-            return Ok(());
-        }
-        *action_state = ActionState::Progress;
-        tracing::debug!("Placing channel configuration");
 
         create_file.execute().await?;
 
-        tracing::trace!("Placed channel configuration");
-        *action_state = ActionState::Completed;
         Ok(())
     }
 
-    fn describe_revert(&self) -> Vec<ActionDescription> {
-        let Self {
-            channels: _,
-            create_file,
-            action_state: _,
-        } = self;
-        if self.action_state == ActionState::Uncompleted {
-            vec![]
-        } else {
-            vec![ActionDescription::new(
-                format!(
-                    "Remove channel configuration at `{}`",
-                    create_file.path.display()
-                ),
-                vec![],
-            )]
-        }
+    fn revert_description(&self) -> Vec<ActionDescription> {
+        vec![ActionDescription::new(
+            format!(
+                "Remove channel configuration at `{}`",
+                self.create_file.path.display()
+            ),
+            vec![],
+        )]
     }
 
     #[tracing::instrument(skip_all, fields(
@@ -113,24 +88,20 @@ impl Action for PlaceChannelConfiguration {
         let Self {
             create_file,
             channels: _,
-            action_state,
+            action_state: _,
         } = self;
-        if *action_state == ActionState::Uncompleted {
-            tracing::trace!("Already reverted: Removing channel configuration");
-            return Ok(());
-        }
-        *action_state = ActionState::Progress;
-        tracing::debug!("Removing channel configuration");
 
         create_file.revert().await?;
 
-        tracing::debug!("Removed channel configuration");
-        *action_state = ActionState::Uncompleted;
         Ok(())
     }
 
     fn action_state(&self) -> ActionState {
         self.action_state
+    }
+
+    fn set_action_state(&mut self, action_state: ActionState) {
+        self.action_state = action_state;
     }
 }
 

@@ -5,7 +5,7 @@ use tokio::sync::broadcast::Receiver;
 use tokio_util::sync::CancellationToken;
 
 use crate::{
-    action::{Action, ActionDescription},
+    action::{Action, ActionDescription, ActionImplementation},
     planner::Planner,
     HarmonicError,
 };

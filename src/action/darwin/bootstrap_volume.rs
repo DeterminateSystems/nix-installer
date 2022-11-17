@@ -30,15 +30,12 @@ impl BootstrapVolume {
 #[async_trait::async_trait]
 #[typetag::serde(name = "bootstrap_volume")]
 impl Action for BootstrapVolume {
-    fn describe_execute(&self) -> Vec<ActionDescription> {
-        if self.action_state == ActionState::Completed {
-            vec![]
-        } else {
-            vec![ActionDescription::new(
-                format!("Bootstrap and kickstart `{}`", self.path.display()),
-                vec![],
-            )]
-        }
+    fn tracing_synopsis(&self) -> String {
+        format!("Bootstrap and kickstart `{}`", self.path.display())
+    }
+
+    fn execute_description(&self) -> Vec<ActionDescription> {
+        vec![ActionDescription::new(self.tracing_synopsis(), vec![])]
     }
 
     #[tracing::instrument(skip_all, fields(
@@ -73,15 +70,11 @@ impl Action for BootstrapVolume {
         Ok(())
     }
 
-    fn describe_revert(&self) -> Vec<ActionDescription> {
-        if self.action_state == ActionState::Uncompleted {
-            vec![]
-        } else {
-            vec![ActionDescription::new(
-                format!("Stop `{}`", self.path.display()),
-                vec![],
-            )]
-        }
+    fn revert_description(&self) -> Vec<ActionDescription> {
+        vec![ActionDescription::new(
+            format!("Stop `{}`", self.path.display()),
+            vec![],
+        )]
     }
 
     #[tracing::instrument(skip_all, fields(
@@ -111,6 +104,10 @@ impl Action for BootstrapVolume {
 
     fn action_state(&self) -> ActionState {
         self.action_state
+    }
+
+    fn set_action_state(&mut self, action_state: ActionState) {
+        self.action_state = action_state;
     }
 }
 

@@ -27,18 +27,18 @@ impl MoveUnpackedNix {
 #[async_trait::async_trait]
 #[typetag::serde(name = "mount_unpacked_nix")]
 impl Action for MoveUnpackedNix {
-    fn describe_execute(&self) -> Vec<ActionDescription> {
-        if self.action_state == ActionState::Completed {
-            vec![]
-        } else {
-            vec![ActionDescription::new(
-                format!("Move the downloaded Nix into `/nix`"),
-                vec![format!(
-                    "Nix is being downloaded to `{}` and should be in `nix`",
-                    self.src.display(),
-                )],
-            )]
-        }
+    fn tracing_synopsis(&self) -> String {
+        "Move the downloaded Nix into `/nix`".to_string()
+    }
+
+    fn execute_description(&self) -> Vec<ActionDescription> {
+        vec![ActionDescription::new(
+            format!("Move the downloaded Nix into `/nix`"),
+            vec![format!(
+                "Nix is being downloaded to `{}` and should be in `nix`",
+                self.src.display(),
+            )],
+        )]
     }
 
     #[tracing::instrument(skip_all, fields(
@@ -81,12 +81,8 @@ impl Action for MoveUnpackedNix {
         Ok(())
     }
 
-    fn describe_revert(&self) -> Vec<ActionDescription> {
-        if self.action_state == ActionState::Uncompleted {
-            vec![]
-        } else {
-            vec![/* Deliberately empty -- this is a noop */]
-        }
+    fn revert_description(&self) -> Vec<ActionDescription> {
+        vec![/* Deliberately empty -- this is a noop */]
     }
 
     #[tracing::instrument(skip_all, fields(
@@ -94,21 +90,16 @@ impl Action for MoveUnpackedNix {
         dest = DEST,
     ))]
     async fn revert(&mut self) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
-        let Self {
-            src: _,
-            action_state,
-        } = self;
-        if *action_state == ActionState::Uncompleted {
-            tracing::trace!("Already reverted: Unmove Nix (noop)");
-            return Ok(());
-        }
-        tracing::debug!("Unmove Nix (noop)");
-        *action_state = ActionState::Uncompleted;
+        // Noop
         Ok(())
     }
 
     fn action_state(&self) -> ActionState {
         self.action_state
+    }
+
+    fn set_action_state(&mut self, action_state: ActionState) {
+        self.action_state = action_state;
     }
 }
 

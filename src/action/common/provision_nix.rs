@@ -51,7 +51,11 @@ impl ProvisionNix {
 #[async_trait::async_trait]
 #[typetag::serde(name = "provision_nix")]
 impl Action for ProvisionNix {
-    fn describe_execute(&self) -> Vec<ActionDescription> {
+    fn tracing_synopsis(&self) -> String {
+        "Provision Nix".to_string()
+    }
+
+    fn execute_description(&self) -> Vec<ActionDescription> {
         let Self {
             fetch_nix,
             create_users_and_group,
@@ -59,17 +63,14 @@ impl Action for ProvisionNix {
             move_unpacked_nix,
             action_state: _,
         } = &self;
-        if self.action_state == ActionState::Completed {
-            vec![]
-        } else {
-            let mut buf = Vec::default();
-            buf.append(&mut fetch_nix.describe_execute());
-            buf.append(&mut create_users_and_group.describe_execute());
-            buf.append(&mut create_nix_tree.describe_execute());
-            buf.append(&mut move_unpacked_nix.describe_execute());
 
-            buf
-        }
+        let mut buf = Vec::default();
+        buf.append(&mut fetch_nix.execute_description());
+        buf.append(&mut create_users_and_group.execute_description());
+        buf.append(&mut create_nix_tree.execute_description());
+        buf.append(&mut move_unpacked_nix.execute_description());
+
+        buf
     }
 
     #[tracing::instrument(skip_all)]
@@ -106,7 +107,7 @@ impl Action for ProvisionNix {
         Ok(())
     }
 
-    fn describe_revert(&self) -> Vec<ActionDescription> {
+    fn revert_description(&self) -> Vec<ActionDescription> {
         let Self {
             fetch_nix,
             create_users_and_group,
@@ -114,16 +115,13 @@ impl Action for ProvisionNix {
             move_unpacked_nix,
             action_state: _,
         } = &self;
-        if self.action_state == ActionState::Uncompleted {
-            vec![]
-        } else {
-            let mut buf = Vec::default();
-            buf.append(&mut move_unpacked_nix.describe_revert());
-            buf.append(&mut create_nix_tree.describe_revert());
-            buf.append(&mut create_users_and_group.describe_revert());
-            buf.append(&mut fetch_nix.describe_revert());
-            buf
-        }
+
+        let mut buf = Vec::default();
+        buf.append(&mut move_unpacked_nix.revert_description());
+        buf.append(&mut create_nix_tree.revert_description());
+        buf.append(&mut create_users_and_group.revert_description());
+        buf.append(&mut fetch_nix.revert_description());
+        buf
     }
 
     #[tracing::instrument(skip_all)]
@@ -168,6 +166,10 @@ impl Action for ProvisionNix {
 
     fn action_state(&self) -> ActionState {
         self.action_state
+    }
+
+    fn set_action_state(&mut self, action_state: ActionState) {
+        self.action_state = action_state;
     }
 }
 

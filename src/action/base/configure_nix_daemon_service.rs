@@ -48,20 +48,19 @@ impl ConfigureNixDaemonService {
 #[async_trait::async_trait]
 #[typetag::serde(name = "configure_nix_daemon")]
 impl Action for ConfigureNixDaemonService {
-    fn describe_execute(&self) -> Vec<ActionDescription> {
-        if self.action_state == ActionState::Completed {
-            vec![]
-        } else {
-            vec![ActionDescription::new(
-                "Configure Nix daemon related settings with systemd".to_string(),
-                vec![
-                    "Run `systemd-tempfiles --create --prefix=/nix/var/nix`".to_string(),
-                    "Run `systemctl link {SERVICE_SRC}`".to_string(),
-                    "Run `systemctl link {SOCKET_SRC}`".to_string(),
-                    "Run `systemctl daemon-reload`".to_string(),
-                ],
-            )]
-        }
+    fn tracing_synopsis(&self) -> String {
+        "Configure Nix daemon related settings with systemd".to_string()
+    }
+    fn execute_description(&self) -> Vec<ActionDescription> {
+        vec![ActionDescription::new(
+            self.tracing_synopsis(),
+            vec![
+                "Run `systemd-tempfiles --create --prefix=/nix/var/nix`".to_string(),
+                "Run `systemctl link {SERVICE_SRC}`".to_string(),
+                "Run `systemctl link {SOCKET_SRC}`".to_string(),
+                "Run `systemctl daemon-reload`".to_string(),
+            ],
+        )]
     }
 
     #[tracing::instrument(skip_all)]
@@ -166,31 +165,20 @@ impl Action for ConfigureNixDaemonService {
         Ok(())
     }
 
-    fn describe_revert(&self) -> Vec<ActionDescription> {
-        if self.action_state == ActionState::Uncompleted {
-            vec![]
-        } else {
-            vec![ActionDescription::new(
-                "Unconfigure Nix daemon related settings with systemd".to_string(),
-                vec![
-                    "Run `systemctl disable {SOCKET_SRC}`".to_string(),
-                    "Run `systemctl disable {SERVICE_SRC}`".to_string(),
-                    "Run `systemd-tempfiles --remove --prefix=/nix/var/nix`".to_string(),
-                    "Run `systemctl daemon-reload`".to_string(),
-                ],
-            )]
-        }
+    fn revert_description(&self) -> Vec<ActionDescription> {
+        vec![ActionDescription::new(
+            "Unconfigure Nix daemon related settings with systemd".to_string(),
+            vec![
+                "Run `systemctl disable {SOCKET_SRC}`".to_string(),
+                "Run `systemctl disable {SERVICE_SRC}`".to_string(),
+                "Run `systemd-tempfiles --remove --prefix=/nix/var/nix`".to_string(),
+                "Run `systemctl daemon-reload`".to_string(),
+            ],
+        )]
     }
 
     #[tracing::instrument(skip_all)]
     async fn revert(&mut self) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
-        let Self { action_state } = self;
-        if *action_state == ActionState::Uncompleted {
-            tracing::trace!("Already reverted: Unconfiguring nix daemon service");
-            return Ok(());
-        }
-        tracing::debug!("Unconfiguring nix daemon service");
-
         match OperatingSystem::host() {
             OperatingSystem::MacOSX {
                 major: _,
@@ -247,13 +235,15 @@ impl Action for ConfigureNixDaemonService {
             },
         };
 
-        tracing::trace!("Unconfigured nix daemon service");
-        *action_state = ActionState::Uncompleted;
         Ok(())
     }
 
     fn action_state(&self) -> ActionState {
         self.action_state
+    }
+
+    fn set_action_state(&mut self, action_state: ActionState) {
+        self.action_state = action_state;
     }
 }
 

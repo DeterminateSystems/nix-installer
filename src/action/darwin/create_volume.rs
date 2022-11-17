@@ -36,19 +36,16 @@ impl CreateVolume {
 #[async_trait::async_trait]
 #[typetag::serde(name = "create_volume")]
 impl Action for CreateVolume {
-    fn describe_execute(&self) -> Vec<ActionDescription> {
-        if self.action_state == ActionState::Completed {
-            vec![]
-        } else {
-            vec![ActionDescription::new(
-                format!(
-                    "Create a volume on `{}` named `{}`",
-                    self.disk.display(),
-                    self.name
-                ),
-                vec![],
-            )]
-        }
+    fn tracing_synopsis(&self) -> String {
+        format!(
+            "Create a volume on `{}` named `{}`",
+            self.disk.display(),
+            self.name
+        )
+    }
+
+    fn execute_description(&self) -> Vec<ActionDescription> {
+        vec![ActionDescription::new(self.tracing_synopsis(), vec![])]
     }
 
     #[tracing::instrument(skip_all, fields(
@@ -93,19 +90,15 @@ impl Action for CreateVolume {
         Ok(())
     }
 
-    fn describe_revert(&self) -> Vec<ActionDescription> {
-        if self.action_state == ActionState::Uncompleted {
-            vec![]
-        } else {
-            vec![ActionDescription::new(
-                format!(
-                    "Remove the volume on `{}` named `{}`",
-                    self.disk.display(),
-                    self.name
-                ),
-                vec![],
-            )]
-        }
+    fn revert_description(&self) -> Vec<ActionDescription> {
+        vec![ActionDescription::new(
+            format!(
+                "Remove the volume on `{}` named `{}`",
+                self.disk.display(),
+                self.name
+            ),
+            vec![],
+        )]
     }
 
     #[tracing::instrument(skip_all, fields(
@@ -141,6 +134,10 @@ impl Action for CreateVolume {
 
     fn action_state(&self) -> ActionState {
         self.action_state
+    }
+
+    fn set_action_state(&mut self, action_state: ActionState) {
+        self.action_state = action_state;
     }
 }
 

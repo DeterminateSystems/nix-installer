@@ -25,19 +25,12 @@ impl SystemdSysextMerge {
 #[async_trait::async_trait]
 #[typetag::serde(name = "systemd_sysext_merge")]
 impl Action for SystemdSysextMerge {
+    fn tracing_synopsis(&self) -> String {
+        format!("Run `systemd-sysext merge `{}`", device.display())
+    }
+
     fn describe_execute(&self) -> Vec<ActionDescription> {
-        let Self {
-            action_state,
-            device,
-        } = self;
-        if *action_state == ActionState::Completed {
-            vec![]
-        } else {
-            vec![ActionDescription::new(
-                format!("Run `systemd-sysext merge `{}`", device.display()),
-                vec![],
-            )]
-        }
+        vec![ActionDescription::new(self.tracing_synopsis(), vec![])]
     }
 
     #[tracing::instrument(skip_all, fields(
@@ -69,16 +62,12 @@ impl Action for SystemdSysextMerge {
     }
 
     fn describe_revert(&self) -> Vec<ActionDescription> {
-        if self.action_state == ActionState::Uncompleted {
-            vec![]
-        } else {
-            vec![ActionDescription::new(
+        vec![ActionDescription::new(
                 "Stop the systemd Nix service and socket".to_string(),
                 vec![
                     "The `nix` command line tool communicates with a running Nix daemon managed by your init system".to_string()
                 ]
             )]
-        }
     }
 
     #[tracing::instrument(skip_all, fields(
@@ -112,6 +101,10 @@ impl Action for SystemdSysextMerge {
 
     fn action_state(&self) -> ActionState {
         self.action_state
+    }
+
+    fn set_action_state(&mut self, action_state: ActionState) {
+        self.action_state = action_state;
     }
 }
 
