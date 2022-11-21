@@ -116,23 +116,37 @@ impl InstallPlan {
     }
 
     #[tracing::instrument(skip_all)]
-    pub fn describe_revert(&self, explain: bool) -> String {
+    pub fn describe_revert(
+        &self,
+        explain: bool,
+    ) -> Result<String, Box<dyn std::error::Error + Sync + Send>> {
         let Self { planner, actions } = self;
-        format!(
+        let buf = format!(
             "\
-            This Nix uninstall is for:\n\
-              Operating System: {os_type}\n\
-              Init system: {init_type}\n\
-              Nix channels: {nix_channels}\n\
+            Nix Uninstall plan\n\
             \n\
-            Created by planner: {planner:?}
+            Planner: {planner}\n\
             \n\
-            The following actions will be taken:\n\
-            {actions}
+            Planner settings:\n\
+            \n\
+            {plan_settings}\n\
+            \n\
+            The following actions will be taken{maybe_explain}:\n\
+            \n\
+            {actions}\n\
         ",
-            os_type = "Linux",
-            init_type = "systemd",
-            nix_channels = "todo",
+            maybe_explain = if !explain {
+                " (`--explain` for more context)"
+            } else {
+                ""
+            },
+            planner = planner.typetag_name(),
+            plan_settings = planner
+                .settings()?
+                .into_iter()
+                .map(|(k, v)| format!("* {k}: {v}", k = k.bold().white()))
+                .collect::<Vec<_>>()
+                .join("\n"),
             actions = actions
                 .iter()
                 .rev()
@@ -145,17 +159,18 @@ impl InstallPlan {
                     } = desc;
 
                     let mut buf = String::default();
-                    buf.push_str(&format!("* {description}\n"));
+                    buf.push_str(&format!("* {description}"));
                     if explain {
                         for line in explanation {
-                            buf.push_str(&format!("  {line}\n"));
+                            buf.push_str(&format!("\n  {line}"));
                         }
                     }
                     buf
                 })
                 .collect::<Vec<_>>()
                 .join("\n"),
-        )
+        );
+        Ok(buf)
     }
 
     #[tracing::instrument(skip_all)]
