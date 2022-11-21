@@ -84,7 +84,7 @@ impl Action for BootstrapVolume {
 
         execute_command(
             Command::new("launchctl")
-                .args(["disable", "system/org.nixos.darwin-store"])
+                .args(["unload", "system/org.nixos.darwin-store"])
                 .stdin(std::process::Stdio::null()),
         )
         .await
