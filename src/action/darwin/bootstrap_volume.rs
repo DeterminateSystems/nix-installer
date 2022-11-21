@@ -84,14 +84,6 @@ impl Action for BootstrapVolume {
 
         execute_command(
             Command::new("launchctl")
-                .args(["unload", "system/org.nixos.darwin-store"])
-                .stdin(std::process::Stdio::null()),
-        )
-        .await
-        .map_err(|e| BootstrapVolumeError::Command(e).boxed())?;
-
-        execute_command(
-            Command::new("launchctl")
                 .args(["bootout", "system"])
                 .arg(path)
                 .stdin(std::process::Stdio::null()),
