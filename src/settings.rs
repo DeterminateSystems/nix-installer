@@ -137,8 +137,12 @@ impl CommonSettings {
         };
 
         Ok(Self {
-            daemon_user_count: Default::default(),
-            channels: Vec::default(),
+            daemon_user_count: 32,
+            channels: vec![ChannelValue(
+                "nixpkgs".into(),
+                reqwest::Url::parse("https://nixos.org/channels/nixpkgs-unstable")
+                    .expect("Embedded default URL was not a URL, please report this"),
+            )],
             modify_profile: true,
             nix_build_group_name: String::from("nixbld"),
             nix_build_group_id: 3000,
