@@ -254,20 +254,52 @@ impl Action for ConfigureNixDaemonService {
                 .map_err(|e| ConfigureNixDaemonServiceError::Command(e).boxed())?;
             },
             _ => {
-                // Don't use `--now` since it will error if it's been stopped or removed.
-                execute_command(Command::new("systemctl").args(["disable", "nix-daemon.service"]))
-                    .await
-                    .map_err(|e| ConfigureNixDaemonServiceError::Command(e).boxed()).map_err(|e| {
-                        tracing::warn!(err = e, "Disabling `nix-daemon.service` failed -- presuming it's already disabled by the user");
-                        e
-                    }).ok();
+                // We separate stop and disable (instead of using `--now`) to avoid cases where the service isn't started, but is enabled.
 
-                execute_command(Command::new("systemctl").args(["stop", "nix-daemon.service"]))
+                let socket_is_active = is_active("nix-daemon.socket").await?;
+                let socket_is_enabled = is_enabled("nix-daemon.socket").await?;
+                let service_is_active = is_active("nix-daemon.service").await?;
+                let service_is_enabled = is_enabled("nix-daemon.service").await?;
+
+                if socket_is_active {
+                    execute_command(
+                        Command::new("systemctl")
+                            .args(["stop", "nix-daemon.socket"])
+                            .stdin(std::process::Stdio::null()),
+                    )
                     .await
-                    .map_err(|e| ConfigureNixDaemonServiceError::Command(e).boxed()).map_err(|e| {
-                        tracing::warn!(err = e, "Stopping `nix-daemon.service` failed -- presuming it's already stopped");
-                        e
-                    }).ok();
+                    .map_err(|e| ConfigureNixDaemonServiceError::Command(e).boxed())?;
+                }
+
+                if socket_is_enabled {
+                    execute_command(
+                        Command::new("systemctl")
+                            .args(["disable", "nix-daemon.socket"])
+                            .stdin(std::process::Stdio::null()),
+                    )
+                    .await
+                    .map_err(|e| ConfigureNixDaemonServiceError::Command(e).boxed())?;
+                }
+
+                if service_is_active {
+                    execute_command(
+                        Command::new("systemctl")
+                            .args(["stop", "nix-daemon.service"])
+                            .stdin(std::process::Stdio::null()),
+                    )
+                    .await
+                    .map_err(|e| ConfigureNixDaemonServiceError::Command(e).boxed())?;
+                }
+
+                if service_is_enabled {
+                    execute_command(
+                        Command::new("systemctl")
+                            .args(["disable", "nix-daemon.service"])
+                            .stdin(std::process::Stdio::null()),
+                    )
+                    .await
+                    .map_err(|e| ConfigureNixDaemonServiceError::Command(e).boxed())?;
+                }
 
                 execute_command(
                     Command::new("systemd-tmpfiles")
@@ -325,4 +357,35 @@ pub enum ConfigureNixDaemonServiceError {
     ),
     #[error("No supported init system found")]
     InitNotSupported,
+}
+
+async fn is_active(unit: &str) -> Result<bool, Box<dyn std::error::Error + Send + Sync>> {
+    let output = Command::new("systemctl")
+        .arg("is-active")
+        .arg(unit)
+        .output()
+        .await?;
+    if String::from_utf8(output.stdout)?.starts_with("active") {
+        tracing::trace!(%unit, "Is active");
+        Ok(true)
+    } else {
+        tracing::trace!(%unit, "Is not active");
+        Ok(false)
+    }
+}
+
+async fn is_enabled(unit: &str) -> Result<bool, Box<dyn std::error::Error + Send + Sync>> {
+    let output = Command::new("systemctl")
+        .arg("is-enabled")
+        .arg(unit)
+        .output()
+        .await?;
+    let stdout = String::from_utf8(output.stdout)?;
+    if stdout.starts_with("enabled") || stdout.starts_with("linked") {
+        tracing::trace!(%unit, "Is enabled");
+        Ok(true)
+    } else {
+        tracing::trace!(%unit, "Is not enabled");
+        Ok(false)
+    }
 }
