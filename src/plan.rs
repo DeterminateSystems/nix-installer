@@ -103,7 +103,7 @@ impl InstallPlan {
                 }
             }
 
-            if let Err(err) = action.execute().await {
+            if let Err(err) = action.try_execute().await {
                 if let Err(err) = write_receipt(self.clone()).await {
                     tracing::error!("Error saving receipt: {:?}", err);
                 }
@@ -123,7 +123,7 @@ impl InstallPlan {
         let Self { planner, actions } = self;
         let buf = format!(
             "\
-            Nix Uninstall plan\n\
+            Nix uninstall plan\n\
             \n\
             Planner: {planner}\n\
             \n\
@@ -199,7 +199,7 @@ impl InstallPlan {
                 }
             }
 
-            if let Err(err) = action.revert().await {
+            if let Err(err) = action.try_revert().await {
                 if let Err(err) = write_receipt(self.clone()).await {
                     tracing::error!("Error saving receipt: {:?}", err);
                 }
