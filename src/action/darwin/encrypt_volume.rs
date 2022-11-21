@@ -32,7 +32,11 @@ impl EncryptVolume {
 #[typetag::serde(name = "encrypt_volume")]
 impl Action for EncryptVolume {
     fn tracing_synopsis(&self) -> String {
-        format!("Encrypt volume `{}` on disk `{}`", self.name, self.disk.display())
+        format!(
+            "Encrypt volume `{}` on disk `{}`",
+            self.name,
+            self.disk.display()
+        )
     }
 
     fn execute_description(&self) -> Vec<ActionDescription> {
