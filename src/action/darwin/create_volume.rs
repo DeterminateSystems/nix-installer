@@ -60,11 +60,6 @@ impl Action for CreateVolume {
             case_sensitive,
             action_state,
         } = self;
-        if *action_state == ActionState::Completed {
-            tracing::trace!("Already completed: Creating volume");
-            return Ok(());
-        }
-        tracing::debug!("Creating volume");
 
         execute_command(
             Command::new("/usr/sbin/diskutil")
@@ -85,8 +80,6 @@ impl Action for CreateVolume {
         .await
         .map_err(|e| CreateVolumeError::Command(e).boxed())?;
 
-        tracing::trace!("Created volume");
-        *action_state = ActionState::Completed;
         Ok(())
     }
 
@@ -113,11 +106,6 @@ impl Action for CreateVolume {
             case_sensitive: _,
             action_state,
         } = self;
-        if *action_state == ActionState::Uncompleted {
-            tracing::trace!("Already reverted: Deleting volume");
-            return Ok(());
-        }
-        tracing::debug!("Deleting volume");
 
         execute_command(
             Command::new("/usr/sbin/diskutil")
@@ -127,8 +115,6 @@ impl Action for CreateVolume {
         .await
         .map_err(|e| CreateVolumeError::Command(e).boxed())?;
 
-        tracing::trace!("Deleted volume");
-        *action_state = ActionState::Completed;
         Ok(())
     }
 

@@ -176,11 +176,6 @@ impl Action for CreateApfsVolume {
             enable_ownership,
             action_state,
         } = self;
-        if *action_state == ActionState::Completed {
-            tracing::trace!("Already completed: Creating APFS volume");
-            return Ok(());
-        }
-        tracing::debug!("Creating APFS volume");
 
         create_or_append_synthetic_conf.execute().await?;
         create_synthetic_objects.execute().await?;
@@ -214,8 +209,6 @@ impl Action for CreateApfsVolume {
 
         enable_ownership.execute().await?;
 
-        tracing::trace!("Created APFS volume");
-        *action_state = ActionState::Completed;
         Ok(())
     }
 
@@ -247,11 +240,6 @@ impl Action for CreateApfsVolume {
             enable_ownership,
             action_state,
         } = self;
-        if *action_state == ActionState::Uncompleted {
-            tracing::trace!("Already reverted: Removing APFS volume");
-            return Ok(());
-        }
-        tracing::debug!("Removing APFS volume");
 
         enable_ownership.revert().await?;
         bootstrap_volume.revert().await?;
@@ -268,8 +256,6 @@ impl Action for CreateApfsVolume {
         create_or_append_synthetic_conf.revert().await?;
         create_synthetic_objects.revert().await?;
 
-        tracing::trace!("Removed APFS volume");
-        *action_state = ActionState::Uncompleted;
         Ok(())
     }
 

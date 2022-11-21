@@ -43,11 +43,6 @@ impl Action for BootstrapVolume {
     ))]
     async fn execute(&mut self) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
         let Self { path, action_state } = self;
-        if *action_state == ActionState::Completed {
-            tracing::trace!("Already completed: Bootstrapping volume");
-            return Ok(());
-        }
-        tracing::debug!("Bootstrapping volume");
 
         execute_command(
             Command::new("launchctl")
@@ -65,8 +60,6 @@ impl Action for BootstrapVolume {
         .await
         .map_err(|e| BootstrapVolumeError::Command(e).boxed())?;
 
-        tracing::trace!("Bootstrapped volume");
-        *action_state = ActionState::Completed;
         Ok(())
     }
 
