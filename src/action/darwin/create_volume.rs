@@ -58,7 +58,7 @@ impl Action for CreateVolume {
             disk,
             name,
             case_sensitive,
-            action_state,
+            action_state: _,
         } = self;
 
         execute_command(
@@ -104,7 +104,7 @@ impl Action for CreateVolume {
             disk: _,
             name,
             case_sensitive: _,
-            action_state,
+            action_state: _,
         } = self;
 
         execute_command(

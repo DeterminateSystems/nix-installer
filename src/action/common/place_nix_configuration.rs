@@ -63,7 +63,7 @@ impl Action for PlaceNixConfiguration {
         let Self {
             create_file,
             create_directory,
-            action_state,
+            action_state: _,
         } = self;
 
         create_directory.execute().await?;
@@ -87,7 +87,7 @@ impl Action for PlaceNixConfiguration {
         let Self {
             create_file,
             create_directory,
-            action_state,
+            action_state: _,
         } = self;
 
         create_file.revert().await?;

@@ -149,13 +149,10 @@ impl Action for CreateApfsVolume {
     }
 
     fn execute_description(&self) -> Vec<ActionDescription> {
-        let Self { disk, name, .. } = &self;
-        vec![ActionDescription::new(
-            self.tracing_synopsis(),
-            vec![format!(
-                "Create a writable, persistent systemd system extension.",
-            )],
-        )]
+        let Self {
+            disk: _, name: _, ..
+        } = &self;
+        vec![ActionDescription::new(self.tracing_synopsis(), vec![])]
     }
 
     #[tracing::instrument(skip_all, fields(destination,))]
@@ -174,7 +171,7 @@ impl Action for CreateApfsVolume {
             setup_volume_daemon,
             bootstrap_volume,
             enable_ownership,
-            action_state,
+            action_state: _,
         } = self;
 
         create_or_append_synthetic_conf.execute().await?;
@@ -238,7 +235,7 @@ impl Action for CreateApfsVolume {
             setup_volume_daemon,
             bootstrap_volume,
             enable_ownership,
-            action_state,
+            action_state: _,
         } = self;
 
         enable_ownership.revert().await?;

@@ -90,7 +90,7 @@ impl Action for CreateDirectory {
             group,
             mode,
             force_prune_on_revert: _,
-            action_state,
+            action_state: _,
         } = self;
 
         let gid = if let Some(group) = group {
@@ -166,7 +166,7 @@ impl Action for CreateDirectory {
             group: _,
             mode: _,
             force_prune_on_revert,
-            action_state,
+            action_state: _,
         } = self;
 
         let is_empty = path

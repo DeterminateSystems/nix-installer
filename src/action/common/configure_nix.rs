@@ -97,7 +97,7 @@ impl Action for ConfigureNix {
             place_nix_configuration,
             place_channel_configuration,
             configure_shell_profile,
-            action_state,
+            action_state: _,
         } = self;
 
         if let Some(configure_shell_profile) = configure_shell_profile {
@@ -149,7 +149,7 @@ impl Action for ConfigureNix {
             place_nix_configuration,
             place_channel_configuration,
             configure_shell_profile,
-            action_state,
+            action_state: _,
         } = self;
 
         configure_nix_daemon_service.revert().await?;

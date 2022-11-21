@@ -99,7 +99,7 @@ impl Action for CreateUsersAndGroup {
             nix_build_group_id: _,
             nix_build_user_prefix: _,
             nix_build_user_id_base: _,
-            action_state,
+            action_state: _,
         } = self;
 
         // Create group
@@ -176,7 +176,7 @@ impl Action for CreateUsersAndGroup {
             nix_build_group_id: _,
             nix_build_user_prefix: _,
             nix_build_user_id_base: _,
-            action_state,
+            action_state: _,
         } = self;
         let mut set = JoinSet::new();
 

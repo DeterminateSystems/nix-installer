@@ -72,7 +72,7 @@ impl Action for ConfigureShellProfile {
     async fn execute(&mut self) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
         let Self {
             create_or_append_files,
-            action_state,
+            action_state: _,
         } = self;
 
         let mut set = JoinSet::new();
@@ -121,7 +121,7 @@ impl Action for ConfigureShellProfile {
     async fn revert(&mut self) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
         let Self {
             create_or_append_files,
-            action_state,
+            action_state: _,
         } = self;
 
         let mut set = JoinSet::new();

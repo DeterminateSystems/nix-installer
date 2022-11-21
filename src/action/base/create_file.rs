@@ -74,7 +74,7 @@ impl Action for CreateFile {
             mode,
             buf,
             force: _,
-            action_state,
+            action_state: _,
         } = self;
 
         let mut options = OpenOptions::new();
@@ -149,7 +149,7 @@ impl Action for CreateFile {
             mode: _,
             buf: _,
             force: _,
-            action_state,
+            action_state: _,
         } = self;
 
         remove_file(&path)

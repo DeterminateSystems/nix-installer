@@ -80,7 +80,7 @@ impl Action for ProvisionNix {
             create_nix_tree,
             create_users_and_group,
             move_unpacked_nix,
-            action_state,
+            action_state: _,
         } = self;
 
         // We fetch nix while doing the rest, then move it over.
@@ -123,7 +123,7 @@ impl Action for ProvisionNix {
             create_nix_tree,
             create_users_and_group,
             move_unpacked_nix,
-            action_state,
+            action_state: _,
         } = self;
 
         // We fetch nix while doing the rest, then move it over.

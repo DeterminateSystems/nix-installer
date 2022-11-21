@@ -56,7 +56,7 @@ impl Action for FetchNix {
         let Self {
             url,
             dest,
-            action_state,
+            action_state: _,
         } = self;
 
         let res = reqwest::get(url.clone())
@@ -91,7 +91,7 @@ impl Action for FetchNix {
         let Self {
             url: _,
             dest: _,
-            action_state,
+            action_state: _,
         } = self;
 
         Ok(())

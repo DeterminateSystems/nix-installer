@@ -69,7 +69,7 @@ impl Action for CreateNixTree {
     async fn execute(&mut self) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
         let Self {
             create_directories,
-            action_state,
+            action_state: _,
         } = self;
 
         // Just do sequential since parallelizing this will have little benefit
@@ -104,7 +104,7 @@ impl Action for CreateNixTree {
     async fn revert(&mut self) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
         let Self {
             create_directories,
-            action_state,
+            action_state: _,
         } = self;
 
         // Just do sequential since parallelizing this will have little benefit

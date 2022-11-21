@@ -33,8 +33,8 @@ impl Action for CreateGroup {
     }
     fn execute_description(&self) -> Vec<ActionDescription> {
         let Self {
-            name,
-            gid,
+            name: _,
+            gid: _,
             action_state: _,
         } = &self;
         vec![ActionDescription::new(
@@ -134,7 +134,7 @@ impl Action for CreateGroup {
         let Self {
             name,
             gid: _,
-            action_state,
+            action_state: _,
         } = self;
 
         use target_lexicon::OperatingSystem;

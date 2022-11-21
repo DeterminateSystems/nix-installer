@@ -39,7 +39,7 @@ impl Action for SetupDefaultProfile {
     async fn execute(&mut self) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
         let Self {
             channels,
-            action_state,
+            action_state: _,
         } = self;
 
         // Find an `nix` package

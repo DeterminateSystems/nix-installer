@@ -59,7 +59,7 @@ impl Action for CreateUser {
             uid,
             groupname,
             gid,
-            action_state,
+            action_state: _,
         } = self;
 
         use target_lexicon::OperatingSystem;
@@ -236,7 +236,7 @@ impl Action for CreateUser {
             uid: _,
             groupname: _,
             gid: _,
-            action_state,
+            action_state: _,
         } = self;
 
         use target_lexicon::OperatingSystem;

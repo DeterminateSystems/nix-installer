@@ -71,7 +71,7 @@ impl Action for CreateOrAppendFile {
             group,
             mode,
             buf,
-            action_state,
+            action_state: _,
         } = self;
 
         let mut file = OpenOptions::new()
@@ -156,7 +156,7 @@ impl Action for CreateOrAppendFile {
             group: _,
             mode: _,
             buf,
-            action_state,
+            action_state: _,
         } = self;
         let mut file = OpenOptions::new()
             .create(false)
