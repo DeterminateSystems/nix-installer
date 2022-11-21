@@ -58,7 +58,7 @@ impl CommandExecute for Uninstall {
             }
         }
 
-        let (tx, rx) = signal_channel().await?;
+        let (_tx, rx) = signal_channel().await?;
 
         plan.revert(rx).await?;
         // TODO(@hoverbear): It would be so nice to catch errors and offer the user a way to keep going...
