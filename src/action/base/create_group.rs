@@ -72,6 +72,7 @@ impl Action for CreateGroup {
                 if Command::new("/usr/bin/dscl")
                     .args([".", "-read", &format!("/Groups/{name}")])
                     .stdin(std::process::Stdio::null())
+                    .stdout(std::process::Stdio::null())
                     .status()
                     .await?
                     .success()

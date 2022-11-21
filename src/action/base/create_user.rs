@@ -76,6 +76,7 @@ impl Action for CreateUser {
                 if Command::new("/usr/bin/dscl")
                     .args([".", "-read", &format!("/Users/{name}")])
                     .stdin(std::process::Stdio::null())
+                    .stdout(std::process::Stdio::null())
                     .status()
                     .await?
                     .success()
