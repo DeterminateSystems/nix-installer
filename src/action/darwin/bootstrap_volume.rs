@@ -42,7 +42,10 @@ impl Action for BootstrapVolume {
         path = %self.path.display(),
     ))]
     async fn execute(&mut self) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
-        let Self { path, action_state } = self;
+        let Self {
+            path,
+            action_state: _,
+        } = self;
 
         execute_command(
             Command::new("launchctl")
@@ -74,12 +77,18 @@ impl Action for BootstrapVolume {
         path = %self.path.display(),
     ))]
     async fn revert(&mut self) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
-        let Self { path, action_state } = self;
-        if *action_state == ActionState::Uncompleted {
-            tracing::trace!("Already reverted: Stop volume");
-            return Ok(());
-        }
-        tracing::debug!("Stop volume");
+        let Self {
+            path,
+            action_state: _,
+        } = self;
+
+        execute_command(
+            Command::new("launchctl")
+                .args(["disable", "system/org.nixos.darwin-store"])
+                .stdin(std::process::Stdio::null()),
+        )
+        .await
+        .map_err(|e| BootstrapVolumeError::Command(e).boxed())?;
 
         execute_command(
             Command::new("launchctl")
@@ -90,8 +99,6 @@ impl Action for BootstrapVolume {
         .await
         .map_err(|e| BootstrapVolumeError::Command(e).boxed())?;
 
-        tracing::trace!("Stopped volume");
-        *action_state = ActionState::Completed;
         Ok(())
     }
 
