@@ -321,7 +321,8 @@ async fn is_enabled(unit: &str) -> Result<bool, Box<dyn std::error::Error + Send
         .arg(unit)
         .output()
         .await?;
-    if String::from_utf8(output.stdout)?.starts_with("enabled") {
+    let stdout = String::from_utf8(output.stdout)?;
+    if stdout.starts_with("enabled") || stdout.starts_with("linked") {
         tracing::trace!(%unit, "Is enabled");
         Ok(true)
     } else {
