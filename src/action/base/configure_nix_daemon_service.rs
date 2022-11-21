@@ -195,9 +195,10 @@ impl Action for ConfigureNixDaemonService {
                 .map_err(|e| ConfigureNixDaemonServiceError::Command(e).boxed())?;
             },
             _ => {
+                // We separate stop and disable (instead of using `--now`) to avoid cases where the service isn't started, but is enabled.
                 execute_command(
                     Command::new("systemctl")
-                        .args(["disable", SOCKET_SRC, "--now"])
+                        .args(["stop", SOCKET_SRC])
                         .stdin(std::process::Stdio::null()),
                 )
                 .await
@@ -205,7 +206,23 @@ impl Action for ConfigureNixDaemonService {
 
                 execute_command(
                     Command::new("systemctl")
-                        .args(["disable", SERVICE_SRC, "--now"])
+                        .args(["disable", SOCKET_SRC])
+                        .stdin(std::process::Stdio::null()),
+                )
+                .await
+                .map_err(|e| ConfigureNixDaemonServiceError::Command(e).boxed())?;
+
+                execute_command(
+                    Command::new("systemctl")
+                        .args(["stop", SERVICE_SRC])
+                        .stdin(std::process::Stdio::null()),
+                )
+                .await
+                .map_err(|e| ConfigureNixDaemonServiceError::Command(e).boxed())?;
+
+                execute_command(
+                    Command::new("systemctl")
+                        .args(["disable", SERVICE_SRC])
                         .stdin(std::process::Stdio::null()),
                 )
                 .await
