@@ -35,7 +35,7 @@ impl UnmountVolume {
 #[typetag::serde(name = "unmount_volume")]
 impl Action for UnmountVolume {
     fn tracing_synopsis(&self) -> String {
-        "Start the systemd Nix service and socket".to_string()
+        format!("Unmount the `{}` volume", self.name)
     }
 
     fn execute_description(&self) -> Vec<ActionDescription> {
@@ -66,12 +66,7 @@ impl Action for UnmountVolume {
     }
 
     fn revert_description(&self) -> Vec<ActionDescription> {
-        vec![ActionDescription::new(
-            "Stop the systemd Nix service and socket".to_string(),
-            vec![
-                "The `nix` command line tool communicates with a running Nix daemon managed by your init system".to_string()
-            ]
-        )]
+        vec![ActionDescription::new(self.tracing_synopsis(), vec![])]
     }
 
     #[tracing::instrument(skip_all, fields(
@@ -86,7 +81,7 @@ impl Action for UnmountVolume {
         } = self;
 
         execute_command(
-            Command::new(" /usr/sbin/diskutil")
+            Command::new("/usr/sbin/diskutil")
                 .args(["unmount", "force"])
                 .arg(name)
                 .stdin(std::process::Stdio::null()),

@@ -82,12 +82,6 @@ impl Action for ProvisionNix {
             move_unpacked_nix,
             action_state,
         } = self;
-        if *action_state == ActionState::Completed {
-            tracing::trace!("Already completed: Provisioning Nix");
-            return Ok(());
-        }
-        *action_state = ActionState::Progress;
-        tracing::debug!("Provisioning Nix");
 
         // We fetch nix while doing the rest, then move it over.
         let mut fetch_nix_clone = fetch_nix.clone();
@@ -102,8 +96,6 @@ impl Action for ProvisionNix {
         *fetch_nix = fetch_nix_handle.await.map_err(|e| e.boxed())??;
         move_unpacked_nix.execute().await?;
 
-        tracing::trace!("Provisioned Nix");
-        *action_state = ActionState::Completed;
         Ok(())
     }
 
@@ -133,12 +125,6 @@ impl Action for ProvisionNix {
             move_unpacked_nix,
             action_state,
         } = self;
-        if *action_state == ActionState::Uncompleted {
-            tracing::trace!("Already reverted: Unprovisioning nix");
-            return Ok(());
-        }
-        *action_state = ActionState::Progress;
-        tracing::debug!("Unprovisioning nix");
 
         // We fetch nix while doing the rest, then move it over.
         let mut fetch_nix_clone = fetch_nix.clone();
@@ -159,8 +145,6 @@ impl Action for ProvisionNix {
         *fetch_nix = fetch_nix_handle.await.map_err(|e| e.boxed())??;
         move_unpacked_nix.revert().await?;
 
-        tracing::trace!("Unprovisioned Nix");
-        *action_state = ActionState::Uncompleted;
         Ok(())
     }
 

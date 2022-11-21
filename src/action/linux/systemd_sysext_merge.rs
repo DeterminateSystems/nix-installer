@@ -41,11 +41,6 @@ impl Action for SystemdSysextMerge {
             device,
             action_state,
         } = self;
-        if *action_state == ActionState::Completed {
-            tracing::trace!("Already completed: Merging systemd-sysext");
-            return Ok(());
-        }
-        tracing::debug!("Merging systemd-sysext");
 
         execute_command(
             Command::new("systemd-sysext")
@@ -56,8 +51,6 @@ impl Action for SystemdSysextMerge {
         .await
         .map_err(|e| SystemdSysextMergeError::Command(e).boxed())?;
 
-        tracing::trace!("Merged systemd-sysext");
-        *action_state = ActionState::Completed;
         Ok(())
     }
 
@@ -78,11 +71,6 @@ impl Action for SystemdSysextMerge {
             device,
             action_state,
         } = self;
-        if *action_state == ActionState::Uncompleted {
-            tracing::trace!("Already reverted: Stopping systemd unit");
-            return Ok(());
-        }
-        tracing::debug!("Unmrging systemd-sysext");
 
         // TODO(@Hoverbear): Handle proxy vars
         execute_command(
@@ -94,8 +82,6 @@ impl Action for SystemdSysextMerge {
         .await
         .map_err(|e| SystemdSysextMergeError::Command(e).boxed())?;
 
-        tracing::trace!("Unmerged systemd-sysext");
-        *action_state = ActionState::Completed;
         Ok(())
     }
 
