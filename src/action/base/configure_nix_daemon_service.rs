@@ -205,7 +205,7 @@ impl Action for ConfigureNixDaemonService {
                 if socket_is_active {
                     execute_command(
                         Command::new("systemctl")
-                            .args(["stop", SOCKET_SRC])
+                            .args(["stop", "nix-daemon.socket"])
                             .stdin(std::process::Stdio::null()),
                     )
                     .await
@@ -215,7 +215,7 @@ impl Action for ConfigureNixDaemonService {
                 if socket_is_enabled {
                     execute_command(
                         Command::new("systemctl")
-                            .args(["disable", SOCKET_SRC])
+                            .args(["disable", "nix-daemon.socket"])
                             .stdin(std::process::Stdio::null()),
                     )
                     .await
@@ -225,7 +225,7 @@ impl Action for ConfigureNixDaemonService {
                 if service_is_active {
                     execute_command(
                         Command::new("systemctl")
-                            .args(["stop", SERVICE_SRC])
+                            .args(["stop", "nix-daemon.service"])
                             .stdin(std::process::Stdio::null()),
                     )
                     .await
@@ -235,7 +235,7 @@ impl Action for ConfigureNixDaemonService {
                 if service_is_enabled {
                     execute_command(
                         Command::new("systemctl")
-                            .args(["disable", SERVICE_SRC])
+                            .args(["disable", "nix-daemon.service"])
                             .stdin(std::process::Stdio::null()),
                     )
                     .await
@@ -302,26 +302,30 @@ pub enum ConfigureNixDaemonServiceError {
 
 async fn is_active(unit: &str) -> Result<bool, Box<dyn std::error::Error + Send + Sync>> {
     let output = Command::new("systemctl")
-        .arg("is_active")
+        .arg("is-active")
         .arg(unit)
         .output()
         .await?;
-    if String::from_utf8(output.stdout)? == "enabled" {
+    if String::from_utf8(output.stdout)?.starts_with("active") {
+        tracing::trace!(%unit, "Is active");
         Ok(true)
     } else {
+        tracing::trace!(%unit, "Is not active");
         Ok(false)
     }
 }
 
 async fn is_enabled(unit: &str) -> Result<bool, Box<dyn std::error::Error + Send + Sync>> {
     let output = Command::new("systemctl")
-        .arg("is_enabled")
+        .arg("is-enabled")
         .arg(unit)
         .output()
         .await?;
-    if String::from_utf8(output.stdout)? == "enabled" {
+    if String::from_utf8(output.stdout)?.starts_with("enabled") {
+        tracing::trace!(%unit, "Is enabled");
         Ok(true)
     } else {
+        tracing::trace!(%unit, "Is not enabled");
         Ok(false)
     }
 }
