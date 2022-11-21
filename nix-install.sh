@@ -478,7 +478,7 @@ downloader() {
         get_ciphersuites_for_curl
         _ciphersuites="$RETVAL"
         if [ -n "$_ciphersuites" ]; then
-            if [ -n "$NIX_INSTALL_FORCE_ALLOW_HTTP" ]; then
+            if [ -n "${NIX_INSTALL_FORCE_ALLOW_HTTP-}" ]; then
                 _err=$(curl $_retry --silent --show-error --fail --location "$1" --output "$2" 2>&1)
             else
                 _err=$(curl $_retry --proto '=https' --tlsv1.2 --ciphers "$_ciphersuites" --silent --show-error --fail --location "$1" --output "$2" 2>&1)
