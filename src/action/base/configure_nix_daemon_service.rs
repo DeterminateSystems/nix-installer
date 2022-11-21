@@ -208,37 +208,51 @@ impl Action for ConfigureNixDaemonService {
             },
             _ => {
                 // We separate stop and disable (instead of using `--now`) to avoid cases where the service isn't started, but is enabled.
-                execute_command(
-                    Command::new("systemctl")
-                        .args(["stop", SOCKET_SRC])
-                        .stdin(std::process::Stdio::null()),
-                )
-                .await
-                .map_err(|e| ConfigureNixDaemonServiceError::Command(e).boxed())?;
 
-                execute_command(
-                    Command::new("systemctl")
-                        .args(["disable", SOCKET_SRC])
-                        .stdin(std::process::Stdio::null()),
-                )
-                .await
-                .map_err(|e| ConfigureNixDaemonServiceError::Command(e).boxed())?;
+                let socket_is_active = is_active("nix-daemon.socket").await?;
+                let socket_is_enabled = is_enabled("nix-daemon.socket").await?;
+                let service_is_active = is_active("nix-daemon.service").await?;
+                let service_is_enabled = is_enabled("nix-daemon.service").await?;
 
-                execute_command(
-                    Command::new("systemctl")
-                        .args(["stop", SERVICE_SRC])
-                        .stdin(std::process::Stdio::null()),
-                )
-                .await
-                .map_err(|e| ConfigureNixDaemonServiceError::Command(e).boxed())?;
+                if socket_is_active {
+                    execute_command(
+                        Command::new("systemctl")
+                            .args(["stop", SOCKET_SRC])
+                            .stdin(std::process::Stdio::null()),
+                    )
+                    .await
+                    .map_err(|e| ConfigureNixDaemonServiceError::Command(e).boxed())?;
+                }
 
-                execute_command(
-                    Command::new("systemctl")
-                        .args(["disable", SERVICE_SRC])
-                        .stdin(std::process::Stdio::null()),
-                )
-                .await
-                .map_err(|e| ConfigureNixDaemonServiceError::Command(e).boxed())?;
+                if socket_is_enabled {
+                    execute_command(
+                        Command::new("systemctl")
+                            .args(["disable", SOCKET_SRC])
+                            .stdin(std::process::Stdio::null()),
+                    )
+                    .await
+                    .map_err(|e| ConfigureNixDaemonServiceError::Command(e).boxed())?;
+                }
+
+                if service_is_active {
+                    execute_command(
+                        Command::new("systemctl")
+                            .args(["stop", SERVICE_SRC])
+                            .stdin(std::process::Stdio::null()),
+                    )
+                    .await
+                    .map_err(|e| ConfigureNixDaemonServiceError::Command(e).boxed())?;
+                }
+
+                if service_is_enabled {
+                    execute_command(
+                        Command::new("systemctl")
+                            .args(["disable", SERVICE_SRC])
+                            .stdin(std::process::Stdio::null()),
+                    )
+                    .await
+                    .map_err(|e| ConfigureNixDaemonServiceError::Command(e).boxed())?;
+                }
 
                 execute_command(
                     Command::new("systemd-tmpfiles")
@@ -294,4 +308,30 @@ pub enum ConfigureNixDaemonServiceError {
     ),
     #[error("No supported init system found")]
     InitNotSupported,
+}
+
+async fn is_active(unit: &str) -> Result<bool, Box<dyn std::error::Error + Send + Sync>> {
+    let output = Command::new("systemctl")
+        .arg("is_active")
+        .arg(unit)
+        .output()
+        .await?;
+    if String::from_utf8(output.stdout)? == "enabled" {
+        Ok(true)
+    } else {
+        Ok(false)
+    }
+}
+
+async fn is_enabled(unit: &str) -> Result<bool, Box<dyn std::error::Error + Send + Sync>> {
+    let output = Command::new("systemctl")
+        .arg("is_enabled")
+        .arg(unit)
+        .output()
+        .await?;
+    if String::from_utf8(output.stdout)? == "enabled" {
+        Ok(true)
+    } else {
+        Ok(false)
+    }
 }
