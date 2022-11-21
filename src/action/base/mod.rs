@@ -9,6 +9,7 @@ mod create_user;
 mod fetch_nix;
 mod move_unpacked_nix;
 mod setup_default_profile;
+// mod symlink;
 
 pub use configure_nix_daemon_service::{ConfigureNixDaemonService, ConfigureNixDaemonServiceError};
 pub use create_directory::{CreateDirectory, CreateDirectoryError};
