@@ -112,6 +112,7 @@ jobs:
           sudo systemctl status nix.mount
           sudo systemctl status nix-directory.service
           sudo systemctl status ensure-symlinked-units-resolve.service
+          sudo ls -lah /nix
           sudo -u nixbld1 mkdir -vp /nix/store/swoop-user-environment
 
       - name: Initial uninstall (without a `nix run` first)
@@ -124,6 +125,7 @@ jobs:
           sudo systemctl status nix.mount
           sudo systemctl status nix-directory.service
           sudo systemctl status ensure-symlinked-units-resolve.service
+          sudo ls -lah /nix
           sudo -u nixbld1 mkdir -vp /nix/store/swoop-boop-user-environment
 
       - name: Repeated install
@@ -136,6 +138,7 @@ jobs:
           sudo systemctl status nix.mount
           sudo systemctl status nix-directory.service
           sudo systemctl status ensure-symlinked-units-resolve.service
+          sudo ls -lah /nix
           mkdir -p /nix/store/swoop-boop-doop-user-environment
 
       - name: Test run
@@ -152,6 +155,7 @@ jobs:
           sudo systemctl status nix.mount
           sudo systemctl status nix-directory.service
           sudo systemctl status ensure-symlinked-units-resolve.service
+          sudo ls -lah /nix
           sudo -u nixbld1 mkdir -vp /nix/store/swoop-boop-doop-goop-user-environment
 
   build-x86_64-darwin:

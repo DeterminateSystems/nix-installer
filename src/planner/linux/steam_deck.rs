@@ -187,7 +187,7 @@ impl Planner for SteamDeck {
         Ok(InstallPlan {
             planner: Box::new(self.clone()),
             actions: vec![
-                Box::new(CreateDirectory::plan("/home/nix", None, None, None, true).await?),
+                Box::new(CreateDirectory::plan("/home/nix", None, None, 0o0755, true).await?),
                 Box::new(nix_directory_unit),
                 Box::new(create_bind_mount_unit),
                 Box::new(ensure_symlinked_units_resolve_unit),
