@@ -59,7 +59,7 @@ Repeated step:
 3. **Do your testing!** You can `ssh deck@localhost -p 2222` in and use `rsync -e 'ssh -p 2222' result/bin/harmonic deck@localhost:harmonic` to send a harmonic build.
 4. Delete `steamos-hack.qcow2`
 */
-use std::collections::HashMap;
+use std::{collections::HashMap, path::PathBuf};
 
 use crate::{
     action::{
@@ -89,45 +89,113 @@ impl Planner for SteamDeck {
 
     async fn plan(self) -> Result<crate::InstallPlan, Box<dyn std::error::Error + Sync + Send>> {
         let sysext = "/var/lib/extensions/nix";
+        let persistence = "/home/nix";
+
+        let nix_directory_buf = format!(
+            "
+            [Unit]\n\
+            Description=Create a `/nix` directory to be used for bind mounting\n\
+            PropagatesStopTo=nix-daemon.service\n\
+            DefaultDependencies=no\n\
+            \n\
+            [Service]\n\
+            Type=oneshot\n\
+            ExecCondition=sh -c \"if [ -d /nix ]; then exit 1; else exit 0; fi\"
+            ExecStart=steamos-readonly disable\n\
+            ExecStart=mkdir -p /nix\n\
+            ExecStart=steamos-readonly enable\n\
+            ExecStop=steamos-readonly disable\n\
+            ExecStop=rmdir /nix\n\
+            ExecStop=steamos-readonly enable\n\
+            RemainAfterExit=true\n\
+        "
+        );
+        let nix_directory_unit = CreateFile::plan(
+            "/etc/systemd/system/nix-directory.service",
+            None,
+            None,
+            0o0755,
+            nix_directory_buf,
+            false,
+        )
+        .await?;
+
+        let create_bind_mount_buf = format!(
+            "\
+            [Unit]\n\
+            Description=Mount `{persistence}` on `/nix`\n\
+            PropagatesStopTo=nix-daemon.service\n\
+            PropagatesStopTo=nix-directory.service\n\
+            After=nix-directory.service\n\
+            Requires=nix-directory.service\n\
+            ConditionPathIsDirectory=/nix\n\
+            DefaultDependencies=no\n\
+            \n\
+            [Install]
+            RequiredBy=nix-daemon.service\n\
+            RequiredBy=nix-daemon.socket\n\
+            \n\
+            [Mount]\n\
+            What={persistence}\n\
+            Where=/nix\n\
+            Type=none\n\
+            Options=bind\n\
+        ",
+        );
+        let create_bind_mount_unit = CreateFile::plan(
+            "/etc/systemd/system/nix.mount",
+            None,
+            None,
+            0o0755,
+            create_bind_mount_buf,
+            false,
+        )
+        .await?;
+
+        let ensure_symlinked_units_resolve_buf = format!(
+            "\
+            [Unit]\n\
+            Description=Ensure Nix related units which are symlinked resolve\n\
+            After=nix.mount\n\
+            Requires=nix.mount\n\
+            DefaultDependencies=no\n\
+            \n\
+            [Service]\n\
+            Type=oneshot\n\
+            RemainAfterExit=yes\n\
+            ExecStart=/usr/bin/systemctl daemon-reload\n\
+            ExecStart=/usr/bin/systemctl restart --no-block sockets.target timers.target multi-user.target\n\
+            \n\
+            [Install]\n\
+            WantedBy=sysinit.target\n\
+            RequiredBy=nix-daemon.service\n\
+            RequiredBy=nix-daemon.socket\n\
+        "
+        );
+        let ensure_symlinked_units_resolve_unit = CreateFile::plan(
+            "/etc/systemd/system/ensure-symlinked-units-resolve.service",
+            None,
+            None,
+            0o0755,
+            ensure_symlinked_units_resolve_buf,
+            false,
+        )
+        .await?;
+
         Ok(InstallPlan {
             planner: Box::new(self.clone()),
             actions: vec![
-                Box::new(
-                    CreateDirectory::plan("/var/lib/extensions/", None, None, None, false).await?,
-                ),
                 Box::new(CreateDirectory::plan("/home/nix", None, None, None, true).await?),
-                Box::new(CreateSystemdSysext::plan(sysext, "/home/nix").await?),
-                Box::new(ProvisionNix::plan(self.settings.clone()).await?),
-                Box::new(ConfigureNix::plan(self.settings, Some(sysext)).await?),
-                // Valve does not ship the steam deck with a `systemd-sysext` workaround ala https://github.com/flatcar/init/pull/65.
+                Box::new(nix_directory_unit),
+                Box::new(create_bind_mount_unit),
+                Box::new(ensure_symlinked_units_resolve_unit),
                 Box::new(
-                    CreateFile::plan(
-                        "/etc/systemd/system/ensure-sysext.service",
-                        None,
-                        None,
-                        None,
-                        "\
-                        [Unit]\n\
-                        BindsTo=systemd-sysext.service\n\
-                        After=systemd-sysext.service\n\
-                        DefaultDependencies=no\n\
-                        \n\
-                        [Service]\n\
-                        Type=oneshot\n\
-                        RemainAfterExit=yes\n\
-                        ExecStart=/usr/bin/systemctl daemon-reload\n\
-                        ExecStart=/usr/bin/systemctl restart --no-block sockets.target timers.target multi-user.target\n\
-                        \n\
-                        [Install]\n\
-                        WantedBy=systemd-sysext.service\n\
-                "
-                        .to_string(),
-                        false,
-                    )
-                    .await?,
+                    StartSystemdUnit::plan("ensure-symlinked-units-resolve.service".to_string())
+                        .await?,
                 ),
-                Box::new(StartSystemdUnit::plan("ensure-sysext.service".to_string()).await?),
-                // Box::new(StartSystemdUnit::plan("nix-daemon.socket".to_string()).await?),
+                Box::new(ProvisionNix::plan(self.settings.clone()).await?),
+                Box::new(ConfigureNix::plan(self.settings).await?),
+                Box::new(StartSystemdUnit::plan("nix-daemon.socket".to_string()).await?),
             ],
         })
     }

@@ -26,7 +26,6 @@ impl ConfigureNix {
     #[tracing::instrument(skip_all)]
     pub async fn plan(
         settings: CommonSettings,
-        sysext: Option<impl AsRef<Path>>,
     ) -> Result<Self, Box<dyn std::error::Error + Send + Sync>> {
         let channels: Vec<(String, Url)> = settings
             .channels
@@ -52,7 +51,7 @@ impl ConfigureNix {
             settings.force,
         )
         .await?;
-        let configure_nix_daemon_service = ConfigureNixDaemonService::plan(sysext).await?;
+        let configure_nix_daemon_service = ConfigureNixDaemonService::plan().await?;
 
         Ok(Self {
             place_channel_configuration,

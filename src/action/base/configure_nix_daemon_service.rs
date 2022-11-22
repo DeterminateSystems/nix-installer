@@ -20,15 +20,12 @@ const DARWIN_NIX_DAEMON_DEST: &str = "/Library/LaunchDaemons/org.nixos.nix-daemo
 
 #[derive(Debug, serde::Deserialize, serde::Serialize, Clone)]
 pub struct ConfigureNixDaemonService {
-    sysext: Option<PathBuf>,
     action_state: ActionState,
 }
 
 impl ConfigureNixDaemonService {
     #[tracing::instrument(skip_all)]
-    pub async fn plan(
-        sysext: Option<impl AsRef<Path>>,
-    ) -> Result<Self, Box<dyn std::error::Error + Send + Sync>> {
+    pub async fn plan() -> Result<Self, Box<dyn std::error::Error + Send + Sync>> {
         match OperatingSystem::host() {
             OperatingSystem::MacOSX {
                 major: _,
@@ -44,7 +41,6 @@ impl ConfigureNixDaemonService {
         };
 
         Ok(Self {
-            sysext: sysext.map(|v| v.as_ref().to_path_buf()),
             action_state: ActionState::Uncompleted,
         })
     }
@@ -71,10 +67,7 @@ impl Action for ConfigureNixDaemonService {
 
     #[tracing::instrument(skip_all)]
     async fn execute(&mut self) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
-        let Self {
-            action_state,
-            sysext,
-        } = self;
+        let Self { action_state } = self;
         if *action_state == ActionState::Completed {
             tracing::trace!("Already completed: Configuring nix daemon service");
             return Ok(());
@@ -131,77 +124,26 @@ impl Action for ConfigureNixDaemonService {
                 .await
                 .map_err(|e| ConfigureNixDaemonServiceError::Command(e).boxed())?;
 
-                match sysext {
-                    Some(sysext) => {
-                        // In a sysext, we cannot use `systemctl link` since the paths won't be available at `systemd` startup
-                        let mode = 755;
-                        let service_path = sysext.join("usr/lib/systemd/system/nix-daemon.service");
-                        tokio::fs::copy(SERVICE_SRC, &service_path).await?;
-                        tokio::fs::set_permissions(&service_path, PermissionsExt::from_mode(mode))
-                            .await
-                            .map_err(|e| {
-                                ConfigureNixDaemonServiceError::SetPermissions(
-                                    mode,
-                                    service_path.to_owned(),
-                                    e,
-                                )
-                                .boxed()
-                            })?;
+                execute_command(Command::new("systemctl").arg("link").arg(SERVICE_SRC))
+                    .await
+                    .map_err(|e| ConfigureNixDaemonServiceError::Command(e).boxed())?;
 
-                        let socket_path = sysext.join("usr/lib/systemd/system/nix-daemon.socket");
-                        tokio::fs::copy(SOCKET_SRC, &socket_path).await?;
-                        tokio::fs::set_permissions(&socket_path, PermissionsExt::from_mode(mode))
-                            .await
-                            .map_err(|e| {
-                                ConfigureNixDaemonServiceError::SetPermissions(
-                                    mode,
-                                    service_path.to_owned(),
-                                    e,
-                                )
-                                .boxed()
-                            })?;
+                execute_command(Command::new("systemctl").arg("link").arg(SOCKET_SRC))
+                    .await
+                    .map_err(|e| ConfigureNixDaemonServiceError::Command(e).boxed())?;
 
-                        let wants_path = sysext.join(
-                            "usr/lib/systemd/system/multi-user.target.wants/nix-daemon.service",
-                        );
-                        tokio::fs::symlink(&service_path, &wants_path)
-                            .await
-                            .map_err(|e| {
-                                ConfigureNixDaemonServiceError::Symlink(
-                                    PathBuf::from(&service_path),
-                                    PathBuf::from(&wants_path),
-                                    e,
-                                )
-                                .boxed()
-                            })?;
+                execute_command(Command::new("systemctl").arg("daemon-reload"))
+                    .await
+                    .map_err(|e| ConfigureNixDaemonServiceError::Command(e).boxed())?;
 
-                        execute_command(Command::new("systemd-sysext").arg("refresh"))
-                            .await
-                            .map_err(|e| ConfigureNixDaemonServiceError::Command(e).boxed())?;
-                    },
-                    None => {
-                        execute_command(Command::new("systemctl").arg("link").arg(SERVICE_SRC))
-                            .await
-                            .map_err(|e| ConfigureNixDaemonServiceError::Command(e).boxed())?;
-
-                        execute_command(Command::new("systemctl").arg("link").arg(SOCKET_SRC))
-                            .await
-                            .map_err(|e| ConfigureNixDaemonServiceError::Command(e).boxed())?;
-
-                        execute_command(Command::new("systemctl").arg("daemon-reload"))
-                            .await
-                            .map_err(|e| ConfigureNixDaemonServiceError::Command(e).boxed())?;
-
-                        execute_command(
-                            Command::new("systemctl")
-                                .arg("enable")
-                                .arg("--now")
-                                .arg("nix-daemon.socket"),
-                        )
-                        .await
-                        .map_err(|e| ConfigureNixDaemonServiceError::Command(e).boxed())?;
-                    },
-                };
+                execute_command(
+                    Command::new("systemctl")
+                        .arg("enable")
+                        .arg("--now")
+                        .arg("nix-daemon.socket"),
+                )
+                .await
+                .map_err(|e| ConfigureNixDaemonServiceError::Command(e).boxed())?;
             },
         };
 
@@ -228,10 +170,7 @@ impl Action for ConfigureNixDaemonService {
 
     #[tracing::instrument(skip_all)]
     async fn revert(&mut self) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
-        let Self {
-            action_state,
-            sysext,
-        } = self;
+        let Self { action_state } = self;
         if *action_state == ActionState::Uncompleted {
             tracing::trace!("Already reverted: Unconfiguring nix daemon service");
             return Ok(());

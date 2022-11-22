@@ -58,7 +58,7 @@ impl Planner for LinuxMulti {
                         .map_err(|v| Error::Action(v.into()))?,
                 ),
                 Box::new(
-                    ConfigureNix::plan(self.settings, Option::<PathBuf>::None)
+                    ConfigureNix::plan(self.settings)
                         .await
                         .map_err(|v| Error::Action(v.into()))?,
                 ),
