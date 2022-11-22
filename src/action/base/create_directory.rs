@@ -39,7 +39,7 @@ impl CreateDirectory {
                 CreateDirectoryError::GettingMetadata(path.to_path_buf(), e).boxed()
             })?;
             if metadata.is_dir() {
-                tracing::debug(
+                tracing::debug!(
                     "Creating directory `{}` already complete, skipping",
                     path.display(),
                 );
