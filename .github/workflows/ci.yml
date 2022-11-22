@@ -72,12 +72,12 @@ jobs:
         run: chmod +x ./harmonic
 
       - name: Initial install
-        run: sudo RUST_LOG=harmonic=trace RUST_BACKTRACE=full ./harmonic install linux-multi --extra-conf "access-tokens = github.com=${{ secrets.GITHUB_TOKEN }}\nsandbox = false" --no-confirm
+        run: sudo RUST_LOG=harmonic=trace RUST_BACKTRACE=full ./harmonic install linux-multi --extra-conf "access-tokens = github.com=${{ secrets.GITHUB_TOKEN }}" --no-confirm
       - name: Initial uninstall (without a `nix run` first)
         run: sudo RUST_LOG=harmonic=trace RUST_BACKTRACE=full ./harmonic uninstall --no-confirm
 
       - name: Repeated install
-        run: sudo RUST_LOG=harmonic=trace RUST_BACKTRACE=full ./harmonic install linux-multi --extra-conf "access-tokens = github.com=${{ secrets.GITHUB_TOKEN }}\nsandbox = false" --no-confirm
+        run: sudo RUST_LOG=harmonic=trace RUST_BACKTRACE=full ./harmonic install linux-multi --extra-conf "access-tokens = github.com=${{ secrets.GITHUB_TOKEN }}" --no-confirm
       - name: Repeated test run
         run: |
           . /nix/var/nix/profiles/default/etc/profile.d/nix-daemon.sh
@@ -103,12 +103,12 @@ jobs:
           sudo useradd -m deck
 
       - name: Initial install
-        run: sudo PATH=$PATH:$HOME/bin RUST_LOG=harmonic=trace RUST_BACKTRACE=full ./harmonic install steam-deck --extra-conf "access-tokens = github.com=${{ secrets.GITHUB_TOKEN }}" --no-confirm
+        run: sudo PATH=$PATH:$HOME/bin RUST_LOG=harmonic=trace RUST_BACKTRACE=full ./harmonic install steam-deck --extra-conf "access-tokens = github.com=${{ secrets.GITHUB_TOKEN }}" --extra-conf "sandbox = false" --no-confirm
       - name: Initial uninstall (without a `nix run` first)
         run: sudo PATH=$PATH:$HOME/bin RUST_LOG=harmonic=trace RUST_BACKTRACE=full ./harmonic uninstall --no-confirm
 
       - name: Repeated install
-        run: sudo PATH=$PATH:$HOME/bin RUST_LOG=harmonic=trace RUST_BACKTRACE=full ./harmonic install steam-deck --extra-conf "access-tokens = github.com=${{ secrets.GITHUB_TOKEN }}" --no-confirm
+        run: sudo PATH=$PATH:$HOME/bin RUST_LOG=harmonic=trace RUST_BACKTRACE=full ./harmonic install steam-deck --extra-conf "access-tokens = github.com=${{ secrets.GITHUB_TOKEN }}" --extra-conf "sandbox = false" --no-confirm
       - name: Test run
         run: |
           . /nix/var/nix/profiles/default/etc/profile.d/nix-daemon.sh

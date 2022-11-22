@@ -15,7 +15,7 @@ impl PlaceNixConfiguration {
     #[tracing::instrument(skip_all)]
     pub async fn plan(
         nix_build_group_name: String,
-        extra_conf: Option<String>,
+        extra_conf: Vec<String>,
         force: bool,
     ) -> Result<Self, Box<dyn std::error::Error + Send + Sync>> {
         let buf = format!(
@@ -28,7 +28,7 @@ impl PlaceNixConfiguration {
             \n\
             auto-optimise-store = true\n\
         ",
-            extra_conf = extra_conf.unwrap_or_else(|| "".into()),
+            extra_conf = extra_conf.join("\n"),
         );
         let create_directory =
             CreateDirectory::plan(NIX_CONF_FOLDER, None, None, 0o0755, force).await?;

@@ -87,7 +87,7 @@ pub struct CommonSettings {
     pub nix_package_url: Url,
 
     #[clap(long, env = "HARMONIC_EXTRA_CONF")]
-    pub extra_conf: Option<String>,
+    pub extra_conf: Vec<String>,
 
     #[clap(
         long,
@@ -255,7 +255,7 @@ impl CommonSettings {
         self.nix_package_url = url;
         self
     }
-    pub fn extra_conf(&mut self, extra_conf: Option<String>) -> &mut Self {
+    pub fn extra_conf(&mut self, extra_conf: Vec<String>) -> &mut Self {
         self.extra_conf = extra_conf;
         self
     }
