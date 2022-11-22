@@ -59,7 +59,7 @@ Repeated step:
 3. **Do your testing!** You can `ssh deck@localhost -p 2222` in and use `rsync -e 'ssh -p 2222' result/bin/harmonic deck@localhost:harmonic` to send a harmonic build.
 4. Delete `steamos-hack.qcow2`
 */
-use std::collections::HashMap;
+use std::{collections::HashMap, path::PathBuf};
 
 use crate::{
     action::{
@@ -73,6 +73,8 @@ use crate::{
 
 #[derive(Debug, Clone, clap::Parser, serde::Serialize, serde::Deserialize)]
 pub struct SteamDeck {
+    #[clap(long, env = "HARMONIC_STEAM_DECK_PERSISTENCE")]
+    persistence: PathBuf,
     #[clap(flatten)]
     pub settings: CommonSettings,
 }
@@ -82,12 +84,13 @@ pub struct SteamDeck {
 impl Planner for SteamDeck {
     async fn default() -> Result<Self, Box<dyn std::error::Error + Sync + Send>> {
         Ok(Self {
+            persistence: PathBuf::from("/home/nix"),
             settings: CommonSettings::default()?,
         })
     }
 
     async fn plan(self) -> Result<crate::InstallPlan, Box<dyn std::error::Error + Sync + Send>> {
-        let persistence = "/home/nix";
+        let persistence = &self.persistence;
 
         let nix_directory_buf = format!(
             "
@@ -143,6 +146,7 @@ impl Planner for SteamDeck {
             DirectoryMode=0755\n\
             Options=bind\n\
         ",
+            persistence = persistence.display(),
         );
         let create_bind_mount_unit = CreateFile::plan(
             "/etc/systemd/system/nix.mount",
@@ -205,10 +209,17 @@ impl Planner for SteamDeck {
     fn settings(
         &self,
     ) -> Result<HashMap<String, serde_json::Value>, Box<dyn std::error::Error + Sync + Send>> {
-        let Self { settings } = self;
+        let Self {
+            settings,
+            persistence,
+        } = self;
         let mut map = HashMap::default();
 
         map.extend(settings.describe()?.into_iter());
+        map.insert(
+            "persistence".to_string(),
+            serde_json::to_value(persistence)?,
+        );
 
         Ok(map)
     }
