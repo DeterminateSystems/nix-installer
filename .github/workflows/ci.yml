@@ -106,14 +106,14 @@ jobs:
         run: sudo PATH=$PATH:$HOME/bin RUST_LOG=harmonic=trace RUST_BACKTRACE=full ./harmonic install steam-deck --extra-conf "access-tokens = github.com=${{ secrets.GITHUB_TOKEN }}" --no-confirm
       - name: Debugging bits
         if: always()
-        run:
+        run: |
           lsblk
           mount
       - name: Initial uninstall (without a `nix run` first)
         run: sudo PATH=$PATH:$HOME/bin RUST_LOG=harmonic=trace RUST_BACKTRACE=full ./harmonic uninstall --no-confirm
       - name: Debugging bits
         if: always()
-        run:
+        run: |
           lsblk
           mount
 
@@ -121,7 +121,7 @@ jobs:
         run: sudo PATH=$PATH:$HOME/bin RUST_LOG=harmonic=trace RUST_BACKTRACE=full ./harmonic install steam-deck --extra-conf "access-tokens = github.com=${{ secrets.GITHUB_TOKEN }}" --no-confirm
       - name: Debugging bits
         if: always()
-        run:
+        run: |
           lsblk
           mount
       - name: Test run
@@ -132,7 +132,7 @@ jobs:
         run: sudo PATH=$PATH:$HOME/bin RUST_LOG=harmonic=trace RUST_BACKTRACE=full ./harmonic uninstall --no-confirm
       - name: Debugging bits
         if: always()
-        run:
+        run: |
           lsblk
           mount
 
