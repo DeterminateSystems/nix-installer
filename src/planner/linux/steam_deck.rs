@@ -100,10 +100,10 @@ impl Planner for SteamDeck {
             Type=oneshot\n\
             ExecCondition=sh -c \"if [ -d /nix ]; then exit 1; else exit 0; fi\"
             ExecStart=steamos-readonly disable\n\
-            ExecStart=mkdir -p /nix\n\
-            ExecStart=chmod 0755 /nix\n\
-            ExecStart=chown root /nix\n\
-            ExecStart=chgrp root /nix\n\
+            ExecStart=mkdir -vp /nix\n\
+            ExecStart=chmod -v 0755 /nix\n\
+            ExecStart=chown -v root /nix\n\
+            ExecStart=chgrp -v root /nix\n\
             ExecStart=steamos-readonly enable\n\
             ExecStop=steamos-readonly disable\n\
             ExecStop=rmdir /nix\n\

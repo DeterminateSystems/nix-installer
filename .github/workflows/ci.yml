@@ -112,9 +112,7 @@ jobs:
           sudo systemctl status nix.mount
           sudo systemctl status nix-directory.service
           sudo systemctl status ensure-symlinked-units-resolve.service
-          sudo systemctl status nix-daemon.service
-          sudo systemctl status nix-daemon.socket
-          sudo -u nixbld1 mkdir -p /nix/store/swoop-user-environment
+          sudo -u nixbld1 mkdir -vp /nix/store/swoop-user-environment
 
       - name: Initial uninstall (without a `nix run` first)
         run: sudo PATH=$PATH:$HOME/bin RUST_LOG=harmonic=trace RUST_BACKTRACE=full ./harmonic uninstall --no-confirm
@@ -126,9 +124,7 @@ jobs:
           sudo systemctl status nix.mount
           sudo systemctl status nix-directory.service
           sudo systemctl status ensure-symlinked-units-resolve.service
-          sudo systemctl status nix-daemon.service
-          sudo systemctl status nix-daemon.socket
-          sudo -u nixbld1 mkdir -p /nix/store/swoop-boop-user-environment
+          sudo -u nixbld1 mkdir -vp /nix/store/swoop-boop-user-environment
 
       - name: Repeated install
         run: sudo PATH=$PATH:$HOME/bin RUST_LOG=harmonic=trace RUST_BACKTRACE=full ./harmonic install steam-deck --extra-conf "access-tokens = github.com=${{ secrets.GITHUB_TOKEN }}" --no-confirm
@@ -140,8 +136,6 @@ jobs:
           sudo systemctl status nix.mount
           sudo systemctl status nix-directory.service
           sudo systemctl status ensure-symlinked-units-resolve.service
-          sudo systemctl status nix-daemon.service
-          sudo systemctl status nix-daemon.socket
           mkdir -p /nix/store/swoop-boop-doop-user-environment
 
       - name: Test run
@@ -158,9 +152,7 @@ jobs:
           sudo systemctl status nix.mount
           sudo systemctl status nix-directory.service
           sudo systemctl status ensure-symlinked-units-resolve.service
-          sudo systemctl status nix-daemon.service
-          sudo systemctl status nix-daemon.socket
-          sudo -u nixbld1 mkdir -p /nix/store/swoop-boop-doop-goop-user-environment
+          sudo -u nixbld1 mkdir -vp /nix/store/swoop-boop-doop-goop-user-environment
 
   build-x86_64-darwin:
     name: Build x86_64 Darwin
