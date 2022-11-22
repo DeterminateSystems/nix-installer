@@ -178,7 +178,9 @@ impl Action for CreateDirectory {
             (true, _) | (false, true) => remove_dir_all(path.clone())
                 .await
                 .map_err(|e| CreateDirectoryError::Removing(path.clone(), e).boxed())?,
-            (false, false) => {},
+            (false, false) => {
+                tracing::warn!("Not removing `{}`, the folder is not empty", path.display());
+            },
         };
 
         Ok(())
