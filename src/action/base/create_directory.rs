@@ -39,6 +39,10 @@ impl CreateDirectory {
                 CreateDirectoryError::GettingMetadata(path.to_path_buf(), e).boxed()
             })?;
             if metadata.is_dir() {
+                tracing::debug(
+                    "Creating directory `{}` already complete, skipping",
+                    path.display(),
+                );
                 // TODO: Validate owner/group...
                 ActionState::Completed
             } else {
@@ -179,7 +183,7 @@ impl Action for CreateDirectory {
                 .await
                 .map_err(|e| CreateDirectoryError::Removing(path.clone(), e).boxed())?,
             (false, false) => {
-                tracing::warn!("Not removing `{}`, the folder is not empty", path.display());
+                tracing::debug!("Not removing `{}`, the folder is not empty", path.display());
             },
         };
 
