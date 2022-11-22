@@ -1,6 +1,6 @@
 use crate::action::base::{CreateFile, CreateFileError};
 use crate::{
-    action::{Action, ActionDescription, ActionState},
+    action::{Action, ActionDescription, ActionImplementation, ActionState},
     BoxableError,
 };
 use reqwest::Url;
@@ -66,7 +66,7 @@ impl Action for PlaceChannelConfiguration {
             action_state: _,
         } = self;
 
-        create_file.execute().await?;
+        create_file.try_execute().await?;
 
         Ok(())
     }

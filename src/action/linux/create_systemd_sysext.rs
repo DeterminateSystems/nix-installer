@@ -1,6 +1,6 @@
 use crate::action::base::{CreateDirectory, CreateDirectoryError, CreateFile, CreateFileError};
 use crate::{
-    action::{Action, ActionDescription, ActionState},
+    action::{Action, ActionDescription, ActionImplementation, ActionState},
     BoxableError,
 };
 use std::path::{Path, PathBuf};
@@ -113,25 +113,18 @@ impl Action for CreateSystemdSysext {
     async fn execute(&mut self) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
         let Self {
             destination: _,
-            action_state,
+            action_state: _,
             create_directories,
             create_extension_release,
             create_bind_mount_unit,
         } = self;
-        if *action_state == ActionState::Completed {
-            tracing::trace!("Already completed: Creating sysext");
-            return Ok(());
-        }
-        tracing::debug!("Creating sysext");
 
         for create_directory in create_directories {
-            create_directory.execute().await?;
+            create_directory.try_execute().await?;
         }
-        create_extension_release.execute().await?;
-        create_bind_mount_unit.execute().await?;
+        create_extension_release.try_execute().await?;
+        create_bind_mount_unit.try_execute().await?;
 
-        tracing::trace!("Created sysext");
-        *action_state = ActionState::Completed;
         Ok(())
     }
 
@@ -149,27 +142,20 @@ impl Action for CreateSystemdSysext {
     async fn revert(&mut self) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
         let Self {
             destination: _,
-            action_state,
+            action_state: _,
             create_directories,
             create_extension_release,
             create_bind_mount_unit,
         } = self;
-        if *action_state == ActionState::Uncompleted {
-            tracing::trace!("Already reverted: Removing sysext");
-            return Ok(());
-        }
-        tracing::debug!("Removing sysext");
 
-        create_bind_mount_unit.revert().await?;
+        create_bind_mount_unit.try_revert().await?;
 
-        create_extension_release.revert().await?;
+        create_extension_release.try_revert().await?;
 
         for create_directory in create_directories.iter_mut().rev() {
-            create_directory.revert().await?;
+            create_directory.try_revert().await?;
         }
 
-        tracing::trace!("Removed sysext");
-        *action_state = ActionState::Uncompleted;
         Ok(())
     }
 

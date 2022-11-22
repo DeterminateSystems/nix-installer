@@ -1,5 +1,5 @@
 use crate::action::base::{CreateDirectory, CreateDirectoryError, CreateFile, CreateFileError};
-use crate::action::{Action, ActionDescription, ActionState};
+use crate::action::{Action, ActionDescription, ActionImplementation, ActionState};
 
 const NIX_CONF_FOLDER: &str = "/etc/nix";
 const NIX_CONF: &str = "/etc/nix/nix.conf";
@@ -66,8 +66,8 @@ impl Action for PlaceNixConfiguration {
             action_state: _,
         } = self;
 
-        create_directory.execute().await?;
-        create_file.execute().await?;
+        create_directory.try_execute().await?;
+        create_file.try_execute().await?;
 
         Ok(())
     }

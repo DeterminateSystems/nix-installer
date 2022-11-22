@@ -3,7 +3,7 @@ use crate::action::base::{
 };
 use crate::CommonSettings;
 use crate::{
-    action::{Action, ActionDescription, ActionState},
+    action::{Action, ActionDescription, ActionImplementation, ActionState},
     BoxableError,
 };
 use std::path::PathBuf;
@@ -86,15 +86,15 @@ impl Action for ProvisionNix {
         // We fetch nix while doing the rest, then move it over.
         let mut fetch_nix_clone = fetch_nix.clone();
         let fetch_nix_handle = tokio::task::spawn(async {
-            fetch_nix_clone.execute().await?;
+            fetch_nix_clone.try_execute().await?;
             Result::<_, Box<dyn std::error::Error + Send + Sync>>::Ok(fetch_nix_clone)
         });
 
-        create_users_and_group.execute().await?;
-        create_nix_tree.execute().await?;
+        create_users_and_group.try_execute().await?;
+        create_nix_tree.try_execute().await?;
 
         *fetch_nix = fetch_nix_handle.await.map_err(|e| e.boxed())??;
-        move_unpacked_nix.execute().await?;
+        move_unpacked_nix.try_execute().await?;
 
         Ok(())
     }
@@ -129,15 +129,15 @@ impl Action for ProvisionNix {
         // We fetch nix while doing the rest, then move it over.
         let mut fetch_nix_clone = fetch_nix.clone();
         let fetch_nix_handle = tokio::task::spawn(async {
-            fetch_nix_clone.revert().await?;
+            fetch_nix_clone.try_revert().await?;
             Result::<_, Box<dyn std::error::Error + Send + Sync>>::Ok(fetch_nix_clone)
         });
 
-        if let Err(err) = create_users_and_group.revert().await {
+        if let Err(err) = create_users_and_group.try_revert().await {
             fetch_nix_handle.abort();
             return Err(err);
         }
-        if let Err(err) = create_nix_tree.revert().await {
+        if let Err(err) = create_nix_tree.try_revert().await {
             fetch_nix_handle.abort();
             return Err(err);
         }

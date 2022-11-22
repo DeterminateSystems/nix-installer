@@ -63,6 +63,8 @@ pub(crate) trait ActionImplementation: Action {
 
 impl ActionImplementation for dyn Action {}
 
+impl<A> ActionImplementation for A where A: Action {}
+
 dyn_clone::clone_trait_object!(Action);
 
 #[derive(Debug, Serialize, Deserialize, Clone, PartialEq, Eq, Copy)]

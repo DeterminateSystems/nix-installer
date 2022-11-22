@@ -2,7 +2,7 @@ use crate::CommonSettings;
 use crate::{
     action::{
         base::{CreateGroup, CreateGroupError, CreateUser, CreateUserError},
-        Action, ActionDescription, ActionState,
+        Action, ActionDescription, ActionImplementation, ActionState,
     },
     BoxableError,
 };
@@ -103,13 +103,13 @@ impl Action for CreateUsersAndGroup {
         } = self;
 
         // Create group
-        create_group.execute().await?;
+        create_group.try_execute().await?;
 
         // Mac is apparently not threadsafe here...
         for create_user in create_users.iter_mut() {
             // let mut create_user_clone = create_user.clone();
             // let _abort_handle = set.spawn(async move {
-            create_user.execute().await?;
+            create_user.try_execute().await?;
             //     Result::<_, CreateUserError>::Ok((idx, create_user_clone))
             // });
         }

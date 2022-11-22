@@ -1,5 +1,5 @@
 use crate::action::base::{CreateDirectory, CreateDirectoryError};
-use crate::action::{Action, ActionDescription, ActionState};
+use crate::action::{Action, ActionDescription, ActionImplementation, ActionState};
 
 const PATHS: &[&str] = &[
     "/nix/var",
@@ -74,7 +74,7 @@ impl Action for CreateNixTree {
 
         // Just do sequential since parallelizing this will have little benefit
         for create_directory in create_directories {
-            create_directory.execute().await?
+            create_directory.try_execute().await?
         }
 
         Ok(())

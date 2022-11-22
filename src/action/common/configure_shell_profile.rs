@@ -1,5 +1,5 @@
 use crate::action::base::{CreateOrAppendFile, CreateOrAppendFileError};
-use crate::action::{Action, ActionDescription, ActionState};
+use crate::action::{Action, ActionDescription, ActionImplementation, ActionState};
 use crate::BoxableError;
 
 use std::path::Path;
@@ -81,7 +81,7 @@ impl Action for ConfigureShellProfile {
         for (idx, create_or_append_file) in create_or_append_files.iter().enumerate() {
             let mut create_or_append_file_clone = create_or_append_file.clone();
             let _abort_handle = set.spawn(async move {
-                create_or_append_file_clone.execute().await?;
+                create_or_append_file_clone.try_execute().await?;
                 Result::<_, Box<dyn std::error::Error + Send + Sync>>::Ok((
                     idx,
                     create_or_append_file_clone,

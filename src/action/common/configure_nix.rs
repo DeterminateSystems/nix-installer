@@ -2,7 +2,7 @@ use crate::{
     action::{
         base::{ConfigureNixDaemonService, SetupDefaultProfile},
         common::{ConfigureShellProfile, PlaceChannelConfiguration, PlaceNixConfiguration},
-        Action, ActionDescription, ActionState,
+        Action, ActionDescription, ActionImplementation, ActionState,
     },
     channel_value::ChannelValue,
     BoxableError, CommonSettings,
@@ -102,19 +102,19 @@ impl Action for ConfigureNix {
 
         if let Some(configure_shell_profile) = configure_shell_profile {
             tokio::try_join!(
-                async move { setup_default_profile.execute().await },
-                async move { place_nix_configuration.execute().await },
-                async move { place_channel_configuration.execute().await },
-                async move { configure_shell_profile.execute().await },
+                async move { setup_default_profile.try_execute().await },
+                async move { place_nix_configuration.try_execute().await },
+                async move { place_channel_configuration.try_execute().await },
+                async move { configure_shell_profile.try_execute().await },
             )?;
         } else {
             tokio::try_join!(
-                async move { setup_default_profile.execute().await },
-                async move { place_nix_configuration.execute().await },
-                async move { place_channel_configuration.execute().await },
+                async move { setup_default_profile.try_execute().await },
+                async move { place_nix_configuration.try_execute().await },
+                async move { place_channel_configuration.try_execute().await },
             )?;
         };
-        configure_nix_daemon_service.execute().await?;
+        configure_nix_daemon_service.try_execute().await?;
 
         Ok(())
     }
@@ -152,13 +152,13 @@ impl Action for ConfigureNix {
             action_state: _,
         } = self;
 
-        configure_nix_daemon_service.revert().await?;
+        configure_nix_daemon_service.try_revert().await?;
         if let Some(configure_shell_profile) = configure_shell_profile {
-            configure_shell_profile.revert().await?;
+            configure_shell_profile.try_revert().await?;
         }
-        place_channel_configuration.revert().await?;
-        place_nix_configuration.revert().await?;
-        setup_default_profile.revert().await?;
+        place_channel_configuration.try_revert().await?;
+        place_nix_configuration.try_revert().await?;
+        setup_default_profile.try_revert().await?;
 
         Ok(())
     }

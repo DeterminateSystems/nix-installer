@@ -7,7 +7,7 @@ use crate::{
             EnableOwnershipError, EncryptVolume, EncryptVolumeError, UnmountVolume,
             UnmountVolumeError,
         },
-        Action, ActionDescription, ActionState,
+        Action, ActionDescription, ActionImplementation, ActionState,
     },
     BoxableError,
 };
@@ -174,17 +174,17 @@ impl Action for CreateApfsVolume {
             action_state: _,
         } = self;
 
-        create_or_append_synthetic_conf.execute().await?;
-        create_synthetic_objects.execute().await?;
-        unmount_volume.execute().await.ok(); // We actually expect this may fail.
-        create_volume.execute().await?;
-        create_or_append_fstab.execute().await?;
+        create_or_append_synthetic_conf.try_execute().await?;
+        create_synthetic_objects.try_execute().await?;
+        unmount_volume.try_execute().await.ok(); // We actually expect this may fail.
+        create_volume.try_execute().await?;
+        create_or_append_fstab.try_execute().await?;
         if let Some(encrypt_volume) = encrypt_volume {
-            encrypt_volume.execute().await?;
+            encrypt_volume.try_execute().await?;
         }
-        setup_volume_daemon.execute().await?;
+        setup_volume_daemon.try_execute().await?;
 
-        bootstrap_volume.execute().await?;
+        bootstrap_volume.try_execute().await?;
 
         let mut retry_tokens: usize = 50;
         loop {
@@ -204,7 +204,7 @@ impl Action for CreateApfsVolume {
             tokio::time::sleep(Duration::from_millis(100)).await;
         }
 
-        enable_ownership.execute().await?;
+        enable_ownership.try_execute().await?;
 
         Ok(())
     }
@@ -238,20 +238,20 @@ impl Action for CreateApfsVolume {
             action_state: _,
         } = self;
 
-        enable_ownership.revert().await?;
-        bootstrap_volume.revert().await?;
-        setup_volume_daemon.revert().await?;
+        enable_ownership.try_revert().await?;
+        bootstrap_volume.try_revert().await?;
+        setup_volume_daemon.try_revert().await?;
         if let Some(encrypt_volume) = encrypt_volume {
-            encrypt_volume.revert().await?;
+            encrypt_volume.try_revert().await?;
         }
-        create_or_append_fstab.revert().await?;
+        create_or_append_fstab.try_revert().await?;
 
-        unmount_volume.revert().await?;
-        create_volume.revert().await?;
+        unmount_volume.try_revert().await?;
+        create_volume.try_revert().await?;
 
         // Purposefully not reversed
-        create_or_append_synthetic_conf.revert().await?;
-        create_synthetic_objects.revert().await?;
+        create_or_append_synthetic_conf.try_revert().await?;
+        create_synthetic_objects.try_revert().await?;
 
         Ok(())
     }
