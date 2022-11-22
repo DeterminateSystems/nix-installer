@@ -34,8 +34,8 @@ impl CreateUser {
 impl Action for CreateUser {
     fn tracing_synopsis(&self) -> String {
         format!(
-            "Create user {} with UID {} with group {}",
-            self.name, self.uid, self.groupname,
+            "Create user `{}` with UID `{}` with group `{}` (GID {})",
+            self.name, self.uid, self.groupname, self.gid
         )
     }
     fn execute_description(&self) -> Vec<ActionDescription> {

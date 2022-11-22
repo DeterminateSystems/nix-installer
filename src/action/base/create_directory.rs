@@ -74,7 +74,7 @@ impl CreateDirectory {
 #[typetag::serde(name = "create_directory")]
 impl Action for CreateDirectory {
     fn tracing_synopsis(&self) -> String {
-        format!("Create the directory `{}`", self.path.display())
+        format!("Create directory `{}`", self.path.display())
     }
 
     fn execute_description(&self) -> Vec<ActionDescription> {

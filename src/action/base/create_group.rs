@@ -29,7 +29,7 @@ impl CreateGroup {
 #[typetag::serde(name = "create_group")]
 impl Action for CreateGroup {
     fn tracing_synopsis(&self) -> String {
-        format!("Create group {} with GID {}", self.name, self.gid)
+        format!("Create group `{}` with GID `{}`", self.name, self.gid)
     }
     fn execute_description(&self) -> Vec<ActionDescription> {
         let Self {

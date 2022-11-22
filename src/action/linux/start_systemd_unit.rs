@@ -27,16 +27,11 @@ impl StartSystemdUnit {
 #[typetag::serde(name = "start_systemd_unit")]
 impl Action for StartSystemdUnit {
     fn tracing_synopsis(&self) -> String {
-        "Start the systemd Nix service and socket".to_string()
+        format!("Enable (and start) the systemd unit {}", self.unit)
     }
 
     fn execute_description(&self) -> Vec<ActionDescription> {
-        vec![ActionDescription::new(
-            self.tracing_synopsis(),
-            vec![
-                "The `nix` command line tool communicates with a running Nix daemon managed by your init system".to_string()
-            ]
-        )]
+        vec![ActionDescription::new(self.tracing_synopsis(), vec![])]
     }
 
     #[tracing::instrument(skip_all, fields(
@@ -61,10 +56,8 @@ impl Action for StartSystemdUnit {
 
     fn revert_description(&self) -> Vec<ActionDescription> {
         vec![ActionDescription::new(
-            "Stop the systemd Nix service and socket".to_string(),
-            vec![
-                "The `nix` command line tool communicates with a running Nix daemon managed by your init system".to_string()
-            ]
+            format!("Disable (and stop) the systemd unit {}", self.unit),
+            vec![],
         )]
     }
 

@@ -64,9 +64,9 @@ impl Action for MoveUnpackedNix {
             "Did not expect to find multiple nix paths, please report this"
         );
         let found_nix_path = found_nix_paths.into_iter().next().unwrap();
-        tracing::trace!("Renaming");
         let src_store = found_nix_path.join("store");
         let dest = Path::new(DEST);
+        tracing::trace!(src = %src_store.display(), dest = %dest.display(), "Renaming");
         tokio::fs::rename(src_store.clone(), dest)
             .await
             .map_err(|e| {
