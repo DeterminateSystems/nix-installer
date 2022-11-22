@@ -101,14 +101,16 @@ jobs:
           echo -e "#! /bin/sh\nexit 0" | sudo tee -a /bin/steamos-readonly
           sudo chmod +x /bin/steamos-readonly
           sudo useradd -m deck
+          lsblk
+          mount
 
       - name: Initial install
-        run: sudo PATH=$PATH:$HOME/bin RUST_LOG=harmonic=trace RUST_BACKTRACE=full ./harmonic install steam-deck --extra-conf "access-tokens = github.com=${{ secrets.GITHUB_TOKEN }}" --extra-conf "sandbox = false" --no-confirm
+        run: sudo PATH=$PATH:$HOME/bin RUST_LOG=harmonic=trace RUST_BACKTRACE=full ./harmonic install steam-deck --extra-conf "access-tokens = github.com=${{ secrets.GITHUB_TOKEN }}" --no-confirm
       - name: Initial uninstall (without a `nix run` first)
         run: sudo PATH=$PATH:$HOME/bin RUST_LOG=harmonic=trace RUST_BACKTRACE=full ./harmonic uninstall --no-confirm
 
       - name: Repeated install
-        run: sudo PATH=$PATH:$HOME/bin RUST_LOG=harmonic=trace RUST_BACKTRACE=full ./harmonic install steam-deck --extra-conf "access-tokens = github.com=${{ secrets.GITHUB_TOKEN }}" --extra-conf "sandbox = false" --no-confirm
+        run: sudo PATH=$PATH:$HOME/bin RUST_LOG=harmonic=trace RUST_BACKTRACE=full ./harmonic install steam-deck --extra-conf "access-tokens = github.com=${{ secrets.GITHUB_TOKEN }}" --no-confirm
       - name: Test run
         run: |
           . /nix/var/nix/profiles/default/etc/profile.d/nix-daemon.sh
