@@ -104,59 +104,17 @@ jobs:
 
       - name: Initial install
         run: sudo PATH=$PATH:$HOME/bin RUST_LOG=harmonic=trace RUST_BACKTRACE=full ./harmonic install steam-deck --persistence `pwd`/ci-test-nix --extra-conf "access-tokens = github.com=${{ secrets.GITHUB_TOKEN }}" --no-confirm
-      - name: Debugging bits
-        if: always()
-        run: |
-          lsblk
-          mount
-          sudo systemctl status nix.mount
-          sudo systemctl status nix-directory.service
-          sudo systemctl status ensure-symlinked-units-resolve.service
-          sudo ls -lah /nix
-          sudo -u nixbld1 mkdir -vp /nix/store/swoop-user-environment
-
       - name: Initial uninstall (without a `nix run` first)
         run: sudo PATH=$PATH:$HOME/bin RUST_LOG=harmonic=trace RUST_BACKTRACE=full ./harmonic uninstall --no-confirm
-      - name: Debugging bits
-        if: always()
-        run: |
-          lsblk
-          mount
-          sudo systemctl status nix.mount
-          sudo systemctl status nix-directory.service
-          sudo systemctl status ensure-symlinked-units-resolve.service
-          sudo ls -lah /nix
-          sudo -u nixbld1 mkdir -vp /nix/store/swoop-boop-user-environment
 
       - name: Repeated install
         run: sudo PATH=$PATH:$HOME/bin RUST_LOG=harmonic=trace RUST_BACKTRACE=full ./harmonic install steam-deck --persistence `pwd`/ci-test-nix --extra-conf "access-tokens = github.com=${{ secrets.GITHUB_TOKEN }}" --no-confirm
-      - name: Debugging bits
-        if: always()
-        run: |
-          lsblk
-          mount
-          sudo systemctl status nix.mount
-          sudo systemctl status nix-directory.service
-          sudo systemctl status ensure-symlinked-units-resolve.service
-          sudo ls -lah /nix
-          mkdir -p /nix/store/swoop-boop-doop-user-environment
-
       - name: Test run
         run: |
           . /nix/var/nix/profiles/default/etc/profile.d/nix-daemon.sh
           nix run nixpkgs#fortune
       - name: Repeated uninstall
         run: sudo PATH=$PATH:$HOME/bin RUST_LOG=harmonic=trace RUST_BACKTRACE=full ./harmonic uninstall --no-confirm
-      - name: Debugging bits
-        if: always()
-        run: |
-          lsblk
-          mount
-          sudo systemctl status nix.mount
-          sudo systemctl status nix-directory.service
-          sudo systemctl status ensure-symlinked-units-resolve.service
-          sudo ls -lah /nix
-          sudo -u nixbld1 mkdir -vp /nix/store/swoop-boop-doop-goop-user-environment
 
   build-x86_64-darwin:
     name: Build x86_64 Darwin
