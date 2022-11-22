@@ -59,18 +59,17 @@ Repeated step:
 3. **Do your testing!** You can `ssh deck@localhost -p 2222` in and use `rsync -e 'ssh -p 2222' result/bin/harmonic deck@localhost:harmonic` to send a harmonic build.
 4. Delete `steamos-hack.qcow2`
 */
-use std::{collections::HashMap, path::PathBuf};
+use std::collections::HashMap;
 
 use crate::{
     action::{
         base::{CreateDirectory, CreateFile},
         common::{ConfigureNix, ProvisionNix},
-        linux::{CreateSystemdSysext, StartSystemdUnit},
+        linux::StartSystemdUnit,
     },
     planner::Planner,
     BuiltinPlanner, CommonSettings, InstallPlan,
 };
-use clap::ArgAction;
 
 #[derive(Debug, Clone, clap::Parser, serde::Serialize, serde::Deserialize)]
 pub struct SteamDeck {
@@ -88,7 +87,6 @@ impl Planner for SteamDeck {
     }
 
     async fn plan(self) -> Result<crate::InstallPlan, Box<dyn std::error::Error + Sync + Send>> {
-        let sysext = "/var/lib/extensions/nix";
         let persistence = "/home/nix";
 
         let nix_directory_buf = format!(
