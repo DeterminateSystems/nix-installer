@@ -1,4 +1,3 @@
-use std::os::unix::prelude::PermissionsExt;
 use std::path::{Path, PathBuf};
 
 use target_lexicon::OperatingSystem;

@@ -1,5 +1,3 @@
-use std::path::Path;
-
 use crate::{
     action::{
         base::{ConfigureNixDaemonService, SetupDefaultProfile},

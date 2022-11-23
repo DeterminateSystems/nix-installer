@@ -7,10 +7,7 @@ use crate::{
     planner::Planner,
     BuiltinPlanner, CommonSettings, InstallPlan,
 };
-use std::{
-    collections::HashMap,
-    path::{Path, PathBuf},
-};
+use std::{collections::HashMap, path::Path};
 
 #[derive(Debug, Clone, clap::Parser, serde::Serialize, serde::Deserialize)]
 pub struct LinuxMulti {
