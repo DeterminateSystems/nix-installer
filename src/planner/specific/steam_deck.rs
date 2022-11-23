@@ -7,7 +7,7 @@ use crate::{
         linux::{CreateSystemdSysext, StartSystemdUnit},
     },
     planner::Planner,
-    Action, BuiltinPlanner, CommonSettings, InstallPlan,
+    Action, BuiltinPlanner, CommonSettings,
 };
 
 #[derive(Debug, Clone, clap::Parser, serde::Serialize, serde::Deserialize)]
