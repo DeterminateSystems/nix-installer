@@ -84,9 +84,13 @@ impl Action for SetupDefaultProfile {
             return Err(Box::new(SetupDefaultProfileError::NoNssCacert));
         };
 
+        let process_group =
+            nix::unistd::setsid().map_err(|e| SetupDefaultProfileError::ProcessGroupCreation(e))?;
+
         // Install `nix` itself into the store
         execute_command(
             Command::new(nix_pkg.join("bin/nix-env"))
+                .process_group(process_group.as_raw())
                 .arg("-i")
                 .arg(&nix_pkg)
                 .arg("-i")
@@ -124,6 +128,7 @@ impl Action for SetupDefaultProfile {
 
         if !channels.is_empty() {
             let mut command = Command::new(nix_pkg.join("bin/nix-channel"));
+            command.process_group(process_group.as_raw());
             command.arg("--update");
             for channel in channels {
                 command.arg(channel);
@@ -187,4 +192,6 @@ pub enum SetupDefaultProfileError {
     Command(#[source] std::io::Error),
     #[error("No root home found to place channel configuration in")]
     NoRootHome,
+    #[error("Could not create process grouip via `setsid`")]
+    ProcessGroupCreation(#[source] nix::Error),
 }

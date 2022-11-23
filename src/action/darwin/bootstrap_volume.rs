@@ -47,8 +47,12 @@ impl Action for BootstrapVolume {
             action_state: _,
         } = self;
 
+        let process_group =
+            nix::unistd::setsid().map_err(|e| BootstrapVolumeError::ProcessGroupCreation(e))?;
+
         execute_command(
             Command::new("launchctl")
+                .process_group(process_group.as_raw())
                 .args(["bootstrap", "system"])
                 .arg(path)
                 .stdin(std::process::Stdio::null()),
@@ -57,6 +61,7 @@ impl Action for BootstrapVolume {
         .map_err(|e| BootstrapVolumeError::Command(e).boxed())?;
         execute_command(
             Command::new("launchctl")
+                .process_group(process_group.as_raw())
                 .args(["kickstart", "-k", "system/org.nixos.darwin-store"])
                 .stdin(std::process::Stdio::null()),
         )
@@ -82,8 +87,12 @@ impl Action for BootstrapVolume {
             action_state: _,
         } = self;
 
+        let process_group =
+            nix::unistd::setsid().map_err(|e| BootstrapVolumeError::ProcessGroupCreation(e))?;
+
         execute_command(
             Command::new("launchctl")
+                .process_group(process_group.as_raw())
                 .args(["bootout", "system"])
                 .arg(path)
                 .stdin(std::process::Stdio::null()),
@@ -107,4 +116,6 @@ impl Action for BootstrapVolume {
 pub enum BootstrapVolumeError {
     #[error("Failed to execute command")]
     Command(#[source] std::io::Error),
+    #[error("Could not create process grouip via `setsid`")]
+    ProcessGroupCreation(#[source] nix::Error),
 }

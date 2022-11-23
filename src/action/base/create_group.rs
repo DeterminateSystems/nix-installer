@@ -53,13 +53,11 @@ impl Action for CreateGroup {
         let Self {
             name,
             gid,
-            action_state,
+            action_state: _,
         } = self;
-        if *action_state == ActionState::Completed {
-            tracing::trace!("Already completed: Creating group");
-            return Ok(());
-        }
-        tracing::debug!("Creating group");
+
+        let process_group =
+            nix::unistd::setsid().map_err(|e| CreateGroupError::ProcessGroupCreation(e))?;
 
         use target_lexicon::OperatingSystem;
         match target_lexicon::OperatingSystem::host() {
@@ -70,6 +68,7 @@ impl Action for CreateGroup {
             }
             | OperatingSystem::Darwin => {
                 if Command::new("/usr/bin/dscl")
+                    .process_group(process_group.as_raw())
                     .args([".", "-read", &format!("/Groups/{name}")])
                     .stdin(std::process::Stdio::null())
                     .stdout(std::process::Stdio::null())
@@ -81,6 +80,7 @@ impl Action for CreateGroup {
                 } else {
                     execute_command(
                         Command::new("/usr/sbin/dseditgroup")
+                            .process_group(process_group.as_raw())
                             .args([
                                 "-o",
                                 "create",
@@ -99,6 +99,7 @@ impl Action for CreateGroup {
             _ => {
                 execute_command(
                     Command::new("groupadd")
+                        .process_group(process_group.as_raw())
                         .args(["-g", &gid.to_string(), "--system", &name])
                         .stdin(std::process::Stdio::null()),
                 )
@@ -107,8 +108,6 @@ impl Action for CreateGroup {
             },
         };
 
-        tracing::trace!("Created group");
-        *action_state = ActionState::Completed;
         Ok(())
     }
 
@@ -137,6 +136,9 @@ impl Action for CreateGroup {
             action_state: _,
         } = self;
 
+        let process_group =
+            nix::unistd::setsid().map_err(|e| CreateGroupError::ProcessGroupCreation(e))?;
+
         use target_lexicon::OperatingSystem;
         match target_lexicon::OperatingSystem::host() {
             OperatingSystem::MacOSX {
@@ -159,6 +161,7 @@ impl Action for CreateGroup {
             _ => {
                 execute_command(
                     Command::new("groupdel")
+                        .process_group(process_group.as_raw())
                         .arg(&name)
                         .stdin(std::process::Stdio::null()),
                 )
@@ -183,4 +186,6 @@ impl Action for CreateGroup {
 pub enum CreateGroupError {
     #[error("Failed to execute command")]
     Command(#[source] std::io::Error),
+    #[error("Could not create process grouip via `setsid`")]
+    ProcessGroupCreation(#[source] nix::Error),
 }

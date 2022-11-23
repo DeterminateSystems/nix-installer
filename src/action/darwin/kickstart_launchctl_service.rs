@@ -44,8 +44,12 @@ impl Action for KickstartLaunchctlService {
             action_state: _,
         } = self;
 
+        let process_group = nix::unistd::setsid()
+            .map_err(|e| KickstartLaunchctlServiceError::ProcessGroupCreation(e))?;
+
         execute_command(
             Command::new("launchctl")
+                .process_group(process_group.as_raw())
                 .arg("kickstart")
                 .arg("-k")
                 .arg(unit)
@@ -82,4 +86,6 @@ impl Action for KickstartLaunchctlService {
 pub enum KickstartLaunchctlServiceError {
     #[error("Failed to execute command")]
     Command(#[source] std::io::Error),
+    #[error("Could not create process grouip via `setsid`")]
+    ProcessGroupCreation(#[source] nix::Error),
 }

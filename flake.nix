@@ -128,7 +128,7 @@
               ]);
 
               doCheck = true;
-              RUSTFLAGS = "--cfg tracing_unstable";
+              RUSTFLAGS = "--cfg tracing_unstable --cfg tokio_unstable";
 
               override = { preBuild ? "", ... }: {
                 preBuild = preBuild + ''

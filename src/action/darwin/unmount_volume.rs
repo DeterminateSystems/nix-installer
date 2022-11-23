@@ -53,8 +53,12 @@ impl Action for UnmountVolume {
             action_state: _,
         } = self;
 
+        let process_group =
+            nix::unistd::setsid().map_err(|e| UnmountVolumeError::ProcessGroupCreation(e))?;
+
         execute_command(
             Command::new("/usr/sbin/diskutil")
+                .process_group(process_group.as_raw())
                 .args(["unmount", "force"])
                 .arg(name)
                 .stdin(std::process::Stdio::null()),
@@ -80,8 +84,12 @@ impl Action for UnmountVolume {
             action_state: _,
         } = self;
 
+        let process_group =
+            nix::unistd::setsid().map_err(|e| UnmountVolumeError::ProcessGroupCreation(e))?;
+
         execute_command(
             Command::new("/usr/sbin/diskutil")
+                .process_group(process_group.as_raw())
                 .args(["unmount", "force"])
                 .arg(name)
                 .stdin(std::process::Stdio::null()),
@@ -105,4 +113,6 @@ impl Action for UnmountVolume {
 pub enum UnmountVolumeError {
     #[error("Failed to execute command")]
     Command(#[source] std::io::Error),
+    #[error("Could not create process grouip via `setsid`")]
+    ProcessGroupCreation(#[source] nix::Error),
 }
