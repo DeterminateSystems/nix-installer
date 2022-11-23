@@ -261,7 +261,7 @@ fn ensure_version<'de, D: Deserializer<'de>>(d: D) -> Result<Version, D::Error> 
     })?;
     let harmonic_version = current_version().map_err(|_e| {
         D::Error::custom(&format!(
-            "Could not parse Harmonic's version `{}` as a valid version according to Semantic Versioning, therefore the plan version ({plan_version}) compatability cannot be checked", env!("CARGO_PKG_VERSION")
+            "Could not parse Harmonic's version `{}` as a valid version according to Semantic Versioning, therefore the plan version ({plan_version}) compatibility cannot be checked", env!("CARGO_PKG_VERSION")
         ))
     })?;
     if req.matches(&harmonic_version) {
