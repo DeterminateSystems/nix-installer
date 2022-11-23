@@ -7,7 +7,7 @@ use crate::{
         linux::{CreateSystemdSysext, StartSystemdUnit},
     },
     planner::Planner,
-    BuiltinPlanner, CommonSettings, InstallPlan,
+    Action, BuiltinPlanner, CommonSettings, InstallPlan,
 };
 
 #[derive(Debug, Clone, clap::Parser, serde::Serialize, serde::Deserialize)]
@@ -25,16 +25,13 @@ impl Planner for SteamDeck {
         })
     }
 
-    async fn plan(self) -> Result<crate::InstallPlan, Box<dyn std::error::Error + Sync + Send>> {
-        Ok(InstallPlan {
-            planner: Box::new(self.clone()),
-            actions: vec![
-                Box::new(CreateSystemdSysext::plan("/var/lib/extensions/nix").await?),
-                Box::new(CreateDirectory::plan("/nix", None, None, 0o0755, true).await?),
-                Box::new(ProvisionNix::plan(self.settings.clone()).await?),
-                Box::new(StartSystemdUnit::plan("nix-daemon.socket".into()).await?),
-            ],
-        })
+    async fn plan(&self) -> Result<Vec<Box<dyn Action>>, Box<dyn std::error::Error + Sync + Send>> {
+        Ok(vec![
+            Box::new(CreateSystemdSysext::plan("/var/lib/extensions/nix").await?),
+            Box::new(CreateDirectory::plan("/nix", None, None, 0o0755, true).await?),
+            Box::new(ProvisionNix::plan(&self.settings.clone()).await?),
+            Box::new(StartSystemdUnit::plan("nix-daemon.socket".into()).await?),
+        ])
     }
 
     fn settings(
