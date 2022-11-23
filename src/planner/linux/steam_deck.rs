@@ -73,7 +73,11 @@ use crate::{
 
 #[derive(Debug, Clone, clap::Parser, serde::Serialize, serde::Deserialize)]
 pub struct SteamDeck {
-    #[clap(long, env = "HARMONIC_STEAM_DECK_PERSISTENCE")]
+    #[clap(
+        long,
+        env = "HARMONIC_STEAM_DECK_PERSISTENCE",
+        default_value = "/home/nix"
+    )]
     persistence: PathBuf,
     #[clap(flatten)]
     pub settings: CommonSettings,
@@ -97,6 +101,7 @@ impl Planner for SteamDeck {
             [Unit]\n\
             Description=Create a `/nix` directory to be used for bind mounting\n\
             PropagatesStopTo=nix-daemon.service\n\
+            PropagatesStopTo=nix.mount\n\
             DefaultDependencies=no\n\
             \n\
             [Service]\n\
@@ -135,10 +140,6 @@ impl Planner for SteamDeck {
             ConditionPathIsDirectory=/nix\n\
             DefaultDependencies=no\n\
             \n\
-            [Install]
-            RequiredBy=nix-daemon.service\n\
-            RequiredBy=nix-daemon.socket\n\
-            \n\
             [Mount]\n\
             What={persistence}\n\
             Where=/nix\n\
@@ -163,7 +164,10 @@ impl Planner for SteamDeck {
             [Unit]\n\
             Description=Ensure Nix related units which are symlinked resolve\n\
             After=nix.mount\n\
+            Requires=nix-directory.service\n\
             Requires=nix.mount\n\
+            PropagatesStopTo=nix-directory.service\n\
+            PropagatesStopTo=nix.mount\n\
             DefaultDependencies=no\n\
             \n\
             [Service]\n\
@@ -174,8 +178,6 @@ impl Planner for SteamDeck {
             \n\
             [Install]\n\
             WantedBy=sysinit.target\n\
-            RequiredBy=nix-daemon.service\n\
-            RequiredBy=nix-daemon.socket\n\
         "
         );
         let ensure_symlinked_units_resolve_unit = CreateFile::plan(
