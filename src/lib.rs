@@ -25,8 +25,8 @@ use tokio::process::Command;
 async fn execute_command(command: &mut Command) -> Result<Output, std::io::Error> {
     // TODO(@hoverbear): When tokio releases past 1.21.2, add a process group https://github.com/DeterminateSystems/harmonic/issues/41#issuecomment-1309513073
 
-    tracing::trace!("Executing");
     let command_str = format!("{:?}", command.as_std());
+    tracing::trace!("Executing `{command_str}`");
     let output = command.output().await?;
     match output.status.success() {
         true => Ok(output),

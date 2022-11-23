@@ -34,17 +34,12 @@ impl UnmountVolume {
 #[async_trait::async_trait]
 #[typetag::serde(name = "unmount_volume")]
 impl Action for UnmountVolume {
-    fn describe_execute(&self) -> Vec<ActionDescription> {
-        if self.action_state == ActionState::Completed {
-            vec![]
-        } else {
-            vec![ActionDescription::new(
-                "Start the systemd Nix service and socket".to_string(),
-                vec![
-                    "The `nix` command line tool communicates with a running Nix daemon managed by your init system".to_string()
-                ]
-            )]
-        }
+    fn tracing_synopsis(&self) -> String {
+        format!("Unmount the `{}` volume", self.name)
+    }
+
+    fn execute_description(&self) -> Vec<ActionDescription> {
+        vec![ActionDescription::new(self.tracing_synopsis(), vec![])]
     }
 
     #[tracing::instrument(skip_all, fields(
@@ -55,13 +50,8 @@ impl Action for UnmountVolume {
         let Self {
             disk: _,
             name,
-            action_state,
+            action_state: _,
         } = self;
-        if *action_state == ActionState::Completed {
-            tracing::trace!("Already completed: Unmounting volume");
-            return Ok(());
-        }
-        tracing::debug!("Unmounting volume");
 
         execute_command(
             Command::new("/usr/sbin/diskutil")
@@ -72,22 +62,11 @@ impl Action for UnmountVolume {
         .await
         .map_err(|e| UnmountVolumeError::Command(e).boxed())?;
 
-        tracing::trace!("Unmounted volume");
-        *action_state = ActionState::Completed;
         Ok(())
     }
 
-    fn describe_revert(&self) -> Vec<ActionDescription> {
-        if self.action_state == ActionState::Uncompleted {
-            vec![]
-        } else {
-            vec![ActionDescription::new(
-                "Stop the systemd Nix service and socket".to_string(),
-                vec![
-                    "The `nix` command line tool communicates with a running Nix daemon managed by your init system".to_string()
-                ]
-            )]
-        }
+    fn revert_description(&self) -> Vec<ActionDescription> {
+        vec![ActionDescription::new(self.tracing_synopsis(), vec![])]
     }
 
     #[tracing::instrument(skip_all, fields(
@@ -98,16 +77,11 @@ impl Action for UnmountVolume {
         let Self {
             disk: _,
             name,
-            action_state,
+            action_state: _,
         } = self;
-        if *action_state == ActionState::Uncompleted {
-            tracing::trace!("Already reverted: Unmounting Nix Store volume");
-            return Ok(());
-        }
-        tracing::debug!("Unmounting Nix Store volume");
 
         execute_command(
-            Command::new(" /usr/sbin/diskutil")
+            Command::new("/usr/sbin/diskutil")
                 .args(["unmount", "force"])
                 .arg(name)
                 .stdin(std::process::Stdio::null()),
@@ -115,13 +89,15 @@ impl Action for UnmountVolume {
         .await
         .map_err(|e| UnmountVolumeError::Command(e).boxed())?;
 
-        tracing::trace!("Unmounted Nix Store volume");
-        *action_state = ActionState::Completed;
         Ok(())
     }
 
     fn action_state(&self) -> ActionState {
         self.action_state
+    }
+
+    fn set_action_state(&mut self, action_state: ActionState) {
+        self.action_state = action_state;
     }
 }
 

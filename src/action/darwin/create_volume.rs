@@ -36,19 +36,16 @@ impl CreateVolume {
 #[async_trait::async_trait]
 #[typetag::serde(name = "create_volume")]
 impl Action for CreateVolume {
-    fn describe_execute(&self) -> Vec<ActionDescription> {
-        if self.action_state == ActionState::Completed {
-            vec![]
-        } else {
-            vec![ActionDescription::new(
-                format!(
-                    "Create a volume on `{}` named `{}`",
-                    self.disk.display(),
-                    self.name
-                ),
-                vec![],
-            )]
-        }
+    fn tracing_synopsis(&self) -> String {
+        format!(
+            "Create a volume on `{}` named `{}`",
+            self.disk.display(),
+            self.name
+        )
+    }
+
+    fn execute_description(&self) -> Vec<ActionDescription> {
+        vec![ActionDescription::new(self.tracing_synopsis(), vec![])]
     }
 
     #[tracing::instrument(skip_all, fields(
@@ -61,13 +58,8 @@ impl Action for CreateVolume {
             disk,
             name,
             case_sensitive,
-            action_state,
+            action_state: _,
         } = self;
-        if *action_state == ActionState::Completed {
-            tracing::trace!("Already completed: Creating volume");
-            return Ok(());
-        }
-        tracing::debug!("Creating volume");
 
         execute_command(
             Command::new("/usr/sbin/diskutil")
@@ -88,24 +80,18 @@ impl Action for CreateVolume {
         .await
         .map_err(|e| CreateVolumeError::Command(e).boxed())?;
 
-        tracing::trace!("Created volume");
-        *action_state = ActionState::Completed;
         Ok(())
     }
 
-    fn describe_revert(&self) -> Vec<ActionDescription> {
-        if self.action_state == ActionState::Uncompleted {
-            vec![]
-        } else {
-            vec![ActionDescription::new(
-                format!(
-                    "Remove the volume on `{}` named `{}`",
-                    self.disk.display(),
-                    self.name
-                ),
-                vec![],
-            )]
-        }
+    fn revert_description(&self) -> Vec<ActionDescription> {
+        vec![ActionDescription::new(
+            format!(
+                "Remove the volume on `{}` named `{}`",
+                self.disk.display(),
+                self.name
+            ),
+            vec![],
+        )]
     }
 
     #[tracing::instrument(skip_all, fields(
@@ -118,13 +104,8 @@ impl Action for CreateVolume {
             disk: _,
             name,
             case_sensitive: _,
-            action_state,
+            action_state: _,
         } = self;
-        if *action_state == ActionState::Uncompleted {
-            tracing::trace!("Already reverted: Deleting volume");
-            return Ok(());
-        }
-        tracing::debug!("Deleting volume");
 
         execute_command(
             Command::new("/usr/sbin/diskutil")
@@ -134,13 +115,15 @@ impl Action for CreateVolume {
         .await
         .map_err(|e| CreateVolumeError::Command(e).boxed())?;
 
-        tracing::trace!("Deleted volume");
-        *action_state = ActionState::Completed;
         Ok(())
     }
 
     fn action_state(&self) -> ActionState {
         self.action_state
+    }
+
+    fn set_action_state(&mut self, action_state: ActionState) {
+        self.action_state = action_state;
     }
 }
 

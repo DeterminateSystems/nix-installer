@@ -2,7 +2,7 @@ use crate::{
     action::{
         base::{ConfigureNixDaemonService, SetupDefaultProfile},
         common::{ConfigureShellProfile, PlaceChannelConfiguration, PlaceNixConfiguration},
-        Action, ActionDescription, ActionState,
+        Action, ActionDescription, ActionImplementation, ActionState,
     },
     channel_value::ChannelValue,
     BoxableError, CommonSettings,
@@ -65,7 +65,11 @@ impl ConfigureNix {
 #[async_trait::async_trait]
 #[typetag::serde(name = "configure_nix")]
 impl Action for ConfigureNix {
-    fn describe_execute(&self) -> Vec<ActionDescription> {
+    fn tracing_synopsis(&self) -> String {
+        "Configure Nix".to_string()
+    }
+
+    fn execute_description(&self) -> Vec<ActionDescription> {
         let Self {
             setup_default_profile,
             configure_nix_daemon_service,
@@ -75,18 +79,14 @@ impl Action for ConfigureNix {
             action_state: _,
         } = &self;
 
-        if self.action_state == ActionState::Completed {
-            vec![]
-        } else {
-            let mut buf = setup_default_profile.describe_execute();
-            buf.append(&mut configure_nix_daemon_service.describe_execute());
-            buf.append(&mut place_nix_configuration.describe_execute());
-            buf.append(&mut place_channel_configuration.describe_execute());
-            if let Some(configure_shell_profile) = configure_shell_profile {
-                buf.append(&mut configure_shell_profile.describe_execute());
-            }
-            buf
+        let mut buf = setup_default_profile.execute_description();
+        buf.append(&mut configure_nix_daemon_service.execute_description());
+        buf.append(&mut place_nix_configuration.execute_description());
+        buf.append(&mut place_channel_configuration.execute_description());
+        if let Some(configure_shell_profile) = configure_shell_profile {
+            buf.append(&mut configure_shell_profile.execute_description());
         }
+        buf
     }
 
     #[tracing::instrument(skip_all)]
@@ -97,37 +97,29 @@ impl Action for ConfigureNix {
             place_nix_configuration,
             place_channel_configuration,
             configure_shell_profile,
-            action_state,
+            action_state: _,
         } = self;
-        if *action_state == ActionState::Completed {
-            tracing::trace!("Already completed: Configuring nix");
-            return Ok(());
-        }
-        *action_state = ActionState::Progress;
-        tracing::debug!("Configuring nix");
 
         if let Some(configure_shell_profile) = configure_shell_profile {
             tokio::try_join!(
-                async move { setup_default_profile.execute().await },
-                async move { place_nix_configuration.execute().await },
-                async move { place_channel_configuration.execute().await },
-                async move { configure_shell_profile.execute().await },
+                async move { setup_default_profile.try_execute().await },
+                async move { place_nix_configuration.try_execute().await },
+                async move { place_channel_configuration.try_execute().await },
+                async move { configure_shell_profile.try_execute().await },
             )?;
         } else {
             tokio::try_join!(
-                async move { setup_default_profile.execute().await },
-                async move { place_nix_configuration.execute().await },
-                async move { place_channel_configuration.execute().await },
+                async move { setup_default_profile.try_execute().await },
+                async move { place_nix_configuration.try_execute().await },
+                async move { place_channel_configuration.try_execute().await },
             )?;
         };
-        configure_nix_daemon_service.execute().await?;
+        configure_nix_daemon_service.try_execute().await?;
 
-        tracing::trace!("Configured nix");
-        *action_state = ActionState::Completed;
         Ok(())
     }
 
-    fn describe_revert(&self) -> Vec<ActionDescription> {
+    fn revert_description(&self) -> Vec<ActionDescription> {
         let Self {
             setup_default_profile,
             configure_nix_daemon_service,
@@ -137,20 +129,16 @@ impl Action for ConfigureNix {
             action_state: _,
         } = &self;
 
-        if self.action_state == ActionState::Uncompleted {
-            vec![]
-        } else {
-            let mut buf = Vec::default();
-            if let Some(configure_shell_profile) = configure_shell_profile {
-                buf.append(&mut configure_shell_profile.describe_revert());
-            }
-            buf.append(&mut place_channel_configuration.describe_revert());
-            buf.append(&mut place_nix_configuration.describe_revert());
-            buf.append(&mut configure_nix_daemon_service.describe_revert());
-            buf.append(&mut setup_default_profile.describe_revert());
-
-            buf
+        let mut buf = Vec::default();
+        if let Some(configure_shell_profile) = configure_shell_profile {
+            buf.append(&mut configure_shell_profile.revert_description());
         }
+        buf.append(&mut place_channel_configuration.revert_description());
+        buf.append(&mut place_nix_configuration.revert_description());
+        buf.append(&mut configure_nix_daemon_service.revert_description());
+        buf.append(&mut setup_default_profile.revert_description());
+
+        buf
     }
 
     #[tracing::instrument(skip_all)]
@@ -161,29 +149,25 @@ impl Action for ConfigureNix {
             place_nix_configuration,
             place_channel_configuration,
             configure_shell_profile,
-            action_state,
+            action_state: _,
         } = self;
-        if *action_state == ActionState::Uncompleted {
-            tracing::trace!("Already reverted: Unconfiguring nix");
-            return Ok(());
-        }
-        *action_state = ActionState::Progress;
-        tracing::debug!("Unconfiguring nix");
 
-        configure_nix_daemon_service.revert().await?;
+        configure_nix_daemon_service.try_revert().await?;
         if let Some(configure_shell_profile) = configure_shell_profile {
-            configure_shell_profile.revert().await?;
+            configure_shell_profile.try_revert().await?;
         }
-        place_channel_configuration.revert().await?;
-        place_nix_configuration.revert().await?;
-        setup_default_profile.revert().await?;
+        place_channel_configuration.try_revert().await?;
+        place_nix_configuration.try_revert().await?;
+        setup_default_profile.try_revert().await?;
 
-        tracing::trace!("Unconfigured nix");
-        *action_state = ActionState::Uncompleted;
         Ok(())
     }
 
     fn action_state(&self) -> ActionState {
         self.action_state
+    }
+
+    fn set_action_state(&mut self, action_state: ActionState) {
+        self.action_state = action_state;
     }
 }

@@ -1,6 +1,6 @@
 use crate::action::base::{CreateDirectory, CreateDirectoryError, CreateFile, CreateFileError};
 use crate::{
-    action::{Action, ActionDescription, ActionState},
+    action::{Action, ActionDescription, ActionImplementation, ActionState},
     BoxableError,
 };
 use std::path::{Path, PathBuf};
@@ -93,100 +93,78 @@ impl CreateSystemdSysext {
 #[async_trait::async_trait]
 #[typetag::serde(name = "create_systemd_sysext")]
 impl Action for CreateSystemdSysext {
-    fn describe_execute(&self) -> Vec<ActionDescription> {
-        let Self {
-            action_state: _,
-            destination,
-            create_bind_mount_unit: _,
-            create_directories: _,
-            create_extension_release: _,
-        } = &self;
-        if self.action_state == ActionState::Completed {
-            vec![]
-        } else {
-            vec![ActionDescription::new(
-                format!("Create a systemd sysext at `{}`", destination.display()),
-                vec![format!(
-                    "Create a writable, persistent systemd system extension.",
-                )],
-            )]
-        }
+    fn tracing_synopsis(&self) -> String {
+        format!(
+            "Create a systemd sysext at `{}`",
+            self.destination.display()
+        )
+    }
+
+    fn execute_description(&self) -> Vec<ActionDescription> {
+        vec![ActionDescription::new(
+            self.tracing_synopsis(),
+            vec![format!(
+                "Create a writable, persistent systemd system extension.",
+            )],
+        )]
     }
 
     #[tracing::instrument(skip_all, fields(destination,))]
     async fn execute(&mut self) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
         let Self {
             destination: _,
-            action_state,
+            action_state: _,
             create_directories,
             create_extension_release,
             create_bind_mount_unit,
         } = self;
-        if *action_state == ActionState::Completed {
-            tracing::trace!("Already completed: Creating sysext");
-            return Ok(());
-        }
-        tracing::debug!("Creating sysext");
 
         for create_directory in create_directories {
-            create_directory.execute().await?;
+            create_directory.try_execute().await?;
         }
-        create_extension_release.execute().await?;
-        create_bind_mount_unit.execute().await?;
+        create_extension_release.try_execute().await?;
+        create_bind_mount_unit.try_execute().await?;
 
-        tracing::trace!("Created sysext");
-        *action_state = ActionState::Completed;
         Ok(())
     }
 
-    fn describe_revert(&self) -> Vec<ActionDescription> {
-        let Self {
-            destination,
-            action_state: _,
-            create_directories: _,
-            create_extension_release: _,
-            create_bind_mount_unit: _,
-        } = &self;
-        if self.action_state == ActionState::Uncompleted {
-            vec![]
-        } else {
-            vec![ActionDescription::new(
-                format!("Remove the sysext located at `{}`", destination.display()),
-                vec![],
-            )]
-        }
+    fn revert_description(&self) -> Vec<ActionDescription> {
+        vec![ActionDescription::new(
+            format!(
+                "Remove the sysext located at `{}`",
+                self.destination.display()
+            ),
+            vec![],
+        )]
     }
 
     #[tracing::instrument(skip_all, fields(destination,))]
     async fn revert(&mut self) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
         let Self {
             destination: _,
-            action_state,
+            action_state: _,
             create_directories,
             create_extension_release,
             create_bind_mount_unit,
         } = self;
-        if *action_state == ActionState::Uncompleted {
-            tracing::trace!("Already reverted: Removing sysext");
-            return Ok(());
-        }
-        tracing::debug!("Removing sysext");
 
-        create_bind_mount_unit.revert().await?;
+        create_bind_mount_unit.try_revert().await?;
 
-        create_extension_release.revert().await?;
+        create_extension_release.try_revert().await?;
 
         for create_directory in create_directories.iter_mut().rev() {
-            create_directory.revert().await?;
+            create_directory.try_revert().await?;
         }
 
-        tracing::trace!("Removed sysext");
-        *action_state = ActionState::Uncompleted;
         Ok(())
     }
 
     fn action_state(&self) -> ActionState {
         self.action_state
+    }
+
+    fn set_action_state(&mut self, action_state: ActionState) {
+        self.action_state = action_state;
     }
 }
 

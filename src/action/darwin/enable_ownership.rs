@@ -32,27 +32,22 @@ impl EnableOwnership {
 #[async_trait::async_trait]
 #[typetag::serde(name = "enable_ownership")]
 impl Action for EnableOwnership {
-    fn describe_execute(&self) -> Vec<ActionDescription> {
-        if self.action_state == ActionState::Completed {
-            vec![]
-        } else {
-            vec![ActionDescription::new(
-                format!("Enable ownership on {}", self.path.display()),
-                vec![],
-            )]
-        }
+    fn tracing_synopsis(&self) -> String {
+        format!("Enable ownership on {}", self.path.display())
+    }
+
+    fn execute_description(&self) -> Vec<ActionDescription> {
+        vec![ActionDescription::new(self.tracing_synopsis(), vec![])]
     }
 
     #[tracing::instrument(skip_all, fields(
         path = %self.path.display(),
     ))]
     async fn execute(&mut self) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
-        let Self { path, action_state } = self;
-        if *action_state == ActionState::Completed {
-            tracing::trace!("Already completed: Enabling ownership");
-            return Ok(());
-        }
-        tracing::debug!("Enabling ownership");
+        let Self {
+            path,
+            action_state: _,
+        } = self;
 
         let should_enable_ownership = {
             let buf = execute_command(
@@ -79,40 +74,27 @@ impl Action for EnableOwnership {
             .map_err(|e| EnableOwnershipError::Command(e).boxed())?;
         }
 
-        tracing::trace!("Enabled ownership");
-        *action_state = ActionState::Completed;
         Ok(())
     }
 
-    fn describe_revert(&self) -> Vec<ActionDescription> {
-        if self.action_state == ActionState::Uncompleted {
-            vec![]
-        } else {
-            vec![]
-        }
+    fn revert_description(&self) -> Vec<ActionDescription> {
+        vec![]
     }
 
     #[tracing::instrument(skip_all, fields(
         path = %self.path.display(),
     ))]
     async fn revert(&mut self) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
-        let Self {
-            path: _,
-            action_state,
-        } = self;
-        if *action_state == ActionState::Uncompleted {
-            tracing::trace!("Already reverted: Unenabling ownership (noop)");
-            return Ok(());
-        }
-        tracing::debug!("Unenabling ownership (noop)");
-
-        tracing::trace!("Unenabled ownership (noop)");
-        *action_state = ActionState::Completed;
+        // noop
         Ok(())
     }
 
     fn action_state(&self) -> ActionState {
         self.action_state
+    }
+
+    fn set_action_state(&mut self, action_state: ActionState) {
+        self.action_state = action_state;
     }
 }
 

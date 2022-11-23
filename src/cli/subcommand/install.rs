@@ -120,7 +120,13 @@ impl CommandExecute for Install {
             let error = eyre!(err).wrap_err("Install failure");
             if !no_confirm {
                 tracing::error!("{:?}", error);
-                if !interaction::confirm(install_plan.describe_revert(explain)).await? {
+                if !interaction::confirm(
+                    install_plan
+                        .describe_revert(explain)
+                        .map_err(|e| eyre!(e))?,
+                )
+                .await?
+                {
                     interaction::clean_exit_with_message("Okay, didn't do anything! Bye!").await;
                 }
                 let rx2 = tx.subscribe();

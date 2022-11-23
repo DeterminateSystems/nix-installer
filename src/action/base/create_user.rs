@@ -32,25 +32,19 @@ impl CreateUser {
 #[async_trait::async_trait]
 #[typetag::serde(name = "create_user")]
 impl Action for CreateUser {
-    fn describe_execute(&self) -> Vec<ActionDescription> {
-        if self.action_state == ActionState::Completed {
-            vec![]
-        } else {
-            let Self {
-                name,
-                uid,
-                groupname: _,
-                gid,
-                action_state: _,
-            } = self;
-
-            vec![ActionDescription::new(
-                format!("Create user {name} with UID {uid} with group {gid}"),
-                vec![format!(
-                    "The nix daemon requires system users it can act as in order to build"
-                )],
-            )]
-        }
+    fn tracing_synopsis(&self) -> String {
+        format!(
+            "Create user `{}` with UID `{}` with group `{}` (GID {})",
+            self.name, self.uid, self.groupname, self.gid
+        )
+    }
+    fn execute_description(&self) -> Vec<ActionDescription> {
+        vec![ActionDescription::new(
+            self.tracing_synopsis(),
+            vec![format!(
+                "The nix daemon requires system users it can act as in order to build"
+            )],
+        )]
     }
 
     #[tracing::instrument(skip_all, fields(
@@ -65,13 +59,8 @@ impl Action for CreateUser {
             uid,
             groupname,
             gid,
-            action_state,
+            action_state: _,
         } = self;
-        if *action_state == ActionState::Completed {
-            tracing::trace!("Already completed: Creating user");
-            return Ok(());
-        }
-        tracing::debug!("Creating user");
 
         use target_lexicon::OperatingSystem;
         match OperatingSystem::host() {
@@ -87,6 +76,7 @@ impl Action for CreateUser {
                 if Command::new("/usr/bin/dscl")
                     .args([".", "-read", &format!("/Users/{name}")])
                     .stdin(std::process::Stdio::null())
+                    .stdout(std::process::Stdio::null())
                     .status()
                     .await?
                     .success()
@@ -215,30 +205,24 @@ impl Action for CreateUser {
             },
         }
 
-        tracing::trace!("Created user");
-        *action_state = ActionState::Completed;
         Ok(())
     }
 
-    fn describe_revert(&self) -> Vec<ActionDescription> {
-        if self.action_state == ActionState::Uncompleted {
-            vec![]
-        } else {
-            let Self {
-                name,
-                uid,
-                groupname: _,
-                gid,
-                action_state: _,
-            } = self;
+    fn revert_description(&self) -> Vec<ActionDescription> {
+        let Self {
+            name,
+            uid,
+            groupname: _,
+            gid,
+            action_state: _,
+        } = self;
 
-            vec![ActionDescription::new(
-                format!("Delete user {name} with UID {uid} with group {gid}"),
-                vec![format!(
-                    "The nix daemon requires system users it can act as in order to build"
-                )],
-            )]
-        }
+        vec![ActionDescription::new(
+            format!("Delete user {name} with UID {uid} with group {gid}"),
+            vec![format!(
+                "The nix daemon requires system users it can act as in order to build"
+            )],
+        )]
     }
 
     #[tracing::instrument(skip_all, fields(
@@ -252,13 +236,8 @@ impl Action for CreateUser {
             uid: _,
             groupname: _,
             gid: _,
-            action_state,
+            action_state: _,
         } = self;
-        if *action_state == ActionState::Uncompleted {
-            tracing::trace!("Already completed: Deleting user");
-            return Ok(());
-        }
-        tracing::debug!("Deleting user");
 
         use target_lexicon::OperatingSystem;
         match target_lexicon::OperatingSystem::host() {
@@ -290,13 +269,15 @@ impl Action for CreateUser {
             },
         };
 
-        tracing::trace!("Deleted user");
-        *action_state = ActionState::Uncompleted;
         Ok(())
     }
 
     fn action_state(&self) -> ActionState {
         self.action_state
+    }
+
+    fn set_action_state(&mut self, action_state: ActionState) {
+        self.action_state = action_state;
     }
 }
 

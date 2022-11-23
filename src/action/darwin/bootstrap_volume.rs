@@ -30,27 +30,22 @@ impl BootstrapVolume {
 #[async_trait::async_trait]
 #[typetag::serde(name = "bootstrap_volume")]
 impl Action for BootstrapVolume {
-    fn describe_execute(&self) -> Vec<ActionDescription> {
-        if self.action_state == ActionState::Completed {
-            vec![]
-        } else {
-            vec![ActionDescription::new(
-                format!("Bootstrap and kickstart `{}`", self.path.display()),
-                vec![],
-            )]
-        }
+    fn tracing_synopsis(&self) -> String {
+        format!("Bootstrap and kickstart `{}`", self.path.display())
+    }
+
+    fn execute_description(&self) -> Vec<ActionDescription> {
+        vec![ActionDescription::new(self.tracing_synopsis(), vec![])]
     }
 
     #[tracing::instrument(skip_all, fields(
         path = %self.path.display(),
     ))]
     async fn execute(&mut self) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
-        let Self { path, action_state } = self;
-        if *action_state == ActionState::Completed {
-            tracing::trace!("Already completed: Bootstrapping volume");
-            return Ok(());
-        }
-        tracing::debug!("Bootstrapping volume");
+        let Self {
+            path,
+            action_state: _,
+        } = self;
 
         execute_command(
             Command::new("launchctl")
@@ -68,32 +63,24 @@ impl Action for BootstrapVolume {
         .await
         .map_err(|e| BootstrapVolumeError::Command(e).boxed())?;
 
-        tracing::trace!("Bootstrapped volume");
-        *action_state = ActionState::Completed;
         Ok(())
     }
 
-    fn describe_revert(&self) -> Vec<ActionDescription> {
-        if self.action_state == ActionState::Uncompleted {
-            vec![]
-        } else {
-            vec![ActionDescription::new(
-                format!("Stop `{}`", self.path.display()),
-                vec![],
-            )]
-        }
+    fn revert_description(&self) -> Vec<ActionDescription> {
+        vec![ActionDescription::new(
+            format!("Stop `{}`", self.path.display()),
+            vec![],
+        )]
     }
 
     #[tracing::instrument(skip_all, fields(
         path = %self.path.display(),
     ))]
     async fn revert(&mut self) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
-        let Self { path, action_state } = self;
-        if *action_state == ActionState::Uncompleted {
-            tracing::trace!("Already reverted: Stop volume");
-            return Ok(());
-        }
-        tracing::debug!("Stop volume");
+        let Self {
+            path,
+            action_state: _,
+        } = self;
 
         execute_command(
             Command::new("launchctl")
@@ -104,13 +91,15 @@ impl Action for BootstrapVolume {
         .await
         .map_err(|e| BootstrapVolumeError::Command(e).boxed())?;
 
-        tracing::trace!("Stopped volume");
-        *action_state = ActionState::Completed;
         Ok(())
     }
 
     fn action_state(&self) -> ActionState {
         self.action_state
+    }
+
+    fn set_action_state(&mut self, action_state: ActionState) {
+        self.action_state = action_state;
     }
 }
 
