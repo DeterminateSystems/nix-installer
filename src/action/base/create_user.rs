@@ -285,6 +285,4 @@ impl Action for CreateUser {
 pub enum CreateUserError {
     #[error("Failed to execute command")]
     Command(#[source] std::io::Error),
-    #[error("Deleting user failed, your `root` user likely does not have a secure token. Check `sysadminctl -secureTokenStatus root`, then enable it via `sysadminctl -secureTokenOn root interactive` from a user with a secure token")]
-    UserDelete(#[source] std::io::Error),
 }
