@@ -123,7 +123,7 @@ impl Planner for SteamDeck {
             "/etc/systemd/system/nix-directory.service",
             None,
             None,
-            0o0755,
+            0o0644,
             nix_directory_buf,
             false,
         )
@@ -153,7 +153,7 @@ impl Planner for SteamDeck {
             "/etc/systemd/system/nix.mount",
             None,
             None,
-            0o0755,
+            0o0644,
             create_bind_mount_buf,
             false,
         )
@@ -184,7 +184,7 @@ impl Planner for SteamDeck {
             "/etc/systemd/system/ensure-symlinked-units-resolve.service",
             None,
             None,
-            0o0755,
+            0o0644,
             ensure_symlinked_units_resolve_buf,
             false,
         )
