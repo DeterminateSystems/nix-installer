@@ -28,22 +28,21 @@ impl CreateGroup {
 #[async_trait::async_trait]
 #[typetag::serde(name = "create_group")]
 impl Action for CreateGroup {
-    fn describe_execute(&self) -> Vec<ActionDescription> {
+    fn tracing_synopsis(&self) -> String {
+        format!("Create group `{}` with GID `{}`", self.name, self.gid)
+    }
+    fn execute_description(&self) -> Vec<ActionDescription> {
         let Self {
-            name,
-            gid,
+            name: _,
+            gid: _,
             action_state: _,
         } = &self;
-        if self.action_state == ActionState::Completed {
-            vec![]
-        } else {
-            vec![ActionDescription::new(
-                format!("Create group {name} with GID {gid}"),
-                vec![format!(
-                    "The nix daemon requires a system user group its system users can be part of"
-                )],
-            )]
-        }
+        vec![ActionDescription::new(
+            self.tracing_synopsis(),
+            vec![format!(
+                "The nix daemon requires a system user group its system users can be part of"
+            )],
+        )]
     }
 
     #[tracing::instrument(skip_all, fields(
@@ -73,6 +72,7 @@ impl Action for CreateGroup {
                 if Command::new("/usr/bin/dscl")
                     .args([".", "-read", &format!("/Groups/{name}")])
                     .stdin(std::process::Stdio::null())
+                    .stdout(std::process::Stdio::null())
                     .status()
                     .await?
                     .success()
@@ -112,22 +112,18 @@ impl Action for CreateGroup {
         Ok(())
     }
 
-    fn describe_revert(&self) -> Vec<ActionDescription> {
+    fn revert_description(&self) -> Vec<ActionDescription> {
         let Self {
             name,
             gid: _,
             action_state: _,
         } = &self;
-        if self.action_state == ActionState::Completed {
-            vec![]
-        } else {
-            vec![ActionDescription::new(
-                format!("Delete group {name}"),
-                vec![format!(
-                    "The nix daemon requires a system user group its system users can be part of"
-                )],
-            )]
-        }
+        vec![ActionDescription::new(
+            format!("Delete group {name}"),
+            vec![format!(
+                "The nix daemon requires a system user group its system users can be part of"
+            )],
+        )]
     }
 
     #[tracing::instrument(skip_all, fields(
@@ -138,13 +134,8 @@ impl Action for CreateGroup {
         let Self {
             name,
             gid: _,
-            action_state,
+            action_state: _,
         } = self;
-        if *action_state == ActionState::Uncompleted {
-            tracing::trace!("Already reverted: Deleting group");
-            return Ok(());
-        }
-        tracing::debug!("Deleting group");
 
         use target_lexicon::OperatingSystem;
         match target_lexicon::OperatingSystem::host() {
@@ -176,13 +167,15 @@ impl Action for CreateGroup {
             },
         };
 
-        tracing::trace!("Deleted group");
-        *action_state = ActionState::Uncompleted;
         Ok(())
     }
 
     fn action_state(&self) -> ActionState {
         self.action_state
+    }
+
+    fn set_action_state(&mut self, action_state: ActionState) {
+        self.action_state = action_state;
     }
 }
 

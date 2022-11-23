@@ -7,7 +7,7 @@ use crate::{
             EnableOwnershipError, EncryptVolume, EncryptVolumeError, UnmountVolume,
             UnmountVolumeError,
         },
-        Action, ActionDescription, ActionState,
+        Action, ActionDescription, ActionImplementation, ActionState,
     },
     BoxableError,
 };
@@ -140,23 +140,19 @@ impl CreateApfsVolume {
 #[async_trait::async_trait]
 #[typetag::serde(name = "create_apfs_volume")]
 impl Action for CreateApfsVolume {
-    fn describe_execute(&self) -> Vec<ActionDescription> {
+    fn tracing_synopsis(&self) -> String {
+        format!(
+            "Create an APFS volume `{}` on `{}`",
+            self.name,
+            self.disk.display()
+        )
+    }
+
+    fn execute_description(&self) -> Vec<ActionDescription> {
         let Self {
-            disk,
-            name,
-            action_state: _,
-            ..
+            disk: _, name: _, ..
         } = &self;
-        if self.action_state == ActionState::Completed {
-            vec![]
-        } else {
-            vec![ActionDescription::new(
-                format!("Create an APFS volume `{name}` on `{}`", disk.display()),
-                vec![format!(
-                    "Create a writable, persistent systemd system extension.",
-                )],
-            )]
-        }
+        vec![ActionDescription::new(self.tracing_synopsis(), vec![])]
     }
 
     #[tracing::instrument(skip_all, fields(destination,))]
@@ -175,25 +171,20 @@ impl Action for CreateApfsVolume {
             setup_volume_daemon,
             bootstrap_volume,
             enable_ownership,
-            action_state,
+            action_state: _,
         } = self;
-        if *action_state == ActionState::Completed {
-            tracing::trace!("Already completed: Creating APFS volume");
-            return Ok(());
-        }
-        tracing::debug!("Creating APFS volume");
 
-        create_or_append_synthetic_conf.execute().await?;
-        create_synthetic_objects.execute().await?;
-        unmount_volume.execute().await.ok(); // We actually expect this may fail.
-        create_volume.execute().await?;
-        create_or_append_fstab.execute().await?;
+        create_or_append_synthetic_conf.try_execute().await?;
+        create_synthetic_objects.try_execute().await?;
+        unmount_volume.try_execute().await.ok(); // We actually expect this may fail.
+        create_volume.try_execute().await?;
+        create_or_append_fstab.try_execute().await?;
         if let Some(encrypt_volume) = encrypt_volume {
-            encrypt_volume.execute().await?;
+            encrypt_volume.try_execute().await?;
         }
-        setup_volume_daemon.execute().await?;
+        setup_volume_daemon.try_execute().await?;
 
-        bootstrap_volume.execute().await?;
+        bootstrap_volume.try_execute().await?;
 
         let mut retry_tokens: usize = 50;
         loop {
@@ -213,30 +204,19 @@ impl Action for CreateApfsVolume {
             tokio::time::sleep(Duration::from_millis(100)).await;
         }
 
-        enable_ownership.execute().await?;
+        enable_ownership.try_execute().await?;
 
-        tracing::trace!("Created APFS volume");
-        *action_state = ActionState::Completed;
         Ok(())
     }
 
-    fn describe_revert(&self) -> Vec<ActionDescription> {
-        let Self {
-            disk,
-            name,
-            action_state,
-            ..
-        } = &self;
-        if *action_state == ActionState::Uncompleted {
-            vec![]
-        } else {
-            vec![ActionDescription::new(
-                format!("Remove the APFS volume `{name}` on `{}`", disk.display()),
-                vec![format!(
-                    "Create a writable, persistent systemd system extension.",
-                )],
-            )]
-        }
+    fn revert_description(&self) -> Vec<ActionDescription> {
+        let Self { disk, name, .. } = &self;
+        vec![ActionDescription::new(
+            format!("Remove the APFS volume `{name}` on `{}`", disk.display()),
+            vec![format!(
+                "Create a writable, persistent systemd system extension.",
+            )],
+        )]
     }
 
     #[tracing::instrument(skip_all, fields(disk, name))]
@@ -255,36 +235,33 @@ impl Action for CreateApfsVolume {
             setup_volume_daemon,
             bootstrap_volume,
             enable_ownership,
-            action_state,
+            action_state: _,
         } = self;
-        if *action_state == ActionState::Uncompleted {
-            tracing::trace!("Already reverted: Removing APFS volume");
-            return Ok(());
-        }
-        tracing::debug!("Removing APFS volume");
 
-        enable_ownership.revert().await?;
-        bootstrap_volume.revert().await?;
-        setup_volume_daemon.revert().await?;
+        enable_ownership.try_revert().await?;
+        bootstrap_volume.try_revert().await?;
+        setup_volume_daemon.try_revert().await?;
         if let Some(encrypt_volume) = encrypt_volume {
-            encrypt_volume.revert().await?;
+            encrypt_volume.try_revert().await?;
         }
-        create_or_append_fstab.revert().await?;
+        create_or_append_fstab.try_revert().await?;
 
-        unmount_volume.revert().await?;
-        create_volume.revert().await?;
+        unmount_volume.try_revert().await?;
+        create_volume.try_revert().await?;
 
         // Purposefully not reversed
-        create_or_append_synthetic_conf.revert().await?;
-        create_synthetic_objects.revert().await?;
+        create_or_append_synthetic_conf.try_revert().await?;
+        create_synthetic_objects.try_revert().await?;
 
-        tracing::trace!("Removed APFS volume");
-        *action_state = ActionState::Uncompleted;
         Ok(())
     }
 
     fn action_state(&self) -> ActionState {
         self.action_state
+    }
+
+    fn set_action_state(&mut self, action_state: ActionState) {
+        self.action_state = action_state;
     }
 }
 

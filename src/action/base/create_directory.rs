@@ -39,6 +39,10 @@ impl CreateDirectory {
                 CreateDirectoryError::GettingMetadata(path.to_path_buf(), e).boxed()
             })?;
             if metadata.is_dir() {
+                tracing::debug!(
+                    "Creating directory `{}` already complete, skipping",
+                    path.display(),
+                );
                 // TODO: Validate owner/group...
                 ActionState::Completed
             } else {
@@ -69,23 +73,12 @@ impl CreateDirectory {
 #[async_trait::async_trait]
 #[typetag::serde(name = "create_directory")]
 impl Action for CreateDirectory {
-    fn describe_execute(&self) -> Vec<ActionDescription> {
-        let Self {
-            path,
-            user: _,
-            group: _,
-            mode: _,
-            force_prune_on_revert: _,
-            action_state,
-        } = &self;
-        if *action_state == ActionState::Completed {
-            vec![]
-        } else {
-            vec![ActionDescription::new(
-                format!("Create the directory `{}`", path.display()),
-                vec![],
-            )]
-        }
+    fn tracing_synopsis(&self) -> String {
+        format!("Create directory `{}`", self.path.display())
+    }
+
+    fn execute_description(&self) -> Vec<ActionDescription> {
+        vec![ActionDescription::new(self.tracing_synopsis(), vec![])]
     }
 
     #[tracing::instrument(skip_all, fields(
@@ -101,13 +94,8 @@ impl Action for CreateDirectory {
             group,
             mode,
             force_prune_on_revert: _,
-            action_state,
+            action_state: _,
         } = self;
-        if *action_state == ActionState::Completed {
-            tracing::trace!("Already completed: Creating directory");
-            return Ok(());
-        }
-        tracing::debug!("Creating directory");
 
         let gid = if let Some(group) = group {
             Some(
@@ -143,12 +131,10 @@ impl Action for CreateDirectory {
                 })?;
         }
 
-        tracing::trace!("Created directory");
-        *action_state = ActionState::Completed;
         Ok(())
     }
 
-    fn describe_revert(&self) -> Vec<ActionDescription> {
+    fn revert_description(&self) -> Vec<ActionDescription> {
         let Self {
             path,
             user: _,
@@ -157,22 +143,18 @@ impl Action for CreateDirectory {
             force_prune_on_revert,
             action_state: _,
         } = &self;
-        if self.action_state == ActionState::Uncompleted {
-            vec![]
-        } else {
-            vec![ActionDescription::new(
-                format!(
-                    "Remove the directory `{}`{}",
-                    path.display(),
-                    if *force_prune_on_revert {
-                        ""
-                    } else {
-                        " if no other contents exists"
-                    }
-                ),
-                vec![],
-            )]
-        }
+        vec![ActionDescription::new(
+            format!(
+                "Remove the directory `{}`{}",
+                path.display(),
+                if *force_prune_on_revert {
+                    ""
+                } else {
+                    " if no other contents exists"
+                }
+            ),
+            vec![],
+        )]
     }
 
     #[tracing::instrument(skip_all, fields(
@@ -188,15 +170,8 @@ impl Action for CreateDirectory {
             group: _,
             mode: _,
             force_prune_on_revert,
-            action_state,
+            action_state: _,
         } = self;
-        if *action_state == ActionState::Uncompleted {
-            tracing::trace!("Already reverted: Removing directory");
-            return Ok(());
-        }
-        tracing::debug!("Removing directory");
-
-        tracing::trace!(path = %path.display(), "Removing directory");
 
         let is_empty = path
             .read_dir()
@@ -207,16 +182,20 @@ impl Action for CreateDirectory {
             (true, _) | (false, true) => remove_dir_all(path.clone())
                 .await
                 .map_err(|e| CreateDirectoryError::Removing(path.clone(), e).boxed())?,
-            (false, false) => {},
+            (false, false) => {
+                tracing::debug!("Not removing `{}`, the folder is not empty", path.display());
+            },
         };
 
-        tracing::trace!("Removed directory");
-        *action_state = ActionState::Uncompleted;
         Ok(())
     }
 
     fn action_state(&self) -> ActionState {
         self.action_state
+    }
+
+    fn set_action_state(&mut self, action_state: ActionState) {
+        self.action_state = action_state;
     }
 }
 

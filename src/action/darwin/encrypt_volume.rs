@@ -31,15 +31,16 @@ impl EncryptVolume {
 #[async_trait::async_trait]
 #[typetag::serde(name = "encrypt_volume")]
 impl Action for EncryptVolume {
-    fn describe_execute(&self) -> Vec<ActionDescription> {
-        if self.action_state == ActionState::Completed {
-            vec![]
-        } else {
-            vec![ActionDescription::new(
-                format!("Encrypt volume `{}`", self.disk.display()),
-                vec![],
-            )]
-        }
+    fn tracing_synopsis(&self) -> String {
+        format!(
+            "Encrypt volume `{}` on disk `{}`",
+            self.name,
+            self.disk.display()
+        )
+    }
+
+    fn execute_description(&self) -> Vec<ActionDescription> {
+        vec![ActionDescription::new(self.tracing_synopsis(), vec![])]
     }
 
     #[tracing::instrument(skip_all, fields(
@@ -49,13 +50,8 @@ impl Action for EncryptVolume {
         let Self {
             disk,
             name,
-            action_state,
+            action_state: _,
         } = self;
-        if *action_state == ActionState::Completed {
-            tracing::trace!("Already completed: Encrypting volume");
-            return Ok(());
-        }
-        tracing::debug!("Encrypting volume");
 
         // Generate a random password.
         let password: String = {
@@ -127,17 +123,17 @@ impl Action for EncryptVolume {
         )
         .await?;
 
-        tracing::trace!("Encrypted volume");
-        *action_state = ActionState::Completed;
         Ok(())
     }
 
-    fn describe_revert(&self) -> Vec<ActionDescription> {
-        if self.action_state == ActionState::Uncompleted {
-            vec![]
-        } else {
-            vec![]
-        }
+    fn revert_description(&self) -> Vec<ActionDescription> {
+        vec![ActionDescription::new(
+            format!(
+                "Remove encryption keys for volume `{}`",
+                self.disk.display()
+            ),
+            vec![],
+        )]
     }
 
     #[tracing::instrument(skip_all, fields(
@@ -147,13 +143,8 @@ impl Action for EncryptVolume {
         let Self {
             disk,
             name,
-            action_state,
+            action_state: _,
         } = self;
-        if *action_state == ActionState::Uncompleted {
-            tracing::trace!("Already reverted: Unencrypted volume");
-            return Ok(());
-        }
-        tracing::debug!("Unencrypted volume");
 
         let disk_str = disk.to_str().expect("Could not turn disk into string"); /* Should not reasonably ever fail */
 
@@ -178,13 +169,15 @@ impl Action for EncryptVolume {
         )
         .await?;
 
-        tracing::trace!("Unencrypted volume");
-        *action_state = ActionState::Completed;
         Ok(())
     }
 
     fn action_state(&self) -> ActionState {
         self.action_state
+    }
+
+    fn set_action_state(&mut self, action_state: ActionState) {
+        self.action_state = action_state;
     }
 }
 
