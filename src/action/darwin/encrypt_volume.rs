@@ -53,9 +53,6 @@ impl Action for EncryptVolume {
             action_state: _,
         } = self;
 
-        let process_group =
-            nix::unistd::setsid().map_err(|e| EncryptVolumeError::ProcessGroupCreation(e))?;
-
         // Generate a random password.
         let password: String = {
             const CHARSET: &[u8] = b"ABCDEFGHIJKLMNOPQRSTUVWXYZ\
@@ -78,55 +75,49 @@ impl Action for EncryptVolume {
 
         // Add the password to the user keychain so they can unlock it later.
         execute_command(
-            Command::new("/usr/bin/security")
-                .process_group(process_group.as_raw())
-                .args([
-                    "add-generic-password",
-                    "-a",
-                    name.as_str(),
-                    "-s",
-                    name.as_str(),
-                    "-l",
-                    format!("{} encryption password", disk_str).as_str(),
-                    "-D",
-                    "Encrypted volume password",
-                    "-j",
-                    format!(
+            Command::new("/usr/bin/security").process_group(0).args([
+                "add-generic-password",
+                "-a",
+                name.as_str(),
+                "-s",
+                name.as_str(),
+                "-l",
+                format!("{} encryption password", disk_str).as_str(),
+                "-D",
+                "Encrypted volume password",
+                "-j",
+                format!(
                     "Added automatically by the Nix installer for use by {NIX_VOLUME_MOUNTD_DEST}"
                 )
-                    .as_str(),
-                    "-w",
-                    password.as_str(),
-                    "-T",
-                    "/System/Library/CoreServices/APFSUserAgent",
-                    "-T",
-                    "/System/Library/CoreServices/CSUserAgent",
-                    "-T",
-                    "/usr/bin/security",
-                    "/Library/Keychains/System.keychain",
-                ]),
+                .as_str(),
+                "-w",
+                password.as_str(),
+                "-T",
+                "/System/Library/CoreServices/APFSUserAgent",
+                "-T",
+                "/System/Library/CoreServices/CSUserAgent",
+                "-T",
+                "/usr/bin/security",
+                "/Library/Keychains/System.keychain",
+            ]),
         )
         .await?;
 
         // Encrypt the mounted volume
-        execute_command(
-            Command::new("/usr/sbin/diskutil")
-                .process_group(process_group.as_raw())
-                .args([
-                    "apfs",
-                    "encryptVolume",
-                    name.as_str(),
-                    "-user",
-                    "disk",
-                    "-passphrase",
-                    password.as_str(),
-                ]),
-        )
+        execute_command(Command::new("/usr/sbin/diskutil").process_group(0).args([
+            "apfs",
+            "encryptVolume",
+            name.as_str(),
+            "-user",
+            "disk",
+            "-passphrase",
+            password.as_str(),
+        ]))
         .await?;
 
         execute_command(
             Command::new("/usr/sbin/diskutil")
-                .process_group(process_group.as_raw())
+                .process_group(0)
                 .arg("unmount")
                 .arg("force")
                 .arg(&name),
@@ -156,31 +147,26 @@ impl Action for EncryptVolume {
             action_state: _,
         } = self;
 
-        let process_group =
-            nix::unistd::setsid().map_err(|e| EncryptVolumeError::ProcessGroupCreation(e))?;
-
         let disk_str = disk.to_str().expect("Could not turn disk into string"); /* Should not reasonably ever fail */
 
         // TODO: This seems very rough and unsafe
         execute_command(
-            Command::new("/usr/bin/security")
-                .process_group(process_group.as_raw())
-                .args([
-                    "delete-generic-password",
-                    "-a",
-                    name.as_str(),
-                    "-s",
-                    name.as_str(),
-                    "-l",
-                    format!("{} encryption password", disk_str).as_str(),
-                    "-D",
-                    "Encrypted volume password",
-                    "-j",
-                    format!(
+            Command::new("/usr/bin/security").process_group(0).args([
+                "delete-generic-password",
+                "-a",
+                name.as_str(),
+                "-s",
+                name.as_str(),
+                "-l",
+                format!("{} encryption password", disk_str).as_str(),
+                "-D",
+                "Encrypted volume password",
+                "-j",
+                format!(
                     "Added automatically by the Nix installer for use by {NIX_VOLUME_MOUNTD_DEST}"
                 )
-                    .as_str(),
-                ]),
+                .as_str(),
+            ]),
         )
         .await?;
 
@@ -200,6 +186,4 @@ impl Action for EncryptVolume {
 pub enum EncryptVolumeError {
     #[error("Failed to execute command")]
     Command(#[source] std::io::Error),
-    #[error("Could not create process grouip via `setsid`")]
-    ProcessGroupCreation(#[source] nix::Error),
 }

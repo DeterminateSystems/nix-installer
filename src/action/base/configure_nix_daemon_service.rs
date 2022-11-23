@@ -67,9 +67,6 @@ impl Action for ConfigureNixDaemonService {
     async fn execute(&mut self) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
         let Self { action_state: _ } = self;
 
-        let process_group = nix::unistd::setsid()
-            .map_err(|e| ConfigureNixDaemonServiceError::ProcessGroupCreation(e))?;
-
         match OperatingSystem::host() {
             OperatingSystem::MacOSX {
                 major: _,
@@ -91,7 +88,7 @@ impl Action for ConfigureNixDaemonService {
 
                 execute_command(
                     Command::new("launchctl")
-                        .process_group(process_group.as_raw())
+                        .process_group(0)
                         .arg("load")
                         .arg(DARWIN_NIX_DAEMON_DEST)
                         .stdin(std::process::Stdio::null()),
@@ -114,7 +111,7 @@ impl Action for ConfigureNixDaemonService {
 
                 execute_command(
                     Command::new("systemd-tmpfiles")
-                        .process_group(process_group.as_raw())
+                        .process_group(0)
                         .arg("--create")
                         .arg("--prefix=/nix/var/nix")
                         .stdin(std::process::Stdio::null()),
@@ -124,7 +121,7 @@ impl Action for ConfigureNixDaemonService {
 
                 execute_command(
                     Command::new("systemctl")
-                        .process_group(process_group.as_raw())
+                        .process_group(0)
                         .arg("link")
                         .arg(SERVICE_SRC)
                         .stdin(std::process::Stdio::null()),
@@ -134,7 +131,7 @@ impl Action for ConfigureNixDaemonService {
 
                 execute_command(
                     Command::new("systemctl")
-                        .process_group(process_group.as_raw())
+                        .process_group(0)
                         .arg("link")
                         .arg(SOCKET_SRC)
                         .stdin(std::process::Stdio::null()),
@@ -144,7 +141,7 @@ impl Action for ConfigureNixDaemonService {
 
                 execute_command(
                     Command::new("systemctl")
-                        .process_group(process_group.as_raw())
+                        .process_group(0)
                         .arg("daemon-reload")
                         .stdin(std::process::Stdio::null()),
                 )
@@ -153,7 +150,7 @@ impl Action for ConfigureNixDaemonService {
 
                 execute_command(
                     Command::new("systemctl")
-                        .process_group(process_group.as_raw())
+                        .process_group(0)
                         .arg("enable")
                         .arg("--now")
                         .arg("nix-daemon.socket")
@@ -181,9 +178,6 @@ impl Action for ConfigureNixDaemonService {
 
     #[tracing::instrument(skip_all)]
     async fn revert(&mut self) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
-        let process_group = nix::unistd::setsid()
-            .map_err(|e| ConfigureNixDaemonServiceError::ProcessGroupCreation(e))?;
-
         match OperatingSystem::host() {
             OperatingSystem::MacOSX {
                 major: _,
@@ -193,7 +187,7 @@ impl Action for ConfigureNixDaemonService {
             | OperatingSystem::Darwin => {
                 execute_command(
                     Command::new("launchctl")
-                        .process_group(process_group.as_raw())
+                        .process_group(0)
                         .arg("unload")
                         .arg(DARWIN_NIX_DAEMON_DEST),
                 )
@@ -211,7 +205,7 @@ impl Action for ConfigureNixDaemonService {
                 if socket_is_active {
                     execute_command(
                         Command::new("systemctl")
-                            .process_group(process_group.as_raw())
+                            .process_group(0)
                             .args(["stop", "nix-daemon.socket"])
                             .stdin(std::process::Stdio::null()),
                     )
@@ -222,7 +216,7 @@ impl Action for ConfigureNixDaemonService {
                 if socket_is_enabled {
                     execute_command(
                         Command::new("systemctl")
-                            .process_group(process_group.as_raw())
+                            .process_group(0)
                             .args(["disable", "nix-daemon.socket"])
                             .stdin(std::process::Stdio::null()),
                     )
@@ -233,7 +227,7 @@ impl Action for ConfigureNixDaemonService {
                 if service_is_active {
                     execute_command(
                         Command::new("systemctl")
-                            .process_group(process_group.as_raw())
+                            .process_group(0)
                             .args(["stop", "nix-daemon.service"])
                             .stdin(std::process::Stdio::null()),
                     )
@@ -244,7 +238,7 @@ impl Action for ConfigureNixDaemonService {
                 if service_is_enabled {
                     execute_command(
                         Command::new("systemctl")
-                            .process_group(process_group.as_raw())
+                            .process_group(0)
                             .args(["disable", "nix-daemon.service"])
                             .stdin(std::process::Stdio::null()),
                     )
@@ -254,7 +248,7 @@ impl Action for ConfigureNixDaemonService {
 
                 execute_command(
                     Command::new("systemd-tmpfiles")
-                        .process_group(process_group.as_raw())
+                        .process_group(0)
                         .arg("--remove")
                         .arg("--prefix=/nix/var/nix")
                         .stdin(std::process::Stdio::null()),
@@ -269,7 +263,7 @@ impl Action for ConfigureNixDaemonService {
 
                 execute_command(
                     Command::new("systemctl")
-                        .process_group(process_group.as_raw())
+                        .process_group(0)
                         .arg("daemon-reload")
                         .stdin(std::process::Stdio::null()),
                 )
@@ -310,8 +304,6 @@ pub enum ConfigureNixDaemonServiceError {
     ),
     #[error("No supported init system found")]
     InitNotSupported,
-    #[error("Could not create process grouip via `setsid`")]
-    ProcessGroupCreation(#[source] nix::Error),
 }
 
 async fn is_active(unit: &str) -> Result<bool, Box<dyn std::error::Error + Send + Sync>> {

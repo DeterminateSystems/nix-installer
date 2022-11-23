@@ -62,9 +62,6 @@ impl Action for CreateUser {
             action_state: _,
         } = self;
 
-        let process_group =
-            nix::unistd::setsid().map_err(|e| CreateUserError::ProcessGroupCreation(e))?;
-
         use target_lexicon::OperatingSystem;
         match OperatingSystem::host() {
             OperatingSystem::MacOSX {
@@ -77,7 +74,7 @@ impl Action for CreateUser {
                 // Right now, our test machines do not have a secure token and cannot delete users.
 
                 if Command::new("/usr/bin/dscl")
-                    .process_group(process_group.as_raw())
+                    .process_group(0)
                     .args([".", "-read", &format!("/Users/{name}")])
                     .stdin(std::process::Stdio::null())
                     .stdout(std::process::Stdio::null())
@@ -89,7 +86,7 @@ impl Action for CreateUser {
                 } else {
                     execute_command(
                         Command::new("/usr/bin/dscl")
-                            .process_group(process_group.as_raw())
+                            .process_group(0)
                             .args([".", "-create", &format!("/Users/{name}")])
                             .stdin(std::process::Stdio::null()),
                     )
@@ -97,7 +94,7 @@ impl Action for CreateUser {
                     .map_err(|e| CreateUserError::Command(e).boxed())?;
                     execute_command(
                         Command::new("/usr/bin/dscl")
-                            .process_group(process_group.as_raw())
+                            .process_group(0)
                             .args([
                                 ".",
                                 "-create",
@@ -111,7 +108,7 @@ impl Action for CreateUser {
                     .map_err(|e| CreateUserError::Command(e).boxed())?;
                     execute_command(
                         Command::new("/usr/bin/dscl")
-                            .process_group(process_group.as_raw())
+                            .process_group(0)
                             .args([
                                 ".",
                                 "-create",
@@ -125,7 +122,7 @@ impl Action for CreateUser {
                     .map_err(|e| CreateUserError::Command(e).boxed())?;
                     execute_command(
                         Command::new("/usr/bin/dscl")
-                            .process_group(process_group.as_raw())
+                            .process_group(0)
                             .args([
                                 ".",
                                 "-create",
@@ -139,7 +136,7 @@ impl Action for CreateUser {
                     .map_err(|e| CreateUserError::Command(e).boxed())?;
                     execute_command(
                         Command::new("/usr/bin/dscl")
-                            .process_group(process_group.as_raw())
+                            .process_group(0)
                             .args([
                                 ".",
                                 "-create",
@@ -153,7 +150,7 @@ impl Action for CreateUser {
                     .map_err(|e| CreateUserError::Command(e).boxed())?;
                     execute_command(
                         Command::new("/usr/bin/dscl")
-                            .process_group(process_group.as_raw())
+                            .process_group(0)
                             .args([
                                 ".",
                                 "-append",
@@ -167,7 +164,7 @@ impl Action for CreateUser {
                     .map_err(|e| CreateUserError::Command(e).boxed())?;
                     execute_command(
                         Command::new("/usr/bin/dscl")
-                            .process_group(process_group.as_raw())
+                            .process_group(0)
                             .args([".", "-create", &format!("/Users/{name}"), "IsHidden", "1"])
                             .stdin(std::process::Stdio::null()),
                     )
@@ -175,7 +172,7 @@ impl Action for CreateUser {
                     .map_err(|e| CreateUserError::Command(e).boxed())?;
                     execute_command(
                         Command::new("/usr/sbin/dseditgroup")
-                            .process_group(process_group.as_raw())
+                            .process_group(0)
                             .args(["-o", "edit"])
                             .arg("-a")
                             .arg(&name)
@@ -191,7 +188,7 @@ impl Action for CreateUser {
             _ => {
                 execute_command(
                     Command::new("useradd")
-                        .process_group(process_group.as_raw())
+                        .process_group(0)
                         .args([
                             "--home-dir",
                             "/var/empty",
@@ -252,9 +249,6 @@ impl Action for CreateUser {
             action_state: _,
         } = self;
 
-        let process_group =
-            nix::unistd::setsid().map_err(|e| CreateUserError::ProcessGroupCreation(e))?;
-
         use target_lexicon::OperatingSystem;
         match target_lexicon::OperatingSystem::host() {
             OperatingSystem::MacOSX {
@@ -277,7 +271,7 @@ impl Action for CreateUser {
             _ => {
                 execute_command(
                     Command::new("userdel")
-                        .process_group(process_group.as_raw())
+                        .process_group(0)
                         .args([&name.to_string()])
                         .stdin(std::process::Stdio::null()),
                 )
@@ -302,6 +296,4 @@ impl Action for CreateUser {
 pub enum CreateUserError {
     #[error("Failed to execute command")]
     Command(#[source] std::io::Error),
-    #[error("Could not create process grouip via `setsid`")]
-    ProcessGroupCreation(#[source] nix::Error),
 }

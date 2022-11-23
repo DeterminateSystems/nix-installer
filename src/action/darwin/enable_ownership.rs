@@ -49,13 +49,10 @@ impl Action for EnableOwnership {
             action_state: _,
         } = self;
 
-        let process_group =
-            nix::unistd::setsid().map_err(|e| EnableOwnershipError::ProcessGroupCreation(e))?;
-
         let should_enable_ownership = {
             let buf = execute_command(
                 Command::new("/usr/sbin/diskutil")
-                    .process_group(process_group.as_raw())
+                    .process_group(0)
                     .args(["info", "-plist"])
                     .arg(&path)
                     .stdin(std::process::Stdio::null()),
@@ -70,7 +67,7 @@ impl Action for EnableOwnership {
         if should_enable_ownership {
             execute_command(
                 Command::new("/usr/sbin/diskutil")
-                    .process_group(process_group.as_raw())
+                    .process_group(0)
                     .arg("enableOwnership")
                     .arg(path)
                     .stdin(std::process::Stdio::null()),
@@ -107,6 +104,4 @@ impl Action for EnableOwnership {
 pub enum EnableOwnershipError {
     #[error("Failed to execute command")]
     Command(#[source] std::io::Error),
-    #[error("Could not create process grouip via `setsid`")]
-    ProcessGroupCreation(#[source] nix::Error),
 }

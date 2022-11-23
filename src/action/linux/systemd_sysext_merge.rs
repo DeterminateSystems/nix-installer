@@ -42,12 +42,9 @@ impl Action for SystemdSysextMerge {
             action_state,
         } = self;
 
-        let process_group = nix::unistd::setsid()
-            .map_err(|e| CreateSyntheticObjectsError::ProcessGroupCreation(e))?;
-
         execute_command(
             Command::new("systemd-sysext")
-                .process_group(process_group.as_raw())
+                .process_group(0)
                 .arg("merge")
                 .arg(device)
                 .stdin(std::process::Stdio::null()),
@@ -76,13 +73,10 @@ impl Action for SystemdSysextMerge {
             action_state,
         } = self;
 
-        let process_group = nix::unistd::setsid()
-            .map_err(|e| CreateSyntheticObjectsError::ProcessGroupCreation(e))?;
-
         // TODO(@Hoverbear): Handle proxy vars
         execute_command(
             Command::new("systemd-sysext")
-                .process_group(process_group.as_raw())
+                .process_group(0)
                 .arg("unmerge")
                 .arg(device)
                 .stdin(std::process::Stdio::null()),
