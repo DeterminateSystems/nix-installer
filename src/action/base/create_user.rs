@@ -34,7 +34,7 @@ impl CreateUser {
 impl Action for CreateUser {
     fn tracing_synopsis(&self) -> String {
         format!(
-            "Create user `{}` with UID `{}` with group `{}` (GID {})",
+            "Create user `{}` (UID {}) in group `{}` (GID {})",
             self.name, self.uid, self.groupname, self.gid
         )
     }
@@ -219,16 +219,11 @@ impl Action for CreateUser {
     }
 
     fn revert_description(&self) -> Vec<ActionDescription> {
-        let Self {
-            name,
-            uid,
-            groupname: _,
-            gid,
-            action_state: _,
-        } = self;
-
         vec![ActionDescription::new(
-            format!("Delete user {name} with UID {uid} with group {gid}"),
+            format!(
+                "Delete user `{}` (UID {}) in group {} (GID {})",
+                self.name, self.uid, self.groupname, self.gid
+            ),
             vec![format!(
                 "The nix daemon requires system users it can act as in order to build"
             )],

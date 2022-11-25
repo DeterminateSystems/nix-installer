@@ -29,7 +29,7 @@ impl CreateGroup {
 #[typetag::serde(name = "create_group")]
 impl Action for CreateGroup {
     fn tracing_synopsis(&self) -> String {
-        format!("Create group `{}` with GID `{}`", self.name, self.gid)
+        format!("Create group `{}` (GID {})", self.name, self.gid)
     }
     fn execute_description(&self) -> Vec<ActionDescription> {
         let Self {
@@ -111,11 +111,11 @@ impl Action for CreateGroup {
     fn revert_description(&self) -> Vec<ActionDescription> {
         let Self {
             name,
-            gid: _,
+            gid,
             action_state: _,
         } = &self;
         vec![ActionDescription::new(
-            format!("Delete group {name}"),
+            format!("Delete group `{name}` (GID {gid})"),
             vec![format!(
                 "The nix daemon requires a system user group its system users can be part of"
             )],
