@@ -75,7 +75,7 @@ impl Action for EncryptVolume {
 
         // Add the password to the user keychain so they can unlock it later.
         execute_command(
-            Command::new("/usr/bin/security").args([
+            Command::new("/usr/bin/security").process_group(0).args([
                 "add-generic-password",
                 "-a",
                 name.as_str(),
@@ -104,7 +104,7 @@ impl Action for EncryptVolume {
         .await?;
 
         // Encrypt the mounted volume
-        execute_command(Command::new("/usr/sbin/diskutil").args([
+        execute_command(Command::new("/usr/sbin/diskutil").process_group(0).args([
             "apfs",
             "encryptVolume",
             name.as_str(),
@@ -117,6 +117,7 @@ impl Action for EncryptVolume {
 
         execute_command(
             Command::new("/usr/sbin/diskutil")
+                .process_group(0)
                 .arg("unmount")
                 .arg("force")
                 .arg(&name),
@@ -150,7 +151,7 @@ impl Action for EncryptVolume {
 
         // TODO: This seems very rough and unsafe
         execute_command(
-            Command::new("/usr/bin/security").args([
+            Command::new("/usr/bin/security").process_group(0).args([
                 "delete-generic-password",
                 "-a",
                 name.as_str(),

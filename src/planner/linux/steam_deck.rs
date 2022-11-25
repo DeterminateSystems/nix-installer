@@ -66,9 +66,10 @@ use crate::{
         base::{CreateDirectory, CreateFile},
         common::{ConfigureNix, ProvisionNix},
         linux::StartSystemdUnit,
+        Action,
     },
     planner::Planner,
-    BuiltinPlanner, CommonSettings, InstallPlan,
+    BuiltinPlanner, CommonSettings,
 };
 
 #[derive(Debug, Clone, clap::Parser, serde::Serialize, serde::Deserialize)]
@@ -93,7 +94,7 @@ impl Planner for SteamDeck {
         })
     }
 
-    async fn plan(self) -> Result<crate::InstallPlan, Box<dyn std::error::Error + Sync + Send>> {
+    async fn plan(&self) -> Result<Vec<Box<dyn Action>>, Box<dyn std::error::Error + Sync + Send>> {
         let persistence = &self.persistence;
 
         let nix_directory_buf = format!(
@@ -190,22 +191,19 @@ impl Planner for SteamDeck {
         )
         .await?;
 
-        Ok(InstallPlan {
-            planner: Box::new(self.clone()),
-            actions: vec![
-                Box::new(CreateDirectory::plan(&persistence, None, None, 0o0755, true).await?),
-                Box::new(nix_directory_unit),
-                Box::new(create_bind_mount_unit),
-                Box::new(ensure_symlinked_units_resolve_unit),
-                Box::new(
-                    StartSystemdUnit::plan("ensure-symlinked-units-resolve.service".to_string())
-                        .await?,
-                ),
-                Box::new(ProvisionNix::plan(self.settings.clone()).await?),
-                Box::new(ConfigureNix::plan(self.settings).await?),
-                Box::new(StartSystemdUnit::plan("nix-daemon.socket".to_string()).await?),
-            ],
-        })
+        Ok(vec![
+            Box::new(CreateDirectory::plan(&persistence, None, None, 0o0755, true).await?),
+            Box::new(nix_directory_unit),
+            Box::new(create_bind_mount_unit),
+            Box::new(ensure_symlinked_units_resolve_unit),
+            Box::new(
+                StartSystemdUnit::plan("ensure-symlinked-units-resolve.service".to_string())
+                    .await?,
+            ),
+            Box::new(ProvisionNix::plan(&self.settings.clone()).await?),
+            Box::new(ConfigureNix::plan(&self.settings).await?),
+            Box::new(StartSystemdUnit::plan("nix-daemon.socket".to_string()).await?),
+        ])
     }
 
     fn settings(

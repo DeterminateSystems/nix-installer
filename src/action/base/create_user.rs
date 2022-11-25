@@ -34,7 +34,7 @@ impl CreateUser {
 impl Action for CreateUser {
     fn tracing_synopsis(&self) -> String {
         format!(
-            "Create user `{}` with UID `{}` with group `{}` (GID {})",
+            "Create user `{}` (UID {}) in group `{}` (GID {})",
             self.name, self.uid, self.groupname, self.gid
         )
     }
@@ -74,6 +74,7 @@ impl Action for CreateUser {
                 // Right now, our test machines do not have a secure token and cannot delete users.
 
                 if Command::new("/usr/bin/dscl")
+                    .process_group(0)
                     .args([".", "-read", &format!("/Users/{name}")])
                     .stdin(std::process::Stdio::null())
                     .stdout(std::process::Stdio::null())
@@ -85,6 +86,7 @@ impl Action for CreateUser {
                 } else {
                     execute_command(
                         Command::new("/usr/bin/dscl")
+                            .process_group(0)
                             .args([".", "-create", &format!("/Users/{name}")])
                             .stdin(std::process::Stdio::null()),
                     )
@@ -92,6 +94,7 @@ impl Action for CreateUser {
                     .map_err(|e| CreateUserError::Command(e).boxed())?;
                     execute_command(
                         Command::new("/usr/bin/dscl")
+                            .process_group(0)
                             .args([
                                 ".",
                                 "-create",
@@ -105,6 +108,7 @@ impl Action for CreateUser {
                     .map_err(|e| CreateUserError::Command(e).boxed())?;
                     execute_command(
                         Command::new("/usr/bin/dscl")
+                            .process_group(0)
                             .args([
                                 ".",
                                 "-create",
@@ -118,6 +122,7 @@ impl Action for CreateUser {
                     .map_err(|e| CreateUserError::Command(e).boxed())?;
                     execute_command(
                         Command::new("/usr/bin/dscl")
+                            .process_group(0)
                             .args([
                                 ".",
                                 "-create",
@@ -131,6 +136,7 @@ impl Action for CreateUser {
                     .map_err(|e| CreateUserError::Command(e).boxed())?;
                     execute_command(
                         Command::new("/usr/bin/dscl")
+                            .process_group(0)
                             .args([
                                 ".",
                                 "-create",
@@ -144,6 +150,7 @@ impl Action for CreateUser {
                     .map_err(|e| CreateUserError::Command(e).boxed())?;
                     execute_command(
                         Command::new("/usr/bin/dscl")
+                            .process_group(0)
                             .args([
                                 ".",
                                 "-append",
@@ -157,6 +164,7 @@ impl Action for CreateUser {
                     .map_err(|e| CreateUserError::Command(e).boxed())?;
                     execute_command(
                         Command::new("/usr/bin/dscl")
+                            .process_group(0)
                             .args([".", "-create", &format!("/Users/{name}"), "IsHidden", "1"])
                             .stdin(std::process::Stdio::null()),
                     )
@@ -164,6 +172,7 @@ impl Action for CreateUser {
                     .map_err(|e| CreateUserError::Command(e).boxed())?;
                     execute_command(
                         Command::new("/usr/sbin/dseditgroup")
+                            .process_group(0)
                             .args(["-o", "edit"])
                             .arg("-a")
                             .arg(&name)
@@ -179,6 +188,7 @@ impl Action for CreateUser {
             _ => {
                 execute_command(
                     Command::new("useradd")
+                        .process_group(0)
                         .args([
                             "--home-dir",
                             "/var/empty",
@@ -209,16 +219,11 @@ impl Action for CreateUser {
     }
 
     fn revert_description(&self) -> Vec<ActionDescription> {
-        let Self {
-            name,
-            uid,
-            groupname: _,
-            gid,
-            action_state: _,
-        } = self;
-
         vec![ActionDescription::new(
-            format!("Delete user {name} with UID {uid} with group {gid}"),
+            format!(
+                "Delete user `{}` (UID {}) in group {} (GID {})",
+                self.name, self.uid, self.groupname, self.gid
+            ),
             vec![format!(
                 "The nix daemon requires system users it can act as in order to build"
             )],
@@ -261,6 +266,7 @@ impl Action for CreateUser {
             _ => {
                 execute_command(
                     Command::new("userdel")
+                        .process_group(0)
                         .args([&name.to_string()])
                         .stdin(std::process::Stdio::null()),
                 )

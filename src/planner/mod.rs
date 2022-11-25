@@ -3,7 +3,7 @@ pub mod linux;
 
 use std::collections::HashMap;
 
-use crate::{settings::InstallSettingsError, BoxableError, InstallPlan};
+use crate::{settings::InstallSettingsError, Action, BoxableError};
 
 #[async_trait::async_trait]
 #[typetag::serde(tag = "planner")]
@@ -11,7 +11,7 @@ pub trait Planner: std::fmt::Debug + Send + Sync + dyn_clone::DynClone {
     async fn default() -> Result<Self, Box<dyn std::error::Error + Sync + Send>>
     where
         Self: Sized;
-    async fn plan(self) -> Result<InstallPlan, Box<dyn std::error::Error + Sync + Send>>;
+    async fn plan(&self) -> Result<Vec<Box<dyn Action>>, Box<dyn std::error::Error + Sync + Send>>;
     fn settings(
         &self,
     ) -> Result<HashMap<String, serde_json::Value>, Box<dyn std::error::Error + Sync + Send>>;
@@ -54,7 +54,9 @@ impl BuiltinPlanner {
         }
     }
 
-    pub async fn plan(self) -> Result<InstallPlan, Box<dyn std::error::Error + Sync + Send>> {
+    pub async fn plan(
+        self,
+    ) -> Result<Vec<Box<dyn Action>>, Box<dyn std::error::Error + Sync + Send>> {
         match self {
             BuiltinPlanner::LinuxMulti(planner) => planner.plan().await,
             BuiltinPlanner::DarwinMulti(planner) => planner.plan().await,

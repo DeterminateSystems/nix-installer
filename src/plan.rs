@@ -1,33 +1,51 @@
-use std::path::PathBuf;
-
-use crossterm::style::Stylize;
-use tokio::sync::broadcast::Receiver;
+use std::{path::PathBuf, str::FromStr};
 
 use crate::{
     action::{Action, ActionDescription, ActionImplementation},
     planner::Planner,
     HarmonicError,
 };
+use crossterm::style::Stylize;
+use semver::{Version, VersionReq};
+use serde::{de::Error, Deserialize, Deserializer};
+use tokio::sync::broadcast::Receiver;
 
 pub const RECEIPT_LOCATION: &str = "/nix/receipt.json";
 
 #[derive(Debug, serde::Deserialize, serde::Serialize, Clone)]
 pub struct InstallPlan {
+    #[serde(deserialize_with = "ensure_version")]
+    pub(crate) version: Version,
+
     pub(crate) actions: Vec<Box<dyn Action>>,
 
     pub(crate) planner: Box<dyn Planner>,
 }
 
 impl InstallPlan {
+    pub async fn plan(
+        planner: Box<dyn Planner>,
+    ) -> Result<Self, Box<dyn std::error::Error + Sync + Send>> {
+        let actions = planner.plan().await?;
+        Ok(Self {
+            planner,
+            actions,
+            version: current_version()?,
+        })
+    }
     #[tracing::instrument(skip_all)]
     pub fn describe_execute(
         &self,
         explain: bool,
     ) -> Result<String, Box<dyn std::error::Error + Sync + Send>> {
-        let Self { planner, actions } = self;
+        let Self {
+            planner,
+            actions,
+            version,
+        } = self;
         let buf = format!(
             "\
-            Nix install plan\n\
+            Nix install plan (v{version})\n\
             \n\
             Planner: {planner}\n\
             \n\
@@ -82,6 +100,7 @@ impl InstallPlan {
         cancel_channel: impl Into<Option<Receiver<()>>>,
     ) -> Result<(), HarmonicError> {
         let Self {
+            version: _,
             actions,
             planner: _,
         } = self;
@@ -119,7 +138,11 @@ impl InstallPlan {
         &self,
         explain: bool,
     ) -> Result<String, Box<dyn std::error::Error + Sync + Send>> {
-        let Self { planner, actions } = self;
+        let Self {
+            version: _,
+            planner,
+            actions,
+        } = self;
         let buf = format!(
             "\
             Nix uninstall plan\n\
@@ -178,6 +201,7 @@ impl InstallPlan {
         cancel_channel: impl Into<Option<Receiver<()>>>,
     ) -> Result<(), HarmonicError> {
         let Self {
+            version: _,
             actions,
             planner: _,
         } = self;
@@ -221,4 +245,71 @@ async fn write_receipt(plan: InstallPlan) -> Result<(), HarmonicError> {
         .await
         .map_err(|e| HarmonicError::RecordingReceipt(install_receipt_path, e))?;
     Result::<(), HarmonicError>::Ok(())
+}
+
+fn current_version() -> Result<Version, semver::Error> {
+    let harmonic_version_str = env!("CARGO_PKG_VERSION");
+    Version::from_str(harmonic_version_str)
+}
+
+fn ensure_version<'de, D: Deserializer<'de>>(d: D) -> Result<Version, D::Error> {
+    let plan_version = Version::deserialize(d)?;
+    let req = VersionReq::parse(&plan_version.to_string()).map_err(|_e| {
+        D::Error::custom(&format!(
+            "Could not parse version `{plan_version}` as a version requirement, please report this",
+        ))
+    })?;
+    let harmonic_version = current_version().map_err(|_e| {
+        D::Error::custom(&format!(
+            "Could not parse Harmonic's version `{}` as a valid version according to Semantic Versioning, therefore the plan version ({plan_version}) compatibility cannot be checked", env!("CARGO_PKG_VERSION")
+        ))
+    })?;
+    if req.matches(&harmonic_version) {
+        Ok(plan_version)
+    } else {
+        Err(D::Error::custom(&format!(
+            "This version of Harmonic ({harmonic_version}) is not compatible with this plan's version ({plan_version}), please use a compatible version (according to Semantic Versioning)",
+        )))
+    }
+}
+
+#[cfg(test)]
+mod test {
+    use semver::Version;
+
+    use crate::{planner::BuiltinPlanner, InstallPlan};
+
+    #[tokio::test]
+    async fn ensure_version_allows_compatible() -> eyre::Result<()> {
+        let planner = BuiltinPlanner::default()
+            .await
+            .map_err(|e| eyre::eyre!(e))?;
+        let good_version = Version::parse(env!("CARGO_PKG_VERSION"))?;
+        let value = serde_json::json!({
+            "planner": planner.boxed(),
+            "version": good_version,
+            "actions": [],
+        });
+        let maybe_plan: Result<InstallPlan, serde_json::Error> = serde_json::from_value(value);
+        maybe_plan.unwrap();
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn ensure_version_denies_incompatible() -> eyre::Result<()> {
+        let planner = BuiltinPlanner::default()
+            .await
+            .map_err(|e| eyre::eyre!(e))?;
+        let bad_version = Version::parse("9999999999999.9999999999.99999999")?;
+        let value = serde_json::json!({
+            "planner": planner.boxed(),
+            "version": bad_version,
+            "actions": [],
+        });
+        let maybe_plan: Result<InstallPlan, serde_json::Error> = serde_json::from_value(value);
+        assert!(maybe_plan.is_err());
+        let err = maybe_plan.unwrap_err();
+        assert!(err.is_data());
+        Ok(())
+    }
 }

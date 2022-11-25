@@ -55,6 +55,7 @@ impl Action for UnmountVolume {
 
         execute_command(
             Command::new("/usr/sbin/diskutil")
+                .process_group(0)
                 .args(["unmount", "force"])
                 .arg(name)
                 .stdin(std::process::Stdio::null()),
@@ -82,6 +83,7 @@ impl Action for UnmountVolume {
 
         execute_command(
             Command::new("/usr/sbin/diskutil")
+                .process_group(0)
                 .args(["unmount", "force"])
                 .arg(name)
                 .stdin(std::process::Stdio::null()),

@@ -83,7 +83,7 @@ impl CommandExecute for Install {
                         existing_receipt
                     } ,
                     None => {
-                        planner.plan().await.map_err(|e| eyre!(e))?
+                        InstallPlan::plan(planner.boxed()).await.map_err(|e| eyre!(e))?
                     },
                 }
             },
@@ -97,7 +97,7 @@ impl CommandExecute for Install {
                 let builtin_planner = BuiltinPlanner::default()
                     .await
                     .map_err(|e| eyre::eyre!(e))?;
-                builtin_planner.plan().await.map_err(|e| eyre!(e))?
+                InstallPlan::plan(builtin_planner.boxed()).await.map_err(|e| eyre!(e))?
             },
             (Some(_), Some(_)) => return Err(eyre!("`--plan` conflicts with passing a planner, a planner creates plans, so passing an existing plan doesn't make sense")),
         };
