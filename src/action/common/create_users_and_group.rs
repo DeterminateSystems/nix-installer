@@ -83,18 +83,15 @@ impl Action for CreateUsersAndGroup {
             }
         }
 
-        let mut explaination = vec![
+        let mut explanation = vec![
             format!("The nix daemon requires system users (and a group they share) which it can act as in order to build"),
         ];
         if let Some(val) = create_group.describe_execute().iter().next() {
-            explaination.push(val.description.clone())
+            explanation.push(val.description.clone())
         }
-        explaination.append(&mut create_users_descriptions);
+        explanation.append(&mut create_users_descriptions);
 
-        vec![ActionDescription::new(
-            self.tracing_synopsis(),
-            explaination,
-        )]
+        vec![ActionDescription::new(self.tracing_synopsis(), explanation)]
     }
 
     #[tracing::instrument(skip_all, fields(
@@ -185,17 +182,17 @@ impl Action for CreateUsersAndGroup {
                 }
             }
 
-            let mut explaination = vec![
+            let mut explanation = vec![
                 format!("The nix daemon requires system users (and a group they share) which it can act as in order to build"),
             ];
             if let Some(val) = create_group.describe_revert().iter().next() {
-                explaination.push(val.description.clone())
+                explanation.push(val.description.clone())
             }
-            explaination.append(&mut create_users_descriptions);
+            explanation.append(&mut create_users_descriptions);
 
             vec![ActionDescription::new(
                 format!("Remove Nix users and group"),
-                explaination,
+                explanation,
             )]
         }
     }
