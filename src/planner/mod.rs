@@ -131,7 +131,6 @@ impl BuiltinPlanner {
         }
     }
 
-    ///
     pub async fn plan(self) -> Result<InstallPlan, HarmonicError> {
         match self {
             BuiltinPlanner::LinuxMulti(planner) => InstallPlan::plan(planner).await,

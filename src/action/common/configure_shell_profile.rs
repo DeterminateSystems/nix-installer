@@ -176,7 +176,13 @@ pub enum ConfigureShellProfileError {
         #[source]
         CreateOrAppendFileError,
     ),
-    #[error("Multiple errors: {}", .0.iter().map(|v| format!("{v}")).collect::<Vec<_>>().join(" & "))]
+    #[error("Multiple errors: {}", .0.iter().map(|v| {
+        if let Some(source) = v.source() {
+            format!("{v} ({source})")
+        } else {
+            format!("{v}") 
+        }
+    }).collect::<Vec<_>>().join(" & "))]
     MultipleCreateOrAppendFile(Vec<Box<dyn std::error::Error + Send + Sync>>),
     #[error("Joining spawned async task")]
     Join(
