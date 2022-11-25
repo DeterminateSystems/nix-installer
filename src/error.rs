@@ -2,7 +2,7 @@ use std::path::PathBuf;
 
 use crate::{planner::PlannerError, settings::InstallSettingsError};
 
-/// An error occuring during a call defined in this crate
+/// An error occurring during a call defined in this crate
 #[derive(thiserror::Error, Debug)]
 pub enum HarmonicError {
     /// An error originating from an [`Action`](crate::action::Action)
