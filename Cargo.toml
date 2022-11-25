@@ -49,3 +49,4 @@ erased-serde = "0.3.23"
 typetag = "0.2.3"
 dyn-clone = "1.0.9"
 rand = "0.8.5"
+semver = { version = "1.0.14", features = ["serde"] }

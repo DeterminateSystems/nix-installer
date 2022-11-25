@@ -23,7 +23,7 @@ pub struct ProvisionNix {
 impl ProvisionNix {
     #[tracing::instrument(skip_all)]
     pub async fn plan(
-        settings: CommonSettings,
+        settings: &CommonSettings,
     ) -> Result<Self, Box<dyn std::error::Error + Send + Sync>> {
         let fetch_nix = FetchNix::plan(
             settings.nix_package_url.clone(),

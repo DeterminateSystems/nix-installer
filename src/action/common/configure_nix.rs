@@ -23,7 +23,7 @@ pub struct ConfigureNix {
 impl ConfigureNix {
     #[tracing::instrument(skip_all)]
     pub async fn plan(
-        settings: CommonSettings,
+        settings: &CommonSettings,
     ) -> Result<Self, Box<dyn std::error::Error + Send + Sync>> {
         let channels: Vec<(String, Url)> = settings
             .channels
@@ -44,8 +44,8 @@ impl ConfigureNix {
         let place_channel_configuration =
             PlaceChannelConfiguration::plan(channels, settings.force).await?;
         let place_nix_configuration = PlaceNixConfiguration::plan(
-            settings.nix_build_group_name,
-            settings.extra_conf,
+            settings.nix_build_group_name.clone(),
+            settings.extra_conf.clone(),
             settings.force,
         )
         .await?;

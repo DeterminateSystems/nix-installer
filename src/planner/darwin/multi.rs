@@ -11,7 +11,7 @@ use crate::{
     execute_command,
     os::darwin::DiskUtilOutput,
     planner::{BuiltinPlannerError, Planner},
-    BuiltinPlanner, CommonSettings, InstallPlan,
+    Action, BuiltinPlanner, CommonSettings,
 };
 
 #[derive(Debug, Clone, clap::Parser, serde::Serialize, serde::Deserialize)]
@@ -67,11 +67,9 @@ impl Planner for DarwinMulti {
         })
     }
 
-    async fn plan(
-        mut self,
-    ) -> Result<crate::InstallPlan, Box<dyn std::error::Error + Sync + Send>> {
-        self.root_disk = match self.root_disk {
-            root_disk @ Some(_) => root_disk,
+    async fn plan(&self) -> Result<Vec<Box<dyn Action>>, Box<dyn std::error::Error + Sync + Send>> {
+        let root_disk = match &self.root_disk {
+            root_disk @ Some(_) => root_disk.clone(),
             None => {
                 let buf = execute_command(
                     Command::new("/usr/sbin/diskutil")
@@ -99,29 +97,24 @@ impl Planner for DarwinMulti {
             false
         };
 
-        Ok(InstallPlan {
-            planner: Box::new(self.clone()),
-            actions: vec![
-                // Create Volume step:
-                //
-                // setup_Synthetic -> create_synthetic_objects
-                // Unmount -> create_volume -> Setup_fstab -> maybe encrypt_volume -> launchctl bootstrap -> launchctl kickstart -> await_volume -> maybe enableOwnership
-                Box::new(
-                    CreateApfsVolume::plan(
-                        self.root_disk.unwrap(), /* We just ensured it was populated */
-                        self.volume_label,
-                        false,
-                        encrypt,
-                    )
-                    .await?,
-                ),
-                Box::new(ProvisionNix::plan(self.settings.clone()).await?),
-                Box::new(ConfigureNix::plan(self.settings).await?),
-                Box::new(
-                    KickstartLaunchctlService::plan("system/org.nixos.nix-daemon".into()).await?,
-                ),
-            ],
-        })
+        Ok(vec![
+            // Create Volume step:
+            //
+            // setup_Synthetic -> create_synthetic_objects
+            // Unmount -> create_volume -> Setup_fstab -> maybe encrypt_volume -> launchctl bootstrap -> launchctl kickstart -> await_volume -> maybe enableOwnership
+            Box::new(
+                CreateApfsVolume::plan(
+                    root_disk.unwrap(), /* We just ensured it was populated */
+                    self.volume_label.clone(),
+                    false,
+                    encrypt,
+                )
+                .await?,
+            ),
+            Box::new(ProvisionNix::plan(&self.settings).await?),
+            Box::new(ConfigureNix::plan(&self.settings).await?),
+            Box::new(KickstartLaunchctlService::plan("system/org.nixos.nix-daemon".into()).await?),
+        ])
     }
 
     fn settings(
