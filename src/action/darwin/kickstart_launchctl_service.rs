@@ -46,6 +46,7 @@ impl Action for KickstartLaunchctlService {
 
         execute_command(
             Command::new("launchctl")
+                .process_group(0)
                 .arg("kickstart")
                 .arg("-k")
                 .arg(unit)

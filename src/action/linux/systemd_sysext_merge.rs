@@ -44,6 +44,7 @@ impl Action for SystemdSysextMerge {
 
         execute_command(
             Command::new("systemd-sysext")
+                .process_group(0)
                 .arg("merge")
                 .arg(device)
                 .stdin(std::process::Stdio::null()),
@@ -75,6 +76,7 @@ impl Action for SystemdSysextMerge {
         // TODO(@Hoverbear): Handle proxy vars
         execute_command(
             Command::new("systemd-sysext")
+                .process_group(0)
                 .arg("unmerge")
                 .arg(device)
                 .stdin(std::process::Stdio::null()),

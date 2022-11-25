@@ -65,12 +65,7 @@ impl Action for ConfigureNixDaemonService {
 
     #[tracing::instrument(skip_all)]
     async fn execute(&mut self) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
-        let Self { action_state } = self;
-        if *action_state == ActionState::Completed {
-            tracing::trace!("Already completed: Configuring nix daemon service");
-            return Ok(());
-        }
-        tracing::debug!("Configuring nix daemon service");
+        let Self { action_state: _ } = self;
 
         match OperatingSystem::host() {
             OperatingSystem::MacOSX {
@@ -93,6 +88,7 @@ impl Action for ConfigureNixDaemonService {
 
                 execute_command(
                     Command::new("launchctl")
+                        .process_group(0)
                         .arg("load")
                         .arg(DARWIN_NIX_DAEMON_DEST)
                         .stdin(std::process::Stdio::null()),
@@ -115,6 +111,7 @@ impl Action for ConfigureNixDaemonService {
 
                 execute_command(
                     Command::new("systemd-tmpfiles")
+                        .process_group(0)
                         .arg("--create")
                         .arg("--prefix=/nix/var/nix")
                         .stdin(std::process::Stdio::null()),
@@ -124,6 +121,7 @@ impl Action for ConfigureNixDaemonService {
 
                 execute_command(
                     Command::new("systemctl")
+                        .process_group(0)
                         .arg("link")
                         .arg(SERVICE_SRC)
                         .stdin(std::process::Stdio::null()),
@@ -133,6 +131,7 @@ impl Action for ConfigureNixDaemonService {
 
                 execute_command(
                     Command::new("systemctl")
+                        .process_group(0)
                         .arg("link")
                         .arg(SOCKET_SRC)
                         .stdin(std::process::Stdio::null()),
@@ -142,6 +141,7 @@ impl Action for ConfigureNixDaemonService {
 
                 execute_command(
                     Command::new("systemctl")
+                        .process_group(0)
                         .arg("daemon-reload")
                         .stdin(std::process::Stdio::null()),
                 )
@@ -150,6 +150,7 @@ impl Action for ConfigureNixDaemonService {
 
                 execute_command(
                     Command::new("systemctl")
+                        .process_group(0)
                         .arg("enable")
                         .arg("--now")
                         .arg("nix-daemon.socket")
@@ -160,8 +161,6 @@ impl Action for ConfigureNixDaemonService {
             },
         };
 
-        tracing::trace!("Configured nix daemon service");
-        *action_state = ActionState::Completed;
         Ok(())
     }
 
@@ -188,6 +187,7 @@ impl Action for ConfigureNixDaemonService {
             | OperatingSystem::Darwin => {
                 execute_command(
                     Command::new("launchctl")
+                        .process_group(0)
                         .arg("unload")
                         .arg(DARWIN_NIX_DAEMON_DEST),
                 )
@@ -205,6 +205,7 @@ impl Action for ConfigureNixDaemonService {
                 if socket_is_active {
                     execute_command(
                         Command::new("systemctl")
+                            .process_group(0)
                             .args(["stop", "nix-daemon.socket"])
                             .stdin(std::process::Stdio::null()),
                     )
@@ -215,6 +216,7 @@ impl Action for ConfigureNixDaemonService {
                 if socket_is_enabled {
                     execute_command(
                         Command::new("systemctl")
+                            .process_group(0)
                             .args(["disable", "nix-daemon.socket"])
                             .stdin(std::process::Stdio::null()),
                     )
@@ -225,6 +227,7 @@ impl Action for ConfigureNixDaemonService {
                 if service_is_active {
                     execute_command(
                         Command::new("systemctl")
+                            .process_group(0)
                             .args(["stop", "nix-daemon.service"])
                             .stdin(std::process::Stdio::null()),
                     )
@@ -235,6 +238,7 @@ impl Action for ConfigureNixDaemonService {
                 if service_is_enabled {
                     execute_command(
                         Command::new("systemctl")
+                            .process_group(0)
                             .args(["disable", "nix-daemon.service"])
                             .stdin(std::process::Stdio::null()),
                     )
@@ -244,6 +248,7 @@ impl Action for ConfigureNixDaemonService {
 
                 execute_command(
                     Command::new("systemd-tmpfiles")
+                        .process_group(0)
                         .arg("--remove")
                         .arg("--prefix=/nix/var/nix")
                         .stdin(std::process::Stdio::null()),
@@ -258,6 +263,7 @@ impl Action for ConfigureNixDaemonService {
 
                 execute_command(
                     Command::new("systemctl")
+                        .process_group(0)
                         .arg("daemon-reload")
                         .stdin(std::process::Stdio::null()),
                 )

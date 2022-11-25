@@ -52,6 +52,7 @@ impl Action for EnableOwnership {
         let should_enable_ownership = {
             let buf = execute_command(
                 Command::new("/usr/sbin/diskutil")
+                    .process_group(0)
                     .args(["info", "-plist"])
                     .arg(&path)
                     .stdin(std::process::Stdio::null()),
@@ -66,6 +67,7 @@ impl Action for EnableOwnership {
         if should_enable_ownership {
             execute_command(
                 Command::new("/usr/sbin/diskutil")
+                    .process_group(0)
                     .arg("enableOwnership")
                     .arg(path)
                     .stdin(std::process::Stdio::null()),
