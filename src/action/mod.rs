@@ -71,7 +71,7 @@ impl MyAction {
 
 #[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
 pub struct MyPlanner {
-    pub settings: CommonSettings,
+    pub common: CommonSettings,
 }
 
 
@@ -80,7 +80,7 @@ pub struct MyPlanner {
 impl Planner for MyPlanner {
     async fn default() -> Result<Self, PlannerError> {
         Ok(Self {
-            settings: CommonSettings::default()?,
+            common: CommonSettings::default()?,
         })
     }
 
@@ -96,10 +96,10 @@ impl Planner for MyPlanner {
     }
 
     fn settings(&self) -> Result<HashMap<String, serde_json::Value>, InstallSettingsError> {
-        let Self { settings } = self;
+        let Self { common } = self;
         let mut map = std::collections::HashMap::default();
 
-        map.extend(settings.describe()?.into_iter());
+        map.extend(common.settings()?.into_iter());
 
         Ok(map)
     }
