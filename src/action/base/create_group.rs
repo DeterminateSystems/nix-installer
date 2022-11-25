@@ -53,13 +53,8 @@ impl Action for CreateGroup {
         let Self {
             name,
             gid,
-            action_state,
+            action_state: _,
         } = self;
-        if *action_state == ActionState::Completed {
-            tracing::trace!("Already completed: Creating group");
-            return Ok(());
-        }
-        tracing::debug!("Creating group");
 
         use target_lexicon::OperatingSystem;
         match target_lexicon::OperatingSystem::host() {
@@ -70,6 +65,7 @@ impl Action for CreateGroup {
             }
             | OperatingSystem::Darwin => {
                 if Command::new("/usr/bin/dscl")
+                    .process_group(0)
                     .args([".", "-read", &format!("/Groups/{name}")])
                     .stdin(std::process::Stdio::null())
                     .stdout(std::process::Stdio::null())
@@ -81,6 +77,7 @@ impl Action for CreateGroup {
                 } else {
                     execute_command(
                         Command::new("/usr/sbin/dseditgroup")
+                            .process_group(0)
                             .args([
                                 "-o",
                                 "create",
@@ -99,6 +96,7 @@ impl Action for CreateGroup {
             _ => {
                 execute_command(
                     Command::new("groupadd")
+                        .process_group(0)
                         .args(["-g", &gid.to_string(), "--system", &name])
                         .stdin(std::process::Stdio::null()),
                 )
@@ -107,8 +105,6 @@ impl Action for CreateGroup {
             },
         };
 
-        tracing::trace!("Created group");
-        *action_state = ActionState::Completed;
         Ok(())
     }
 
@@ -159,6 +155,7 @@ impl Action for CreateGroup {
             _ => {
                 execute_command(
                     Command::new("groupdel")
+                        .process_group(0)
                         .arg(&name)
                         .stdin(std::process::Stdio::null()),
                 )

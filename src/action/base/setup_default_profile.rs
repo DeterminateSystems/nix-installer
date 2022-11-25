@@ -87,6 +87,7 @@ impl Action for SetupDefaultProfile {
         // Install `nix` itself into the store
         execute_command(
             Command::new(nix_pkg.join("bin/nix-env"))
+                .process_group(0)
                 .arg("-i")
                 .arg(&nix_pkg)
                 .arg("-i")
@@ -124,6 +125,7 @@ impl Action for SetupDefaultProfile {
 
         if !channels.is_empty() {
             let mut command = Command::new(nix_pkg.join("bin/nix-channel"));
+            command.process_group(0);
             command.arg("--update");
             for channel in channels {
                 command.arg(channel);
