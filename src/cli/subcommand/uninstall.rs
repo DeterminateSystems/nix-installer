@@ -53,14 +53,16 @@ impl CommandExecute for Uninstall {
         let mut plan: InstallPlan = serde_json::from_str(&install_receipt_string)?;
 
         if !no_confirm {
-            if !interaction::confirm(plan.describe_revert(explain).map_err(|e| eyre!(e))?).await? {
+            if !interaction::confirm(plan.describe_uninstall(explain).map_err(|e| eyre!(e))?)
+                .await?
+            {
                 interaction::clean_exit_with_message("Okay, didn't do anything! Bye!").await;
             }
         }
 
         let (_tx, rx) = signal_channel().await?;
 
-        plan.revert(rx).await?;
+        plan.uninstall(rx).await?;
         // TODO(@hoverbear): It would be so nice to catch errors and offer the user a way to keep going...
         //                   However that will require being able to link error -> step and manually setting that step as `Uncompleted`.
 

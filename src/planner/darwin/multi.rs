@@ -10,10 +10,13 @@ use crate::{
     },
     execute_command,
     os::darwin::DiskUtilOutput,
-    planner::{BuiltinPlannerError, Planner},
-    Action, BuiltinPlanner, CommonSettings,
+    planner::{Planner, PlannerError},
+    settings::CommonSettings,
+    settings::InstallSettingsError,
+    Action, BuiltinPlanner,
 };
 
+/// A planner for MacOS (Darwin) multi-user installs
 #[derive(Debug, Clone, clap::Parser, serde::Serialize, serde::Deserialize)]
 pub struct DarwinMulti {
     #[clap(flatten)]
@@ -34,13 +37,15 @@ pub struct DarwinMulti {
         env = "HARMONIC_CASE_SENSITIVE"
     )]
     pub case_sensitive: bool,
+    /// The label for the created APFS volume
     #[clap(long, default_value = "Nix Store", env = "HARMONIC_VOLUME_LABEL")]
     pub volume_label: String,
+    /// The root disk of the target
     #[clap(long, env = "HARMONIC_ROOT_DISK")]
     pub root_disk: Option<String>,
 }
 
-async fn default_root_disk() -> Result<String, BuiltinPlannerError> {
+async fn default_root_disk() -> Result<String, PlannerError> {
     let buf = execute_command(
         Command::new("/usr/sbin/diskutil")
             .args(["info", "-plist", "/"])
@@ -57,7 +62,7 @@ async fn default_root_disk() -> Result<String, BuiltinPlannerError> {
 #[async_trait::async_trait]
 #[typetag::serde(name = "darwin-multi")]
 impl Planner for DarwinMulti {
-    async fn default() -> Result<Self, Box<dyn std::error::Error + Sync + Send>> {
+    async fn default() -> Result<Self, PlannerError> {
         Ok(Self {
             settings: CommonSettings::default()?,
             root_disk: Some(default_root_disk().await?),
@@ -67,7 +72,7 @@ impl Planner for DarwinMulti {
         })
     }
 
-    async fn plan(&self) -> Result<Vec<Box<dyn Action>>, Box<dyn std::error::Error + Sync + Send>> {
+    async fn plan(&self) -> Result<Vec<Box<dyn Action>>, PlannerError> {
         let root_disk = match &self.root_disk {
             root_disk @ Some(_) => root_disk.clone(),
             None => {
@@ -89,7 +94,8 @@ impl Planner for DarwinMulti {
             Command::new("/usr/bin/fdesetup")
                 .arg("isactive")
                 .status()
-                .await?
+                .await
+                .map_err(|e| PlannerError::Custom(Box::new(e)))?
                 .code()
                 .map(|v| if v == 0 { false } else { true })
                 .unwrap_or(false)
@@ -109,17 +115,28 @@ impl Planner for DarwinMulti {
                     false,
                     encrypt,
                 )
-                .await?,
+                .await
+                .map_err(PlannerError::Action)?,
             ),
-            Box::new(ProvisionNix::plan(&self.settings).await?),
-            Box::new(ConfigureNix::plan(&self.settings).await?),
-            Box::new(KickstartLaunchctlService::plan("system/org.nixos.nix-daemon".into()).await?),
+            Box::new(
+                ProvisionNix::plan(&self.settings)
+                    .await
+                    .map_err(PlannerError::Action)?,
+            ),
+            Box::new(
+                ConfigureNix::plan(&self.settings)
+                    .await
+                    .map_err(PlannerError::Action)?,
+            ),
+            Box::new(
+                KickstartLaunchctlService::plan("system/org.nixos.nix-daemon".into())
+                    .await
+                    .map_err(PlannerError::Action)?,
+            ),
         ])
     }
 
-    fn settings(
-        &self,
-    ) -> Result<HashMap<String, serde_json::Value>, Box<dyn std::error::Error + Sync + Send>> {
+    fn settings(&self) -> Result<HashMap<String, serde_json::Value>, InstallSettingsError> {
         let Self {
             settings,
             encrypt,
@@ -129,7 +146,7 @@ impl Planner for DarwinMulti {
         } = self;
         let mut map = HashMap::default();
 
-        map.extend(settings.describe()?.into_iter());
+        map.extend(settings.settings()?.into_iter());
         map.insert("volume_encrypt".into(), serde_json::to_value(encrypt)?);
         map.insert("volume_label".into(), serde_json::to_value(volume_label)?);
         map.insert("root_disk".into(), serde_json::to_value(root_disk)?);

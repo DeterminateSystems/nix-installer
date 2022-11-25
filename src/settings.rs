@@ -1,3 +1,5 @@
+/*! Configurable knobs and their related errors
+*/
 use std::collections::HashMap;
 
 use clap::ArgAction;
@@ -5,19 +7,28 @@ use url::Url;
 
 use crate::channel_value::ChannelValue;
 
+/// Default [`nix_package_url`](CommonSettings::nix_package_url) for Linux x86_64
 pub const NIX_X64_64_LINUX_URL: &str =
     "https://releases.nixos.org/nix/nix-2.11.0/nix-2.11.0-x86_64-linux.tar.xz";
+/// Default [`nix_package_url`](CommonSettings::nix_package_url) for Linux aarch64
 pub const NIX_AARCH64_LINUX_URL: &str =
     "https://releases.nixos.org/nix/nix-2.11.0/nix-2.11.0-aarch64-linux.tar.xz";
+/// Default [`nix_package_url`](CommonSettings::nix_package_url) for Darwin x86_64
 pub const NIX_X64_64_DARWIN_URL: &str =
     "https://releases.nixos.org/nix/nix-2.11.0/nix-2.11.0-x86_64-darwin.tar.xz";
+/// Default [`nix_package_url`](CommonSettings::nix_package_url) for Darwin aarch64
 pub const NIX_AARCH64_DARWIN_URL: &str =
     "https://releases.nixos.org/nix/nix-2.11.0/nix-2.11.0-aarch64-darwin.tar.xz";
 
+/** Common settings used by all [`BuiltinPlanner`](crate::planner::BuiltinPlanner)s
+
+Settings which only apply to certain [`Planner`](crate::planner::Planner)s should be located in the planner.
+
+*/
 #[serde_with::serde_as]
 #[derive(Debug, serde::Deserialize, serde::Serialize, Clone, clap::Parser)]
 pub struct CommonSettings {
-    /// Channel(s) to add by default, pass multiple times for multiple channels
+    /// Channel(s) to add
     #[clap(
         long,
         value_parser,
@@ -26,7 +37,7 @@ pub struct CommonSettings {
         env = "HARMONIC_CHANNEL",
         default_value = "nixpkgs=https://nixos.org/channels/nixpkgs-unstable",
     )]
-    pub channels: Vec<ChannelValue>,
+    pub(crate) channels: Vec<ChannelValue>,
 
     /// Modify the user profile to automatically load nix
     #[clap(
@@ -37,28 +48,33 @@ pub struct CommonSettings {
         env = "HARMONIC_NO_MODIFY_PROFILE",
         name = "no-modify-profile"
     )]
-    pub modify_profile: bool,
+    pub(crate) modify_profile: bool,
 
     /// Number of build users to create
     #[clap(long, default_value = "32", env = "HARMONIC_DAEMON_USER_COUNT")]
-    pub daemon_user_count: usize,
+    pub(crate) daemon_user_count: usize,
 
+    /// The Nix build group name
     #[clap(long, default_value = "nixbld", env = "HARMONIC_NIX_BUILD_GROUP_NAME")]
-    pub nix_build_group_name: String,
+    pub(crate) nix_build_group_name: String,
 
+    /// The Nix build group GID
     #[clap(long, default_value_t = 3000, env = "HARMONIC_NIX_BUILD_GROUP_ID")]
-    pub nix_build_group_id: usize,
+    pub(crate) nix_build_group_id: usize,
 
+    /// The Nix build user prefix (user numbers will be postfixed)
     #[clap(long, env = "HARMONIC_NIX_BUILD_USER_PREFIX")]
     #[cfg_attr(target_os = "macos", clap(default_value = "_nixbld"))]
     #[cfg_attr(target_os = "linux", clap(default_value = "nixbld"))]
-    pub nix_build_user_prefix: String,
+    pub(crate) nix_build_user_prefix: String,
 
+    /// The Nix build user base UID (ascending)
     #[clap(long, env = "HARMONIC_NIX_BUILD_USER_ID_BASE")]
     #[cfg_attr(target_os = "macos", clap(default_value_t = 300))]
     #[cfg_attr(target_os = "linux", clap(default_value_t = 3000))]
-    pub nix_build_user_id_base: usize,
+    pub(crate) nix_build_user_id_base: usize,
 
+    /// The Nix package URL
     #[clap(long, env = "HARMONIC_NIX_PACKAGE_URL")]
     #[cfg_attr(
         all(target_os = "macos", target_arch = "x86_64"),
@@ -84,11 +100,13 @@ pub struct CommonSettings {
             default_value = NIX_AARCH64_LINUX_URL,
         )
     )]
-    pub nix_package_url: Url,
+    pub(crate) nix_package_url: Url,
 
+    /// Extra configuration lines for `/etc/nix.conf`
     #[clap(long, env = "HARMONIC_EXTRA_CONF")]
-    pub extra_conf: Option<String>,
+    pub(crate) extra_conf: Option<String>,
 
+    /// If Harmonic should forcibly recreate files it finds existing
     #[clap(
         long,
         action(ArgAction::SetTrue),
@@ -96,10 +114,11 @@ pub struct CommonSettings {
         global = true,
         env = "HARMONIC_FORCE"
     )]
-    pub force: bool,
+    pub(crate) force: bool,
 }
 
 impl CommonSettings {
+    /// The default settings for the given Architecture & Operating System
     pub fn default() -> Result<Self, InstallSettingsError> {
         let url;
         let nix_build_user_prefix;
@@ -154,9 +173,8 @@ impl CommonSettings {
         })
     }
 
-    pub fn describe(
-        &self,
-    ) -> Result<HashMap<String, serde_json::Value>, Box<dyn std::error::Error + Sync + Send>> {
+    /// A listing of the settings, suitable for [`Planner::settings`](crate::planner::Planner::settings)
+    pub fn settings(&self) -> Result<HashMap<String, serde_json::Value>, InstallSettingsError> {
         let Self {
             channels,
             modify_profile,
@@ -217,62 +235,85 @@ impl CommonSettings {
 
 // Builder Pattern
 impl CommonSettings {
+    /// Number of build users to create
     pub fn daemon_user_count(&mut self, count: usize) -> &mut Self {
         self.daemon_user_count = count;
         self
     }
 
+    /// Channel(s) to add
     pub fn channels(&mut self, channels: impl IntoIterator<Item = (String, Url)>) -> &mut Self {
         self.channels = channels.into_iter().map(Into::into).collect();
         self
     }
 
+    /// Modify the user profile to automatically load nix
     pub fn modify_profile(&mut self, toggle: bool) -> &mut Self {
         self.modify_profile = toggle;
         self
     }
 
+    /// The Nix build group name
     pub fn nix_build_group_name(&mut self, val: String) -> &mut Self {
         self.nix_build_group_name = val;
         self
     }
 
+    /// The Nix build group GID
     pub fn nix_build_group_id(&mut self, count: usize) -> &mut Self {
         self.nix_build_group_id = count;
         self
     }
 
+    /// The Nix build user prefix (user numbers will be postfixed)
     pub fn nix_build_user_prefix(&mut self, val: String) -> &mut Self {
         self.nix_build_user_prefix = val;
         self
     }
 
+    /// The Nix build user base UID (ascending)
     pub fn nix_build_user_id_base(&mut self, count: usize) -> &mut Self {
         self.nix_build_user_id_base = count;
         self
     }
+
+    /// The Nix package URL
     pub fn nix_package_url(&mut self, url: Url) -> &mut Self {
         self.nix_package_url = url;
         self
     }
+
+    /// Extra configuration lines for `/etc/nix.conf`
     pub fn extra_conf(&mut self, extra_conf: Option<String>) -> &mut Self {
         self.extra_conf = extra_conf;
         self
     }
+
+    /// If Harmonic should forcibly recreate files it finds existing
     pub fn force(&mut self, force: bool) -> &mut Self {
         self.force = force;
         self
     }
 }
 
+/// An error originating from a [`Planner::settings`](crate::planner::Planner::settings)
 #[derive(thiserror::Error, Debug)]
 pub enum InstallSettingsError {
+    /// Harmonic does not support the architecture right now
     #[error("Harmonic does not support the `{0}` architecture right now")]
     UnsupportedArchitecture(target_lexicon::Triple),
+    /// Parsing URL
     #[error("Parsing URL")]
     Parse(
         #[source]
         #[from]
         url::ParseError,
+    ),
+    /// JSON serialization or deserialization error
+    #[error("JSON serialization or deserialization error")]
+    SerdeJson(
+        #[source]
+        #[from]
+        serde_json::Error,
     ),
 }

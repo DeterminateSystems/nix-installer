@@ -83,7 +83,7 @@ impl CommandExecute for Install {
                         existing_receipt
                     } ,
                     None => {
-                        InstallPlan::plan(planner.boxed()).await.map_err(|e| eyre!(e))?
+                        planner.plan().await.map_err(|e| eyre!(e))?
                     },
                 }
             },
@@ -97,7 +97,7 @@ impl CommandExecute for Install {
                 let builtin_planner = BuiltinPlanner::default()
                     .await
                     .map_err(|e| eyre::eyre!(e))?;
-                InstallPlan::plan(builtin_planner.boxed()).await.map_err(|e| eyre!(e))?
+                builtin_planner.plan().await.map_err(|e| eyre!(e))?
             },
             (Some(_), Some(_)) => return Err(eyre!("`--plan` conflicts with passing a planner, a planner creates plans, so passing an existing plan doesn't make sense")),
         };
@@ -105,7 +105,7 @@ impl CommandExecute for Install {
         if !no_confirm {
             if !interaction::confirm(
                 install_plan
-                    .describe_execute(explain)
+                    .describe_install(explain)
                     .map_err(|e| eyre!(e))?,
             )
             .await?
@@ -122,7 +122,7 @@ impl CommandExecute for Install {
                 tracing::error!("{:?}", error);
                 if !interaction::confirm(
                     install_plan
-                        .describe_revert(explain)
+                        .describe_uninstall(explain)
                         .map_err(|e| eyre!(e))?,
                 )
                 .await?
@@ -130,7 +130,7 @@ impl CommandExecute for Install {
                     interaction::clean_exit_with_message("Okay, didn't do anything! Bye!").await;
                 }
                 let rx2 = tx.subscribe();
-                install_plan.revert(rx2).await?
+                install_plan.uninstall(rx2).await?
             } else {
                 return Err(error);
             }

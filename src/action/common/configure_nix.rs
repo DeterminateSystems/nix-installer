@@ -5,7 +5,8 @@ use crate::{
         Action, ActionDescription, ActionImplementation, ActionState,
     },
     channel_value::ChannelValue,
-    BoxableError, CommonSettings,
+    settings::CommonSettings,
+    BoxableError,
 };
 
 use reqwest::Url;

@@ -3,11 +3,14 @@ use crate::{
         base::CreateDirectory,
         common::{ConfigureNix, ProvisionNix},
     },
-    planner::Planner,
-    Action, BuiltinPlanner, CommonSettings,
+    planner::{Planner, PlannerError},
+    settings::CommonSettings,
+    settings::InstallSettingsError,
+    Action, BuiltinPlanner,
 };
 use std::{collections::HashMap, path::Path};
 
+/// A planner for Linux multi-user installs
 #[derive(Debug, Clone, clap::Parser, serde::Serialize, serde::Deserialize)]
 pub struct LinuxMulti {
     #[clap(flatten)]
@@ -17,17 +20,17 @@ pub struct LinuxMulti {
 #[async_trait::async_trait]
 #[typetag::serde(name = "linux-multi")]
 impl Planner for LinuxMulti {
-    async fn default() -> Result<Self, Box<dyn std::error::Error + Sync + Send>> {
+    async fn default() -> Result<Self, PlannerError> {
         Ok(Self {
             settings: CommonSettings::default()?,
         })
     }
 
-    async fn plan(&self) -> Result<Vec<Box<dyn Action>>, Box<dyn std::error::Error + Sync + Send>> {
+    async fn plan(&self) -> Result<Vec<Box<dyn Action>>, PlannerError> {
         // If on NixOS, running `harmonic` is pointless
         // NixOS always sets up this file as part of setting up /etc itself: https://github.com/NixOS/nixpkgs/blob/bdd39e5757d858bd6ea58ed65b4a2e52c8ed11ca/nixos/modules/system/etc/setup-etc.pl#L145
         if Path::new("/etc/NIXOS").exists() {
-            return Err(Error::NixOs.into());
+            return Err(PlannerError::Custom(Box::new(LinuxMultiError::NixOs)));
         }
 
         // For now, we don't try to repair the user's Nix install or anything special.
@@ -37,35 +40,33 @@ impl Planner for LinuxMulti {
             .status()
             .await
         {
-            return Err(Error::NixExists.into());
+            return Err(PlannerError::Custom(Box::new(LinuxMultiError::NixExists)));
         }
 
         Ok(vec![
             Box::new(
                 CreateDirectory::plan("/nix", None, None, 0o0755, true)
                     .await
-                    .map_err(|v| Error::Action(v.into()))?,
+                    .map_err(PlannerError::Action)?,
             ),
             Box::new(
                 ProvisionNix::plan(&self.settings.clone())
                     .await
-                    .map_err(|v| Error::Action(v.into()))?,
+                    .map_err(PlannerError::Action)?,
             ),
             Box::new(
                 ConfigureNix::plan(&self.settings)
                     .await
-                    .map_err(|v| Error::Action(v.into()))?,
+                    .map_err(PlannerError::Action)?,
             ),
         ])
     }
 
-    fn settings(
-        &self,
-    ) -> Result<HashMap<String, serde_json::Value>, Box<dyn std::error::Error + Sync + Send>> {
+    fn settings(&self) -> Result<HashMap<String, serde_json::Value>, InstallSettingsError> {
         let Self { settings } = self;
         let mut map = HashMap::default();
 
-        map.extend(settings.describe()?.into_iter());
+        map.extend(settings.settings()?.into_iter());
 
         Ok(map)
     }
@@ -78,7 +79,7 @@ impl Into<BuiltinPlanner> for LinuxMulti {
 }
 
 #[derive(thiserror::Error, Debug)]
-enum Error {
+enum LinuxMultiError {
     #[error("NixOS already has Nix installed")]
     NixOs,
     #[error("`nix` is already a valid command, so it is installed")]

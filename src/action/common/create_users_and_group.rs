@@ -1,9 +1,9 @@
-use crate::CommonSettings;
 use crate::{
     action::{
         base::{CreateGroup, CreateGroupError, CreateUser, CreateUserError},
         Action, ActionDescription, ActionImplementation, ActionState,
     },
+    settings::CommonSettings,
     BoxableError,
 };
 use tokio::task::{JoinError, JoinSet};

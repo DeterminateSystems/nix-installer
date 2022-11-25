@@ -2,7 +2,7 @@ use std::{path::PathBuf, str::FromStr};
 
 use crate::{
     action::{Action, ActionDescription, ActionImplementation},
-    planner::Planner,
+    planner::{BuiltinPlanner, Planner},
     HarmonicError,
 };
 use crossterm::style::Stylize;
@@ -12,6 +12,10 @@ use tokio::sync::broadcast::Receiver;
 
 pub const RECEIPT_LOCATION: &str = "/nix/receipt.json";
 
+/**
+A set of [`Action`]s, along with some metadata, which can be carried out to drive an install or
+revert
+*/
 #[derive(Debug, serde::Deserialize, serde::Serialize, Clone)]
 pub struct InstallPlan {
     #[serde(deserialize_with = "ensure_version")]
@@ -23,21 +27,30 @@ pub struct InstallPlan {
 }
 
 impl InstallPlan {
-    pub async fn plan(
-        planner: Box<dyn Planner>,
-    ) -> Result<Self, Box<dyn std::error::Error + Sync + Send>> {
+    pub async fn default() -> Result<Self, HarmonicError> {
+        let planner = BuiltinPlanner::default().await?.boxed();
         let actions = planner.plan().await?;
+
         Ok(Self {
             planner,
             actions,
             version: current_version()?,
         })
     }
+
+    pub async fn plan<P>(planner: P) -> Result<Self, HarmonicError>
+    where
+        P: Planner + 'static,
+    {
+        let actions = planner.plan().await?;
+        Ok(Self {
+            planner: planner.boxed(),
+            actions,
+            version: current_version()?,
+        })
+    }
     #[tracing::instrument(skip_all)]
-    pub fn describe_execute(
-        &self,
-        explain: bool,
-    ) -> Result<String, Box<dyn std::error::Error + Sync + Send>> {
+    pub fn describe_install(&self, explain: bool) -> Result<String, HarmonicError> {
         let Self {
             planner,
             actions,
@@ -134,10 +147,7 @@ impl InstallPlan {
     }
 
     #[tracing::instrument(skip_all)]
-    pub fn describe_revert(
-        &self,
-        explain: bool,
-    ) -> Result<String, Box<dyn std::error::Error + Sync + Send>> {
+    pub fn describe_uninstall(&self, explain: bool) -> Result<String, HarmonicError> {
         let Self {
             version: _,
             planner,
@@ -196,7 +206,7 @@ impl InstallPlan {
     }
 
     #[tracing::instrument(skip_all)]
-    pub async fn revert(
+    pub async fn uninstall(
         &mut self,
         cancel_channel: impl Into<Option<Receiver<()>>>,
     ) -> Result<(), HarmonicError> {

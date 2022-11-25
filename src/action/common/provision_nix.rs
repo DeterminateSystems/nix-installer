@@ -1,9 +1,11 @@
-use crate::action::base::{
-    CreateDirectoryError, FetchNix, FetchNixError, MoveUnpackedNix, MoveUnpackedNixError,
-};
-use crate::CommonSettings;
 use crate::{
-    action::{Action, ActionDescription, ActionImplementation, ActionState},
+    action::{
+        base::{
+            CreateDirectoryError, FetchNix, FetchNixError, MoveUnpackedNix, MoveUnpackedNixError,
+        },
+        Action, ActionDescription, ActionImplementation, ActionState,
+    },
+    settings::CommonSettings,
     BoxableError,
 };
 use std::path::PathBuf;

@@ -1,6 +1,9 @@
 use reqwest::Url;
 use serde::{Deserialize, Serialize};
 
+/**
+A pair of [`String`] and [`Url`] destined for the list of subscribed channels for [`nix-channel`](https://nixos.org/manual/nix/stable/command-ref/nix-channel.html)
+*/
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ChannelValue(pub String, pub Url);
 

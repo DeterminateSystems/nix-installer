@@ -1,3 +1,7 @@
+/*! CLI argument structures and utilities
+
+*/
+
 pub(crate) mod arg;
 pub(crate) mod subcommand;
 
