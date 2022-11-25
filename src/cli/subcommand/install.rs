@@ -77,7 +77,7 @@ impl CommandExecute for Install {
                         if existing_receipt.planner.settings().map_err(|e| eyre!(e))? != chosen_planner.settings().map_err(|e| eyre!(e))? {
                             return Err(eyre!("Found existing plan in `{RECEIPT_LOCATION}` which used different planner settings, try uninstalling the existing install"))
                         }
-                        if existing_receipt.actions.iter().all(|v| v.action_state() == ActionState::Completed) {
+                        if existing_receipt.actions.iter().all(|v| v.state == ActionState::Completed) {
                             return Err(eyre!("Found existing plan in `{RECEIPT_LOCATION}`, with the same settings, already completed, try uninstalling and reinstalling if Nix isn't working"))
                         }
                         existing_receipt
@@ -97,7 +97,7 @@ impl CommandExecute for Install {
                 let builtin_planner = BuiltinPlanner::default()
                     .await
                     .map_err(|e| eyre::eyre!(e))?;
-                    builtin_planner.plan().await.map_err(|e| eyre!(e))?
+                builtin_planner.plan().await.map_err(|e| eyre!(e))?
             },
             (Some(_), Some(_)) => return Err(eyre!("`--plan` conflicts with passing a planner, a planner creates plans, so passing an existing plan doesn't make sense")),
         };

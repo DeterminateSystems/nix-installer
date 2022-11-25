@@ -9,16 +9,12 @@ use tokio::process::Command;
 #[derive(Debug, serde::Deserialize, serde::Serialize, Clone)]
 pub struct SystemdSysextMerge {
     device: PathBuf,
-    action_state: ActionState,
 }
 
 impl SystemdSysextMerge {
     #[tracing::instrument(skip_all)]
     pub async fn plan(device: PathBuf) -> Result<Self, SystemdSysextMergeError> {
-        Ok(Self {
-            device,
-            action_state: ActionState::Uncompleted,
-        })
+        Ok(Self { device })
     }
 }
 
@@ -68,10 +64,7 @@ impl Action for SystemdSysextMerge {
         device = %self.device.display(),
     ))]
     async fn revert(&mut self) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
-        let Self {
-            device,
-            action_state,
-        } = self;
+        let Self { device } = self;
 
         // TODO(@Hoverbear): Handle proxy vars
         execute_command(
@@ -85,14 +78,6 @@ impl Action for SystemdSysextMerge {
         .map_err(|e| SystemdSysextMergeError::Command(e).boxed())?;
 
         Ok(())
-    }
-
-    fn action_state(&self) -> ActionState {
-        self.action_state
-    }
-
-    fn set_action_state(&mut self, action_state: ActionState) {
-        self.action_state = action_state;
     }
 }
 

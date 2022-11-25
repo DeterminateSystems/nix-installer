@@ -7,7 +7,7 @@ use crate::{
             EnableOwnershipError, EncryptVolume, EncryptVolumeError, UnmountVolume,
             UnmountVolumeError,
         },
-        Action, ActionDescription, ActionImplementation, ActionState,
+        Action, ActionDescription, StatefulAction,
     },
     BoxableError,
 };
@@ -25,16 +25,15 @@ pub struct CreateApfsVolume {
     name: String,
     case_sensitive: bool,
     encrypt: bool,
-    create_or_append_synthetic_conf: CreateOrAppendFile,
-    create_synthetic_objects: CreateSyntheticObjects,
-    unmount_volume: UnmountVolume,
-    create_volume: CreateVolume,
-    create_or_append_fstab: CreateOrAppendFile,
-    encrypt_volume: Option<EncryptVolume>,
-    setup_volume_daemon: CreateFile,
-    bootstrap_volume: BootstrapVolume,
-    enable_ownership: EnableOwnership,
-    action_state: ActionState,
+    create_or_append_synthetic_conf: StatefulAction<CreateOrAppendFile>,
+    create_synthetic_objects: StatefulAction<CreateSyntheticObjects>,
+    unmount_volume: StatefulAction<UnmountVolume>,
+    create_volume: StatefulAction<CreateVolume>,
+    create_or_append_fstab: StatefulAction<CreateOrAppendFile>,
+    encrypt_volume: Option<StatefulAction<EncryptVolume>>,
+    setup_volume_daemon: StatefulAction<CreateFile>,
+    bootstrap_volume: StatefulAction<BootstrapVolume>,
+    enable_ownership: StatefulAction<EnableOwnership>,
 }
 
 impl CreateApfsVolume {
@@ -44,7 +43,7 @@ impl CreateApfsVolume {
         name: String,
         case_sensitive: bool,
         encrypt: bool,
-    ) -> Result<Self, Box<dyn std::error::Error + Send + Sync>> {
+    ) -> Result<StatefulAction<Self>, Box<dyn std::error::Error + Send + Sync>> {
         let disk = disk.as_ref();
         let create_or_append_synthetic_conf = CreateOrAppendFile::plan(
             "/etc/synthetic.conf",
@@ -132,8 +131,8 @@ impl CreateApfsVolume {
             setup_volume_daemon,
             bootstrap_volume,
             enable_ownership,
-            action_state: ActionState::Uncompleted,
-        })
+        }
+        .into())
     }
 }
 
@@ -171,7 +170,6 @@ impl Action for CreateApfsVolume {
             setup_volume_daemon,
             bootstrap_volume,
             enable_ownership,
-            action_state: _,
         } = self;
 
         create_or_append_synthetic_conf.try_execute().await?;
@@ -235,7 +233,6 @@ impl Action for CreateApfsVolume {
             setup_volume_daemon,
             bootstrap_volume,
             enable_ownership,
-            action_state: _,
         } = self;
 
         enable_ownership.try_revert().await?;
@@ -254,14 +251,6 @@ impl Action for CreateApfsVolume {
         create_synthetic_objects.try_revert().await?;
 
         Ok(())
-    }
-
-    fn action_state(&self) -> ActionState {
-        self.action_state
-    }
-
-    fn set_action_state(&mut self, action_state: ActionState) {
-        self.action_state = action_state;
     }
 }
 

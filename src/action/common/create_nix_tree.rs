@@ -1,5 +1,5 @@
 use crate::action::base::{CreateDirectory, CreateDirectoryError};
-use crate::action::{Action, ActionDescription, ActionImplementation, ActionState};
+use crate::action::{Action, ActionDescription, StatefulAction};
 
 const PATHS: &[&str] = &[
     "/nix/var",
@@ -19,23 +19,19 @@ const PATHS: &[&str] = &[
 
 #[derive(Debug, serde::Deserialize, serde::Serialize, Clone)]
 pub struct CreateNixTree {
-    create_directories: Vec<CreateDirectory>,
-    action_state: ActionState,
+    create_directories: Vec<StatefulAction<CreateDirectory>>,
 }
 
 impl CreateNixTree {
     #[tracing::instrument(skip_all)]
-    pub async fn plan() -> Result<Self, Box<dyn std::error::Error + Send + Sync>> {
+    pub async fn plan() -> Result<StatefulAction<Self>, Box<dyn std::error::Error + Send + Sync>> {
         let mut create_directories = Vec::default();
         for path in PATHS {
             // We use `create_dir` over `create_dir_all` to ensure we always set permissions right
             create_directories.push(CreateDirectory::plan(path, None, None, 0o0755, false).await?)
         }
 
-        Ok(Self {
-            create_directories,
-            action_state: ActionState::Uncompleted,
-        })
+        Ok(Self { create_directories }.into())
     }
 }
 
@@ -67,10 +63,7 @@ impl Action for CreateNixTree {
 
     #[tracing::instrument(skip_all)]
     async fn execute(&mut self) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
-        let Self {
-            create_directories,
-            action_state: _,
-        } = self;
+        let Self { create_directories } = self;
 
         // Just do sequential since parallelizing this will have little benefit
         for create_directory in create_directories {
@@ -102,25 +95,14 @@ impl Action for CreateNixTree {
 
     #[tracing::instrument(skip_all)]
     async fn revert(&mut self) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
-        let Self {
-            create_directories,
-            action_state: _,
-        } = self;
+        let Self { create_directories } = self;
 
         // Just do sequential since parallelizing this will have little benefit
         for create_directory in create_directories.iter_mut().rev() {
-            create_directory.revert().await?
+            create_directory.try_revert().await?
         }
 
         Ok(())
-    }
-
-    fn action_state(&self) -> ActionState {
-        self.action_state
-    }
-
-    fn set_action_state(&mut self, action_state: ActionState) {
-        self.action_state = action_state;
     }
 }
 

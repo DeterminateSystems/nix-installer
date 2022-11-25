@@ -5,6 +5,7 @@ use nix::unistd::{chown, Group, User};
 
 use tokio::fs::{create_dir, remove_dir_all};
 
+use crate::action::StatefulAction;
 use crate::{
     action::{Action, ActionDescription, ActionState},
     BoxableError,
@@ -16,7 +17,6 @@ pub struct CreateDirectory {
     user: Option<String>,
     group: Option<String>,
     mode: Option<u32>,
-    action_state: ActionState,
     force_prune_on_revert: bool,
 }
 
@@ -28,7 +28,7 @@ impl CreateDirectory {
         group: impl Into<Option<String>>,
         mode: impl Into<Option<u32>>,
         force_prune_on_revert: bool,
-    ) -> Result<Self, Box<dyn std::error::Error + Send + Sync>> {
+    ) -> Result<StatefulAction<Self>, Box<dyn std::error::Error + Send + Sync>> {
         let path = path.as_ref();
         let user = user.into();
         let group = group.into();
@@ -59,13 +59,15 @@ impl CreateDirectory {
             ActionState::Uncompleted
         };
 
-        Ok(Self {
-            path: path.to_path_buf(),
-            user,
-            group,
-            mode,
-            force_prune_on_revert,
-            action_state,
+        Ok(StatefulAction {
+            action: Self {
+                path: path.to_path_buf(),
+                user,
+                group,
+                mode,
+                force_prune_on_revert,
+            },
+            state: action_state,
         })
     }
 }
@@ -94,7 +96,6 @@ impl Action for CreateDirectory {
             group,
             mode,
             force_prune_on_revert: _,
-            action_state: _,
         } = self;
 
         let gid = if let Some(group) = group {
@@ -141,7 +142,6 @@ impl Action for CreateDirectory {
             group: _,
             mode: _,
             force_prune_on_revert,
-            action_state: _,
         } = &self;
         vec![ActionDescription::new(
             format!(
@@ -170,7 +170,6 @@ impl Action for CreateDirectory {
             group: _,
             mode: _,
             force_prune_on_revert,
-            action_state: _,
         } = self;
 
         let is_empty = path
@@ -188,14 +187,6 @@ impl Action for CreateDirectory {
         };
 
         Ok(())
-    }
-
-    fn action_state(&self) -> ActionState {
-        self.action_state
-    }
-
-    fn set_action_state(&mut self, action_state: ActionState) {
-        self.action_state = action_state;
     }
 }
 

@@ -2,10 +2,11 @@ use std::path::{Path, PathBuf};
 
 use tokio::process::Command;
 
+use crate::action::StatefulAction;
 use crate::execute_command;
 
 use crate::{
-    action::{Action, ActionDescription, ActionState},
+    action::{Action, ActionDescription},
     BoxableError,
 };
 
@@ -13,7 +14,6 @@ use crate::{
 pub struct UnmountVolume {
     disk: PathBuf,
     name: String,
-    action_state: ActionState,
 }
 
 impl UnmountVolume {
@@ -21,13 +21,9 @@ impl UnmountVolume {
     pub async fn plan(
         disk: impl AsRef<Path>,
         name: String,
-    ) -> Result<Self, Box<dyn std::error::Error + Send + Sync>> {
+    ) -> Result<StatefulAction<Self>, Box<dyn std::error::Error + Send + Sync>> {
         let disk = disk.as_ref().to_owned();
-        Ok(Self {
-            disk,
-            name,
-            action_state: ActionState::Uncompleted,
-        })
+        Ok(Self { disk, name }.into())
     }
 }
 
@@ -47,11 +43,7 @@ impl Action for UnmountVolume {
         name = %self.name,
     ))]
     async fn execute(&mut self) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
-        let Self {
-            disk: _,
-            name,
-            action_state: _,
-        } = self;
+        let Self { disk: _, name } = self;
 
         execute_command(
             Command::new("/usr/sbin/diskutil")
@@ -75,11 +67,7 @@ impl Action for UnmountVolume {
         name = %self.name,
     ))]
     async fn revert(&mut self) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
-        let Self {
-            disk: _,
-            name,
-            action_state: _,
-        } = self;
+        let Self { disk: _, name } = self;
 
         execute_command(
             Command::new("/usr/sbin/diskutil")
@@ -92,14 +80,6 @@ impl Action for UnmountVolume {
         .map_err(|e| UnmountVolumeError::Command(e).boxed())?;
 
         Ok(())
-    }
-
-    fn action_state(&self) -> ActionState {
-        self.action_state
-    }
-
-    fn set_action_state(&mut self, action_state: ActionState) {
-        self.action_state = action_state;
     }
 }
 

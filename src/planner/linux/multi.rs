@@ -2,6 +2,7 @@ use crate::{
     action::{
         base::CreateDirectory,
         common::{ConfigureNix, ProvisionNix},
+        StatefulAction,
     },
     planner::{Planner, PlannerError},
     settings::CommonSettings,
@@ -26,7 +27,7 @@ impl Planner for LinuxMulti {
         })
     }
 
-    async fn plan(&self) -> Result<Vec<Box<dyn Action>>, PlannerError> {
+    async fn plan(&self) -> Result<Vec<StatefulAction<Box<dyn Action>>>, PlannerError> {
         // If on NixOS, running `harmonic` is pointless
         // NixOS always sets up this file as part of setting up /etc itself: https://github.com/NixOS/nixpkgs/blob/bdd39e5757d858bd6ea58ed65b4a2e52c8ed11ca/nixos/modules/system/etc/setup-etc.pl#L145
         if Path::new("/etc/NIXOS").exists() {
@@ -44,21 +45,18 @@ impl Planner for LinuxMulti {
         }
 
         Ok(vec![
-            Box::new(
-                CreateDirectory::plan("/nix", None, None, 0o0755, true)
-                    .await
-                    .map_err(PlannerError::Action)?,
-            ),
-            Box::new(
-                ProvisionNix::plan(&self.settings.clone())
-                    .await
-                    .map_err(PlannerError::Action)?,
-            ),
-            Box::new(
-                ConfigureNix::plan(&self.settings)
-                    .await
-                    .map_err(PlannerError::Action)?,
-            ),
+            CreateDirectory::plan("/nix", None, None, 0o0755, true)
+                .await
+                .map_err(PlannerError::Action)?
+                .boxed(),
+            ProvisionNix::plan(&self.settings.clone())
+                .await
+                .map_err(PlannerError::Action)?
+                .boxed(),
+            ConfigureNix::plan(&self.settings)
+                .await
+                .map_err(PlannerError::Action)?
+                .boxed(),
         ])
     }
 

@@ -7,6 +7,7 @@ use crate::{
     action::{
         common::{ConfigureNix, ProvisionNix},
         darwin::{CreateApfsVolume, KickstartLaunchctlService},
+        StatefulAction,
     },
     execute_command,
     os::darwin::DiskUtilOutput,
@@ -72,7 +73,7 @@ impl Planner for DarwinMulti {
         })
     }
 
-    async fn plan(&self) -> Result<Vec<Box<dyn Action>>, PlannerError> {
+    async fn plan(&self) -> Result<Vec<StatefulAction<Box<dyn Action>>>, PlannerError> {
         let root_disk = match &self.root_disk {
             root_disk @ Some(_) => root_disk.clone(),
             None => {
@@ -108,31 +109,27 @@ impl Planner for DarwinMulti {
             //
             // setup_Synthetic -> create_synthetic_objects
             // Unmount -> create_volume -> Setup_fstab -> maybe encrypt_volume -> launchctl bootstrap -> launchctl kickstart -> await_volume -> maybe enableOwnership
-            Box::new(
-                CreateApfsVolume::plan(
-                    root_disk.unwrap(), /* We just ensured it was populated */
-                    self.volume_label.clone(),
-                    false,
-                    encrypt,
-                )
+            CreateApfsVolume::plan(
+                root_disk.unwrap(), /* We just ensured it was populated */
+                self.volume_label.clone(),
+                false,
+                encrypt,
+            )
+            .await
+            .map_err(PlannerError::Action)?
+            .boxed(),
+            ProvisionNix::plan(&self.settings)
                 .await
-                .map_err(PlannerError::Action)?,
-            ),
-            Box::new(
-                ProvisionNix::plan(&self.settings)
-                    .await
-                    .map_err(PlannerError::Action)?,
-            ),
-            Box::new(
-                ConfigureNix::plan(&self.settings)
-                    .await
-                    .map_err(PlannerError::Action)?,
-            ),
-            Box::new(
-                KickstartLaunchctlService::plan("system/org.nixos.nix-daemon".into())
-                    .await
-                    .map_err(PlannerError::Action)?,
-            ),
+                .map_err(PlannerError::Action)?
+                .boxed(),
+            ConfigureNix::plan(&self.settings)
+                .await
+                .map_err(PlannerError::Action)?
+                .boxed(),
+            KickstartLaunchctlService::plan("system/org.nixos.nix-daemon".into())
+                .await
+                .map_err(PlannerError::Action)?
+                .boxed(),
         ])
     }
 

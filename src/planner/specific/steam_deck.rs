@@ -5,6 +5,7 @@ use crate::{
         base::CreateDirectory,
         common::ProvisionNix,
         linux::{CreateSystemdSysext, StartSystemdUnit},
+        StatefulAction,
     },
     planner::{Planner, PlannerError},
     settings::CommonSettings,
@@ -28,28 +29,24 @@ impl Planner for SteamDeck {
         })
     }
 
-    async fn plan(&self) -> Result<Vec<Box<dyn Action>>, PlannerError> {
+    async fn plan(&self) -> Result<Vec<StatefulAction<Box<dyn Action>>>, PlannerError> {
         Ok(vec![
-            Box::new(
-                CreateSystemdSysext::plan("/var/lib/extensions/nix")
-                    .await
-                    .map_err(PlannerError::Action)?,
-            ),
-            Box::new(
-                CreateDirectory::plan("/nix", None, None, 0o0755, true)
-                    .await
-                    .map_err(PlannerError::Action)?,
-            ),
-            Box::new(
-                ProvisionNix::plan(&self.settings.clone())
-                    .await
-                    .map_err(PlannerError::Action)?,
-            ),
-            Box::new(
-                StartSystemdUnit::plan("nix-daemon.socket".into())
-                    .await
-                    .map_err(PlannerError::Action)?,
-            ),
+            CreateSystemdSysext::plan("/var/lib/extensions/nix")
+                .await
+                .map_err(PlannerError::Action)?
+                .boxed(),
+            CreateDirectory::plan("/nix", None, None, 0o0755, true)
+                .await
+                .map_err(PlannerError::Action)?
+                .boxed(),
+            ProvisionNix::plan(&self.settings.clone())
+                .await
+                .map_err(PlannerError::Action)?
+                .boxed(),
+            StartSystemdUnit::plan("nix-daemon.socket".into())
+                .await
+                .map_err(PlannerError::Action)?
+                .boxed(),
         ])
     }
 

@@ -9,13 +9,18 @@ use harmonic::{
     InstallPlan,
     settings::{CommonSettings, InstallSettingsError},
     planner::{Planner, PlannerError, specific::SteamDeck},
-    action::{Action, ActionState, ActionDescription},
+    action::{Action, StatefulAction, ActionDescription},
 };
 
 #[derive(Debug, serde::Deserialize, serde::Serialize, Clone)]
-pub struct MyAction {
-    // ...
-    action_state: ActionState,
+pub struct MyAction {}
+
+
+impl MyAction {
+    #[tracing::instrument(skip_all)]
+    pub async fn plan() -> Result<StatefulAction<Self>, Box<dyn std::error::Error + Send + Sync>> {
+        Ok(Self {}.into())
+    }
 }
 
 
@@ -49,24 +54,6 @@ impl Action for MyAction {
         // Revert steps...
         Ok(())
     }
-
-    fn action_state(&self) -> ActionState {
-        self.action_state
-    }
-
-    fn set_action_state(&mut self, action_state: ActionState) {
-        self.action_state = action_state;
-    }
-}
-
-impl MyAction {
-    #[tracing::instrument(skip_all)]
-    pub async fn plan(
-    ) -> Result<Self, Box<dyn std::error::Error + Send + Sync>> {
-        Ok(Self {
-            action_state: ActionState::Uncompleted,
-        })
-    }
 }
 
 #[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
@@ -84,14 +71,12 @@ impl Planner for MyPlanner {
         })
     }
 
-    async fn plan(&self) -> Result<Vec<Box<dyn Action>>, PlannerError> {
+    async fn plan(&self) -> Result<Vec<StatefulAction<Box<dyn Action>>>, PlannerError> {
         Ok(vec![
             // ...
-            Box::new(
-                MyAction::plan()
+            MyAction::plan()
                     .await
-                    .map_err(PlannerError::Action)?,
-            ),
+                    .map_err(PlannerError::Action)?.boxed(),
         ])
     }
 
@@ -129,14 +114,15 @@ pub mod base;
 pub mod common;
 pub mod darwin;
 pub mod linux;
+mod stateful;
 
-use serde::{Deserialize, Serialize};
+pub use stateful::{ActionState, StatefulAction};
 
 /// An action which can be reverted or completed, with an action state
 ///
-/// This trait interacts with [`ActionImplementation`] which does the [`ActionState`] manipulation and provides some tracing facilities.
+/// This trait interacts with [`StatefulAction`] which does the [`ActionState`] manipulation and provides some tracing facilities.
 ///
-/// Instead of calling [`execute`][Action::execute] or [`revert`][Action::revert], you should prefer [`try_execute`][ActionImplementation::try_execute] and [`try_revert`][ActionImplementation::try_revert]
+/// Instead of calling [`execute`][Action::execute] or [`revert`][Action::revert], you should prefer [`try_execute`][StatefulAction::try_execute] and [`try_revert`][StatefulAction::try_revert]
 #[async_trait::async_trait]
 #[typetag::serde(tag = "action")]
 pub trait Action: Send + Sync + std::fmt::Debug + dyn_clone::DynClone {
@@ -144,101 +130,44 @@ pub trait Action: Send + Sync + std::fmt::Debug + dyn_clone::DynClone {
     fn tracing_synopsis(&self) -> String;
     /// A description of what this action would do during execution
     ///
-    /// If this action calls sub-[`Action`]s, care should be taken to use [`ActionImplementation::describe_execute`] on those actions, not [`execute_description`][Action::execute_description].
+    /// If this action calls sub-[`Action`]s, care should be taken to use [`StatefulAction::describe_execute`] on those actions, not [`execute_description`][Action::execute_description].
     ///
-    /// This is called by [`InstallPlan::describe_install`](crate::InstallPlan::describe_install) through [`ActionImplementation::describe_execute`] which will skip output if the action is completed.
+    /// This is called by [`InstallPlan::describe_install`](crate::InstallPlan::describe_install) through [`StatefulAction::describe_execute`] which will skip output if the action is completed.
     fn execute_description(&self) -> Vec<ActionDescription>;
     /// A description of what this action would do during revert
     ///
-    /// If this action calls sub-[`Action`]s, care should be taken to use [`ActionImplementation::describe_revert`] on those actions, not [`revert_description`][Action::revert_description].
+    /// If this action calls sub-[`Action`]s, care should be taken to use [`StatefulAction::describe_revert`] on those actions, not [`revert_description`][Action::revert_description].
     ///
-    /// This is called by [`InstallPlan::describe_uninstall`](crate::InstallPlan::describe_uninstall) through [`ActionImplementation::describe_revert`] which will skip output if the action is completed.
+    /// This is called by [`InstallPlan::describe_uninstall`](crate::InstallPlan::describe_uninstall) through [`StatefulAction::describe_revert`] which will skip output if the action is completed.
     fn revert_description(&self) -> Vec<ActionDescription>;
     /// Perform any execution steps
     ///
-    /// If this action calls sub-[`Action`]s, care should be taken to call [`try_execute`][ActionImplementation::try_execute], not [`execute`][Action::execute], so that [`ActionState`] is handled correctly and tracing is done.
+    /// If this action calls sub-[`Action`]s, care should be taken to call [`try_execute`][StatefulAction::try_execute], not [`execute`][Action::execute], so that [`ActionState`] is handled correctly and tracing is done.
     ///
-    /// This is called by [`InstallPlan::install`](crate::InstallPlan::install) through [`ActionImplementation::try_execute`] which handles tracing as well as if the action needs to execute based on its `action_state`.
+    /// This is called by [`InstallPlan::install`](crate::InstallPlan::install) through [`StatefulAction::try_execute`] which handles tracing as well as if the action needs to execute based on its `action_state`.
     async fn execute(&mut self) -> Result<(), Box<dyn std::error::Error + Send + Sync>>;
     /// Perform any revert steps
     ///
-    /// If this action calls sub-[`Action`]s, care should be taken to call [`try_revert`][ActionImplementation::try_revert], not [`revert`][Action::revert], so that [`ActionState`] is handled correctly and tracing is done.
+    /// If this action calls sub-[`Action`]s, care should be taken to call [`try_revert`][StatefulAction::try_revert], not [`revert`][Action::revert], so that [`ActionState`] is handled correctly and tracing is done.
     ///
-    /// /// This is called by [`InstallPlan::uninstall`](crate::InstallPlan::uninstall) through [`ActionImplementation::try_revert`] which handles tracing as well as if the action needs to revert based on its `action_state`.
+    /// /// This is called by [`InstallPlan::uninstall`](crate::InstallPlan::uninstall) through [`StatefulAction::try_revert`] which handles tracing as well as if the action needs to revert based on its `action_state`.
     async fn revert(&mut self) -> Result<(), Box<dyn std::error::Error + Send + Sync>>;
-    /// Get the `action_state` of the action
-    fn action_state(&self) -> ActionState;
-    /// Set the `action_state` of the action
-    fn set_action_state(&mut self, new_state: ActionState);
 
-    // They should also have an `async fn plan(args...) -> Result<ActionState<Self>, Box<dyn std::error::Error + Send + Sync>>;`
+    fn stateful(self) -> StatefulAction<Self>
+    where
+        Self: Sized,
+    {
+        StatefulAction {
+            action: self,
+            state: ActionState::Uncompleted,
+        }
+    }
+    // They should also have an `async fn plan(args...) -> Result<StatefulAction<Self>, Box<dyn std::error::Error + Send + Sync>>;`
 }
-
-/// The main wrapper around [`Action`], handling [`ActionState`] and tracing.
-#[async_trait::async_trait]
-pub trait ActionImplementation: Action {
-    /// A description of what this action would do during execution
-    fn describe_execute(&self) -> Vec<ActionDescription> {
-        if self.action_state() == ActionState::Completed {
-            return vec![];
-        }
-        return self.execute_description();
-    }
-    /// A description of what this action would do during revert
-    fn describe_revert(&self) -> Vec<ActionDescription> {
-        if self.action_state() == ActionState::Uncompleted {
-            return vec![];
-        }
-        return self.revert_description();
-    }
-    /// Perform any execution steps
-    ///
-    /// You should prefer this ([`try_execute`][ActionImplementation::try_execute]) over [`execute`][Action::execute] as it handles [`ActionState`] and does tracing
-    async fn try_execute(&mut self) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
-        if self.action_state() == ActionState::Completed {
-            tracing::trace!("Completed: (Already done) {}", self.tracing_synopsis());
-            return Ok(());
-        }
-        self.set_action_state(ActionState::Progress);
-        tracing::debug!("Executing: {}", self.tracing_synopsis());
-        self.execute().await?;
-        self.set_action_state(ActionState::Completed);
-        tracing::debug!("Completed: {}", self.tracing_synopsis());
-        Ok(())
-    }
-    /// Perform any revert steps
-    ///
-    /// You should prefer this ([`try_revert`][ActionImplementation::try_revert]) over [`revert`][Action::revert] as it handles [`ActionState`] and does tracing
-    async fn try_revert(&mut self) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
-        if self.action_state() == ActionState::Uncompleted {
-            tracing::trace!("Reverted: (Already done) {}", self.tracing_synopsis());
-            return Ok(());
-        }
-        self.set_action_state(ActionState::Progress);
-        tracing::debug!("Reverting: {}", self.tracing_synopsis());
-        self.revert().await?;
-        tracing::debug!("Reverted: {}", self.tracing_synopsis());
-        self.set_action_state(ActionState::Uncompleted);
-        Ok(())
-    }
-}
-
-impl ActionImplementation for dyn Action {}
-
-impl<A> ActionImplementation for A where A: Action {}
 
 dyn_clone::clone_trait_object!(Action);
 
-#[derive(Debug, Serialize, Deserialize, Clone, PartialEq, Eq, Copy)]
-pub enum ActionState {
-    Completed,
-    // Only applicable to meta-actions that start multiple sub-actions.
-    Progress,
-    Uncompleted,
-}
-
 #[derive(Debug, serde::Deserialize, serde::Serialize, Clone)]
-
 pub struct ActionDescription {
     pub description: String,
     pub explanation: Vec<String>,

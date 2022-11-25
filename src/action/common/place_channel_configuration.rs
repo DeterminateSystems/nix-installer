@@ -1,6 +1,6 @@
 use crate::action::base::{CreateFile, CreateFileError};
 use crate::{
-    action::{Action, ActionDescription, ActionImplementation, ActionState},
+    action::{Action, ActionDescription, StatefulAction},
     BoxableError,
 };
 use reqwest::Url;
@@ -8,8 +8,7 @@ use reqwest::Url;
 #[derive(Debug, serde::Deserialize, serde::Serialize, Clone)]
 pub struct PlaceChannelConfiguration {
     channels: Vec<(String, Url)>,
-    create_file: CreateFile,
-    action_state: ActionState,
+    create_file: StatefulAction<CreateFile>,
 }
 
 impl PlaceChannelConfiguration {
@@ -17,7 +16,7 @@ impl PlaceChannelConfiguration {
     pub async fn plan(
         channels: Vec<(String, Url)>,
         force: bool,
-    ) -> Result<Self, Box<dyn std::error::Error + Send + Sync>> {
+    ) -> Result<StatefulAction<Self>, Box<dyn std::error::Error + Send + Sync>> {
         let buf = channels
             .iter()
             .map(|(name, url)| format!("{} {}", url, name))
@@ -37,8 +36,8 @@ impl PlaceChannelConfiguration {
         Ok(Self {
             create_file,
             channels,
-            action_state: ActionState::Uncompleted,
-        })
+        }
+        .into())
     }
 }
 
@@ -48,7 +47,7 @@ impl Action for PlaceChannelConfiguration {
     fn tracing_synopsis(&self) -> String {
         format!(
             "Place channel configuration at `{}`",
-            self.create_file.path.display()
+            self.create_file.inner().path.display()
         )
     }
 
@@ -63,7 +62,6 @@ impl Action for PlaceChannelConfiguration {
         let Self {
             create_file,
             channels: _,
-            action_state: _,
         } = self;
 
         create_file.try_execute().await?;
@@ -75,7 +73,7 @@ impl Action for PlaceChannelConfiguration {
         vec![ActionDescription::new(
             format!(
                 "Remove channel configuration at `{}`",
-                self.create_file.path.display()
+                self.create_file.inner().path.display()
             ),
             vec![],
         )]
@@ -88,20 +86,11 @@ impl Action for PlaceChannelConfiguration {
         let Self {
             create_file,
             channels: _,
-            action_state: _,
         } = self;
 
-        create_file.revert().await?;
+        create_file.try_revert().await?;
 
         Ok(())
-    }
-
-    fn action_state(&self) -> ActionState {
-        self.action_state
-    }
-
-    fn set_action_state(&mut self, action_state: ActionState) {
-        self.action_state = action_state;
     }
 }
 

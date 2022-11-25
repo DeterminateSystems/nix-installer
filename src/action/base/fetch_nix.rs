@@ -6,7 +6,7 @@ use reqwest::Url;
 use tokio::task::JoinError;
 
 use crate::{
-    action::{Action, ActionDescription, ActionState},
+    action::{Action, ActionDescription, StatefulAction},
     BoxableError,
 };
 
@@ -14,20 +14,15 @@ use crate::{
 pub struct FetchNix {
     url: Url,
     dest: PathBuf,
-    action_state: ActionState,
 }
 
 impl FetchNix {
     #[tracing::instrument(skip_all)]
-    pub async fn plan(url: Url, dest: PathBuf) -> Result<Self, FetchNixError> {
+    pub async fn plan(url: Url, dest: PathBuf) -> Result<StatefulAction<Self>, FetchNixError> {
         // TODO(@hoverbear): Check URL exists?
         // TODO(@hoverbear): Check tempdir exists
 
-        Ok(Self {
-            url,
-            dest,
-            action_state: ActionState::Uncompleted,
-        })
+        Ok(Self { url, dest }.into())
     }
 }
 
@@ -53,11 +48,7 @@ impl Action for FetchNix {
         dest = %self.dest.display(),
     ))]
     async fn execute(&mut self) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
-        let Self {
-            url,
-            dest,
-            action_state: _,
-        } = self;
+        let Self { url, dest } = self;
 
         let res = reqwest::get(url.clone())
             .await
@@ -88,21 +79,9 @@ impl Action for FetchNix {
         dest = %self.dest.display(),
     ))]
     async fn revert(&mut self) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
-        let Self {
-            url: _,
-            dest: _,
-            action_state: _,
-        } = self;
+        let Self { url: _, dest: _ } = self;
 
         Ok(())
-    }
-
-    fn action_state(&self) -> ActionState {
-        self.action_state
-    }
-
-    fn set_action_state(&mut self, action_state: ActionState) {
-        self.action_state = action_state;
     }
 }
 

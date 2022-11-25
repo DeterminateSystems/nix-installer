@@ -8,7 +8,7 @@ use harmonic::{
     InstallPlan,
     settings::{CommonSettings, InstallSettingsError},
     planner::{Planner, PlannerError, specific::SteamDeck},
-    action::{Action, linux::StartSystemdUnit},
+    action::{Action, StatefulAction, linux::StartSystemdUnit},
 };
 
 #[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
@@ -26,14 +26,13 @@ impl Planner for MyPlanner {
         })
     }
 
-    async fn plan(&self) -> Result<Vec<Box<dyn Action>>, PlannerError> {
+    async fn plan(&self) -> Result<Vec<StatefulAction<Box<dyn Action>>>, PlannerError> {
         Ok(vec![
             // ...
-            Box::new(
+
                 StartSystemdUnit::plan("nix-daemon.socket".into())
                     .await
-                    .map_err(PlannerError::Action)?,
-            ),
+                    .map_err(PlannerError::Action)?.boxed(),
         ])
     }
 
@@ -72,7 +71,9 @@ pub mod specific;
 
 use std::collections::HashMap;
 
-use crate::{settings::InstallSettingsError, Action, HarmonicError, InstallPlan};
+use crate::{
+    action::StatefulAction, settings::InstallSettingsError, Action, HarmonicError, InstallPlan,
+};
 
 /// Something which can be used to plan out an [`InstallPlan`]
 #[async_trait::async_trait]
@@ -83,7 +84,7 @@ pub trait Planner: std::fmt::Debug + Send + Sync + dyn_clone::DynClone {
     where
         Self: Sized;
     /// Plan out the [`Action`]s for an [`InstallPlan`]
-    async fn plan(&self) -> Result<Vec<Box<dyn Action>>, PlannerError>;
+    async fn plan(&self) -> Result<Vec<StatefulAction<Box<dyn Action>>>, PlannerError>;
     /// The settings being used by the planner
     fn settings(&self) -> Result<HashMap<String, serde_json::Value>, InstallSettingsError>;
     /// A boxed, type erased planner

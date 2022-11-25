@@ -2,6 +2,7 @@ use std::path::{Path, PathBuf};
 
 use tokio::process::Command;
 
+use crate::action::StatefulAction;
 use crate::execute_command;
 
 use crate::{
@@ -23,13 +24,14 @@ impl CreateVolume {
         disk: impl AsRef<Path>,
         name: String,
         case_sensitive: bool,
-    ) -> Result<Self, Box<dyn std::error::Error + Send + Sync>> {
+    ) -> Result<StatefulAction<Self>, Box<dyn std::error::Error + Send + Sync>> {
         Ok(Self {
             disk: disk.as_ref().to_path_buf(),
             name,
             case_sensitive,
             action_state: ActionState::Uncompleted,
-        })
+        }
+        .into())
     }
 }
 
@@ -118,14 +120,6 @@ impl Action for CreateVolume {
         .map_err(|e| CreateVolumeError::Command(e).boxed())?;
 
         Ok(())
-    }
-
-    fn action_state(&self) -> ActionState {
-        self.action_state
-    }
-
-    fn set_action_state(&mut self, action_state: ActionState) {
-        self.action_state = action_state;
     }
 }
 

@@ -3,7 +3,7 @@ use tokio::process::Command;
 use crate::execute_command;
 
 use crate::{
-    action::{Action, ActionDescription, ActionState},
+    action::{Action, ActionDescription, StatefulAction},
     BoxableError,
 };
 
@@ -13,19 +13,18 @@ pub struct CreateUser {
     uid: usize,
     groupname: String,
     gid: usize,
-    action_state: ActionState,
 }
 
 impl CreateUser {
     #[tracing::instrument(skip_all)]
-    pub fn plan(name: String, uid: usize, groupname: String, gid: usize) -> Self {
+    pub fn plan(name: String, uid: usize, groupname: String, gid: usize) -> StatefulAction<Self> {
         Self {
             name,
             uid,
             groupname,
             gid,
-            action_state: ActionState::Uncompleted,
         }
+        .into()
     }
 }
 
@@ -59,7 +58,6 @@ impl Action for CreateUser {
             uid,
             groupname,
             gid,
-            action_state: _,
         } = self;
 
         use target_lexicon::OperatingSystem;
@@ -241,7 +239,6 @@ impl Action for CreateUser {
             uid: _,
             groupname: _,
             gid: _,
-            action_state: _,
         } = self;
 
         use target_lexicon::OperatingSystem;
@@ -276,14 +273,6 @@ impl Action for CreateUser {
         };
 
         Ok(())
-    }
-
-    fn action_state(&self) -> ActionState {
-        self.action_state
-    }
-
-    fn set_action_state(&mut self, action_state: ActionState) {
-        self.action_state = action_state;
     }
 }
 

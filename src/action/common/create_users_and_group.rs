@@ -1,7 +1,7 @@
 use crate::{
     action::{
         base::{CreateGroup, CreateGroupError, CreateUser, CreateUserError},
-        Action, ActionDescription, ActionImplementation, ActionState,
+        Action, ActionDescription, StatefulAction,
     },
     settings::CommonSettings,
     BoxableError,
@@ -15,14 +15,15 @@ pub struct CreateUsersAndGroup {
     nix_build_group_id: usize,
     nix_build_user_prefix: String,
     nix_build_user_id_base: usize,
-    create_group: CreateGroup,
-    create_users: Vec<CreateUser>,
-    action_state: ActionState,
+    create_group: StatefulAction<CreateGroup>,
+    create_users: Vec<StatefulAction<CreateUser>>,
 }
 
 impl CreateUsersAndGroup {
     #[tracing::instrument(skip_all)]
-    pub async fn plan(settings: CommonSettings) -> Result<Self, CreateUsersAndGroupError> {
+    pub async fn plan(
+        settings: CommonSettings,
+    ) -> Result<StatefulAction<Self>, CreateUsersAndGroupError> {
         // TODO(@hoverbear): CHeck if it exist, error if so
         let create_group = CreateGroup::plan(
             settings.nix_build_group_name.clone(),
@@ -47,8 +48,8 @@ impl CreateUsersAndGroup {
             nix_build_user_id_base: settings.nix_build_user_id_base,
             create_group,
             create_users,
-            action_state: ActionState::Uncompleted,
-        })
+        }
+        .into())
     }
 }
 
@@ -73,7 +74,6 @@ impl Action for CreateUsersAndGroup {
             nix_build_user_id_base: _,
             create_group,
             create_users,
-            action_state: _,
         } = &self;
 
         let mut create_users_descriptions = Vec::new();
@@ -110,7 +110,6 @@ impl Action for CreateUsersAndGroup {
             nix_build_group_id: _,
             nix_build_user_prefix: _,
             nix_build_user_id_base: _,
-            action_state: _,
         } = self;
 
         // Create group
@@ -170,31 +169,26 @@ impl Action for CreateUsersAndGroup {
             nix_build_user_id_base: _,
             create_group,
             create_users,
-            action_state: _,
         } = &self;
-        if self.action_state == ActionState::Uncompleted {
-            vec![]
-        } else {
-            let mut create_users_descriptions = Vec::new();
-            for create_user in create_users {
-                if let Some(val) = create_user.describe_revert().iter().next() {
-                    create_users_descriptions.push(val.description.clone())
-                }
+        let mut create_users_descriptions = Vec::new();
+        for create_user in create_users {
+            if let Some(val) = create_user.describe_revert().iter().next() {
+                create_users_descriptions.push(val.description.clone())
             }
-
-            let mut explanation = vec![
-                format!("The nix daemon requires system users (and a group they share) which it can act as in order to build"),
-            ];
-            if let Some(val) = create_group.describe_revert().iter().next() {
-                explanation.push(val.description.clone())
-            }
-            explanation.append(&mut create_users_descriptions);
-
-            vec![ActionDescription::new(
-                format!("Remove Nix users and group"),
-                explanation,
-            )]
         }
+
+        let mut explanation = vec![
+            format!("The nix daemon requires system users (and a group they share) which it can act as in order to build"),
+        ];
+        if let Some(val) = create_group.describe_revert().iter().next() {
+            explanation.push(val.description.clone())
+        }
+        explanation.append(&mut create_users_descriptions);
+
+        vec![ActionDescription::new(
+            format!("Remove Nix users and group"),
+            explanation,
+        )]
     }
 
     #[tracing::instrument(skip_all, fields(
@@ -213,7 +207,6 @@ impl Action for CreateUsersAndGroup {
             nix_build_group_id: _,
             nix_build_user_prefix: _,
             nix_build_user_id_base: _,
-            action_state: _,
         } = self;
         let mut set = JoinSet::new();
 
@@ -222,7 +215,7 @@ impl Action for CreateUsersAndGroup {
         for (idx, create_user) in create_users.iter().enumerate() {
             let mut create_user_clone = create_user.clone();
             let _abort_handle = set.spawn(async move {
-                create_user_clone.revert().await?;
+                create_user_clone.try_revert().await?;
                 Result::<_, Box<dyn std::error::Error + Send + Sync>>::Ok((idx, create_user_clone))
             });
         }
@@ -244,17 +237,9 @@ impl Action for CreateUsersAndGroup {
         }
 
         // Create group
-        create_group.revert().await?;
+        create_group.try_revert().await?;
 
         Ok(())
-    }
-
-    fn action_state(&self) -> ActionState {
-        self.action_state
-    }
-
-    fn set_action_state(&mut self, action_state: ActionState) {
-        self.action_state = action_state;
     }
 }
 

@@ -3,7 +3,7 @@ use crate::{
         base::{
             CreateDirectoryError, FetchNix, FetchNixError, MoveUnpackedNix, MoveUnpackedNixError,
         },
-        Action, ActionDescription, ActionImplementation, ActionState,
+        Action, ActionDescription, StatefulAction,
     },
     settings::CommonSettings,
     BoxableError,
@@ -15,18 +15,17 @@ use super::{CreateNixTree, CreateNixTreeError, CreateUsersAndGroup, CreateUsersA
 
 #[derive(Debug, serde::Deserialize, serde::Serialize, Clone)]
 pub struct ProvisionNix {
-    fetch_nix: FetchNix,
-    create_users_and_group: CreateUsersAndGroup,
-    create_nix_tree: CreateNixTree,
-    move_unpacked_nix: MoveUnpackedNix,
-    action_state: ActionState,
+    fetch_nix: StatefulAction<FetchNix>,
+    create_users_and_group: StatefulAction<CreateUsersAndGroup>,
+    create_nix_tree: StatefulAction<CreateNixTree>,
+    move_unpacked_nix: StatefulAction<MoveUnpackedNix>,
 }
 
 impl ProvisionNix {
     #[tracing::instrument(skip_all)]
     pub async fn plan(
         settings: &CommonSettings,
-    ) -> Result<Self, Box<dyn std::error::Error + Send + Sync>> {
+    ) -> Result<StatefulAction<Self>, Box<dyn std::error::Error + Send + Sync>> {
         let fetch_nix = FetchNix::plan(
             settings.nix_package_url.clone(),
             PathBuf::from("/nix/temp-install-dir"),
@@ -45,8 +44,8 @@ impl ProvisionNix {
             create_users_and_group,
             create_nix_tree,
             move_unpacked_nix,
-            action_state: ActionState::Uncompleted,
-        })
+        }
+        .into())
     }
 }
 
@@ -63,14 +62,13 @@ impl Action for ProvisionNix {
             create_users_and_group,
             create_nix_tree,
             move_unpacked_nix,
-            action_state: _,
         } = &self;
 
         let mut buf = Vec::default();
-        buf.append(&mut fetch_nix.execute_description());
-        buf.append(&mut create_users_and_group.execute_description());
-        buf.append(&mut create_nix_tree.execute_description());
-        buf.append(&mut move_unpacked_nix.execute_description());
+        buf.append(&mut fetch_nix.describe_execute());
+        buf.append(&mut create_users_and_group.describe_execute());
+        buf.append(&mut create_nix_tree.describe_execute());
+        buf.append(&mut move_unpacked_nix.describe_execute());
 
         buf
     }
@@ -82,7 +80,6 @@ impl Action for ProvisionNix {
             create_nix_tree,
             create_users_and_group,
             move_unpacked_nix,
-            action_state: _,
         } = self;
 
         // We fetch nix while doing the rest, then move it over.
@@ -107,14 +104,13 @@ impl Action for ProvisionNix {
             create_users_and_group,
             create_nix_tree,
             move_unpacked_nix,
-            action_state: _,
         } = &self;
 
         let mut buf = Vec::default();
-        buf.append(&mut move_unpacked_nix.revert_description());
-        buf.append(&mut create_nix_tree.revert_description());
-        buf.append(&mut create_users_and_group.revert_description());
-        buf.append(&mut fetch_nix.revert_description());
+        buf.append(&mut move_unpacked_nix.describe_revert());
+        buf.append(&mut create_nix_tree.describe_revert());
+        buf.append(&mut create_users_and_group.describe_revert());
+        buf.append(&mut fetch_nix.describe_revert());
         buf
     }
 
@@ -125,7 +121,6 @@ impl Action for ProvisionNix {
             create_nix_tree,
             create_users_and_group,
             move_unpacked_nix,
-            action_state: _,
         } = self;
 
         // We fetch nix while doing the rest, then move it over.
@@ -145,17 +140,9 @@ impl Action for ProvisionNix {
         }
 
         *fetch_nix = fetch_nix_handle.await.map_err(|e| e.boxed())??;
-        move_unpacked_nix.revert().await?;
+        move_unpacked_nix.try_revert().await?;
 
         Ok(())
-    }
-
-    fn action_state(&self) -> ActionState {
-        self.action_state
-    }
-
-    fn set_action_state(&mut self, action_state: ActionState) {
-        self.action_state = action_state;
     }
 }
 

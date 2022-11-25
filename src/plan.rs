@@ -1,7 +1,7 @@
 use std::{path::PathBuf, str::FromStr};
 
 use crate::{
-    action::{Action, ActionDescription, ActionImplementation},
+    action::{Action, ActionDescription, StatefulAction},
     planner::{BuiltinPlanner, Planner},
     HarmonicError,
 };
@@ -21,7 +21,7 @@ pub struct InstallPlan {
     #[serde(deserialize_with = "ensure_version")]
     pub(crate) version: Version,
 
-    pub(crate) actions: Vec<Box<dyn Action>>,
+    pub(crate) actions: Vec<StatefulAction<Box<dyn Action>>>,
 
     pub(crate) planner: Box<dyn Planner>,
 }

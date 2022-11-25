@@ -3,7 +3,7 @@ use tokio::process::Command;
 use crate::execute_command;
 
 use crate::{
-    action::{Action, ActionDescription, ActionState},
+    action::{Action, ActionDescription, StatefulAction},
     BoxableError,
 };
 
@@ -11,17 +11,12 @@ use crate::{
 pub struct CreateGroup {
     name: String,
     gid: usize,
-    action_state: ActionState,
 }
 
 impl CreateGroup {
     #[tracing::instrument(skip_all)]
-    pub fn plan(name: String, gid: usize) -> Self {
-        Self {
-            name,
-            gid,
-            action_state: ActionState::Uncompleted,
-        }
+    pub fn plan(name: String, gid: usize) -> StatefulAction<Self> {
+        Self { name, gid }.into()
     }
 }
 
@@ -32,11 +27,7 @@ impl Action for CreateGroup {
         format!("Create group `{}` (GID {})", self.name, self.gid)
     }
     fn execute_description(&self) -> Vec<ActionDescription> {
-        let Self {
-            name: _,
-            gid: _,
-            action_state: _,
-        } = &self;
+        let Self { name: _, gid: _ } = &self;
         vec![ActionDescription::new(
             self.tracing_synopsis(),
             vec![format!(
@@ -50,11 +41,7 @@ impl Action for CreateGroup {
         gid = self.gid,
     ))]
     async fn execute(&mut self) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
-        let Self {
-            name,
-            gid,
-            action_state: _,
-        } = self;
+        let Self { name, gid } = self;
 
         use target_lexicon::OperatingSystem;
         match target_lexicon::OperatingSystem::host() {
@@ -109,11 +96,7 @@ impl Action for CreateGroup {
     }
 
     fn revert_description(&self) -> Vec<ActionDescription> {
-        let Self {
-            name,
-            gid,
-            action_state: _,
-        } = &self;
+        let Self { name, gid } = &self;
         vec![ActionDescription::new(
             format!("Delete group `{name}` (GID {gid})"),
             vec![format!(
@@ -127,11 +110,7 @@ impl Action for CreateGroup {
         gid = self.gid,
     ))]
     async fn revert(&mut self) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
-        let Self {
-            name,
-            gid: _,
-            action_state: _,
-        } = self;
+        let Self { name, gid: _ } = self;
 
         use target_lexicon::OperatingSystem;
         match target_lexicon::OperatingSystem::host() {
@@ -165,14 +144,6 @@ impl Action for CreateGroup {
         };
 
         Ok(())
-    }
-
-    fn action_state(&self) -> ActionState {
-        self.action_state
-    }
-
-    fn set_action_state(&mut self, action_state: ActionState) {
-        self.action_state = action_state;
     }
 }
 
