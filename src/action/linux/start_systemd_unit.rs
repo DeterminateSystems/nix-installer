@@ -43,6 +43,7 @@ impl Action for StartSystemdUnit {
         // TODO(@Hoverbear): Handle proxy vars
         execute_command(
             Command::new("systemctl")
+                .process_group(0)
                 .arg("enable")
                 .arg("--now")
                 .arg(format!("{unit}"))
@@ -67,9 +68,9 @@ impl Action for StartSystemdUnit {
     async fn revert(&mut self) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
         let Self { unit, .. } = self;
 
-        // TODO(@Hoverbear): Handle proxy vars
         execute_command(
             Command::new("systemctl")
+                .process_group(0)
                 .arg("disable")
                 .arg(format!("{unit}"))
                 .stdin(std::process::Stdio::null()),
@@ -80,6 +81,7 @@ impl Action for StartSystemdUnit {
         // We do both to avoid an error doing `disable --now` if the user did stop it already somehow.
         execute_command(
             Command::new("systemctl")
+                .process_group(0)
                 .arg("stop")
                 .arg(format!("{unit}"))
                 .stdin(std::process::Stdio::null()),

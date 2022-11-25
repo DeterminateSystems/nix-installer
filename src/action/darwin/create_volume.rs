@@ -63,6 +63,7 @@ impl Action for CreateVolume {
 
         execute_command(
             Command::new("/usr/sbin/diskutil")
+                .process_group(0)
                 .args([
                     "apfs",
                     "addVolume",
@@ -109,6 +110,7 @@ impl Action for CreateVolume {
 
         execute_command(
             Command::new("/usr/sbin/diskutil")
+                .process_group(0)
                 .args(["apfs", "deleteVolume", name])
                 .stdin(std::process::Stdio::null()),
         )
