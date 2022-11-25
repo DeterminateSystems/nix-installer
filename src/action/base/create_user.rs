@@ -34,7 +34,7 @@ impl CreateUser {
 impl Action for CreateUser {
     fn tracing_synopsis(&self) -> String {
         format!(
-            "Create user `{}` (UID {}) in group {} (GID {})",
+            "Create user `{}` (UID {}) in group `{}` (GID {})",
             self.name, self.uid, self.groupname, self.gid
         )
     }
