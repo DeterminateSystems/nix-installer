@@ -42,7 +42,9 @@ use harmonic::{InstallPlan, planner::{Planner, specific::SteamDeck}};
 
 # async fn chosen_planner_install() -> color_eyre::Result<()> {
 let planner = SteamDeck::default().await?;
-// Or call `crate::planner::BuiltinPlanner::default()` and match on the result
+
+// Or call `crate::planner::BuiltinPlanner::default()`
+// Match on the result to customize.
 
 // Customize any settings...
 

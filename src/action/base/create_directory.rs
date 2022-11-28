@@ -11,6 +11,11 @@ use crate::{
     BoxableError,
 };
 
+/** Create a directory at the given location, optionally with an owning user, group, and mode.
+
+If `force_prune_on_revert` is set, the folder will always be deleted on
+[`revert`](CreateDirectory::revert).
+*/
 #[derive(Debug, serde::Deserialize, serde::Serialize, Clone)]
 pub struct CreateDirectory {
     path: PathBuf,

@@ -7,6 +7,9 @@ use crate::{
     BoxableError,
 };
 
+/**
+Create an operating system level user in the given group
+*/
 #[derive(Debug, serde::Deserialize, serde::Serialize, Clone)]
 pub struct CreateUser {
     name: String,

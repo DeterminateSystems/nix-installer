@@ -144,10 +144,25 @@ where
     }
 }
 
+/** The state of an [`Action`](crate::action::Action)
+*/
 #[derive(Debug, Serialize, Deserialize, Clone, PartialEq, Eq, Copy)]
 pub enum ActionState {
+    /**
+    If [`Completed`](ActionState::Completed) an [`Action`](crate::action::Action) will be skipped
+    on [`InstallPlan::install`](crate::InstallPlan::install), and reverted on [`InstallPlan::uninstall`](crate::InstallPlan::uninstall)
+    */
     Completed,
-    // Only applicable to meta-actions that start multiple sub-actions.
+    /**
+    If [`Progress`](ActionState::Progress) an [`Action`](crate::action::Action) will be run on
+    [`InstallPlan::install`](crate::InstallPlan::install) and [`InstallPlan::uninstall`](crate::InstallPlan::uninstall)
+
+    Only applicable to meta-actions that contain other multiple sub-actions.
+    */
     Progress,
+    /**
+    If [`Completed`](ActionState::Completed) an [`Action`](crate::action::Action) will be skipped
+    on [`InstallPlan::uninstall`](crate::InstallPlan::uninstall) and executed on [`InstallPlan::install`](crate::InstallPlan::install)
+    */
     Uncompleted,
 }

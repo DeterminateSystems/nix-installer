@@ -8,6 +8,9 @@ use crate::{
     BoxableError,
 };
 
+/**
+Start a given systemd unit
+ */
 #[derive(Debug, serde::Deserialize, serde::Serialize, Clone)]
 pub struct StartSystemdUnit {
     unit: String,

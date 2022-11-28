@@ -9,7 +9,7 @@ use crate::{
 use tokio::task::{JoinError, JoinSet};
 
 #[derive(Debug, serde::Deserialize, serde::Serialize, Clone)]
-pub struct CreateUsersAndGroup {
+pub struct CreateUsersAndGroups {
     daemon_user_count: usize,
     nix_build_group_name: String,
     nix_build_group_id: usize,
@@ -19,11 +19,11 @@ pub struct CreateUsersAndGroup {
     create_users: Vec<StatefulAction<CreateUser>>,
 }
 
-impl CreateUsersAndGroup {
+impl CreateUsersAndGroups {
     #[tracing::instrument(skip_all)]
     pub async fn plan(
         settings: CommonSettings,
-    ) -> Result<StatefulAction<Self>, CreateUsersAndGroupError> {
+    ) -> Result<StatefulAction<Self>, CreateUsersAndGroupsError> {
         // TODO(@hoverbear): CHeck if it exist, error if so
         let create_group = CreateGroup::plan(
             settings.nix_build_group_name.clone(),
@@ -55,7 +55,7 @@ impl CreateUsersAndGroup {
 
 #[async_trait::async_trait]
 #[typetag::serde(name = "create_users_and_group")]
-impl Action for CreateUsersAndGroup {
+impl Action for CreateUsersAndGroups {
     fn tracing_synopsis(&self) -> String {
         format!(
             "Create build users (UID {}-{}) and group (GID {})",
@@ -151,7 +151,7 @@ impl Action for CreateUsersAndGroup {
                     if errors.len() == 1 {
                         return Err(errors.into_iter().next().unwrap().into());
                     } else {
-                        return Err(CreateUsersAndGroupError::CreateUsers(errors).boxed());
+                        return Err(CreateUsersAndGroupsError::CreateUsers(errors).boxed());
                     }
                 }
             },
@@ -232,7 +232,7 @@ impl Action for CreateUsersAndGroup {
             if errors.len() == 1 {
                 return Err(errors.into_iter().next().unwrap().into());
             } else {
-                return Err(CreateUsersAndGroupError::CreateUsers(errors).boxed());
+                return Err(CreateUsersAndGroupsError::CreateUsers(errors).boxed());
             }
         }
 
@@ -244,7 +244,7 @@ impl Action for CreateUsersAndGroup {
 }
 
 #[derive(Debug, thiserror::Error)]
-pub enum CreateUsersAndGroupError {
+pub enum CreateUsersAndGroupsError {
     #[error("Creating user")]
     CreateUser(
         #[source]

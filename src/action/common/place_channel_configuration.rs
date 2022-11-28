@@ -5,6 +5,9 @@ use crate::{
 };
 use reqwest::Url;
 
+/**
+Place a channel configuration containing `channels` to the `$ROOT_HOME/.nix-channels` file
+ */
 #[derive(Debug, serde::Deserialize, serde::Serialize, Clone)]
 pub struct PlaceChannelConfiguration {
     channels: Vec<(String, Url)>,

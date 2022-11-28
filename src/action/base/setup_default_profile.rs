@@ -6,6 +6,9 @@ use tokio::process::Command;
 
 use crate::action::{Action, ActionDescription};
 
+/**
+Setup the default Nix profile with `nss-cacert` and `nix` itself.
+ */
 #[derive(Debug, serde::Deserialize, serde::Serialize, Clone)]
 pub struct SetupDefaultProfile {
     channels: Vec<String>,

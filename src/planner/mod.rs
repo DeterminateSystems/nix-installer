@@ -1,5 +1,14 @@
 /*! [`BuiltinPlanner`]s and traits to create new types which can be used to plan out an [`InstallPlan`]
 
+It's a [`Planner`]s job to construct (if possible) a valid [`InstallPlan`] for the host. Some planners,
+like [`LinuxMulti`](linux::LinuxMulti), are operating system specific. Others, like [`SteamDeck`](specific::SteamDeck), are device specific.
+
+[`Planner`]s contain their planner specific settings, typically alongside a [`CommonSettings`][crate::settings::CommonSettings].
+
+[`BuiltinPlanner::default()`] offers a way to get the default builtin planner for a given host.
+
+Custom Planners can also be used to create a platform, project, or organization specific install.
+
 A custom [`Planner`] can be created:
 
 ```rust,no_run

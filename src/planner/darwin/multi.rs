@@ -6,7 +6,7 @@ use tokio::process::Command;
 use crate::{
     action::{
         common::{ConfigureNix, ProvisionNix},
-        darwin::{CreateApfsVolume, KickstartLaunchctlService},
+        darwin::{CreateNixVolume, KickstartLaunchctlService},
         StatefulAction,
     },
     execute_command,
@@ -109,7 +109,7 @@ impl Planner for DarwinMulti {
             //
             // setup_Synthetic -> create_synthetic_objects
             // Unmount -> create_volume -> Setup_fstab -> maybe encrypt_volume -> launchctl bootstrap -> launchctl kickstart -> await_volume -> maybe enableOwnership
-            CreateApfsVolume::plan(
+            CreateNixVolume::plan(
                 root_disk.unwrap(), /* We just ensured it was populated */
                 self.volume_label.clone(),
                 false,

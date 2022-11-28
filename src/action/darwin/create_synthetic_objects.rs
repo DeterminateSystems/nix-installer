@@ -4,6 +4,7 @@ use crate::execute_command;
 
 use crate::action::{Action, ActionDescription, StatefulAction};
 
+/// Create the synthetic objects defined in `/etc/syntethic.conf`
 #[derive(Debug, serde::Deserialize, serde::Serialize, Clone)]
 pub struct CreateSyntheticObjects {}
 

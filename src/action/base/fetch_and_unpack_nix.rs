@@ -10,15 +10,18 @@ use crate::{
     BoxableError,
 };
 
+/**
+Fetch a URL to the given path
+*/
 #[derive(Debug, serde::Deserialize, serde::Serialize, Clone)]
-pub struct FetchNix {
+pub struct FetchAndUnpackNix {
     url: Url,
     dest: PathBuf,
 }
 
-impl FetchNix {
+impl FetchAndUnpackNix {
     #[tracing::instrument(skip_all)]
-    pub async fn plan(url: Url, dest: PathBuf) -> Result<StatefulAction<Self>, FetchNixError> {
+    pub async fn plan(url: Url, dest: PathBuf) -> Result<StatefulAction<Self>, FetchUrlError> {
         // TODO(@hoverbear): Check URL exists?
         // TODO(@hoverbear): Check tempdir exists
 
@@ -27,20 +30,14 @@ impl FetchNix {
 }
 
 #[async_trait::async_trait]
-#[typetag::serde(name = "fetch_nix")]
-impl Action for FetchNix {
+#[typetag::serde(name = "fetch_and_unpack_nix")]
+impl Action for FetchAndUnpackNix {
     fn tracing_synopsis(&self) -> String {
-        format!("Fetch Nix from `{}`", self.url)
+        format!("Fetch `{}` to `{}`", self.url, self.dest.display())
     }
 
     fn execute_description(&self) -> Vec<ActionDescription> {
-        vec![ActionDescription::new(
-            self.tracing_synopsis(),
-            vec![format!(
-                "Unpack it to `{}` (moved later)",
-                self.dest.display()
-            )],
-        )]
+        vec![ActionDescription::new(self.tracing_synopsis(), vec![])]
     }
 
     #[tracing::instrument(skip_all, fields(
@@ -52,11 +49,11 @@ impl Action for FetchNix {
 
         let res = reqwest::get(url.clone())
             .await
-            .map_err(|e| FetchNixError::Reqwest(e).boxed())?;
+            .map_err(|e| FetchUrlError::Reqwest(e).boxed())?;
         let bytes = res
             .bytes()
             .await
-            .map_err(|e| FetchNixError::Reqwest(e).boxed())?;
+            .map_err(|e| FetchUrlError::Reqwest(e).boxed())?;
         // TODO(@Hoverbear): Pick directory
         tracing::trace!("Unpacking tar.xz");
         let dest_clone = dest.clone();
@@ -65,7 +62,7 @@ impl Action for FetchNix {
         let mut archive = tar::Archive::new(decoder);
         archive
             .unpack(&dest_clone)
-            .map_err(|e| FetchNixError::Unarchive(e).boxed())?;
+            .map_err(|e| FetchUrlError::Unarchive(e).boxed())?;
 
         Ok(())
     }
@@ -86,7 +83,7 @@ impl Action for FetchNix {
 }
 
 #[derive(Debug, thiserror::Error)]
-pub enum FetchNixError {
+pub enum FetchUrlError {
     #[error("Joining spawned async task")]
     Join(
         #[source]

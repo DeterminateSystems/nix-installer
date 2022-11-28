@@ -15,6 +15,14 @@ use crate::{
     BoxableError,
 };
 
+/** Create a file at the given location with the provided `buf`,
+optionally with an owning user, group, and mode.
+
+If the file exists, the provided `buf` will be appended.
+
+If `force` is set, the file will always be overwritten (and deleted)
+regardless of its presence prior to install.
+ */
 #[derive(Debug, serde::Deserialize, serde::Serialize, Clone)]
 pub struct CreateOrAppendFile {
     path: PathBuf,

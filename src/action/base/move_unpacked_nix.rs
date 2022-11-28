@@ -7,6 +7,9 @@ use crate::{
 
 const DEST: &str = "/nix/store";
 
+/**
+Move an unpacked Nix at `src` to `/nix`
+*/
 #[derive(Debug, serde::Deserialize, serde::Serialize, Clone)]
 pub struct MoveUnpackedNix {
     src: PathBuf,

@@ -6,13 +6,16 @@ use rand::Rng;
 use std::path::{Path, PathBuf};
 use tokio::process::Command;
 
+/**
+Encrypt an APFS volume
+ */
 #[derive(Debug, serde::Deserialize, serde::Serialize, Clone)]
-pub struct EncryptVolume {
+pub struct EncryptApfsVolume {
     disk: PathBuf,
     name: String,
 }
 
-impl EncryptVolume {
+impl EncryptApfsVolume {
     #[tracing::instrument(skip_all)]
     pub async fn plan(
         disk: impl AsRef<Path>,
@@ -29,7 +32,7 @@ impl EncryptVolume {
 
 #[async_trait::async_trait]
 #[typetag::serde(name = "encrypt_volume")]
-impl Action for EncryptVolume {
+impl Action for EncryptApfsVolume {
     fn tracing_synopsis(&self) -> String {
         format!(
             "Encrypt volume `{}` on disk `{}`",

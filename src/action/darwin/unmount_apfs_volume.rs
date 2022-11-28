@@ -10,28 +10,31 @@ use crate::{
     BoxableError,
 };
 
+/**
+Unmount an APFS volume
+ */
 #[derive(Debug, serde::Deserialize, serde::Serialize, Clone)]
-pub struct BootstrapVolume {
-    path: PathBuf,
+pub struct UnmountApfsVolume {
+    disk: PathBuf,
+    name: String,
 }
 
-impl BootstrapVolume {
+impl UnmountApfsVolume {
     #[tracing::instrument(skip_all)]
     pub async fn plan(
-        path: impl AsRef<Path>,
+        disk: impl AsRef<Path>,
+        name: String,
     ) -> Result<StatefulAction<Self>, Box<dyn std::error::Error + Send + Sync>> {
-        Ok(Self {
-            path: path.as_ref().to_path_buf(),
-        }
-        .into())
+        let disk = disk.as_ref().to_owned();
+        Ok(Self { disk, name }.into())
     }
 }
 
 #[async_trait::async_trait]
-#[typetag::serde(name = "bootstrap_volume")]
-impl Action for BootstrapVolume {
+#[typetag::serde(name = "unmount_volume")]
+impl Action for UnmountApfsVolume {
     fn tracing_synopsis(&self) -> String {
-        format!("Bootstrap and kickstart `{}`", self.path.display())
+        format!("Unmount the `{}` APFS volume", self.name)
     }
 
     fn execute_description(&self) -> Vec<ActionDescription> {
@@ -39,61 +42,52 @@ impl Action for BootstrapVolume {
     }
 
     #[tracing::instrument(skip_all, fields(
-        path = %self.path.display(),
+        disk = %self.disk.display(),
+        name = %self.name,
     ))]
     async fn execute(&mut self) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
-        let Self { path } = self;
+        let Self { disk: _, name } = self;
 
         execute_command(
-            Command::new("launchctl")
+            Command::new("/usr/sbin/diskutil")
                 .process_group(0)
-                .args(["bootstrap", "system"])
-                .arg(path)
+                .args(["unmount", "force"])
+                .arg(name)
                 .stdin(std::process::Stdio::null()),
         )
         .await
-        .map_err(|e| BootstrapVolumeError::Command(e).boxed())?;
-        execute_command(
-            Command::new("launchctl")
-                .process_group(0)
-                .args(["kickstart", "-k", "system/org.nixos.darwin-store"])
-                .stdin(std::process::Stdio::null()),
-        )
-        .await
-        .map_err(|e| BootstrapVolumeError::Command(e).boxed())?;
+        .map_err(|e| UnmountVolumeError::Command(e).boxed())?;
 
         Ok(())
     }
 
     fn revert_description(&self) -> Vec<ActionDescription> {
-        vec![ActionDescription::new(
-            format!("Stop `{}`", self.path.display()),
-            vec![],
-        )]
+        vec![ActionDescription::new(self.tracing_synopsis(), vec![])]
     }
 
     #[tracing::instrument(skip_all, fields(
-        path = %self.path.display(),
+        disk = %self.disk.display(),
+        name = %self.name,
     ))]
     async fn revert(&mut self) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
-        let Self { path } = self;
+        let Self { disk: _, name } = self;
 
         execute_command(
-            Command::new("launchctl")
+            Command::new("/usr/sbin/diskutil")
                 .process_group(0)
-                .args(["bootout", "system"])
-                .arg(path)
+                .args(["unmount", "force"])
+                .arg(name)
                 .stdin(std::process::Stdio::null()),
         )
         .await
-        .map_err(|e| BootstrapVolumeError::Command(e).boxed())?;
+        .map_err(|e| UnmountVolumeError::Command(e).boxed())?;
 
         Ok(())
     }
 }
 
 #[derive(Debug, thiserror::Error)]
-pub enum BootstrapVolumeError {
+pub enum UnmountVolumeError {
     #[error("Failed to execute command")]
     Command(#[source] std::io::Error),
 }

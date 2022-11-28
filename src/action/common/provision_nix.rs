@@ -1,7 +1,8 @@
 use crate::{
     action::{
         base::{
-            CreateDirectoryError, FetchNix, FetchNixError, MoveUnpackedNix, MoveUnpackedNixError,
+            CreateDirectoryError, FetchAndUnpackNix, FetchUrlError, MoveUnpackedNix,
+            MoveUnpackedNixError,
         },
         Action, ActionDescription, StatefulAction,
     },
@@ -11,12 +12,15 @@ use crate::{
 use std::path::PathBuf;
 use tokio::task::JoinError;
 
-use super::{CreateNixTree, CreateNixTreeError, CreateUsersAndGroup, CreateUsersAndGroupError};
+use super::{CreateNixTree, CreateNixTreeError, CreateUsersAndGroups, CreateUsersAndGroupsError};
 
+/**
+Place Nix and it's requirements onto the target
+ */
 #[derive(Debug, serde::Deserialize, serde::Serialize, Clone)]
 pub struct ProvisionNix {
-    fetch_nix: StatefulAction<FetchNix>,
-    create_users_and_group: StatefulAction<CreateUsersAndGroup>,
+    fetch_nix: StatefulAction<FetchAndUnpackNix>,
+    create_users_and_group: StatefulAction<CreateUsersAndGroups>,
     create_nix_tree: StatefulAction<CreateNixTree>,
     move_unpacked_nix: StatefulAction<MoveUnpackedNix>,
 }
@@ -26,13 +30,13 @@ impl ProvisionNix {
     pub async fn plan(
         settings: &CommonSettings,
     ) -> Result<StatefulAction<Self>, Box<dyn std::error::Error + Send + Sync>> {
-        let fetch_nix = FetchNix::plan(
+        let fetch_nix = FetchAndUnpackNix::plan(
             settings.nix_package_url.clone(),
             PathBuf::from("/nix/temp-install-dir"),
         )
         .await
         .map_err(|e| e.boxed())?;
-        let create_users_and_group = CreateUsersAndGroup::plan(settings.clone())
+        let create_users_and_group = CreateUsersAndGroups::plan(settings.clone())
             .await
             .map_err(|e| e.boxed())?;
         let create_nix_tree = CreateNixTree::plan().await?;
@@ -152,7 +156,7 @@ pub enum ProvisionNixError {
     FetchNix(
         #[source]
         #[from]
-        FetchNixError,
+        FetchUrlError,
     ),
     #[error("Joining spawned async task")]
     Join(
@@ -170,7 +174,7 @@ pub enum ProvisionNixError {
     CreateUsersAndGroup(
         #[source]
         #[from]
-        CreateUsersAndGroupError,
+        CreateUsersAndGroupsError,
     ),
     #[error("Creating nix tree")]
     CreateNixTree(

@@ -1,6 +1,44 @@
 /*! An executable or revertable step, possibly orcestrating sub-[`Action`]s using things like
     [`JoinSet`](tokio::task::JoinSet)s
 
+
+[`Action`]s should be considered an 'atom' of change. Typically they are either a 'base' or
+a 'composite' [`Action`].
+
+Base actions are things like:
+
+* [`CreateDirectory`](base::CreateDirectory)
+* [`CreateFile`](base::CreateFile)
+* [`CreateUser`](base::CreateUser)
+
+Composite actions are things like:
+
+* [`CreateNixTree`](common::CreateNixTree)
+* [`CreateUsersAndGroups`](common::CreateUsersAndGroups)
+
+During their `plan` phase, [`Planner`](crate::planner::Planner)s call an [`Action`]s `plan` function, which may accept any
+arguments. For example, several 'composite' actions accept a [`CommonSettings`](crate::settings::CommonSettings). Later, the
+[`InstallPlan`](crate::InstallPlan) will call [`try_execute`](StatefulAction::try_execute) on the [`StatefulAction`].
+
+You can manually plan, execute, then revert an [`Action`] like so:
+
+```rust,no_run
+use harmonic::action::base::CreateDirectory;
+let mut action = CreateDirectory::plan("/nix", None, None, 0o0755, true).await?;
+action.try_execute().await?;
+action.try_revert().await?;
+```
+
+A general guidance for what determines how fine-grained an [`Action`] should be is the unit of
+reversion. The [`ConfigureNixDaemonService`](linux::ConfigureNixDaemonService) action is a good
+example of this,it takes several steps, such as running `systemd-tmpfiles`, and calling
+`systemctl link` on some systemd units.
+
+Where possible, tasks which could break during execution should be broken up, as uninstalling/installing
+step detection is determined by the wrapping [`StatefulAction`]. If an [`Action`] is a 'composite'
+its sub-[`Action`]s can be reverted piece-by-piece. So breaking up actions into faillable units is
+ideal.
+
 A custom [`Action`] can be created then used in a custom [`Planner`](crate::planner::Planner):
 
 ```rust,no_run
@@ -167,6 +205,9 @@ pub trait Action: Send + Sync + std::fmt::Debug + dyn_clone::DynClone {
 
 dyn_clone::clone_trait_object!(Action);
 
+/**
+A description of an [`Action`](crate::action::Action), intended for humans to review
+*/
 #[derive(Debug, serde::Deserialize, serde::Serialize, Clone)]
 pub struct ActionDescription {
     pub description: String,

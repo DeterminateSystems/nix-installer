@@ -4,6 +4,9 @@ use crate::action::{Action, ActionDescription, StatefulAction};
 const NIX_CONF_FOLDER: &str = "/etc/nix";
 const NIX_CONF: &str = "/etc/nix/nix.conf";
 
+/**
+Place the `/etc/nix.conf` file
+ */
 #[derive(Debug, serde::Deserialize, serde::Serialize, Clone)]
 pub struct PlaceNixConfiguration {
     create_directory: StatefulAction<CreateDirectory>,

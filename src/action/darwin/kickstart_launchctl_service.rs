@@ -8,6 +8,9 @@ use crate::{
     BoxableError,
 };
 
+/**
+Kickstart a `launchctl` service
+ */
 #[derive(Debug, serde::Deserialize, serde::Serialize, Clone)]
 pub struct KickstartLaunchctlService {
     unit: String,

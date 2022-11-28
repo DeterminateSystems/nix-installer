@@ -15,6 +15,9 @@ const PROFILE_TARGETS: &[&str] = &[
 ];
 const PROFILE_NIX_FILE: &str = "/nix/var/nix/profiles/default/etc/profile.d/nix-daemon.sh";
 
+/**
+Configure any detected shell profiles to include Nix support
+ */
 #[derive(Debug, serde::Deserialize, serde::Serialize, Clone)]
 pub struct ConfigureShellProfile {
     create_or_append_files: Vec<StatefulAction<CreateOrAppendFile>>,

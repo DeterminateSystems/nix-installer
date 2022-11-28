@@ -17,6 +17,9 @@ const PATHS: &[&str] = &[
     "/nix/var/nix/daemon-socket",
 ];
 
+/**
+Create the `/nix` tree
+ */
 #[derive(Debug, serde::Deserialize, serde::Serialize, Clone)]
 pub struct CreateNixTree {
     create_directories: Vec<StatefulAction<CreateDirectory>>,

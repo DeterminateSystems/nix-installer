@@ -12,6 +12,9 @@ use crate::{
     BoxableError,
 };
 
+/**
+Enable ownership on a volume
+ */
 #[derive(Debug, serde::Deserialize, serde::Serialize, Clone)]
 pub struct EnableOwnership {
     path: PathBuf,
