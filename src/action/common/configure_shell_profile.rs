@@ -1,25 +1,39 @@
-use crate::action::base::{CreateOrAppendFile, CreateOrAppendFileError};
+use crate::action::base::{CreateDirectory, CreateOrAppendFile, CreateOrAppendFileError};
 use crate::action::{Action, ActionDescription, StatefulAction};
 use crate::BoxableError;
 
-use std::path::Path;
+use std::path::{Path, PathBuf};
 use tokio::task::{JoinError, JoinSet};
 
+// Fish has different syntax than zsh/bash, treat it separate
+const PROFILE_FISH_SUFFIX: &str = "conf.d/nix.fish";
+
+/**
+ Each of these are common values of $__fish_sysconf_dir,
+under which Fish will look for a file named
+[`PROFILE_FISH_SUFFIX`].
+*/
+const PROFILE_FISH_PREFIXES: &[&str] = &[
+    "/etc/fish",              // standard
+    "/usr/local/etc/fish",    // their installer .pkg for macOS
+    "/opt/homebrew/etc/fish", // homebrew
+    "/opt/local/etc/fish",    // macports
+];
 const PROFILE_TARGETS: &[&str] = &[
     "/etc/bashrc",
     "/etc/profile.d/nix.sh",
     "/etc/zshrc",
     "/etc/bash.bashrc",
     "/etc/zsh/zshrc",
-    // TODO(@hoverbear): FIsh
 ];
-const PROFILE_NIX_FILE: &str = "/nix/var/nix/profiles/default/etc/profile.d/nix-daemon.sh";
-
+const PROFILE_NIX_FILE_SHELL: &str = "/nix/var/nix/profiles/default/etc/profile.d/nix-daemon.sh";
+const PROFILE_NIX_FILE_FISH: &str = "/nix/var/nix/profiles/default/etc/profile.d/nix-daemon.fish";
 /**
 Configure any detected shell profiles to include Nix support
  */
 #[derive(Debug, serde::Deserialize, serde::Serialize, Clone)]
 pub struct ConfigureShellProfile {
+    create_directories: Vec<StatefulAction<CreateDirectory>>,
     create_or_append_files: Vec<StatefulAction<CreateOrAppendFile>>,
 }
 
@@ -27,29 +41,69 @@ impl ConfigureShellProfile {
     #[tracing::instrument(skip_all)]
     pub async fn plan() -> Result<StatefulAction<Self>, Box<dyn std::error::Error + Send + Sync>> {
         let mut create_or_append_files = Vec::default();
+        let mut create_directories = Vec::default();
+
+        let shell_buf = format!(
+            "\n\
+            # Nix\n\
+            if [ -e '{PROFILE_NIX_FILE_SHELL}' ]; then\n\
+            . '{PROFILE_NIX_FILE_SHELL}'\n\
+            fi\n\
+            # End Nix\n
+        \n",
+        );
+
         for profile_target in PROFILE_TARGETS {
             let path = Path::new(profile_target);
             if !path.exists() {
                 tracing::trace!("Did not plan to edit `{profile_target}` as it does not exist.");
                 continue;
             }
-            let buf = format!(
-                "\n\
-                # Nix\n\
-                if [ -e '{PROFILE_NIX_FILE}' ]; then\n\
-                . '{PROFILE_NIX_FILE}'\n\
-                fi\n\
-                # End Nix\n
-            \n",
-            );
             create_or_append_files.push(
-                CreateOrAppendFile::plan(path, None, None, 0o0644, buf)
+                CreateOrAppendFile::plan(path, None, None, 0o0644, shell_buf.to_string())
+                    .await
+                    .map_err(|e| e.boxed())?,
+            );
+        }
+
+        let fish_buf = format!(
+            "\n\
+            # Nix\n\
+            if test -e '{PROFILE_NIX_FILE_FISH}'\n\
+            . '{PROFILE_NIX_FILE_FISH}'\n\
+            fi\n\
+            # End Nix\n
+        \n",
+        );
+
+        for fish_prefix in PROFILE_FISH_PREFIXES {
+            let fish_prefix_path = PathBuf::from(fish_prefix);
+
+            if !fish_prefix_path.exists() {
+                // If the prefix doesn't exist, don't create the `conf.d/nix.fish`
+                continue;
+            }
+
+            let mut profile_target = fish_prefix_path;
+            profile_target.push(PROFILE_FISH_SUFFIX);
+
+            if let Some(conf_d) = profile_target.parent() {
+                create_directories.push(
+                    CreateDirectory::plan(conf_d.to_path_buf(), None, None, 0o0644, false)
+                        .await
+                        .map_err(|e| e.boxed())?,
+                );
+            }
+
+            create_or_append_files.push(
+                CreateOrAppendFile::plan(profile_target, None, None, 0o0644, fish_buf.to_string())
                     .await
                     .map_err(|e| e.boxed())?,
             );
         }
 
         Ok(Self {
+            create_directories,
             create_or_append_files,
         }
         .into())
@@ -74,7 +128,12 @@ impl Action for ConfigureShellProfile {
     async fn execute(&mut self) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
         let Self {
             create_or_append_files,
+            create_directories,
         } = self;
+
+        for create_directory in create_directories {
+            create_directory.try_execute().await?;
+        }
 
         let mut set = JoinSet::new();
         let mut errors = Vec::default();
@@ -121,6 +180,7 @@ impl Action for ConfigureShellProfile {
     #[tracing::instrument(skip_all)]
     async fn revert(&mut self) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
         let Self {
+            create_directories,
             create_or_append_files,
         } = self;
 
@@ -146,6 +206,10 @@ impl Action for ConfigureShellProfile {
                 Ok(Err(e)) => errors.push(e),
                 Err(e) => return Err(e.boxed()),
             };
+        }
+
+        for create_directory in create_directories {
+            create_directory.try_revert().await?;
         }
 
         if !errors.is_empty() {

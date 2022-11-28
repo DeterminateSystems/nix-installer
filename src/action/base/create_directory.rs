@@ -33,16 +33,16 @@ impl CreateDirectory {
         group: impl Into<Option<String>>,
         mode: impl Into<Option<u32>>,
         force_prune_on_revert: bool,
-    ) -> Result<StatefulAction<Self>, Box<dyn std::error::Error + Send + Sync>> {
+    ) -> Result<StatefulAction<Self>, CreateDirectoryError> {
         let path = path.as_ref();
         let user = user.into();
         let group = group.into();
         let mode = mode.into();
 
         let action_state = if path.exists() {
-            let metadata = tokio::fs::metadata(path).await.map_err(|e| {
-                CreateDirectoryError::GettingMetadata(path.to_path_buf(), e).boxed()
-            })?;
+            let metadata = tokio::fs::metadata(path)
+                .await
+                .map_err(|e| CreateDirectoryError::GettingMetadata(path.to_path_buf(), e))?;
             if metadata.is_dir() {
                 tracing::debug!(
                     "Creating directory `{}` already complete, skipping",
@@ -57,8 +57,7 @@ impl CreateDirectory {
                         "Path `{}` already exists and is not directory",
                         path.display()
                     ),
-                ))
-                .boxed());
+                )));
             }
         } else {
             ActionState::Uncompleted
@@ -203,9 +202,9 @@ pub enum CreateDirectoryError {
     Creating(std::path::PathBuf, #[source] std::io::Error),
     #[error("Removing directory `{0}`")]
     Removing(std::path::PathBuf, #[source] std::io::Error),
-    #[error("Getting metadata for {0}`")]
+    #[error("Getting metadata for `{0}`")]
     GettingMetadata(std::path::PathBuf, #[source] std::io::Error),
-    #[error("Reading directory `{0}``")]
+    #[error("Reading directory `{0}`")]
     ReadDir(std::path::PathBuf, #[source] std::io::Error),
     #[error("Set mode `{0}` on `{1}`")]
     SetPermissions(u32, std::path::PathBuf, #[source] std::io::Error),

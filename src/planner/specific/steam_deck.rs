@@ -10,7 +10,7 @@ use crate::{
     planner::{Planner, PlannerError},
     settings::CommonSettings,
     settings::InstallSettingsError,
-    Action, BuiltinPlanner,
+    Action, BoxableError, BuiltinPlanner,
 };
 
 /// A planner suitable for Valve Steam Deck consoles
@@ -38,7 +38,7 @@ impl Planner for SteamDeck {
                 .boxed(),
             CreateDirectory::plan("/nix", None, None, 0o0755, true)
                 .await
-                .map_err(PlannerError::Action)?
+                .map_err(|e| PlannerError::Action(e.boxed()))?
                 .boxed(),
             ProvisionNix::plan(&self.settings.clone())
                 .await
