@@ -23,12 +23,11 @@ arguments. For example, several 'composite' actions accept a [`CommonSettings`](
 You can manually plan, execute, then revert an [`Action`] like so:
 
 ```rust,no_run
-# async fn wrapper() -> Result<(), harmonic::HarmonicError> {
+# async fn wrapper() {
 use harmonic::action::base::CreateDirectory;
-let mut action = CreateDirectory::plan("/nix", None, None, 0o0755, true).await?;
-action.try_execute().await?;
-action.try_revert().await?;
-#   Ok(())
+let mut action = CreateDirectory::plan("/nix", None, None, 0o0755, true).await.unwrap();
+action.try_execute().await.unwrap();
+action.try_revert().await.unwrap();
 # }
 ```
 
