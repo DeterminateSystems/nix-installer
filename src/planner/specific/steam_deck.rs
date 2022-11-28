@@ -14,9 +14,10 @@ use crate::{
 };
 
 /// A planner suitable for Valve Steam Deck consoles
-#[derive(Debug, Clone, clap::Parser, serde::Serialize, serde::Deserialize)]
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
+#[cfg_attr(feature = "cli", derive(clap::Parser))]
 pub struct SteamDeck {
-    #[clap(flatten)]
+    #[cfg_attr(feature = "cli", clap(flatten))]
     pub settings: CommonSettings,
 }
 

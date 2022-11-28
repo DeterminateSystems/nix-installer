@@ -68,9 +68,9 @@ match plan.install(None).await {
 
 pub mod action;
 mod channel_value;
+#[cfg(feature = "cli")]
 pub mod cli;
 mod error;
-mod interaction;
 mod os;
 mod plan;
 pub mod planner;
@@ -79,7 +79,6 @@ pub mod settings;
 use std::{ffi::OsStr, process::Output};
 
 use action::Action;
-use planner::Planner;
 
 pub use channel_value::ChannelValue;
 pub use error::HarmonicError;

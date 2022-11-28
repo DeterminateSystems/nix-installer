@@ -108,7 +108,8 @@ pub trait Planner: std::fmt::Debug + Send + Sync + dyn_clone::DynClone {
 dyn_clone::clone_trait_object!(Planner);
 
 /// Planners built into this crate
-#[derive(Debug, Clone, clap::Subcommand, serde::Serialize, serde::Deserialize)]
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
+#[cfg_attr(feature = "cli", derive(clap::Subcommand))]
 pub enum BuiltinPlanner {
     /// A standard Linux multi-user install
     LinuxMulti(linux::LinuxMulti),

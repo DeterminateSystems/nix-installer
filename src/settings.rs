@@ -2,6 +2,7 @@
 */
 use std::collections::HashMap;
 
+#[cfg(feature = "cli")]
 use clap::ArgAction;
 use url::Url;
 
@@ -26,76 +27,99 @@ Settings which only apply to certain [`Planner`](crate::planner::Planner)s shoul
 
 */
 #[serde_with::serde_as]
-#[derive(Debug, serde::Deserialize, serde::Serialize, Clone, clap::Parser)]
+#[derive(Debug, serde::Deserialize, serde::Serialize, Clone)]
+#[cfg_attr(feature = "cli", derive(clap::Parser))]
 pub struct CommonSettings {
     /// Channel(s) to add
-    #[clap(
+    #[cfg_attr(
+        feature = "cli",clap(
         long,
         value_parser,
         name = "channel",
         action = clap::ArgAction::Append,
         env = "HARMONIC_CHANNEL",
         default_value = "nixpkgs=https://nixos.org/channels/nixpkgs-unstable",
-    )]
+    ))]
     pub(crate) channels: Vec<ChannelValue>,
 
     /// Modify the user profile to automatically load nix
-    #[clap(
-        long,
-        action(ArgAction::SetFalse),
-        default_value = "true",
-        global = true,
-        env = "HARMONIC_NO_MODIFY_PROFILE",
-        name = "no-modify-profile"
+    #[cfg_attr(
+        feature = "cli",
+        clap(
+            long,
+            action(ArgAction::SetFalse),
+            default_value = "true",
+            global = true,
+            env = "HARMONIC_NO_MODIFY_PROFILE",
+            name = "no-modify-profile"
+        )
     )]
     pub(crate) modify_profile: bool,
 
     /// Number of build users to create
-    #[clap(long, default_value = "32", env = "HARMONIC_DAEMON_USER_COUNT")]
+    #[cfg_attr(
+        feature = "cli",
+        clap(long, default_value = "32", env = "HARMONIC_DAEMON_USER_COUNT")
+    )]
     pub(crate) daemon_user_count: usize,
 
     /// The Nix build group name
-    #[clap(long, default_value = "nixbld", env = "HARMONIC_NIX_BUILD_GROUP_NAME")]
+    #[cfg_attr(
+        feature = "cli",
+        clap(long, default_value = "nixbld", env = "HARMONIC_NIX_BUILD_GROUP_NAME")
+    )]
     pub(crate) nix_build_group_name: String,
 
     /// The Nix build group GID
-    #[clap(long, default_value_t = 3000, env = "HARMONIC_NIX_BUILD_GROUP_ID")]
+    #[cfg_attr(
+        feature = "cli",
+        clap(long, default_value_t = 3000, env = "HARMONIC_NIX_BUILD_GROUP_ID")
+    )]
     pub(crate) nix_build_group_id: usize,
 
     /// The Nix build user prefix (user numbers will be postfixed)
-    #[clap(long, env = "HARMONIC_NIX_BUILD_USER_PREFIX")]
-    #[cfg_attr(target_os = "macos", clap(default_value = "_nixbld"))]
-    #[cfg_attr(target_os = "linux", clap(default_value = "nixbld"))]
+    #[cfg_attr(feature = "cli", clap(long, env = "HARMONIC_NIX_BUILD_USER_PREFIX"))]
+    #[cfg_attr(
+        all(target_os = "macos", feature = "cli"),
+        clap(default_value = "_nixbld")
+    )]
+    #[cfg_attr(
+        all(target_os = "linux", feature = "cli"),
+        clap(default_value = "nixbld")
+    )]
     pub(crate) nix_build_user_prefix: String,
 
     /// The Nix build user base UID (ascending)
-    #[clap(long, env = "HARMONIC_NIX_BUILD_USER_ID_BASE")]
-    #[cfg_attr(target_os = "macos", clap(default_value_t = 300))]
-    #[cfg_attr(target_os = "linux", clap(default_value_t = 3000))]
+    #[cfg_attr(feature = "cli", clap(long, env = "HARMONIC_NIX_BUILD_USER_ID_BASE"))]
+    #[cfg_attr(all(target_os = "macos", feature = "cli"), clap(default_value_t = 300))]
+    #[cfg_attr(
+        all(target_os = "linux", feature = "cli"),
+        clap(default_value_t = 3000)
+    )]
     pub(crate) nix_build_user_id_base: usize,
 
     /// The Nix package URL
-    #[clap(long, env = "HARMONIC_NIX_PACKAGE_URL")]
+    #[cfg_attr(feature = "cli", clap(long, env = "HARMONIC_NIX_PACKAGE_URL"))]
     #[cfg_attr(
-        all(target_os = "macos", target_arch = "x86_64"),
+        all(target_os = "macos", target_arch = "x86_64", feature = "cli"),
         clap(
             default_value = NIX_X64_64_DARWIN_URL,
         )
     )]
     #[cfg_attr(
-        all(target_os = "macos", target_arch = "aarch64"),
+        all(target_os = "macos", target_arch = "aarch64", feature = "cli"),
         clap(
             default_value = NIX_AARCH64_DARWIN_URL,
         )
     )]
     #[cfg_attr(
-        all(target_os = "linux", target_arch = "x86_64"),
+        all(target_os = "linux", target_arch = "x86_64", feature = "cli"),
         clap(
             default_value = NIX_X64_64_LINUX_URL,
         )
     )]
     #[cfg_attr(
-        all(target_os = "linux", target_arch = "aarch64"),
+        all(target_os = "linux", target_arch = "aarch64", feautre = "cli"),
         clap(
             default_value = NIX_AARCH64_LINUX_URL,
         )
@@ -103,16 +127,19 @@ pub struct CommonSettings {
     pub(crate) nix_package_url: Url,
 
     /// Extra configuration lines for `/etc/nix.conf`
-    #[clap(long, env = "HARMONIC_EXTRA_CONF")]
+    #[cfg_attr(feature = "cli", clap(long, env = "HARMONIC_EXTRA_CONF"))]
     pub(crate) extra_conf: Option<String>,
 
     /// If Harmonic should forcibly recreate files it finds existing
-    #[clap(
-        long,
-        action(ArgAction::SetTrue),
-        default_value = "false",
-        global = true,
-        env = "HARMONIC_FORCE"
+    #[cfg_attr(
+        feature = "cli",
+        clap(
+            long,
+            action(ArgAction::SetTrue),
+            default_value = "false",
+            global = true,
+            env = "HARMONIC_FORCE"
+        )
     )]
     pub(crate) force: bool,
 }

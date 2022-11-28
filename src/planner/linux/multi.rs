@@ -12,9 +12,10 @@ use crate::{
 use std::{collections::HashMap, path::Path};
 
 /// A planner for Linux multi-user installs
-#[derive(Debug, Clone, clap::Parser, serde::Serialize, serde::Deserialize)]
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
+#[cfg_attr(feature = "cli", derive(clap::Parser))]
 pub struct LinuxMulti {
-    #[clap(flatten)]
+    #[cfg_attr(feature = "cli", clap(flatten))]
     pub settings: CommonSettings,
 }
 

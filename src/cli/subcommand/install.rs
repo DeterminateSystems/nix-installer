@@ -4,8 +4,11 @@ use std::{
 };
 
 use crate::{
-    action::ActionState, cli::is_root, cli::signal_channel, cli::CommandExecute, interaction,
-    plan::RECEIPT_LOCATION, BuiltinPlanner, InstallPlan, Planner,
+    action::ActionState,
+    cli::{interaction, is_root, signal_channel, CommandExecute},
+    plan::RECEIPT_LOCATION,
+    planner::Planner,
+    BuiltinPlanner, InstallPlan,
 };
 use clap::{ArgAction, Parser};
 use eyre::{eyre, WrapErr};

@@ -1,5 +1,6 @@
 use std::{collections::HashMap, io::Cursor};
 
+#[cfg(feature = "cli")]
 use clap::ArgAction;
 use tokio::process::Command;
 
@@ -18,31 +19,41 @@ use crate::{
 };
 
 /// A planner for MacOS (Darwin) multi-user installs
-#[derive(Debug, Clone, clap::Parser, serde::Serialize, serde::Deserialize)]
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
+#[cfg_attr(feature = "cli", derive(clap::Parser))]
 pub struct DarwinMulti {
-    #[clap(flatten)]
+    #[cfg_attr(feature = "cli", clap(flatten))]
     pub settings: CommonSettings,
     /// Force encryption on the volume
-    #[clap(
-        long,
-        action(ArgAction::Set),
-        default_value = "false",
-        env = "HARMONIC_ENCRYPT"
+    #[cfg_attr(
+        feature = "cli",
+        clap(
+            long,
+            action(ArgAction::Set),
+            default_value = "false",
+            env = "HARMONIC_ENCRYPT"
+        )
     )]
     pub encrypt: Option<bool>,
     /// Use a case sensitive volume
-    #[clap(
-        long,
-        action(ArgAction::SetTrue),
-        default_value = "false",
-        env = "HARMONIC_CASE_SENSITIVE"
+    #[cfg_attr(
+        feature = "cli",
+        clap(
+            long,
+            action(ArgAction::SetTrue),
+            default_value = "false",
+            env = "HARMONIC_CASE_SENSITIVE"
+        )
     )]
     pub case_sensitive: bool,
     /// The label for the created APFS volume
-    #[clap(long, default_value = "Nix Store", env = "HARMONIC_VOLUME_LABEL")]
+    #[cfg_attr(
+        feature = "cli",
+        clap(long, default_value = "Nix Store", env = "HARMONIC_VOLUME_LABEL")
+    )]
     pub volume_label: String,
     /// The root disk of the target
-    #[clap(long, env = "HARMONIC_ROOT_DISK")]
+    #[cfg_attr(feature = "cli", clap(long, env = "HARMONIC_ROOT_DISK"))]
     pub root_disk: Option<String>,
 }
 

@@ -5,7 +5,7 @@ use crate::{
     planner::{BuiltinPlanner, Planner},
     HarmonicError,
 };
-use crossterm::style::Stylize;
+use owo_colors::OwoColorize;
 use semver::{Version, VersionReq};
 use serde::{de::Error, Deserialize, Deserializer};
 use tokio::sync::broadcast::Receiver;
@@ -287,13 +287,11 @@ fn ensure_version<'de, D: Deserializer<'de>>(d: D) -> Result<Version, D::Error> 
 mod test {
     use semver::Version;
 
-    use crate::{planner::BuiltinPlanner, InstallPlan};
+    use crate::{planner::BuiltinPlanner, HarmonicError, InstallPlan};
 
     #[tokio::test]
-    async fn ensure_version_allows_compatible() -> eyre::Result<()> {
-        let planner = BuiltinPlanner::default()
-            .await
-            .map_err(|e| eyre::eyre!(e))?;
+    async fn ensure_version_allows_compatible() -> Result<(), HarmonicError> {
+        let planner = BuiltinPlanner::default().await?;
         let good_version = Version::parse(env!("CARGO_PKG_VERSION"))?;
         let value = serde_json::json!({
             "planner": planner.boxed(),
@@ -306,10 +304,8 @@ mod test {
     }
 
     #[tokio::test]
-    async fn ensure_version_denies_incompatible() -> eyre::Result<()> {
-        let planner = BuiltinPlanner::default()
-            .await
-            .map_err(|e| eyre::eyre!(e))?;
+    async fn ensure_version_denies_incompatible() -> Result<(), HarmonicError> {
+        let planner = BuiltinPlanner::default().await?;
         let bad_version = Version::parse("9999999999999.9999999999.99999999")?;
         let value = serde_json::json!({
             "planner": planner.boxed(),

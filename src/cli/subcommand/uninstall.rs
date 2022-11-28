@@ -8,7 +8,7 @@ use crate::{
 use clap::{ArgAction, Parser};
 use eyre::{eyre, WrapErr};
 
-use crate::{cli::CommandExecute, interaction};
+use crate::cli::{interaction, CommandExecute};
 
 /// Uninstall a previously installed Nix (only Harmonic done installs supported)
 #[derive(Debug, Parser)]
