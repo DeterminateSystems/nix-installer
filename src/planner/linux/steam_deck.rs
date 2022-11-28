@@ -66,10 +66,11 @@ use crate::{
         base::{CreateDirectory, CreateFile},
         common::{ConfigureNix, ProvisionNix},
         linux::StartSystemdUnit,
-        Action,
+        Action, StatefulAction,
     },
-    planner::Planner,
-    BuiltinPlanner, CommonSettings,
+    planner::{Planner, PlannerError},
+    settings::{CommonSettings, InstallSettingsError},
+    BuiltinPlanner,
 };
 
 #[derive(Debug, Clone, clap::Parser, serde::Serialize, serde::Deserialize)]
@@ -87,14 +88,14 @@ pub struct SteamDeck {
 #[async_trait::async_trait]
 #[typetag::serde(name = "steam-deck")]
 impl Planner for SteamDeck {
-    async fn default() -> Result<Self, Box<dyn std::error::Error + Sync + Send>> {
+    async fn default() -> Result<Self, PlannerError> {
         Ok(Self {
             persistence: PathBuf::from("/home/nix"),
             settings: CommonSettings::default()?,
         })
     }
 
-    async fn plan(&self) -> Result<Vec<Box<dyn Action>>, Box<dyn std::error::Error + Sync + Send>> {
+    async fn plan(&self) -> Result<Vec<StatefulAction<Box<dyn Action>>>, PlannerError> {
         let persistence = &self.persistence;
 
         let nix_directory_buf = format!(
@@ -128,7 +129,8 @@ impl Planner for SteamDeck {
             nix_directory_buf,
             false,
         )
-        .await?;
+        .await
+        .map_err(PlannerError::Action)?;
 
         let create_bind_mount_buf = format!(
             "\
@@ -158,7 +160,8 @@ impl Planner for SteamDeck {
             create_bind_mount_buf,
             false,
         )
-        .await?;
+        .await
+        .map_err(PlannerError::Action)?;
 
         let ensure_symlinked_units_resolve_buf = format!(
             "\
@@ -189,33 +192,44 @@ impl Planner for SteamDeck {
             ensure_symlinked_units_resolve_buf,
             false,
         )
-        .await?;
+        .await
+        .map_err(PlannerError::Action)?;
 
         Ok(vec![
-            Box::new(CreateDirectory::plan(&persistence, None, None, 0o0755, true).await?),
-            Box::new(nix_directory_unit),
-            Box::new(create_bind_mount_unit),
-            Box::new(ensure_symlinked_units_resolve_unit),
-            Box::new(
-                StartSystemdUnit::plan("ensure-symlinked-units-resolve.service".to_string())
-                    .await?,
-            ),
-            Box::new(ProvisionNix::plan(&self.settings.clone()).await?),
-            Box::new(ConfigureNix::plan(&self.settings).await?),
-            Box::new(StartSystemdUnit::plan("nix-daemon.socket".to_string()).await?),
+            CreateDirectory::plan(&persistence, None, None, 0o0755, true)
+                .await
+                .map_err(PlannerError::Action)?
+                .boxed(),
+            nix_directory_unit.boxed(),
+            create_bind_mount_unit.boxed(),
+            ensure_symlinked_units_resolve_unit.boxed(),
+            StartSystemdUnit::plan("ensure-symlinked-units-resolve.service".to_string())
+                .await
+                .map_err(PlannerError::Action)?
+                .boxed(),
+            ProvisionNix::plan(&self.settings.clone())
+                .await
+                .map_err(PlannerError::Action)?
+                .boxed(),
+            ConfigureNix::plan(&self.settings)
+                .await
+                .map_err(PlannerError::Action)?
+                .boxed(),
+            StartSystemdUnit::plan("nix-daemon.socket".to_string())
+                .await
+                .map_err(PlannerError::Action)?
+                .boxed(),
         ])
     }
 
-    fn settings(
-        &self,
-    ) -> Result<HashMap<String, serde_json::Value>, Box<dyn std::error::Error + Sync + Send>> {
+    fn settings(&self) -> Result<HashMap<String, serde_json::Value>, InstallSettingsError> {
         let Self {
             settings,
             persistence,
         } = self;
         let mut map = HashMap::default();
 
-        map.extend(settings.describe()?.into_iter());
+        map.extend(settings.settings()?.into_iter());
         map.insert(
             "persistence".to_string(),
             serde_json::to_value(persistence)?,

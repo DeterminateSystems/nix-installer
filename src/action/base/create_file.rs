@@ -7,10 +7,16 @@ use tokio::{
 };
 
 use crate::{
-    action::{Action, ActionDescription, ActionState},
+    action::{Action, ActionDescription, StatefulAction},
     BoxableError,
 };
 
+/** Create a file at the given location with the provided `buf`,
+optionally with an owning user, group, and mode.
+
+If `force` is set, the file will always be overwritten (and deleted)
+regardless of its presence prior to install.
+ */
 #[derive(Debug, serde::Deserialize, serde::Serialize, Clone)]
 pub struct CreateFile {
     pub(crate) path: PathBuf,
@@ -19,7 +25,6 @@ pub struct CreateFile {
     mode: Option<u32>,
     buf: String,
     force: bool,
-    action_state: ActionState,
 }
 
 impl CreateFile {
@@ -31,7 +36,7 @@ impl CreateFile {
         mode: impl Into<Option<u32>>,
         buf: String,
         force: bool,
-    ) -> Result<Self, Box<dyn std::error::Error + Send + Sync>> {
+    ) -> Result<StatefulAction<Self>, Box<dyn std::error::Error + Send + Sync>> {
         let path = path.as_ref().to_path_buf();
 
         if path.exists() && !force {
@@ -45,8 +50,8 @@ impl CreateFile {
             mode: mode.into(),
             buf,
             force,
-            action_state: ActionState::Uncompleted,
-        })
+        }
+        .into())
     }
 }
 
@@ -74,7 +79,6 @@ impl Action for CreateFile {
             mode,
             buf,
             force: _,
-            action_state: _,
         } = self;
 
         let mut options = OpenOptions::new();
@@ -126,7 +130,6 @@ impl Action for CreateFile {
             mode: _,
             buf: _,
             force: _,
-            action_state: _,
         } = &self;
 
         vec![ActionDescription::new(
@@ -149,7 +152,6 @@ impl Action for CreateFile {
             mode: _,
             buf: _,
             force: _,
-            action_state: _,
         } = self;
 
         remove_file(&path)
@@ -157,14 +159,6 @@ impl Action for CreateFile {
             .map_err(|e| CreateFileError::RemoveFile(path.to_owned(), e).boxed())?;
 
         Ok(())
-    }
-
-    fn action_state(&self) -> ActionState {
-        self.action_state
-    }
-
-    fn set_action_state(&mut self, action_state: ActionState) {
-        self.action_state = action_state;
     }
 }
 

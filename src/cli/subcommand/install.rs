@@ -4,8 +4,11 @@ use std::{
 };
 
 use crate::{
-    action::ActionState, cli::is_root, cli::signal_channel, cli::CommandExecute, interaction,
-    plan::RECEIPT_LOCATION, BuiltinPlanner, InstallPlan, Planner,
+    action::ActionState,
+    cli::{interaction, is_root, signal_channel, CommandExecute},
+    plan::RECEIPT_LOCATION,
+    planner::Planner,
+    BuiltinPlanner, InstallPlan,
 };
 use clap::{ArgAction, Parser};
 use eyre::{eyre, WrapErr};
@@ -77,13 +80,13 @@ impl CommandExecute for Install {
                         if existing_receipt.planner.settings().map_err(|e| eyre!(e))? != chosen_planner.settings().map_err(|e| eyre!(e))? {
                             return Err(eyre!("Found existing plan in `{RECEIPT_LOCATION}` which used different planner settings, try uninstalling the existing install"))
                         }
-                        if existing_receipt.actions.iter().all(|v| v.action_state() == ActionState::Completed) {
+                        if existing_receipt.actions.iter().all(|v| v.state == ActionState::Completed) {
                             return Err(eyre!("Found existing plan in `{RECEIPT_LOCATION}`, with the same settings, already completed, try uninstalling and reinstalling if Nix isn't working"))
                         }
                         existing_receipt
                     } ,
                     None => {
-                        InstallPlan::plan(planner.boxed()).await.map_err(|e| eyre!(e))?
+                        planner.plan().await.map_err(|e| eyre!(e))?
                     },
                 }
             },
@@ -97,7 +100,7 @@ impl CommandExecute for Install {
                 let builtin_planner = BuiltinPlanner::default()
                     .await
                     .map_err(|e| eyre::eyre!(e))?;
-                InstallPlan::plan(builtin_planner.boxed()).await.map_err(|e| eyre!(e))?
+                builtin_planner.plan().await.map_err(|e| eyre!(e))?
             },
             (Some(_), Some(_)) => return Err(eyre!("`--plan` conflicts with passing a planner, a planner creates plans, so passing an existing plan doesn't make sense")),
         };
@@ -105,7 +108,7 @@ impl CommandExecute for Install {
         if !no_confirm {
             if !interaction::confirm(
                 install_plan
-                    .describe_execute(explain)
+                    .describe_install(explain)
                     .map_err(|e| eyre!(e))?,
             )
             .await?
@@ -122,7 +125,7 @@ impl CommandExecute for Install {
                 tracing::error!("{:?}", error);
                 if !interaction::confirm(
                     install_plan
-                        .describe_revert(explain)
+                        .describe_uninstall(explain)
                         .map_err(|e| eyre!(e))?,
                 )
                 .await?
@@ -130,7 +133,7 @@ impl CommandExecute for Install {
                     interaction::clean_exit_with_message("Okay, didn't do anything! Bye!").await;
                 }
                 let rx2 = tx.subscribe();
-                install_plan.revert(rx2).await?
+                install_plan.uninstall(rx2).await?
             } else {
                 return Err(error);
             }

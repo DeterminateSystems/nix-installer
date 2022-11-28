@@ -2,19 +2,16 @@ use tokio::process::Command;
 
 use crate::execute_command;
 
-use crate::action::{Action, ActionDescription, ActionState};
+use crate::action::{Action, ActionDescription, StatefulAction};
 
+/// Create the synthetic objects defined in `/etc/syntethic.conf`
 #[derive(Debug, serde::Deserialize, serde::Serialize, Clone)]
-pub struct CreateSyntheticObjects {
-    action_state: ActionState,
-}
+pub struct CreateSyntheticObjects;
 
 impl CreateSyntheticObjects {
     #[tracing::instrument(skip_all)]
-    pub async fn plan() -> Result<Self, Box<dyn std::error::Error + Send + Sync>> {
-        Ok(Self {
-            action_state: ActionState::Uncompleted,
-        })
+    pub async fn plan() -> Result<StatefulAction<Self>, Box<dyn std::error::Error + Send + Sync>> {
+        Ok(Self.into())
     }
 }
 
@@ -83,14 +80,6 @@ impl Action for CreateSyntheticObjects {
         .ok(); // Deliberate
 
         Ok(())
-    }
-
-    fn action_state(&self) -> ActionState {
-        self.action_state
-    }
-
-    fn set_action_state(&mut self, action_state: ActionState) {
-        self.action_state = action_state;
     }
 }
 

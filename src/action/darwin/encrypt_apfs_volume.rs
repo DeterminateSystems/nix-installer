@@ -1,36 +1,38 @@
 use crate::{
-    action::{darwin::NIX_VOLUME_MOUNTD_DEST, Action, ActionDescription, ActionState},
+    action::{darwin::NIX_VOLUME_MOUNTD_DEST, Action, ActionDescription, StatefulAction},
     execute_command,
 };
 use rand::Rng;
 use std::path::{Path, PathBuf};
 use tokio::process::Command;
 
+/**
+Encrypt an APFS volume
+ */
 #[derive(Debug, serde::Deserialize, serde::Serialize, Clone)]
-pub struct EncryptVolume {
+pub struct EncryptApfsVolume {
     disk: PathBuf,
     name: String,
-    action_state: ActionState,
 }
 
-impl EncryptVolume {
+impl EncryptApfsVolume {
     #[tracing::instrument(skip_all)]
     pub async fn plan(
         disk: impl AsRef<Path>,
         name: impl AsRef<str>,
-    ) -> Result<Self, Box<dyn std::error::Error + Send + Sync>> {
+    ) -> Result<StatefulAction<Self>, Box<dyn std::error::Error + Send + Sync>> {
         let name = name.as_ref().to_owned();
         Ok(Self {
             name,
             disk: disk.as_ref().to_path_buf(),
-            action_state: ActionState::Uncompleted,
-        })
+        }
+        .into())
     }
 }
 
 #[async_trait::async_trait]
 #[typetag::serde(name = "encrypt_volume")]
-impl Action for EncryptVolume {
+impl Action for EncryptApfsVolume {
     fn tracing_synopsis(&self) -> String {
         format!(
             "Encrypt volume `{}` on disk `{}`",
@@ -47,11 +49,7 @@ impl Action for EncryptVolume {
         disk = %self.disk.display(),
     ))]
     async fn execute(&mut self) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
-        let Self {
-            disk,
-            name,
-            action_state: _,
-        } = self;
+        let Self { disk, name } = self;
 
         // Generate a random password.
         let password: String = {
@@ -141,11 +139,7 @@ impl Action for EncryptVolume {
         disk = %self.disk.display(),
     ))]
     async fn revert(&mut self) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
-        let Self {
-            disk,
-            name,
-            action_state: _,
-        } = self;
+        let Self { disk, name } = self;
 
         let disk_str = disk.to_str().expect("Could not turn disk into string"); /* Should not reasonably ever fail */
 
@@ -171,14 +165,6 @@ impl Action for EncryptVolume {
         .await?;
 
         Ok(())
-    }
-
-    fn action_state(&self) -> ActionState {
-        self.action_state
-    }
-
-    fn set_action_state(&mut self, action_state: ActionState) {
-        self.action_state = action_state;
     }
 }
 

@@ -1,25 +1,27 @@
 use tokio::process::Command;
 
+use crate::action::StatefulAction;
 use crate::execute_command;
 
 use crate::{
-    action::{Action, ActionDescription, ActionState},
+    action::{Action, ActionDescription},
     BoxableError,
 };
 
+/**
+Kickstart a `launchctl` service
+ */
 #[derive(Debug, serde::Deserialize, serde::Serialize, Clone)]
 pub struct KickstartLaunchctlService {
     unit: String,
-    action_state: ActionState,
 }
 
 impl KickstartLaunchctlService {
     #[tracing::instrument(skip_all)]
-    pub async fn plan(unit: String) -> Result<Self, Box<dyn std::error::Error + Send + Sync>> {
-        Ok(Self {
-            unit,
-            action_state: ActionState::Uncompleted,
-        })
+    pub async fn plan(
+        unit: String,
+    ) -> Result<StatefulAction<Self>, Box<dyn std::error::Error + Send + Sync>> {
+        Ok(Self { unit }.into())
     }
 }
 
@@ -39,10 +41,7 @@ impl Action for KickstartLaunchctlService {
         unit = %self.unit,
     ))]
     async fn execute(&mut self) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
-        let Self {
-            unit,
-            action_state: _,
-        } = self;
+        let Self { unit } = self;
 
         execute_command(
             Command::new("launchctl")
@@ -68,14 +67,6 @@ impl Action for KickstartLaunchctlService {
     async fn revert(&mut self) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
         // noop
         Ok(())
-    }
-
-    fn action_state(&self) -> ActionState {
-        self.action_state
-    }
-
-    fn set_action_state(&mut self, action_state: ActionState) {
-        self.action_state = action_state;
     }
 }
 

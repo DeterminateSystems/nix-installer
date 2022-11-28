@@ -1,14 +1,16 @@
 use crate::action::base::{CreateDirectory, CreateDirectoryError, CreateFile, CreateFileError};
-use crate::action::{Action, ActionDescription, ActionImplementation, ActionState};
+use crate::action::{Action, ActionDescription, StatefulAction};
 
 const NIX_CONF_FOLDER: &str = "/etc/nix";
 const NIX_CONF: &str = "/etc/nix/nix.conf";
 
+/**
+Place the `/etc/nix.conf` file
+ */
 #[derive(Debug, serde::Deserialize, serde::Serialize, Clone)]
 pub struct PlaceNixConfiguration {
-    create_directory: CreateDirectory,
-    create_file: CreateFile,
-    action_state: ActionState,
+    create_directory: StatefulAction<CreateDirectory>,
+    create_file: StatefulAction<CreateFile>,
 }
 
 impl PlaceNixConfiguration {
@@ -17,7 +19,7 @@ impl PlaceNixConfiguration {
         nix_build_group_name: String,
         extra_conf: Vec<String>,
         force: bool,
-    ) -> Result<Self, Box<dyn std::error::Error + Send + Sync>> {
+    ) -> Result<StatefulAction<Self>, Box<dyn std::error::Error + Send + Sync>> {
         let buf = format!(
             "\
             {extra_conf}\n\
@@ -36,8 +38,8 @@ impl PlaceNixConfiguration {
         Ok(Self {
             create_directory,
             create_file,
-            action_state: ActionState::Uncompleted,
-        })
+        }
+        .into())
     }
 }
 
@@ -63,7 +65,6 @@ impl Action for PlaceNixConfiguration {
         let Self {
             create_file,
             create_directory,
-            action_state: _,
         } = self;
 
         create_directory.try_execute().await?;
@@ -87,21 +88,12 @@ impl Action for PlaceNixConfiguration {
         let Self {
             create_file,
             create_directory,
-            action_state: _,
         } = self;
 
-        create_file.revert().await?;
-        create_directory.revert().await?;
+        create_file.try_revert().await?;
+        create_directory.try_revert().await?;
 
         Ok(())
-    }
-
-    fn action_state(&self) -> ActionState {
-        self.action_state
-    }
-
-    fn set_action_state(&mut self, action_state: ActionState) {
-        self.action_state = action_state;
     }
 }
 

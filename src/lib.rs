@@ -1,23 +1,89 @@
+/*! A [Nix](https://github.com/NixOS/nix) installer and uninstaller.
+
+Harmonic breaks down into three main concepts:
+
+* [`Action`]: An executable or revertable step, possibly orcestrating sub-[`Action`]s using things
+  like [`JoinSet`](tokio::task::JoinSet)s.
+* [`InstallPlan`]: A set of [`Action`]s, along with some metadata, which can be carried out to
+  drive an install or revert.
+* [`Planner`](planner::Planner): Something which can be used to plan out an [`InstallPlan`].
+
+It is possible to create custom [`Action`]s and [`Planner`](planner::Planner)s to suit the needs of your project, team, or organization.
+
+In the simplest case, Harmonic can be asked to determine a default plan for the platform and install
+it, uninstalling if anything goes wrong:
+
+```rust,no_run
+use std::error::Error;
+use harmonic::InstallPlan;
+
+# async fn default_install() -> color_eyre::Result<()> {
+let mut plan = InstallPlan::default().await?;
+match plan.install(None).await {
+    Ok(()) => tracing::info!("Done"),
+    Err(e) => {
+        match e.source() {
+            Some(source) => tracing::error!("{e}: {}", source),
+            None => tracing::error!("{e}"),
+        };
+        plan.uninstall(None).await?;
+    },
+};
+#
+# Ok(())
+# }
+```
+
+Sometimes choosing a specific plan is desired:
+
+```rust,no_run
+use std::error::Error;
+use harmonic::{InstallPlan, planner::{Planner, specific::SteamDeck}};
+
+# async fn chosen_planner_install() -> color_eyre::Result<()> {
+let planner = SteamDeck::default().await?;
+
+// Or call `crate::planner::BuiltinPlanner::default()`
+// Match on the result to customize.
+
+// Customize any settings...
+
+let mut plan = InstallPlan::plan(planner).await?;
+match plan.install(None).await {
+    Ok(()) => tracing::info!("Done"),
+    Err(e) => {
+        match e.source() {
+            Some(source) => tracing::error!("{e}: {}", source),
+            None => tracing::error!("{e}"),
+        };
+        plan.uninstall(None).await?;
+    },
+};
+#
+# Ok(())
+# }
+```
+
+*/
+
 pub mod action;
-pub mod channel_value;
+mod channel_value;
+#[cfg(feature = "cli")]
 pub mod cli;
 mod error;
-mod interaction;
 mod os;
 mod plan;
 pub mod planner;
-mod settings;
+pub mod settings;
 
 use std::{ffi::OsStr, process::Output};
 
-pub use action::Action;
-pub use planner::Planner;
+use action::Action;
 
+pub use channel_value::ChannelValue;
 pub use error::HarmonicError;
 pub use plan::InstallPlan;
 use planner::BuiltinPlanner;
-
-pub use settings::CommonSettings;
 
 use tokio::process::Command;
 

@@ -11,10 +11,18 @@ use tokio::{
 };
 
 use crate::{
-    action::{Action, ActionDescription, ActionState},
+    action::{Action, ActionDescription, StatefulAction},
     BoxableError,
 };
 
+/** Create a file at the given location with the provided `buf`,
+optionally with an owning user, group, and mode.
+
+If the file exists, the provided `buf` will be appended.
+
+If `force` is set, the file will always be overwritten (and deleted)
+regardless of its presence prior to install.
+ */
 #[derive(Debug, serde::Deserialize, serde::Serialize, Clone)]
 pub struct CreateOrAppendFile {
     path: PathBuf,
@@ -22,7 +30,6 @@ pub struct CreateOrAppendFile {
     group: Option<String>,
     mode: Option<u32>,
     buf: String,
-    action_state: ActionState,
 }
 
 impl CreateOrAppendFile {
@@ -33,7 +40,7 @@ impl CreateOrAppendFile {
         group: impl Into<Option<String>>,
         mode: impl Into<Option<u32>>,
         buf: String,
-    ) -> Result<Self, CreateOrAppendFileError> {
+    ) -> Result<StatefulAction<Self>, CreateOrAppendFileError> {
         let path = path.as_ref().to_path_buf();
 
         Ok(Self {
@@ -42,8 +49,8 @@ impl CreateOrAppendFile {
             group: group.into(),
             mode: mode.into(),
             buf,
-            action_state: ActionState::Uncompleted,
-        })
+        }
+        .into())
     }
 }
 
@@ -71,7 +78,6 @@ impl Action for CreateOrAppendFile {
             group,
             mode,
             buf,
-            action_state: _,
         } = self;
 
         let mut file = OpenOptions::new()
@@ -132,7 +138,6 @@ impl Action for CreateOrAppendFile {
             group: _,
             mode: _,
             buf,
-            action_state: _,
         } = &self;
         vec![ActionDescription::new(
             format!("Delete Nix related fragment from file `{}`", path.display()),
@@ -156,7 +161,6 @@ impl Action for CreateOrAppendFile {
             group: _,
             mode: _,
             buf,
-            action_state: _,
         } = self;
         let mut file = OpenOptions::new()
             .create(false)
@@ -189,14 +193,6 @@ impl Action for CreateOrAppendFile {
                 .map_err(|e| CreateOrAppendFileError::WriteFile(path.to_owned(), e).boxed())?;
         }
         Ok(())
-    }
-
-    fn action_state(&self) -> ActionState {
-        self.action_state
-    }
-
-    fn set_action_state(&mut self, action_state: ActionState) {
-        self.action_state = action_state;
     }
 }
 

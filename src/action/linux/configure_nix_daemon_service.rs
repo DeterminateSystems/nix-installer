@@ -4,10 +4,11 @@ use target_lexicon::OperatingSystem;
 use tokio::fs::remove_file;
 use tokio::process::Command;
 
+use crate::action::StatefulAction;
 use crate::execute_command;
 
 use crate::{
-    action::{Action, ActionDescription, ActionState},
+    action::{Action, ActionDescription},
     BoxableError,
 };
 
@@ -17,14 +18,15 @@ const TMPFILES_SRC: &str = "/nix/var/nix/profiles/default/lib/tmpfiles.d/nix-dae
 const TMPFILES_DEST: &str = "/etc/tmpfiles.d/nix-daemon.conf";
 const DARWIN_NIX_DAEMON_DEST: &str = "/Library/LaunchDaemons/org.nixos.nix-daemon.plist";
 
+/**
+Run systemd utilities to configure the Nix daemon
+*/
 #[derive(Debug, serde::Deserialize, serde::Serialize, Clone)]
-pub struct ConfigureNixDaemonService {
-    action_state: ActionState,
-}
+pub struct ConfigureNixDaemonService {}
 
 impl ConfigureNixDaemonService {
     #[tracing::instrument(skip_all)]
-    pub async fn plan() -> Result<Self, Box<dyn std::error::Error + Send + Sync>> {
+    pub async fn plan() -> Result<StatefulAction<Self>, Box<dyn std::error::Error + Send + Sync>> {
         match OperatingSystem::host() {
             OperatingSystem::MacOSX {
                 major: _,
@@ -39,9 +41,7 @@ impl ConfigureNixDaemonService {
             },
         };
 
-        Ok(Self {
-            action_state: ActionState::Uncompleted,
-        })
+        Ok(Self {}.into())
     }
 }
 
@@ -65,7 +65,7 @@ impl Action for ConfigureNixDaemonService {
 
     #[tracing::instrument(skip_all)]
     async fn execute(&mut self) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
-        let Self { action_state: _ } = self;
+        let Self {} = self;
 
         match OperatingSystem::host() {
             OperatingSystem::MacOSX {
@@ -272,14 +272,6 @@ impl Action for ConfigureNixDaemonService {
         };
 
         Ok(())
-    }
-
-    fn action_state(&self) -> ActionState {
-        self.action_state
-    }
-
-    fn set_action_state(&mut self, action_state: ActionState) {
-        self.action_state = action_state;
     }
 }
 

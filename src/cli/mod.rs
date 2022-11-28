@@ -1,4 +1,9 @@
+/*! CLI argument structures and utilities
+
+*/
+
 pub(crate) mod arg;
+mod interaction;
 pub(crate) mod subcommand;
 
 use clap::Parser;

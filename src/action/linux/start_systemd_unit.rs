@@ -1,26 +1,31 @@
 use tokio::process::Command;
 
+use crate::action::{ActionState, StatefulAction};
 use crate::execute_command;
 
 use crate::{
-    action::{Action, ActionDescription, ActionState},
+    action::{Action, ActionDescription},
     BoxableError,
 };
 
+/**
+Start a given systemd unit
+ */
 #[derive(Debug, serde::Deserialize, serde::Serialize, Clone)]
 pub struct StartSystemdUnit {
     unit: String,
-    action_state: ActionState,
 }
 
 impl StartSystemdUnit {
     #[tracing::instrument(skip_all)]
     pub async fn plan(
         unit: impl AsRef<str>,
-    ) -> Result<Self, Box<dyn std::error::Error + Send + Sync>> {
-        Ok(Self {
-            unit: unit.as_ref().to_string(),
-            action_state: ActionState::Uncompleted,
+    ) -> Result<StatefulAction<Self>, Box<dyn std::error::Error + Send + Sync>> {
+        Ok(StatefulAction {
+            action: Self {
+                unit: unit.as_ref().to_string(),
+            },
+            state: ActionState::Uncompleted,
         })
     }
 }
@@ -92,14 +97,6 @@ impl Action for StartSystemdUnit {
         .map_err(|e| StartSystemdUnitError::Command(e).boxed())?;
 
         Ok(())
-    }
-
-    fn action_state(&self) -> ActionState {
-        self.action_state
-    }
-
-    fn set_action_state(&mut self, action_state: ActionState) {
-        self.action_state = action_state;
     }
 }
 

@@ -1,43 +1,56 @@
 use std::{path::PathBuf, str::FromStr};
 
 use crate::{
-    action::{Action, ActionDescription, ActionImplementation},
-    planner::Planner,
+    action::{Action, ActionDescription, StatefulAction},
+    planner::{BuiltinPlanner, Planner},
     HarmonicError,
 };
-use crossterm::style::Stylize;
+use owo_colors::OwoColorize;
 use semver::{Version, VersionReq};
 use serde::{de::Error, Deserialize, Deserializer};
 use tokio::sync::broadcast::Receiver;
 
 pub const RECEIPT_LOCATION: &str = "/nix/receipt.json";
 
+/**
+A set of [`Action`]s, along with some metadata, which can be carried out to drive an install or
+revert
+*/
 #[derive(Debug, serde::Deserialize, serde::Serialize, Clone)]
 pub struct InstallPlan {
     #[serde(deserialize_with = "ensure_version")]
     pub(crate) version: Version,
 
-    pub(crate) actions: Vec<Box<dyn Action>>,
+    pub(crate) actions: Vec<StatefulAction<Box<dyn Action>>>,
 
     pub(crate) planner: Box<dyn Planner>,
 }
 
 impl InstallPlan {
-    pub async fn plan(
-        planner: Box<dyn Planner>,
-    ) -> Result<Self, Box<dyn std::error::Error + Sync + Send>> {
+    pub async fn default() -> Result<Self, HarmonicError> {
+        let planner = BuiltinPlanner::default().await?.boxed();
         let actions = planner.plan().await?;
+
         Ok(Self {
             planner,
             actions,
             version: current_version()?,
         })
     }
+
+    pub async fn plan<P>(planner: P) -> Result<Self, HarmonicError>
+    where
+        P: Planner + 'static,
+    {
+        let actions = planner.plan().await?;
+        Ok(Self {
+            planner: planner.boxed(),
+            actions,
+            version: current_version()?,
+        })
+    }
     #[tracing::instrument(skip_all)]
-    pub fn describe_execute(
-        &self,
-        explain: bool,
-    ) -> Result<String, Box<dyn std::error::Error + Sync + Send>> {
+    pub fn describe_install(&self, explain: bool) -> Result<String, HarmonicError> {
         let Self {
             planner,
             actions,
@@ -134,10 +147,7 @@ impl InstallPlan {
     }
 
     #[tracing::instrument(skip_all)]
-    pub fn describe_revert(
-        &self,
-        explain: bool,
-    ) -> Result<String, Box<dyn std::error::Error + Sync + Send>> {
+    pub fn describe_uninstall(&self, explain: bool) -> Result<String, HarmonicError> {
         let Self {
             version: _,
             planner,
@@ -196,7 +206,7 @@ impl InstallPlan {
     }
 
     #[tracing::instrument(skip_all)]
-    pub async fn revert(
+    pub async fn uninstall(
         &mut self,
         cancel_channel: impl Into<Option<Receiver<()>>>,
     ) -> Result<(), HarmonicError> {
@@ -277,13 +287,11 @@ fn ensure_version<'de, D: Deserializer<'de>>(d: D) -> Result<Version, D::Error> 
 mod test {
     use semver::Version;
 
-    use crate::{planner::BuiltinPlanner, InstallPlan};
+    use crate::{planner::BuiltinPlanner, HarmonicError, InstallPlan};
 
     #[tokio::test]
-    async fn ensure_version_allows_compatible() -> eyre::Result<()> {
-        let planner = BuiltinPlanner::default()
-            .await
-            .map_err(|e| eyre::eyre!(e))?;
+    async fn ensure_version_allows_compatible() -> Result<(), HarmonicError> {
+        let planner = BuiltinPlanner::default().await?;
         let good_version = Version::parse(env!("CARGO_PKG_VERSION"))?;
         let value = serde_json::json!({
             "planner": planner.boxed(),
@@ -296,10 +304,8 @@ mod test {
     }
 
     #[tokio::test]
-    async fn ensure_version_denies_incompatible() -> eyre::Result<()> {
-        let planner = BuiltinPlanner::default()
-            .await
-            .map_err(|e| eyre::eyre!(e))?;
+    async fn ensure_version_denies_incompatible() -> Result<(), HarmonicError> {
+        let planner = BuiltinPlanner::default().await?;
         let bad_version = Version::parse("9999999999999.9999999999.99999999")?;
         let value = serde_json::json!({
             "planner": planner.boxed(),

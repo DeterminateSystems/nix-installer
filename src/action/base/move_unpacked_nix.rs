@@ -1,26 +1,25 @@
 use std::path::{Path, PathBuf};
 
 use crate::{
-    action::{Action, ActionDescription, ActionState},
+    action::{Action, ActionDescription, StatefulAction},
     BoxableError,
 };
 
 const DEST: &str = "/nix/store";
 
+/**
+Move an unpacked Nix at `src` to `/nix`
+*/
 #[derive(Debug, serde::Deserialize, serde::Serialize, Clone)]
 pub struct MoveUnpackedNix {
     src: PathBuf,
-    action_state: ActionState,
 }
 
 impl MoveUnpackedNix {
     #[tracing::instrument(skip_all)]
-    pub async fn plan(src: PathBuf) -> Result<Self, MoveUnpackedNixError> {
+    pub async fn plan(src: PathBuf) -> Result<StatefulAction<Self>, MoveUnpackedNixError> {
         // Note: Do NOT try to check for the src/dest since the installer creates those
-        Ok(Self {
-            src,
-            action_state: ActionState::Uncompleted,
-        })
+        Ok(Self { src }.into())
     }
 }
 
@@ -46,12 +45,7 @@ impl Action for MoveUnpackedNix {
         dest = DEST,
     ))]
     async fn execute(&mut self) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
-        let Self { src, action_state } = self;
-        if *action_state == ActionState::Completed {
-            tracing::trace!("Already completed: Moving Nix");
-            return Ok(());
-        }
-        tracing::debug!("Moving Nix");
+        let Self { src } = self;
 
         // TODO(@Hoverbear): I would like to make this less awful
         let found_nix_paths = glob::glob(&format!("{}/nix-*", src.display()))
@@ -76,8 +70,7 @@ impl Action for MoveUnpackedNix {
         tokio::fs::remove_dir_all(src)
             .await
             .map_err(|e| MoveUnpackedNixError::Rename(src_store, dest.to_owned(), e).boxed())?;
-        tracing::trace!("Moved Nix");
-        *action_state = ActionState::Completed;
+
         Ok(())
     }
 
@@ -92,14 +85,6 @@ impl Action for MoveUnpackedNix {
     async fn revert(&mut self) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
         // Noop
         Ok(())
-    }
-
-    fn action_state(&self) -> ActionState {
-        self.action_state
-    }
-
-    fn set_action_state(&mut self, action_state: ActionState) {
-        self.action_state = action_state;
     }
 }
 
