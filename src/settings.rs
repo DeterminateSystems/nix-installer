@@ -119,7 +119,7 @@ pub struct CommonSettings {
         )
     )]
     #[cfg_attr(
-        all(target_os = "linux", target_arch = "aarch64", feautre = "cli"),
+        all(target_os = "linux", target_arch = "aarch64", feature = "cli"),
         clap(
             default_value = NIX_AARCH64_LINUX_URL,
         )
