@@ -6,9 +6,9 @@ Harmonic breaks down into three main concepts:
   like [`JoinSet`](tokio::task::JoinSet)s.
 * [`InstallPlan`]: A set of [`Action`]s, along with some metadata, which can be carried out to
   drive an install or revert.
-* [`Planner`]: Something which can be used to plan out an [`InstallPlan`].
+* [`Planner`](planner::Planner): Something which can be used to plan out an [`InstallPlan`].
 
-It is possible to create custom [`Action`]s and [`Planner`]s to suit the needs of your project, team, or organization.
+It is possible to create custom [`Action`]s and [`Planner`](planner::Planner)s to suit the needs of your project, team, or organization.
 
 In the simplest case, Harmonic can be asked to determine a default plan for the platform and install
 it, uninstalling if anything goes wrong:
