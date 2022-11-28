@@ -1,5 +1,5 @@
 use crate::action::base::{CreateOrAppendFile, CreateOrAppendFileError};
-use crate::action::{Action, ActionDescription, ActionImplementation, ActionState};
+use crate::action::{Action, ActionDescription, StatefulAction};
 use crate::BoxableError;
 
 use std::path::Path;
@@ -15,15 +15,17 @@ const PROFILE_TARGETS: &[&str] = &[
 ];
 const PROFILE_NIX_FILE: &str = "/nix/var/nix/profiles/default/etc/profile.d/nix-daemon.sh";
 
+/**
+Configure any detected shell profiles to include Nix support
+ */
 #[derive(Debug, serde::Deserialize, serde::Serialize, Clone)]
 pub struct ConfigureShellProfile {
-    create_or_append_files: Vec<CreateOrAppendFile>,
-    action_state: ActionState,
+    create_or_append_files: Vec<StatefulAction<CreateOrAppendFile>>,
 }
 
 impl ConfigureShellProfile {
     #[tracing::instrument(skip_all)]
-    pub async fn plan() -> Result<Self, Box<dyn std::error::Error + Send + Sync>> {
+    pub async fn plan() -> Result<StatefulAction<Self>, Box<dyn std::error::Error + Send + Sync>> {
         let mut create_or_append_files = Vec::default();
         for profile_target in PROFILE_TARGETS {
             let path = Path::new(profile_target);
@@ -49,8 +51,8 @@ impl ConfigureShellProfile {
 
         Ok(Self {
             create_or_append_files,
-            action_state: ActionState::Uncompleted,
-        })
+        }
+        .into())
     }
 }
 
@@ -72,7 +74,6 @@ impl Action for ConfigureShellProfile {
     async fn execute(&mut self) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
         let Self {
             create_or_append_files,
-            action_state: _,
         } = self;
 
         let mut set = JoinSet::new();
@@ -121,7 +122,6 @@ impl Action for ConfigureShellProfile {
     async fn revert(&mut self) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
         let Self {
             create_or_append_files,
-            action_state: _,
         } = self;
 
         let mut set = JoinSet::new();
@@ -130,7 +130,7 @@ impl Action for ConfigureShellProfile {
         for (idx, create_or_append_file) in create_or_append_files.iter().enumerate() {
             let mut create_or_append_file_clone = create_or_append_file.clone();
             let _abort_handle = set.spawn(async move {
-                create_or_append_file_clone.revert().await?;
+                create_or_append_file_clone.try_revert().await?;
                 Result::<_, Box<dyn std::error::Error + Send + Sync>>::Ok((
                     idx,
                     create_or_append_file_clone,
@@ -157,14 +157,6 @@ impl Action for ConfigureShellProfile {
         }
 
         Ok(())
-    }
-
-    fn action_state(&self) -> ActionState {
-        self.action_state
-    }
-
-    fn set_action_state(&mut self, action_state: ActionState) {
-        self.action_state = action_state;
     }
 }
 

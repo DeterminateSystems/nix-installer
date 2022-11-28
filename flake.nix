@@ -121,14 +121,16 @@
                 pkg-config
               ];
               buildInputs = with pkgs; [
-
                 openssl
               ] ++ lib.optionals (pkgs.stdenv.isDarwin) (with pkgs.darwin.apple_sdk.frameworks; [
                 SystemConfiguration
               ]);
 
               doCheck = true;
+              doDoc = true;
+              doDocFail = true;
               RUSTFLAGS = "--cfg tracing_unstable --cfg tokio_unstable";
+              cargoTestOptions = f: f ++ ["--all"];
 
               override = { preBuild ? "", ... }: {
                 preBuild = preBuild + ''

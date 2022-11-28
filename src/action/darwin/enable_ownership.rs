@@ -3,29 +3,32 @@ use std::path::{Path, PathBuf};
 
 use tokio::process::Command;
 
+use crate::action::StatefulAction;
 use crate::execute_command;
 
 use crate::os::darwin::DiskUtilOutput;
 use crate::{
-    action::{Action, ActionDescription, ActionState},
+    action::{Action, ActionDescription},
     BoxableError,
 };
 
+/**
+Enable ownership on a volume
+ */
 #[derive(Debug, serde::Deserialize, serde::Serialize, Clone)]
 pub struct EnableOwnership {
     path: PathBuf,
-    action_state: ActionState,
 }
 
 impl EnableOwnership {
     #[tracing::instrument(skip_all)]
     pub async fn plan(
         path: impl AsRef<Path>,
-    ) -> Result<Self, Box<dyn std::error::Error + Send + Sync>> {
+    ) -> Result<StatefulAction<Self>, Box<dyn std::error::Error + Send + Sync>> {
         Ok(Self {
             path: path.as_ref().to_path_buf(),
-            action_state: ActionState::Uncompleted,
-        })
+        }
+        .into())
     }
 }
 
@@ -44,10 +47,7 @@ impl Action for EnableOwnership {
         path = %self.path.display(),
     ))]
     async fn execute(&mut self) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
-        let Self {
-            path,
-            action_state: _,
-        } = self;
+        let Self { path } = self;
 
         let should_enable_ownership = {
             let buf = execute_command(
@@ -89,14 +89,6 @@ impl Action for EnableOwnership {
     async fn revert(&mut self) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
         // noop
         Ok(())
-    }
-
-    fn action_state(&self) -> ActionState {
-        self.action_state
-    }
-
-    fn set_action_state(&mut self, action_state: ActionState) {
-        self.action_state = action_state;
     }
 }
 

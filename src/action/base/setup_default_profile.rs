@@ -1,4 +1,4 @@
-use crate::{action::ActionState, execute_command, set_env, BoxableError};
+use crate::{action::StatefulAction, execute_command, set_env, BoxableError};
 
 use glob::glob;
 
@@ -6,19 +6,20 @@ use tokio::process::Command;
 
 use crate::action::{Action, ActionDescription};
 
+/**
+Setup the default Nix profile with `nss-cacert` and `nix` itself.
+ */
 #[derive(Debug, serde::Deserialize, serde::Serialize, Clone)]
 pub struct SetupDefaultProfile {
     channels: Vec<String>,
-    action_state: ActionState,
 }
 
 impl SetupDefaultProfile {
     #[tracing::instrument(skip_all)]
-    pub async fn plan(channels: Vec<String>) -> Result<Self, SetupDefaultProfileError> {
-        Ok(Self {
-            channels,
-            action_state: ActionState::Uncompleted,
-        })
+    pub async fn plan(
+        channels: Vec<String>,
+    ) -> Result<StatefulAction<Self>, SetupDefaultProfileError> {
+        Ok(Self { channels }.into())
     }
 }
 
@@ -37,10 +38,7 @@ impl Action for SetupDefaultProfile {
         channels = %self.channels.join(","),
     ))]
     async fn execute(&mut self) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
-        let Self {
-            channels,
-            action_state: _,
-        } = self;
+        let Self { channels } = self;
 
         // Find an `nix` package
         let nix_pkg_glob = "/nix/store/*-nix-*";
@@ -158,14 +156,6 @@ impl Action for SetupDefaultProfile {
         std::env::remove_var("NIX_SSL_CERT_FILE");
 
         Ok(())
-    }
-
-    fn action_state(&self) -> ActionState {
-        self.action_state
-    }
-
-    fn set_action_state(&mut self, action_state: ActionState) {
-        self.action_state = action_state;
     }
 }
 

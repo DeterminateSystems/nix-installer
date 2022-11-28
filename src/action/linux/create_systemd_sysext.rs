@@ -1,6 +1,7 @@
 use crate::action::base::{CreateDirectory, CreateDirectoryError, CreateFile, CreateFileError};
+use crate::action::StatefulAction;
 use crate::{
-    action::{Action, ActionDescription, ActionImplementation, ActionState},
+    action::{Action, ActionDescription},
     BoxableError,
 };
 use std::path::{Path, PathBuf};
@@ -16,17 +17,16 @@ const PATHS: &[&str] = &[
 #[derive(Debug, serde::Deserialize, serde::Serialize, Clone)]
 pub struct CreateSystemdSysext {
     destination: PathBuf,
-    create_directories: Vec<CreateDirectory>,
-    create_extension_release: CreateFile,
-    create_bind_mount_unit: CreateFile,
-    action_state: ActionState,
+    create_directories: Vec<StatefulAction<CreateDirectory>>,
+    create_extension_release: StatefulAction<CreateFile>,
+    create_bind_mount_unit: StatefulAction<CreateFile>,
 }
 
 impl CreateSystemdSysext {
     #[tracing::instrument(skip_all)]
     pub async fn plan(
         destination: impl AsRef<Path>,
-    ) -> Result<Self, Box<dyn std::error::Error + Send + Sync>> {
+    ) -> Result<StatefulAction<Self>, Box<dyn std::error::Error + Send + Sync>> {
         let destination = destination.as_ref();
 
         let mut create_directories =
@@ -85,8 +85,8 @@ impl CreateSystemdSysext {
             create_directories,
             create_extension_release,
             create_bind_mount_unit,
-            action_state: ActionState::Uncompleted,
-        })
+        }
+        .into())
     }
 }
 
@@ -113,7 +113,6 @@ impl Action for CreateSystemdSysext {
     async fn execute(&mut self) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
         let Self {
             destination: _,
-            action_state: _,
             create_directories,
             create_extension_release,
             create_bind_mount_unit,
@@ -142,7 +141,6 @@ impl Action for CreateSystemdSysext {
     async fn revert(&mut self) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
         let Self {
             destination: _,
-            action_state: _,
             create_directories,
             create_extension_release,
             create_bind_mount_unit,
@@ -157,14 +155,6 @@ impl Action for CreateSystemdSysext {
         }
 
         Ok(())
-    }
-
-    fn action_state(&self) -> ActionState {
-        self.action_state
-    }
-
-    fn set_action_state(&mut self, action_state: ActionState) {
-        self.action_state = action_state;
     }
 }
 
