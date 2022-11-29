@@ -67,7 +67,7 @@ impl ConfigureShellProfile {
                         profile_target_path,
                         None,
                         None,
-                        0o0644,
+                        0o0755,
                         shell_buf.to_string(),
                     )
                     .await
@@ -106,7 +106,7 @@ impl ConfigureShellProfile {
             }
 
             create_or_append_files.push(
-                CreateOrAppendFile::plan(profile_target, None, None, 0o0644, fish_buf.to_string())
+                CreateOrAppendFile::plan(profile_target, None, None, 0o0755, fish_buf.to_string())
                     .await
                     .map_err(|e| e.boxed())?,
             );
@@ -149,8 +149,10 @@ impl Action for ConfigureShellProfile {
         let mut errors = Vec::default();
 
         for (idx, create_or_append_file) in create_or_append_files.iter().enumerate() {
+            let span = tracing::Span::current().clone();
             let mut create_or_append_file_clone = create_or_append_file.clone();
             let _abort_handle = set.spawn(async move {
+                let _ = span.enter();
                 create_or_append_file_clone.try_execute().await?;
                 Result::<_, Box<dyn std::error::Error + Send + Sync>>::Ok((
                     idx,
