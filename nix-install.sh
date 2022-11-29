@@ -79,9 +79,9 @@ main() {
     done
 
     if $_ansi_escapes_are_valid; then
-        printf "\33[1minfo:\33[0m downloading installer \33[4m$_url\33[0m\n" 1>&2
+        printf "\33[1minfo:\33[0m downloading installer \33[4m%s\33[0m\n" "$_url" 1>&2
     else
-        printf '%s\n' 'info: downloading installer $_url' 1>&2
+        printf 'info: downloading installer (%s)\n' "$_url" 1>&2
     fi
 
     ensure mkdir -p "$_dir"
@@ -123,61 +123,10 @@ check_proc() {
     fi
 }
 
-get_bitness() {
-    need_cmd head
-    # Architecture detection without dependencies beyond coreutils.
-    # ELF files start out "\x7fELF", and the following byte is
-    #   0x01 for 32-bit and
-    #   0x02 for 64-bit.
-    # The printf builtin on some shells like dash only supports octal
-    # escape sequences, so we use those.
-    local _current_exe_head
-    _current_exe_head=$(head -c 5 /proc/self/exe )
-    if [ "$_current_exe_head" = "$(printf '\177ELF\001')" ]; then
-        echo 32
-    elif [ "$_current_exe_head" = "$(printf '\177ELF\002')" ]; then
-        echo 64
-    else
-        err "unknown platform bitness"
-    fi
-}
-
-is_host_amd64_elf() {
-    need_cmd head
-    need_cmd tail
-    # ELF e_machine detection without dependencies beyond coreutils.
-    # Two-byte field at offset 0x12 indicates the CPU,
-    # but we're interested in it being 0x3E to indicate amd64, or not that.
-    local _current_exe_machine
-    _current_exe_machine=$(head -c 19 /proc/self/exe | tail -c 1)
-    [ "$_current_exe_machine" = "$(printf '\076')" ]
-}
-
-get_endianness() {
-    local cputype=$1
-    local suffix_eb=$2
-    local suffix_el=$3
-
-    # detect endianness without od/hexdump, like get_bitness() does.
-    need_cmd head
-    need_cmd tail
-
-    local _current_exe_endianness
-    _current_exe_endianness="$(head -c 6 /proc/self/exe | tail -c 1)"
-    if [ "$_current_exe_endianness" = "$(printf '\001')" ]; then
-        echo "${cputype}${suffix_el}"
-    elif [ "$_current_exe_endianness" = "$(printf '\002')" ]; then
-        echo "${cputype}${suffix_eb}"
-    else
-        err "unknown platform endianness"
-    fi
-}
-
 get_architecture() {
-    local _ostype _cputype _bitness _arch _clibtype
+    local _ostype _cputype _arch
     _ostype="$(uname -s)"
     _cputype="$(uname -m)"
-    _clibtype="gnu"
 
     if [ "$_ostype" = Linux ]; then
         if [ "$(uname -o)" = Android ]; then
@@ -217,7 +166,6 @@ get_architecture() {
         Linux)
             check_proc
             _ostype=linux
-            _bitness=$(get_bitness)
             ;;
 
         Darwin)
