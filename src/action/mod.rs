@@ -49,7 +49,7 @@ use std::{error::Error, collections::HashMap};
 use harmonic::{
     InstallPlan,
     settings::{CommonSettings, InstallSettingsError},
-    planner::{Planner, PlannerError, specific::SteamDeck},
+    planner::{Planner, PlannerError, linux::SteamDeck},
     action::{Action, StatefulAction, ActionDescription},
 };
 

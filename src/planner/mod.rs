@@ -16,7 +16,7 @@ use std::{error::Error, collections::HashMap};
 use harmonic::{
     InstallPlan,
     settings::{CommonSettings, InstallSettingsError},
-    planner::{Planner, PlannerError, specific::SteamDeck},
+    planner::{Planner, PlannerError, linux::SteamDeck},
     action::{Action, StatefulAction, linux::StartSystemdUnit},
 };
 
@@ -39,7 +39,7 @@ impl Planner for MyPlanner {
         Ok(vec![
             // ...
 
-                StartSystemdUnit::plan("nix-daemon.socket".into())
+                StartSystemdUnit::plan("nix-daemon.socket")
                     .await
                     .map_err(PlannerError::Action)?.boxed(),
         ])
