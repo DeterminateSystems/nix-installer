@@ -4,7 +4,7 @@ use target_lexicon::OperatingSystem;
 use tokio::fs::remove_file;
 use tokio::process::Command;
 
-use crate::action::StatefulAction;
+use crate::action::{ActionError, StatefulAction};
 use crate::execute_command;
 
 use crate::{
@@ -26,7 +26,7 @@ pub struct ConfigureNixDaemonService {}
 
 impl ConfigureNixDaemonService {
     #[tracing::instrument(skip_all)]
-    pub async fn plan() -> Result<StatefulAction<Self>, Box<dyn std::error::Error + Send + Sync>> {
+    pub fn plan() -> Result<StatefulAction<Self>, ActionError> {
         match OperatingSystem::host() {
             OperatingSystem::MacOSX {
                 major: _,
@@ -36,7 +36,9 @@ impl ConfigureNixDaemonService {
             | OperatingSystem::Darwin => (),
             _ => {
                 if !Path::new("/run/systemd/system").exists() {
-                    return Err(ConfigureNixDaemonServiceError::InitNotSupported.boxed());
+                    return Err(ActionError::Custom(
+                        ConfigureNixDaemonServiceError::InitNotSupported.boxed(),
+                    ));
                 }
             },
         };
@@ -64,7 +66,7 @@ impl Action for ConfigureNixDaemonService {
     }
 
     #[tracing::instrument(skip_all)]
-    async fn execute(&mut self) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
+    async fn execute(&mut self) -> Result<(), ActionError> {
         let Self {} = self;
 
         match OperatingSystem::host() {
@@ -177,7 +179,7 @@ impl Action for ConfigureNixDaemonService {
     }
 
     #[tracing::instrument(skip_all)]
-    async fn revert(&mut self) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
+    async fn revert(&mut self) -> Result<(), ActionError> {
         match OperatingSystem::host() {
             OperatingSystem::MacOSX {
                 major: _,

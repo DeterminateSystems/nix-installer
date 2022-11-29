@@ -2,7 +2,7 @@ use std::path::{Path, PathBuf};
 
 use tokio::process::Command;
 
-use crate::action::StatefulAction;
+use crate::action::{ActionError, StatefulAction};
 use crate::execute_command;
 
 use crate::{
@@ -24,7 +24,7 @@ impl UnmountApfsVolume {
     pub async fn plan(
         disk: impl AsRef<Path>,
         name: String,
-    ) -> Result<StatefulAction<Self>, Box<dyn std::error::Error + Send + Sync>> {
+    ) -> Result<StatefulAction<Self>, ActionError> {
         let disk = disk.as_ref().to_owned();
         Ok(Self { disk, name }.into())
     }
@@ -45,7 +45,7 @@ impl Action for UnmountApfsVolume {
         disk = %self.disk.display(),
         name = %self.name,
     ))]
-    async fn execute(&mut self) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
+    async fn execute(&mut self) -> Result<(), ActionError> {
         let Self { disk: _, name } = self;
 
         execute_command(
@@ -69,7 +69,7 @@ impl Action for UnmountApfsVolume {
         disk = %self.disk.display(),
         name = %self.name,
     ))]
-    async fn revert(&mut self) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
+    async fn revert(&mut self) -> Result<(), ActionError> {
         let Self { disk: _, name } = self;
 
         execute_command(

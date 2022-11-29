@@ -3,7 +3,7 @@ use crate::{
         base::SetupDefaultProfile,
         common::{ConfigureShellProfile, PlaceChannelConfiguration, PlaceNixConfiguration},
         linux::ConfigureNixDaemonService,
-        Action, ActionDescription, StatefulAction,
+        Action, ActionDescription, ActionError, StatefulAction,
     },
     channel_value::ChannelValue,
     settings::CommonSettings,
@@ -26,9 +26,7 @@ pub struct ConfigureNix {
 
 impl ConfigureNix {
     #[tracing::instrument(skip_all)]
-    pub async fn plan(
-        settings: &CommonSettings,
-    ) -> Result<StatefulAction<Self>, Box<dyn std::error::Error + Send + Sync>> {
+    pub async fn plan(settings: &CommonSettings) -> Result<StatefulAction<Self>, ActionError> {
         let channels: Vec<(String, Url)> = settings
             .channels
             .iter()
@@ -93,7 +91,7 @@ impl Action for ConfigureNix {
     }
 
     #[tracing::instrument(skip_all)]
-    async fn execute(&mut self) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
+    async fn execute(&mut self) -> Result<(), ActionError> {
         let Self {
             setup_default_profile,
             configure_nix_daemon_service,
@@ -143,7 +141,7 @@ impl Action for ConfigureNix {
     }
 
     #[tracing::instrument(skip_all)]
-    async fn revert(&mut self) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
+    async fn revert(&mut self) -> Result<(), ActionError> {
         let Self {
             setup_default_profile,
             configure_nix_daemon_service,

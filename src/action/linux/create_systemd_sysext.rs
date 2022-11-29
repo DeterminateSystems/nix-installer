@@ -1,5 +1,5 @@
 use crate::action::base::{CreateDirectory, CreateDirectoryError, CreateFile, CreateFileError};
-use crate::action::StatefulAction;
+use crate::action::{ActionError, StatefulAction};
 use crate::{
     action::{Action, ActionDescription},
     BoxableError,
@@ -24,13 +24,13 @@ pub struct CreateSystemdSysext {
 
 impl CreateSystemdSysext {
     #[tracing::instrument(skip_all)]
-    pub async fn plan(
-        destination: impl AsRef<Path>,
-    ) -> Result<StatefulAction<Self>, Box<dyn std::error::Error + Send + Sync>> {
+    pub async fn plan(destination: impl AsRef<Path>) -> Result<StatefulAction<Self>, ActionError> {
         let destination = destination.as_ref();
 
         let mut create_directories =
-            vec![CreateDirectory::plan(destination, None, None, 0o0755, true).await?];
+            vec![CreateDirectory::plan(destination, None, None, 0o0755, true)
+                .await
+                .map_err(|e| ActionError::Child(Box::new(e)))?];
         for path in PATHS {
             create_directories.push(
                 CreateDirectory::plan(destination.join(path), None, None, 0o0755, false).await?,
@@ -58,7 +58,8 @@ impl CreateSystemdSysext {
             extension_release_buf,
             false,
         )
-        .await?;
+        .await
+        .map_err(|e| ActionError::Child(Box::new(e)))?;
 
         let create_bind_mount_buf = format!(
             "
@@ -110,7 +111,7 @@ impl Action for CreateSystemdSysext {
     }
 
     #[tracing::instrument(skip_all, fields(destination,))]
-    async fn execute(&mut self) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
+    async fn execute(&mut self) -> Result<(), ActionError> {
         let Self {
             destination: _,
             create_directories,
@@ -138,7 +139,7 @@ impl Action for CreateSystemdSysext {
     }
 
     #[tracing::instrument(skip_all, fields(destination,))]
-    async fn revert(&mut self) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
+    async fn revert(&mut self) -> Result<(), ActionError> {
         let Self {
             destination: _,
             create_directories,

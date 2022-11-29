@@ -32,7 +32,7 @@ impl Action for SystemdSysextMerge {
     #[tracing::instrument(skip_all, fields(
         device = %self.device.display(),
     ))]
-    async fn execute(&mut self) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
+    async fn execute(&mut self) -> Result<(), ActionError> {
         let Self {
             device,
             action_state,
@@ -63,7 +63,7 @@ impl Action for SystemdSysextMerge {
     #[tracing::instrument(skip_all, fields(
         device = %self.device.display(),
     ))]
-    async fn revert(&mut self) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
+    async fn revert(&mut self) -> Result<(), ActionError> {
         let Self { device } = self;
 
         // TODO(@Hoverbear): Handle proxy vars

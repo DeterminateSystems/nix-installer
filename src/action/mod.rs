@@ -59,7 +59,7 @@ pub struct MyAction {}
 
 impl MyAction {
     #[tracing::instrument(skip_all)]
-    pub async fn plan() -> Result<StatefulAction<Self>, Box<dyn std::error::Error + Send + Sync>> {
+    pub async fn plan() -> Result<StatefulAction<Self>, ActionError> {
         Ok(Self {}.into())
     }
 }
@@ -79,7 +79,7 @@ impl Action for MyAction {
     #[tracing::instrument(skip_all, fields(
         // Tracing fields...
     ))]
-    async fn execute(&mut self) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
+    async fn execute(&mut self) -> Result<(), ActionError> {
         // Execute steps ...
         Ok(())
     }
@@ -91,7 +91,7 @@ impl Action for MyAction {
     #[tracing::instrument(skip_all, fields(
         // Tracing fields...
     ))]
-    async fn revert(&mut self) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
+    async fn revert(&mut self) -> Result<(), ActionError> {
         // Revert steps...
         Ok(())
     }
@@ -186,13 +186,13 @@ pub trait Action: Send + Sync + std::fmt::Debug + dyn_clone::DynClone {
     /// If this action calls sub-[`Action`]s, care should be taken to call [`try_execute`][StatefulAction::try_execute], not [`execute`][Action::execute], so that [`ActionState`] is handled correctly and tracing is done.
     ///
     /// This is called by [`InstallPlan::install`](crate::InstallPlan::install) through [`StatefulAction::try_execute`] which handles tracing as well as if the action needs to execute based on its `action_state`.
-    async fn execute(&mut self) -> Result<(), Box<dyn std::error::Error + Send + Sync>>;
+    async fn execute(&mut self) -> Result<(), ActionError>;
     /// Perform any revert steps
     ///
     /// If this action calls sub-[`Action`]s, care should be taken to call [`try_revert`][StatefulAction::try_revert], not [`revert`][Action::revert], so that [`ActionState`] is handled correctly and tracing is done.
     ///
     /// /// This is called by [`InstallPlan::uninstall`](crate::InstallPlan::uninstall) through [`StatefulAction::try_revert`] which handles tracing as well as if the action needs to revert based on its `action_state`.
-    async fn revert(&mut self) -> Result<(), Box<dyn std::error::Error + Send + Sync>>;
+    async fn revert(&mut self) -> Result<(), ActionError>;
 
     fn stateful(self) -> StatefulAction<Self>
     where
@@ -203,7 +203,7 @@ pub trait Action: Send + Sync + std::fmt::Debug + dyn_clone::DynClone {
             state: ActionState::Uncompleted,
         }
     }
-    // They should also have an `async fn plan(args...) -> Result<StatefulAction<Self>, Box<dyn std::error::Error + Send + Sync>>;`
+    // They should also have an `async fn plan(args...) -> Result<StatefulAction<Self>, ActionError>;`
 }
 
 dyn_clone::clone_trait_object!(Action);
@@ -224,4 +224,21 @@ impl ActionDescription {
             explanation,
         }
     }
+}
+
+/// An error occurring during a call defined in this crate
+#[derive(thiserror::Error, Debug)]
+pub enum ActionError {
+    /// A custom error
+    #[error(transparent)]
+    Custom(#[from] Box<dyn std::error::Error + Send + Sync>),
+    /// A child error
+    #[error(transparent)]
+    Child(#[from] Box<ActionError>),
+    /// The path already exists
+    #[error("Path exists `{0}`")]
+    Exists(std::path::PathBuf),
+    /// Failed to execute command
+    #[error("Failed to execute command")]
+    Command(#[source] std::io::Error),
 }

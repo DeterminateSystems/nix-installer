@@ -5,7 +5,7 @@ use nix::unistd::{chown, Group, User};
 
 use tokio::fs::{create_dir, remove_dir_all};
 
-use crate::action::StatefulAction;
+use crate::action::{ActionError, StatefulAction};
 use crate::{
     action::{Action, ActionDescription, ActionState},
     BoxableError,
@@ -33,7 +33,7 @@ impl CreateDirectory {
         group: impl Into<Option<String>>,
         mode: impl Into<Option<u32>>,
         force_prune_on_revert: bool,
-    ) -> Result<StatefulAction<Self>, Box<dyn std::error::Error + Send + Sync>> {
+    ) -> Result<StatefulAction<Self>, ActionError> {
         let path = path.as_ref();
         let user = user.into();
         let group = group.into();
@@ -94,7 +94,7 @@ impl Action for CreateDirectory {
         group = self.group,
         mode = self.mode.map(|v| tracing::field::display(format!("{:#o}", v))),
     ))]
-    async fn execute(&mut self) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
+    async fn execute(&mut self) -> Result<(), ActionError> {
         let Self {
             path,
             user,
@@ -168,7 +168,7 @@ impl Action for CreateDirectory {
         group = self.group,
         mode = self.mode.map(|v| tracing::field::display(format!("{:#o}", v))),
     ))]
-    async fn revert(&mut self) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
+    async fn revert(&mut self) -> Result<(), ActionError> {
         let Self {
             path,
             user: _,

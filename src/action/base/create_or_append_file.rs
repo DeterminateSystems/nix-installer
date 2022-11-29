@@ -71,7 +71,7 @@ impl Action for CreateOrAppendFile {
         group = self.group,
         mode = self.mode.map(|v| tracing::field::display(format!("{:#o}", v))),
     ))]
-    async fn execute(&mut self) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
+    async fn execute(&mut self) -> Result<(), ActionError> {
         let Self {
             path,
             user,
@@ -154,7 +154,7 @@ impl Action for CreateOrAppendFile {
         group = self.group,
         mode = self.mode.map(|v| tracing::field::display(format!("{:#o}", v))),
     ))]
-    async fn revert(&mut self) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
+    async fn revert(&mut self) -> Result<(), ActionError> {
         let Self {
             path,
             user: _,

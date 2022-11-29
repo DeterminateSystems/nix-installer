@@ -37,7 +37,7 @@ impl Action for SetupDefaultProfile {
     #[tracing::instrument(skip_all, fields(
         channels = %self.channels.join(","),
     ))]
-    async fn execute(&mut self) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
+    async fn execute(&mut self) -> Result<(), ActionError> {
         let Self { channels } = self;
 
         // Find an `nix` package
@@ -152,7 +152,7 @@ impl Action for SetupDefaultProfile {
     #[tracing::instrument(skip_all, fields(
         channels = %self.channels.join(","),
     ))]
-    async fn revert(&mut self) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
+    async fn revert(&mut self) -> Result<(), ActionError> {
         std::env::remove_var("NIX_SSL_CERT_FILE");
 
         Ok(())

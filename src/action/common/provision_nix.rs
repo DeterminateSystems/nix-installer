@@ -4,7 +4,7 @@ use crate::{
             CreateDirectoryError, FetchAndUnpackNix, FetchUrlError, MoveUnpackedNix,
             MoveUnpackedNixError,
         },
-        Action, ActionDescription, StatefulAction,
+        Action, ActionDescription, ActionError, StatefulAction,
     },
     settings::CommonSettings,
     BoxableError,
@@ -27,9 +27,7 @@ pub struct ProvisionNix {
 
 impl ProvisionNix {
     #[tracing::instrument(skip_all)]
-    pub async fn plan(
-        settings: &CommonSettings,
-    ) -> Result<StatefulAction<Self>, Box<dyn std::error::Error + Send + Sync>> {
+    pub async fn plan(settings: &CommonSettings) -> Result<StatefulAction<Self>, ActionError> {
         let fetch_nix = FetchAndUnpackNix::plan(
             settings.nix_package_url.clone(),
             PathBuf::from("/nix/temp-install-dir"),
@@ -78,7 +76,7 @@ impl Action for ProvisionNix {
     }
 
     #[tracing::instrument(skip_all)]
-    async fn execute(&mut self) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
+    async fn execute(&mut self) -> Result<(), ActionError> {
         let Self {
             fetch_nix,
             create_nix_tree,
@@ -119,7 +117,7 @@ impl Action for ProvisionNix {
     }
 
     #[tracing::instrument(skip_all)]
-    async fn revert(&mut self) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
+    async fn revert(&mut self) -> Result<(), ActionError> {
         let Self {
             fetch_nix,
             create_nix_tree,

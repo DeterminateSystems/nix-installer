@@ -1,7 +1,7 @@
 use crate::{
     action::{
         base::{CreateGroup, CreateGroupError, CreateUser, CreateUserError},
-        Action, ActionDescription, StatefulAction,
+        Action, ActionDescription, ActionError, StatefulAction,
     },
     settings::CommonSettings,
     BoxableError,
@@ -101,7 +101,7 @@ impl Action for CreateUsersAndGroups {
         nix_build_user_prefix = self.nix_build_user_prefix,
         nix_build_user_id_base = self.nix_build_user_id_base,
     ))]
-    async fn execute(&mut self) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
+    async fn execute(&mut self) -> Result<(), ActionError> {
         let Self {
             create_users,
             create_group,
@@ -198,7 +198,7 @@ impl Action for CreateUsersAndGroups {
         nix_build_user_prefix = self.nix_build_user_prefix,
         nix_build_user_id_base = self.nix_build_user_id_base,
     ))]
-    async fn revert(&mut self) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
+    async fn revert(&mut self) -> Result<(), ActionError> {
         let Self {
             create_users,
             create_group,

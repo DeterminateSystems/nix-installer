@@ -7,7 +7,7 @@ use tokio::{
 };
 
 use crate::{
-    action::{Action, ActionDescription, StatefulAction},
+    action::{Action, ActionDescription, ActionError, StatefulAction},
     BoxableError,
 };
 
@@ -36,11 +36,11 @@ impl CreateFile {
         mode: impl Into<Option<u32>>,
         buf: String,
         force: bool,
-    ) -> Result<StatefulAction<Self>, Box<dyn std::error::Error + Send + Sync>> {
+    ) -> Result<StatefulAction<Self>, ActionError> {
         let path = path.as_ref().to_path_buf();
 
         if path.exists() && !force {
-            return Err(CreateFileError::Exists(path.to_path_buf()).boxed());
+            return Err(ActionError::Exists(path.to_path_buf()));
         }
 
         Ok(Self {
@@ -71,7 +71,7 @@ impl Action for CreateFile {
         group = self.group,
         mode = self.mode.map(|v| tracing::field::display(format!("{:#o}", v))),
     ))]
-    async fn execute(&mut self) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
+    async fn execute(&mut self) -> Result<(), ActionError> {
         let Self {
             path,
             user,
@@ -144,7 +144,7 @@ impl Action for CreateFile {
         group = self.group,
         mode = self.mode.map(|v| tracing::field::display(format!("{:#o}", v))),
     ))]
-    async fn revert(&mut self) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
+    async fn revert(&mut self) -> Result<(), ActionError> {
         let Self {
             path,
             user: _,

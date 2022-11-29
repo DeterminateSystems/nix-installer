@@ -1,6 +1,6 @@
 use tokio::process::Command;
 
-use crate::action::StatefulAction;
+use crate::action::{ActionError, StatefulAction};
 use crate::execute_command;
 
 use crate::{
@@ -18,9 +18,7 @@ pub struct StartSystemdUnit {
 
 impl StartSystemdUnit {
     #[tracing::instrument(skip_all)]
-    pub async fn plan(
-        unit: String,
-    ) -> Result<StatefulAction<Self>, Box<dyn std::error::Error + Send + Sync>> {
+    pub async fn plan(unit: String) -> Result<StatefulAction<Self>, ActionError> {
         Ok(Self { unit }.into())
     }
 }
@@ -39,7 +37,7 @@ impl Action for StartSystemdUnit {
     #[tracing::instrument(skip_all, fields(
         unit = %self.unit,
     ))]
-    async fn execute(&mut self) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
+    async fn execute(&mut self) -> Result<(), ActionError> {
         let Self { unit, .. } = self;
 
         // TODO(@Hoverbear): Handle proxy vars
@@ -67,7 +65,7 @@ impl Action for StartSystemdUnit {
     #[tracing::instrument(skip_all, fields(
         unit = %self.unit,
     ))]
-    async fn revert(&mut self) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
+    async fn revert(&mut self) -> Result<(), ActionError> {
         let Self { unit, .. } = self;
 
         execute_command(

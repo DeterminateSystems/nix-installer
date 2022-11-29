@@ -55,7 +55,7 @@ impl Action for CreateUser {
         groupname = self.groupname,
         gid = self.gid,
     ))]
-    async fn execute(&mut self) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
+    async fn execute(&mut self) -> Result<(), ActionError> {
         let Self {
             name,
             uid,
@@ -236,7 +236,7 @@ impl Action for CreateUser {
         uid = self.uid,
         gid = self.gid,
     ))]
-    async fn revert(&mut self) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
+    async fn revert(&mut self) -> Result<(), ActionError> {
         let Self {
             name,
             uid: _,

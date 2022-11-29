@@ -1,5 +1,5 @@
 use crate::action::base::{CreateDirectory, CreateDirectoryError};
-use crate::action::{Action, ActionDescription, StatefulAction};
+use crate::action::{Action, ActionDescription, ActionError, StatefulAction};
 
 const PATHS: &[&str] = &[
     "/nix/var",
@@ -27,7 +27,7 @@ pub struct CreateNixTree {
 
 impl CreateNixTree {
     #[tracing::instrument(skip_all)]
-    pub async fn plan() -> Result<StatefulAction<Self>, Box<dyn std::error::Error + Send + Sync>> {
+    pub async fn plan() -> Result<StatefulAction<Self>, ActionError> {
         let mut create_directories = Vec::default();
         for path in PATHS {
             // We use `create_dir` over `create_dir_all` to ensure we always set permissions right
@@ -65,7 +65,7 @@ impl Action for CreateNixTree {
     }
 
     #[tracing::instrument(skip_all)]
-    async fn execute(&mut self) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
+    async fn execute(&mut self) -> Result<(), ActionError> {
         let Self { create_directories } = self;
 
         // Just do sequential since parallelizing this will have little benefit
@@ -97,7 +97,7 @@ impl Action for CreateNixTree {
     }
 
     #[tracing::instrument(skip_all)]
-    async fn revert(&mut self) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
+    async fn revert(&mut self) -> Result<(), ActionError> {
         let Self { create_directories } = self;
 
         // Just do sequential since parallelizing this will have little benefit

@@ -43,7 +43,7 @@ impl Action for CreateGroup {
         user = self.name,
         gid = self.gid,
     ))]
-    async fn execute(&mut self) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
+    async fn execute(&mut self) -> Result<(), ActionError> {
         let Self { name, gid } = self;
 
         use target_lexicon::OperatingSystem;
@@ -112,7 +112,7 @@ impl Action for CreateGroup {
         user = self.name,
         gid = self.gid,
     ))]
-    async fn revert(&mut self) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
+    async fn revert(&mut self) -> Result<(), ActionError> {
         let Self { name, gid: _ } = self;
 
         use target_lexicon::OperatingSystem;

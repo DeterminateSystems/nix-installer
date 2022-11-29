@@ -44,7 +44,7 @@ impl Action for MoveUnpackedNix {
         src = %self.src.display(),
         dest = DEST,
     ))]
-    async fn execute(&mut self) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
+    async fn execute(&mut self) -> Result<(), ActionError> {
         let Self { src } = self;
 
         // TODO(@Hoverbear): I would like to make this less awful
@@ -82,7 +82,7 @@ impl Action for MoveUnpackedNix {
         src = %self.src.display(),
         dest = DEST,
     ))]
-    async fn revert(&mut self) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
+    async fn revert(&mut self) -> Result<(), ActionError> {
         // Noop
         Ok(())
     }

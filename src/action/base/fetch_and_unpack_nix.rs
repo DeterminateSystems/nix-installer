@@ -44,7 +44,7 @@ impl Action for FetchAndUnpackNix {
         url = %self.url,
         dest = %self.dest.display(),
     ))]
-    async fn execute(&mut self) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
+    async fn execute(&mut self) -> Result<(), ActionError> {
         let Self { url, dest } = self;
 
         let res = reqwest::get(url.clone())
@@ -75,7 +75,7 @@ impl Action for FetchAndUnpackNix {
         url = %self.url,
         dest = %self.dest.display(),
     ))]
-    async fn revert(&mut self) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
+    async fn revert(&mut self) -> Result<(), ActionError> {
         let Self { url: _, dest: _ } = self;
 
         Ok(())

@@ -1,6 +1,6 @@
 use serde::{Deserialize, Serialize};
 
-use super::{Action, ActionDescription};
+use super::{Action, ActionDescription, ActionError};
 
 /// A wrapper around an [`Action`](crate::action::Action) which tracks the [`ActionState`] and
 /// handles some tracing output
@@ -109,7 +109,7 @@ where
     /// Perform any execution steps
     ///
     /// You should prefer this ([`try_execute`][StatefulAction::try_execute]) over [`execute`][Action::execute] as it handles [`ActionState`] and does tracing
-    pub async fn try_execute(&mut self) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
+    pub async fn try_execute(&mut self) -> Result<(), ActionError> {
         if self.state == ActionState::Completed {
             tracing::trace!(
                 "Completed: (Already done) {}",
@@ -127,7 +127,7 @@ where
     /// Perform any revert steps
     ///
     /// You should prefer this ([`try_revert`][StatefulAction::try_revert]) over [`revert`][Action::revert] as it handles [`ActionState`] and does tracing
-    pub async fn try_revert(&mut self) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
+    pub async fn try_revert(&mut self) -> Result<(), ActionError> {
         if self.state == ActionState::Uncompleted {
             tracing::trace!(
                 "Reverted: (Already done) {}",

@@ -6,7 +6,7 @@ use crate::{
             CreateSyntheticObjectsError, CreateVolumeError, EnableOwnership, EnableOwnershipError,
             EncryptApfsVolume, EncryptVolumeError, UnmountApfsVolume, UnmountVolumeError,
         },
-        Action, ActionDescription, StatefulAction,
+        Action, ActionDescription, ActionError, StatefulAction,
     },
     BoxableError,
 };
@@ -43,7 +43,7 @@ impl CreateNixVolume {
         name: String,
         case_sensitive: bool,
         encrypt: bool,
-    ) -> Result<StatefulAction<Self>, Box<dyn std::error::Error + Send + Sync>> {
+    ) -> Result<StatefulAction<Self>, ActionError> {
         let disk = disk.as_ref();
         let create_or_append_synthetic_conf = CreateOrAppendFile::plan(
             "/etc/synthetic.conf",
@@ -155,7 +155,7 @@ impl Action for CreateNixVolume {
     }
 
     #[tracing::instrument(skip_all, fields(destination,))]
-    async fn execute(&mut self) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
+    async fn execute(&mut self) -> Result<(), ActionError> {
         let Self {
             disk: _,
             name: _,
@@ -218,7 +218,7 @@ impl Action for CreateNixVolume {
     }
 
     #[tracing::instrument(skip_all, fields(disk, name))]
-    async fn revert(&mut self) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
+    async fn revert(&mut self) -> Result<(), ActionError> {
         let Self {
             disk: _,
             name: _,

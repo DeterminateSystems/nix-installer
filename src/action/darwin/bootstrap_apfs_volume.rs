@@ -2,7 +2,7 @@ use std::path::{Path, PathBuf};
 
 use tokio::process::Command;
 
-use crate::action::StatefulAction;
+use crate::action::{ActionError, StatefulAction};
 use crate::execute_command;
 
 use crate::{
@@ -20,9 +20,7 @@ pub struct BootstrapApfsVolume {
 
 impl BootstrapApfsVolume {
     #[tracing::instrument(skip_all)]
-    pub async fn plan(
-        path: impl AsRef<Path>,
-    ) -> Result<StatefulAction<Self>, Box<dyn std::error::Error + Send + Sync>> {
+    pub async fn plan(path: impl AsRef<Path>) -> Result<StatefulAction<Self>, ActionError> {
         Ok(Self {
             path: path.as_ref().to_path_buf(),
         }
@@ -44,7 +42,7 @@ impl Action for BootstrapApfsVolume {
     #[tracing::instrument(skip_all, fields(
         path = %self.path.display(),
     ))]
-    async fn execute(&mut self) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
+    async fn execute(&mut self) -> Result<(), ActionError> {
         let Self { path } = self;
 
         execute_command(
@@ -78,7 +76,7 @@ impl Action for BootstrapApfsVolume {
     #[tracing::instrument(skip_all, fields(
         path = %self.path.display(),
     ))]
-    async fn revert(&mut self) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
+    async fn revert(&mut self) -> Result<(), ActionError> {
         let Self { path } = self;
 
         execute_command(

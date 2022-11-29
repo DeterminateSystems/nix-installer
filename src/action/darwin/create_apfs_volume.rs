@@ -2,7 +2,7 @@ use std::path::{Path, PathBuf};
 
 use tokio::process::Command;
 
-use crate::action::StatefulAction;
+use crate::action::{ActionError, StatefulAction};
 use crate::execute_command;
 
 use crate::{
@@ -24,7 +24,7 @@ impl CreateApfsVolume {
         disk: impl AsRef<Path>,
         name: String,
         case_sensitive: bool,
-    ) -> Result<StatefulAction<Self>, Box<dyn std::error::Error + Send + Sync>> {
+    ) -> Result<StatefulAction<Self>, ActionError> {
         Ok(Self {
             disk: disk.as_ref().to_path_buf(),
             name,
@@ -55,7 +55,7 @@ impl Action for CreateApfsVolume {
         name = %self.name,
         case_sensitive = %self.case_sensitive,
     ))]
-    async fn execute(&mut self) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
+    async fn execute(&mut self) -> Result<(), ActionError> {
         let Self {
             disk,
             name,
@@ -102,7 +102,7 @@ impl Action for CreateApfsVolume {
         name = %self.name,
         case_sensitive = %self.case_sensitive,
     ))]
-    async fn revert(&mut self) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
+    async fn revert(&mut self) -> Result<(), ActionError> {
         let Self {
             disk: _,
             name,
