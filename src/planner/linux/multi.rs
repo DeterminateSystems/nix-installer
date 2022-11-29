@@ -49,10 +49,6 @@ impl Planner for LinuxMulti {
         Ok(vec![
             CreateDirectory::plan("/nix", None, None, 0o0755, true)
                 .await
-                .map_err(|v| PlannerError::Action(v.into()))?
-                .boxed(),
-            CreateDirectory::plan("/nix", None, None, 0o0755, true)
-                .await
                 .map_err(PlannerError::Action)?
                 .boxed(),
             ProvisionNix::plan(&self.settings.clone())
