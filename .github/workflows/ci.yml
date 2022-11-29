@@ -65,6 +65,7 @@ jobs:
     runs-on: ubuntu-22.04
     needs: build-x86_64-linux
     steps:
+      - run: sudo apt install fish zsh
       - uses: actions/download-artifact@v3
         with:
           name: harmonic-x86_64-linux
@@ -76,6 +77,10 @@ jobs:
         run: |
           . /nix/var/nix/profiles/default/etc/profile.d/nix-daemon.sh
           nix run nixpkgs#fortune
+      - run: exec bash -c "nix-instantiate -E 'builtins.currentTime' --eval"
+      - run: exec sh -c "nix-instantiate -E 'builtins.currentTime' --eval"
+      - run: exec zsh -c "nix-instantiate -E 'builtins.currentTime' --eval"
+      - run: exec fish -c "nix-instantiate -E 'builtins.currentTime' --eval"
       - name: Initial uninstall
         run: sudo RUST_LOG=harmonic=trace RUST_BACKTRACE=full ./harmonic uninstall --no-confirm
 
@@ -103,6 +108,7 @@ jobs:
     runs-on: macos-12
     needs: build-x86_64-darwin
     steps:
+      - run: brew install fish
       - uses: actions/download-artifact@v3
         with:
           name: harmonic-x86_64-darwin
@@ -114,6 +120,10 @@ jobs:
         run: |
           . /nix/var/nix/profiles/default/etc/profile.d/nix-daemon.sh
           nix run nixpkgs#fortune
+      - run: exec bash -c "nix-instantiate -E 'builtins.currentTime' --eval"
+      - run: exec sh -c "nix-instantiate -E 'builtins.currentTime' --eval"
+      - run: exec zsh -c "nix-instantiate -E 'builtins.currentTime' --eval"
+      - run: exec fish -c "nix-instantiate -E 'builtins.currentTime' --eval"
       - name: Initial uninstall
         run: sudo RUST_LOG=harmonic=trace RUST_BACKTRACE=full ./harmonic uninstall --no-confirm
       - name: Repeated install
