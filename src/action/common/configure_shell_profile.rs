@@ -54,16 +54,26 @@ impl ConfigureShellProfile {
         );
 
         for profile_target in PROFILE_TARGETS {
-            let path = Path::new(profile_target);
-            if !path.exists() {
-                tracing::trace!("Did not plan to edit `{profile_target}` as it does not exist.");
-                continue;
-            }
-            create_or_append_files.push(
-                CreateOrAppendFile::plan(path, None, None, 0o0644, shell_buf.to_string())
+            let profile_target_path = Path::new(profile_target);
+            if let Some(parent) = profile_target_path.parent() {
+                if !parent.exists() {
+                    tracing::trace!(
+                        "Did not plan to edit `{profile_target}` as it's parent folder does not exist."
+                    );
+                    continue;
+                }
+                create_or_append_files.push(
+                    CreateOrAppendFile::plan(
+                        profile_target_path,
+                        None,
+                        None,
+                        0o0644,
+                        shell_buf.to_string(),
+                    )
                     .await
                     .map_err(|e| e.boxed())?,
-            );
+                );
+            }
         }
 
         let fish_buf = format!(
@@ -71,8 +81,8 @@ impl ConfigureShellProfile {
             # Nix\n\
             if test -e '{PROFILE_NIX_FILE_FISH}'\n\
             . '{PROFILE_NIX_FILE_FISH}'\n\
-            fi\n\
-            # End Nix\n
+            end\n\
+            # End Nix\n\
         \n",
         );
 
