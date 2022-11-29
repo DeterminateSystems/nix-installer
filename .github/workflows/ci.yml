@@ -77,10 +77,23 @@ jobs:
         run: |
           . /nix/var/nix/profiles/default/etc/profile.d/nix-daemon.sh
           nix run nixpkgs#fortune
-      - run: exec bash -c "nix-instantiate -E 'builtins.currentTime' --eval"
-      - run: exec sh -c "nix-instantiate -E 'builtins.currentTime' --eval"
-      - run: exec zsh -c "nix-instantiate -E 'builtins.currentTime' --eval"
-      - run: exec fish -c "nix-instantiate -E 'builtins.currentTime' --eval"
+        if: success() || failure()
+      - name: Test bash
+        run: nix-instantiate -E 'builtins.currentTime' --eval
+        if: success() || failure()
+        shell: bash -l {0}
+      - name: Test sh
+        run: nix-instantiate -E 'builtins.currentTime' --eval
+        if: success() || failure()
+        shell: sh -l {0}
+      - name: Test zsh
+        run: nix-instantiate -E 'builtins.currentTime' --eval
+        if: success() || failure()
+        shell: zsh -l {0}
+      - name: Test fish
+        run: nix-instantiate -E 'builtins.currentTime' --eval
+        if: success() || failure()
+        shell: fish -l {0}
       - name: Initial uninstall
         run: sudo RUST_LOG=harmonic=trace RUST_BACKTRACE=full ./harmonic uninstall --no-confirm
 
@@ -120,10 +133,23 @@ jobs:
         run: |
           . /nix/var/nix/profiles/default/etc/profile.d/nix-daemon.sh
           nix run nixpkgs#fortune
-      - run: exec bash -c "nix-instantiate -E 'builtins.currentTime' --eval"
-      - run: exec sh -c "nix-instantiate -E 'builtins.currentTime' --eval"
-      - run: exec zsh -c "nix-instantiate -E 'builtins.currentTime' --eval"
-      - run: exec fish -c "nix-instantiate -E 'builtins.currentTime' --eval"
+        if: success() || failure()
+      - name: Test bash
+        run: nix-instantiate -E 'builtins.currentTime' --eval
+        if: success() || failure()
+        shell: bash -l {0}
+      - name: Test sh
+        run: nix-instantiate -E 'builtins.currentTime' --eval
+        if: success() || failure()
+        shell: sh -l {0}
+      - name: Test zsh
+        run: nix-instantiate -E 'builtins.currentTime' --eval
+        if: success() || failure()
+        shell: zsh -l {0}
+      - name: Test fish
+        run: nix-instantiate -E 'builtins.currentTime' --eval
+        if: success() || failure()
+        shell: fish -l {0}
       - name: Initial uninstall
         run: sudo RUST_LOG=harmonic=trace RUST_BACKTRACE=full ./harmonic uninstall --no-confirm
       - name: Repeated install
