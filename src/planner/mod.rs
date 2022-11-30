@@ -114,6 +114,7 @@ pub enum BuiltinPlanner {
     LinuxMulti(linux::LinuxMulti),
     /// A standard MacOS (Darwin) multi-user install
     DarwinMulti(darwin::DarwinMulti),
+    /// A specialized install suitable for the Valve Steam Deck console
     SteamDeck(linux::SteamDeck),
 }
 

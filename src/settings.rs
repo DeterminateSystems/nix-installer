@@ -126,6 +126,7 @@ pub struct CommonSettings {
     )]
     pub(crate) nix_package_url: Url,
 
+    /// Extra configuration lines for `/etc/nix.conf`
     #[clap(long, env = "HARMONIC_EXTRA_CONF")]
     pub extra_conf: Vec<String>,
 
@@ -308,6 +309,7 @@ impl CommonSettings {
         self.nix_package_url = url;
         self
     }
+    /// Extra configuration lines for `/etc/nix.conf`
     pub fn extra_conf(&mut self, extra_conf: Vec<String>) -> &mut Self {
         self.extra_conf = extra_conf;
         self
