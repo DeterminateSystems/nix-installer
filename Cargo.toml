@@ -21,7 +21,7 @@ required-features = [ "cli" ]
 
 [dependencies]
 async-tar = "0.4.2"
-async-trait = "0.1.57"
+async-trait = "0.1.59"
 atty = { version = "0.2.14", optional = true }
 bytes = "1.2.1"
 clap = { version = "4", features = ["derive", "env"], optional = true }
