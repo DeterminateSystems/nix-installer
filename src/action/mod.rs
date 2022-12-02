@@ -228,7 +228,7 @@ impl ActionDescription {
     }
 }
 
-/// An error occurring during a call defined in this crate
+/// An error occurring during an action
 #[derive(thiserror::Error, Debug)]
 pub enum ActionError {
     /// A custom error
