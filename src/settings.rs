@@ -127,8 +127,8 @@ pub struct CommonSettings {
     pub(crate) nix_package_url: Url,
 
     /// Extra configuration lines for `/etc/nix.conf`
-    #[cfg_attr(feature = "cli", clap(long, env = "HARMONIC_EXTRA_CONF"))]
-    pub(crate) extra_conf: Option<String>,
+    #[clap(long, env = "HARMONIC_EXTRA_CONF")]
+    pub extra_conf: Vec<String>,
 
     /// If Harmonic should forcibly recreate files it finds existing
     #[cfg_attr(
@@ -309,9 +309,8 @@ impl CommonSettings {
         self.nix_package_url = url;
         self
     }
-
     /// Extra configuration lines for `/etc/nix.conf`
-    pub fn extra_conf(&mut self, extra_conf: Option<String>) -> &mut Self {
+    pub fn extra_conf(&mut self, extra_conf: Vec<String>) -> &mut Self {
         self.extra_conf = extra_conf;
         self
     }

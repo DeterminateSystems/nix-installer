@@ -1,7 +1,7 @@
 /*! [`BuiltinPlanner`]s and traits to create new types which can be used to plan out an [`InstallPlan`]
 
 It's a [`Planner`]s job to construct (if possible) a valid [`InstallPlan`] for the host. Some planners,
-like [`LinuxMulti`](linux::LinuxMulti), are operating system specific. Others, like [`SteamDeck`](specific::SteamDeck), are device specific.
+like [`LinuxMulti`](linux::LinuxMulti), are operating system specific. Others, like [`SteamDeck`](linux::SteamDeck), are device specific.
 
 [`Planner`]s contain their planner specific settings, typically alongside a [`CommonSettings`][crate::settings::CommonSettings].
 
@@ -16,7 +16,7 @@ use std::{error::Error, collections::HashMap};
 use harmonic::{
     InstallPlan,
     settings::{CommonSettings, InstallSettingsError},
-    planner::{Planner, PlannerError, specific::SteamDeck},
+    planner::{Planner, PlannerError, linux::SteamDeck},
     action::{Action, StatefulAction, linux::StartSystemdUnit},
 };
 
@@ -39,7 +39,7 @@ impl Planner for MyPlanner {
         Ok(vec![
             // ...
 
-                StartSystemdUnit::plan("nix-daemon.socket".into())
+                StartSystemdUnit::plan("nix-daemon.socket")
                     .await
                     .map_err(PlannerError::Action)?.boxed(),
         ])
@@ -76,7 +76,6 @@ match plan.install(None).await {
 */
 pub mod darwin;
 pub mod linux;
-pub mod specific;
 
 use std::collections::HashMap;
 
@@ -115,8 +114,8 @@ pub enum BuiltinPlanner {
     LinuxMulti(linux::LinuxMulti),
     /// A standard MacOS (Darwin) multi-user install
     DarwinMulti(darwin::DarwinMulti),
-    /// An install suitable for the Valve Steam Deck console
-    SteamDeck(specific::SteamDeck),
+    /// A specialized install suitable for the Valve Steam Deck console
+    SteamDeck(linux::SteamDeck),
 }
 
 impl BuiltinPlanner {
