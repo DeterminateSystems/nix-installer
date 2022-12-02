@@ -83,15 +83,15 @@ jobs:
       - name: Test bash
         run: nix-instantiate -E 'builtins.currentTime' --eval
         if: success() || failure()
-        shell: bash
+        shell: bash --login {0}
       - name: Test sh
         run: nix-instantiate -E 'builtins.currentTime' --eval
         if: success() || failure()
-        shell: sh
+        shell: sh -l {0}
       - name: Test zsh
         run: nix-instantiate -E 'builtins.currentTime' --eval
         if: success() || failure()
-        shell: zsh
+        shell: zsh --login --interactive {0}
       ## Broken until https://github.com/NixOS/nix/pull/7105 is released due to the version on Ubuntu's runners
       # - name: Test fish
       #   run: nix-instantiate -E 'builtins.currentTime' --eval
@@ -129,15 +129,20 @@ jobs:
       - name: Test bash
         run: nix-instantiate -E 'builtins.currentTime' --eval
         if: success() || failure()
-        shell: bash
+        shell: bash --login {0}
       - name: Test sh
         run: nix-instantiate -E 'builtins.currentTime' --eval
         if: success() || failure()
-        shell: sh
+        shell: sh -l {0}
       - name: Test zsh
         run: nix-instantiate -E 'builtins.currentTime' --eval
         if: success() || failure()
-        shell: zsh
+        shell: zsh --login --interactive {0}
+      ## Broken until https://github.com/NixOS/nix/pull/7105 is released due to the version on Ubuntu's runners
+      # - name: Test fish
+      #   run: nix-instantiate -E 'builtins.currentTime' --eval
+      #   if: success() || failure()
+      #   shell: fish
       - name: Repeated uninstall
         run: sudo PATH=$PATH:$HOME/bin RUST_LOG=harmonic=trace RUST_BACKTRACE=full ./harmonic uninstall --no-confirm
 
@@ -183,15 +188,15 @@ jobs:
       - name: Test bash
         run: nix-instantiate -E 'builtins.currentTime' --eval
         if: success() || failure()
-        shell: bash
+        shell: bash --login {0}
       - name: Test sh
         run: nix-instantiate -E 'builtins.currentTime' --eval
         if: success() || failure()
-        shell: sh
+        shell: sh -l {0}
       - name: Test zsh
         run: nix-instantiate -E 'builtins.currentTime' --eval
         if: success() || failure()
-        shell: zsh
+        shell: zsh --login --interactive {0}
       ## Broken until https://github.com/NixOS/nix/pull/7105 is released due to the version on Ubuntu's runners
       # - name: Test fish
       #   run: nix-instantiate -E 'builtins.currentTime' --eval
