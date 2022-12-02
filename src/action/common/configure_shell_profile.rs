@@ -2,6 +2,7 @@ use crate::action::base::{CreateDirectory, CreateOrAppendFile, CreateOrAppendFil
 use crate::action::{Action, ActionDescription, StatefulAction};
 use crate::BoxableError;
 
+use nix::unistd::User;
 use std::path::{Path, PathBuf};
 use tokio::task::{JoinError, JoinSet};
 
@@ -28,6 +29,7 @@ const PROFILE_TARGETS: &[&str] = &[
 ];
 const PROFILE_NIX_FILE_SHELL: &str = "/nix/var/nix/profiles/default/etc/profile.d/nix-daemon.sh";
 const PROFILE_NIX_FILE_FISH: &str = "/nix/var/nix/profiles/default/etc/profile.d/nix-daemon.fish";
+
 /**
 Configure any detected shell profiles to include Nix support
  */
@@ -112,6 +114,34 @@ impl ConfigureShellProfile {
                     .await
                     .map_err(|e| e.boxed())?,
             );
+        }
+
+        // If the `$GITHUB_PATH` environment exists, we're almost certainly running on Github
+        // Actions, and almost certainly wants the relevant `$PATH` additions added.
+        if let Ok(github_path) = std::env::var("GITHUB_PATH") {
+            create_or_append_files.push(
+                CreateOrAppendFile::plan(
+                    &github_path,
+                    None,
+                    None,
+                    None,
+                    "/nix/var/nix/profiles/default/bin\n".to_string(),
+                )
+                .await
+                .map_err(|e| e.boxed())?,
+            );
+            // Actions runners operate as `runner` user by default
+            if let Ok(Some(runner)) = User::from_name("runner") {
+                let buf = format!(
+                    "/nix/var/nix/profiles/per-user/{}/profile/bin\n",
+                    runner.uid
+                );
+                create_or_append_files.push(
+                    CreateOrAppendFile::plan(&github_path, None, None, None, buf)
+                        .await
+                        .map_err(|e| e.boxed())?,
+                )
+            }
         }
 
         Ok(Self {

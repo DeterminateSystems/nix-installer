@@ -192,10 +192,6 @@ jobs:
       - name: Initial install
         run: sudo RUST_LOG=harmonic=trace RUST_BACKTRACE=full ./harmonic install darwin-multi --extra-conf "access-tokens = github.com=${{ secrets.GITHUB_TOKEN }}" --no-confirm
 
-      - name: Set GITHUB_PATH
-        run: |
-          echo "/nix/var/nix/profiles/default/bin" >> "$GITHUB_PATH"
-          echo "/nix/var/nix/profiles/per-user/$USER/profile/bin" >> "$GITHUB_PATH"
       - name: Test `nix`
         if: success() || failure()
         run: |
@@ -225,10 +221,6 @@ jobs:
       - name: Repeated install
         run: sudo RUST_LOG=harmonic=trace RUST_BACKTRACE=full ./harmonic install darwin-multi --extra-conf "access-tokens = github.com=${{ secrets.GITHUB_TOKEN }}" --no-confirm
       
-      - name: Set GITHUB_PATH
-        run: |
-          echo "/nix/var/nix/profiles/default/bin" >> "$GITHUB_PATH"
-          echo "/nix/var/nix/profiles/per-user/$USER/profile/bin" >> "$GITHUB_PATH"
       - name: Test `nix`
         if: success() || failure()
         run: |
