@@ -47,10 +47,11 @@ impl ConfigureShellProfile {
             "\n\
             # Nix\n\
             if [ -e '{PROFILE_NIX_FILE_SHELL}' ]; then\n\
-            . '{PROFILE_NIX_FILE_SHELL}'\n\
+            {inde}. '{PROFILE_NIX_FILE_SHELL}'\n\
             fi\n\
             # End Nix\n
         \n",
+            inde = "    ", // indent
         );
 
         for profile_target in PROFILE_TARGETS {
@@ -80,10 +81,11 @@ impl ConfigureShellProfile {
             "\n\
             # Nix\n\
             if test -e '{PROFILE_NIX_FILE_FISH}'\n\
-            . '{PROFILE_NIX_FILE_FISH}'\n\
+            {inde}. '{PROFILE_NIX_FILE_FISH}'\n\
             end\n\
             # End Nix\n\
         \n",
+            inde = "    ", // indent
         );
 
         for fish_prefix in PROFILE_FISH_PREFIXES {

@@ -74,14 +74,13 @@ jobs:
       - name: Initial install
         run: sudo RUST_LOG=harmonic=trace RUST_BACKTRACE=full ./harmonic install linux-multi --extra-conf "access-tokens = github.com=${{ secrets.GITHUB_TOKEN }}" --no-confirm
       - name: Test run
-        run: |
-          . /nix/var/nix/profiles/default/etc/profile.d/nix-daemon.sh
-          nix run nixpkgs#fortune
+        run: nix run nixpkgs#fortune
         if: success() || failure()
+        shell: bash --login {0}
       - name: Test bash
         run: nix-instantiate -E 'builtins.currentTime' --eval
         if: success() || failure()
-        shell: bash -l {0}
+        shell: bash --login {0}
       - name: Test sh
         run: nix-instantiate -E 'builtins.currentTime' --eval
         if: success() || failure()
@@ -89,11 +88,12 @@ jobs:
       - name: Test zsh
         run: nix-instantiate -E 'builtins.currentTime' --eval
         if: success() || failure()
-        shell: zsh -l {0}
-      - name: Test fish
-        run: nix-instantiate -E 'builtins.currentTime' --eval
-        if: success() || failure()
-        shell: fish -l {0}
+        shell: zsh --login --interactive {0}
+      ## Broken until https://github.com/NixOS/nix/pull/7105 is released due to the version on Ubuntu's runners
+      # - name: Test fish
+      #   run: nix-instantiate -E 'builtins.currentTime' --eval
+      #   if: success() || failure()
+      #   shell: fish --login --interactive {0}
       - name: Initial uninstall
         run: sudo RUST_LOG=harmonic=trace RUST_BACKTRACE=full ./harmonic uninstall --no-confirm
       - name: Repeated install
@@ -139,9 +139,9 @@ jobs:
       - name: Initial install
         run: sudo RUST_LOG=harmonic=trace RUST_BACKTRACE=full ./harmonic install darwin-multi --extra-conf "access-tokens = github.com=${{ secrets.GITHUB_TOKEN }}" --no-confirm
       - name: Test run
-        run: |
-          . /nix/var/nix/profiles/default/etc/profile.d/nix-daemon.sh
-          nix run nixpkgs#fortune
+        run: nix run nixpkgs#fortune
+        if: success() || failure()
+        shell: bash -l {0}
         if: success() || failure()
       - name: Test bash
         run: nix-instantiate -E 'builtins.currentTime' --eval
