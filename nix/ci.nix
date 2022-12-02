@@ -1,39 +1,44 @@
-{ pkgs }:
+{ pkgs, eclint, toolchain }:
 
 let
-  inherit (pkgs) writeScriptBin;
+  inherit (pkgs) writeShellApplication;
 in
-[
+{
 
   # Format
-  (writeScriptBin "ci-check-rustfmt" "cargo fmt --check")
-
-  # Test
-  (writeScriptBin "ci-test-rust" "cargo test")
+  ci-check-rustfmt = (writeShellApplication {
+    name = "ci-check-rustfmt";
+    runtimeInputs = [ toolchain ];
+    text = "cargo fmt --check";
+  });
 
   # Spelling
-  (writeScriptBin "ci-check-spelling" ''
-    codespell \
-      --ignore-words-list ba,sur,crate,pullrequest,pullrequests,ser \
-      --skip target \
-      .
-  '')
+  ci-check-spelling = (writeShellApplication {
+    name = "ci-check-spelling";
+    runtimeInputs = with pkgs; [ codespell ];
+    text = ''
+      codespell \
+        --ignore-words-list ba,sur,crate,pullrequest,pullrequests,ser \
+        --skip target \
+        .
+    '';
+  });
 
   # NixFormatting
-  (writeScriptBin "ci-check-nixpkgs-fmt" ''
-    git ls-files '*.nix' | xargs | nixpkgs-fmt --check
-  '')
+  ci-check-nixpkgs-fmt = (writeShellApplication {
+    name = "ci-check-nixpkgs-fmt";
+    runtimeInputs = with pkgs; [ git ];
+    text = ''
+      git ls-files '*.nix' | xargs | nixpkgs-fmt --check
+    '';
+  });
 
   # EditorConfig
-  (writeScriptBin "ci-check-editorconfig" ''
-    eclint
-  '')
-
-  (writeScriptBin "ci-all" ''
-    ci-check-rustfmt
-    ci-test-rust
-    ci-check-spelling
-    ci-check-nixpkgs-fmt
-    ci-check-editorconfig
-  '')
-]
+  ci-check-editorconfig = (writeShellApplication {
+    name = "ci-check-editorconfig";
+    runtimeInputs = with pkgs; [ eclint ];
+    text = ''
+      eclint
+    '';
+  });
+}

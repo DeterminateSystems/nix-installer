@@ -50,15 +50,8 @@
       devShells = forAllSystems ({ system, pkgs, ... }:
         let
           toolchain = fenixToolchain system;
-          ci = import ./nix/ci.nix { inherit pkgs; };
           eclint = import ./nix/eclint.nix { inherit pkgs; };
-
-          spellcheck = pkgs.writeScriptBin "spellcheck" ''
-            ${pkgs.codespell}/bin/codespell \
-              --ignore-words-list crate,pullrequest,pullrequests,ser \
-              --skip target \
-              .
-          '';
+          ci = import ./nix/ci.nix { inherit pkgs eclint toolchain; };
         in
         {
           default = pkgs.mkShell {
@@ -82,8 +75,11 @@
               git
               nixpkgs-fmt
               eclint
+              ci.ci-check-rustfmt
+              ci.ci-check-spelling
+              ci.ci-check-nixpkgs-fmt
+              ci.ci-check-editorconfig
             ]
-            ++ ci
             ++ lib.optionals (pkgs.stdenv.isDarwin) (with pkgs; [ libiconv darwin.apple_sdk.frameworks.Security ]);
           };
         });
@@ -93,6 +89,9 @@
           pkgs = import nixpkgs {
             inherit system;
           };
+          toolchain = fenixToolchain system;
+          eclint = import ./nix/eclint.nix { inherit pkgs; };
+          ci = import ./nix/ci.nix { inherit pkgs eclint toolchain; };
         in
         {
           format = pkgs.runCommand "check-format"
@@ -102,6 +101,10 @@
             ${pkgs.nixpkgs-fmt}/bin/nixpkgs-fmt --check ${./.}
             touch $out # it worked!
           '';
+          check-rustfmt = ci.ci-check-rustfmt;
+          check-spelling = ci.ci-check-spelling;
+          check-nixpkgs-fmt = ci.ci-check-nixpkgs-fmt;
+          check-editorconfig = ci.ci-check-editorconfig;
         });
 
       packages = forAllSystems
@@ -130,7 +133,7 @@
               doDoc = true;
               doDocFail = true;
               RUSTFLAGS = "--cfg tracing_unstable --cfg tokio_unstable";
-              cargoTestOptions = f: f ++ ["--all"];
+              cargoTestOptions = f: f ++ [ "--all" ];
 
               override = { preBuild ? "", ... }: {
                 preBuild = preBuild + ''
