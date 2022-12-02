@@ -38,7 +38,7 @@ Sometimes choosing a specific plan is desired:
 
 ```rust,no_run
 use std::error::Error;
-use harmonic::{InstallPlan, planner::{Planner, specific::SteamDeck}};
+use harmonic::{InstallPlan, planner::{Planner, linux::SteamDeck}};
 
 # async fn chosen_planner_install() -> color_eyre::Result<()> {
 let planner = SteamDeck::default().await?;

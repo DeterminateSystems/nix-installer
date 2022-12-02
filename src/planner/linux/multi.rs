@@ -2,6 +2,7 @@ use crate::{
     action::{
         base::CreateDirectory,
         common::{ConfigureNix, ProvisionNix},
+        linux::StartSystemdUnit,
         StatefulAction,
     },
     planner::{Planner, PlannerError},
@@ -57,6 +58,10 @@ impl Planner for LinuxMulti {
             ConfigureNix::plan(&self.settings)
                 .await
                 .map_err(PlannerError::Action)?
+                .boxed(),
+            StartSystemdUnit::plan("nix-daemon.socket".to_string())
+                .await
+                .map_err(|v| PlannerError::Action(v.into()))?
                 .boxed(),
         ])
     }

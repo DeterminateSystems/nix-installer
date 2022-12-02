@@ -71,6 +71,7 @@ jobs:
           name: harmonic-x86_64-linux
       - name: Set executable
         run: chmod +x ./harmonic
+
       - name: Initial install
         run: sudo RUST_LOG=harmonic=trace RUST_BACKTRACE=full ./harmonic install linux-multi --extra-conf "access-tokens = github.com=${{ secrets.GITHUB_TOKEN }}" --no-confirm
       - name: Test run
@@ -106,6 +107,37 @@ jobs:
         run: sudo RUST_LOG=harmonic=trace RUST_BACKTRACE=full ./harmonic uninstall --no-confirm
         
 
+  run-steam-deck:
+    name: Run Steam Deck (mock)
+    runs-on: ubuntu-22.04
+    needs: build-x86_64-linux
+    steps:
+      - uses: actions/download-artifact@v3
+        with:
+          name: harmonic-x86_64-linux
+      - name: Set executable
+        run: chmod +x ./harmonic
+      - name: Make the CI look like a steam deck
+        run: |
+          mkdir -p ~/bin
+          echo -e "#! /bin/sh\nexit 0" | sudo tee -a /bin/steamos-readonly
+          sudo chmod +x /bin/steamos-readonly
+          sudo useradd -m deck
+
+      - name: Initial install
+        run: sudo PATH=$PATH:$HOME/bin RUST_LOG=harmonic=trace RUST_BACKTRACE=full ./harmonic install steam-deck --persistence `pwd`/ci-test-nix --extra-conf "access-tokens = github.com=${{ secrets.GITHUB_TOKEN }}" --no-confirm
+      - name: Initial uninstall (without a `nix run` first)
+        run: sudo PATH=$PATH:$HOME/bin RUST_LOG=harmonic=trace RUST_BACKTRACE=full ./harmonic uninstall --no-confirm
+
+      - name: Repeated install
+        run: sudo PATH=$PATH:$HOME/bin RUST_LOG=harmonic=trace RUST_BACKTRACE=full ./harmonic install steam-deck --persistence `pwd`/ci-test-nix --extra-conf "access-tokens = github.com=${{ secrets.GITHUB_TOKEN }}" --no-confirm
+      - name: Test `nix`
+        run: |
+          . /nix/var/nix/profiles/default/etc/profile.d/nix-daemon.sh
+          nix run nixpkgs#fortune
+      - name: Repeated uninstall
+        run: sudo PATH=$PATH:$HOME/bin RUST_LOG=harmonic=trace RUST_BACKTRACE=full ./harmonic uninstall --no-confirm
+
   build-x86_64-darwin:
     name: Build x86_64 Darwin
     runs-on: macos-12
@@ -136,6 +168,7 @@ jobs:
           name: harmonic-x86_64-darwin
       - name: Set executable
         run: chmod +x ./harmonic
+
       - name: Initial install
         run: sudo RUST_LOG=harmonic=trace RUST_BACKTRACE=full ./harmonic install darwin-multi --extra-conf "access-tokens = github.com=${{ secrets.GITHUB_TOKEN }}" --no-confirm
       - name: Test run
@@ -155,15 +188,17 @@ jobs:
         run: nix-instantiate -E 'builtins.currentTime' --eval
         if: success() || failure()
         shell: zsh -l {0}
-      - name: Test fish
-        run: nix-instantiate -E 'builtins.currentTime' --eval
-        if: success() || failure()
-        shell: fish -l {0}
+      ## Broken until https://github.com/NixOS/nix/pull/7105 is released due to the version on Ubuntu's runners
+      # - name: Test fish
+      #   run: nix-instantiate -E 'builtins.currentTime' --eval
+      #   if: success() || failure()
+      #   shell: fish --login --interactive {0}
       - name: Initial uninstall
         run: sudo RUST_LOG=harmonic=trace RUST_BACKTRACE=full ./harmonic uninstall --no-confirm
+        
       - name: Repeated install
         run: sudo RUST_LOG=harmonic=trace RUST_BACKTRACE=full ./harmonic install darwin-multi --extra-conf "access-tokens = github.com=${{ secrets.GITHUB_TOKEN }}" --no-confirm
-      - name: Repeated test run
+      - name: Test `nix`
         run: |
           . /nix/var/nix/profiles/default/etc/profile.d/nix-daemon.sh
           nix run nixpkgs#fortune
