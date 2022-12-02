@@ -80,6 +80,10 @@ jobs:
       - name: Test `nix`
         if: success() || failure()
         run: nix run nixpkgs#fortune
+        shell: bash --login {0}
+      - run: |
+          echo $GITHUB_PATH
+          cat $GITHUB_PATH
       - name: Test bash
         run: nix-instantiate -E 'builtins.currentTime' --eval
         if: success() || failure()
@@ -123,9 +127,13 @@ jobs:
         run: sudo PATH=$PATH:$HOME/bin RUST_LOG=harmonic=trace RUST_BACKTRACE=full ./harmonic uninstall --no-confirm
       - name: Repeated install
         run: sudo PATH=$PATH:$HOME/bin RUST_LOG=harmonic=trace RUST_BACKTRACE=full ./harmonic install steam-deck --persistence `pwd`/ci-test-nix --extra-conf "access-tokens = github.com=${{ secrets.GITHUB_TOKEN }}" --no-confirm
+      - run: |
+          echo $GITHUB_PATH
+          cat $GITHUB_PATH
       - name: Test `nix`
         if: success() || failure()
         run: nix run nixpkgs#fortune
+        shell: bash --login {0}
       - name: Test bash
         run: nix-instantiate -E 'builtins.currentTime' --eval
         if: success() || failure()
@@ -185,6 +193,10 @@ jobs:
       - name: Test `nix`
         if: success() || failure()
         run: nix run nixpkgs#fortune
+        shell: bash --login {0}
+      - run: |
+          echo $GITHUB_PATH
+          cat $GITHUB_PATH
       - name: Test bash
         run: nix-instantiate -E 'builtins.currentTime' --eval
         if: success() || failure()
