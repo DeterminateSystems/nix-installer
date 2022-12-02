@@ -6,7 +6,7 @@ use crate::action::StatefulAction;
 use crate::execute_command;
 
 use crate::{
-    action::{Action, ActionDescription, ActionState},
+    action::{Action, ActionDescription},
     BoxableError,
 };
 
@@ -15,7 +15,6 @@ pub struct CreateApfsVolume {
     disk: PathBuf,
     name: String,
     case_sensitive: bool,
-    action_state: ActionState,
 }
 
 impl CreateApfsVolume {
@@ -29,7 +28,6 @@ impl CreateApfsVolume {
             disk: disk.as_ref().to_path_buf(),
             name,
             case_sensitive,
-            action_state: ActionState::Uncompleted,
         }
         .into())
     }
@@ -60,7 +58,6 @@ impl Action for CreateApfsVolume {
             disk,
             name,
             case_sensitive,
-            action_state: _,
         } = self;
 
         execute_command(
@@ -107,7 +104,6 @@ impl Action for CreateApfsVolume {
             disk: _,
             name,
             case_sensitive: _,
-            action_state: _,
         } = self;
 
         execute_command(
