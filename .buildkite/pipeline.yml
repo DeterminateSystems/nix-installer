@@ -1,0 +1,10 @@
+steps:
+  - label: harmonic-aarch64-darwin
+    agents:
+      mac: 1
+      system: aarch64-darwin
+      nix: 1
+    command:
+      - nix --extra-experimental-features "nix-command flakes" build .#packages.aarch64-darwin.harmonic -L
+      - cp result/bin/harmonic ./harmonic-aarch64-darwin
+      - buildkite-agent artifact upload harmonic-aarch64-darwin
