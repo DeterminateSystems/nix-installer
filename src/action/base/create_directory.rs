@@ -49,7 +49,7 @@ impl CreateDirectory {
                     path.display(),
                 );
                 // TODO: Validate owner/group...
-                ActionState::Completed
+                ActionState::Skipped
             } else {
                 return Err(CreateDirectoryError::Exists(std::io::Error::new(
                     std::io::ErrorKind::AlreadyExists,

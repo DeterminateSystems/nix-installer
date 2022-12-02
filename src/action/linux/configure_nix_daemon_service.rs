@@ -14,7 +14,7 @@ use crate::{
 
 const SERVICE_SRC: &str = "/nix/var/nix/profiles/default/lib/systemd/system/nix-daemon.service";
 const SOCKET_SRC: &str = "/nix/var/nix/profiles/default/lib/systemd/system/nix-daemon.socket";
-const TMPFILES_SRC: &str = "/nix/var/nix/profiles/default//lib/tmpfiles.d/nix-daemon.conf";
+const TMPFILES_SRC: &str = "/nix/var/nix/profiles/default/lib/tmpfiles.d/nix-daemon.conf";
 const TMPFILES_DEST: &str = "/etc/tmpfiles.d/nix-daemon.conf";
 const DARWIN_NIX_DAEMON_DEST: &str = "/Library/LaunchDaemons/org.nixos.nix-daemon.plist";
 
@@ -155,8 +155,7 @@ impl Action for ConfigureNixDaemonService {
                         .process_group(0)
                         .arg("enable")
                         .arg("--now")
-                        .arg("nix-daemon.socket")
-                        .stdin(std::process::Stdio::null()),
+                        .arg("nix-daemon.socket"),
                 )
                 .await
                 .map_err(|e| ConfigureNixDaemonServiceError::Command(e).boxed())?;
@@ -286,6 +285,8 @@ pub enum ConfigureNixDaemonServiceError {
         std::path::PathBuf,
         #[source] std::io::Error,
     ),
+    #[error("Set mode `{0}` on `{1}`")]
+    SetPermissions(u32, std::path::PathBuf, #[source] std::io::Error),
     #[error("Command failed to execute")]
     Command(#[source] std::io::Error),
     #[error("Remove file `{0}`")]

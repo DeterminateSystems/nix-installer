@@ -1,6 +1,6 @@
 use tokio::process::Command;
 
-use crate::action::{ActionError, StatefulAction};
+use crate::action::{ActionError, ActionState, StatefulAction};
 use crate::execute_command;
 
 use crate::{
@@ -18,8 +18,13 @@ pub struct StartSystemdUnit {
 
 impl StartSystemdUnit {
     #[tracing::instrument(skip_all)]
-    pub async fn plan(unit: String) -> Result<StatefulAction<Self>, ActionError> {
-        Ok(Self { unit }.into())
+    pub async fn plan(unit: impl AsRef<str>) -> Result<StatefulAction<Self>, ActionError> {
+        Ok(StatefulAction {
+            action: Self {
+                unit: unit.as_ref().to_string(),
+            },
+            state: ActionState::Uncompleted,
+        })
     }
 }
 
