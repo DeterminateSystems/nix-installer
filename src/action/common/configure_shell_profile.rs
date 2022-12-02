@@ -1,9 +1,8 @@
-use crate::action::base::{CreateOrAppendFile, CreateOrAppendFileError};
+use crate::action::base::CreateOrAppendFile;
 use crate::action::{Action, ActionDescription, ActionError, StatefulAction};
-use crate::BoxableError;
 
 use std::path::Path;
-use tokio::task::{JoinError, JoinSet};
+use tokio::task::JoinSet;
 
 const PROFILE_TARGETS: &[&str] = &[
     "/etc/bashrc",
@@ -42,11 +41,8 @@ impl ConfigureShellProfile {
                 # End Nix\n
             \n",
             );
-            create_or_append_files.push(
-                CreateOrAppendFile::plan(path, None, None, 0o0644, buf)
-                    .await
-                    .map_err(|e| e.boxed())?,
-            );
+            create_or_append_files
+                .push(CreateOrAppendFile::plan(path, None, None, 0o0644, buf).await?);
         }
 
         Ok(Self {
@@ -83,10 +79,7 @@ impl Action for ConfigureShellProfile {
             let mut create_or_append_file_clone = create_or_append_file.clone();
             let _abort_handle = set.spawn(async move {
                 create_or_append_file_clone.try_execute().await?;
-                Result::<_, Box<dyn std::error::Error + Send + Sync>>::Ok((
-                    idx,
-                    create_or_append_file_clone,
-                ))
+                Result::<_, ActionError>::Ok((idx, create_or_append_file_clone))
             });
         }
 
@@ -95,8 +88,8 @@ impl Action for ConfigureShellProfile {
                 Ok(Ok((idx, create_or_append_file))) => {
                     create_or_append_files[idx] = create_or_append_file
                 },
-                Ok(Err(e)) => errors.push(e),
-                Err(e) => return Err(e.boxed()),
+                Ok(Err(e)) => errors.push(Box::new(e)),
+                Err(e) => return Err(e.into()),
             };
         }
 
@@ -104,7 +97,7 @@ impl Action for ConfigureShellProfile {
             if errors.len() == 1 {
                 return Err(errors.into_iter().next().unwrap().into());
             } else {
-                return Err(ConfigureShellProfileError::MultipleCreateOrAppendFile(errors).boxed());
+                return Err(ActionError::Children(errors));
             }
         }
 
@@ -125,16 +118,13 @@ impl Action for ConfigureShellProfile {
         } = self;
 
         let mut set = JoinSet::new();
-        let mut errors = Vec::default();
+        let mut errors: Vec<Box<ActionError>> = Vec::default();
 
         for (idx, create_or_append_file) in create_or_append_files.iter().enumerate() {
             let mut create_or_append_file_clone = create_or_append_file.clone();
             let _abort_handle = set.spawn(async move {
                 create_or_append_file_clone.try_revert().await?;
-                Result::<_, Box<dyn std::error::Error + Send + Sync>>::Ok((
-                    idx,
-                    create_or_append_file_clone,
-                ))
+                Result::<_, _>::Ok((idx, create_or_append_file_clone))
             });
         }
 
@@ -143,8 +133,8 @@ impl Action for ConfigureShellProfile {
                 Ok(Ok((idx, create_or_append_file))) => {
                     create_or_append_files[idx] = create_or_append_file
                 },
-                Ok(Err(e)) => errors.push(e),
-                Err(e) => return Err(e.boxed()),
+                Ok(Err(e)) => errors.push(Box::new(e)),
+                Err(e) => return Err(e.into()),
             };
         }
 
@@ -152,34 +142,10 @@ impl Action for ConfigureShellProfile {
             if errors.len() == 1 {
                 return Err(errors.into_iter().next().unwrap().into());
             } else {
-                return Err(ConfigureShellProfileError::MultipleCreateOrAppendFile(errors).boxed());
+                return Err(ActionError::Children(errors));
             }
         }
 
         Ok(())
     }
-}
-
-#[derive(Debug, thiserror::Error)]
-pub enum ConfigureShellProfileError {
-    #[error("Creating or appending to file")]
-    CreateOrAppendFile(
-        #[from]
-        #[source]
-        CreateOrAppendFileError,
-    ),
-    #[error("Multiple errors: {}", .0.iter().map(|v| {
-        if let Some(source) = v.source() {
-            format!("{v} ({source})")
-        } else {
-            format!("{v}") 
-        }
-    }).collect::<Vec<_>>().join(" & "))]
-    MultipleCreateOrAppendFile(Vec<Box<dyn std::error::Error + Send + Sync>>),
-    #[error("Joining spawned async task")]
-    Join(
-        #[source]
-        #[from]
-        JoinError,
-    ),
 }

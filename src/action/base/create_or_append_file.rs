@@ -10,10 +10,7 @@ use tokio::{
     io::{AsyncReadExt, AsyncSeekExt, AsyncWriteExt},
 };
 
-use crate::{
-    action::{Action, ActionDescription, StatefulAction},
-    BoxableError,
-};
+use crate::action::{Action, ActionDescription, ActionError, StatefulAction};
 
 /** Create a file at the given location with the provided `buf`,
 optionally with an owning user, group, and mode.
@@ -40,7 +37,7 @@ impl CreateOrAppendFile {
         group: impl Into<Option<String>>,
         mode: impl Into<Option<u32>>,
         buf: String,
-    ) -> Result<StatefulAction<Self>, CreateOrAppendFileError> {
+    ) -> Result<StatefulAction<Self>, ActionError> {
         let path = path.as_ref().to_path_buf();
 
         Ok(Self {
@@ -86,21 +83,21 @@ impl Action for CreateOrAppendFile {
             .read(true)
             .open(&path)
             .await
-            .map_err(|e| CreateOrAppendFileError::OpenFile(path.to_owned(), e).boxed())?;
+            .map_err(|e| ActionError::Open(path.to_owned(), e))?;
 
         file.seek(SeekFrom::End(0))
             .await
-            .map_err(|e| CreateOrAppendFileError::SeekFile(path.to_owned(), e).boxed())?;
+            .map_err(|e| ActionError::Seek(path.to_owned(), e))?;
 
         file.write_all(buf.as_bytes())
             .await
-            .map_err(|e| CreateOrAppendFileError::WriteFile(path.to_owned(), e).boxed())?;
+            .map_err(|e| ActionError::Write(path.to_owned(), e))?;
 
         let gid = if let Some(group) = group {
             Some(
                 Group::from_name(group.as_str())
-                    .map_err(|e| CreateOrAppendFileError::GroupId(group.clone(), e).boxed())?
-                    .ok_or(CreateOrAppendFileError::NoGroup(group.clone()).boxed())?
+                    .map_err(|e| ActionError::GroupId(group.clone(), e))?
+                    .ok_or(ActionError::NoGroup(group.clone()))?
                     .gid,
             )
         } else {
@@ -109,8 +106,8 @@ impl Action for CreateOrAppendFile {
         let uid = if let Some(user) = user {
             Some(
                 User::from_name(user.as_str())
-                    .map_err(|e| CreateOrAppendFileError::UserId(user.clone(), e).boxed())?
-                    .ok_or(CreateOrAppendFileError::NoUser(user.clone()).boxed())?
+                    .map_err(|e| ActionError::UserId(user.clone(), e))?
+                    .ok_or(ActionError::NoUser(user.clone()))?
                     .uid,
             )
         } else {
@@ -120,13 +117,10 @@ impl Action for CreateOrAppendFile {
         if let Some(mode) = mode {
             tokio::fs::set_permissions(&path, PermissionsExt::from_mode(*mode))
                 .await
-                .map_err(|e| {
-                    CreateOrAppendFileError::SetPermissions(*mode, path.to_owned(), e).boxed()
-                })?;
+                .map_err(|e| ActionError::SetPermissions(*mode, path.to_owned(), e))?;
         }
 
-        chown(path, uid, gid)
-            .map_err(|e| CreateOrAppendFileError::Chown(path.clone(), e).boxed())?;
+        chown(path, uid, gid).map_err(|e| ActionError::Chown(path.clone(), e))?;
 
         Ok(())
     }
@@ -168,12 +162,12 @@ impl Action for CreateOrAppendFile {
             .read(true)
             .open(&path)
             .await
-            .map_err(|e| CreateOrAppendFileError::ReadFile(path.to_owned(), e).boxed())?;
+            .map_err(|e| ActionError::Read(path.to_owned(), e))?;
 
         let mut file_contents = String::default();
         file.read_to_string(&mut file_contents)
             .await
-            .map_err(|e| CreateOrAppendFileError::SeekFile(path.to_owned(), e).boxed())?;
+            .map_err(|e| ActionError::Seek(path.to_owned(), e))?;
 
         if let Some(start) = file_contents.rfind(buf.as_str()) {
             let end = start + buf.len();
@@ -183,41 +177,15 @@ impl Action for CreateOrAppendFile {
         if buf.is_empty() {
             remove_file(&path)
                 .await
-                .map_err(|e| CreateOrAppendFileError::RemoveFile(path.to_owned(), e).boxed())?;
+                .map_err(|e| ActionError::Remove(path.to_owned(), e))?;
         } else {
             file.seek(SeekFrom::Start(0))
                 .await
-                .map_err(|e| CreateOrAppendFileError::SeekFile(path.to_owned(), e).boxed())?;
+                .map_err(|e| ActionError::Seek(path.to_owned(), e))?;
             file.write_all(file_contents.as_bytes())
                 .await
-                .map_err(|e| CreateOrAppendFileError::WriteFile(path.to_owned(), e).boxed())?;
+                .map_err(|e| ActionError::Write(path.to_owned(), e))?;
         }
         Ok(())
     }
-}
-
-#[derive(Debug, thiserror::Error)]
-pub enum CreateOrAppendFileError {
-    #[error("Remove file `{0}`")]
-    RemoveFile(std::path::PathBuf, #[source] std::io::Error),
-    #[error("Remove file `{0}`")]
-    ReadFile(std::path::PathBuf, #[source] std::io::Error),
-    #[error("Open file `{0}`")]
-    OpenFile(std::path::PathBuf, #[source] std::io::Error),
-    #[error("Write file `{0}`")]
-    WriteFile(std::path::PathBuf, #[source] std::io::Error),
-    #[error("Seek file `{0}`")]
-    SeekFile(std::path::PathBuf, #[source] std::io::Error),
-    #[error("Getting uid for user `{0}`")]
-    UserId(String, #[source] nix::errno::Errno),
-    #[error("Getting user `{0}`")]
-    NoUser(String),
-    #[error("Getting gid for group `{0}`")]
-    GroupId(String, #[source] nix::errno::Errno),
-    #[error("Getting group `{0}`")]
-    NoGroup(String),
-    #[error("Set mode `{0}` on `{1}`")]
-    SetPermissions(u32, std::path::PathBuf, #[source] std::io::Error),
-    #[error("Chowning directory `{0}`")]
-    Chown(std::path::PathBuf, #[source] nix::errno::Errno),
 }

@@ -5,10 +5,7 @@ use tokio::process::Command;
 use crate::action::{ActionError, StatefulAction};
 use crate::execute_command;
 
-use crate::{
-    action::{Action, ActionDescription},
-    BoxableError,
-};
+use crate::action::{Action, ActionDescription};
 
 #[derive(Debug, serde::Deserialize, serde::Serialize, Clone)]
 pub struct CreateApfsVolume {
@@ -78,7 +75,7 @@ impl Action for CreateApfsVolume {
                 .stdin(std::process::Stdio::null()),
         )
         .await
-        .map_err(|e| CreateVolumeError::Command(e).boxed())?;
+        .map_err(|e| ActionError::Command(e))?;
 
         Ok(())
     }
@@ -113,7 +110,7 @@ impl Action for CreateApfsVolume {
                 .stdin(std::process::Stdio::null()),
         )
         .await
-        .map_err(|e| CreateVolumeError::Command(e).boxed())?;
+        .map_err(|e| ActionError::Command(e))?;
 
         Ok(())
     }

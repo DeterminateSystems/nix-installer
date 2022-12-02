@@ -1,4 +1,4 @@
-use crate::action::base::{CreateDirectory, CreateDirectoryError, CreateFile, CreateFileError};
+use crate::action::base::{CreateDirectory, CreateFile};
 use crate::action::{Action, ActionDescription, ActionError, StatefulAction};
 
 const NIX_CONF_FOLDER: &str = "/etc/nix";
@@ -95,20 +95,4 @@ impl Action for PlaceNixConfiguration {
 
         Ok(())
     }
-}
-
-#[derive(Debug, thiserror::Error)]
-pub enum PlaceNixConfigurationError {
-    #[error("Creating file")]
-    CreateFile(
-        #[source]
-        #[from]
-        CreateFileError,
-    ),
-    #[error("Creating directory")]
-    CreateDirectory(
-        #[source]
-        #[from]
-        CreateDirectoryError,
-    ),
 }

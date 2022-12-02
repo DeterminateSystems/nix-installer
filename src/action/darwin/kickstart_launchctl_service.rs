@@ -3,10 +3,7 @@ use tokio::process::Command;
 use crate::action::{ActionError, StatefulAction};
 use crate::execute_command;
 
-use crate::{
-    action::{Action, ActionDescription},
-    BoxableError,
-};
+use crate::action::{Action, ActionDescription};
 
 /**
 Kickstart a `launchctl` service
@@ -50,7 +47,7 @@ impl Action for KickstartLaunchctlService {
                 .stdin(std::process::Stdio::null()),
         )
         .await
-        .map_err(|e| KickstartLaunchctlServiceError::Command(e).boxed())?;
+        .map_err(ActionError::Command)?;
 
         Ok(())
     }
@@ -66,10 +63,4 @@ impl Action for KickstartLaunchctlService {
         // noop
         Ok(())
     }
-}
-
-#[derive(Debug, thiserror::Error)]
-pub enum KickstartLaunchctlServiceError {
-    #[error("Failed to execute command")]
-    Command(#[source] std::io::Error),
 }

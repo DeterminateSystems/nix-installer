@@ -5,10 +5,7 @@ use tokio::process::Command;
 use crate::action::{ActionError, StatefulAction};
 use crate::execute_command;
 
-use crate::{
-    action::{Action, ActionDescription},
-    BoxableError,
-};
+use crate::action::{Action, ActionDescription};
 
 /**
 Unmount an APFS volume
@@ -56,7 +53,7 @@ impl Action for UnmountApfsVolume {
                 .stdin(std::process::Stdio::null()),
         )
         .await
-        .map_err(|e| UnmountVolumeError::Command(e).boxed())?;
+        .map_err(|e| ActionError::Command(e))?;
 
         Ok(())
     }
@@ -80,14 +77,8 @@ impl Action for UnmountApfsVolume {
                 .stdin(std::process::Stdio::null()),
         )
         .await
-        .map_err(|e| UnmountVolumeError::Command(e).boxed())?;
+        .map_err(|e| ActionError::Command(e))?;
 
         Ok(())
     }
-}
-
-#[derive(Debug, thiserror::Error)]
-pub enum UnmountVolumeError {
-    #[error("Failed to execute command")]
-    Command(#[source] std::io::Error),
 }

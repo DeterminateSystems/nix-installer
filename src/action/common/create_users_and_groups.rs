@@ -1,12 +1,11 @@
 use crate::{
     action::{
-        base::{CreateGroup, CreateGroupError, CreateUser, CreateUserError},
+        base::{CreateGroup, CreateUser},
         Action, ActionDescription, ActionError, StatefulAction,
     },
     settings::CommonSettings,
-    BoxableError,
 };
-use tokio::task::{JoinError, JoinSet};
+use tokio::task::JoinSet;
 
 #[derive(Debug, serde::Deserialize, serde::Serialize, Clone)]
 pub struct CreateUsersAndGroups {
@@ -21,9 +20,7 @@ pub struct CreateUsersAndGroups {
 
 impl CreateUsersAndGroups {
     #[tracing::instrument(skip_all)]
-    pub async fn plan(
-        settings: CommonSettings,
-    ) -> Result<StatefulAction<Self>, CreateUsersAndGroupsError> {
+    pub async fn plan(settings: CommonSettings) -> Result<StatefulAction<Self>, ActionError> {
         // TODO(@hoverbear): CHeck if it exist, error if so
         let create_group = CreateGroup::plan(
             settings.nix_build_group_name.clone(),
@@ -130,7 +127,7 @@ impl Action for CreateUsersAndGroups {
             },
             _ => {
                 let mut set = JoinSet::new();
-                let mut errors: Vec<Box<dyn std::error::Error + Send + Sync>> = Vec::new();
+                let mut errors: Vec<Box<ActionError>> = Vec::new();
                 for (idx, create_user) in create_users.iter_mut().enumerate() {
                     let mut create_user_clone = create_user.clone();
                     let _abort_handle = set.spawn(async move {
@@ -142,8 +139,8 @@ impl Action for CreateUsersAndGroups {
                 while let Some(result) = set.join_next().await {
                     match result {
                         Ok(Ok((idx, success))) => create_users[idx] = success,
-                        Ok(Err(e)) => errors.push(e),
-                        Err(e) => return Err(e)?,
+                        Ok(Err(e)) => errors.push(Box::new(e)),
+                        Err(e) => return Err(ActionError::Join(e))?,
                     };
                 }
 
@@ -151,7 +148,7 @@ impl Action for CreateUsersAndGroups {
                     if errors.len() == 1 {
                         return Err(errors.into_iter().next().unwrap().into());
                     } else {
-                        return Err(CreateUsersAndGroupsError::CreateUsers(errors).boxed());
+                        return Err(ActionError::Children(errors));
                     }
                 }
             },
@@ -216,15 +213,15 @@ impl Action for CreateUsersAndGroups {
             let mut create_user_clone = create_user.clone();
             let _abort_handle = set.spawn(async move {
                 create_user_clone.try_revert().await?;
-                Result::<_, Box<dyn std::error::Error + Send + Sync>>::Ok((idx, create_user_clone))
+                Result::<_, ActionError>::Ok((idx, create_user_clone))
             });
         }
 
         while let Some(result) = set.join_next().await {
             match result {
                 Ok(Ok((idx, success))) => create_users[idx] = success,
-                Ok(Err(e)) => errors.push(e),
-                Err(e) => return Err(e.boxed())?,
+                Ok(Err(e)) => errors.push(Box::new(e)),
+                Err(e) => return Err(ActionError::Join(e))?,
             };
         }
 
@@ -232,7 +229,7 @@ impl Action for CreateUsersAndGroups {
             if errors.len() == 1 {
                 return Err(errors.into_iter().next().unwrap().into());
             } else {
-                return Err(CreateUsersAndGroupsError::CreateUsers(errors).boxed());
+                return Err(ActionError::Children(errors));
             }
         }
 
@@ -241,34 +238,4 @@ impl Action for CreateUsersAndGroups {
 
         Ok(())
     }
-}
-
-#[derive(Debug, thiserror::Error)]
-pub enum CreateUsersAndGroupsError {
-    #[error("Creating user")]
-    CreateUser(
-        #[source]
-        #[from]
-        CreateUserError,
-    ),
-    #[error("Multiple errors: {}", .0.iter().map(|v| {
-        if let Some(source) = v.source() {
-            format!("{v} ({source})")
-        } else {
-            format!("{v}") 
-        }
-    }).collect::<Vec<_>>().join(" & "))]
-    CreateUsers(Vec<Box<dyn std::error::Error + Send + Sync>>),
-    #[error("Creating group")]
-    CreateGroup(
-        #[source]
-        #[from]
-        CreateGroupError,
-    ),
-    #[error("Joining spawned async task")]
-    Join(
-        #[source]
-        #[from]
-        JoinError,
-    ),
 }

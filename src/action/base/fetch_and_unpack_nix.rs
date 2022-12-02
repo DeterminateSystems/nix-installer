@@ -3,12 +3,7 @@ use std::path::PathBuf;
 use bytes::Buf;
 use reqwest::Url;
 
-use tokio::task::JoinError;
-
-use crate::{
-    action::{Action, ActionDescription, StatefulAction},
-    BoxableError,
-};
+use crate::action::{Action, ActionDescription, ActionError, StatefulAction};
 
 /**
 Fetch a URL to the given path
@@ -21,7 +16,7 @@ pub struct FetchAndUnpackNix {
 
 impl FetchAndUnpackNix {
     #[tracing::instrument(skip_all)]
-    pub async fn plan(url: Url, dest: PathBuf) -> Result<StatefulAction<Self>, FetchUrlError> {
+    pub async fn plan(url: Url, dest: PathBuf) -> Result<StatefulAction<Self>, ActionError> {
         // TODO(@hoverbear): Check URL exists?
         // TODO(@hoverbear): Check tempdir exists
 
@@ -49,11 +44,11 @@ impl Action for FetchAndUnpackNix {
 
         let res = reqwest::get(url.clone())
             .await
-            .map_err(|e| FetchUrlError::Reqwest(e).boxed())?;
+            .map_err(|e| ActionError::Custom(Box::new(FetchUrlError::Reqwest(e))))?;
         let bytes = res
             .bytes()
             .await
-            .map_err(|e| FetchUrlError::Reqwest(e).boxed())?;
+            .map_err(|e| ActionError::Custom(Box::new(FetchUrlError::Reqwest(e))))?;
         // TODO(@Hoverbear): Pick directory
         tracing::trace!("Unpacking tar.xz");
         let dest_clone = dest.clone();
@@ -62,7 +57,7 @@ impl Action for FetchAndUnpackNix {
         let mut archive = tar::Archive::new(decoder);
         archive
             .unpack(&dest_clone)
-            .map_err(|e| FetchUrlError::Unarchive(e).boxed())?;
+            .map_err(|e| ActionError::Custom(Box::new(FetchUrlError::Unarchive(e))))?;
 
         Ok(())
     }
@@ -84,12 +79,6 @@ impl Action for FetchAndUnpackNix {
 
 #[derive(Debug, thiserror::Error)]
 pub enum FetchUrlError {
-    #[error("Joining spawned async task")]
-    Join(
-        #[source]
-        #[from]
-        JoinError,
-    ),
     #[error("Request error")]
     Reqwest(
         #[from]

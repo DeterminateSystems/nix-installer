@@ -1,9 +1,6 @@
 use std::path::{Path, PathBuf};
 
-use crate::{
-    action::{Action, ActionDescription, StatefulAction},
-    BoxableError,
-};
+use crate::action::{Action, ActionDescription, ActionError, StatefulAction};
 
 const DEST: &str = "/nix/store";
 
@@ -17,7 +14,7 @@ pub struct MoveUnpackedNix {
 
 impl MoveUnpackedNix {
     #[tracing::instrument(skip_all)]
-    pub async fn plan(src: PathBuf) -> Result<StatefulAction<Self>, MoveUnpackedNixError> {
+    pub async fn plan(src: PathBuf) -> Result<StatefulAction<Self>, ActionError> {
         // Note: Do NOT try to check for the src/dest since the installer creates those
         Ok(Self { src }.into())
     }
@@ -49,9 +46,9 @@ impl Action for MoveUnpackedNix {
 
         // TODO(@Hoverbear): I would like to make this less awful
         let found_nix_paths = glob::glob(&format!("{}/nix-*", src.display()))
-            .map_err(|e| e.boxed())?
+            .map_err(|e| ActionError::Custom(Box::new(e)))?
             .collect::<Result<Vec<_>, _>>()
-            .map_err(|e| e.boxed())?;
+            .map_err(|e| ActionError::Custom(Box::new(e)))?;
         assert_eq!(
             found_nix_paths.len(),
             1,
@@ -63,13 +60,11 @@ impl Action for MoveUnpackedNix {
         tracing::trace!(src = %src_store.display(), dest = %dest.display(), "Renaming");
         tokio::fs::rename(src_store.clone(), dest)
             .await
-            .map_err(|e| {
-                MoveUnpackedNixError::Rename(src_store.clone(), dest.to_owned(), e).boxed()
-            })?;
+            .map_err(|e| ActionError::Rename(src_store.clone(), dest.to_owned(), e))?;
 
         tokio::fs::remove_dir_all(src)
             .await
-            .map_err(|e| MoveUnpackedNixError::Rename(src_store, dest.to_owned(), e).boxed())?;
+            .map_err(|e| ActionError::Rename(src_store, dest.to_owned(), e))?;
 
         Ok(())
     }
@@ -101,11 +96,5 @@ pub enum MoveUnpackedNixError {
         #[from]
         #[source]
         glob::GlobError,
-    ),
-    #[error("Rename `{0}` to `{1}`")]
-    Rename(
-        std::path::PathBuf,
-        std::path::PathBuf,
-        #[source] std::io::Error,
     ),
 }

@@ -3,10 +3,7 @@ use tokio::process::Command;
 use crate::action::{ActionError, ActionState, StatefulAction};
 use crate::execute_command;
 
-use crate::{
-    action::{Action, ActionDescription},
-    BoxableError,
-};
+use crate::action::{Action, ActionDescription};
 
 /**
 Start a given systemd unit
@@ -55,7 +52,7 @@ impl Action for StartSystemdUnit {
                 .stdin(std::process::Stdio::null()),
         )
         .await
-        .map_err(|e| StartSystemdUnitError::Command(e).boxed())?;
+        .map_err(|e| ActionError::Custom(Box::new(StartSystemdUnitError::Command(e))))?;
 
         Ok(())
     }
@@ -81,7 +78,7 @@ impl Action for StartSystemdUnit {
                 .stdin(std::process::Stdio::null()),
         )
         .await
-        .map_err(|e| StartSystemdUnitError::Command(e).boxed())?;
+        .map_err(|e| ActionError::Custom(Box::new(StartSystemdUnitError::Command(e))))?;
 
         // We do both to avoid an error doing `disable --now` if the user did stop it already somehow.
         execute_command(
@@ -92,7 +89,7 @@ impl Action for StartSystemdUnit {
                 .stdin(std::process::Stdio::null()),
         )
         .await
-        .map_err(|e| StartSystemdUnitError::Command(e).boxed())?;
+        .map_err(|e| ActionError::Custom(Box::new(StartSystemdUnitError::Command(e))))?;
 
         Ok(())
     }

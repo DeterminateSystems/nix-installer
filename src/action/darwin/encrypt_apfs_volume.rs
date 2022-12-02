@@ -103,7 +103,8 @@ impl Action for EncryptApfsVolume {
                 "/Library/Keychains/System.keychain",
             ]),
         )
-        .await?;
+        .await
+        .map_err(ActionError::Command)?;
 
         // Encrypt the mounted volume
         execute_command(Command::new("/usr/sbin/diskutil").process_group(0).args([
@@ -115,7 +116,8 @@ impl Action for EncryptApfsVolume {
             "-passphrase",
             password.as_str(),
         ]))
-        .await?;
+        .await
+        .map_err(ActionError::Command)?;
 
         execute_command(
             Command::new("/usr/sbin/diskutil")
@@ -124,7 +126,8 @@ impl Action for EncryptApfsVolume {
                 .arg("force")
                 .arg(&name),
         )
-        .await?;
+        .await
+        .map_err(ActionError::Command)?;
 
         Ok(())
     }
@@ -166,14 +169,9 @@ impl Action for EncryptApfsVolume {
                 .as_str(),
             ]),
         )
-        .await?;
+        .await
+        .map_err(ActionError::Command)?;
 
         Ok(())
     }
-}
-
-#[derive(Debug, thiserror::Error)]
-pub enum EncryptVolumeError {
-    #[error("Failed to execute command")]
-    Command(#[source] std::io::Error),
 }

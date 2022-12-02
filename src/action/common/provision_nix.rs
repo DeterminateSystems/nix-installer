@@ -1,18 +1,12 @@
+use super::{CreateNixTree, CreateUsersAndGroups};
 use crate::{
     action::{
-        base::{
-            CreateDirectoryError, FetchAndUnpackNix, FetchUrlError, MoveUnpackedNix,
-            MoveUnpackedNixError,
-        },
+        base::{FetchAndUnpackNix, MoveUnpackedNix},
         Action, ActionDescription, ActionError, StatefulAction,
     },
     settings::CommonSettings,
-    BoxableError,
 };
 use std::path::PathBuf;
-use tokio::task::JoinError;
-
-use super::{CreateNixTree, CreateNixTreeError, CreateUsersAndGroups, CreateUsersAndGroupsError};
 
 /**
 Place Nix and it's requirements onto the target
@@ -32,15 +26,11 @@ impl ProvisionNix {
             settings.nix_package_url.clone(),
             PathBuf::from("/nix/temp-install-dir"),
         )
-        .await
-        .map_err(|e| e.boxed())?;
-        let create_users_and_group = CreateUsersAndGroups::plan(settings.clone())
-            .await
-            .map_err(|e| e.boxed())?;
+        .await?;
+        let create_users_and_group = CreateUsersAndGroups::plan(settings.clone()).await?;
         let create_nix_tree = CreateNixTree::plan().await?;
-        let move_unpacked_nix = MoveUnpackedNix::plan(PathBuf::from("/nix/temp-install-dir"))
-            .await
-            .map_err(|e| e.boxed())?;
+        let move_unpacked_nix =
+            MoveUnpackedNix::plan(PathBuf::from("/nix/temp-install-dir")).await?;
         Ok(Self {
             fetch_nix,
             create_users_and_group,
@@ -88,13 +78,13 @@ impl Action for ProvisionNix {
         let mut fetch_nix_clone = fetch_nix.clone();
         let fetch_nix_handle = tokio::task::spawn(async {
             fetch_nix_clone.try_execute().await?;
-            Result::<_, Box<dyn std::error::Error + Send + Sync>>::Ok(fetch_nix_clone)
+            Result::<_, ActionError>::Ok(fetch_nix_clone)
         });
 
         create_users_and_group.try_execute().await?;
         create_nix_tree.try_execute().await?;
 
-        *fetch_nix = fetch_nix_handle.await.map_err(|e| e.boxed())??;
+        *fetch_nix = fetch_nix_handle.await.map_err(ActionError::Join)??;
         move_unpacked_nix.try_execute().await?;
 
         Ok(())
@@ -129,7 +119,7 @@ impl Action for ProvisionNix {
         let mut fetch_nix_clone = fetch_nix.clone();
         let fetch_nix_handle = tokio::task::spawn(async {
             fetch_nix_clone.try_revert().await?;
-            Result::<_, Box<dyn std::error::Error + Send + Sync>>::Ok(fetch_nix_clone)
+            Result::<_, ActionError>::Ok(fetch_nix_clone)
         });
 
         if let Err(err) = create_users_and_group.try_revert().await {
@@ -141,49 +131,9 @@ impl Action for ProvisionNix {
             return Err(err);
         }
 
-        *fetch_nix = fetch_nix_handle.await.map_err(|e| e.boxed())??;
+        *fetch_nix = fetch_nix_handle.await.map_err(ActionError::Join)??;
         move_unpacked_nix.try_revert().await?;
 
         Ok(())
     }
-}
-
-#[derive(Debug, thiserror::Error)]
-pub enum ProvisionNixError {
-    #[error("Fetching Nix")]
-    FetchNix(
-        #[source]
-        #[from]
-        FetchUrlError,
-    ),
-    #[error("Joining spawned async task")]
-    Join(
-        #[source]
-        #[from]
-        JoinError,
-    ),
-    #[error("Creating directory")]
-    CreateDirectory(
-        #[source]
-        #[from]
-        CreateDirectoryError,
-    ),
-    #[error("Creating users and group")]
-    CreateUsersAndGroup(
-        #[source]
-        #[from]
-        CreateUsersAndGroupsError,
-    ),
-    #[error("Creating nix tree")]
-    CreateNixTree(
-        #[source]
-        #[from]
-        CreateNixTreeError,
-    ),
-    #[error("Moving unpacked nix")]
-    MoveUnpackedNix(
-        #[source]
-        #[from]
-        MoveUnpackedNixError,
-    ),
 }

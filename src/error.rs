@@ -1,6 +1,6 @@
 use std::path::PathBuf;
 
-use crate::{planner::PlannerError, settings::InstallSettingsError};
+use crate::{action::ActionError, planner::PlannerError, settings::InstallSettingsError};
 
 /// An error occurring during a call defined in this crate
 #[derive(thiserror::Error, Debug)]
@@ -10,7 +10,7 @@ pub enum HarmonicError {
     Action(
         #[source]
         #[from]
-        Box<dyn std::error::Error + Send + Sync>,
+        ActionError,
     ),
     /// An error while writing the [`InstallPlan`](crate::InstallPlan)
     #[error("Recording install receipt")]

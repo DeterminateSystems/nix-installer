@@ -1,9 +1,6 @@
-use crate::action::base::{CreateFile, CreateFileError};
+use crate::action::base::CreateFile;
 use crate::action::ActionError;
-use crate::{
-    action::{Action, ActionDescription, StatefulAction},
-    BoxableError,
-};
+use crate::action::{Action, ActionDescription, StatefulAction};
 use reqwest::Url;
 
 /**
@@ -28,7 +25,9 @@ impl PlaceChannelConfiguration {
             .join("\n");
         let create_file = CreateFile::plan(
             dirs::home_dir()
-                .ok_or_else(|| PlaceChannelConfigurationError::NoRootHome.boxed())?
+                .ok_or_else(|| {
+                    ActionError::Custom(Box::new(PlaceChannelConfigurationError::NoRootHome))
+                })?
                 .join(".nix-channels"),
             None,
             None,
@@ -100,12 +99,6 @@ impl Action for PlaceChannelConfiguration {
 
 #[derive(Debug, thiserror::Error)]
 pub enum PlaceChannelConfigurationError {
-    #[error("Creating file")]
-    CreateFile(
-        #[source]
-        #[from]
-        CreateFileError,
-    ),
     #[error("No root home found to place channel configuration in")]
     NoRootHome,
 }

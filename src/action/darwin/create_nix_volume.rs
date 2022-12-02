@@ -1,14 +1,10 @@
-use crate::{
-    action::{
-        base::{CreateFile, CreateFileError, CreateOrAppendFile, CreateOrAppendFileError},
-        darwin::{
-            BootstrapApfsVolume, BootstrapVolumeError, CreateApfsVolume, CreateSyntheticObjects,
-            CreateSyntheticObjectsError, CreateVolumeError, EnableOwnership, EnableOwnershipError,
-            EncryptApfsVolume, EncryptVolumeError, UnmountApfsVolume, UnmountVolumeError,
-        },
-        Action, ActionDescription, ActionError, StatefulAction,
+use crate::action::{
+    base::{CreateFile, CreateOrAppendFile},
+    darwin::{
+        BootstrapApfsVolume, CreateApfsVolume, CreateSyntheticObjects, EnableOwnership,
+        EncryptApfsVolume, UnmountApfsVolume,
     },
-    BoxableError,
+    Action, ActionDescription, ActionError, StatefulAction,
 };
 use std::{
     path::{Path, PathBuf},
@@ -53,7 +49,7 @@ impl CreateNixVolume {
             "nix\n".into(), /* The newline is required otherwise it segfaults */
         )
         .await
-        .map_err(|e| e.boxed())?;
+        .map_err(|e| ActionError::Child(Box::new(e)))?;
 
         let create_synthetic_objects = CreateSyntheticObjects::plan().await?;
 
@@ -69,7 +65,7 @@ impl CreateNixVolume {
             format!("NAME=\"{name}\" /nix apfs rw,noauto,nobrowse,suid,owners"),
         )
         .await
-        .map_err(|e| e.boxed())?;
+        .map_err(|e| ActionError::Child(Box::new(e)))?;
 
         let encrypt_volume = if encrypt {
             Some(EncryptApfsVolume::plan(disk, &name).await?)
@@ -193,7 +189,7 @@ impl Action for CreateNixVolume {
                 .stdout(std::process::Stdio::null())
                 .status()
                 .await
-                .map_err(|e| CreateApfsVolumeError::Command(e).boxed())?;
+                .map_err(|e| ActionError::Command(e))?;
             if status.success() || retry_tokens == 0 {
                 break;
             } else {
@@ -252,26 +248,4 @@ impl Action for CreateNixVolume {
 
         Ok(())
     }
-}
-
-#[derive(Debug, thiserror::Error)]
-pub enum CreateApfsVolumeError {
-    #[error(transparent)]
-    CreateFile(#[from] CreateFileError),
-    #[error(transparent)]
-    DarwinBootstrapVolume(#[from] BootstrapVolumeError),
-    #[error(transparent)]
-    DarwinCreateSyntheticObjects(#[from] CreateSyntheticObjectsError),
-    #[error(transparent)]
-    DarwinCreateVolume(#[from] CreateVolumeError),
-    #[error(transparent)]
-    DarwinEnableOwnership(#[from] EnableOwnershipError),
-    #[error(transparent)]
-    DarwinEncryptVolume(#[from] EncryptVolumeError),
-    #[error(transparent)]
-    DarwinUnmountVolume(#[from] UnmountVolumeError),
-    #[error(transparent)]
-    CreateOrAppendFile(#[from] CreateOrAppendFileError),
-    #[error("Failed to execute command")]
-    Command(#[source] std::io::Error),
 }

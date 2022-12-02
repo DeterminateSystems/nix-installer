@@ -6,11 +6,8 @@ use tokio::process::Command;
 use crate::action::{ActionError, StatefulAction};
 use crate::execute_command;
 
+use crate::action::{Action, ActionDescription};
 use crate::os::darwin::DiskUtilOutput;
-use crate::{
-    action::{Action, ActionDescription},
-    BoxableError,
-};
 
 /**
 Enable ownership on a volume
@@ -55,7 +52,8 @@ impl Action for EnableOwnership {
                     .arg(&path)
                     .stdin(std::process::Stdio::null()),
             )
-            .await?
+            .await
+            .map_err(ActionError::Command)?
             .stdout;
             let the_plist: DiskUtilOutput = plist::from_reader(Cursor::new(buf)).unwrap();
 
@@ -71,7 +69,7 @@ impl Action for EnableOwnership {
                     .stdin(std::process::Stdio::null()),
             )
             .await
-            .map_err(|e| EnableOwnershipError::Command(e).boxed())?;
+            .map_err(ActionError::Command)?;
         }
 
         Ok(())

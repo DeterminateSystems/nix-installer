@@ -7,7 +7,6 @@ use crate::{
     },
     channel_value::ChannelValue,
     settings::CommonSettings,
-    BoxableError,
 };
 
 use reqwest::Url;
@@ -34,9 +33,7 @@ impl ConfigureNix {
             .collect();
 
         let setup_default_profile =
-            SetupDefaultProfile::plan(channels.iter().map(|(v, _k)| v.clone()).collect())
-                .await
-                .map_err(|e| e.boxed())?;
+            SetupDefaultProfile::plan(channels.iter().map(|(v, _k)| v.clone()).collect()).await?;
 
         let configure_shell_profile = if settings.modify_profile {
             Some(ConfigureShellProfile::plan().await?)

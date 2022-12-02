@@ -1,4 +1,7 @@
-use crate::{action::StatefulAction, execute_command, set_env, BoxableError};
+use crate::{
+    action::{ActionError, StatefulAction},
+    execute_command, set_env,
+};
 
 use glob::glob;
 
@@ -16,9 +19,7 @@ pub struct SetupDefaultProfile {
 
 impl SetupDefaultProfile {
     #[tracing::instrument(skip_all)]
-    pub async fn plan(
-        channels: Vec<String>,
-    ) -> Result<StatefulAction<Self>, SetupDefaultProfileError> {
+    pub async fn plan(channels: Vec<String>) -> Result<StatefulAction<Self>, ActionError> {
         Ok(Self { channels }.into())
     }
 }
@@ -43,9 +44,9 @@ impl Action for SetupDefaultProfile {
         // Find an `nix` package
         let nix_pkg_glob = "/nix/store/*-nix-*";
         let mut found_nix_pkg = None;
-        for entry in
-            glob(nix_pkg_glob).map_err(|e| SetupDefaultProfileError::GlobPatternError(e).boxed())?
-        {
+        for entry in glob(nix_pkg_glob).map_err(|e| {
+            ActionError::Custom(Box::new(SetupDefaultProfileError::GlobPatternError(e)))
+        })? {
             match entry {
                 Ok(path) => {
                     // TODO(@Hoverbear): Should probably ensure is unique
@@ -58,15 +59,17 @@ impl Action for SetupDefaultProfile {
         let nix_pkg = if let Some(nix_pkg) = found_nix_pkg {
             nix_pkg
         } else {
-            return Err(Box::new(SetupDefaultProfileError::NoNssCacert)); // TODO(@hoverbear): Fix this error
+            return Err(ActionError::Custom(Box::new(
+                SetupDefaultProfileError::NoNix,
+            )));
         };
 
         // Find an `nss-cacert` package, add it too.
         let nss_ca_cert_pkg_glob = "/nix/store/*-nss-cacert-*";
         let mut found_nss_ca_cert_pkg = None;
-        for entry in glob(nss_ca_cert_pkg_glob)
-            .map_err(|e| SetupDefaultProfileError::GlobPatternError(e).boxed())?
-        {
+        for entry in glob(nss_ca_cert_pkg_glob).map_err(|e| {
+            ActionError::Custom(Box::new(SetupDefaultProfileError::GlobPatternError(e)))
+        })? {
             match entry {
                 Ok(path) => {
                     // TODO(@Hoverbear): Should probably ensure is unique
@@ -79,7 +82,9 @@ impl Action for SetupDefaultProfile {
         let nss_ca_cert_pkg = if let Some(nss_ca_cert_pkg) = found_nss_ca_cert_pkg {
             nss_ca_cert_pkg
         } else {
-            return Err(Box::new(SetupDefaultProfileError::NoNssCacert));
+            return Err(ActionError::Custom(Box::new(
+                SetupDefaultProfileError::NoNssCacert,
+            )));
         };
 
         // Install `nix` itself into the store
@@ -93,7 +98,9 @@ impl Action for SetupDefaultProfile {
                 .stdin(std::process::Stdio::null())
                 .env(
                     "HOME",
-                    dirs::home_dir().ok_or_else(|| SetupDefaultProfileError::NoRootHome.boxed())?,
+                    dirs::home_dir().ok_or_else(|| {
+                        ActionError::Custom(Box::new(SetupDefaultProfileError::NoRootHome))
+                    })?,
                 )
                 .env(
                     "NIX_SSL_CERT_FILE",
@@ -101,7 +108,7 @@ impl Action for SetupDefaultProfile {
                 ), /* This is apparently load bearing... */
         )
         .await
-        .map_err(|e| SetupDefaultProfileError::Command(e).boxed())?;
+        .map_err(|e| ActionError::Command(e))?;
 
         // Install `nss-cacert` into the store
         // execute_command(
@@ -136,7 +143,7 @@ impl Action for SetupDefaultProfile {
 
             execute_command(&mut command)
                 .await
-                .map_err(|e| SetupDefaultProfileError::Command(e).boxed())?;
+                .map_err(|e| ActionError::Command(e))?;
         }
 
         Ok(())
@@ -175,8 +182,8 @@ pub enum SetupDefaultProfileError {
     ),
     #[error("Unarchived Nix store did not appear to include a `nss-cacert` location")]
     NoNssCacert,
-    #[error("Failed to execute command")]
-    Command(#[source] std::io::Error),
+    #[error("Unarchived Nix store did not appear to include a `nix` location")]
+    NoNix,
     #[error("No root home found to place channel configuration in")]
     NoRootHome,
 }

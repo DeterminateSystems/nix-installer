@@ -1,4 +1,4 @@
-use crate::action::base::{CreateDirectory, CreateDirectoryError};
+use crate::action::base::CreateDirectory;
 use crate::action::{Action, ActionDescription, ActionError, StatefulAction};
 
 const PATHS: &[&str] = &[
@@ -107,14 +107,4 @@ impl Action for CreateNixTree {
 
         Ok(())
     }
-}
-
-#[derive(Debug, thiserror::Error)]
-pub enum CreateNixTreeError {
-    #[error("Creating directory")]
-    CreateDirectory(
-        #[source]
-        #[from]
-        CreateDirectoryError,
-    ),
 }

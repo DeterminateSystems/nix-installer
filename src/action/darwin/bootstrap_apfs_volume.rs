@@ -5,10 +5,7 @@ use tokio::process::Command;
 use crate::action::{ActionError, StatefulAction};
 use crate::execute_command;
 
-use crate::{
-    action::{Action, ActionDescription},
-    BoxableError,
-};
+use crate::action::{Action, ActionDescription};
 
 /**
 Bootstrap and kickstart an APFS volume
@@ -53,7 +50,7 @@ impl Action for BootstrapApfsVolume {
                 .stdin(std::process::Stdio::null()),
         )
         .await
-        .map_err(|e| BootstrapVolumeError::Command(e).boxed())?;
+        .map_err(|e| ActionError::Command(e))?;
         execute_command(
             Command::new("launchctl")
                 .process_group(0)
@@ -61,7 +58,7 @@ impl Action for BootstrapApfsVolume {
                 .stdin(std::process::Stdio::null()),
         )
         .await
-        .map_err(|e| BootstrapVolumeError::Command(e).boxed())?;
+        .map_err(|e| ActionError::Command(e))?;
 
         Ok(())
     }
@@ -87,7 +84,7 @@ impl Action for BootstrapApfsVolume {
                 .stdin(std::process::Stdio::null()),
         )
         .await
-        .map_err(|e| BootstrapVolumeError::Command(e).boxed())?;
+        .map_err(|e| ActionError::Command(e))?;
 
         Ok(())
     }
