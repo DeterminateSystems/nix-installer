@@ -153,6 +153,9 @@ jobs:
     name: Build x86_64 Darwin
     runs-on: macos-12
     steps:
+      - run: |
+        echo $GITHUB_PATH
+        cat $GITHUB_PATH
       - uses: actions/checkout@v3
       - uses: cachix/install-nix-action@v17
         with:
@@ -173,6 +176,9 @@ jobs:
     runs-on: macos-12
     needs: build-x86_64-darwin
     steps:
+      - run: |
+        echo $GITHUB_PATH
+        cat $GITHUB_PATH
       - run: brew install fish
       - uses: actions/download-artifact@v3
         with:
