@@ -1,14 +1,10 @@
-use crate::{
-    action::{
-        base::{CreateFile, CreateFileError, CreateOrAppendFile, CreateOrAppendFileError},
-        darwin::{
-            BootstrapApfsVolume, BootstrapVolumeError, CreateApfsVolume, CreateSyntheticObjects,
-            CreateSyntheticObjectsError, CreateVolumeError, EnableOwnership, EnableOwnershipError,
-            EncryptApfsVolume, EncryptVolumeError, UnmountApfsVolume, UnmountVolumeError,
-        },
-        Action, ActionDescription, StatefulAction,
+use crate::action::{
+    base::{CreateFile, CreateOrAppendFile},
+    darwin::{
+        BootstrapApfsVolume, CreateApfsVolume, CreateSyntheticObjects, EnableOwnership,
+        EncryptApfsVolume, UnmountApfsVolume,
     },
-    BoxableError,
+    Action, ActionDescription, ActionError, StatefulAction,
 };
 use std::{
     path::{Path, PathBuf},
@@ -43,7 +39,7 @@ impl CreateNixVolume {
         name: String,
         case_sensitive: bool,
         encrypt: bool,
-    ) -> Result<StatefulAction<Self>, Box<dyn std::error::Error + Send + Sync>> {
+    ) -> Result<StatefulAction<Self>, ActionError> {
         let disk = disk.as_ref();
         let create_or_append_synthetic_conf = CreateOrAppendFile::plan(
             "/etc/synthetic.conf",
@@ -53,7 +49,7 @@ impl CreateNixVolume {
             "nix\n".into(), /* The newline is required otherwise it segfaults */
         )
         .await
-        .map_err(|e| e.boxed())?;
+        .map_err(|e| ActionError::Child(Box::new(e)))?;
 
         let create_synthetic_objects = CreateSyntheticObjects::plan().await?;
 
@@ -69,7 +65,7 @@ impl CreateNixVolume {
             format!("NAME=\"{name}\" /nix apfs rw,noauto,nobrowse,suid,owners"),
         )
         .await
-        .map_err(|e| e.boxed())?;
+        .map_err(|e| ActionError::Child(Box::new(e)))?;
 
         let encrypt_volume = if encrypt {
             Some(EncryptApfsVolume::plan(disk, &name).await?)
@@ -155,7 +151,7 @@ impl Action for CreateNixVolume {
     }
 
     #[tracing::instrument(skip_all, fields(destination,))]
-    async fn execute(&mut self) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
+    async fn execute(&mut self) -> Result<(), ActionError> {
         let Self {
             disk: _,
             name: _,
@@ -193,7 +189,7 @@ impl Action for CreateNixVolume {
                 .stdout(std::process::Stdio::null())
                 .status()
                 .await
-                .map_err(|e| CreateApfsVolumeError::Command(e).boxed())?;
+                .map_err(|e| ActionError::Command(e))?;
             if status.success() || retry_tokens == 0 {
                 break;
             } else {
@@ -218,7 +214,7 @@ impl Action for CreateNixVolume {
     }
 
     #[tracing::instrument(skip_all, fields(disk, name))]
-    async fn revert(&mut self) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
+    async fn revert(&mut self) -> Result<(), ActionError> {
         let Self {
             disk: _,
             name: _,
@@ -252,26 +248,4 @@ impl Action for CreateNixVolume {
 
         Ok(())
     }
-}
-
-#[derive(Debug, thiserror::Error)]
-pub enum CreateApfsVolumeError {
-    #[error(transparent)]
-    CreateFile(#[from] CreateFileError),
-    #[error(transparent)]
-    DarwinBootstrapVolume(#[from] BootstrapVolumeError),
-    #[error(transparent)]
-    DarwinCreateSyntheticObjects(#[from] CreateSyntheticObjectsError),
-    #[error(transparent)]
-    DarwinCreateVolume(#[from] CreateVolumeError),
-    #[error(transparent)]
-    DarwinEnableOwnership(#[from] EnableOwnershipError),
-    #[error(transparent)]
-    DarwinEncryptVolume(#[from] EncryptVolumeError),
-    #[error(transparent)]
-    DarwinUnmountVolume(#[from] UnmountVolumeError),
-    #[error(transparent)]
-    CreateOrAppendFile(#[from] CreateOrAppendFileError),
-    #[error("Failed to execute command")]
-    Command(#[source] std::io::Error),
 }

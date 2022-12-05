@@ -10,8 +10,8 @@ mod provision_nix;
 
 pub use configure_nix::ConfigureNix;
 pub use configure_shell_profile::ConfigureShellProfile;
-pub use create_nix_tree::{CreateNixTree, CreateNixTreeError};
-pub use create_users_and_groups::{CreateUsersAndGroups, CreateUsersAndGroupsError};
+pub use create_nix_tree::CreateNixTree;
+pub use create_users_and_groups::CreateUsersAndGroups;
 pub use place_channel_configuration::{PlaceChannelConfiguration, PlaceChannelConfigurationError};
-pub use place_nix_configuration::{PlaceNixConfiguration, PlaceNixConfigurationError};
-pub use provision_nix::{ProvisionNix, ProvisionNixError};
+pub use place_nix_configuration::PlaceNixConfiguration;
+pub use provision_nix::ProvisionNix;

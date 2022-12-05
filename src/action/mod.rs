@@ -50,7 +50,7 @@ use harmonic::{
     InstallPlan,
     settings::{CommonSettings, InstallSettingsError},
     planner::{Planner, PlannerError, linux::SteamDeck},
-    action::{Action, StatefulAction, ActionDescription},
+    action::{Action, ActionError, StatefulAction, ActionDescription},
 };
 
 #[derive(Debug, serde::Deserialize, serde::Serialize, Clone)]
@@ -59,7 +59,7 @@ pub struct MyAction {}
 
 impl MyAction {
     #[tracing::instrument(skip_all)]
-    pub async fn plan() -> Result<StatefulAction<Self>, Box<dyn std::error::Error + Send + Sync>> {
+    pub async fn plan() -> Result<StatefulAction<Self>, ActionError> {
         Ok(Self {}.into())
     }
 }
@@ -79,7 +79,7 @@ impl Action for MyAction {
     #[tracing::instrument(skip_all, fields(
         // Tracing fields...
     ))]
-    async fn execute(&mut self) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
+    async fn execute(&mut self) -> Result<(), ActionError> {
         // Execute steps ...
         Ok(())
     }
@@ -91,7 +91,7 @@ impl Action for MyAction {
     #[tracing::instrument(skip_all, fields(
         // Tracing fields...
     ))]
-    async fn revert(&mut self) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
+    async fn revert(&mut self) -> Result<(), ActionError> {
         // Revert steps...
         Ok(())
     }
@@ -158,6 +158,8 @@ pub mod linux;
 mod stateful;
 
 pub use stateful::{ActionState, StatefulAction};
+use std::error::Error;
+use tokio::task::JoinError;
 
 /// An action which can be reverted or completed, with an action state
 ///
@@ -186,13 +188,13 @@ pub trait Action: Send + Sync + std::fmt::Debug + dyn_clone::DynClone {
     /// If this action calls sub-[`Action`]s, care should be taken to call [`try_execute`][StatefulAction::try_execute], not [`execute`][Action::execute], so that [`ActionState`] is handled correctly and tracing is done.
     ///
     /// This is called by [`InstallPlan::install`](crate::InstallPlan::install) through [`StatefulAction::try_execute`] which handles tracing as well as if the action needs to execute based on its `action_state`.
-    async fn execute(&mut self) -> Result<(), Box<dyn std::error::Error + Send + Sync>>;
+    async fn execute(&mut self) -> Result<(), ActionError>;
     /// Perform any revert steps
     ///
     /// If this action calls sub-[`Action`]s, care should be taken to call [`try_revert`][StatefulAction::try_revert], not [`revert`][Action::revert], so that [`ActionState`] is handled correctly and tracing is done.
     ///
     /// /// This is called by [`InstallPlan::uninstall`](crate::InstallPlan::uninstall) through [`StatefulAction::try_revert`] which handles tracing as well as if the action needs to revert based on its `action_state`.
-    async fn revert(&mut self) -> Result<(), Box<dyn std::error::Error + Send + Sync>>;
+    async fn revert(&mut self) -> Result<(), ActionError>;
 
     fn stateful(self) -> StatefulAction<Self>
     where
@@ -203,7 +205,7 @@ pub trait Action: Send + Sync + std::fmt::Debug + dyn_clone::DynClone {
             state: ActionState::Uncompleted,
         }
     }
-    // They should also have an `async fn plan(args...) -> Result<StatefulAction<Self>, Box<dyn std::error::Error + Send + Sync>>;`
+    // They should also have an `async fn plan(args...) -> Result<StatefulAction<Self>, ActionError>;`
 }
 
 dyn_clone::clone_trait_object!(Action);
@@ -224,4 +226,86 @@ impl ActionDescription {
             explanation,
         }
     }
+}
+
+/// An error occurring during an action
+#[derive(thiserror::Error, Debug)]
+pub enum ActionError {
+    /// A custom error
+    #[error(transparent)]
+    Custom(Box<dyn std::error::Error + Send + Sync>),
+    /// A child error
+    #[error(transparent)]
+    Child(#[from] Box<ActionError>),
+    /// Several child errors
+    #[error("Multiple errors: {}", .0.iter().map(|v| {
+        if let Some(source) = v.source() {
+            format!("{v} ({source})")
+        } else {
+            format!("{v}") 
+        }
+    }).collect::<Vec<_>>().join(" & "))]
+    Children(Vec<Box<ActionError>>),
+    /// The path already exists
+    #[error("Path exists `{0}`")]
+    Exists(std::path::PathBuf),
+    #[error("Getting metadata for {0}`")]
+    GettingMetadata(std::path::PathBuf, #[source] std::io::Error),
+    #[error("Creating directory `{0}`")]
+    CreateDirectory(std::path::PathBuf, #[source] std::io::Error),
+    #[error("Symlinking from `{0}` to `{1}`")]
+    Symlink(
+        std::path::PathBuf,
+        std::path::PathBuf,
+        #[source] std::io::Error,
+    ),
+    #[error("Set mode `{0}` on `{1}`")]
+    SetPermissions(u32, std::path::PathBuf, #[source] std::io::Error),
+    #[error("Remove file `{0}`")]
+    Remove(std::path::PathBuf, #[source] std::io::Error),
+    #[error("Copying file `{0}` to `{1}`")]
+    Copy(
+        std::path::PathBuf,
+        std::path::PathBuf,
+        #[source] std::io::Error,
+    ),
+    #[error("Rename `{0}` to `{1}`")]
+    Rename(
+        std::path::PathBuf,
+        std::path::PathBuf,
+        #[source] std::io::Error,
+    ),
+    #[error("Remove path `{0}`")]
+    Read(std::path::PathBuf, #[source] std::io::Error),
+    #[error("Open path `{0}`")]
+    Open(std::path::PathBuf, #[source] std::io::Error),
+    #[error("Write path `{0}`")]
+    Write(std::path::PathBuf, #[source] std::io::Error),
+    #[error("Seek path `{0}`")]
+    Seek(std::path::PathBuf, #[source] std::io::Error),
+    #[error("Getting uid for user `{0}`")]
+    UserId(String, #[source] nix::errno::Errno),
+    #[error("Getting user `{0}`")]
+    NoUser(String),
+    #[error("Getting gid for group `{0}`")]
+    GroupId(String, #[source] nix::errno::Errno),
+    #[error("Getting group `{0}`")]
+    NoGroup(String),
+    #[error("Chowning path `{0}`")]
+    Chown(std::path::PathBuf, #[source] nix::errno::Errno),
+    /// Failed to execute command
+    #[error("Failed to execute command")]
+    Command(#[source] std::io::Error),
+    #[error("Joining spawned async task")]
+    Join(
+        #[source]
+        #[from]
+        JoinError,
+    ),
+    #[error("String from UTF-8 error")]
+    FromUtf8(
+        #[source]
+        #[from]
+        std::string::FromUtf8Error,
+    ),
 }

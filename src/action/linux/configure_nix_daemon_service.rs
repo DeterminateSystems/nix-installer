@@ -4,13 +4,10 @@ use target_lexicon::OperatingSystem;
 use tokio::fs::remove_file;
 use tokio::process::Command;
 
-use crate::action::StatefulAction;
+use crate::action::{ActionError, StatefulAction};
 use crate::execute_command;
 
-use crate::{
-    action::{Action, ActionDescription},
-    BoxableError,
-};
+use crate::action::{Action, ActionDescription};
 
 const SERVICE_SRC: &str = "/nix/var/nix/profiles/default/lib/systemd/system/nix-daemon.service";
 const SOCKET_SRC: &str = "/nix/var/nix/profiles/default/lib/systemd/system/nix-daemon.socket";
@@ -26,7 +23,7 @@ pub struct ConfigureNixDaemonService {}
 
 impl ConfigureNixDaemonService {
     #[tracing::instrument(skip_all)]
-    pub async fn plan() -> Result<StatefulAction<Self>, Box<dyn std::error::Error + Send + Sync>> {
+    pub async fn plan() -> Result<StatefulAction<Self>, ActionError> {
         match OperatingSystem::host() {
             OperatingSystem::MacOSX {
                 major: _,
@@ -36,7 +33,9 @@ impl ConfigureNixDaemonService {
             | OperatingSystem::Darwin => (),
             _ => {
                 if !Path::new("/run/systemd/system").exists() {
-                    return Err(ConfigureNixDaemonServiceError::InitNotSupported.boxed());
+                    return Err(ActionError::Custom(Box::new(
+                        ConfigureNixDaemonServiceError::InitNotSupported,
+                    )));
                 }
             },
         };
@@ -64,7 +63,7 @@ impl Action for ConfigureNixDaemonService {
     }
 
     #[tracing::instrument(skip_all)]
-    async fn execute(&mut self) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
+    async fn execute(&mut self) -> Result<(), ActionError> {
         let Self {} = self;
 
         match OperatingSystem::host() {
@@ -78,12 +77,11 @@ impl Action for ConfigureNixDaemonService {
                 tokio::fs::copy(src.clone(), DARWIN_NIX_DAEMON_DEST)
                     .await
                     .map_err(|e| {
-                        ConfigureNixDaemonServiceError::Copy(
+                        ActionError::Copy(
                             src.to_path_buf(),
                             PathBuf::from(DARWIN_NIX_DAEMON_DEST),
                             e,
                         )
-                        .boxed()
                     })?;
 
                 execute_command(
@@ -94,19 +92,18 @@ impl Action for ConfigureNixDaemonService {
                         .stdin(std::process::Stdio::null()),
                 )
                 .await
-                .map_err(|e| ConfigureNixDaemonServiceError::Command(e).boxed())?;
+                .map_err(ActionError::Command)?;
             },
             _ => {
                 tracing::trace!(src = TMPFILES_SRC, dest = TMPFILES_DEST, "Symlinking");
                 tokio::fs::symlink(TMPFILES_SRC, TMPFILES_DEST)
                     .await
                     .map_err(|e| {
-                        ConfigureNixDaemonServiceError::Symlink(
+                        ActionError::Symlink(
                             PathBuf::from(TMPFILES_SRC),
                             PathBuf::from(TMPFILES_DEST),
                             e,
                         )
-                        .boxed()
                     })?;
 
                 execute_command(
@@ -117,7 +114,7 @@ impl Action for ConfigureNixDaemonService {
                         .stdin(std::process::Stdio::null()),
                 )
                 .await
-                .map_err(|e| ConfigureNixDaemonServiceError::Command(e).boxed())?;
+                .map_err(ActionError::Command)?;
 
                 execute_command(
                     Command::new("systemctl")
@@ -127,7 +124,7 @@ impl Action for ConfigureNixDaemonService {
                         .stdin(std::process::Stdio::null()),
                 )
                 .await
-                .map_err(|e| ConfigureNixDaemonServiceError::Command(e).boxed())?;
+                .map_err(ActionError::Command)?;
 
                 execute_command(
                     Command::new("systemctl")
@@ -137,7 +134,7 @@ impl Action for ConfigureNixDaemonService {
                         .stdin(std::process::Stdio::null()),
                 )
                 .await
-                .map_err(|e| ConfigureNixDaemonServiceError::Command(e).boxed())?;
+                .map_err(ActionError::Command)?;
 
                 execute_command(
                     Command::new("systemctl")
@@ -146,7 +143,7 @@ impl Action for ConfigureNixDaemonService {
                         .stdin(std::process::Stdio::null()),
                 )
                 .await
-                .map_err(|e| ConfigureNixDaemonServiceError::Command(e).boxed())?;
+                .map_err(ActionError::Command)?;
 
                 execute_command(
                     Command::new("systemctl")
@@ -156,7 +153,7 @@ impl Action for ConfigureNixDaemonService {
                         .arg("nix-daemon.socket"),
                 )
                 .await
-                .map_err(|e| ConfigureNixDaemonServiceError::Command(e).boxed())?;
+                .map_err(ActionError::Command)?;
             },
         };
 
@@ -176,7 +173,7 @@ impl Action for ConfigureNixDaemonService {
     }
 
     #[tracing::instrument(skip_all)]
-    async fn revert(&mut self) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
+    async fn revert(&mut self) -> Result<(), ActionError> {
         match OperatingSystem::host() {
             OperatingSystem::MacOSX {
                 major: _,
@@ -191,7 +188,7 @@ impl Action for ConfigureNixDaemonService {
                         .arg(DARWIN_NIX_DAEMON_DEST),
                 )
                 .await
-                .map_err(|e| ConfigureNixDaemonServiceError::Command(e).boxed())?;
+                .map_err(ActionError::Command)?;
             },
             _ => {
                 // We separate stop and disable (instead of using `--now`) to avoid cases where the service isn't started, but is enabled.
@@ -209,7 +206,7 @@ impl Action for ConfigureNixDaemonService {
                             .stdin(std::process::Stdio::null()),
                     )
                     .await
-                    .map_err(|e| ConfigureNixDaemonServiceError::Command(e).boxed())?;
+                    .map_err(ActionError::Command)?;
                 }
 
                 if socket_is_enabled {
@@ -220,7 +217,7 @@ impl Action for ConfigureNixDaemonService {
                             .stdin(std::process::Stdio::null()),
                     )
                     .await
-                    .map_err(|e| ConfigureNixDaemonServiceError::Command(e).boxed())?;
+                    .map_err(ActionError::Command)?;
                 }
 
                 if service_is_active {
@@ -231,7 +228,7 @@ impl Action for ConfigureNixDaemonService {
                             .stdin(std::process::Stdio::null()),
                     )
                     .await
-                    .map_err(|e| ConfigureNixDaemonServiceError::Command(e).boxed())?;
+                    .map_err(ActionError::Command)?;
                 }
 
                 if service_is_enabled {
@@ -242,7 +239,7 @@ impl Action for ConfigureNixDaemonService {
                             .stdin(std::process::Stdio::null()),
                     )
                     .await
-                    .map_err(|e| ConfigureNixDaemonServiceError::Command(e).boxed())?;
+                    .map_err(ActionError::Command)?;
                 }
 
                 execute_command(
@@ -253,12 +250,11 @@ impl Action for ConfigureNixDaemonService {
                         .stdin(std::process::Stdio::null()),
                 )
                 .await
-                .map_err(|e| ConfigureNixDaemonServiceError::Command(e).boxed())?;
+                .map_err(ActionError::Command)?;
 
-                remove_file(TMPFILES_DEST).await.map_err(|e| {
-                    ConfigureNixDaemonServiceError::RemoveFile(PathBuf::from(TMPFILES_DEST), e)
-                        .boxed()
-                })?;
+                remove_file(TMPFILES_DEST)
+                    .await
+                    .map_err(|e| ActionError::Remove(PathBuf::from(TMPFILES_DEST), e))?;
 
                 execute_command(
                     Command::new("systemctl")
@@ -267,7 +263,7 @@ impl Action for ConfigureNixDaemonService {
                         .stdin(std::process::Stdio::null()),
                 )
                 .await
-                .map_err(|e| ConfigureNixDaemonServiceError::Command(e).boxed())?;
+                .map_err(ActionError::Command)?;
             },
         };
 
@@ -277,34 +273,17 @@ impl Action for ConfigureNixDaemonService {
 
 #[derive(Debug, thiserror::Error)]
 pub enum ConfigureNixDaemonServiceError {
-    #[error("Symlinking from `{0}` to `{1}`")]
-    Symlink(
-        std::path::PathBuf,
-        std::path::PathBuf,
-        #[source] std::io::Error,
-    ),
-    #[error("Set mode `{0}` on `{1}`")]
-    SetPermissions(u32, std::path::PathBuf, #[source] std::io::Error),
-    #[error("Command failed to execute")]
-    Command(#[source] std::io::Error),
-    #[error("Remove file `{0}`")]
-    RemoveFile(std::path::PathBuf, #[source] std::io::Error),
-    #[error("Copying file `{0}` to `{1}`")]
-    Copy(
-        std::path::PathBuf,
-        std::path::PathBuf,
-        #[source] std::io::Error,
-    ),
     #[error("No supported init system found")]
     InitNotSupported,
 }
 
-async fn is_active(unit: &str) -> Result<bool, Box<dyn std::error::Error + Send + Sync>> {
+async fn is_active(unit: &str) -> Result<bool, ActionError> {
     let output = Command::new("systemctl")
         .arg("is-active")
         .arg(unit)
         .output()
-        .await?;
+        .await
+        .map_err(ActionError::Command)?;
     if String::from_utf8(output.stdout)?.starts_with("active") {
         tracing::trace!(%unit, "Is active");
         Ok(true)
@@ -314,12 +293,13 @@ async fn is_active(unit: &str) -> Result<bool, Box<dyn std::error::Error + Send 
     }
 }
 
-async fn is_enabled(unit: &str) -> Result<bool, Box<dyn std::error::Error + Send + Sync>> {
+async fn is_enabled(unit: &str) -> Result<bool, ActionError> {
     let output = Command::new("systemctl")
         .arg("is-enabled")
         .arg(unit)
         .output()
-        .await?;
+        .await
+        .map_err(ActionError::Command)?;
     let stdout = String::from_utf8(output.stdout)?;
     if stdout.starts_with("enabled") || stdout.starts_with("linked") {
         tracing::trace!(%unit, "Is enabled");

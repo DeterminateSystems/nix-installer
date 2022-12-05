@@ -80,7 +80,9 @@ pub mod linux;
 use std::collections::HashMap;
 
 use crate::{
-    action::StatefulAction, settings::InstallSettingsError, Action, HarmonicError, InstallPlan,
+    action::{ActionError, StatefulAction},
+    settings::InstallSettingsError,
+    Action, HarmonicError, InstallPlan,
 };
 
 /// Something which can be used to plan out an [`InstallPlan`]
@@ -165,7 +167,11 @@ pub enum PlannerError {
     UnsupportedArchitecture(target_lexicon::Triple),
     /// Error executing action
     #[error("Error executing action")]
-    Action(#[source] Box<dyn std::error::Error + Send + Sync>),
+    Action(
+        #[source]
+        #[from]
+        ActionError,
+    ),
     /// An [`InstallSettingsError`]
     #[error(transparent)]
     InstallSettings(#[from] InstallSettingsError),

@@ -1,5 +1,7 @@
 use crate::{
-    action::{darwin::NIX_VOLUME_MOUNTD_DEST, Action, ActionDescription, StatefulAction},
+    action::{
+        darwin::NIX_VOLUME_MOUNTD_DEST, Action, ActionDescription, ActionError, StatefulAction,
+    },
     execute_command,
 };
 use rand::Rng;
@@ -20,7 +22,7 @@ impl EncryptApfsVolume {
     pub async fn plan(
         disk: impl AsRef<Path>,
         name: impl AsRef<str>,
-    ) -> Result<StatefulAction<Self>, Box<dyn std::error::Error + Send + Sync>> {
+    ) -> Result<StatefulAction<Self>, ActionError> {
         let name = name.as_ref().to_owned();
         Ok(Self {
             name,
@@ -48,7 +50,7 @@ impl Action for EncryptApfsVolume {
     #[tracing::instrument(skip_all, fields(
         disk = %self.disk.display(),
     ))]
-    async fn execute(&mut self) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
+    async fn execute(&mut self) -> Result<(), ActionError> {
         let Self { disk, name } = self;
 
         // Generate a random password.
@@ -69,7 +71,9 @@ impl Action for EncryptApfsVolume {
 
         let disk_str = disk.to_str().expect("Could not turn disk into string"); /* Should not reasonably ever fail */
 
-        execute_command(Command::new("/usr/sbin/diskutil").arg("mount").arg(&name)).await?;
+        execute_command(Command::new("/usr/sbin/diskutil").arg("mount").arg(&name))
+            .await
+            .map_err(ActionError::Command)?;
 
         // Add the password to the user keychain so they can unlock it later.
         execute_command(
@@ -99,7 +103,8 @@ impl Action for EncryptApfsVolume {
                 "/Library/Keychains/System.keychain",
             ]),
         )
-        .await?;
+        .await
+        .map_err(ActionError::Command)?;
 
         // Encrypt the mounted volume
         execute_command(Command::new("/usr/sbin/diskutil").process_group(0).args([
@@ -111,7 +116,8 @@ impl Action for EncryptApfsVolume {
             "-passphrase",
             password.as_str(),
         ]))
-        .await?;
+        .await
+        .map_err(ActionError::Command)?;
 
         execute_command(
             Command::new("/usr/sbin/diskutil")
@@ -120,7 +126,8 @@ impl Action for EncryptApfsVolume {
                 .arg("force")
                 .arg(&name),
         )
-        .await?;
+        .await
+        .map_err(ActionError::Command)?;
 
         Ok(())
     }
@@ -138,7 +145,7 @@ impl Action for EncryptApfsVolume {
     #[tracing::instrument(skip_all, fields(
         disk = %self.disk.display(),
     ))]
-    async fn revert(&mut self) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
+    async fn revert(&mut self) -> Result<(), ActionError> {
         let Self { disk, name } = self;
 
         let disk_str = disk.to_str().expect("Could not turn disk into string"); /* Should not reasonably ever fail */
@@ -162,14 +169,9 @@ impl Action for EncryptApfsVolume {
                 .as_str(),
             ]),
         )
-        .await?;
+        .await
+        .map_err(ActionError::Command)?;
 
         Ok(())
     }
-}
-
-#[derive(Debug, thiserror::Error)]
-pub enum EncryptVolumeError {
-    #[error("Failed to execute command")]
-    Command(#[source] std::io::Error),
 }

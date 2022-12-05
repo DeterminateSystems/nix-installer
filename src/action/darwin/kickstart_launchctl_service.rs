@@ -1,12 +1,9 @@
 use tokio::process::Command;
 
-use crate::action::StatefulAction;
+use crate::action::{ActionError, StatefulAction};
 use crate::execute_command;
 
-use crate::{
-    action::{Action, ActionDescription},
-    BoxableError,
-};
+use crate::action::{Action, ActionDescription};
 
 /**
 Kickstart a `launchctl` service
@@ -18,9 +15,7 @@ pub struct KickstartLaunchctlService {
 
 impl KickstartLaunchctlService {
     #[tracing::instrument(skip_all)]
-    pub async fn plan(
-        unit: String,
-    ) -> Result<StatefulAction<Self>, Box<dyn std::error::Error + Send + Sync>> {
+    pub async fn plan(unit: String) -> Result<StatefulAction<Self>, ActionError> {
         Ok(Self { unit }.into())
     }
 }
@@ -40,7 +35,7 @@ impl Action for KickstartLaunchctlService {
     #[tracing::instrument(skip_all, fields(
         unit = %self.unit,
     ))]
-    async fn execute(&mut self) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
+    async fn execute(&mut self) -> Result<(), ActionError> {
         let Self { unit } = self;
 
         execute_command(
@@ -52,7 +47,7 @@ impl Action for KickstartLaunchctlService {
                 .stdin(std::process::Stdio::null()),
         )
         .await
-        .map_err(|e| KickstartLaunchctlServiceError::Command(e).boxed())?;
+        .map_err(ActionError::Command)?;
 
         Ok(())
     }
@@ -64,14 +59,8 @@ impl Action for KickstartLaunchctlService {
     #[tracing::instrument(skip_all, fields(
         unit = %self.unit,
     ))]
-    async fn revert(&mut self) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
+    async fn revert(&mut self) -> Result<(), ActionError> {
         // noop
         Ok(())
     }
-}
-
-#[derive(Debug, thiserror::Error)]
-pub enum KickstartLaunchctlServiceError {
-    #[error("Failed to execute command")]
-    Command(#[source] std::io::Error),
 }
