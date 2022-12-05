@@ -143,6 +143,9 @@ impl InstallPlan {
         }
 
         write_receipt(self.clone()).await?;
+        copy_self_to_nix_store()
+            .await
+            .map_err(|e| HarmonicError::CopyingSelf(e))?;
         Ok(())
     }
 
@@ -281,6 +284,13 @@ fn ensure_version<'de, D: Deserializer<'de>>(d: D) -> Result<Version, D::Error> 
             "This version of Harmonic ({harmonic_version}) is not compatible with this plan's version ({plan_version}), please use a compatible version (according to Semantic Versioning)",
         )))
     }
+}
+
+#[tracing::instrument]
+async fn copy_self_to_nix_store() -> Result<(), std::io::Error> {
+    let path = std::env::current_exe()?;
+    tokio::fs::copy(path, "/nix/harmonic").await?;
+    Ok(())
 }
 
 #[cfg(test)]
