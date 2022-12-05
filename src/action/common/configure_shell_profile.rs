@@ -116,34 +116,6 @@ impl ConfigureShellProfile {
             );
         }
 
-        // If the `$GITHUB_PATH` environment exists, we're almost certainly running on Github
-        // Actions, and almost certainly wants the relevant `$PATH` additions added.
-        if let Ok(github_path) = std::env::var("GITHUB_PATH") {
-            create_or_append_files.push(
-                CreateOrAppendFile::plan(
-                    &github_path,
-                    None,
-                    None,
-                    None,
-                    "/nix/var/nix/profiles/default/bin\n".to_string(),
-                )
-                .await
-                .map_err(|e| e.boxed())?,
-            );
-            // Actions runners operate as `runner` user by default
-            if let Ok(Some(runner)) = User::from_name("runner") {
-                let buf = format!(
-                    "/nix/var/nix/profiles/per-user/{}/profile/bin\n",
-                    runner.uid
-                );
-                create_or_append_files.push(
-                    CreateOrAppendFile::plan(&github_path, None, None, None, buf)
-                        .await
-                        .map_err(|e| e.boxed())?,
-                )
-            }
-        }
-
         Ok(Self {
             create_directories,
             create_or_append_files,
@@ -201,6 +173,24 @@ impl Action for ConfigureShellProfile {
                 Ok(Err(e)) => errors.push(e),
                 Err(e) => return Err(e.boxed()),
             };
+        }
+
+        // If the `$GITHUB_PATH` environment exists, we're almost certainly running on Github
+        // Actions, and almost certainly wants the relevant `$PATH` additions added.
+        // This step has no reversal.
+        if let Ok(github_path) = std::env::var("GITHUB_PATH") {
+            use std::{io::Write, os::unix::net::UnixStream};
+            let mut socket = UnixStream::connect(&github_path)?;
+            socket.write_all("/nix/var/nix/profiles/default/bin".as_bytes())?;
+
+            // Actions runners operate as `runner` user by default
+            if let Ok(Some(runner)) = User::from_name("runner") {
+                let buf = format!(
+                    "/nix/var/nix/profiles/per-user/{}/profile/bin\n",
+                    runner.uid
+                );
+                socket.write_all(buf.as_bytes())?;
+            }
         }
 
         if !errors.is_empty() {
