@@ -143,7 +143,7 @@ impl CommandExecute for Install {
         println!(
             "\
             {success}\n\
-            To use Nix, open a new terminal or run `{shell_reminder}`\n\
+            To get started using Nix, open a new shell or run `{shell_reminder}`\n\
             ",
             success = "Nix was installed successfully!".green().bold(),
             shell_reminder = match std::env::var("SHELL") {
