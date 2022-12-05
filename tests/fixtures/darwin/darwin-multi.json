@@ -85,7 +85,7 @@
                 "action": "provision_nix",
                 "fetch_nix": {
                     "action": {
-                        "url": "https://releases.nixos.org/nix/nix-2.11.0/nix-2.11.0-x86_64-darwin.tar.xz",
+                        "url": "https://releases.nixos.org/nix/nix-2.11.1/nix-2.11.1-x86_64-darwin.tar.xz",
                         "dest": "/nix/temp-install-dir"
                     },
                     "state": "Uncompleted"
@@ -556,14 +556,15 @@
                 },
                 "configure_shell_profile": {
                     "action": {
+                        "create_directories": [],
                         "create_or_append_files": [
                             {
                                 "action": {
                                     "path": "/etc/bashrc",
                                     "user": null,
                                     "group": null,
-                                    "mode": 420,
-                                    "buf": "\n# Nix\nif [ -e '/nix/var/nix/profiles/default/etc/profile.d/nix-daemon.sh' ]; then\n. '/nix/var/nix/profiles/default/etc/profile.d/nix-daemon.sh'\nfi\n# End Nix\n\n            \n"
+                                    "mode": 493,
+                                    "buf": "\n# Nix\nif [ -e '/nix/var/nix/profiles/default/etc/profile.d/nix-daemon.sh' ]; then\n    . '/nix/var/nix/profiles/default/etc/profile.d/nix-daemon.sh'\nfi\n# End Nix\n\n        \n"
                                 },
                                 "state": "Uncompleted"
                             },
@@ -572,8 +573,18 @@
                                     "path": "/etc/zshrc",
                                     "user": null,
                                     "group": null,
-                                    "mode": 420,
-                                    "buf": "\n# Nix\nif [ -e '/nix/var/nix/profiles/default/etc/profile.d/nix-daemon.sh' ]; then\n. '/nix/var/nix/profiles/default/etc/profile.d/nix-daemon.sh'\nfi\n# End Nix\n\n            \n"
+                                    "mode": 493,
+                                    "buf": "\n# Nix\nif [ -e '/nix/var/nix/profiles/default/etc/profile.d/nix-daemon.sh' ]; then\n    . '/nix/var/nix/profiles/default/etc/profile.d/nix-daemon.sh'\nfi\n# End Nix\n\n        \n"
+                                },
+                                "state": "Uncompleted"
+                            },
+                            {
+                                "action": {
+                                    "path": "/etc/bash.bashrc",
+                                    "user": null,
+                                    "group": null,
+                                    "mode": 493,
+                                    "buf": "\n# Nix\nif [ -e '/nix/var/nix/profiles/default/etc/profile.d/nix-daemon.sh' ]; then\n    . '/nix/var/nix/profiles/default/etc/profile.d/nix-daemon.sh'\nfi\n# End Nix\n\n        \n"
                                 },
                                 "state": "Uncompleted"
                             }
@@ -659,7 +670,7 @@
             "nix_build_group_id": 3000,
             "nix_build_user_prefix": "_nixbld",
             "nix_build_user_id_base": 300,
-            "nix_package_url": "https://releases.nixos.org/nix/nix-2.11.0/nix-2.11.0-x86_64-darwin.tar.xz",
+            "nix_package_url": "https://releases.nixos.org/nix/nix-2.11.1/nix-2.11.1-x86_64-darwin.tar.xz",
             "extra_conf": [],
             "force": false
         },
