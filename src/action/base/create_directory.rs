@@ -5,11 +5,8 @@ use nix::unistd::{chown, Group, User};
 
 use tokio::fs::{create_dir, remove_dir_all};
 
-use crate::action::StatefulAction;
-use crate::{
-    action::{Action, ActionDescription, ActionState},
-    BoxableError,
-};
+use crate::action::{Action, ActionDescription, ActionState};
+use crate::action::{ActionError, StatefulAction};
 
 /** Create a directory at the given location, optionally with an owning user, group, and mode.
 
@@ -33,16 +30,16 @@ impl CreateDirectory {
         group: impl Into<Option<String>>,
         mode: impl Into<Option<u32>>,
         force_prune_on_revert: bool,
-    ) -> Result<StatefulAction<Self>, Box<dyn std::error::Error + Send + Sync>> {
+    ) -> Result<StatefulAction<Self>, ActionError> {
         let path = path.as_ref();
         let user = user.into();
         let group = group.into();
         let mode = mode.into();
 
         let action_state = if path.exists() {
-            let metadata = tokio::fs::metadata(path).await.map_err(|e| {
-                CreateDirectoryError::GettingMetadata(path.to_path_buf(), e).boxed()
-            })?;
+            let metadata = tokio::fs::metadata(path)
+                .await
+                .map_err(|e| ActionError::GettingMetadata(path.to_path_buf(), e))?;
             if metadata.is_dir() {
                 tracing::debug!(
                     "Creating directory `{}` already complete, skipping",
@@ -51,14 +48,7 @@ impl CreateDirectory {
                 // TODO: Validate owner/group...
                 ActionState::Skipped
             } else {
-                return Err(CreateDirectoryError::Exists(std::io::Error::new(
-                    std::io::ErrorKind::AlreadyExists,
-                    format!(
-                        "Path `{}` already exists and is not directory",
-                        path.display()
-                    ),
-                ))
-                .boxed());
+                return Err(ActionError::Exists(path.to_owned()));
             }
         } else {
             ActionState::Uncompleted
@@ -94,7 +84,7 @@ impl Action for CreateDirectory {
         group = self.group,
         mode = self.mode.map(|v| tracing::field::display(format!("{:#o}", v))),
     ))]
-    async fn execute(&mut self) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
+    async fn execute(&mut self) -> Result<(), ActionError> {
         let Self {
             path,
             user,
@@ -106,8 +96,8 @@ impl Action for CreateDirectory {
         let gid = if let Some(group) = group {
             Some(
                 Group::from_name(group.as_str())
-                    .map_err(|e| CreateDirectoryError::GroupId(group.clone(), e).boxed())?
-                    .ok_or(CreateDirectoryError::NoGroup(group.clone()).boxed())?
+                    .map_err(|e| ActionError::GroupId(group.clone(), e))?
+                    .ok_or(ActionError::NoGroup(group.clone()))?
                     .gid,
             )
         } else {
@@ -116,8 +106,8 @@ impl Action for CreateDirectory {
         let uid = if let Some(user) = user {
             Some(
                 User::from_name(user.as_str())
-                    .map_err(|e| CreateDirectoryError::UserId(user.clone(), e).boxed())?
-                    .ok_or(CreateDirectoryError::NoUser(user.clone()).boxed())?
+                    .map_err(|e| ActionError::UserId(user.clone(), e))?
+                    .ok_or(ActionError::NoUser(user.clone()))?
                     .uid,
             )
         } else {
@@ -126,15 +116,13 @@ impl Action for CreateDirectory {
 
         create_dir(path.clone())
             .await
-            .map_err(|e| CreateDirectoryError::Creating(path.clone(), e).boxed())?;
-        chown(path, uid, gid).map_err(|e| CreateDirectoryError::Chown(path.clone(), e).boxed())?;
+            .map_err(|e| ActionError::CreateDirectory(path.clone(), e))?;
+        chown(path, uid, gid).map_err(|e| ActionError::Chown(path.clone(), e))?;
 
         if let Some(mode) = mode {
             tokio::fs::set_permissions(&path, PermissionsExt::from_mode(*mode))
                 .await
-                .map_err(|e| {
-                    CreateDirectoryError::SetPermissions(*mode, path.to_owned(), e).boxed()
-                })?;
+                .map_err(|e| ActionError::SetPermissions(*mode, path.to_owned(), e))?;
         }
 
         Ok(())
@@ -168,7 +156,7 @@ impl Action for CreateDirectory {
         group = self.group,
         mode = self.mode.map(|v| tracing::field::display(format!("{:#o}", v))),
     ))]
-    async fn revert(&mut self) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
+    async fn revert(&mut self) -> Result<(), ActionError> {
         let Self {
             path,
             user: _,
@@ -179,13 +167,13 @@ impl Action for CreateDirectory {
 
         let is_empty = path
             .read_dir()
-            .map_err(|e| CreateDirectoryError::ReadDir(path.clone(), e).boxed())?
+            .map_err(|e| ActionError::Read(path.clone(), e))?
             .next()
             .is_some();
         match (is_empty, force_prune_on_revert) {
             (true, _) | (false, true) => remove_dir_all(path.clone())
                 .await
-                .map_err(|e| CreateDirectoryError::Removing(path.clone(), e).boxed())?,
+                .map_err(|e| ActionError::Remove(path.clone(), e))?,
             (false, false) => {
                 tracing::debug!("Not removing `{}`, the folder is not empty", path.display());
             },
@@ -193,30 +181,4 @@ impl Action for CreateDirectory {
 
         Ok(())
     }
-}
-
-#[derive(Debug, thiserror::Error)]
-pub enum CreateDirectoryError {
-    #[error(transparent)]
-    Exists(std::io::Error),
-    #[error("Creating directory `{0}`")]
-    Creating(std::path::PathBuf, #[source] std::io::Error),
-    #[error("Removing directory `{0}`")]
-    Removing(std::path::PathBuf, #[source] std::io::Error),
-    #[error("Getting metadata for {0}`")]
-    GettingMetadata(std::path::PathBuf, #[source] std::io::Error),
-    #[error("Reading directory `{0}``")]
-    ReadDir(std::path::PathBuf, #[source] std::io::Error),
-    #[error("Set mode `{0}` on `{1}`")]
-    SetPermissions(u32, std::path::PathBuf, #[source] std::io::Error),
-    #[error("Chowning directory `{0}`")]
-    Chown(std::path::PathBuf, #[source] nix::errno::Errno),
-    #[error("Getting uid for user `{0}`")]
-    UserId(String, #[source] nix::errno::Errno),
-    #[error("Getting user `{0}`")]
-    NoUser(String),
-    #[error("Getting gid for group `{0}`")]
-    GroupId(String, #[source] nix::errno::Errno),
-    #[error("Getting group `{0}`")]
-    NoGroup(String),
 }

@@ -1,5 +1,5 @@
-use crate::action::base::{CreateDirectory, CreateDirectoryError, CreateFile, CreateFileError};
-use crate::action::{Action, ActionDescription, StatefulAction};
+use crate::action::base::{CreateDirectory, CreateFile};
+use crate::action::{Action, ActionDescription, ActionError, StatefulAction};
 
 const NIX_CONF_FOLDER: &str = "/etc/nix";
 const NIX_CONF: &str = "/etc/nix/nix.conf";
@@ -19,7 +19,7 @@ impl PlaceNixConfiguration {
         nix_build_group_name: String,
         extra_conf: Vec<String>,
         force: bool,
-    ) -> Result<StatefulAction<Self>, Box<dyn std::error::Error + Send + Sync>> {
+    ) -> Result<StatefulAction<Self>, ActionError> {
         let buf = format!(
             "\
             {extra_conf}\n\
@@ -61,7 +61,7 @@ impl Action for PlaceNixConfiguration {
     }
 
     #[tracing::instrument(skip_all)]
-    async fn execute(&mut self) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
+    async fn execute(&mut self) -> Result<(), ActionError> {
         let Self {
             create_file,
             create_directory,
@@ -84,7 +84,7 @@ impl Action for PlaceNixConfiguration {
     }
 
     #[tracing::instrument(skip_all)]
-    async fn revert(&mut self) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
+    async fn revert(&mut self) -> Result<(), ActionError> {
         let Self {
             create_file,
             create_directory,
@@ -95,20 +95,4 @@ impl Action for PlaceNixConfiguration {
 
         Ok(())
     }
-}
-
-#[derive(Debug, thiserror::Error)]
-pub enum PlaceNixConfigurationError {
-    #[error("Creating file")]
-    CreateFile(
-        #[source]
-        #[from]
-        CreateFileError,
-    ),
-    #[error("Creating directory")]
-    CreateDirectory(
-        #[source]
-        #[from]
-        CreateDirectoryError,
-    ),
 }
