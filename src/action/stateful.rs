@@ -26,7 +26,7 @@ impl StatefulAction<Box<dyn Action>> {
     /// A description of what this action would do during execution
     pub fn describe_execute(&self) -> Vec<ActionDescription> {
         match self.state {
-            ActionState::Uncompleted | ActionState::Skipped => {
+            ActionState::Completed | ActionState::Skipped => {
                 vec![]
             },
             _ => self.action.execute_description(),
@@ -35,7 +35,7 @@ impl StatefulAction<Box<dyn Action>> {
     /// A description of what this action would do during revert
     pub fn describe_revert(&self) -> Vec<ActionDescription> {
         match self.state {
-            ActionState::Completed | ActionState::Skipped => {
+            ActionState::Uncompleted | ActionState::Skipped => {
                 vec![]
             },
             _ => self.action.revert_description(),
