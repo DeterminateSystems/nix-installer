@@ -144,7 +144,7 @@ impl CommandExecute for Install {
             "\
             {success}\n\
             To use Nix, open a new terminal or run `{shell_reminder}`\n\
-            \n",
+            ",
             success = "Nix was installed successfully!".green().bold(),
             shell_reminder = match std::env::var("SHELL") {
                 Ok(val) if val.contains("fish") =>
