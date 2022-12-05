@@ -69,7 +69,7 @@ Here are how to do various kinds of contributions.
 
 ## Bug Reports
 
-Create an issue on [the issue page](https://github.com/DeterminateSystems/riff/issues).
+Create an issue on [the issue page](https://github.com/DeterminateSystems/harmonic/issues).
 
 It should contain:
 
@@ -85,10 +85,10 @@ It should contain:
 
 For **minor** fixes, documentation, or changes which **do not** have a
 tangible impact on user experience, feel free to open a
-[pull request](https://github.com/DeterminateSystems/riff/pulls) directly.
+[pull request](https://github.com/DeterminateSystems/harmonic/pulls) directly.
 
 If the code improvement is not minor, such as new features or user facing
-changes, an [issue](https://github.com/DeterminateSystems/riff/issues)
+changes, an [issue](https://github.com/DeterminateSystems/harmonic/issues)
 proposing the change is **required** for non-maintainers.
 
 Please:
@@ -103,14 +103,14 @@ Please:
 
 ## Non-code contributions
 
-Please open an [issue](https://github.com/DeterminateSystems/riff/issues)
+Please open an [issue](https://github.com/DeterminateSystems/harmonic/issues)
 to chat about your contribution and figure out how to best integrate it into
 the project.
 
 
 # Who maintains Harmonic and why?
 
-Riff is maintained by [Determinate Systems](https://determinate.systems/) in
+Harmonic is maintained by [Determinate Systems](https://determinate.systems/) in
 an effort to explore Nix installer ideas.
 
 Determinate Systems has no plans to monetize or relicense Harmonic. If your

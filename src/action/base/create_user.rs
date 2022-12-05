@@ -1,11 +1,9 @@
 use tokio::process::Command;
 
+use crate::action::ActionError;
 use crate::execute_command;
 
-use crate::{
-    action::{Action, ActionDescription, StatefulAction},
-    BoxableError,
-};
+use crate::action::{Action, ActionDescription, StatefulAction};
 
 /**
 Create an operating system level user in the given group
@@ -55,7 +53,7 @@ impl Action for CreateUser {
         groupname = self.groupname,
         gid = self.gid,
     ))]
-    async fn execute(&mut self) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
+    async fn execute(&mut self) -> Result<(), ActionError> {
         let Self {
             name,
             uid,
@@ -80,7 +78,8 @@ impl Action for CreateUser {
                     .stdin(std::process::Stdio::null())
                     .stdout(std::process::Stdio::null())
                     .status()
-                    .await?
+                    .await
+                    .map_err(ActionError::Command)?
                     .success()
                 {
                     ()
@@ -92,7 +91,7 @@ impl Action for CreateUser {
                             .stdin(std::process::Stdio::null()),
                     )
                     .await
-                    .map_err(|e| CreateUserError::Command(e).boxed())?;
+                    .map_err(|e| ActionError::Command(e))?;
                     execute_command(
                         Command::new("/usr/bin/dscl")
                             .process_group(0)
@@ -106,7 +105,7 @@ impl Action for CreateUser {
                             .stdin(std::process::Stdio::null()),
                     )
                     .await
-                    .map_err(|e| CreateUserError::Command(e).boxed())?;
+                    .map_err(|e| ActionError::Command(e))?;
                     execute_command(
                         Command::new("/usr/bin/dscl")
                             .process_group(0)
@@ -120,7 +119,7 @@ impl Action for CreateUser {
                             .stdin(std::process::Stdio::null()),
                     )
                     .await
-                    .map_err(|e| CreateUserError::Command(e).boxed())?;
+                    .map_err(|e| ActionError::Command(e))?;
                     execute_command(
                         Command::new("/usr/bin/dscl")
                             .process_group(0)
@@ -134,7 +133,7 @@ impl Action for CreateUser {
                             .stdin(std::process::Stdio::null()),
                     )
                     .await
-                    .map_err(|e| CreateUserError::Command(e).boxed())?;
+                    .map_err(|e| ActionError::Command(e))?;
                     execute_command(
                         Command::new("/usr/bin/dscl")
                             .process_group(0)
@@ -148,7 +147,7 @@ impl Action for CreateUser {
                             .stdin(std::process::Stdio::null()),
                     )
                     .await
-                    .map_err(|e| CreateUserError::Command(e).boxed())?;
+                    .map_err(|e| ActionError::Command(e))?;
                     execute_command(
                         Command::new("/usr/bin/dscl")
                             .process_group(0)
@@ -162,7 +161,7 @@ impl Action for CreateUser {
                             .stdin(std::process::Stdio::null()),
                     )
                     .await
-                    .map_err(|e| CreateUserError::Command(e).boxed())?;
+                    .map_err(|e| ActionError::Command(e))?;
                     execute_command(
                         Command::new("/usr/bin/dscl")
                             .process_group(0)
@@ -170,7 +169,7 @@ impl Action for CreateUser {
                             .stdin(std::process::Stdio::null()),
                     )
                     .await
-                    .map_err(|e| CreateUserError::Command(e).boxed())?;
+                    .map_err(|e| ActionError::Command(e))?;
                     execute_command(
                         Command::new("/usr/sbin/dseditgroup")
                             .process_group(0)
@@ -183,7 +182,7 @@ impl Action for CreateUser {
                             .stdin(std::process::Stdio::null()),
                     )
                     .await
-                    .map_err(|e| CreateUserError::Command(e).boxed())?;
+                    .map_err(|e| ActionError::Command(e))?;
                 }
             },
             _ => {
@@ -212,7 +211,7 @@ impl Action for CreateUser {
                         .stdin(std::process::Stdio::null()),
                 )
                 .await
-                .map_err(|e| CreateUserError::Command(e).boxed())?;
+                .map_err(|e| ActionError::Command(e))?;
             },
         }
 
@@ -236,7 +235,7 @@ impl Action for CreateUser {
         uid = self.uid,
         gid = self.gid,
     ))]
-    async fn revert(&mut self) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
+    async fn revert(&mut self) -> Result<(), ActionError> {
         let Self {
             name,
             uid: _,
@@ -271,16 +270,10 @@ impl Action for CreateUser {
                         .stdin(std::process::Stdio::null()),
                 )
                 .await
-                .map_err(|e| CreateUserError::Command(e).boxed())?;
+                .map_err(|e| ActionError::Command(e))?;
             },
         };
 
         Ok(())
     }
-}
-
-#[derive(Debug, thiserror::Error)]
-pub enum CreateUserError {
-    #[error("Failed to execute command")]
-    Command(#[source] std::io::Error),
 }

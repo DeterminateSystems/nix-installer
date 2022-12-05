@@ -1,10 +1,9 @@
-use crate::action::base::{CreateDirectory, CreateOrAppendFile, CreateOrAppendFileError};
-use crate::action::{Action, ActionDescription, StatefulAction};
-use crate::BoxableError;
+use crate::action::base::{CreateDirectory, CreateOrAppendFile};
+use crate::action::{Action, ActionDescription, ActionError, StatefulAction};
 
 use nix::unistd::User;
 use std::path::{Path, PathBuf};
-use tokio::task::{JoinError, JoinSet};
+use tokio::task::JoinSet;
 
 // Fish has different syntax than zsh/bash, treat it separate
 const PROFILE_FISH_SUFFIX: &str = "conf.d/nix.fish";
@@ -41,7 +40,7 @@ pub struct ConfigureShellProfile {
 
 impl ConfigureShellProfile {
     #[tracing::instrument(skip_all)]
-    pub async fn plan() -> Result<StatefulAction<Self>, Box<dyn std::error::Error + Send + Sync>> {
+    pub async fn plan() -> Result<StatefulAction<Self>, ActionError> {
         let mut create_or_append_files = Vec::default();
         let mut create_directories = Vec::default();
 
@@ -73,8 +72,7 @@ impl ConfigureShellProfile {
                         0o0755,
                         shell_buf.to_string(),
                     )
-                    .await
-                    .map_err(|e| e.boxed())?,
+                    .await?,
                 );
             }
         }
@@ -103,16 +101,13 @@ impl ConfigureShellProfile {
 
             if let Some(conf_d) = profile_target.parent() {
                 create_directories.push(
-                    CreateDirectory::plan(conf_d.to_path_buf(), None, None, 0o0644, false)
-                        .await
-                        .map_err(|e| e.boxed())?,
+                    CreateDirectory::plan(conf_d.to_path_buf(), None, None, 0o0644, false).await?,
                 );
             }
 
             create_or_append_files.push(
                 CreateOrAppendFile::plan(profile_target, None, None, 0o0755, fish_buf.to_string())
-                    .await
-                    .map_err(|e| e.boxed())?,
+                    .await?,
             );
         }
 
@@ -139,7 +134,7 @@ impl Action for ConfigureShellProfile {
     }
 
     #[tracing::instrument(skip_all)]
-    async fn execute(&mut self) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
+    async fn execute(&mut self) -> Result<(), ActionError> {
         let Self {
             create_or_append_files,
             create_directories,
@@ -158,10 +153,7 @@ impl Action for ConfigureShellProfile {
             let _abort_handle = set.spawn(async move {
                 let _ = span.enter();
                 create_or_append_file_clone.try_execute().await?;
-                Result::<_, Box<dyn std::error::Error + Send + Sync>>::Ok((
-                    idx,
-                    create_or_append_file_clone,
-                ))
+                Result::<_, ActionError>::Ok((idx, create_or_append_file_clone))
             });
         }
 
@@ -170,8 +162,8 @@ impl Action for ConfigureShellProfile {
                 Ok(Ok((idx, create_or_append_file))) => {
                     create_or_append_files[idx] = create_or_append_file
                 },
-                Ok(Err(e)) => errors.push(e),
-                Err(e) => return Err(e.boxed()),
+                Ok(Err(e)) => errors.push(Box::new(e)),
+                Err(e) => return Err(e.into()),
             };
         }
 
@@ -181,8 +173,11 @@ impl Action for ConfigureShellProfile {
         if let Ok(github_path) = std::env::var("GITHUB_PATH") {
             use std::{io::Write, os::unix::net::UnixStream};
             tracing::debug!("Detected $GITHUB_PATH in environment, pushing relevant paths to the specified UNIX socket");
-            let mut socket = UnixStream::connect(&github_path)?;
-            socket.write_all("/nix/var/nix/profiles/default/bin".as_bytes())?;
+            let mut socket = UnixStream::connect(&github_path)
+                .map_err(|e| ActionError::Write(PathBuf::from(&github_path), e))?;
+            socket
+                .write_all("/nix/var/nix/profiles/default/bin".as_bytes())
+                .map_err(|e| ActionError::Write(PathBuf::from(&github_path), e))?;
 
             // Actions runners operate as `runner` user by default
             if let Ok(Some(runner)) = User::from_name("runner") {
@@ -190,7 +185,9 @@ impl Action for ConfigureShellProfile {
                     "/nix/var/nix/profiles/per-user/{}/profile/bin\n",
                     runner.uid
                 );
-                socket.write_all(buf.as_bytes())?;
+                socket
+                    .write_all(buf.as_bytes())
+                    .map_err(|e| ActionError::Write(PathBuf::from(&github_path), e))?;
             }
         }
 
@@ -198,7 +195,7 @@ impl Action for ConfigureShellProfile {
             if errors.len() == 1 {
                 return Err(errors.into_iter().next().unwrap().into());
             } else {
-                return Err(ConfigureShellProfileError::MultipleCreateOrAppendFile(errors).boxed());
+                return Err(ActionError::Children(errors));
             }
         }
 
@@ -213,23 +210,20 @@ impl Action for ConfigureShellProfile {
     }
 
     #[tracing::instrument(skip_all)]
-    async fn revert(&mut self) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
+    async fn revert(&mut self) -> Result<(), ActionError> {
         let Self {
             create_directories,
             create_or_append_files,
         } = self;
 
         let mut set = JoinSet::new();
-        let mut errors = Vec::default();
+        let mut errors: Vec<Box<ActionError>> = Vec::default();
 
         for (idx, create_or_append_file) in create_or_append_files.iter().enumerate() {
             let mut create_or_append_file_clone = create_or_append_file.clone();
             let _abort_handle = set.spawn(async move {
                 create_or_append_file_clone.try_revert().await?;
-                Result::<_, Box<dyn std::error::Error + Send + Sync>>::Ok((
-                    idx,
-                    create_or_append_file_clone,
-                ))
+                Result::<_, _>::Ok((idx, create_or_append_file_clone))
             });
         }
 
@@ -238,8 +232,8 @@ impl Action for ConfigureShellProfile {
                 Ok(Ok((idx, create_or_append_file))) => {
                     create_or_append_files[idx] = create_or_append_file
                 },
-                Ok(Err(e)) => errors.push(e),
-                Err(e) => return Err(e.boxed()),
+                Ok(Err(e)) => errors.push(Box::new(e)),
+                Err(e) => return Err(e.into()),
             };
         }
 
@@ -251,34 +245,10 @@ impl Action for ConfigureShellProfile {
             if errors.len() == 1 {
                 return Err(errors.into_iter().next().unwrap().into());
             } else {
-                return Err(ConfigureShellProfileError::MultipleCreateOrAppendFile(errors).boxed());
+                return Err(ActionError::Children(errors));
             }
         }
 
         Ok(())
     }
-}
-
-#[derive(Debug, thiserror::Error)]
-pub enum ConfigureShellProfileError {
-    #[error("Creating or appending to file")]
-    CreateOrAppendFile(
-        #[from]
-        #[source]
-        CreateOrAppendFileError,
-    ),
-    #[error("Multiple errors: {}", .0.iter().map(|v| {
-        if let Some(source) = v.source() {
-            format!("{v} ({source})")
-        } else {
-            format!("{v}") 
-        }
-    }).collect::<Vec<_>>().join(" & "))]
-    MultipleCreateOrAppendFile(Vec<Box<dyn std::error::Error + Send + Sync>>),
-    #[error("Joining spawned async task")]
-    Join(
-        #[source]
-        #[from]
-        JoinError,
-    ),
 }

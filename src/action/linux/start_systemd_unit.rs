@@ -1,12 +1,9 @@
 use tokio::process::Command;
 
-use crate::action::{ActionState, StatefulAction};
+use crate::action::{ActionError, ActionState, StatefulAction};
 use crate::execute_command;
 
-use crate::{
-    action::{Action, ActionDescription},
-    BoxableError,
-};
+use crate::action::{Action, ActionDescription};
 
 /**
 Start a given systemd unit
@@ -18,9 +15,7 @@ pub struct StartSystemdUnit {
 
 impl StartSystemdUnit {
     #[tracing::instrument(skip_all)]
-    pub async fn plan(
-        unit: impl AsRef<str>,
-    ) -> Result<StatefulAction<Self>, Box<dyn std::error::Error + Send + Sync>> {
+    pub async fn plan(unit: impl AsRef<str>) -> Result<StatefulAction<Self>, ActionError> {
         Ok(StatefulAction {
             action: Self {
                 unit: unit.as_ref().to_string(),
@@ -44,7 +39,7 @@ impl Action for StartSystemdUnit {
     #[tracing::instrument(skip_all, fields(
         unit = %self.unit,
     ))]
-    async fn execute(&mut self) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
+    async fn execute(&mut self) -> Result<(), ActionError> {
         let Self { unit, .. } = self;
 
         // TODO(@Hoverbear): Handle proxy vars
@@ -57,7 +52,7 @@ impl Action for StartSystemdUnit {
                 .stdin(std::process::Stdio::null()),
         )
         .await
-        .map_err(|e| StartSystemdUnitError::Command(e).boxed())?;
+        .map_err(|e| ActionError::Custom(Box::new(StartSystemdUnitError::Command(e))))?;
 
         Ok(())
     }
@@ -72,7 +67,7 @@ impl Action for StartSystemdUnit {
     #[tracing::instrument(skip_all, fields(
         unit = %self.unit,
     ))]
-    async fn revert(&mut self) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
+    async fn revert(&mut self) -> Result<(), ActionError> {
         let Self { unit, .. } = self;
 
         execute_command(
@@ -83,7 +78,7 @@ impl Action for StartSystemdUnit {
                 .stdin(std::process::Stdio::null()),
         )
         .await
-        .map_err(|e| StartSystemdUnitError::Command(e).boxed())?;
+        .map_err(|e| ActionError::Custom(Box::new(StartSystemdUnitError::Command(e))))?;
 
         // We do both to avoid an error doing `disable --now` if the user did stop it already somehow.
         execute_command(
@@ -94,7 +89,7 @@ impl Action for StartSystemdUnit {
                 .stdin(std::process::Stdio::null()),
         )
         .await
-        .map_err(|e| StartSystemdUnitError::Command(e).boxed())?;
+        .map_err(|e| ActionError::Custom(Box::new(StartSystemdUnitError::Command(e))))?;
 
         Ok(())
     }

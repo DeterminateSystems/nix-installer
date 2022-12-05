@@ -70,7 +70,7 @@ use crate::{
     },
     planner::{Planner, PlannerError},
     settings::{CommonSettings, InstallSettingsError},
-    BoxableError, BuiltinPlanner,
+    BuiltinPlanner,
 };
 
 #[derive(Debug, Clone, clap::Parser, serde::Serialize, serde::Deserialize)]
@@ -198,7 +198,7 @@ impl Planner for SteamDeck {
         Ok(vec![
             CreateDirectory::plan(&persistence, None, None, 0o0755, true)
                 .await
-                .map_err(|e| PlannerError::Action(e.boxed()))?
+                .map_err(PlannerError::Action)?
                 .boxed(),
             nix_directory_unit.boxed(),
             create_bind_mount_unit.boxed(),

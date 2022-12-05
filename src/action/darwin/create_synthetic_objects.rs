@@ -2,7 +2,7 @@ use tokio::process::Command;
 
 use crate::execute_command;
 
-use crate::action::{Action, ActionDescription, StatefulAction};
+use crate::action::{Action, ActionDescription, ActionError, StatefulAction};
 
 /// Create the synthetic objects defined in `/etc/syntethic.conf`
 #[derive(Debug, serde::Deserialize, serde::Serialize, Clone)]
@@ -10,7 +10,7 @@ pub struct CreateSyntheticObjects;
 
 impl CreateSyntheticObjects {
     #[tracing::instrument(skip_all)]
-    pub async fn plan() -> Result<StatefulAction<Self>, Box<dyn std::error::Error + Send + Sync>> {
+    pub async fn plan() -> Result<StatefulAction<Self>, ActionError> {
         Ok(Self.into())
     }
 }
@@ -30,7 +30,7 @@ impl Action for CreateSyntheticObjects {
     }
 
     #[tracing::instrument(skip_all, fields())]
-    async fn execute(&mut self) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
+    async fn execute(&mut self) -> Result<(), ActionError> {
         // Yup we literally call both and ignore the error! Reasoning: https://github.com/NixOS/nix/blob/95331cb9c99151cbd790ceb6ddaf49fc1c0da4b3/scripts/create-darwin-volume.sh#L261
         execute_command(
             Command::new("/System/Library/Filesystems/apfs.fs/Contents/Resources/apfs.util")
@@ -60,7 +60,7 @@ impl Action for CreateSyntheticObjects {
     }
 
     #[tracing::instrument(skip_all, fields())]
-    async fn revert(&mut self) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
+    async fn revert(&mut self) -> Result<(), ActionError> {
         // Yup we literally call both and ignore the error! Reasoning: https://github.com/NixOS/nix/blob/95331cb9c99151cbd790ceb6ddaf49fc1c0da4b3/scripts/create-darwin-volume.sh#L261
         execute_command(
             Command::new("/System/Library/Filesystems/apfs.fs/Contents/Resources/apfs.util")

@@ -8,7 +8,7 @@ use crate::{
     planner::{Planner, PlannerError},
     settings::CommonSettings,
     settings::InstallSettingsError,
-    Action, BoxableError, BuiltinPlanner,
+    Action, BuiltinPlanner,
 };
 use std::{collections::HashMap, path::Path};
 
@@ -49,7 +49,7 @@ impl Planner for LinuxMulti {
         Ok(vec![
             CreateDirectory::plan("/nix", None, None, 0o0755, true)
                 .await
-                .map_err(|e| PlannerError::Action(e.boxed()))?
+                .map_err(PlannerError::Action)?
                 .boxed(),
             ProvisionNix::plan(&self.settings.clone())
                 .await
