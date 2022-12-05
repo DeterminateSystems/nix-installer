@@ -81,9 +81,6 @@ jobs:
         if: success() || failure()
         run: nix run nixpkgs#fortune
         shell: bash --login {0}
-      - run: |
-          echo $GITHUB_PATH
-          cat $GITHUB_PATH
       - name: Test bash
         run: nix-instantiate -E 'builtins.currentTime' --eval
         if: success() || failure()
@@ -110,6 +107,7 @@ jobs:
     runs-on: ubuntu-22.04
     needs: build-x86_64-linux
     steps:
+      - run: sudo apt install fish zsh
       - uses: actions/download-artifact@v3
         with:
           name: harmonic-x86_64-linux
@@ -127,9 +125,6 @@ jobs:
         run: sudo PATH=$PATH:$HOME/bin RUST_LOG=harmonic=trace RUST_BACKTRACE=full ./harmonic uninstall --no-confirm
       - name: Repeated install
         run: sudo PATH=$PATH:$HOME/bin RUST_LOG=harmonic=trace RUST_BACKTRACE=full ./harmonic install steam-deck --persistence `pwd`/ci-test-nix --extra-conf "access-tokens = github.com=${{ secrets.GITHUB_TOKEN }}" --no-confirm
-      - run: |
-          echo $GITHUB_PATH
-          cat $GITHUB_PATH
       - name: Test `nix`
         if: success() || failure()
         run: nix run nixpkgs#fortune
@@ -194,9 +189,6 @@ jobs:
         if: success() || failure()
         run: nix run nixpkgs#fortune
         shell: bash --login {0}
-      - run: |
-          echo $GITHUB_PATH
-          cat $GITHUB_PATH
       - name: Test bash
         run: nix-instantiate -E 'builtins.currentTime' --eval
         if: success() || failure()

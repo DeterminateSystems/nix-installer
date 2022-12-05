@@ -180,6 +180,7 @@ impl Action for ConfigureShellProfile {
         // This step has no reversal.
         if let Ok(github_path) = std::env::var("GITHUB_PATH") {
             use std::{io::Write, os::unix::net::UnixStream};
+            tracing::debug!("Detected $GITHUB_PATH in environment, pushing relevant paths to the specified UNIX socket");
             let mut socket = UnixStream::connect(&github_path)?;
             socket.write_all("/nix/var/nix/profiles/default/bin".as_bytes())?;
 
