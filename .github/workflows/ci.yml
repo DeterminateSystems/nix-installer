@@ -72,15 +72,14 @@ jobs:
       - name: Set executable
         run: chmod +x ./harmonic
       - name: Initial install
-        run: sudo RUST_LOG=harmonic=trace RUST_BACKTRACE=full ./harmonic install linux-multi --extra-conf "access-tokens = github.com=${{ secrets.GITHUB_TOKEN }}" --no-confirm
+        run: sudo GITHUB_PATH=$GITHUB_PATH RUST_LOG=harmonic=trace RUST_BACKTRACE=full ./harmonic install linux-multi --extra-conf "access-tokens = github.com=${{ secrets.GITHUB_TOKEN }}" --no-confirm
       - name: Initial uninstall
-        run: sudo RUST_LOG=harmonic=trace RUST_BACKTRACE=full ./harmonic uninstall --no-confirm
+        run: sudo GITHUB_PATH=$GITHUB_PATH RUST_LOG=harmonic=trace RUST_BACKTRACE=full ./harmonic uninstall --no-confirm
       - name: Repeated install
-        run: sudo RUST_LOG=harmonic=trace RUST_BACKTRACE=full ./harmonic install linux-multi --extra-conf "access-tokens = github.com=${{ secrets.GITHUB_TOKEN }}" --no-confirm
+        run: sudo GITHUB_PATH=$GITHUB_PATH RUST_LOG=harmonic=trace RUST_BACKTRACE=full ./harmonic install linux-multi --extra-conf "access-tokens = github.com=${{ secrets.GITHUB_TOKEN }}" --no-confirm
       - name: Test `nix`
         if: success() || failure()
         run: nix run nixpkgs#fortune
-        shell: bash --login {0}
       - name: Test bash
         run: nix-instantiate -E 'builtins.currentTime' --eval
         if: success() || failure()
@@ -99,7 +98,7 @@ jobs:
       #   if: success() || failure()
       #   shell: fish
       - name: Repeated uninstall
-        run: sudo RUST_LOG=harmonic=trace RUST_BACKTRACE=full ./harmonic uninstall --no-confirm
+        run: sudo GITHUB_PATH=$GITHUB_PATH RUST_LOG=harmonic=trace RUST_BACKTRACE=full ./harmonic uninstall --no-confirm
         
 
   run-steam-deck:
@@ -120,15 +119,14 @@ jobs:
           sudo chmod +x /bin/steamos-readonly
           sudo useradd -m deck
       - name: Initial install
-        run: sudo PATH=$PATH:$HOME/bin RUST_LOG=harmonic=trace RUST_BACKTRACE=full ./harmonic install steam-deck --persistence `pwd`/ci-test-nix --extra-conf "access-tokens = github.com=${{ secrets.GITHUB_TOKEN }}" --no-confirm
+        run: sudo GITHUB_PATH=$GITHUB_PATH PATH=$PATH:$HOME/bin RUST_LOG=harmonic=trace RUST_BACKTRACE=full ./harmonic install steam-deck --persistence `pwd`/ci-test-nix --extra-conf "access-tokens = github.com=${{ secrets.GITHUB_TOKEN }}" --no-confirm
       - name: Initial uninstall (without a `nix run` first)
-        run: sudo PATH=$PATH:$HOME/bin RUST_LOG=harmonic=trace RUST_BACKTRACE=full ./harmonic uninstall --no-confirm
+        run: sudo GITHUB_PATH=$GITHUB_PATH PATH=$PATH:$HOME/bin RUST_LOG=harmonic=trace RUST_BACKTRACE=full ./harmonic uninstall --no-confirm
       - name: Repeated install
-        run: sudo PATH=$PATH:$HOME/bin RUST_LOG=harmonic=trace RUST_BACKTRACE=full ./harmonic install steam-deck --persistence `pwd`/ci-test-nix --extra-conf "access-tokens = github.com=${{ secrets.GITHUB_TOKEN }}" --no-confirm
+        run: sudo GITHUB_PATH=$GITHUB_PATH PATH=$PATH:$HOME/bin RUST_LOG=harmonic=trace RUST_BACKTRACE=full ./harmonic install steam-deck --persistence `pwd`/ci-test-nix --extra-conf "access-tokens = github.com=${{ secrets.GITHUB_TOKEN }}" --no-confirm
       - name: Test `nix`
         if: success() || failure()
         run: nix run nixpkgs#fortune
-        shell: bash --login {0}
       - name: Test bash
         run: nix-instantiate -E 'builtins.currentTime' --eval
         if: success() || failure()
@@ -147,7 +145,7 @@ jobs:
       #   if: success() || failure()
       #   shell: fish
       - name: Repeated uninstall
-        run: sudo PATH=$PATH:$HOME/bin RUST_LOG=harmonic=trace RUST_BACKTRACE=full ./harmonic uninstall --no-confirm
+        run: sudo GITHUB_PATH=$GITHUB_PATH PATH=$PATH:$HOME/bin RUST_LOG=harmonic=trace RUST_BACKTRACE=full ./harmonic uninstall --no-confirm
 
   build-x86_64-darwin:
     name: Build x86_64 Darwin
@@ -186,15 +184,14 @@ jobs:
       - name: Set executable
         run: chmod +x ./harmonic
       - name: Initial install
-        run: sudo RUST_LOG=harmonic=trace RUST_BACKTRACE=full ./harmonic install darwin-multi --extra-conf "access-tokens = github.com=${{ secrets.GITHUB_TOKEN }}" --no-confirm
+        run: sudo GITHUB_PATH=$GITHUB_PATH RUST_LOG=harmonic=trace RUST_BACKTRACE=full ./harmonic install darwin-multi --extra-conf "access-tokens = github.com=${{ secrets.GITHUB_TOKEN }}" --no-confirm
       - name: Initial uninstall
-        run: sudo RUST_LOG=harmonic=trace RUST_BACKTRACE=full ./harmonic uninstall --no-confirm
+        run: sudo GITHUB_PATH=$GITHUB_PATH RUST_LOG=harmonic=trace RUST_BACKTRACE=full ./harmonic uninstall --no-confirm
       - name: Repeated install
-        run: sudo RUST_LOG=harmonic=trace RUST_BACKTRACE=full ./harmonic install darwin-multi --extra-conf "access-tokens = github.com=${{ secrets.GITHUB_TOKEN }}" --no-confirm
+        run: sudo GITHUB_PATH=$GITHUB_PATH RUST_LOG=harmonic=trace RUST_BACKTRACE=full ./harmonic install darwin-multi --extra-conf "access-tokens = github.com=${{ secrets.GITHUB_TOKEN }}" --no-confirm
       - name: Test `nix`
         if: success() || failure()
         run: nix run nixpkgs#fortune
-        shell: bash --login {0}
       - name: Test bash
         run: nix-instantiate -E 'builtins.currentTime' --eval
         if: success() || failure()
@@ -213,5 +210,5 @@ jobs:
       #   if: success() || failure()
       #   shell: fish
       - name: Repeated uninstall
-        run: sudo RUST_LOG=harmonic=trace RUST_BACKTRACE=full ./harmonic uninstall --no-confirm
+        run: sudo GITHUB_PATH=$GITHUB_PATH RUST_LOG=harmonic=trace RUST_BACKTRACE=full ./harmonic uninstall --no-confirm
         

@@ -168,15 +168,17 @@ impl Action for ConfigureShellProfile {
         }
 
         // If the `$GITHUB_PATH` environment exists, we're almost certainly running on Github
-        // Actions, and almost certainly wants the relevant `$PATH` additions added.
+        // Actions, and almost certainly want the relevant `$PATH` additions added.
         // This step has no reversal.
         if let Ok(github_path) = std::env::var("GITHUB_PATH") {
-            use std::{io::Write, os::unix::net::UnixStream};
+            use tokio::{io::AsyncWriteExt, net::UnixStream};
             tracing::debug!("Detected $GITHUB_PATH in environment, pushing relevant paths to the specified UNIX socket");
             let mut socket = UnixStream::connect(&github_path)
+                .await
                 .map_err(|e| ActionError::Write(PathBuf::from(&github_path), e))?;
             socket
                 .write_all("/nix/var/nix/profiles/default/bin".as_bytes())
+                .await
                 .map_err(|e| ActionError::Write(PathBuf::from(&github_path), e))?;
 
             // Actions runners operate as `runner` user by default
@@ -187,6 +189,7 @@ impl Action for ConfigureShellProfile {
                 );
                 socket
                     .write_all(buf.as_bytes())
+                    .await
                     .map_err(|e| ActionError::Write(PathBuf::from(&github_path), e))?;
             }
         }
