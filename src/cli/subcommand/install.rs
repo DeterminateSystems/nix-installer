@@ -12,6 +12,7 @@ use crate::{
 };
 use clap::{ArgAction, Parser};
 use eyre::{eyre, WrapErr};
+use owo_colors::OwoColorize;
 
 /// Execute an install (possibly using an existing plan)
 ///
@@ -138,6 +139,20 @@ impl CommandExecute for Install {
                 return Err(error);
             }
         }
+
+        println!(
+            "\
+            {success}\n\
+            To use Nix, open a new terminal or run `{shell_reminder}`\n\
+            \n",
+            success = "Nix was installed successfully!".green().bold(),
+            shell_reminder = match std::env::var("SHELL") {
+                Ok(val) if val.contains("fish") =>
+                    ". /nix/var/nix/profiles/default/etc/profile.d/nix-daemon.fish".bold(),
+                Ok(_) | Err(_) =>
+                    ". /nix/var/nix/profiles/default/etc/profile.d/nix-daemon.sh".bold(),
+            },
+        );
 
         Ok(ExitCode::SUCCESS)
     }
