@@ -50,15 +50,8 @@
       devShells = forAllSystems ({ system, pkgs, ... }:
         let
           toolchain = fenixToolchain system;
-          ci = import ./nix/ci.nix { inherit pkgs; };
           eclint = import ./nix/eclint.nix { inherit pkgs; };
-
-          spellcheck = pkgs.writeScriptBin "spellcheck" ''
-            ${pkgs.codespell}/bin/codespell \
-              --ignore-words-list crate,pullrequest,pullrequests,ser \
-              --skip target \
-              .
-          '';
+          check = import ./nix/check.nix { inherit pkgs eclint toolchain; };
         in
         {
           default = pkgs.mkShell {
@@ -82,8 +75,11 @@
               git
               nixpkgs-fmt
               eclint
+              check.check-rustfmt
+              check.check-spelling
+              check.check-nixpkgs-fmt
+              check.check-editorconfig
             ]
-            ++ ci
             ++ lib.optionals (pkgs.stdenv.isDarwin) (with pkgs; [ libiconv darwin.apple_sdk.frameworks.Security ]);
           };
         });
@@ -93,14 +89,30 @@
           pkgs = import nixpkgs {
             inherit system;
           };
+          toolchain = fenixToolchain system;
+          eclint = import ./nix/eclint.nix { inherit pkgs; };
+          check = import ./nix/check.nix { inherit pkgs eclint toolchain; };
         in
         {
-          format = pkgs.runCommand "check-format"
-            {
-              buildInputs = with pkgs; [ rustfmt cargo ];
-            } ''
-            ${pkgs.nixpkgs-fmt}/bin/nixpkgs-fmt --check ${./.}
-            touch $out # it worked!
+          check-rustfmt = pkgs.runCommand "check-rustfmt" { buildInputs = [ check.check-rustfmt ]; } ''
+            cd ${./.}
+            check-rustfmt
+            touch $out
+          '';
+          check-spelling = pkgs.runCommand "check-spelling" { buildInputs = [ check.check-spelling ]; } ''
+            cd ${./.}
+            check-spelling
+            touch $out
+          '';
+          check-nixpkgs-fmt = pkgs.runCommand "check-nixpkgs-fmt" { buildInputs = [ check.check-nixpkgs-fmt ]; } ''
+            cd ${./.}
+            check-nixpkgs-fmt
+            touch $out
+          '';
+          check-editorconfig = pkgs.runCommand "check-editorconfig" { buildInputs = [ pkgs.git check.check-editorconfig ]; } ''
+            cd ${./.}
+            check-editorconfig
+            touch $out
           '';
         });
 
@@ -130,7 +142,7 @@
               doDoc = true;
               doDocFail = true;
               RUSTFLAGS = "--cfg tracing_unstable --cfg tokio_unstable";
-              cargoTestOptions = f: f ++ ["--all"];
+              cargoTestOptions = f: f ++ [ "--all" ];
 
               override = { preBuild ? "", ... }: {
                 preBuild = preBuild + ''
