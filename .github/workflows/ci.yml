@@ -96,7 +96,7 @@ jobs:
       # - name: Test fish
       #   run: nix-instantiate -E 'builtins.currentTime' --eval
       #   if: success() || failure()
-      #   shell: fish
+      #   shell: fish --login
       - name: Repeated uninstall
         run: sudo GITHUB_PATH=$GITHUB_PATH RUST_LOG=harmonic=trace RUST_BACKTRACE=full ./harmonic uninstall --no-confirm
         
@@ -143,7 +143,7 @@ jobs:
       # - name: Test fish
       #   run: nix-instantiate -E 'builtins.currentTime' --eval
       #   if: success() || failure()
-      #   shell: fish
+      #   shell: fish --login
       - name: Repeated uninstall
         run: sudo GITHUB_PATH=$GITHUB_PATH PATH=$PATH:$HOME/bin RUST_LOG=harmonic=trace RUST_BACKTRACE=full ./harmonic uninstall --no-confirm
 
@@ -198,11 +198,10 @@ jobs:
         run: nix-instantiate -E 'builtins.currentTime' --eval
         if: success() || failure()
         shell: zsh --login --interactive {0}
-      ## Broken until https://github.com/NixOS/nix/pull/7105 is released due to the version on Ubuntu's runners
-      # - name: Test fish
-      #   run: nix-instantiate -E 'builtins.currentTime' --eval
-      #   if: success() || failure()
-      #   shell: fish
+      - name: Test fish
+        run: nix-instantiate -E 'builtins.currentTime' --eval
+        if: success() || failure()
+        shell: fish --login
       - name: Repeated uninstall
         run: sudo GITHUB_PATH=$GITHUB_PATH RUST_LOG=harmonic=trace RUST_BACKTRACE=full ./harmonic uninstall --no-confirm
         
