@@ -51,7 +51,7 @@
         let
           toolchain = fenixToolchain system;
           eclint = import ./nix/eclint.nix { inherit pkgs; };
-          ci = import ./nix/ci.nix { inherit pkgs eclint toolchain; };
+          check = import ./nix/check.nix { inherit pkgs eclint toolchain; };
         in
         {
           default = pkgs.mkShell {
@@ -75,10 +75,10 @@
               git
               nixpkgs-fmt
               eclint
-              ci.ci-check-rustfmt
-              ci.ci-check-spelling
-              ci.ci-check-nixpkgs-fmt
-              ci.ci-check-editorconfig
+              check.check-rustfmt
+              check.check-spelling
+              check.check-nixpkgs-fmt
+              check.check-editorconfig
             ]
             ++ lib.optionals (pkgs.stdenv.isDarwin) (with pkgs; [ libiconv darwin.apple_sdk.frameworks.Security ]);
           };
@@ -91,20 +91,29 @@
           };
           toolchain = fenixToolchain system;
           eclint = import ./nix/eclint.nix { inherit pkgs; };
-          ci = import ./nix/ci.nix { inherit pkgs eclint toolchain; };
+          check = import ./nix/check.nix { inherit pkgs eclint toolchain; };
         in
         {
-          format = pkgs.runCommand "check-format"
-            {
-              buildInputs = with pkgs; [ rustfmt cargo ];
-            } ''
-            ${pkgs.nixpkgs-fmt}/bin/nixpkgs-fmt --check ${./.}
-            touch $out # it worked!
+          check-rustfmt = pkgs.runCommand "check-rustfmt" { buildInputs = [ check.check-rustfmt ]; } ''
+            cd ${./.}
+            check-rustfmt
+            touch $out
           '';
-          check-rustfmt = ci.ci-check-rustfmt;
-          check-spelling = ci.ci-check-spelling;
-          check-nixpkgs-fmt = ci.ci-check-nixpkgs-fmt;
-          check-editorconfig = ci.ci-check-editorconfig;
+          check-spelling = pkgs.runCommand "check-spelling" { buildInputs = [ check.check-spelling ]; } ''
+            cd ${./.}
+            check-spelling
+            touch $out
+          '';
+          check-nixpkgs-fmt = pkgs.runCommand "check-nixpkgs-fmt" { buildInputs = [ check.check-nixpkgs-fmt ]; } ''
+            cd ${./.}
+            check-nixpkgs-fmt
+            touch $out
+          '';
+          check-editorconfig = pkgs.runCommand "check-editorconfig" { buildInputs = [ pkgs.git check.check-editorconfig ]; } ''
+            cd ${./.}
+            check-editorconfig
+            touch $out
+          '';
         });
 
       packages = forAllSystems
