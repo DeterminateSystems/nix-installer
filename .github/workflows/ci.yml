@@ -96,7 +96,7 @@ jobs:
       # - name: Test fish
       #   run: nix-instantiate -E 'builtins.currentTime' --eval
       #   if: success() || failure()
-      #   shell: fish --login
+      #   shell: fish --login {0}
       - name: Repeated uninstall
         run: sudo GITHUB_PATH=$GITHUB_PATH RUST_LOG=harmonic=trace RUST_BACKTRACE=full ./harmonic uninstall --no-confirm
         
@@ -143,7 +143,7 @@ jobs:
       # - name: Test fish
       #   run: nix-instantiate -E 'builtins.currentTime' --eval
       #   if: success() || failure()
-      #   shell: fish --login
+      #   shell: fish --login {0}
       - name: Repeated uninstall
         run: sudo GITHUB_PATH=$GITHUB_PATH PATH=$PATH:$HOME/bin RUST_LOG=harmonic=trace RUST_BACKTRACE=full ./harmonic uninstall --no-confirm
 
@@ -201,7 +201,7 @@ jobs:
       - name: Test fish
         run: nix-instantiate -E 'builtins.currentTime' --eval
         if: success() || failure()
-        shell: fish --login
+        shell: fish --login {0}
       - name: Repeated uninstall
         run: sudo GITHUB_PATH=$GITHUB_PATH RUST_LOG=harmonic=trace RUST_BACKTRACE=full ./harmonic uninstall --no-confirm
         
