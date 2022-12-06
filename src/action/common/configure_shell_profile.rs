@@ -114,25 +114,16 @@ impl ConfigureShellProfile {
         // If the `$GITHUB_PATH` environment exists, we're almost certainly running on Github
         // Actions, and almost certainly wants the relevant `$PATH` additions added.
         if let Ok(github_path) = std::env::var("GITHUB_PATH") {
-            create_or_append_files.push(
-                CreateOrAppendFile::plan(
-                    &github_path,
-                    None,
-                    None,
-                    None,
-                    "/nix/var/nix/profiles/default/bin\n".to_string(),
-                )
-                .await?,
-            );
+            let mut buf = "/nix/var/nix/profiles/default/bin\n".to_string();
             // Actions runners operate as `runner` user by default
             if let Ok(Some(runner)) = User::from_name("runner") {
-                let buf = format!(
+                buf += &format!(
                     "/nix/var/nix/profiles/per-user/{}/profile/bin\n",
                     runner.uid
                 );
-                create_or_append_files
-                    .push(CreateOrAppendFile::plan(&github_path, None, None, None, buf).await?)
             }
+            create_or_append_files
+                .push(CreateOrAppendFile::plan(&github_path, None, None, None, buf).await?)
         }
 
         Ok(Self {
