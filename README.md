@@ -10,7 +10,6 @@ Harmonic is an opinionated, experimental Nix installer.
 > curl -L https://install.determinate.systems/nix | sh -s install
 > ```
 
-
 ## Status
 
 Harmonic is **pre-release and experimental**. It is not ready for you to use! *Please* don't use it on a machine you are not planning to obliterate!
