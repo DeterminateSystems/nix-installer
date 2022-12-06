@@ -15,6 +15,13 @@ pub enum HarmonicError {
     /// An error while writing the [`InstallPlan`](crate::InstallPlan)
     #[error("Recording install receipt")]
     RecordingReceipt(PathBuf, #[source] std::io::Error),
+    /// An error while writing copying the binary into the `/nix` folder
+    #[error("Copying `harmonic` binary into `/nix`")]
+    CopyingSelf(
+        #[source]
+        #[from]
+        std::io::Error,
+    ),
     /// An error while serializing the [`InstallPlan`](crate::InstallPlan)
     #[error("Serializing receipt")]
     SerializingReceipt(
