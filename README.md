@@ -7,7 +7,7 @@ Harmonic is an opinionated, experimental Nix installer.
 > Try it on a machine/VM you don't care about!
 >
 > ```bash
-> curl -L https://install.determinate.systems/nix | sh -s install
+> curl -L https://install.determinate.systems/nix | sudo sh -s -- install
 > ```
 
 ## Status
