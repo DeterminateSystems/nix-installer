@@ -22,7 +22,7 @@ fi
 set -u
 
 # If NIX_INSTALL_UPDATE_ROOT is unset or empty, default it.
-NIX_INSTALL_UPDATE_ROOT="${NIX_INSTALL_UPDATE_ROOT:-https://install.determinate.systems}"
+NIX_INSTALL_UPDATE_ROOT="${NIX_INSTALL_UPDATE_ROOT:-https://install.determinate.systems/nix}"
 
 main() {
     downloader --check
