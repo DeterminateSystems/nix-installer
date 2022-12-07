@@ -77,6 +77,7 @@ impl Action for CreateUser {
                     .args([".", "-read", &format!("/Users/{name}")])
                     .stdin(std::process::Stdio::null())
                     .stdout(std::process::Stdio::null())
+                    .stderr(std::process::Stdio::piped())
                     .status()
                     .await
                     .map_err(ActionError::Command)?
