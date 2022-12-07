@@ -54,3 +54,22 @@ pub enum HarmonicError {
         InstallSettingsError,
     ),
 }
+
+pub(crate) trait HasExpectedErrors {
+    fn expected(&self) -> bool;
+}
+
+impl HasExpectedErrors for HarmonicError {
+    fn expected(&self) -> bool {
+        match self {
+            HarmonicError::Action(action_error) => action_error.expected(),
+            HarmonicError::RecordingReceipt(_, _) => false,
+            HarmonicError::CopyingSelf(_) => false,
+            HarmonicError::SerializingReceipt(_) => false,
+            HarmonicError::Cancelled => true,
+            HarmonicError::SemVer(_) => true,
+            HarmonicError::Planner(planner_error) => planner_error.expected(),
+            HarmonicError::InstallSettings(_) => false,
+        }
+    }
+}

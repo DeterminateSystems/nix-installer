@@ -33,7 +33,7 @@ impl Planner for LinuxMulti {
         // If on NixOS, running `harmonic` is pointless
         // NixOS always sets up this file as part of setting up /etc itself: https://github.com/NixOS/nixpkgs/blob/bdd39e5757d858bd6ea58ed65b4a2e52c8ed11ca/nixos/modules/system/etc/setup-etc.pl#L145
         if Path::new("/etc/NIXOS").exists() {
-            return Err(PlannerError::Custom(Box::new(LinuxMultiError::NixOs)));
+            return Err(PlannerError::NixOs);
         }
 
         // For now, we don't try to repair the user's Nix install or anything special.
@@ -43,7 +43,7 @@ impl Planner for LinuxMulti {
             .status()
             .await
         {
-            return Err(PlannerError::Custom(Box::new(LinuxMultiError::NixExists)));
+            return Err(PlannerError::NixExists);
         }
 
         Ok(vec![
@@ -84,10 +84,6 @@ impl Into<BuiltinPlanner> for LinuxMulti {
 
 #[derive(thiserror::Error, Debug)]
 enum LinuxMultiError {
-    #[error("NixOS already has Nix installed")]
-    NixOs,
-    #[error("`nix` is already a valid command, so it is installed")]
-    NixExists,
     #[error("Error planning action")]
     Action(
         #[source]

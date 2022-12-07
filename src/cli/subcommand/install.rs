@@ -6,6 +6,7 @@ use std::{
 use crate::{
     action::ActionState,
     cli::{interaction, is_root, signal_channel, CommandExecute},
+    error::HasExpectedErrors,
     plan::RECEIPT_LOCATION,
     planner::Planner,
     BuiltinPlanner, InstallPlan,
@@ -54,9 +55,11 @@ impl CommandExecute for Install {
         } = self;
 
         if !is_root() {
-            return Err(eyre!(
-                "`harmonic install` must be run as `root`, try `sudo harmonic install`"
-            ));
+            eprintln!(
+                "{}",
+                "`harmonic install` must be run as `root`, try `sudo harmonic install`".red()
+            );
+            return Ok(ExitCode::FAILURE);
         }
 
         let existing_receipt: Option<InstallPlan> = match Path::new(RECEIPT_LOCATION).exists() {
@@ -101,7 +104,15 @@ impl CommandExecute for Install {
                 let builtin_planner = BuiltinPlanner::default()
                     .await
                     .map_err(|e| eyre::eyre!(e))?;
-                builtin_planner.plan().await.map_err(|e| eyre!(e))?
+                let res = builtin_planner.plan().await;
+                match res {
+                    Ok(plan) => plan,
+                    Err(e) if e.expected() => {
+                        eprintln!("{}", e.red());
+                        return Ok(ExitCode::FAILURE);
+                    },
+                    Err(e) => return Err(e.into()),
+                }
             },
             (Some(_), Some(_)) => return Err(eyre!("`--plan` conflicts with passing a planner, a planner creates plans, so passing an existing plan doesn't make sense")),
         };
@@ -121,8 +132,8 @@ impl CommandExecute for Install {
         let (tx, rx1) = signal_channel().await?;
 
         if let Err(err) = install_plan.install(rx1).await {
-            let error = eyre!(err).wrap_err("Install failure");
             if !no_confirm {
+                let error = eyre!(err).wrap_err("Install failure");
                 tracing::error!("{:?}", error);
                 if !interaction::confirm(
                     install_plan
@@ -134,8 +145,23 @@ impl CommandExecute for Install {
                     interaction::clean_exit_with_message("Okay, didn't do anything! Bye!").await;
                 }
                 let rx2 = tx.subscribe();
-                install_plan.uninstall(rx2).await?
+                let res = install_plan.uninstall(rx2).await;
+
+                if let Err(e) = res {
+                    if e.expected() {
+                        eprintln!("{}", e.red());
+                        return Ok(ExitCode::FAILURE);
+                    } else {
+                        return Err(e.into());
+                    }
+                }
             } else {
+                if err.expected() {
+                    eprintln!("{}", err.red());
+                    return Ok(ExitCode::FAILURE);
+                }
+
+                let error = eyre!(err).wrap_err("Install failure");
                 return Err(error);
             }
         }

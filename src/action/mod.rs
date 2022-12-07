@@ -160,6 +160,8 @@ pub use stateful::{ActionState, StatefulAction};
 use std::error::Error;
 use tokio::task::JoinError;
 
+use crate::error::HasExpectedErrors;
+
 /// An action which can be reverted or completed, with an action state
 ///
 /// This trait interacts with [`StatefulAction`] which does the [`ActionState`] manipulation and provides some tracing facilities.
@@ -307,4 +309,10 @@ pub enum ActionError {
         #[from]
         std::string::FromUtf8Error,
     ),
+}
+
+impl HasExpectedErrors for ActionError {
+    fn expected(&self) -> bool {
+        false
+    }
 }

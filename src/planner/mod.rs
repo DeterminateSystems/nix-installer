@@ -81,6 +81,7 @@ use std::collections::HashMap;
 
 use crate::{
     action::{ActionError, StatefulAction},
+    error::HasExpectedErrors,
     settings::InstallSettingsError,
     Action, HarmonicError, InstallPlan,
 };
@@ -181,4 +182,22 @@ pub enum PlannerError {
     /// Custom planner error
     #[error("Custom planner error")]
     Custom(#[source] Box<dyn std::error::Error + Send + Sync>),
+    #[error("NixOS already has Nix installed")]
+    NixOs,
+    #[error("`nix` is already a valid command, so it is installed")]
+    NixExists,
+}
+
+impl HasExpectedErrors for PlannerError {
+    fn expected(&self) -> bool {
+        match self {
+            PlannerError::UnsupportedArchitecture(_) => true,
+            PlannerError::Action(_) => false,
+            PlannerError::InstallSettings(_) => false,
+            PlannerError::Plist(_) => false,
+            PlannerError::Custom(_) => false,
+            PlannerError::NixOs => true,
+            PlannerError::NixExists => true,
+        }
+    }
 }
