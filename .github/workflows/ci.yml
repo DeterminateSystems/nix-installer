@@ -65,31 +65,49 @@ jobs:
     runs-on: ubuntu-22.04
     needs: build-x86_64-linux
     steps:
+      - run: sudo apt install fish zsh
       - uses: actions/download-artifact@v3
         with:
           name: harmonic-x86_64-linux
       - name: Set executable
         run: chmod +x ./harmonic
-
       - name: Initial install
-        run: sudo RUST_LOG=harmonic=trace RUST_BACKTRACE=full ./harmonic install linux-multi --extra-conf "access-tokens = github.com=${{ secrets.GITHUB_TOKEN }}" --no-confirm
+        run: sudo GITHUB_PATH=$GITHUB_PATH RUST_LOG=harmonic=trace RUST_BACKTRACE=full ./harmonic install linux-multi --extra-conf "access-tokens = github.com=${{ secrets.GITHUB_TOKEN }}" --no-confirm
       - name: Initial uninstall (without a `nix run` first)
-        run: sudo RUST_LOG=harmonic=trace RUST_BACKTRACE=full /nix/harmonic uninstall --no-confirm
-
+        run: sudo GITHUB_PATH=$GITHUB_PATH RUST_LOG=harmonic=trace RUST_BACKTRACE=full ./harmonic uninstall --no-confirm
       - name: Repeated install
-        run: sudo RUST_LOG=harmonic=trace RUST_BACKTRACE=full ./harmonic install linux-multi --extra-conf "access-tokens = github.com=${{ secrets.GITHUB_TOKEN }}" --no-confirm
+        run: sudo GITHUB_PATH=$GITHUB_PATH RUST_LOG=harmonic=trace RUST_BACKTRACE=full ./harmonic install linux-multi --extra-conf "access-tokens = github.com=${{ secrets.GITHUB_TOKEN }}" --no-confirm
+      - name: echo $PATH
+        run: echo $PATH
       - name: Test `nix`
-        run: |
-          . /nix/var/nix/profiles/default/etc/profile.d/nix-daemon.sh
-          nix run nixpkgs#fortune
+        if: success() || failure()
+        run: nix run nixpkgs#fortune
+      - name: Test bash
+        run: nix-instantiate -E 'builtins.currentTime' --eval
+        if: success() || failure()
+        shell: bash --login {0}
+      - name: Test sh
+        run: nix-instantiate -E 'builtins.currentTime' --eval
+        if: success() || failure()
+        shell: sh -l {0}
+      - name: Test zsh
+        run: nix-instantiate -E 'builtins.currentTime' --eval
+        if: success() || failure()
+        shell: zsh --login --interactive {0}
+      ## Broken until https://github.com/NixOS/nix/pull/7105 is released due to the version on Ubuntu's runners
+      # - name: Test fish
+      #   run: nix-instantiate -E 'builtins.currentTime' --eval
+      #   if: success() || failure()
+      #   shell: fish --login {0}
       - name: Repeated uninstall
-        run: sudo RUST_LOG=harmonic=trace RUST_BACKTRACE=full /nix/harmonic uninstall --no-confirm
+        run: sudo GITHUB_PATH=$GITHUB_PATH RUST_LOG=harmonic=trace RUST_BACKTRACE=full ./harmonic uninstall --no-confirm
 
   run-steam-deck:
     name: Run Steam Deck (mock)
     runs-on: ubuntu-22.04
     needs: build-x86_64-linux
     steps:
+      - run: sudo apt install fish zsh
       - uses: actions/download-artifact@v3
         with:
           name: harmonic-x86_64-linux
@@ -101,24 +119,40 @@ jobs:
           echo -e "#! /bin/sh\nexit 0" | sudo tee -a /bin/steamos-readonly
           sudo chmod +x /bin/steamos-readonly
           sudo useradd -m deck
-
       - name: Initial install
-        run: sudo PATH=$PATH:$HOME/bin RUST_LOG=harmonic=trace RUST_BACKTRACE=full ./harmonic install steam-deck --persistence `pwd`/ci-test-nix --extra-conf "access-tokens = github.com=${{ secrets.GITHUB_TOKEN }}" --no-confirm
+        run: sudo GITHUB_PATH=$GITHUB_PATH PATH=$PATH:$HOME/bin RUST_LOG=harmonic=trace RUST_BACKTRACE=full ./harmonic install steam-deck --persistence `pwd`/ci-test-nix --extra-conf "access-tokens = github.com=${{ secrets.GITHUB_TOKEN }}" --no-confirm
       - name: Initial uninstall (without a `nix run` first)
         run: |
           cp /nix/harmonic ./harmonic # Since /nix is a mount we must avoid requiring it to remain existing
-          sudo PATH=$PATH:$HOME/bin RUST_LOG=harmonic=trace RUST_BACKTRACE=full ./harmonic uninstall --no-confirm
-
+          sudo GITHUB_PATH=$GITHUB_PATH PATH=$PATH:$HOME/bin RUST_LOG=harmonic=trace RUST_BACKTRACE=full ./harmonic uninstall --no-confirm
       - name: Repeated install
-        run: sudo PATH=$PATH:$HOME/bin RUST_LOG=harmonic=trace RUST_BACKTRACE=full ./harmonic install steam-deck --persistence `pwd`/ci-test-nix --extra-conf "access-tokens = github.com=${{ secrets.GITHUB_TOKEN }}" --no-confirm
+        run: sudo GITHUB_PATH=$GITHUB_PATH PATH=$PATH:$HOME/bin RUST_LOG=harmonic=trace RUST_BACKTRACE=full ./harmonic install steam-deck --persistence `pwd`/ci-test-nix --extra-conf "access-tokens = github.com=${{ secrets.GITHUB_TOKEN }}" --no-confirm
+      - name: echo $PATH
+        run: echo $PATH
       - name: Test `nix`
-        run: |
-          . /nix/var/nix/profiles/default/etc/profile.d/nix-daemon.sh
-          nix run nixpkgs#fortune
+        if: success() || failure()
+        run: nix run nixpkgs#fortune
+      - name: Test bash
+        run: nix-instantiate -E 'builtins.currentTime' --eval
+        if: success() || failure()
+        shell: bash --login {0}
+      - name: Test sh
+        run: nix-instantiate -E 'builtins.currentTime' --eval
+        if: success() || failure()
+        shell: sh -l {0}
+      - name: Test zsh
+        run: nix-instantiate -E 'builtins.currentTime' --eval
+        if: success() || failure()
+        shell: zsh --login --interactive {0}
+      ## Broken until https://github.com/NixOS/nix/pull/7105 is released due to the version on Ubuntu's runners
+      # - name: Test fish
+      #   run: nix-instantiate -E 'builtins.currentTime' --eval
+      #   if: success() || failure()
+      #   shell: fish --login {0}
       - name: Repeated uninstall
         run: |
           cp /nix/harmonic ./harmonic # Since /nix is a mount we must avoid requiring it to remain existing
-          sudo PATH=$PATH:$HOME/bin RUST_LOG=harmonic=trace RUST_BACKTRACE=full /nix/harmonic uninstall --no-confirm
+          sudo GITHUB_PATH=$GITHUB_PATH PATH=$PATH:$HOME/bin RUST_LOG=harmonic=trace RUST_BACKTRACE=full ./harmonic uninstall --no-confirm
 
   build-x86_64-darwin:
     name: Build x86_64 Darwin
@@ -144,27 +178,43 @@ jobs:
     runs-on: macos-12
     needs: build-x86_64-darwin
     steps:
+      - run: brew install fish
       - uses: actions/download-artifact@v3
         with:
           name: harmonic-x86_64-darwin
       - name: Set executable
         run: chmod +x ./harmonic
-
       - name: Initial install
-        run: sudo RUST_LOG=harmonic=trace RUST_BACKTRACE=full ./harmonic install darwin-multi --extra-conf "access-tokens = github.com=${{ secrets.GITHUB_TOKEN }}" --no-confirm
+        run: sudo GITHUB_PATH=$GITHUB_PATH RUST_LOG=harmonic=trace RUST_BACKTRACE=full ./harmonic install darwin-multi --extra-conf "access-tokens = github.com=${{ secrets.GITHUB_TOKEN }}" --no-confirm
       - name: Initial uninstall (without a `nix run` first)
         run: |
           cp /nix/harmonic ./harmonic # Since /nix is a mount we must avoid requiring it to remain existing
-          sudo RUST_LOG=harmonic=trace RUST_BACKTRACE=full ./harmonic uninstall --no-confirm
-        
+          sudo GITHUB_PATH=$GITHUB_PATH RUST_LOG=harmonic=trace RUST_BACKTRACE=full ./harmonic uninstall --no-confirm
       - name: Repeated install
-        run: sudo RUST_LOG=harmonic=trace RUST_BACKTRACE=full ./harmonic install darwin-multi --extra-conf "access-tokens = github.com=${{ secrets.GITHUB_TOKEN }}" --no-confirm
+        run: sudo GITHUB_PATH=$GITHUB_PATH RUST_LOG=harmonic=trace RUST_BACKTRACE=full ./harmonic install darwin-multi --extra-conf "access-tokens = github.com=${{ secrets.GITHUB_TOKEN }}" --no-confirm
+      - name: echo $PATH
+        run: echo $PATH
       - name: Test `nix`
-        run: |
-          . /nix/var/nix/profiles/default/etc/profile.d/nix-daemon.sh
-          nix run nixpkgs#fortune
+        if: success() || failure()
+        run: nix run nixpkgs#fortune
+      - name: Test bash
+        run: nix-instantiate -E 'builtins.currentTime' --eval
+        if: success() || failure()
+        shell: bash --login {0}
+      - name: Test sh
+        run: nix-instantiate -E 'builtins.currentTime' --eval
+        if: success() || failure()
+        shell: sh -l {0}
+      - name: Test zsh
+        run: nix-instantiate -E 'builtins.currentTime' --eval
+        if: success() || failure()
+        shell: zsh --login --interactive {0}
+      - name: Test fish
+        run: nix-instantiate -E 'builtins.currentTime' --eval
+        if: success() || failure()
+        shell: fish --login {0}
       - name: Repeated uninstall
         run: |
           cp /nix/harmonic ./harmonic # Since /nix is a mount we must avoid requiring it to remain existing
-          sudo RUST_LOG=harmonic=trace RUST_BACKTRACE=full ./harmonic uninstall --no-confirm
+          sudo GITHUB_PATH=$GITHUB_PATH RUST_LOG=harmonic=trace RUST_BACKTRACE=full ./harmonic uninstall --no-confirm
         
