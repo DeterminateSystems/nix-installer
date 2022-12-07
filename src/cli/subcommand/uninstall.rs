@@ -57,6 +57,9 @@ impl CommandExecute for Uninstall {
         // Instead, detect if we're in that location, if so, move the binary and `execv` it.
         if let Ok(current_exe) = std::env::current_exe() {
             if current_exe.as_path() == Path::new("/nix/harmonic") {
+                tracing::debug!(
+                    "Detected uninstall from `/nix/harmonic`, moving executable and re-executing"
+                );
                 let temp = std::env::temp_dir();
                 let temp_exe = temp.join("harmonic");
                 tokio::fs::copy(&current_exe, &temp_exe)
