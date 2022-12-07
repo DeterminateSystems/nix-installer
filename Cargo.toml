@@ -57,6 +57,7 @@ typetag = "0.2.3"
 dyn-clone = "1.0.9"
 rand = "0.8.5"
 semver = { version = "1.0.14", features = ["serde"] }
+term = "0.7.0"
 
 [dev-dependencies]
 eyre = "0.6.8"
