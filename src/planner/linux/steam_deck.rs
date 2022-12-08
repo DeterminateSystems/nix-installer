@@ -99,7 +99,7 @@ impl Planner for SteamDeck {
         let persistence = &self.persistence;
 
         let nix_directory_buf = format!(
-            "
+            "\
             [Unit]\n\
             Description=Create a `/nix` directory to be used for bind mounting\n\
             PropagatesStopTo=nix-daemon.service\n\
@@ -108,7 +108,6 @@ impl Planner for SteamDeck {
             \n\
             [Service]\n\
             Type=oneshot\n\
-            ExecCondition=sh -c \"if [ -d /nix ]; then exit 1; else exit 0; fi\"
             ExecStart=steamos-readonly disable\n\
             ExecStart=mkdir -vp /nix\n\
             ExecStart=chmod -v 0755 /nix\n\
