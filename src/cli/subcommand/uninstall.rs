@@ -11,6 +11,7 @@ use crate::{
 };
 use clap::{ArgAction, Parser};
 use eyre::{eyre, WrapErr};
+use rand::Rng;
 
 use crate::cli::{interaction, CommandExecute};
 
@@ -61,7 +62,21 @@ impl CommandExecute for Uninstall {
                     "Detected uninstall from `/nix/harmonic`, moving executable and re-executing"
                 );
                 let temp = std::env::temp_dir();
-                let temp_exe = temp.join("harmonic");
+                let random_trailer: String = {
+                    const CHARSET: &[u8] = b"ABCDEFGHIJKLMNOPQRSTUVWXYZ\
+                                        abcdefghijklmnopqrstuvwxyz\
+                                            0123456789";
+                    const PASSWORD_LEN: usize = 16;
+                    let mut rng = rand::thread_rng();
+
+                    (0..PASSWORD_LEN)
+                        .map(|_| {
+                            let idx = rng.gen_range(0..CHARSET.len());
+                            CHARSET[idx] as char
+                        })
+                        .collect()
+                };
+                let temp_exe = temp.join(&format!("harmonic-{random_trailer}"));
                 tokio::fs::copy(&current_exe, &temp_exe)
                     .await
                     .wrap_err("Copying harmonic to tempdir")?;
