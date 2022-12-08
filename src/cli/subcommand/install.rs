@@ -111,6 +111,7 @@ impl CommandExecute for Install {
                 install_plan
                     .describe_install(explain)
                     .map_err(|e| eyre!(e))?,
+                true,
             )
             .await?
             {
@@ -128,6 +129,7 @@ impl CommandExecute for Install {
                     install_plan
                         .describe_uninstall(explain)
                         .map_err(|e| eyre!(e))?,
+                    true,
                 )
                 .await?
                 {

@@ -93,6 +93,11 @@ main() {
         exit 1
     fi
 
+    local maybe_sudo=""
+    if [ "$EUID" -ne 0 ] && command -v sudo > /dev/null; then
+        maybe_sudo="sudo"
+    fi
+
     if [ "$need_tty" = "yes" ] && [ ! -t 0 ]; then
         # The installer is going to want to ask for confirmation by
         # reading stdin.  This script was piped into `sh` though and
@@ -102,9 +107,9 @@ main() {
             err "Unable to run interactively. Run with -y to accept defaults, --help for additional options"
         fi
 
-        ignore "$_file" "$@" < /dev/tty
+        ignore "$maybe_sudo" "$_file" "$@" < /dev/tty
     else
-        ignore "$_file" "$@"
+        ignore "$maybe_sudo" "$_file" "$@"
     fi
 
     local _retval=$?

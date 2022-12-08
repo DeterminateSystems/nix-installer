@@ -53,8 +53,11 @@ impl CommandExecute for Uninstall {
         let mut plan: InstallPlan = serde_json::from_str(&install_receipt_string)?;
 
         if !no_confirm {
-            if !interaction::confirm(plan.describe_uninstall(explain).map_err(|e| eyre!(e))?)
-                .await?
+            if !interaction::confirm(
+                plan.describe_uninstall(explain).map_err(|e| eyre!(e))?,
+                true,
+            )
+            .await?
             {
                 interaction::clean_exit_with_message("Okay, didn't do anything! Bye!").await;
             }
