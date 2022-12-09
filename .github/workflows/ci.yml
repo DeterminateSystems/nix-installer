@@ -122,9 +122,7 @@ jobs:
       - name: Initial install
         run: sudo GITHUB_PATH=$GITHUB_PATH PATH=$PATH:$HOME/bin RUST_LOG=harmonic=trace RUST_BACKTRACE=full ./harmonic install steam-deck --persistence `pwd`/ci-test-nix --extra-conf "access-tokens = github.com=${{ secrets.GITHUB_TOKEN }}" --no-confirm
       - name: Initial uninstall (without a `nix run` first)
-        run: |
-          cp /nix/harmonic ./harmonic # Since /nix is a mount we must avoid requiring it to remain existing
-          sudo GITHUB_PATH=$GITHUB_PATH PATH=$PATH:$HOME/bin RUST_LOG=harmonic=trace RUST_BACKTRACE=full ./harmonic uninstall --no-confirm
+        run: sudo GITHUB_PATH=$GITHUB_PATH PATH=$PATH:$HOME/bin RUST_LOG=harmonic=trace RUST_BACKTRACE=full /nix/harmonic uninstall --no-confirm
       - name: Repeated install
         run: sudo GITHUB_PATH=$GITHUB_PATH PATH=$PATH:$HOME/bin RUST_LOG=harmonic=trace RUST_BACKTRACE=full ./harmonic install steam-deck --persistence `pwd`/ci-test-nix --extra-conf "access-tokens = github.com=${{ secrets.GITHUB_TOKEN }}" --no-confirm
       - name: echo $PATH
@@ -150,9 +148,7 @@ jobs:
       #   if: success() || failure()
       #   shell: fish --login {0}
       - name: Repeated uninstall
-        run: |
-          cp /nix/harmonic ./harmonic # Since /nix is a mount we must avoid requiring it to remain existing
-          sudo GITHUB_PATH=$GITHUB_PATH PATH=$PATH:$HOME/bin RUST_LOG=harmonic=trace RUST_BACKTRACE=full ./harmonic uninstall --no-confirm
+        run: sudo GITHUB_PATH=$GITHUB_PATH PATH=$PATH:$HOME/bin RUST_LOG=harmonic=trace RUST_BACKTRACE=full /nix/harmonic uninstall --no-confirm
 
   build-x86_64-darwin:
     name: Build x86_64 Darwin
@@ -187,9 +183,7 @@ jobs:
       - name: Initial install
         run: sudo GITHUB_PATH=$GITHUB_PATH RUST_LOG=harmonic=trace RUST_BACKTRACE=full ./harmonic install darwin-multi --extra-conf "access-tokens = github.com=${{ secrets.GITHUB_TOKEN }}" --no-confirm
       - name: Initial uninstall (without a `nix run` first)
-        run: |
-          cp /nix/harmonic ./harmonic # Since /nix is a mount we must avoid requiring it to remain existing
-          sudo GITHUB_PATH=$GITHUB_PATH RUST_LOG=harmonic=trace RUST_BACKTRACE=full ./harmonic uninstall --no-confirm
+        run: sudo GITHUB_PATH=$GITHUB_PATH RUST_LOG=harmonic=trace RUST_BACKTRACE=full /nix/harmonic uninstall --no-confirm
       - name: Repeated install
         run: sudo GITHUB_PATH=$GITHUB_PATH RUST_LOG=harmonic=trace RUST_BACKTRACE=full ./harmonic install darwin-multi --extra-conf "access-tokens = github.com=${{ secrets.GITHUB_TOKEN }}" --no-confirm
       - name: echo $PATH
@@ -214,7 +208,5 @@ jobs:
         if: success() || failure()
         shell: fish --login {0}
       - name: Repeated uninstall
-        run: |
-          cp /nix/harmonic ./harmonic # Since /nix is a mount we must avoid requiring it to remain existing
-          sudo GITHUB_PATH=$GITHUB_PATH RUST_LOG=harmonic=trace RUST_BACKTRACE=full ./harmonic uninstall --no-confirm
+        run: sudo GITHUB_PATH=$GITHUB_PATH RUST_LOG=harmonic=trace RUST_BACKTRACE=full /nix/harmonic uninstall --no-confirm
         

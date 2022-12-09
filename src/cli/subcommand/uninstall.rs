@@ -1,4 +1,8 @@
-use std::{path::PathBuf, process::ExitCode};
+use std::{
+    ffi::CString,
+    path::{Path, PathBuf},
+    process::ExitCode,
+};
 
 use crate::{
     cli::{is_root, signal_channel},
@@ -7,6 +11,7 @@ use crate::{
 };
 use clap::{ArgAction, Parser};
 use eyre::{eyre, WrapErr};
+use rand::Rng;
 
 use crate::cli::{interaction, CommandExecute};
 
@@ -45,6 +50,47 @@ impl CommandExecute for Uninstall {
             return Err(eyre!(
                 "`harmonic install` must be run as `root`, try `sudo harmonic install`"
             ));
+        }
+
+        // During install, `harmonic` will store a copy of itself in `/nix/harmonic`
+        // If the user opted to run that particular copy of Harmonic to do this uninstall,
+        // well, we have a problem, since the binary would delete itself.
+        // Instead, detect if we're in that location, if so, move the binary and `execv` it.
+        if let Ok(current_exe) = std::env::current_exe() {
+            if current_exe.as_path() == Path::new("/nix/harmonic") {
+                tracing::debug!(
+                    "Detected uninstall from `/nix/harmonic`, moving executable and re-executing"
+                );
+                let temp = std::env::temp_dir();
+                let random_trailer: String = {
+                    const CHARSET: &[u8] = b"ABCDEFGHIJKLMNOPQRSTUVWXYZ\
+                                        abcdefghijklmnopqrstuvwxyz\
+                                            0123456789";
+                    const PASSWORD_LEN: usize = 16;
+                    let mut rng = rand::thread_rng();
+
+                    (0..PASSWORD_LEN)
+                        .map(|_| {
+                            let idx = rng.gen_range(0..CHARSET.len());
+                            CHARSET[idx] as char
+                        })
+                        .collect()
+                };
+                let temp_exe = temp.join(&format!("harmonic-{random_trailer}"));
+                tokio::fs::copy(&current_exe, &temp_exe)
+                    .await
+                    .wrap_err("Copying harmonic to tempdir")?;
+                let args = std::env::args();
+                let mut arg_vec_cstring = vec![];
+                for arg in args {
+                    arg_vec_cstring.push(CString::new(arg).wrap_err("Making arg into C string")?);
+                }
+                let temp_exe_cstring = CString::new(temp_exe.to_string_lossy().into_owned())
+                    .wrap_err("Making C string of executable path")?;
+
+                nix::unistd::execv(&temp_exe_cstring, &arg_vec_cstring)
+                    .wrap_err("Executing copied Harmonic")?;
+            }
         }
 
         let install_receipt_string = tokio::fs::read_to_string(receipt)
