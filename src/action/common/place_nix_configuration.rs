@@ -14,7 +14,7 @@ pub struct PlaceNixConfiguration {
 }
 
 impl PlaceNixConfiguration {
-    #[tracing::instrument(skip_all)]
+    #[tracing::instrument(level = "debug", skip_all)]
     pub async fn plan(
         nix_build_group_name: String,
         extra_conf: Vec<String>,
@@ -60,7 +60,7 @@ impl Action for PlaceNixConfiguration {
         )]
     }
 
-    #[tracing::instrument(skip_all)]
+    #[tracing::instrument(level = "debug", skip_all)]
     async fn execute(&mut self) -> Result<(), ActionError> {
         let Self {
             create_file,
@@ -83,7 +83,7 @@ impl Action for PlaceNixConfiguration {
         )]
     }
 
-    #[tracing::instrument(skip_all)]
+    #[tracing::instrument(level = "debug", skip_all)]
     async fn revert(&mut self) -> Result<(), ActionError> {
         let Self {
             create_file,

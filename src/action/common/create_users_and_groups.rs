@@ -19,7 +19,7 @@ pub struct CreateUsersAndGroups {
 }
 
 impl CreateUsersAndGroups {
-    #[tracing::instrument(skip_all)]
+    #[tracing::instrument(level = "debug", skip_all)]
     pub async fn plan(settings: CommonSettings) -> Result<StatefulAction<Self>, ActionError> {
         // TODO(@hoverbear): CHeck if it exist, error if so
         let create_group = CreateGroup::plan(
@@ -91,7 +91,7 @@ impl Action for CreateUsersAndGroups {
         vec![ActionDescription::new(self.tracing_synopsis(), explanation)]
     }
 
-    #[tracing::instrument(skip_all, fields(
+    #[tracing::instrument(level = "debug", skip_all, fields(
         daemon_user_count = self.daemon_user_count,
         nix_build_group_name = self.nix_build_group_name,
         nix_build_group_id = self.nix_build_group_id,
@@ -188,7 +188,7 @@ impl Action for CreateUsersAndGroups {
         )]
     }
 
-    #[tracing::instrument(skip_all, fields(
+    #[tracing::instrument(level = "debug", skip_all, fields(
         daemon_user_count = self.daemon_user_count,
         nix_build_group_name = self.nix_build_group_name,
         nix_build_group_id = self.nix_build_group_id,

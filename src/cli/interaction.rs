@@ -1,8 +1,6 @@
 use std::io::{stdin, stdout, BufRead, Write};
 
-use crossterm::event::{EventStream, KeyCode};
 use eyre::{eyre, WrapErr};
-use futures::{FutureExt, StreamExt};
 use owo_colors::OwoColorize;
 
 // Do not try to get clever!

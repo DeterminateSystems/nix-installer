@@ -32,7 +32,7 @@ pub struct HarmonicCli {
 
 #[async_trait::async_trait]
 impl CommandExecute for HarmonicCli {
-    #[tracing::instrument(skip_all)]
+    #[tracing::instrument(level = "debug", skip_all)]
     async fn execute(self) -> eyre::Result<ExitCode> {
         let Self {
             instrumentation: _,

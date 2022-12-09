@@ -24,7 +24,7 @@ pub struct ConfigureNix {
 }
 
 impl ConfigureNix {
-    #[tracing::instrument(skip_all)]
+    #[tracing::instrument(level = "debug", skip_all)]
     pub async fn plan(settings: &CommonSettings) -> Result<StatefulAction<Self>, ActionError> {
         let channels: Vec<(String, Url)> = settings
             .channels
@@ -87,7 +87,7 @@ impl Action for ConfigureNix {
         buf
     }
 
-    #[tracing::instrument(skip_all)]
+    #[tracing::instrument(level = "debug", skip_all)]
     async fn execute(&mut self) -> Result<(), ActionError> {
         let Self {
             setup_default_profile,
@@ -137,7 +137,7 @@ impl Action for ConfigureNix {
         buf
     }
 
-    #[tracing::instrument(skip_all)]
+    #[tracing::instrument(level = "debug", skip_all)]
     async fn revert(&mut self) -> Result<(), ActionError> {
         let Self {
             setup_default_profile,

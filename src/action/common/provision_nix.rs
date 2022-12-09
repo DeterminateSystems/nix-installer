@@ -20,7 +20,7 @@ pub struct ProvisionNix {
 }
 
 impl ProvisionNix {
-    #[tracing::instrument(skip_all)]
+    #[tracing::instrument(level = "debug", skip_all)]
     pub async fn plan(settings: &CommonSettings) -> Result<StatefulAction<Self>, ActionError> {
         let fetch_nix = FetchAndUnpackNix::plan(
             settings.nix_package_url.clone(),
@@ -65,7 +65,7 @@ impl Action for ProvisionNix {
         buf
     }
 
-    #[tracing::instrument(skip_all)]
+    #[tracing::instrument(level = "debug", skip_all)]
     async fn execute(&mut self) -> Result<(), ActionError> {
         let Self {
             fetch_nix,
@@ -106,7 +106,7 @@ impl Action for ProvisionNix {
         buf
     }
 
-    #[tracing::instrument(skip_all)]
+    #[tracing::instrument(level = "debug", skip_all)]
     async fn revert(&mut self) -> Result<(), ActionError> {
         let Self {
             fetch_nix,

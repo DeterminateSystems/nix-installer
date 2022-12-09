@@ -18,7 +18,7 @@ pub struct SetupDefaultProfile {
 }
 
 impl SetupDefaultProfile {
-    #[tracing::instrument(skip_all)]
+    #[tracing::instrument(level = "debug", skip_all)]
     pub async fn plan(channels: Vec<String>) -> Result<StatefulAction<Self>, ActionError> {
         Ok(Self { channels }.into())
     }
@@ -35,7 +35,7 @@ impl Action for SetupDefaultProfile {
         vec![ActionDescription::new(self.tracing_synopsis(), vec![])]
     }
 
-    #[tracing::instrument(skip_all, fields(
+    #[tracing::instrument(level = "debug", skip_all, fields(
         channels = %self.channels.join(","),
     ))]
     async fn execute(&mut self) -> Result<(), ActionError> {
@@ -156,7 +156,7 @@ impl Action for SetupDefaultProfile {
         )]
     }
 
-    #[tracing::instrument(skip_all, fields(
+    #[tracing::instrument(level = "debug", skip_all, fields(
         channels = %self.channels.join(","),
     ))]
     async fn revert(&mut self) -> Result<(), ActionError> {
