@@ -94,11 +94,10 @@ jobs:
         run: nix-instantiate -E 'builtins.currentTime' --eval
         if: success() || failure()
         shell: zsh --login --interactive {0}
-      ## Broken until https://github.com/NixOS/nix/pull/7105 is released due to the version on Ubuntu's runners
-      # - name: Test fish
-      #   run: nix-instantiate -E 'builtins.currentTime' --eval
-      #   if: success() || failure()
-      #   shell: fish --login {0}
+      - name: Test fish
+        run: nix-instantiate -E 'builtins.currentTime' --eval
+        if: success() || failure()
+        shell: fish --login {0}
       - name: Repeated uninstall
         run: sudo GITHUB_PATH=$GITHUB_PATH RUST_LOG=harmonic=trace RUST_BACKTRACE=full ./harmonic uninstall --no-confirm
 
@@ -144,11 +143,10 @@ jobs:
         run: nix-instantiate -E 'builtins.currentTime' --eval
         if: success() || failure()
         shell: zsh --login --interactive {0}
-      ## Broken until https://github.com/NixOS/nix/pull/7105 is released due to the version on Ubuntu's runners
-      # - name: Test fish
-      #   run: nix-instantiate -E 'builtins.currentTime' --eval
-      #   if: success() || failure()
-      #   shell: fish --login {0}
+      - name: Test fish
+        run: nix-instantiate -E 'builtins.currentTime' --eval
+        if: success() || failure()
+        shell: fish --login {0}
       - name: Repeated uninstall
         run: |
           cp /nix/harmonic ./harmonic # Since /nix is a mount we must avoid requiring it to remain existing
