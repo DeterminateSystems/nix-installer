@@ -64,7 +64,6 @@
             ];
             buildInputs = with pkgs; [
               toolchain
-              openssl
               rust-analyzer
               cargo-outdated
 
@@ -132,9 +131,7 @@
               nativeBuildInputs = with pkgs; [
                 pkg-config
               ];
-              buildInputs = with pkgs; [
-                openssl
-              ] ++ lib.optionals (pkgs.stdenv.isDarwin) (with pkgs.darwin.apple_sdk.frameworks; [
+              buildInputs = with pkgs; [] ++ lib.optionals (pkgs.stdenv.isDarwin) (with pkgs.darwin.apple_sdk.frameworks; [
                 SystemConfiguration
               ]);
 
@@ -160,16 +157,12 @@
             harmonicStatic = naerskLib.buildPackage
               (sharedAttrs // {
                 CARGO_BUILD_TARGET = "x86_64-unknown-linux-musl";
-                OPENSSL_LIB_DIR = "${pkgs.pkgsStatic.openssl.out}/lib";
-                OPENSSL_INCLUDE_DIR = "${pkgs.pkgsStatic.openssl.dev}";
               });
           } // lib.optionalAttrs (system == "aarch64-linux") rec {
             default = harmonicStatic;
             harmonicStatic = naerskLib.buildPackage
               (sharedAttrs // {
                 CARGO_BUILD_TARGET = "aarch64-unknown-linux-musl";
-                OPENSSL_LIB_DIR = "${pkgs.pkgsStatic.openssl.out}/lib";
-                OPENSSL_INCLUDE_DIR = "${pkgs.pkgsStatic.openssl.dev}";
               });
           });
     };
