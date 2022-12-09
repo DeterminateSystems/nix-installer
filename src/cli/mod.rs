@@ -79,7 +79,9 @@ pub(crate) async fn signal_channel() -> eyre::Result<(Sender<()>, Receiver<()>)>
 }
 
 pub fn is_root() -> bool {
-    nix::unistd::geteuid() == nix::unistd::Uid::from_raw(0)
+    let euid = nix::unistd::Uid::effective();
+    tracing::trace!("Running as EUID {euid}");
+    euid.is_root()
 }
 
 pub fn ensure_root() -> eyre::Result<()> {
