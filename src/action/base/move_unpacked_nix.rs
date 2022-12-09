@@ -13,7 +13,7 @@ pub struct MoveUnpackedNix {
 }
 
 impl MoveUnpackedNix {
-    #[tracing::instrument(skip_all)]
+    #[tracing::instrument(level = "debug", skip_all)]
     pub async fn plan(src: PathBuf) -> Result<StatefulAction<Self>, ActionError> {
         // Note: Do NOT try to check for the src/dest since the installer creates those
         Ok(Self { src }.into())
@@ -37,7 +37,7 @@ impl Action for MoveUnpackedNix {
         )]
     }
 
-    #[tracing::instrument(skip_all, fields(
+    #[tracing::instrument(level = "debug", skip_all, fields(
         src = %self.src.display(),
         dest = DEST,
     ))]
@@ -73,7 +73,7 @@ impl Action for MoveUnpackedNix {
         vec![/* Deliberately empty -- this is a noop */]
     }
 
-    #[tracing::instrument(skip_all, fields(
+    #[tracing::instrument(level = "debug", skip_all, fields(
         src = %self.src.display(),
         dest = DEST,
     ))]

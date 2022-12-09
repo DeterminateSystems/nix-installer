@@ -39,7 +39,7 @@ pub struct ConfigureShellProfile {
 }
 
 impl ConfigureShellProfile {
-    #[tracing::instrument(skip_all)]
+    #[tracing::instrument(level = "debug", skip_all)]
     pub async fn plan() -> Result<StatefulAction<Self>, ActionError> {
         let mut create_or_append_files = Vec::default();
         let mut create_directories = Vec::default();
@@ -148,7 +148,7 @@ impl Action for ConfigureShellProfile {
         )]
     }
 
-    #[tracing::instrument(skip_all)]
+    #[tracing::instrument(level = "debug", skip_all)]
     async fn execute(&mut self) -> Result<(), ActionError> {
         let Self {
             create_or_append_files,
@@ -200,7 +200,7 @@ impl Action for ConfigureShellProfile {
         )]
     }
 
-    #[tracing::instrument(skip_all)]
+    #[tracing::instrument(level = "debug", skip_all)]
     async fn revert(&mut self) -> Result<(), ActionError> {
         let Self {
             create_directories,

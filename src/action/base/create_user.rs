@@ -17,7 +17,7 @@ pub struct CreateUser {
 }
 
 impl CreateUser {
-    #[tracing::instrument(skip_all)]
+    #[tracing::instrument(level = "debug", skip_all)]
     pub fn plan(name: String, uid: usize, groupname: String, gid: usize) -> StatefulAction<Self> {
         Self {
             name,
@@ -47,7 +47,7 @@ impl Action for CreateUser {
         )]
     }
 
-    #[tracing::instrument(skip_all, fields(
+    #[tracing::instrument(level = "debug", skip_all, fields(
         user = self.name,
         uid = self.uid,
         groupname = self.groupname,
@@ -231,7 +231,7 @@ impl Action for CreateUser {
         )]
     }
 
-    #[tracing::instrument(skip_all, fields(
+    #[tracing::instrument(level = "debug", skip_all, fields(
         user = self.name,
         uid = self.uid,
         gid = self.gid,

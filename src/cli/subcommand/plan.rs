@@ -18,7 +18,7 @@ pub struct Plan {
 
 #[async_trait::async_trait]
 impl CommandExecute for Plan {
-    #[tracing::instrument(skip_all, fields())]
+    #[tracing::instrument(level = "debug", skip_all, fields())]
     async fn execute(self) -> eyre::Result<ExitCode> {
         let Self { planner, output } = self;
 

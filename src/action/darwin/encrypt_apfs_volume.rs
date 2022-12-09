@@ -18,7 +18,7 @@ pub struct EncryptApfsVolume {
 }
 
 impl EncryptApfsVolume {
-    #[tracing::instrument(skip_all)]
+    #[tracing::instrument(level = "debug", skip_all)]
     pub async fn plan(
         disk: impl AsRef<Path>,
         name: impl AsRef<str>,
@@ -47,7 +47,7 @@ impl Action for EncryptApfsVolume {
         vec![ActionDescription::new(self.tracing_synopsis(), vec![])]
     }
 
-    #[tracing::instrument(skip_all, fields(
+    #[tracing::instrument(level = "debug", skip_all, fields(
         disk = %self.disk.display(),
     ))]
     async fn execute(&mut self) -> Result<(), ActionError> {
@@ -142,7 +142,7 @@ impl Action for EncryptApfsVolume {
         )]
     }
 
-    #[tracing::instrument(skip_all, fields(
+    #[tracing::instrument(level = "debug", skip_all, fields(
         disk = %self.disk.display(),
     ))]
     async fn revert(&mut self) -> Result<(), ActionError> {
