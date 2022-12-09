@@ -131,7 +131,7 @@
               nativeBuildInputs = with pkgs; [
                 pkg-config
               ];
-              buildInputs = with pkgs; [] ++ lib.optionals (pkgs.stdenv.isDarwin) (with pkgs.darwin.apple_sdk.frameworks; [
+              buildInputs = with pkgs; [ ] ++ lib.optionals (pkgs.stdenv.isDarwin) (with pkgs.darwin.apple_sdk.frameworks; [
                 SystemConfiguration
               ]);
 
