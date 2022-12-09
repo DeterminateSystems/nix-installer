@@ -5,7 +5,7 @@ use std::{
 };
 
 use crate::{
-    cli::{ensure_root, is_root, signal_channel},
+    cli::{ensure_root, signal_channel},
     plan::RECEIPT_LOCATION,
     InstallPlan,
 };
