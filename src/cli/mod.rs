@@ -114,16 +114,18 @@ pub fn ensure_root() -> eyre::Result<()> {
             }
         }
 
-        arg_vec_cstring.push(
-            CString::new(format!("--preserve-env={}", preserve_env_list.join(",")))
-                .wrap_err("Building a `--preserve-env` argument for `sudo`")?,
-        );
+        if !preserve_env_list.is_empty() {
+            arg_vec_cstring.push(
+                CString::new(format!("--preserve-env={}", preserve_env_list.join(",")))
+                    .wrap_err("Building a `--preserve-env` argument for `sudo`")?,
+            );
+        }
 
         for arg in args {
             arg_vec_cstring.push(CString::new(arg).wrap_err("Making arg into C string")?);
         }
 
-        tracing::trace!("Execv'ing `{sudo_cstring:?}` with args `{arg_vec_cstring:?}`");
+        tracing::trace!("Execvp'ing `{sudo_cstring:?}` with args `{arg_vec_cstring:?}`");
         nix::unistd::execvp(&sudo_cstring, &arg_vec_cstring)
             .wrap_err("Executing Harmonic as `root` via `sudo`")?;
     }

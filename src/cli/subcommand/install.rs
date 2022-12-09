@@ -1,12 +1,11 @@
 use std::{
-    ffi::CString,
     path::{Path, PathBuf},
     process::ExitCode,
 };
 
 use crate::{
     action::ActionState,
-    cli::{ensure_root, interaction, is_root, signal_channel, CommandExecute},
+    cli::{ensure_root, interaction, signal_channel, CommandExecute},
     plan::RECEIPT_LOCATION,
     planner::Planner,
     BuiltinPlanner, InstallPlan,
