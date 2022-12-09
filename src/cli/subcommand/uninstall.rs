@@ -5,7 +5,7 @@ use std::{
 };
 
 use crate::{
-    cli::{is_root, signal_channel},
+    cli::{ensure_root, signal_channel},
     plan::RECEIPT_LOCATION,
     InstallPlan,
 };
@@ -47,11 +47,7 @@ impl CommandExecute for Uninstall {
             explain,
         } = self;
 
-        if !is_root() {
-            return Err(eyre!(
-                "`harmonic install` must be run as `root`, try `sudo harmonic install`"
-            ));
-        }
+        ensure_root()?;
 
         // During install, `harmonic` will store a copy of itself in `/nix/harmonic`
         // If the user opted to run that particular copy of Harmonic to do this uninstall,
@@ -89,6 +85,7 @@ impl CommandExecute for Uninstall {
                 let temp_exe_cstring = CString::new(temp_exe.to_string_lossy().into_owned())
                     .wrap_err("Making C string of executable path")?;
 
+                tracing::trace!("Execv'ing `{temp_exe_cstring:?} {arg_vec_cstring:?}`");
                 nix::unistd::execv(&temp_exe_cstring, &arg_vec_cstring)
                     .wrap_err("Executing copied Harmonic")?;
             }

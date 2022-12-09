@@ -7,7 +7,9 @@ mod interaction;
 pub(crate) mod subcommand;
 
 use clap::Parser;
-use std::process::ExitCode;
+use eyre::WrapErr;
+use owo_colors::OwoColorize;
+use std::{ffi::CString, process::ExitCode};
 use tokio::sync::broadcast::{Receiver, Sender};
 
 use self::subcommand::HarmonicSubcommand;
@@ -77,5 +79,55 @@ pub(crate) async fn signal_channel() -> eyre::Result<(Sender<()>, Receiver<()>)>
 }
 
 pub fn is_root() -> bool {
-    nix::unistd::getuid() == nix::unistd::Uid::from_raw(0)
+    let euid = nix::unistd::Uid::effective();
+    tracing::trace!("Running as EUID {euid}");
+    euid.is_root()
+}
+
+pub fn ensure_root() -> eyre::Result<()> {
+    if !is_root() {
+        eprintln!(
+            "{}",
+            "Harmonic needs to run as `root`, attempting to escalate now via `sudo`..."
+                .yellow()
+                .dimmed()
+        );
+        let sudo_cstring = CString::new("sudo").wrap_err("Making C string of `sudo`")?;
+
+        let args = std::env::args();
+        let mut arg_vec_cstring = vec![];
+        arg_vec_cstring.push(sudo_cstring.clone());
+
+        let mut preserve_env_list = vec![];
+        for (key, _value) in std::env::vars() {
+            let preserve = match key.as_str() {
+                // Rust logging/backtrace bits we use
+                "RUST_LOG" | "RUST_BACKTRACE" => true,
+                // CI
+                "GITHUB_PATH" => true,
+                // Our own environments
+                key if key.starts_with("HARMONIC") => true,
+                _ => false,
+            };
+            if preserve {
+                preserve_env_list.push(key);
+            }
+        }
+
+        if !preserve_env_list.is_empty() {
+            arg_vec_cstring.push(
+                CString::new(format!("--preserve-env={}", preserve_env_list.join(",")))
+                    .wrap_err("Building a `--preserve-env` argument for `sudo`")?,
+            );
+        }
+
+        for arg in args {
+            arg_vec_cstring.push(CString::new(arg).wrap_err("Making arg into C string")?);
+        }
+
+        tracing::trace!("Execvp'ing `{sudo_cstring:?}` with args `{arg_vec_cstring:?}`");
+        nix::unistd::execvp(&sudo_cstring, &arg_vec_cstring)
+            .wrap_err("Executing Harmonic as `root` via `sudo`")?;
+    }
+    Ok(())
 }
