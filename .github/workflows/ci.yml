@@ -92,7 +92,7 @@ jobs:
           python -m http.server --bind 0.0.0.0 8000 &
           curl -L http://0.0.0.0:8000/nix-install.sh | sh -s -- install linux-multi --extra-conf "access-tokens = github.com=${{ secrets.GITHUB_TOKEN }}" --no-confirm
       - name: Initial uninstall (without a `nix run` first)
-        run: GITHUB_PATH=$GITHUB_PATH RUST_LOG=harmonic=trace RUST_BACKTRACE=full ./harmonic uninstall --no-confirm
+        run: GITHUB_PATH=$GITHUB_PATH RUST_LOG=harmonic=trace RUST_BACKTRACE=full /nix/harmonic uninstall --no-confirm
       - name: Repeated install
         run: |
           python -m http.server --bind 0.0.0.0 8000 &
@@ -119,7 +119,7 @@ jobs:
         if: success() || failure()
         shell: fish --login {0}
       - name: Repeated uninstall
-        run: GITHUB_PATH=$GITHUB_PATH RUST_LOG=harmonic=trace RUST_BACKTRACE=full ./harmonic uninstall --no-confirm
+        run: GITHUB_PATH=$GITHUB_PATH RUST_LOG=harmonic=trace RUST_BACKTRACE=full /nix/harmonic uninstall --no-confirm
 
   run-steam-deck:
     name: Run Steam Deck (mock)
