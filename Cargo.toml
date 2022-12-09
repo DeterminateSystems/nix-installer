@@ -43,7 +43,7 @@ tokio = { version = "1.21.0", features = ["time", "io-std", "process", "fs", "si
 tokio-util = { version = "0.7", features = ["io"] }
 tracing = { version = "0.1.36", features = [ "valuable" ] }
 tracing-error = { version = "0.2.0", optional = true }
-tracing-subscriber = { version = "0.3.15", features = [ "env-filter", "valuable" ], optional = true }
+tracing-subscriber = { version = "0.3.15", features = [ "json", "env-filter", "valuable" ], optional = true }
 url = { version = "2.3.1", features = ["serde"] }
 valuable = { version = "0.1.0", features = ["derive"] }
 walkdir = "2.3.2"
