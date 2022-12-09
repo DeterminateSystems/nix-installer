@@ -59,27 +59,18 @@
 
             RUST_SRC_PATH = "${toolchain}/lib/rustlib/src/rust/library";
 
-            nativeBuildInputs = with pkgs; [
-              pkg-config
-            ];
+            nativeBuildInputs = with pkgs; [];
             buildInputs = with pkgs; [
               toolchain
               rust-analyzer
               cargo-outdated
-
-              # CI dependencies
-              jq
-              codespell
-              findutils # for xargs
-              git
               nixpkgs-fmt
-              eclint
               check.check-rustfmt
               check.check-spelling
               check.check-nixpkgs-fmt
               check.check-editorconfig
             ]
-            ++ lib.optionals (pkgs.stdenv.isDarwin) (with pkgs; [ libiconv darwin.apple_sdk.frameworks.Security ]);
+            ++ lib.optionals (pkgs.stdenv.isDarwin) (with pkgs; [ libiconv ]);
           };
         });
 
@@ -128,9 +119,7 @@
               version = "0.0.0-unreleased";
               src = self;
 
-              nativeBuildInputs = with pkgs; [
-                pkg-config
-              ];
+              nativeBuildInputs = with pkgs; [];
               buildInputs = with pkgs; [ ] ++ lib.optionals (pkgs.stdenv.isDarwin) (with pkgs.darwin.apple_sdk.frameworks; [
                 SystemConfiguration
               ]);
