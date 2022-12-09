@@ -96,7 +96,7 @@ jobs:
           timeout 20 bash -c 'until printf "" 2>>/dev/null >>/dev/tcp/localhost/8000; do echo "Waiting for server..."; sleep 1; done'
           curl -L http://0.0.0.0:8000/nix-install.sh | sh -s -- install linux-multi --extra-conf "access-tokens = github.com=${{ secrets.GITHUB_TOKEN }}"
       - name: Initial uninstall (without a `nix run` first)
-        run: sudo /nix/harmonic uninstall
+        run: sudo -E /nix/harmonic uninstall
       - name: Repeated install
         run: |
           python -m http.server --bind 0.0.0.0 8000 &
@@ -124,7 +124,7 @@ jobs:
         if: success() || failure()
         shell: fish --login {0}
       - name: Repeated uninstall
-        run: sudo /nix/harmonic uninstall
+        run: sudo -E /nix/harmonic uninstall
 
   run-steam-deck:
     name: Run Steam Deck (mock)
@@ -154,7 +154,7 @@ jobs:
           timeout 20 bash -c 'until printf "" 2>>/dev/null >>/dev/tcp/localhost/8000; do echo "Waiting for server..."; sleep 1; done'
           curl -L http://0.0.0.0:8000/nix-install.sh | sh -s -- install steam-deck --persistence `pwd`/ci-test-nix --extra-conf "access-tokens = github.com=${{ secrets.GITHUB_TOKEN }}"
       - name: Initial uninstall (without a `nix run` first)
-        run: sudo /nix/harmonic uninstall
+        run: sudo -E /nix/harmonic uninstall
       - name: Repeated install
         run: |
           python -m http.server --bind 0.0.0.0 8000 &
@@ -182,7 +182,7 @@ jobs:
         if: success() || failure()
         shell: fish --login {0}
       - name: Repeated uninstall
-        run: sudo /nix/harmonic uninstall
+        run: sudo -E /nix/harmonic uninstall
 
   build-x86_64-darwin:
     name: Build x86_64 Darwin
@@ -225,7 +225,7 @@ jobs:
           timeout 20 bash -c 'until printf "" 2>>/dev/null >>/dev/tcp/localhost/8000; do echo "Waiting for server..."; sleep 1; done'
           curl -L http://0.0.0.0:8000/nix-install.sh | sh -s -- install darwin-multi --extra-conf "access-tokens = github.com=${{ secrets.GITHUB_TOKEN }}"
       - name: Initial uninstall (without a `nix run` first)
-        run: sudo /nix/harmonic uninstall
+        run: sudo -E /nix/harmonic uninstall
       - name: Repeated install
         run: |
           python -m http.server --bind 0.0.0.0 8000 &
@@ -253,5 +253,5 @@ jobs:
         if: success() || failure()
         shell: fish --login {0}
       - name: Repeated uninstall
-        run: sudo /nix/harmonic uninstall
+        run: sudo -E /nix/harmonic uninstall
         
