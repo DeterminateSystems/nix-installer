@@ -42,7 +42,7 @@ impl Action for CreateUser {
         vec![ActionDescription::new(
             self.tracing_synopsis(),
             vec![format!(
-                "The nix daemon requires system users it can act as in order to build"
+                "The Nix daemon requires system users it can act as in order to build"
             )],
         )]
     }
@@ -226,7 +226,7 @@ impl Action for CreateUser {
                 self.name, self.uid, self.groupname, self.gid
             ),
             vec![format!(
-                "The nix daemon requires system users it can act as in order to build"
+                "The Nix daemon requires system users it can act as in order to build"
             )],
         )]
     }
