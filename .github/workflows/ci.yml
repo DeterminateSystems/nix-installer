@@ -67,8 +67,8 @@ jobs:
     environment:
       NIX_INSTALL_FORCE_ALLOW_HTTP: "1"
       NIX_INSTALL_UPDATE_ROOT: "http://0.0.0.0:8000"
-      RUST_LOG: harmonic=trace
-      RUST_BACKTRACE: full
+      RUST_LOG: "harmonic=trace"
+      RUST_BACKTRACE: "full"
     steps:
       - run: sudo apt install fish zsh
       - uses: actions/download-artifact@v3
@@ -117,8 +117,8 @@ jobs:
     environment:
       NIX_INSTALL_FORCE_ALLOW_HTTP: "1"
       NIX_INSTALL_UPDATE_ROOT: "http://0.0.0.0:8000"
-      RUST_LOG: harmonic=trace
-      RUST_BACKTRACE: full
+      RUST_LOG: "harmonic=trace"
+      RUST_BACKTRACE: "full"
     steps:
       - run: sudo apt install fish zsh
       - uses: actions/download-artifact@v3
@@ -192,8 +192,8 @@ jobs:
     environment:
       NIX_INSTALL_FORCE_ALLOW_HTTP: "1"
       NIX_INSTALL_UPDATE_ROOT: "http://0.0.0.0:8000"
-      RUST_LOG: harmonic=trace
-      RUST_BACKTRACE: full
+      RUST_LOG: "harmonic=trace"
+      RUST_BACKTRACE: "full"
     steps:
       - run: brew install fish
       - uses: actions/download-artifact@v3
