@@ -88,7 +88,7 @@ jobs:
           curl -L http://0.0.0.0:8000/nix-install.sh | sh -s -- install linux-multi --extra-conf "access-tokens = github.com=${{ secrets.GITHUB_TOKEN }}" --no-confirm
       - name: echo $PATH
         run: echo $PATH
-      - name: Test `nix`
+      - name: Test `nix` with `$GITHUB_PATH`
         if: success() || failure()
         run: nix run nixpkgs#fortune
       - name: Test bash
@@ -144,7 +144,7 @@ jobs:
           curl -L http://0.0.0.0:8000/nix-install.sh | sh -s -- install steam-deck --persistence `pwd`/ci-test-nix --extra-conf "access-tokens = github.com=${{ secrets.GITHUB_TOKEN }}" --no-confirm
       - name: echo $PATH
         run: echo $PATH
-      - name: Test `nix`
+      - name: Test `nix` with `$GITHUB_PATH`
         if: success() || failure()
         run: nix run nixpkgs#fortune
       - name: Test bash
@@ -213,7 +213,7 @@ jobs:
           curl -L http://0.0.0.0:8000/nix-install.sh | sh -s -- install darwin-multi --extra-conf "access-tokens = github.com=${{ secrets.GITHUB_TOKEN }}" --no-confirm
       - name: echo $PATH
         run: echo $PATH
-      - name: Test `nix`
+      - name: Test `nix` with `$GITHUB_PATH`
         if: success() || failure()
         run: nix run nixpkgs#fortune
       - name: Test bash
