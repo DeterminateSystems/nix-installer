@@ -88,27 +88,21 @@ pub fn ensure_root() -> eyre::Result<()> {
     if !is_root() {
         eprintln!(
             "{}",
-            "Harmonic needs to run as `root` (usually via `sudo`), attempting to escalate you now with `sudo`..."
+            "Harmonic needs to run as `root`, attempting to escalate now via `sudo`..."
                 .yellow()
                 .dimmed()
         );
-        let current_exe =
-            std::env::current_exe().wrap_err("Could not get current executable path")?;
+        let sudo_cstring = CString::new("sudo").wrap_err("Making C string of `sudo`")?;
         let args = std::env::args();
         let mut arg_vec_cstring = vec![];
-        arg_vec_cstring.push(CString::new("sudo").wrap_err("Making `sudo` into C string")?);
-        arg_vec_cstring.push(
-            CString::new(current_exe.to_string_lossy().into_owned())
-                .wrap_err("Making current executable into C string")?,
-        );
-        for arg in args.skip(1) {
+        arg_vec_cstring.push(sudo_cstring.clone());
+
+        for arg in args {
             arg_vec_cstring.push(CString::new(arg).wrap_err("Making arg into C string")?);
         }
-        let env_cstring = CString::new("/usr/bin/env")
-            .wrap_err("Making C string of executable `/usr/bin/env`")?;
 
-        tracing::trace!("Execv'ing `{env_cstring:?} {arg_vec_cstring:?}`");
-        nix::unistd::execv(&env_cstring, &arg_vec_cstring)
+        tracing::trace!("Execv'ing `{sudo_cstring:?}` with args `{arg_vec_cstring:?}`");
+        nix::unistd::execvp(&sudo_cstring, &arg_vec_cstring)
             .wrap_err("Executing Harmonic as `root` via `sudo`")?;
     }
     Ok(())

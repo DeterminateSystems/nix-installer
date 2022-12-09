@@ -78,7 +78,7 @@ impl CommandExecute for Uninstall {
                     .wrap_err("Copying harmonic to tempdir")?;
                 let args = std::env::args();
                 let mut arg_vec_cstring = vec![];
-                for arg in args.skip(1) {
+                for arg in args {
                     arg_vec_cstring.push(CString::new(arg).wrap_err("Making arg into C string")?);
                 }
                 let temp_exe_cstring = CString::new(temp_exe.to_string_lossy().into_owned())
