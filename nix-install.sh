@@ -94,7 +94,7 @@ main() {
     fi
 
     local maybe_sudo=""
-    if [ "$EUID" -ne 0 ] && command -v sudo > /dev/null; then
+    if [ "$(id -u)" -ne 0 ] && command -v sudo > /dev/null; then
         maybe_sudo="sudo"
     fi
 
