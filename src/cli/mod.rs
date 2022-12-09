@@ -93,9 +93,27 @@ pub fn ensure_root() -> eyre::Result<()> {
                 .dimmed()
         );
         let sudo_cstring = CString::new("sudo").wrap_err("Making C string of `sudo`")?;
+
         let args = std::env::args();
         let mut arg_vec_cstring = vec![];
         arg_vec_cstring.push(sudo_cstring.clone());
+
+        let mut preserve_env_list = vec![];
+        for (key, _value) in std::env::vars() {
+            let preserve = match key.as_str() {
+                "RUST_LOG" | "RUST_BACKTRACE" => true,
+                key if key.starts_with("HARMONIC") => true,
+                _ => false,
+            };
+            if preserve {
+                preserve_env_list.push(key);
+            }
+        }
+
+        arg_vec_cstring.push(
+            CString::new(format!("--preserve-env={}", preserve_env_list.join(",")))
+                .wrap_err("Building a `--preserve-env` argument for `sudo`")?,
+        );
 
         for arg in args {
             arg_vec_cstring.push(CString::new(arg).wrap_err("Making arg into C string")?);
