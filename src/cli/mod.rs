@@ -101,7 +101,11 @@ pub fn ensure_root() -> eyre::Result<()> {
         let mut preserve_env_list = vec![];
         for (key, _value) in std::env::vars() {
             let preserve = match key.as_str() {
+                // Rust logging/backtrace bits we use
                 "RUST_LOG" | "RUST_BACKTRACE" => true,
+                // CI
+                "GITHUB_PATH" => true,
+                // Our own environments
                 key if key.starts_with("HARMONIC") => true,
                 _ => false,
             };
