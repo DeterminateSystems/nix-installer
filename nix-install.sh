@@ -77,6 +77,9 @@ main() {
                 ;;
         esac
     done
+    if [ "${HARMONIC_NO_CONFIRM-}" ]; then
+        need_tty=no
+    fi
 
     if $_ansi_escapes_are_valid; then
         printf "\33[1minfo:\33[0m downloading installer \33[4m%s\33[0m\n" "$_url" 1>&2

@@ -21,6 +21,7 @@ use crate::cli::{interaction, CommandExecute};
 pub struct Uninstall {
     #[clap(
         long,
+        env = "HARMONIC_NO_CONFIRM",
         action(ArgAction::SetTrue),
         default_value = "false",
         global = true
@@ -28,6 +29,7 @@ pub struct Uninstall {
     pub no_confirm: bool,
     #[clap(
         long,
+        env = "HARMONIC_EXPLAIN",
         action(ArgAction::SetTrue),
         default_value = "false",
         global = true
