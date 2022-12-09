@@ -59,7 +59,7 @@
 
             RUST_SRC_PATH = "${toolchain}/lib/rustlib/src/rust/library";
 
-            nativeBuildInputs = with pkgs; [];
+            nativeBuildInputs = with pkgs; [ ];
             buildInputs = with pkgs; [
               toolchain
               rust-analyzer
@@ -119,7 +119,7 @@
               version = "0.0.0-unreleased";
               src = self;
 
-              nativeBuildInputs = with pkgs; [];
+              nativeBuildInputs = with pkgs; [ ];
               buildInputs = with pkgs; [ ] ++ lib.optionals (pkgs.stdenv.isDarwin) (with pkgs.darwin.apple_sdk.frameworks; [
                 SystemConfiguration
               ]);
