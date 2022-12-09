@@ -57,7 +57,7 @@ pub struct MyAction {}
 
 
 impl MyAction {
-    #[tracing::instrument(skip_all)]
+    #[tracing::instrument(level = "debug", skip_all)]
     pub async fn plan() -> Result<StatefulAction<Self>, ActionError> {
         Ok(Self {}.into())
     }
@@ -75,7 +75,7 @@ impl Action for MyAction {
         vec![ActionDescription::new(self.tracing_synopsis(), vec![])]
     }
 
-    #[tracing::instrument(skip_all, fields(
+    #[tracing::instrument(level = "debug", skip_all, fields(
         // Tracing fields...
     ))]
     async fn execute(&mut self) -> Result<(), ActionError> {
@@ -87,7 +87,7 @@ impl Action for MyAction {
          vec![ActionDescription::new(self.tracing_synopsis(), vec![])]
     }
 
-    #[tracing::instrument(skip_all, fields(
+    #[tracing::instrument(level = "debug", skip_all, fields(
         // Tracing fields...
     ))]
     async fn revert(&mut self) -> Result<(), ActionError> {

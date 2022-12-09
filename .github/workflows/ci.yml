@@ -5,6 +5,13 @@ on:
   push:
     branches: [main]
 
+env:
+  NIX_INSTALL_FORCE_ALLOW_HTTP: "1"
+  NIX_INSTALL_UPDATE_ROOT: "http://0.0.0.0:8000"
+  RUST_BACKTRACE: "full"
+  HARMONIC_VERBOSITY: "trace"
+  HARMONIC_LOGGER: "pretty"
+
 jobs:
   lints:
     name: Lints
@@ -70,11 +77,6 @@ jobs:
     name: Run x86_64 Linux
     runs-on: ubuntu-22.04
     needs: [build-x86_64-linux, lints]
-    env:
-      NIX_INSTALL_FORCE_ALLOW_HTTP: "1"
-      NIX_INSTALL_UPDATE_ROOT: "http://0.0.0.0:8000"
-      RUST_LOG: "harmonic=trace"
-      RUST_BACKTRACE: "full"
     steps:
       - run: sudo apt install fish zsh
       - uses: actions/download-artifact@v3
@@ -127,11 +129,6 @@ jobs:
     name: Run Steam Deck (mock)
     runs-on: ubuntu-22.04
     needs: [build-x86_64-linux, lints]
-    env:
-      NIX_INSTALL_FORCE_ALLOW_HTTP: "1"
-      NIX_INSTALL_UPDATE_ROOT: "http://0.0.0.0:8000"
-      RUST_LOG: "harmonic=trace"
-      RUST_BACKTRACE: "full"
     steps:
       - run: sudo apt install fish zsh
       - uses: actions/download-artifact@v3
@@ -209,11 +206,6 @@ jobs:
     name: Run x86_64 Darwin
     runs-on: macos-12
     needs: [build-x86_64-darwin, lints]
-    env:
-      NIX_INSTALL_FORCE_ALLOW_HTTP: "1"
-      NIX_INSTALL_UPDATE_ROOT: "http://0.0.0.0:8000"
-      RUST_LOG: "harmonic=trace"
-      RUST_BACKTRACE: "full"
     steps:
       - run: brew install fish
       - uses: actions/download-artifact@v3

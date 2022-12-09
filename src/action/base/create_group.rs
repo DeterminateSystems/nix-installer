@@ -15,7 +15,7 @@ pub struct CreateGroup {
 }
 
 impl CreateGroup {
-    #[tracing::instrument(skip_all)]
+    #[tracing::instrument(level = "debug", skip_all)]
     pub fn plan(name: String, gid: usize) -> StatefulAction<Self> {
         Self { name, gid }.into()
     }
@@ -37,7 +37,7 @@ impl Action for CreateGroup {
         )]
     }
 
-    #[tracing::instrument(skip_all, fields(
+    #[tracing::instrument(level = "debug", skip_all, fields(
         user = self.name,
         gid = self.gid,
     ))]
@@ -107,7 +107,7 @@ impl Action for CreateGroup {
         )]
     }
 
-    #[tracing::instrument(skip_all, fields(
+    #[tracing::instrument(level = "debug", skip_all, fields(
         user = self.name,
         gid = self.gid,
     ))]

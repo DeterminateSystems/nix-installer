@@ -49,7 +49,7 @@ impl InstallPlan {
             version: current_version()?,
         })
     }
-    #[tracing::instrument(skip_all)]
+    #[tracing::instrument(level = "debug", skip_all)]
     pub fn describe_install(&self, explain: bool) -> Result<String, HarmonicError> {
         let Self {
             planner,
@@ -107,7 +107,7 @@ impl InstallPlan {
         Ok(buf)
     }
 
-    #[tracing::instrument(skip_all)]
+    #[tracing::instrument(level = "debug", skip_all)]
     pub async fn install(
         &mut self,
         cancel_channel: impl Into<Option<Receiver<()>>>,
@@ -134,6 +134,7 @@ impl InstallPlan {
                 }
             }
 
+            tracing::info!("Step: {}", action.tracing_synopsis());
             if let Err(err) = action.try_execute().await {
                 if let Err(err) = write_receipt(self.clone()).await {
                     tracing::error!("Error saving receipt: {:?}", err);
@@ -149,7 +150,7 @@ impl InstallPlan {
         Ok(())
     }
 
-    #[tracing::instrument(skip_all)]
+    #[tracing::instrument(level = "debug", skip_all)]
     pub fn describe_uninstall(&self, explain: bool) -> Result<String, HarmonicError> {
         let Self {
             version: _,
@@ -208,7 +209,7 @@ impl InstallPlan {
         Ok(buf)
     }
 
-    #[tracing::instrument(skip_all)]
+    #[tracing::instrument(level = "debug", skip_all)]
     pub async fn uninstall(
         &mut self,
         cancel_channel: impl Into<Option<Receiver<()>>>,
@@ -235,6 +236,7 @@ impl InstallPlan {
                 }
             }
 
+            tracing::info!("Step: {}", action.tracing_synopsis());
             if let Err(err) = action.try_revert().await {
                 if let Err(err) = write_receipt(self.clone()).await {
                     tracing::error!("Error saving receipt: {:?}", err);
@@ -286,7 +288,7 @@ fn ensure_version<'de, D: Deserializer<'de>>(d: D) -> Result<Version, D::Error> 
     }
 }
 
-#[tracing::instrument]
+#[tracing::instrument(level = "debug")]
 async fn copy_self_to_nix_store() -> Result<(), std::io::Error> {
     let path = std::env::current_exe()?;
     tokio::fs::copy(path, "/nix/harmonic").await?;

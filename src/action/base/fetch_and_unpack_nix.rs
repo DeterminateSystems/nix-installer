@@ -15,7 +15,7 @@ pub struct FetchAndUnpackNix {
 }
 
 impl FetchAndUnpackNix {
-    #[tracing::instrument(skip_all)]
+    #[tracing::instrument(level = "debug", skip_all)]
     pub async fn plan(url: Url, dest: PathBuf) -> Result<StatefulAction<Self>, ActionError> {
         // TODO(@hoverbear): Check URL exists?
         // TODO(@hoverbear): Check tempdir exists
@@ -35,7 +35,7 @@ impl Action for FetchAndUnpackNix {
         vec![ActionDescription::new(self.tracing_synopsis(), vec![])]
     }
 
-    #[tracing::instrument(skip_all, fields(
+    #[tracing::instrument(level = "debug", skip_all, fields(
         url = %self.url,
         dest = %self.dest.display(),
     ))]
@@ -66,7 +66,7 @@ impl Action for FetchAndUnpackNix {
         vec![/* Deliberately empty -- this is a noop */]
     }
 
-    #[tracing::instrument(skip_all, fields(
+    #[tracing::instrument(level = "debug", skip_all, fields(
         url = %self.url,
         dest = %self.dest.display(),
     ))]

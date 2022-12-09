@@ -14,7 +14,7 @@ pub struct KickstartLaunchctlService {
 }
 
 impl KickstartLaunchctlService {
-    #[tracing::instrument(skip_all)]
+    #[tracing::instrument(level = "debug", skip_all)]
     pub async fn plan(unit: String) -> Result<StatefulAction<Self>, ActionError> {
         Ok(Self { unit }.into())
     }
@@ -32,7 +32,7 @@ impl Action for KickstartLaunchctlService {
         vec![ActionDescription::new(self.tracing_synopsis(), vec![])]
     }
 
-    #[tracing::instrument(skip_all, fields(
+    #[tracing::instrument(level = "debug", skip_all, fields(
         unit = %self.unit,
     ))]
     async fn execute(&mut self) -> Result<(), ActionError> {
@@ -56,7 +56,7 @@ impl Action for KickstartLaunchctlService {
         vec![]
     }
 
-    #[tracing::instrument(skip_all, fields(
+    #[tracing::instrument(level = "debug", skip_all, fields(
         unit = %self.unit,
     ))]
     async fn revert(&mut self) -> Result<(), ActionError> {

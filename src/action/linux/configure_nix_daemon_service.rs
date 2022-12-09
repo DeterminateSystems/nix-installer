@@ -22,7 +22,7 @@ Run systemd utilities to configure the Nix daemon
 pub struct ConfigureNixDaemonService {}
 
 impl ConfigureNixDaemonService {
-    #[tracing::instrument(skip_all)]
+    #[tracing::instrument(level = "debug", skip_all)]
     pub async fn plan() -> Result<StatefulAction<Self>, ActionError> {
         match OperatingSystem::host() {
             OperatingSystem::MacOSX {
@@ -62,7 +62,7 @@ impl Action for ConfigureNixDaemonService {
         )]
     }
 
-    #[tracing::instrument(skip_all)]
+    #[tracing::instrument(level = "debug", skip_all)]
     async fn execute(&mut self) -> Result<(), ActionError> {
         let Self {} = self;
 
@@ -172,7 +172,7 @@ impl Action for ConfigureNixDaemonService {
         )]
     }
 
-    #[tracing::instrument(skip_all)]
+    #[tracing::instrument(level = "debug", skip_all)]
     async fn revert(&mut self) -> Result<(), ActionError> {
         match OperatingSystem::host() {
             OperatingSystem::MacOSX {

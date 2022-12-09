@@ -18,7 +18,7 @@ pub struct EnableOwnership {
 }
 
 impl EnableOwnership {
-    #[tracing::instrument(skip_all)]
+    #[tracing::instrument(level = "debug", skip_all)]
     pub async fn plan(path: impl AsRef<Path>) -> Result<StatefulAction<Self>, ActionError> {
         Ok(Self {
             path: path.as_ref().to_path_buf(),
@@ -38,7 +38,7 @@ impl Action for EnableOwnership {
         vec![ActionDescription::new(self.tracing_synopsis(), vec![])]
     }
 
-    #[tracing::instrument(skip_all, fields(
+    #[tracing::instrument(level = "debug", skip_all, fields(
         path = %self.path.display(),
     ))]
     async fn execute(&mut self) -> Result<(), ActionError> {
@@ -79,7 +79,7 @@ impl Action for EnableOwnership {
         vec![]
     }
 
-    #[tracing::instrument(skip_all, fields(
+    #[tracing::instrument(level = "debug", skip_all, fields(
         path = %self.path.display(),
     ))]
     async fn revert(&mut self) -> Result<(), ActionError> {

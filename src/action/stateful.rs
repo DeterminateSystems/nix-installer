@@ -23,6 +23,9 @@ where
 }
 
 impl StatefulAction<Box<dyn Action>> {
+    pub fn tracing_synopsis(&self) -> String {
+        self.action.tracing_synopsis()
+    }
     /// A description of what this action would do during execution
     pub fn describe_execute(&self) -> Vec<ActionDescription> {
         match self.state {
@@ -99,6 +102,10 @@ impl<A> StatefulAction<A>
 where
     A: Action,
 {
+    pub fn tracing_synopsis(&self) -> String {
+        self.action.tracing_synopsis()
+    }
+
     pub fn inner(&self) -> &A {
         &self.action
     }

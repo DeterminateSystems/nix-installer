@@ -87,7 +87,7 @@ use planner::BuiltinPlanner;
 
 use tokio::process::Command;
 
-#[tracing::instrument(skip_all, fields(command = %format!("{:?}", command.as_std())))]
+#[tracing::instrument(level = "debug", skip_all, fields(command = %format!("{:?}", command.as_std())))]
 async fn execute_command(command: &mut Command) -> Result<Output, std::io::Error> {
     let command_str = format!("{:?}", command.as_std());
     tracing::trace!("Executing `{command_str}`");
@@ -104,7 +104,7 @@ async fn execute_command(command: &mut Command) -> Result<Output, std::io::Error
     }
 }
 
-#[tracing::instrument(skip_all, fields(
+#[tracing::instrument(level = "debug", skip_all, fields(
     k = %k.as_ref().to_string_lossy(),
     v = %v.as_ref().to_string_lossy(),
 ))]

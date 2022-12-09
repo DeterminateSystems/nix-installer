@@ -11,6 +11,7 @@ use crate::{
 };
 use clap::{ArgAction, Parser};
 use eyre::{eyre, WrapErr};
+use owo_colors::OwoColorize;
 use rand::Rng;
 
 use crate::cli::{interaction, CommandExecute};
@@ -38,7 +39,7 @@ pub struct Uninstall {
 
 #[async_trait::async_trait]
 impl CommandExecute for Uninstall {
-    #[tracing::instrument(skip_all, fields())]
+    #[tracing::instrument(level = "debug", skip_all, fields())]
     async fn execute(self) -> eyre::Result<ExitCode> {
         let Self {
             no_confirm,
@@ -111,6 +112,13 @@ impl CommandExecute for Uninstall {
         plan.uninstall(rx).await?;
         // TODO(@hoverbear): It would be so nice to catch errors and offer the user a way to keep going...
         //                   However that will require being able to link error -> step and manually setting that step as `Uncompleted`.
+
+        println!(
+            "\
+            {success}\n\
+            ",
+            success = "Nix was uninstalled successfully!".green().bold(),
+        );
 
         Ok(ExitCode::SUCCESS)
     }
