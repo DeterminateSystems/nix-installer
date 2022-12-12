@@ -59,28 +59,18 @@
 
             RUST_SRC_PATH = "${toolchain}/lib/rustlib/src/rust/library";
 
-            nativeBuildInputs = with pkgs; [
-              pkg-config
-            ];
+            nativeBuildInputs = with pkgs; [ ];
             buildInputs = with pkgs; [
               toolchain
-              openssl
               rust-analyzer
               cargo-outdated
-
-              # CI dependencies
-              jq
-              codespell
-              findutils # for xargs
-              git
               nixpkgs-fmt
-              eclint
               check.check-rustfmt
               check.check-spelling
               check.check-nixpkgs-fmt
               check.check-editorconfig
             ]
-            ++ lib.optionals (pkgs.stdenv.isDarwin) (with pkgs; [ libiconv darwin.apple_sdk.frameworks.Security ]);
+            ++ lib.optionals (pkgs.stdenv.isDarwin) (with pkgs; [ libiconv ]);
           };
         });
 
@@ -129,12 +119,8 @@
               version = "0.0.0-unreleased";
               src = self;
 
-              nativeBuildInputs = with pkgs; [
-                pkg-config
-              ];
-              buildInputs = with pkgs; [
-                openssl
-              ] ++ lib.optionals (pkgs.stdenv.isDarwin) (with pkgs.darwin.apple_sdk.frameworks; [
+              nativeBuildInputs = with pkgs; [ ];
+              buildInputs = with pkgs; [ ] ++ lib.optionals (pkgs.stdenv.isDarwin) (with pkgs.darwin.apple_sdk.frameworks; [
                 SystemConfiguration
               ]);
 
@@ -160,16 +146,12 @@
             harmonicStatic = naerskLib.buildPackage
               (sharedAttrs // {
                 CARGO_BUILD_TARGET = "x86_64-unknown-linux-musl";
-                OPENSSL_LIB_DIR = "${pkgs.pkgsStatic.openssl.out}/lib";
-                OPENSSL_INCLUDE_DIR = "${pkgs.pkgsStatic.openssl.dev}";
               });
           } // lib.optionalAttrs (system == "aarch64-linux") rec {
             default = harmonicStatic;
             harmonicStatic = naerskLib.buildPackage
               (sharedAttrs // {
                 CARGO_BUILD_TARGET = "aarch64-unknown-linux-musl";
-                OPENSSL_LIB_DIR = "${pkgs.pkgsStatic.openssl.out}/lib";
-                OPENSSL_INCLUDE_DIR = "${pkgs.pkgsStatic.openssl.dev}";
               });
           });
     };
