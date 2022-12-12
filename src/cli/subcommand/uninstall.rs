@@ -97,12 +97,11 @@ impl CommandExecute for Uninstall {
 
         let res = plan.uninstall(rx).await;
         if let Err(e) = res {
-            if e.expected() {
-                println!("{}", e.red());
+            if let Some(expected) = e.expected() {
+                println!("{}", expected.red());
                 return Ok(ExitCode::FAILURE);
-            } else {
-                return Err(e.into());
             }
+            return Err(e.into());
         }
 
         // TODO(@hoverbear): It would be so nice to catch errors and offer the user a way to keep going...

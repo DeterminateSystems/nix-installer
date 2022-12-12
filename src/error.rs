@@ -56,20 +56,20 @@ pub enum HarmonicError {
 }
 
 pub(crate) trait HasExpectedErrors {
-    fn expected(&self) -> bool;
+    fn expected<'a>(&'a self) -> Option<Box<dyn std::error::Error + 'a>>;
 }
 
 impl HasExpectedErrors for HarmonicError {
-    fn expected(&self) -> bool {
+    fn expected<'a>(&'a self) -> Option<Box<dyn std::error::Error + 'a>> {
         match self {
             HarmonicError::Action(action_error) => action_error.expected(),
-            HarmonicError::RecordingReceipt(_, _) => false,
-            HarmonicError::CopyingSelf(_) => false,
-            HarmonicError::SerializingReceipt(_) => false,
-            HarmonicError::Cancelled => true,
-            HarmonicError::SemVer(_) => true,
+            HarmonicError::RecordingReceipt(_, _) => None,
+            HarmonicError::CopyingSelf(_) => None,
+            HarmonicError::SerializingReceipt(_) => None,
+            HarmonicError::Cancelled => None,
+            HarmonicError::SemVer(_) => None,
             HarmonicError::Planner(planner_error) => planner_error.expected(),
-            HarmonicError::InstallSettings(_) => false,
+            HarmonicError::InstallSettings(_) => None,
         }
     }
 }

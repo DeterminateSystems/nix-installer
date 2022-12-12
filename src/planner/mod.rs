@@ -189,15 +189,15 @@ pub enum PlannerError {
 }
 
 impl HasExpectedErrors for PlannerError {
-    fn expected(&self) -> bool {
+    fn expected<'a>(&'a self) -> Option<Box<dyn std::error::Error + 'a>> {
         match self {
-            PlannerError::UnsupportedArchitecture(_) => true,
-            PlannerError::Action(_) => false,
-            PlannerError::InstallSettings(_) => false,
-            PlannerError::Plist(_) => false,
-            PlannerError::Custom(_) => false,
-            PlannerError::NixOs => true,
-            PlannerError::NixExists => true,
+            this @ PlannerError::UnsupportedArchitecture(_) => Some(Box::new(this)),
+            PlannerError::Action(_) => None,
+            PlannerError::InstallSettings(_) => None,
+            PlannerError::Plist(_) => None,
+            PlannerError::Custom(_) => None,
+            this @ PlannerError::NixOs => Some(Box::new(this)),
+            this @ PlannerError::NixExists => Some(Box::new(this)),
         }
     }
 }

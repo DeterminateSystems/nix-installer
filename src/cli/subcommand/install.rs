@@ -107,11 +107,13 @@ impl CommandExecute for Install {
                 let res = builtin_planner.plan().await;
                 match res {
                     Ok(plan) => plan,
-                    Err(e) if e.expected() => {
-                        eprintln!("{}", e.red());
-                        return Ok(ExitCode::FAILURE);
-                    },
-                    Err(e) => return Err(e.into()),
+                    Err(e) => {
+                        if let Some(expected) = e.expected() {
+                            eprintln!("{}", expected.red());
+                            return Ok(ExitCode::FAILURE);
+                        }
+                        return Err(e.into())
+                    } 
                 }
             },
             (Some(_), Some(_)) => return Err(eyre!("`--plan` conflicts with passing a planner, a planner creates plans, so passing an existing plan doesn't make sense")),
@@ -148,16 +150,15 @@ impl CommandExecute for Install {
                 let res = install_plan.uninstall(rx2).await;
 
                 if let Err(e) = res {
-                    if e.expected() {
-                        eprintln!("{}", e.red());
+                    if let Some(expected) = e.expected() {
+                        eprintln!("{}", expected.red());
                         return Ok(ExitCode::FAILURE);
-                    } else {
-                        return Err(e.into());
                     }
+                    return Err(e.into());
                 }
             } else {
-                if err.expected() {
-                    eprintln!("{}", err.red());
+                if let Some(expected) = err.expected() {
+                    eprintln!("{}", expected.red());
                     return Ok(ExitCode::FAILURE);
                 }
 

@@ -312,7 +312,7 @@ pub enum ActionError {
 }
 
 impl HasExpectedErrors for ActionError {
-    fn expected(&self) -> bool {
-        false
+    fn expected(&self) -> Option<Box<dyn std::error::Error>> {
+        None
     }
 }

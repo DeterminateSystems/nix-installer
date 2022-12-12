@@ -34,11 +34,13 @@ impl CommandExecute for Plan {
 
         let install_plan = match res {
             Ok(plan) => plan,
-            Err(e) if e.expected() => {
-                eprintln!("{}", e.red());
-                return Ok(ExitCode::FAILURE);
+            Err(e) => {
+                if let Some(expected) = e.expected() {
+                    eprintln!("{}", expected.red());
+                    return Ok(ExitCode::FAILURE);
+                }
+                return Err(e.into());
             },
-            Err(e) => return Err(e.into()),
         };
 
         let json = serde_json::to_string_pretty(&install_plan)?;
