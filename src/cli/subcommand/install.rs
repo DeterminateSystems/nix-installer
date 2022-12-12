@@ -6,6 +6,7 @@ use std::{
 use crate::{
     action::ActionState,
     cli::{ensure_root, interaction, signal_channel, CommandExecute},
+    error::HasExpectedErrors,
     plan::RECEIPT_LOCATION,
     planner::Planner,
     BuiltinPlanner, InstallPlan,
@@ -99,7 +100,17 @@ impl CommandExecute for Install {
                 let builtin_planner = BuiltinPlanner::default()
                     .await
                     .map_err(|e| eyre::eyre!(e))?;
-                builtin_planner.plan().await.map_err(|e| eyre!(e))?
+                let res = builtin_planner.plan().await;
+                match res {
+                    Ok(plan) => plan,
+                    Err(e) => {
+                        if let Some(expected) = e.expected() {
+                            eprintln!("{}", expected.red());
+                            return Ok(ExitCode::FAILURE);
+                        }
+                        return Err(e.into())
+                    }
+                }
             },
             (Some(_), Some(_)) => return Err(eyre!("`--plan` conflicts with passing a planner, a planner creates plans, so passing an existing plan doesn't make sense")),
         };
@@ -120,9 +131,17 @@ impl CommandExecute for Install {
         let (tx, rx1) = signal_channel().await?;
 
         if let Err(err) = install_plan.install(rx1).await {
-            let error = eyre!(err).wrap_err("Install failure");
             if !no_confirm {
-                tracing::error!("{:?}", error);
+                let mut was_expected = false;
+                if let Some(expected) = err.expected() {
+                    was_expected = true;
+                    eprintln!("{}", expected.red())
+                }
+                if !was_expected {
+                    let error = eyre!(err).wrap_err("Install failure");
+                    tracing::error!("{:?}", error);
+                };
+
                 if !interaction::confirm(
                     install_plan
                         .describe_uninstall(explain)
@@ -134,8 +153,22 @@ impl CommandExecute for Install {
                     interaction::clean_exit_with_message("Okay, didn't do anything! Bye!").await;
                 }
                 let rx2 = tx.subscribe();
-                install_plan.uninstall(rx2).await?
+                let res = install_plan.uninstall(rx2).await;
+
+                if let Err(e) = res {
+                    if let Some(expected) = e.expected() {
+                        eprintln!("{}", expected.red());
+                        return Ok(ExitCode::FAILURE);
+                    }
+                    return Err(e.into());
+                }
             } else {
+                if let Some(expected) = err.expected() {
+                    eprintln!("{}", expected.red());
+                    return Ok(ExitCode::FAILURE);
+                }
+
+                let error = eyre!(err).wrap_err("Install failure");
                 return Err(error);
             }
         }

@@ -1,9 +1,10 @@
 use std::{path::PathBuf, process::ExitCode};
 
-use crate::BuiltinPlanner;
+use crate::{error::HasExpectedErrors, BuiltinPlanner};
 use clap::Parser;
 
 use eyre::WrapErr;
+use owo_colors::OwoColorize;
 
 use crate::cli::CommandExecute;
 
@@ -29,7 +30,18 @@ impl CommandExecute for Plan {
                 .map_err(|e| eyre::eyre!(e))?,
         };
 
-        let install_plan = planner.plan().await.map_err(|e| eyre::eyre!(e))?;
+        let res = planner.plan().await;
+
+        let install_plan = match res {
+            Ok(plan) => plan,
+            Err(e) => {
+                if let Some(expected) = e.expected() {
+                    eprintln!("{}", expected.red());
+                    return Ok(ExitCode::FAILURE);
+                }
+                return Err(e.into());
+            },
+        };
 
         let json = serde_json::to_string_pretty(&install_plan)?;
         tokio::fs::write(output, json)
