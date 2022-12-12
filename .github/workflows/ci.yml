@@ -61,7 +61,7 @@ jobs:
   # Various feature variations or versions of the build which we expect to always work
   # Since it uses the `build-store-x86_64-linux-*` cache it should be quite fast
   build-variants-x86_64-linux:
-    name: Build x86_64 Linux
+    name: Build x86_64 Linux (Variants)
     runs-on: ubuntu-22.04
     needs: build-x86_64-linux # Only run this if the normal checks work, to avoid clogging builders
     steps:
@@ -79,7 +79,7 @@ jobs:
       - name: Build harmonic
         run: nix build --store ~/.ci-store --print-build-logs .#packages.x86_64-linux.harmonic
       - name: Test `nix develop` build without default features
-        run: Test nix develop --store ~/.ci-store --print-build-logs .# --command "cargo build --no-default-features"
+        run: nix develop --store ~/.ci-store --print-build-logs .# --command "cargo build --no-default-features"
       - name: Test `nix develop` build all features
         run: nix develop --store ~/.ci-store --print-build-logs .# --command "cargo build --all-features
 
