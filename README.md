@@ -170,4 +170,5 @@ Documentation is also available via `nix` build:
 
 ```bash
 nix build github:DeterminateSystems/harmonic#harmonic.doc
+firefox result-doc/harmonic/index.html
 ```
