@@ -32,14 +32,16 @@ Settings which only apply to certain [`Planner`](crate::planner::Planner)s shoul
 pub struct CommonSettings {
     /// Channel(s) to add
     #[cfg_attr(
-        feature = "cli",clap(
-        long,
-        value_parser,
-        name = "channel",
-        action = clap::ArgAction::Append,
-        env = "HARMONIC_CHANNEL",
-        default_value = "nixpkgs=https://nixos.org/channels/nixpkgs-unstable",
-    ))]
+        feature = "cli",
+        clap(
+            long,
+            value_parser,
+            name = "channel",
+            action = clap::ArgAction::Append,
+            env = "HARMONIC_CHANNELS",
+            default_value = "nixpkgs=https://nixos.org/channels/nixpkgs-unstable",
+        )
+    )]
     pub(crate) channels: Vec<ChannelValue>,
 
     /// Modify the user profile to automatically load nix

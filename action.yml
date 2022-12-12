@@ -1,0 +1,125 @@
+name: Harmonic
+description: Install Nix
+inputs:
+  planner:
+    description: A planner to use
+    required: false
+  extra-args:
+    description: Extra args to pass to the planner (prefer using structured `with:` arguments unless using a custom planner!)
+    required: false
+  channels:
+    description: Channel(s) to add (eg `nixpkgs=https://nixos.org/channels/nixpkgs-unstable`)
+    required: false
+  modify-profile:
+    description: Modify the user profile to automatically load nix
+    required: false
+  daemon-user-count:
+    description: Number of build users to create
+    required: false
+  nix-build-group-name:
+    description: The Nix build group name
+    required: false
+  nix-build-build-group-id:
+    description: The Nix build group GID
+    required: false
+  nix-build-user-prefix:
+    description: The Nix build user prefix (user numbers will be postfixed)
+    required: false
+  nix-build-user-base:
+    description: The Nix build user base UID (ascending)
+    required: false
+  nix-package-url:
+    description: The Nix package URL
+    required: false
+  extra-conf:
+    description: Extra configuration lines for `/etc/nix.conf` (includes `access-tokens = github.com=${{ secrets.GITHUB_TOKEN }}` automatically)
+    required: false
+  mac-encrypt:
+    description: Force encryption on the volume (Mac only)
+    required: false
+  mac-case-sensitive:
+    description: Use a case sensitive volume (Mac only)
+    required: false
+  mac-volume-label:
+    description: The label for the created APFS volume (Mac only)
+    required: false
+  mac-root-disk:
+    description: The root disk of the target (Mac only)
+    required: false
+  nix-install-url:
+    description: A URL pointing to a harmonic `nix-install.sh` script
+    required: true
+    default: https://install.determinate.systems/nix
+  harmonic-local-root:
+    description: A local `harmonic` binary root, overrides the `nix-install` setting (binaries should be named `harmonic-$ARCH`, eg. `harmonic-$x86_64-linux`)
+    required: false
+
+runs:
+  using: composite
+  steps:
+    - run: Install Nix
+      shell: |
+        if [ -n "${INPUT_CHANNELS-}" ]; then
+          export HARMONIC_CHANNELS=$INPUT_CHANNELS
+        fi
+
+        if [ -n "${INPUT_MODIFY-PROFILE-}" ]; then
+          export HARMONIC_MODIFY_PROFILE=$INPUT_MODIFY-PROFILE
+        fi
+
+        if [ -n "${INPUT_DAEMON-USER-COUNT-}" ]; then
+          export HARMONIC_DAEMON_USER_COUNT=$INPUT_DAEMON-USER-COUNT
+        fi
+
+        if [ -n "${INPUT_NIX-BUILD-GROUP-NAME-}" ]; then
+          export HARMONIC_NIX_BUILD_GROUP_NAME=$INPUT_NIX-BUILD-GROUP-NAME
+        fi
+
+        if [ -n "${INPUT_NIX-BUILD-BUILD-GROUP-ID-}" ]; then
+          export HARMONIC_NIX_BUILD_GROUP_ID=$INPUT_NIX-BUILD-BUILD-GROUP-ID
+        fi
+
+        if [ -n "${INPUT_NIX-BUILD-BUILD-GROUP-ID-}" ]; then
+          export HARMONIC_NIX_BUILD_USER_PREFIX=$INPUT_NIX-BUILD-BUILD-GROUP-ID
+        fi
+
+        if [ -n "${INPUT_NIX-BUILD-USER-BASE-}" ]; then
+          export HARMONIC_NIX_BUILD_USER_ID_BASE=$INPUT_NIX-BUILD-USER-BASE
+        fi
+
+        if [ -n "${INPUT_NIX-PACKAGE-URL-}" ]; then
+          export HARMONIC_NIX_PACKAGE_URL=$INPUT_NIX-PACKAGE-URL
+        fi
+
+        if [ -n "${INPUT_EXTRA-CONF-}" ]; then
+          export HARMONIC_EXTRA_CONF="$INPUT_EXTRA-CONF\naccess-tokens = github.com=${{ secrets.GITHUB_TOKEN }}"
+        else
+          export HARMONIC_EXTRA_CONF="access-tokens = github.com=${{ secrets.GITHUB_TOKEN }}"
+        fi
+
+        if [ -n "${INPUT_MAC-ENCRYPT-}" ]; then
+          export HARMONIC_ENCRYPT=$INPUT_MAC-ENCRYPT
+        fi
+
+        if [ -n "${INPUT_MAC-CASE-SENSITIVE-}" ]; then
+          export HARMONIC_CASE_SENSITIVE=$INPUT_MAC-CASE-SENSITIVE
+        fi
+
+        if [ -n "${INPUT_MAC-VOLUME-LABEL-}" ]; then
+          export HARMONIC_VOLUME_LABEL=$INPUT_MAC-VOLUME-LABEL
+        fi
+
+        if [ -n "${INPUT_MAC-ROOT-DISK-}" ]; then
+          export HARMONIC_ROOT_DISK=$INPUT_MAC-ROOT-DISK
+        fi
+
+        if [ -n "${INPUT_MAC-ROOT-DISK-}" ]; then
+          export HARMONIC_ROOT_DISK=$INPUT_MAC-ROOT-DISK
+        fi
+
+        if [ -n "${INPUT_HARMONIC-LOCAL-ROOT-}" ]; then
+          python -m http.server --directory install-root/ --bind 0.0.0.0 8000 &
+          export NIX_INSTALL_URL=0.0.0.0:8000
+        fi
+
+        curl --retry 20 --retry-max-time 120 -L $NIX_INSTALL_URL | sh -s -- install ${INPUT_PLANNER-} ${INPUT_EXTRA-ARGS-}

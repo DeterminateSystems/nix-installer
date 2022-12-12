@@ -112,19 +112,18 @@ jobs:
       - name: Move & set executable
         run: |
           chmod +x ./harmonic
-          mv harmonic harmonic-x86_64-linux
+          mkdir install-root
+          mv harmonic install-root/harmonic-x86_64-linux
       - name: Initial install
-        run: |
-          python -m http.server --bind 0.0.0.0 8000 &
-          timeout 20 bash -c 'until printf "" 2>>/dev/null >>/dev/tcp/localhost/8000; do echo "Waiting for server..."; sleep 1; done'
-          curl -L http://0.0.0.0:8000/nix-install.sh | sh -s -- install linux-multi --extra-conf "access-tokens = github.com=${{ secrets.GITHUB_TOKEN }}"
+        uses: ./action.yml
+        with:
+          harmonic-local-root: install-root/
       - name: Initial uninstall (without a `nix run` first)
         run: sudo -E /nix/harmonic uninstall
       - name: Repeated install
-        run: |
-          python -m http.server --bind 0.0.0.0 8000 &
-          timeout 20 bash -c 'until printf "" 2>>/dev/null >>/dev/tcp/localhost/8000; do echo "Waiting for server..."; sleep 1; done'
-          curl -L http://0.0.0.0:8000/nix-install.sh | sh -s -- install linux-multi --extra-conf "access-tokens = github.com=${{ secrets.GITHUB_TOKEN }}"
+        uses: ./action.yml
+        with:
+          harmonic-local-root: install-root/
       - name: echo $PATH
         run: echo $PATH
       - name: Test `nix` with `$GITHUB_PATH`
@@ -172,17 +171,19 @@ jobs:
           sudo chmod +x /bin/steamos-readonly
           sudo useradd -m deck
       - name: Initial install
-        run: |
-          python -m http.server --bind 0.0.0.0 8000 &
-          timeout 20 bash -c 'until printf "" 2>>/dev/null >>/dev/tcp/localhost/8000; do echo "Waiting for server..."; sleep 1; done'
-          curl -L http://0.0.0.0:8000/nix-install.sh | sh -s -- install steam-deck --persistence `pwd`/ci-test-nix --extra-conf "access-tokens = github.com=${{ secrets.GITHUB_TOKEN }}"
+        uses: ./action.yml
+        with:
+          harmonic-local-root: install-root/
+          planner: steam-deck
+          extra-args: --persistence ./ci-test-nix
       - name: Initial uninstall (without a `nix run` first)
         run: sudo -E /nix/harmonic uninstall
       - name: Repeated install
-        run: |
-          python -m http.server --bind 0.0.0.0 8000 &
-          timeout 20 bash -c 'until printf "" 2>>/dev/null >>/dev/tcp/localhost/8000; do echo "Waiting for server..."; sleep 1; done'
-          curl -L http://0.0.0.0:8000/nix-install.sh | sh -s -- install steam-deck --persistence `pwd`/ci-test-nix --extra-conf "access-tokens = github.com=${{ secrets.GITHUB_TOKEN }}"
+        uses: ./action.yml
+        with:
+          harmonic-local-root: install-root/
+          planner: steam-deck
+          extra-args: --persistence ./ci-test-nix
       - name: echo $PATH
         run: echo $PATH
       - name: Test `nix` with `$GITHUB_PATH`
@@ -243,17 +244,15 @@ jobs:
           chmod +x ./harmonic
           mv harmonic harmonic-x86_64-darwin
       - name: Initial install
-        run: |
-          python3 -m http.server --bind 0.0.0.0 8000 &
-          gtimeout 20 bash -c 'until printf "" 2>>/dev/null >>/dev/tcp/localhost/8000; do echo "Waiting for server..."; sleep 1; done'
-          curl -L http://0.0.0.0:8000/nix-install.sh | sh -s -- install darwin-multi --extra-conf "access-tokens = github.com=${{ secrets.GITHUB_TOKEN }}"
+        uses: ./action.yml
+        with:
+          harmonic-local-root: install-root/
       - name: Initial uninstall (without a `nix run` first)
         run: sudo -E /nix/harmonic uninstall
       - name: Repeated install
-        run: |
-          python -m http.server --bind 0.0.0.0 8000 &
-          timeout 20 bash -c 'until printf "" 2>>/dev/null >>/dev/tcp/localhost/8000; do echo "Waiting for server..."; sleep 1; done'
-          curl -L http://0.0.0.0:8000/nix-install.sh | sh -s -- install darwin-multi --extra-conf "access-tokens = github.com=${{ secrets.GITHUB_TOKEN }}"
+        uses: ./action.yml
+        with:
+          harmonic-local-root: install-root/
       - name: echo $PATH
         run: echo $PATH
       - name: Test `nix` with `$GITHUB_PATH`
