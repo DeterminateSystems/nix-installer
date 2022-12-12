@@ -136,7 +136,7 @@
                 '';
               };
               postInstall = ''
-                cp $src/nix-install.sh $out/bin/nix-install.sh
+                cp nix-install.sh $out/bin/nix-install.sh
               '';
             };
           in
