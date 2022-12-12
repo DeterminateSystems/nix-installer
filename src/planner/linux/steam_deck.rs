@@ -73,15 +73,19 @@ use crate::{
     BuiltinPlanner,
 };
 
-#[derive(Debug, Clone, clap::Parser, serde::Serialize, serde::Deserialize)]
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
+#[cfg_attr(feature = "cli", derive(clap::Parser))]
 pub struct SteamDeck {
-    #[clap(
-        long,
-        env = "HARMONIC_STEAM_DECK_PERSISTENCE",
-        default_value = "/home/nix"
+    #[cfg_attr(
+        feature = "cli",
+        clap(
+            long,
+            env = "HARMONIC_STEAM_DECK_PERSISTENCE",
+            default_value = "/home/nix"
+        )
     )]
     persistence: PathBuf,
-    #[clap(flatten)]
+    #[cfg_attr(feature = "cli", clap(flatten))]
     pub settings: CommonSettings,
 }
 
