@@ -13,7 +13,7 @@ pub struct PlaceChannelConfiguration {
 }
 
 impl PlaceChannelConfiguration {
-    #[tracing::instrument(skip_all)]
+    #[tracing::instrument(level = "debug", skip_all)]
     pub async fn plan(
         channels: Vec<(String, Url)>,
         force: bool,
@@ -58,7 +58,7 @@ impl Action for PlaceChannelConfiguration {
         vec![ActionDescription::new(self.tracing_synopsis(), vec![])]
     }
 
-    #[tracing::instrument(skip_all, fields(
+    #[tracing::instrument(level = "debug", skip_all, fields(
         channels = self.channels.iter().map(|(c, u)| format!("{c}={u}")).collect::<Vec<_>>().join(", "),
     ))]
     async fn execute(&mut self) -> Result<(), ActionError> {
@@ -82,7 +82,7 @@ impl Action for PlaceChannelConfiguration {
         )]
     }
 
-    #[tracing::instrument(skip_all, fields(
+    #[tracing::instrument(level = "debug", skip_all, fields(
         channels = self.channels.iter().map(|(c, u)| format!("{c}={u}")).collect::<Vec<_>>().join(", "),
     ))]
     async fn revert(&mut self) -> Result<(), ActionError> {

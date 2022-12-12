@@ -25,7 +25,7 @@ pub struct CreateFile {
 }
 
 impl CreateFile {
-    #[tracing::instrument(skip_all)]
+    #[tracing::instrument(level = "debug", skip_all)]
     pub async fn plan(
         path: impl AsRef<Path>,
         user: impl Into<Option<String>>,
@@ -62,7 +62,7 @@ impl Action for CreateFile {
         vec![ActionDescription::new(self.tracing_synopsis(), vec![])]
     }
 
-    #[tracing::instrument(skip_all, fields(
+    #[tracing::instrument(level = "debug", skip_all, fields(
         path = %self.path.display(),
         user = self.user,
         group = self.group,
@@ -135,7 +135,7 @@ impl Action for CreateFile {
         )]
     }
 
-    #[tracing::instrument(skip_all, fields(
+    #[tracing::instrument(level = "debug", skip_all, fields(
         path = %self.path.display(),
         user = self.user,
         group = self.group,

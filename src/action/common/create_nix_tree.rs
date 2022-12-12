@@ -26,7 +26,7 @@ pub struct CreateNixTree {
 }
 
 impl CreateNixTree {
-    #[tracing::instrument(skip_all)]
+    #[tracing::instrument(level = "debug", skip_all)]
     pub async fn plan() -> Result<StatefulAction<Self>, ActionError> {
         let mut create_directories = Vec::default();
         for path in PATHS {
@@ -64,7 +64,7 @@ impl Action for CreateNixTree {
         )]
     }
 
-    #[tracing::instrument(skip_all)]
+    #[tracing::instrument(level = "debug", skip_all)]
     async fn execute(&mut self) -> Result<(), ActionError> {
         let Self { create_directories } = self;
 
@@ -96,7 +96,7 @@ impl Action for CreateNixTree {
         )]
     }
 
-    #[tracing::instrument(skip_all)]
+    #[tracing::instrument(level = "debug", skip_all)]
     async fn revert(&mut self) -> Result<(), ActionError> {
         let Self { create_directories } = self;
 

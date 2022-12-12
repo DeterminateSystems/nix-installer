@@ -14,7 +14,7 @@ pub struct PlaceNixConfiguration {
 }
 
 impl PlaceNixConfiguration {
-    #[tracing::instrument(skip_all)]
+    #[tracing::instrument(level = "debug", skip_all)]
     pub async fn plan(
         nix_build_group_name: String,
         extra_conf: Vec<String>,
@@ -47,7 +47,7 @@ impl PlaceNixConfiguration {
 #[typetag::serde(name = "place_nix_configuration")]
 impl Action for PlaceNixConfiguration {
     fn tracing_synopsis(&self) -> String {
-        format!("Place the nix configuration in `{NIX_CONF}`")
+        format!("Place the Nix configuration in `{NIX_CONF}`")
     }
 
     fn execute_description(&self) -> Vec<ActionDescription> {
@@ -60,7 +60,7 @@ impl Action for PlaceNixConfiguration {
         )]
     }
 
-    #[tracing::instrument(skip_all)]
+    #[tracing::instrument(level = "debug", skip_all)]
     async fn execute(&mut self) -> Result<(), ActionError> {
         let Self {
             create_file,
@@ -75,7 +75,7 @@ impl Action for PlaceNixConfiguration {
 
     fn revert_description(&self) -> Vec<ActionDescription> {
         vec![ActionDescription::new(
-            format!("Remove the nix configuration in `{NIX_CONF}`"),
+            format!("Remove the Nix configuration in `{NIX_CONF}`"),
             vec![
                 "This file is read by the Nix daemon to set its configuration options at runtime."
                     .to_string(),
@@ -83,7 +83,7 @@ impl Action for PlaceNixConfiguration {
         )]
     }
 
-    #[tracing::instrument(skip_all)]
+    #[tracing::instrument(level = "debug", skip_all)]
     async fn revert(&mut self) -> Result<(), ActionError> {
         let Self {
             create_file,

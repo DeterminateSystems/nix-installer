@@ -1,11 +1,16 @@
-use crossterm::event::{EventStream, KeyCode};
-use eyre::{eyre, WrapErr};
-use futures::{FutureExt, StreamExt};
-use owo_colors::OwoColorize;
-use tokio::io::AsyncWriteExt;
+use std::io::{stdin, stdout, BufRead, Write};
 
-pub(crate) async fn confirm(question: impl AsRef<str>) -> eyre::Result<bool> {
-    let mut stdout = tokio::io::stdout();
+use eyre::{eyre, WrapErr};
+use owo_colors::OwoColorize;
+
+// Do not try to get clever!
+//
+// Mac is extremely janky if you `curl $URL | sudo sh` and the TTY may not be set up right.
+// The below method was adopted from Rustup at https://github.com/rust-lang/rustup/blob/3331f34c01474bf216c99a1b1706725708833de1/src/cli/term2.rs#L37
+pub(crate) async fn confirm(question: impl AsRef<str>, default: bool) -> eyre::Result<bool> {
+    let stdout = stdout();
+    let mut term =
+        term::terminfo::TerminfoTerminal::new(stdout).ok_or(eyre!("Couldn't get terminal"))?;
     let with_confirm = format!(
         "\
         {question}\n\
@@ -18,42 +23,31 @@ pub(crate) async fn confirm(question: impl AsRef<str>) -> eyre::Result<bool> {
         yes = "y".green(),
     );
 
-    stdout.write_all(with_confirm.as_bytes()).await?;
-    stdout.flush().await?;
+    term.write_all(with_confirm.as_bytes())?;
+    term.flush()?;
 
-    // crossterm::terminal::enable_raw_mode()?;
-    let mut reader = EventStream::new();
+    let input = read_line()?;
 
-    let retval = loop {
-        let event = reader.next().fuse().await;
-        match event {
-            Some(Ok(event)) => {
-                if let crossterm::event::Event::Key(key) = event {
-                    match key.code {
-                        KeyCode::Char('y') | KeyCode::Char('Y') => {
-                            stdout
-                                .write_all("Confirmed!\n".green().to_string().as_bytes())
-                                .await?;
-                            stdout.flush().await?;
-                            break Ok(true);
-                        },
-                        KeyCode::Char('N') | KeyCode::Char('n') => {
-                            stdout
-                                .write_all("Cancelled!\n".red().to_string().as_bytes())
-                                .await?;
-                            stdout.flush().await?;
-                            break Ok(false);
-                        },
-                        KeyCode::Enter | _ => continue,
-                    }
-                }
-            },
-            Some(Err(err)) => break Err(err).wrap_err("Getting response"),
-            None => break Err(eyre!("Bailed, no confirmation event")),
-        }
+    let r = match &*input.to_lowercase() {
+        "y" | "yes" => true,
+        "n" | "no" => false,
+        "" => default,
+        _ => false,
     };
-    // crossterm::terminal::disable_raw_mode()?;
-    retval
+
+    Ok(r)
+}
+
+pub(crate) fn read_line() -> eyre::Result<String> {
+    let stdin = stdin();
+    let stdin = stdin.lock();
+    let mut lines = stdin.lines();
+    let lines = lines.next().transpose()?;
+    match lines {
+        None => Err(eyre!("no lines found from stdin")),
+        Some(v) => Ok(v),
+    }
+    .context("unable to read from stdin for confirmation")
 }
 
 pub(crate) async fn clean_exit_with_message(message: impl AsRef<str>) -> ! {

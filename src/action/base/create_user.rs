@@ -17,7 +17,7 @@ pub struct CreateUser {
 }
 
 impl CreateUser {
-    #[tracing::instrument(skip_all)]
+    #[tracing::instrument(level = "debug", skip_all)]
     pub fn plan(name: String, uid: usize, groupname: String, gid: usize) -> StatefulAction<Self> {
         Self {
             name,
@@ -42,12 +42,12 @@ impl Action for CreateUser {
         vec![ActionDescription::new(
             self.tracing_synopsis(),
             vec![format!(
-                "The nix daemon requires system users it can act as in order to build"
+                "The Nix daemon requires system users it can act as in order to build"
             )],
         )]
     }
 
-    #[tracing::instrument(skip_all, fields(
+    #[tracing::instrument(level = "debug", skip_all, fields(
         user = self.name,
         uid = self.uid,
         groupname = self.groupname,
@@ -226,12 +226,12 @@ impl Action for CreateUser {
                 self.name, self.uid, self.groupname, self.gid
             ),
             vec![format!(
-                "The nix daemon requires system users it can act as in order to build"
+                "The Nix daemon requires system users it can act as in order to build"
             )],
         )]
     }
 
-    #[tracing::instrument(skip_all, fields(
+    #[tracing::instrument(level = "debug", skip_all, fields(
         user = self.name,
         uid = self.uid,
         gid = self.gid,

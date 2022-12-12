@@ -33,7 +33,7 @@ pub struct CreateNixVolume {
 }
 
 impl CreateNixVolume {
-    #[tracing::instrument(skip_all)]
+    #[tracing::instrument(level = "debug", skip_all)]
     pub async fn plan(
         disk: impl AsRef<Path>,
         name: String,
@@ -150,7 +150,7 @@ impl Action for CreateNixVolume {
         vec![ActionDescription::new(self.tracing_synopsis(), vec![])]
     }
 
-    #[tracing::instrument(skip_all, fields(destination,))]
+    #[tracing::instrument(level = "debug", skip_all, fields(destination,))]
     async fn execute(&mut self) -> Result<(), ActionError> {
         let Self {
             disk: _,
@@ -213,7 +213,7 @@ impl Action for CreateNixVolume {
         )]
     }
 
-    #[tracing::instrument(skip_all, fields(disk, name))]
+    #[tracing::instrument(level = "debug", skip_all, fields(disk, name))]
     async fn revert(&mut self) -> Result<(), ActionError> {
         let Self {
             disk: _,

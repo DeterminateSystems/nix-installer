@@ -5,11 +5,10 @@ use std::{
 
 use crate::{
     action::ActionState,
-    cli::{interaction, is_root, signal_channel, CommandExecute},
-    error::HasExpectedErrors,
+    cli::{ensure_root, interaction, signal_channel, CommandExecute},
     plan::RECEIPT_LOCATION,
     planner::Planner,
-    BuiltinPlanner, InstallPlan,
+    BuiltinPlanner, InstallPlan, error::HasExpectedErrors,
 };
 use clap::{ArgAction, Parser};
 use eyre::{eyre, WrapErr};
@@ -45,7 +44,7 @@ pub struct Install {
 
 #[async_trait::async_trait]
 impl CommandExecute for Install {
-    #[tracing::instrument(skip_all, fields())]
+    #[tracing::instrument(level = "debug", skip_all, fields())]
     async fn execute(self) -> eyre::Result<ExitCode> {
         let Self {
             no_confirm,
@@ -54,13 +53,7 @@ impl CommandExecute for Install {
             explain,
         } = self;
 
-        if !is_root() {
-            eprintln!(
-                "{}",
-                "`harmonic install` must be run as `root`, try `sudo harmonic install`".red()
-            );
-            return Ok(ExitCode::FAILURE);
-        }
+        ensure_root()?;
 
         let existing_receipt: Option<InstallPlan> = match Path::new(RECEIPT_LOCATION).exists() {
             true => {
@@ -124,6 +117,7 @@ impl CommandExecute for Install {
                 install_plan
                     .describe_install(explain)
                     .map_err(|e| eyre!(e))?,
+                true,
             )
             .await?
             {
@@ -141,6 +135,7 @@ impl CommandExecute for Install {
                     install_plan
                         .describe_uninstall(explain)
                         .map_err(|e| eyre!(e))?,
+                    true,
                 )
                 .await?
                 {

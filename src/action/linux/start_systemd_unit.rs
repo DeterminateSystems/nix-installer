@@ -14,7 +14,7 @@ pub struct StartSystemdUnit {
 }
 
 impl StartSystemdUnit {
-    #[tracing::instrument(skip_all)]
+    #[tracing::instrument(level = "debug", skip_all)]
     pub async fn plan(unit: impl AsRef<str>) -> Result<StatefulAction<Self>, ActionError> {
         Ok(StatefulAction {
             action: Self {
@@ -36,7 +36,7 @@ impl Action for StartSystemdUnit {
         vec![ActionDescription::new(self.tracing_synopsis(), vec![])]
     }
 
-    #[tracing::instrument(skip_all, fields(
+    #[tracing::instrument(level = "debug", skip_all, fields(
         unit = %self.unit,
     ))]
     async fn execute(&mut self) -> Result<(), ActionError> {
@@ -64,7 +64,7 @@ impl Action for StartSystemdUnit {
         )]
     }
 
-    #[tracing::instrument(skip_all, fields(
+    #[tracing::instrument(level = "debug", skip_all, fields(
         unit = %self.unit,
     ))]
     async fn revert(&mut self) -> Result<(), ActionError> {

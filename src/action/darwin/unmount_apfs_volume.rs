@@ -17,7 +17,7 @@ pub struct UnmountApfsVolume {
 }
 
 impl UnmountApfsVolume {
-    #[tracing::instrument(skip_all)]
+    #[tracing::instrument(level = "debug", skip_all)]
     pub async fn plan(
         disk: impl AsRef<Path>,
         name: String,
@@ -38,7 +38,7 @@ impl Action for UnmountApfsVolume {
         vec![ActionDescription::new(self.tracing_synopsis(), vec![])]
     }
 
-    #[tracing::instrument(skip_all, fields(
+    #[tracing::instrument(level = "debug", skip_all, fields(
         disk = %self.disk.display(),
         name = %self.name,
     ))]
@@ -62,7 +62,7 @@ impl Action for UnmountApfsVolume {
         vec![ActionDescription::new(self.tracing_synopsis(), vec![])]
     }
 
-    #[tracing::instrument(skip_all, fields(
+    #[tracing::instrument(level = "debug", skip_all, fields(
         disk = %self.disk.display(),
         name = %self.name,
     ))]
