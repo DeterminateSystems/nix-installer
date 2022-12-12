@@ -29,10 +29,10 @@ impl std::fmt::Display for Logger {
 #[derive(clap::Args, Debug, Valuable)]
 pub struct Instrumentation {
     /// Enable debug logs, -vv for trace
-    #[clap(short = 'v', long, action = clap::ArgAction::Count, global = true)]
+    #[clap(short = 'v', env = "HARMONIC_VERBOSITY", long, action = clap::ArgAction::Count, global = true)]
     pub verbose: u8,
     /// Which logger to use
-    #[clap(long, default_value_t = Default::default(), global = true)]
+    #[clap(long, env = "HARMONIC_LOGGER", default_value_t = Default::default(), global = true)]
     pub logger: Logger,
 }
 

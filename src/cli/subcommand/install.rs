@@ -22,6 +22,7 @@ use owo_colors::OwoColorize;
 pub struct Install {
     #[clap(
         long,
+        env = "HARMONIC_NO_CONFIRM",
         action(ArgAction::SetTrue),
         default_value = "false",
         global = true
@@ -30,6 +31,7 @@ pub struct Install {
 
     #[clap(
         long,
+        env = "HARMONIC_EXPLAIN",
         action(ArgAction::SetTrue),
         default_value = "false",
         global = true
