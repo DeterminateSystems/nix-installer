@@ -129,8 +129,16 @@ impl CommandExecute for Install {
 
         if let Err(err) = install_plan.install(rx1).await {
             if !no_confirm {
-                let error = eyre!(err).wrap_err("Install failure");
-                tracing::error!("{:?}", error);
+                let mut was_expected = false;
+                if let Some(expected) = err.expected() {
+                    was_expected = true;
+                    eprintln!("{}", expected.red())
+                }
+                if !was_expected { 
+                    let error = eyre!(err).wrap_err("Install failure");
+                    tracing::error!("{:?}", error);
+                };
+
                 if !interaction::confirm(
                     install_plan
                         .describe_uninstall(explain)
