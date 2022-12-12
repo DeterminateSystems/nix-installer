@@ -37,12 +37,6 @@ jobs:
         run: nix develop --store ~/.ci-store --command check-nixpkgs-fmt
       - name: Check EditorConfig conformance
         run: nix develop --store ~/.ci-store --command check-editorconfig
-      - name: Create artifact for `nix-install.sh`
-        uses: actions/upload-artifact@v3
-        with:
-          name: nix-install
-          path: |
-            nix-install.sh
 
   build-x86_64-linux:
     name: Build x86_64 Linux
@@ -107,22 +101,19 @@ jobs:
       - uses: actions/download-artifact@v3
         with:
           name: harmonic-x86_64-linux
-      - uses: actions/download-artifact@v3
-        with:
-          name: nix-install
       - name: Move & set executable
         run: |
           chmod +x ./harmonic
           mkdir install-root
           mv harmonic install-root/harmonic-x86_64-linux
       - name: Initial install
-        uses: ./action.yml
+        uses: ./
         with:
           harmonic-local-root: install-root/
       - name: Initial uninstall (without a `nix run` first)
         run: sudo -E /nix/harmonic uninstall
       - name: Repeated install
-        uses: ./action.yml
+        uses: ./
         with:
           harmonic-local-root: install-root/
       - name: echo $PATH
@@ -159,9 +150,6 @@ jobs:
       - uses: actions/download-artifact@v3
         with:
           name: harmonic-x86_64-linux
-      - uses: actions/download-artifact@v3
-        with:
-          name: nix-install
       - name: Move & set executable
         run: |
           chmod +x ./harmonic
@@ -173,7 +161,7 @@ jobs:
           sudo chmod +x /bin/steamos-readonly
           sudo useradd -m deck
       - name: Initial install
-        uses: ./action.yml
+        uses: ./
         with:
           harmonic-local-root: install-root/
           planner: steam-deck
@@ -181,7 +169,7 @@ jobs:
       - name: Initial uninstall (without a `nix run` first)
         run: sudo -E /nix/harmonic uninstall
       - name: Repeated install
-        uses: ./action.yml
+        uses: ./
         with:
           harmonic-local-root: install-root/
           planner: steam-deck
@@ -239,21 +227,18 @@ jobs:
       - uses: actions/download-artifact@v3
         with:
           name: harmonic-x86_64-darwin
-      - uses: actions/download-artifact@v3
-        with:
-          name: nix-install
       - name: Move & set executable
         run: |
           chmod +x ./harmonic
           mv harmonic harmonic-x86_64-darwin
       - name: Initial install
-        uses: ./action.yml
+        uses: ./
         with:
           harmonic-local-root: install-root/
       - name: Initial uninstall (without a `nix run` first)
         run: sudo -E /nix/harmonic uninstall
       - name: Repeated install
-        uses: ./action.yml
+        uses: ./
         with:
           harmonic-local-root: install-root/
       - name: echo $PATH

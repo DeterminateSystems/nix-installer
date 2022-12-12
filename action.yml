@@ -122,4 +122,4 @@ runs:
           export NIX_INSTALL_URL=0.0.0.0:8000
         fi
 
-        curl --retry 20 --retry-max-time 120 -L $NIX_INSTALL_URL | sh -s -- install ${INPUT_PLANNER-} ${INPUT_EXTRA-ARGS-}
+        curl --retry 20 -L $NIX_INSTALL_URL | sh -s -- install ${INPUT_PLANNER-} ${INPUT_EXTRA-ARGS-}
