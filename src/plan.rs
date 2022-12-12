@@ -283,7 +283,7 @@ fn ensure_version<'de, D: Deserializer<'de>>(d: D) -> Result<Version, D::Error> 
         Ok(plan_version)
     } else {
         Err(D::Error::custom(&format!(
-            "This version of Harmonic ({harmonic_version}) is not compatible with this plan's version ({plan_version}), please use the binary stored for later uninstall at `/nix/harmonic` or a compatible version",
+            "This version of Harmonic ({harmonic_version}) is not compatible with this plan's version ({plan_version}), check for a compatible version at `/nix/harmonic` or download the matching release from https://github.com/DeterminateSystems/harmonic/releases",
         )))
     }
 }
