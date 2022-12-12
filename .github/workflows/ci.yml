@@ -79,9 +79,9 @@ jobs:
       - name: Build harmonic
         run: nix build --store ~/.ci-store --print-build-logs .#packages.x86_64-linux.harmonic
       - name: Test `nix develop` build without default features
-        run: nix develop --store ~/.ci-store --print-build-logs .# --command "cargo build --no-default-features"
+        run: nix develop --store ~/.ci-store --print-build-logs .# --command "cargo" build --no-default-features
       - name: Test `nix develop` build all features
-        run: nix develop --store ~/.ci-store --print-build-logs .# --command "cargo build --all-features
+        run: nix develop --store ~/.ci-store --print-build-logs .# --command "cargo" build --all-feature
 
   run-x86_64-linux:
     name: Run x86_64 Linux
