@@ -68,6 +68,8 @@ Install Nix with the default planner and options:
 ./harmonic install
 ```
 
+> `harmonic` will elevate itself if it is not run as `root` using `sudo`. If you use `doas` or `please` you may need to elevate `harmonic` yourself.
+
 To observe verbose logging, either use `harmonic -v`, this tool [also respects the `RUST_LOG` environment](https://docs.rs/tracing-subscriber/latest/tracing_subscriber/filter/struct.EnvFilter.html#directives). (Eg `RUST_LOG=harmonic=trace harmonic`).
 
 Harmonic installs Nix by following a *plan* made by a *planner*. Review the available planners:
