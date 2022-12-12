@@ -208,7 +208,7 @@ jobs:
     runs-on: macos-12
     needs: [build-x86_64-darwin, lints]
     steps:
-      - run: brew install fish
+      - run: brew install fish coreutils
       - uses: actions/download-artifact@v3
         with:
           name: harmonic-x86_64-darwin
@@ -221,8 +221,8 @@ jobs:
           mv harmonic harmonic-x86_64-darwin
       - name: Initial install
         run: |
-          python -m http.server --bind 0.0.0.0 8000 &
-          timeout 20 bash -c 'until printf "" 2>>/dev/null >>/dev/tcp/localhost/8000; do echo "Waiting for server..."; sleep 1; done'
+          python3 -m http.server --bind 0.0.0.0 8000 &
+          gtimeout 20 bash -c 'until printf "" 2>>/dev/null >>/dev/tcp/localhost/8000; do echo "Waiting for server..."; sleep 1; done'
           curl -L http://0.0.0.0:8000/nix-install.sh | sh -s -- install darwin-multi --extra-conf "access-tokens = github.com=${{ secrets.GITHUB_TOKEN }}"
       - name: Initial uninstall (without a `nix run` first)
         run: sudo -E /nix/harmonic uninstall
