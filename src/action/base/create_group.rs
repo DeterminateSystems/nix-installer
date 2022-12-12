@@ -57,6 +57,7 @@ impl Action for CreateGroup {
                     .args([".", "-read", &format!("/Groups/{name}")])
                     .stdin(std::process::Stdio::null())
                     .stdout(std::process::Stdio::null())
+                    .stderr(std::process::Stdio::piped())
                     .status()
                     .await
                     .map_err(ActionError::Command)?
