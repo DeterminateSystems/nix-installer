@@ -6,9 +6,10 @@ use std::{
 use crate::{
     action::ActionState,
     cli::{ensure_root, interaction, signal_channel, CommandExecute},
+    error::HasExpectedErrors,
     plan::RECEIPT_LOCATION,
     planner::Planner,
-    BuiltinPlanner, InstallPlan, error::HasExpectedErrors,
+    BuiltinPlanner, InstallPlan,
 };
 use clap::{ArgAction, Parser};
 use eyre::{eyre, WrapErr};
@@ -106,7 +107,7 @@ impl CommandExecute for Install {
                             return Ok(ExitCode::FAILURE);
                         }
                         return Err(e.into())
-                    } 
+                    }
                 }
             },
             (Some(_), Some(_)) => return Err(eyre!("`--plan` conflicts with passing a planner, a planner creates plans, so passing an existing plan doesn't make sense")),
@@ -134,7 +135,7 @@ impl CommandExecute for Install {
                     was_expected = true;
                     eprintln!("{}", expected.red())
                 }
-                if !was_expected { 
+                if !was_expected {
                     let error = eyre!(err).wrap_err("Install failure");
                     tracing::error!("{:?}", error);
                 };
