@@ -78,8 +78,8 @@ jobs:
           key: build-store-x86_64-linux-${{ hashFiles('**/Cargo.lock', '**/flake.lock') }}-v1
       - name: Build harmonic
         run: nix build --store ~/.ci-store --print-build-logs .#packages.x86_64-linux.harmonic
-      - name: `nix develop` build without default features
-        run: nix develop --store ~/.ci-store --print-build-logs .# --command "cargo build --no-default-features"
+      - name: Test `nix develop` build without default features
+        run: Test nix develop --store ~/.ci-store --print-build-logs .# --command "cargo build --no-default-features"
       - name: `nix develop` build all features
         run: nix develop --store ~/.ci-store --print-build-logs .# --command "cargo build --all-features
 
