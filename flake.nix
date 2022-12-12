@@ -135,6 +135,9 @@
                   # logRun "cargo clippy --all-targets --all-features -- -D warnings"
                 '';
               };
+              postInstall = ''
+                cp nix-install.sh $out/bin/nix-install.sh
+              '';
             };
           in
           rec {
