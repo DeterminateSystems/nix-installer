@@ -137,6 +137,9 @@ runs:
 
         if [ -n "${INPUT_HARMONIC-LOCAL-ROOT-}" ]; then
           python -m http.server --directory install-root/ --bind 0.0.0.0 8000 &
+          while (! (: </dev/tcp/localhost/8000) &> /dev/null); do
+            sleep 1;
+          done
           export NIX_INSTALL_URL=0.0.0.0:8000
         fi
 
@@ -153,3 +156,5 @@ runs:
         fi
 
         curl --retry 20 -L $NIX_INSTALL_URL | sh -s -- install ${INPUT_PLANNER-} ${INPUT_EXTRA-ARGS-}
+
+
