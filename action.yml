@@ -69,8 +69,8 @@ inputs:
 runs:
   using: composite
   steps:
-    - run: Install Nix
-      shell: |
+    - name: Install Nix
+      run: |
         if [ -n "${INPUT_CHANNELS-}" ]; then
           export HARMONIC_CHANNELS=$INPUT_CHANNELS
         fi
