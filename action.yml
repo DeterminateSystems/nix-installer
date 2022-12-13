@@ -21,7 +21,7 @@ inputs:
   nix-build-group-name:
     description: The Nix build group name
     required: false
-  nix-build-build-group-id:
+  nix-build-group-id:
     description: The Nix build group GID
     required: false
   nix-build-user-prefix:
@@ -77,80 +77,80 @@ runs:
           echo "Setting HARMONIC_CHANNELS=$HARMONIC_CHANNELS"
         fi
 
-        if [ -n "${INPUT_MODIFY-PROFILE-}" ]; then
-          export HARMONIC_MODIFY_PROFILE=$INPUT_MODIFY-PROFILE
+        if [ -n "${INPUT_MODIFY_PROFILE-}" ]; then
+          export HARMONIC_MODIFY_PROFILE=$INPUT_MODIFY_PROFILE
           echo "Setting HARMONIC_MODIFY_PROFILE=$HARMONIC_MODIFY_PROFILE"
         fi
 
-        if [ -n "${INPUT_DAEMON-USER-COUNT-}" ]; then
-          export HARMONIC_DAEMON_USER_COUNT=$INPUT_DAEMON-USER-COUNT
+        if [ -n "${INPUT_DAEMON_USER_COUNT-}" ]; then
+          export HARMONIC_DAEMON_USER_COUNT=$INPUT_DAEMON_USER_COUNT
           echo "Setting HARMONIC_DAEMON_USER_COUNT=$HARMONIC_DAEMON_USER_COUNT"
         fi
 
-        if [ -n "${INPUT_NIX-BUILD-GROUP-NAME-}" ]; then
-          export HARMONIC_NIX_BUILD_GROUP_NAME=$INPUT_NIX-BUILD-GROUP-NAME
+        if [ -n "${INPUT_NIX_BUILD_GROUP_NAME-}" ]; then
+          export HARMONIC_NIX_BUILD_GROUP_NAME=$INPUT_NIX_BUILD_GROUP_NAME
           echo "Setting HARMONIC_NIX_BUILD_GROUP_NAME=$HARMONIC_NIX_BUILD_GROUP_NAME"
         fi
 
-        if [ -n "${INPUT_NIX-BUILD-BUILD-GROUP-ID-}" ]; then
-          export HARMONIC_NIX_BUILD_GROUP_ID=$INPUT_NIX-BUILD-BUILD-GROUP-ID
+        if [ -n "${INPUT_NIX_BUILD_GROUP_ID-}" ]; then
+          export HARMONIC_NIX_BUILD_GROUP_ID=$INPUT_NIX_BUILD_GROUP_ID
           echo "Setting HARMONIC_NIX_BUILD_GROUP_ID=$HARMONIC_NIX_BUILD_GROUP_ID"
         fi
 
-        if [ -n "${INPUT_NIX-BUILD-BUILD-GROUP-ID-}" ]; then
-          export HARMONIC_NIX_BUILD_USER_PREFIX=$INPUT_NIX-BUILD-BUILD-GROUP-ID
+        if [ -n "${INPUT_NIX_BUILD_GROUP_ID-}" ]; then
+          export HARMONIC_NIX_BUILD_USER_PREFIX=$INPUT_NIX_BUILD_GROUP_ID
           echo "Setting HARMONIC_NIX_BUILD_USER_PREFIX=$HARMONIC_NIX_BUILD_USER_PREFIX"
         fi
 
-        if [ -n "${INPUT_NIX-BUILD-USER-BASE-}" ]; then
-          export HARMONIC_NIX_BUILD_USER_ID_BASE=$INPUT_NIX-BUILD-USER-BASE
+        if [ -n "${INPUT_NIX_BUILD_USER_BASE-}" ]; then
+          export HARMONIC_NIX_BUILD_USER_ID_BASE=$INPUT_NIX_BUILD_USER_BASE
           echo "Setting HARMONIC_NIX_BUILD_USER_ID_BASE=$HARMONIC_NIX_BUILD_USER_ID_BASE"
         fi
 
-        if [ -n "${INPUT_NIX-PACKAGE-URL-}" ]; then
-          export HARMONIC_NIX_PACKAGE_URL=$INPUT_NIX-PACKAGE-URL
+        if [ -n "${INPUT_NIX_PACKAGE_URL-}" ]; then
+          export HARMONIC_NIX_PACKAGE_URL=$INPUT_NIX_PACKAGE_URL
           echo "Setting HARMONIC_NIX_PACKAGE_URL=$HARMONIC_NIX_PACKAGE_URL"
         fi
 
-        if [ -n "${INPUT_EXTRA-CONF-}" ]; then
-          if [ -n "${INPUT_GITHUB-TOKEN-}" ]; then
-            export HARMONIC_EXTRA_CONF="$INPUT_EXTRA-CONF\naccess-tokens = github.com=$INPUT_GITHUB-TOKEN"
+        if [ -n "${INPUT_EXTRA_CONF-}" ]; then
+          if [ -n "${INPUT_GITHUB_TOKEN-}" ]; then
+            export HARMONIC_EXTRA_CONF="$INPUT_EXTRA_CONF\naccess-tokens = github.com=$INPUT_GITHUB_TOKEN"
           fi
-          export HARMONIC_EXTRA_CONF="$INPUT_EXTRA-CONF"
+          export HARMONIC_EXTRA_CONF="$INPUT_EXTRA_CONF"
           echo "Set HARMONIC_EXTRA_CONF=$HARMONIC_EXTRA_CONF"
         else
           if [ -n "${INPUT_GITHUB-TOKEN-}" ]; then
-            export HARMONIC_EXTRA_CONF="access-tokens = github.com=$INPUT_GITHUB-TOKEN"
+            export HARMONIC_EXTRA_CONF="access_tokens = github.com=$INPUT_GITHUB_TOKEN"
             echo "Set HARMONIC_EXTRA_CONF=$HARMONIC_EXTRA_CONF"
           fi
         fi
 
-        if [ -n "${INPUT_MAC-ENCRYPT-}" ]; then
-          export HARMONIC_ENCRYPT=$INPUT_MAC-ENCRYPT
+        if [ -n "${INPUT_MAC_ENCRYPT-}" ]; then
+          export HARMONIC_ENCRYPT=$INPUT_MAC_ENCRYPT
           echo "Setting HARMONIC_ENCRYPT=$HARMONIC_ENCRYPT"
         fi
 
-        if [ -n "${INPUT_MAC-CASE-SENSITIVE-}" ]; then
-          export HARMONIC_CASE_SENSITIVE=$INPUT_MAC-CASE-SENSITIVE
+        if [ -n "${INPUT_MAC_CASE_SENSITIVE-}" ]; then
+          export HARMONIC_CASE_SENSITIVE=$INPUT_MAC_CASE_SENSITIVE
           echo "Setting HARMONIC_CASE_SENSITIVE=$HARMONIC_CASE_SENSITIVE"
         fi
 
-        if [ -n "${INPUT_MAC-VOLUME-LABEL-}" ]; then
-          export HARMONIC_VOLUME_LABEL=$INPUT_MAC-VOLUME-LABEL
+        if [ -n "${INPUT_MAC_VOLUME_LABEL-}" ]; then
+          export HARMONIC_VOLUME_LABEL=$INPUT_MAC_VOLUME_LABEL
           echo "Setting HARMONIC_VOLUME_LABEL=$HARMONIC_VOLUME_LABEL"
         fi
 
-        if [ -n "${INPUT_MAC-ROOT-DISK-}" ]; then
-          export HARMONIC_ROOT_DISK=$INPUT_MAC-ROOT-DISK
+        if [ -n "${INPUT_MAC_ROOT_DISK-}" ]; then
+          export HARMONIC_ROOT_DISK=$INPUT_MAC_ROOT_DISK
           echo "Setting HARMONIC_ROOT_DISK=$HARMONIC_ROOT_DISK"
         fi
 
-        if [ -n "${INPUT_MAC-ROOT-DISK-}" ]; then
-          export HARMONIC_ROOT_DISK=$INPUT_MAC-ROOT-DISK
+        if [ -n "${INPUT_MAC_ROOT_DISK-}" ]; then
+          export HARMONIC_ROOT_DISK=$INPUT_MAC_ROOT_DISK
           echo "Setting HARMONIC_ROOT_DISK=$HARMONIC_ROOT_DISK"
         fi
 
-        if [ -n "${INPUT_HARMONIC-LOCAL-ROOT-}" ]; then
+        if [ -n "${INPUT_HARMONIC_LOCAL_ROOT-}" ]; then
           python -m http.server --directory install-root/ --bind 0.0.0.0 8000 &
           while (! (: </dev/tcp/localhost/8000) &> /dev/null); do
             sleep 1
@@ -164,8 +164,8 @@ runs:
           echo "Setting HARMONIC_LOGGER=$HARMONIC_LOGGER"
         fi
 
-        if [ -n "${INPUT_LOG-DIRECTIVES-}" ]; then
-          export HARMONIC_LOG_DIRECTIVES=$INPUT_LOG-DIRECTIVES
+        if [ -n "${INPUT_LOG_DIRECTIVES-}" ]; then
+          export HARMONIC_LOG_DIRECTIVES=$INPUT_LOG_DIRECTIVES
           echo "Setting HARMONIC_LOG_DIRECTIVES=$HARMONIC_LOG_DIRECTIVES"
         fi
 
