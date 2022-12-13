@@ -7,6 +7,8 @@ inputs:
   extra-args:
     description: Extra args to pass to the planner (prefer using structured `with:` arguments unless using a custom planner!)
     required: false
+  github-token:
+    description: A Github Token so that authenticated requests can be made (set this to `${{ secrets.GITHUB_TOKEN }}`)
   channels:
     description: Channel(s) to add (eg `nixpkgs=https://nixos.org/channels/nixpkgs-unstable`)
     required: false
@@ -32,7 +34,7 @@ inputs:
     description: The Nix package URL
     required: false
   extra-conf:
-    description: Extra configuration lines for `/etc/nix.conf` (includes `access-tokens = github.com=${{ secrets.GITHUB_TOKEN }}` automatically)
+    description: Extra configuration lines for `/etc/nix.conf` (includes `access-tokens = github.com=${{ secrets.GITHUB_TOKEN }}` automatically if `github-token` is set)
     required: false
   mac-encrypt:
     description: Force encryption on the volume (Mac only)
@@ -92,9 +94,14 @@ runs:
         fi
 
         if [ -n "${INPUT_EXTRA-CONF-}" ]; then
-          export HARMONIC_EXTRA_CONF="$INPUT_EXTRA-CONF\naccess-tokens = github.com=${{ secrets.GITHUB_TOKEN }}"
+          if [ -n "${INPUT_GITHUB-TOKEN-}" ]; then
+            export HARMONIC_EXTRA_CONF="$INPUT_EXTRA-CONF\naccess-tokens = github.com=$INPUT_GITHUB-TOKEN"
+          fi
+          export HARMONIC_EXTRA_CONF="$INPUT_EXTRA-CONF"
         else
-          export HARMONIC_EXTRA_CONF="access-tokens = github.com=${{ secrets.GITHUB_TOKEN }}"
+          if [ -n "${INPUT_GITHUB-TOKEN-}" ]; then
+            export HARMONIC_EXTRA_CONF="access-tokens = github.com=$INPUT_GITHUB-TOKEN"
+          fi
         fi
 
         if [ -n "${INPUT_MAC-ENCRYPT-}" ]; then
