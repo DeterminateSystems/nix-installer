@@ -38,8 +38,8 @@ pub struct Instrumentation {
     /// Tracing directives
     ///
     /// See https://docs.rs/tracing-subscriber/latest/tracing_subscriber/filter/struct.EnvFilter.html#directives
-    #[clap(long, global = true, env = "HARMONIC_LOG_DIRECTIVES", value_delimiter = ',', num_args = 0..)]
-    pub log_directive: Vec<Directive>,
+    #[clap(long = "log-directive", global = true, env = "HARMONIC_LOG_DIRECTIVES", value_delimiter = ',', num_args = 0..)]
+    pub log_directives: Vec<Directive>,
 }
 
 impl<'a> Instrumentation {
