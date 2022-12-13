@@ -97,6 +97,7 @@ jobs:
         run: |
           chmod +x ./harmonic
           mkdir install-root
+          cp nix-install.sh install-root/nix-install.sh
           mv harmonic install-root/harmonic-x86_64-linux
       - name: Initial install
         uses: ./
@@ -151,7 +152,9 @@ jobs:
       - name: Move & set executable
         run: |
           chmod +x ./harmonic
-          mv harmonic harmonic-x86_64-linux
+          mkdir install-root
+          cp nix-install.sh install-root/nix-install.sh
+          mv harmonic install-root/harmonic-x86_64-linux
       - name: Make the CI look like a steam deck
         run: |
           mkdir -p ~/bin
@@ -234,7 +237,9 @@ jobs:
       - name: Move & set executable
         run: |
           chmod +x ./harmonic
-          mv harmonic harmonic-x86_64-darwin
+          mkdir install-root
+          cp nix-install.sh install-root/nix-install.sh
+          mv harmonic install-root/harmonic-x86_64-darwin
       - name: Initial install
         uses: ./
         with:
