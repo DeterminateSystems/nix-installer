@@ -61,3 +61,8 @@ term = "0.7.0"
 
 [dev-dependencies]
 eyre = "0.6.8"
+
+[profile.release]
+strip = true  # Automatically strip symbols from the binary.
+opt-level = "z"  # Optimize for size.
+lto = true
