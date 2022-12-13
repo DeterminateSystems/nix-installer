@@ -66,7 +66,7 @@ impl HasExpectedErrors for HarmonicError {
             HarmonicError::RecordingReceipt(_, _) => None,
             HarmonicError::CopyingSelf(_) => None,
             HarmonicError::SerializingReceipt(_) => None,
-            HarmonicError::Cancelled => None,
+            this @ HarmonicError::Cancelled => Some(Box::new(this)),
             HarmonicError::SemVer(_) => None,
             HarmonicError::Planner(planner_error) => planner_error.expected(),
             HarmonicError::InstallSettings(_) => None,
