@@ -51,4 +51,4 @@ semver = { version = "1.0.14", default-features = false, features = ["serde", "s
 term = { version = "0.7.0", default-features = false }
 
 [dev-dependencies]
-eyre = { version = "0.6.8", default-features = false, features = [ "track-caller" ], optional = true }
+eyre = { version = "0.6.8", default-features = false, features = [ "track-caller" ] }
