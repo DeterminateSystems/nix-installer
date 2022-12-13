@@ -8,7 +8,7 @@ inputs:
     description: Extra args to pass to the planner (prefer using structured `with:` arguments unless using a custom planner!)
     required: false
   github-token:
-    description: A Github Token so that authenticated requests can be made (set this to `${{ secrets.GITHUB_TOKEN }}`)
+    description: A Github Token so that authenticated requests can be made (set this to `secrets.GITHUB_TOKEN`)
   channels:
     description: Channel(s) to add (eg `nixpkgs=https://nixos.org/channels/nixpkgs-unstable`)
     required: false
@@ -34,7 +34,7 @@ inputs:
     description: The Nix package URL
     required: false
   extra-conf:
-    description: Extra configuration lines for `/etc/nix.conf` (includes `access-tokens = github.com=${{ secrets.GITHUB_TOKEN }}` automatically if `github-token` is set)
+    description: Extra configuration lines for `/etc/nix.conf` (includes `access-tokens` with `secrets.GITHUB_TOKEN` automatically if `github-token` is set)
     required: false
   mac-encrypt:
     description: Force encryption on the volume (Mac only)
@@ -55,6 +55,16 @@ inputs:
   harmonic-local-root:
     description: A local `harmonic` binary root, overrides the `nix-install` setting (binaries should be named `harmonic-$ARCH`, eg. `harmonic-$x86_64-linux`)
     required: false
+  logger:
+    description: The logger to use for install (eg. `pretty`, `json`, `full`, `compact`)
+    required: false
+  log-directives:
+    description: A list of Tracing directives, comma separated (eg. `harmonic=trace`, see https://docs.rs/tracing-subscriber/latest/tracing_subscriber/filter/struct.EnvFilter.html#directives)
+    required: false
+  backtrace:
+    description: The setting for `RUST_BACKTRACE` (see https://doc.rust-lang.org/std/backtrace/index.html#environment-variables)
+    required: false
+
 
 runs:
   using: composite
@@ -127,6 +137,18 @@ runs:
         if [ -n "${INPUT_HARMONIC-LOCAL-ROOT-}" ]; then
           python -m http.server --directory install-root/ --bind 0.0.0.0 8000 &
           export NIX_INSTALL_URL=0.0.0.0:8000
+        fi
+
+        if [ -n "${INPUT_LOGGER-}" ]; then
+          export HARMONIC_LOGGER=$INPUT_LOGGER
+        fi
+
+        if [ -n "${INPUT_LOG-DIRECTIVES-}" ]; then
+          export HARMONIC_LOG_DIRECTIVES=$INPUT_LOG-DIRECTIVES
+        fi
+
+        if [ -n "${INPUT_BACKTRACE-}" ]; then
+          export RUST_BACKTRACE=$INPUT_BACKTRACE
         fi
 
         curl --retry 20 -L $NIX_INSTALL_URL | sh -s -- install ${INPUT_PLANNER-} ${INPUT_EXTRA-ARGS-}
