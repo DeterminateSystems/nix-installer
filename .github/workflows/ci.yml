@@ -110,12 +110,18 @@ jobs:
         uses: ./
         with:
           harmonic-local-root: install-root/
+          logger: pretty
+          log-directives: harmonic=trace
+          backtrace: full
       - name: Initial uninstall (without a `nix run` first)
         run: sudo -E /nix/harmonic uninstall
       - name: Repeated install
         uses: ./
         with:
           harmonic-local-root: install-root/
+          logger: pretty
+          log-directives: harmonic=trace
+          backtrace: full
       - name: echo $PATH
         run: echo $PATH
       - name: Test `nix` with `$GITHUB_PATH`
@@ -164,6 +170,9 @@ jobs:
         uses: ./
         with:
           harmonic-local-root: install-root/
+          logger: pretty
+          log-directives: harmonic=trace
+          backtrace: full
           planner: steam-deck
           extra-args: --persistence ./ci-test-nix
       - name: Initial uninstall (without a `nix run` first)
@@ -172,6 +181,9 @@ jobs:
         uses: ./
         with:
           harmonic-local-root: install-root/
+          logger: pretty
+          log-directives: harmonic=trace
+          backtrace: full
           planner: steam-deck
           extra-args: --persistence ./ci-test-nix
       - name: echo $PATH
@@ -235,12 +247,18 @@ jobs:
         uses: ./
         with:
           harmonic-local-root: install-root/
+          logger: pretty
+          log-directives: harmonic=trace
+          backtrace: full
       - name: Initial uninstall (without a `nix run` first)
         run: sudo -E /nix/harmonic uninstall
       - name: Repeated install
         uses: ./
         with:
           harmonic-local-root: install-root/
+          logger: pretty
+          log-directives: harmonic=trace
+          backtrace: full
       - name: echo $PATH
         run: echo $PATH
       - name: Test `nix` with `$GITHUB_PATH`
