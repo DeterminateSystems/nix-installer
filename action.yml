@@ -148,11 +148,14 @@ runs:
 
         if [ -n "${{ inputs.local-root }}" ]; then
           python -m http.server --directory ${{ inputs.local-root }} --bind 0.0.0.0 8000 &
+          echo "Started simple http server for ${{ inputs.local-root }} on 0.0.0.0:8000"
           while (! (: </dev/tcp/localhost/8000) &> /dev/null); do
             sleep 1
           done
           export NIX_INSTALL_URL=0.0.0.0:8000
           echo "Set NIX_INSTALL_URL=$NIX_INSTALL_URL"
+          export NIX_INSTALL_FORCE_ALLOW_HTTP=1
+          echo "Set NIX_INSTALL_FORCE_ALLOW_HTTP=$NIX_INSTALL_FORCE_ALLOW_HTTP"
         else
           export NIX_INSTALL_URL=${{ inputs.nix-install-url }}
           echo "Set NIX_INSTALL_URL=$NIX_INSTALL_URL"

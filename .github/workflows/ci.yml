@@ -5,14 +5,6 @@ on:
   push:
     branches: [main]
 
-env:
-  NIX_INSTALL_FORCE_ALLOW_HTTP: "1"
-  NIX_INSTALL_UPDATE_ROOT: "http://0.0.0.0:8000"
-  RUST_BACKTRACE: "full"
-  HARMONIC_VERBOSITY: "2"
-  HARMONIC_NO_CONFIRM: "true"
-  HARMONIC_LOGGER: "pretty"
-
 jobs:
   lints:
     name: Lints
@@ -109,7 +101,7 @@ jobs:
       - name: Initial install
         uses: ./
         with:
-          harmonic-local-root: install-root/
+          local-root: install-root/
           logger: pretty
           log-directives: harmonic=trace
           backtrace: full
@@ -118,7 +110,7 @@ jobs:
       - name: Repeated install
         uses: ./
         with:
-          harmonic-local-root: install-root/
+          local-root: install-root/
           logger: pretty
           log-directives: harmonic=trace
           backtrace: full
@@ -169,7 +161,7 @@ jobs:
       - name: Initial install
         uses: ./
         with:
-          harmonic-local-root: install-root/
+          local-root: install-root/
           logger: pretty
           log-directives: harmonic=trace
           backtrace: full
@@ -180,7 +172,7 @@ jobs:
       - name: Repeated install
         uses: ./
         with:
-          harmonic-local-root: install-root/
+          local-root: install-root/
           logger: pretty
           log-directives: harmonic=trace
           backtrace: full
@@ -246,7 +238,7 @@ jobs:
       - name: Initial install
         uses: ./
         with:
-          harmonic-local-root: install-root/
+          local-root: install-root/
           logger: pretty
           log-directives: harmonic=trace
           backtrace: full
@@ -255,7 +247,7 @@ jobs:
       - name: Repeated install
         uses: ./
         with:
-          harmonic-local-root: install-root/
+          local-root: install-root/
           logger: pretty
           log-directives: harmonic=trace
           backtrace: full
