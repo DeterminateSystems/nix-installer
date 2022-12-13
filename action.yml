@@ -74,34 +74,42 @@ runs:
       run: |
         if [ -n "${INPUT_CHANNELS-}" ]; then
           export HARMONIC_CHANNELS=$INPUT_CHANNELS
+          echo "Setting HARMONIC_CHANNELS=$HARMONIC_CHANNELS"
         fi
 
         if [ -n "${INPUT_MODIFY-PROFILE-}" ]; then
           export HARMONIC_MODIFY_PROFILE=$INPUT_MODIFY-PROFILE
+          echo "Setting HARMONIC_MODIFY_PROFILE=$HARMONIC_MODIFY_PROFILE"
         fi
 
         if [ -n "${INPUT_DAEMON-USER-COUNT-}" ]; then
           export HARMONIC_DAEMON_USER_COUNT=$INPUT_DAEMON-USER-COUNT
+          echo "Setting HARMONIC_DAEMON_USER_COUNT=$HARMONIC_DAEMON_USER_COUNT"
         fi
 
         if [ -n "${INPUT_NIX-BUILD-GROUP-NAME-}" ]; then
           export HARMONIC_NIX_BUILD_GROUP_NAME=$INPUT_NIX-BUILD-GROUP-NAME
+          echo "Setting HARMONIC_NIX_BUILD_GROUP_NAME=$HARMONIC_NIX_BUILD_GROUP_NAME"
         fi
 
         if [ -n "${INPUT_NIX-BUILD-BUILD-GROUP-ID-}" ]; then
           export HARMONIC_NIX_BUILD_GROUP_ID=$INPUT_NIX-BUILD-BUILD-GROUP-ID
+          echo "Setting HARMONIC_NIX_BUILD_GROUP_ID=$HARMONIC_NIX_BUILD_GROUP_ID"
         fi
 
         if [ -n "${INPUT_NIX-BUILD-BUILD-GROUP-ID-}" ]; then
           export HARMONIC_NIX_BUILD_USER_PREFIX=$INPUT_NIX-BUILD-BUILD-GROUP-ID
+          echo "Setting HARMONIC_NIX_BUILD_USER_PREFIX=$HARMONIC_NIX_BUILD_USER_PREFIX"
         fi
 
         if [ -n "${INPUT_NIX-BUILD-USER-BASE-}" ]; then
           export HARMONIC_NIX_BUILD_USER_ID_BASE=$INPUT_NIX-BUILD-USER-BASE
+          echo "Setting HARMONIC_NIX_BUILD_USER_ID_BASE=$HARMONIC_NIX_BUILD_USER_ID_BASE"
         fi
 
         if [ -n "${INPUT_NIX-PACKAGE-URL-}" ]; then
           export HARMONIC_NIX_PACKAGE_URL=$INPUT_NIX-PACKAGE-URL
+          echo "Setting HARMONIC_NIX_PACKAGE_URL=$HARMONIC_NIX_PACKAGE_URL"
         fi
 
         if [ -n "${INPUT_EXTRA-CONF-}" ]; then
@@ -109,50 +117,61 @@ runs:
             export HARMONIC_EXTRA_CONF="$INPUT_EXTRA-CONF\naccess-tokens = github.com=$INPUT_GITHUB-TOKEN"
           fi
           export HARMONIC_EXTRA_CONF="$INPUT_EXTRA-CONF"
+          echo "Set HARMONIC_EXTRA_CONF=$HARMONIC_EXTRA_CONF"
         else
           if [ -n "${INPUT_GITHUB-TOKEN-}" ]; then
             export HARMONIC_EXTRA_CONF="access-tokens = github.com=$INPUT_GITHUB-TOKEN"
+            echo "Set HARMONIC_EXTRA_CONF=$HARMONIC_EXTRA_CONF"
           fi
         fi
 
         if [ -n "${INPUT_MAC-ENCRYPT-}" ]; then
           export HARMONIC_ENCRYPT=$INPUT_MAC-ENCRYPT
+          echo "Setting HARMONIC_ENCRYPT=$HARMONIC_ENCRYPT"
         fi
 
         if [ -n "${INPUT_MAC-CASE-SENSITIVE-}" ]; then
           export HARMONIC_CASE_SENSITIVE=$INPUT_MAC-CASE-SENSITIVE
+          echo "Setting HARMONIC_CASE_SENSITIVE=$HARMONIC_CASE_SENSITIVE"
         fi
 
         if [ -n "${INPUT_MAC-VOLUME-LABEL-}" ]; then
           export HARMONIC_VOLUME_LABEL=$INPUT_MAC-VOLUME-LABEL
+          echo "Setting HARMONIC_VOLUME_LABEL=$HARMONIC_VOLUME_LABEL"
         fi
 
         if [ -n "${INPUT_MAC-ROOT-DISK-}" ]; then
           export HARMONIC_ROOT_DISK=$INPUT_MAC-ROOT-DISK
+          echo "Setting HARMONIC_ROOT_DISK=$HARMONIC_ROOT_DISK"
         fi
 
         if [ -n "${INPUT_MAC-ROOT-DISK-}" ]; then
           export HARMONIC_ROOT_DISK=$INPUT_MAC-ROOT-DISK
+          echo "Setting HARMONIC_ROOT_DISK=$HARMONIC_ROOT_DISK"
         fi
 
         if [ -n "${INPUT_HARMONIC-LOCAL-ROOT-}" ]; then
           python -m http.server --directory install-root/ --bind 0.0.0.0 8000 &
           while (! (: </dev/tcp/localhost/8000) &> /dev/null); do
-            sleep 1;
+            sleep 1
           done
           export NIX_INSTALL_URL=0.0.0.0:8000
+          echo "Setting NIX_INSTALL_URL=$NIX_INSTALL_URL"
         fi
 
         if [ -n "${INPUT_LOGGER-}" ]; then
           export HARMONIC_LOGGER=$INPUT_LOGGER
+          echo "Setting HARMONIC_LOGGER=$HARMONIC_LOGGER"
         fi
 
         if [ -n "${INPUT_LOG-DIRECTIVES-}" ]; then
           export HARMONIC_LOG_DIRECTIVES=$INPUT_LOG-DIRECTIVES
+          echo "Setting HARMONIC_LOG_DIRECTIVES=$HARMONIC_LOG_DIRECTIVES"
         fi
 
         if [ -n "${INPUT_BACKTRACE-}" ]; then
           export RUST_BACKTRACE=$INPUT_BACKTRACE
+          echo "Setting RUST_BACKTRACE=$RUST_BACKTRACE"
         fi
 
         curl --retry 20 -L $NIX_INSTALL_URL | sh -s -- install ${INPUT_PLANNER-} ${INPUT_EXTRA-ARGS-}
