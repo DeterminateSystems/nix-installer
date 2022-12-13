@@ -127,7 +127,7 @@
               doCheck = true;
               doDoc = true;
               doDocFail = true;
-              RUSTFLAGS = "--cfg tracing_unstable --cfg tokio_unstable";
+              RUSTFLAGS = "--cfg tokio_unstable";
               cargoTestOptions = f: f ++ [ "--all" ];
 
               override = { preBuild ? "", ... }: {
