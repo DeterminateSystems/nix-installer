@@ -52,7 +52,7 @@ inputs:
     description: A URL pointing to a harmonic `nix-install.sh` script
     required: true
     default: https://install.determinate.systems/nix
-  harmonic-local-root:
+  local-root:
     description: A local `harmonic` binary root, overrides the `nix-install` setting (binaries should be named `harmonic-$ARCH`, eg. `harmonic-$x86_64-linux`)
     required: false
   logger:
@@ -72,111 +72,107 @@ runs:
     - name: Install Nix
       shell: bash
       run: |
-        if [ -n "${INPUT_CHANNELS-}" ]; then
-          export HARMONIC_CHANNELS=$INPUT_CHANNELS
-          echo "Setting HARMONIC_CHANNELS=$HARMONIC_CHANNELS"
+        if [ -n "${{ inputs.channels }}" ]; then
+          export HARMONIC_CHANNELS=${{ inputs.channels }}
+          echo "Set HARMONIC_CHANNELS=$HARMONIC_CHANNELS"
         fi
 
-        if [ -n "${INPUT_MODIFY_PROFILE-}" ]; then
-          export HARMONIC_MODIFY_PROFILE=$INPUT_MODIFY_PROFILE
-          echo "Setting HARMONIC_MODIFY_PROFILE=$HARMONIC_MODIFY_PROFILE"
+        if [ -n "${{ inputs.modify-profile }}" ]; then
+          export HARMONIC_MODIFY_PROFILE=${{ inputs.modify-profile }}
+          echo "Set HARMONIC_MODIFY_PROFILE=$HARMONIC_MODIFY_PROFILE"
         fi
 
-        if [ -n "${INPUT_DAEMON_USER_COUNT-}" ]; then
-          export HARMONIC_DAEMON_USER_COUNT=$INPUT_DAEMON_USER_COUNT
-          echo "Setting HARMONIC_DAEMON_USER_COUNT=$HARMONIC_DAEMON_USER_COUNT"
+        if [ -n "${{ inputs.daemon-user-count }}" ]; then
+          export HARMONIC_DAEMON_USER_COUNT=${{ inputs.daemon-user-count }}
+          echo "Set HARMONIC_DAEMON_USER_COUNT=$HARMONIC_DAEMON_USER_COUNT"
         fi
 
-        if [ -n "${INPUT_NIX_BUILD_GROUP_NAME-}" ]; then
-          export HARMONIC_NIX_BUILD_GROUP_NAME=$INPUT_NIX_BUILD_GROUP_NAME
-          echo "Setting HARMONIC_NIX_BUILD_GROUP_NAME=$HARMONIC_NIX_BUILD_GROUP_NAME"
+        if [ -n "${{ inputs.nix-build-group-name }}" ]; then
+          export HARMONIC_NIX_BUILD_GROUP_NAME=${{ inputs.nix-build-group-name }}
+          echo "Set HARMONIC_NIX_BUILD_GROUP_NAME=$HARMONIC_NIX_BUILD_GROUP_NAME"
         fi
 
-        if [ -n "${INPUT_NIX_BUILD_GROUP_ID-}" ]; then
-          export HARMONIC_NIX_BUILD_GROUP_ID=$INPUT_NIX_BUILD_GROUP_ID
-          echo "Setting HARMONIC_NIX_BUILD_GROUP_ID=$HARMONIC_NIX_BUILD_GROUP_ID"
+        if [ -n "${{ inputs.nix-build-group-id }}" ]; then
+          export HARMONIC_NIX_BUILD_GROUP_ID=${{ inputs.nix-build-group-id }}
+          echo "Set HARMONIC_NIX_BUILD_GROUP_ID=$HARMONIC_NIX_BUILD_GROUP_ID"
         fi
 
-        if [ -n "${INPUT_NIX_BUILD_GROUP_ID-}" ]; then
-          export HARMONIC_NIX_BUILD_USER_PREFIX=$INPUT_NIX_BUILD_GROUP_ID
-          echo "Setting HARMONIC_NIX_BUILD_USER_PREFIX=$HARMONIC_NIX_BUILD_USER_PREFIX"
+        if [ -n "${{ inputs.nix-build-user-prefix }}" ]; then
+          export HARMONIC_NIX_BUILD_USER_ID_BASE=${{ inputs.nix-build-user-prefix }}
+          echo "Set HARMONIC_NIX_BUILD_USER_ID_BASE=$HARMONIC_NIX_BUILD_USER_ID_BASE"
         fi
 
-        if [ -n "${INPUT_NIX_BUILD_USER_BASE-}" ]; then
-          export HARMONIC_NIX_BUILD_USER_ID_BASE=$INPUT_NIX_BUILD_USER_BASE
-          echo "Setting HARMONIC_NIX_BUILD_USER_ID_BASE=$HARMONIC_NIX_BUILD_USER_ID_BASE"
+        if [ -n "${{ inputs.nix-build-user-base }}" ]; then
+          export HARMONIC_NIX_BUILD_USER_PREFIX=${{ inputs.nix-build-user-base }}
+          echo "Set HARMONIC_NIX_BUILD_USER_PREFIX=$HARMONIC_NIX_BUILD_USER_PREFIX"
         fi
 
-        if [ -n "${INPUT_NIX_PACKAGE_URL-}" ]; then
-          export HARMONIC_NIX_PACKAGE_URL=$INPUT_NIX_PACKAGE_URL
-          echo "Setting HARMONIC_NIX_PACKAGE_URL=$HARMONIC_NIX_PACKAGE_URL"
+        if [ -n "${{ inputs.nix-package-url }}" ]; then
+          export HARMONIC_NIX_PACKAGE_URL=${{ inputs.nix-package-url }}
+          echo "Set HARMONIC_NIX_PACKAGE_URL=$HARMONIC_NIX_PACKAGE_URL"
         fi
 
-        if [ -n "${INPUT_EXTRA_CONF-}" ]; then
-          if [ -n "${INPUT_GITHUB_TOKEN-}" ]; then
-            export HARMONIC_EXTRA_CONF="$INPUT_EXTRA_CONF\naccess-tokens = github.com=$INPUT_GITHUB_TOKEN"
+        if [ -n "${{ inputs.nix-package-url }}" ]; then
+          if [ -n "${{ inputsgithub-token }}" ]; then
+            export HARMONIC_EXTRA_CONF="${{ inputs.nix-package-url }}\naccess-tokens = github.com=${{ inputs.github-token }}"
+          else
+            export HARMONIC_EXTRA_CONF="${{ inputs.nix-package-url }}"
           fi
-          export HARMONIC_EXTRA_CONF="$INPUT_EXTRA_CONF"
           echo "Set HARMONIC_EXTRA_CONF=$HARMONIC_EXTRA_CONF"
         else
-          if [ -n "${INPUT_GITHUB-TOKEN-}" ]; then
-            export HARMONIC_EXTRA_CONF="access_tokens = github.com=$INPUT_GITHUB_TOKEN"
+          if [ -n "${{ inputs.nix-package-url }}" ]; then
+            export HARMONIC_EXTRA_CONF="access-tokens = github.com=${{ inputs.github-token }}"
             echo "Set HARMONIC_EXTRA_CONF=$HARMONIC_EXTRA_CONF"
           fi
         fi
 
-        if [ -n "${INPUT_MAC_ENCRYPT-}" ]; then
-          export HARMONIC_ENCRYPT=$INPUT_MAC_ENCRYPT
-          echo "Setting HARMONIC_ENCRYPT=$HARMONIC_ENCRYPT"
+        if [ -n "${{ inputs.mac-encrypt }}" ]; then
+          export HARMONIC_ENCRYPT=${{ inputs.mac-encrypt }}
+          echo "Set HARMONIC_ENCRYPT=$HARMONIC_ENCRYPT"
         fi
 
-        if [ -n "${INPUT_MAC_CASE_SENSITIVE-}" ]; then
-          export HARMONIC_CASE_SENSITIVE=$INPUT_MAC_CASE_SENSITIVE
-          echo "Setting HARMONIC_CASE_SENSITIVE=$HARMONIC_CASE_SENSITIVE"
+        if [ -n "${{ inputs.mac-case-sensitive }}" ]; then
+          export HARMONIC_CASE_SENSITIVE=${{ inputs.mac-case-sensitive }}
+          echo "Set HARMONIC_CASE_SENSITIVE=$HARMONIC_CASE_SENSITIVE"
         fi
 
-        if [ -n "${INPUT_MAC_VOLUME_LABEL-}" ]; then
-          export HARMONIC_VOLUME_LABEL=$INPUT_MAC_VOLUME_LABEL
-          echo "Setting HARMONIC_VOLUME_LABEL=$HARMONIC_VOLUME_LABEL"
+        if [ -n "${{ inputs.mac-volume-label }}" ]; then
+          export HARMONIC_VOLUME_LABEL=${{ inputs.mac-volume-label }}
+          echo "Set HARMONIC_VOLUME_LABEL=$HARMONIC_VOLUME_LABEL"
         fi
 
-        if [ -n "${INPUT_MAC_ROOT_DISK-}" ]; then
-          export HARMONIC_ROOT_DISK=$INPUT_MAC_ROOT_DISK
-          echo "Setting HARMONIC_ROOT_DISK=$HARMONIC_ROOT_DISK"
+        if [ -n "${{ inputs.mac-root-disk }}" ]; then
+          export HARMONIC_ROOT_DISK=${{ inputs.mac-root-disk }}
+          echo "Set HARMONIC_ROOT_DISK=$HARMONIC_ROOT_DISK"
         fi
 
-        if [ -n "${INPUT_MAC_ROOT_DISK-}" ]; then
-          export HARMONIC_ROOT_DISK=$INPUT_MAC_ROOT_DISK
-          echo "Setting HARMONIC_ROOT_DISK=$HARMONIC_ROOT_DISK"
-        fi
-
-        if [ -n "${INPUT_HARMONIC_LOCAL_ROOT-}" ]; then
-          python -m http.server --directory install-root/ --bind 0.0.0.0 8000 &
+        if [ -n "${{ inputs.local-root }}" ]; then
+          python -m http.server --directory ${{ inputs.local-root }} --bind 0.0.0.0 8000 &
           while (! (: </dev/tcp/localhost/8000) &> /dev/null); do
             sleep 1
           done
           export NIX_INSTALL_URL=0.0.0.0:8000
-          echo "Setting NIX_INSTALL_URL=$INPUT_NIX_INSTALL_URL"
+          echo "Set NIX_INSTALL_URL=$NIX_INSTALL_URL"
         else
-          export NIX_INSTALL_URL=$INPUT_NIX_INSTALL_URL
-          echo "Setting NIX_INSTALL_URL=$NIX_INSTALL_URL"
+          export NIX_INSTALL_URL=${{ inputs.nix-install-url }}
+          echo "Set NIX_INSTALL_URL=$NIX_INSTALL_URL"
         fi
 
-        if [ -n "${INPUT_LOGGER-}" ]; then
-          export HARMONIC_LOGGER=$INPUT_LOGGER
-          echo "Setting HARMONIC_LOGGER=$HARMONIC_LOGGER"
+        if [ -n "${{ inputs.logger }}" ]; then
+          export HARMONIC_LOGGER=${{ inputs.logger }}
+          echo "Set HARMONIC_LOGGER=$HARMONIC_LOGGER"
         fi
 
-        if [ -n "${INPUT_LOG_DIRECTIVES-}" ]; then
-          export HARMONIC_LOG_DIRECTIVES=$INPUT_LOG_DIRECTIVES
-          echo "Setting HARMONIC_LOG_DIRECTIVES=$HARMONIC_LOG_DIRECTIVES"
+        if [ -n "${{ inputs.log-directives }}" ]; then
+          export HARMONIC_LOG_DIRECTIVES=${{ inputs.log-directives }}
+          echo "Set HARMONIC_LOG_DIRECTIVES=$HARMONIC_LOG_DIRECTIVES"
         fi
 
-        if [ -n "${INPUT_BACKTRACE-}" ]; then
-          export RUST_BACKTRACE=$INPUT_BACKTRACE
-          echo "Setting RUST_BACKTRACE=$RUST_BACKTRACE"
+        if [ -n "${{ inputs.backtrace }}" ]; then
+          export RUST_BACKTRACE=${{ inputs.backtrace }}
+          echo "Set RUST_BACKTRACE=$RUST_BACKTRACE"
         fi
 
-        curl --retry 20 -L $NIX_INSTALL_URL | sh -s -- install ${INPUT_PLANNER-} ${INPUT_EXTRA-ARGS-}
+        curl --retry 20 -L $NIX_INSTALL_URL | sh -s -- install ${{ inputs.planner }} ${{ inputs.extra-args }}
 
 
