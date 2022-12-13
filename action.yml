@@ -70,6 +70,7 @@ runs:
   using: composite
   steps:
     - name: Install Nix
+      shell: bash
       run: |
         if [ -n "${INPUT_CHANNELS-}" ]; then
           export HARMONIC_CHANNELS=$INPUT_CHANNELS
