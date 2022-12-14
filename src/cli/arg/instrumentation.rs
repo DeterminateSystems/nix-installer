@@ -3,9 +3,8 @@ use eyre::WrapErr;
 use std::error::Error;
 use tracing_error::ErrorLayer;
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt, EnvFilter};
-use valuable::Valuable;
 
-#[derive(Clone, Default, Debug, clap::ValueEnum, Valuable)]
+#[derive(Clone, Default, Debug, clap::ValueEnum)]
 pub enum Logger {
     #[default]
     Compact,
@@ -26,7 +25,7 @@ impl std::fmt::Display for Logger {
     }
 }
 
-#[derive(clap::Args, Debug, Valuable)]
+#[derive(clap::Args, Debug)]
 pub struct Instrumentation {
     /// Enable debug logs, -vv for trace
     #[clap(short = 'v', env = "HARMONIC_VERBOSITY", long, action = clap::ArgAction::Count, global = true)]
