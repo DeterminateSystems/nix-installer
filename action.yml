@@ -147,7 +147,12 @@ runs:
         fi
 
         if [ -n "${{ inputs.local-root }}" ]; then
-          python -m http.server --directory ${{ inputs.local-root }} --bind 0.0.0.0 8000 &
+          if [ "$RUNNER_OS" == "macOS" ]; then
+            export PYTHON="python3"
+          else
+            export PYTHON="python"
+          fi
+          $PYTHON -m http.server --directory ${{ inputs.local-root }} --bind 0.0.0.0 8000 &
           export HTTP_PID=$!
           echo "Started simple http server for ${{ inputs.local-root }} on 0.0.0.0:8000"
           while (! (: </dev/tcp/localhost/8000) &> /dev/null); do
