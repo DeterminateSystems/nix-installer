@@ -100,12 +100,12 @@ impl Planner for SteamDeck {
     }
 
     async fn plan(&self) -> Result<Vec<StatefulAction<Box<dyn Action>>>, PlannerError> {
-        let persistence = &self.persistence.canonicalize().map_err(|e| {
-            PlannerError::Custom(Box::new(SteamDeckError::Canonicalization(
-                self.persistence.clone(),
-                e,
-            )))
-        })?;
+        let persistence = &self.persistence;
+        if persistence.is_absolute() {
+            return Err(PlannerError::Custom(Box::new(
+                SteamDeckError::AbsolutePathRequired(self.persistence.clone()),
+            )));
+        };
 
         let nix_directory_buf = format!(
             "\
@@ -255,6 +255,6 @@ impl Into<BuiltinPlanner> for SteamDeck {
 
 #[derive(thiserror::Error, Debug)]
 enum SteamDeckError {
-    #[error("Canonicalizing `{0}`")]
-    Canonicalization(PathBuf, #[source] std::io::Error),
+    #[error("`{0}` is not an absolute path, bind mounts require an absolute path and it cannot be canonicalized during planning")]
+    AbsolutePathRequired(PathBuf),
 }

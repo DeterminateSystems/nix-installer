@@ -210,7 +210,7 @@ jobs:
           backtrace: full
           github-token: ${{ secrets.GITHUB_TOKEN }}
           planner: steam-deck
-          extra-args: --persistence ./ci-test-nix
+          extra-args: --persistence /home/runner/.ci-test-nix-home
       - name: Initial uninstall (without a `nix run` first)
         run: sudo -E /nix/harmonic uninstall
         env:
@@ -232,8 +232,8 @@ jobs:
             echo "/nix exists"
             exit 1
           fi
-          if [ -e ./ci-test-nix ]; then
-            echo "./ci-test-nix exists"
+          if [ -e /home/runner/.ci-test-nix-home ]; then
+            echo "/home/runner/.ci-test-nix-home exists"
             exit 1
           fi
       - name: Repeated install
@@ -245,7 +245,7 @@ jobs:
           backtrace: full
           github-token: ${{ secrets.GITHUB_TOKEN }}
           planner: steam-deck
-          extra-args: --persistence ./ci-test-nix
+          extra-args: --persistence /home/runner/.ci-test-nix-home
       - name: echo $PATH
         run: echo $PATH
       - name: Test `nix` with `$GITHUB_PATH`
@@ -288,8 +288,8 @@ jobs:
             echo "/nix exists"
             exit 1
           fi
-          if [ -e ./ci-test-nix ]; then
-            echo "./ci-test-nix exists"
+          if [ -e /home/runner/.ci-test-nix-home ]; then
+            echo "/home/runner/.ci-test-nix-home exists"
             exit 1
           fi
 
