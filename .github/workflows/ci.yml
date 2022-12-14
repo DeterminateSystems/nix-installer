@@ -106,6 +106,7 @@ jobs:
           logger: pretty
           log-directives: harmonic=trace
           backtrace: full
+          github-token: ${{ secrets.GITHUB_TOKEN }}
       - name: Initial uninstall (without a `nix run` first)
         run: sudo -E /nix/harmonic uninstall
       - name: Repeated install
@@ -115,6 +116,7 @@ jobs:
           logger: pretty
           log-directives: harmonic=trace
           backtrace: full
+          github-token: ${{ secrets.GITHUB_TOKEN }}
       - name: echo $PATH
         run: echo $PATH
       - name: Test `nix` with `$GITHUB_PATH`
@@ -168,6 +170,7 @@ jobs:
           logger: pretty
           log-directives: harmonic=trace
           backtrace: full
+          github-token: ${{ secrets.GITHUB_TOKEN }}
           planner: steam-deck
           extra-args: --persistence ./ci-test-nix
       - name: Initial uninstall (without a `nix run` first)
@@ -179,6 +182,7 @@ jobs:
           logger: pretty
           log-directives: harmonic=trace
           backtrace: full
+          github-token: ${{ secrets.GITHUB_TOKEN }}
           planner: steam-deck
           extra-args: --persistence ./ci-test-nix
       - name: echo $PATH
@@ -247,6 +251,7 @@ jobs:
           logger: pretty
           log-directives: harmonic=trace
           backtrace: full
+          github-token: ${{ secrets.GITHUB_TOKEN }}
       - name: Initial uninstall (without a `nix run` first)
         run: sudo -E /nix/harmonic uninstall
       - name: Repeated install
@@ -256,6 +261,7 @@ jobs:
           logger: pretty
           log-directives: harmonic=trace
           backtrace: full
+          github-token: ${{ secrets.GITHUB_TOKEN }}
       - name: echo $PATH
         run: echo $PATH
       - name: Test `nix` with `$GITHUB_PATH`
