@@ -178,6 +178,8 @@ runs:
           echo "Set RUST_BACKTRACE=$RUST_BACKTRACE"
         fi
 
-        curl --retry 20 -L $NIX_INSTALL_URL | sh -s -- install ${{ inputs.planner }} ${{ inputs.extra-args }}
+        EXEC="curl --retry 20 -L $NIX_INSTALL_URL | sh -s -- install ${{ inputs.planner }} ${{ inputs.extra-args }}"
+        echo "Executing \`$EXEC\`"
+        $EXEC
 
 
