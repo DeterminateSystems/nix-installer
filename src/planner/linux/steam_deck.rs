@@ -101,7 +101,7 @@ impl Planner for SteamDeck {
 
     async fn plan(&self) -> Result<Vec<StatefulAction<Box<dyn Action>>>, PlannerError> {
         let persistence = &self.persistence;
-        if persistence.is_absolute() {
+        if !persistence.is_absolute() {
             return Err(PlannerError::Custom(Box::new(
                 SteamDeckError::AbsolutePathRequired(self.persistence.clone()),
             )));
