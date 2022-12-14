@@ -112,15 +112,15 @@ runs:
           echo "Set HARMONIC_NIX_PACKAGE_URL=$HARMONIC_NIX_PACKAGE_URL"
         fi
 
-        if [ -n "${{ inputs.nix-package-url }}" ]; then
+        if [ -n "${{ inputs.extra-conf }}" ]; then
           if [ -n "${{ inputs.github-token }}" ]; then
-            export HARMONIC_EXTRA_CONF="${{ inputs.nix-package-url }}\naccess-tokens = github.com=${{ inputs.github-token }}"
+            export HARMONIC_EXTRA_CONF="${{ inputs.extra-conf }}\naccess-tokens = github.com=${{ inputs.github-token }}"
           else
-            export HARMONIC_EXTRA_CONF="${{ inputs.nix-package-url }}"
+            export HARMONIC_EXTRA_CONF="${{ inputs.extra-conf }}"
           fi
           echo "Set HARMONIC_EXTRA_CONF=$HARMONIC_EXTRA_CONF"
         else
-          if [ -n "${{ inputs.nix-package-url }}" ]; then
+          if [ -n "${{ inputs.github-token }}" ]; then
             export HARMONIC_EXTRA_CONF="access-tokens = github.com=${{ inputs.github-token }}"
             echo "Set HARMONIC_EXTRA_CONF=$HARMONIC_EXTRA_CONF"
           fi

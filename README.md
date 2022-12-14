@@ -174,3 +174,27 @@ Documentation is also available via `nix` build:
 nix build github:DeterminateSystems/harmonic#harmonic.doc
 firefox result-doc/harmonic/index.html
 ```
+
+## As a Github Action
+
+You can use Harmonic as a Github action like so:
+
+```yaml
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+jobs:
+  lints:
+    name: Build
+    runs-on: ubuntu-22.04
+    steps:
+    - uses: actions/checkout@v3
+    - name: Install Nix
+      uses: determinatesystems/harmonic@main
+      with:
+        github-token: ${{ secrets.GITHUB_TOKEN }}
+    - name: Build
+      run: nix build .#
+```
