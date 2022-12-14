@@ -23,15 +23,10 @@
     , ...
     } @ inputs:
     let
-      nameValuePair = name: value: { inherit name value; };
-      genAttrs = names: f: builtins.listToAttrs (map (n: nameValuePair n (f n)) names);
-      allSystems = [ "x86_64-linux" "aarch64-linux" "x86_64-darwin" "aarch64-darwin" ];
+      supportedSystems = [ "x86_64-linux" "aarch64-linux" "x86_64-darwin" "aarch64-darwin" ];
 
-      forAllSystems = f: genAttrs allSystems (system: f rec {
-        inherit system;
-        pkgs = import nixpkgs { inherit system; };
-        lib = pkgs.lib;
-      });
+      forAllSystems = f: nixpkgs.lib.genAttrs supportedSystems (system: f system);
+      nixpkgsFor = forAllSystems (system: import nixpkgs { inherit system; overlays = [ self.overlays.default ]; });
 
       fenixToolchain = system: with fenix.packages.${system};
         combine ([
@@ -47,9 +42,60 @@
         ]);
     in
     {
-      devShells = forAllSystems ({ system, pkgs, ... }:
+      overlays.default = final: prev:
+        let
+          toolchain = fenixToolchain final.hostPlatform.system;
+          naerskLib = final.callPackage naersk {
+            cargo = toolchain;
+            rustc = toolchain;
+          };
+          sharedAttrs = {
+            pname = "harmonic";
+            version = "0.0.0-unreleased";
+            src = self;
+
+            nativeBuildInputs = with final; [ ];
+            buildInputs = with final; [ ] ++ lib.optionals (final.stdenv.isDarwin) (with final.darwin.apple_sdk.frameworks; [
+              SystemConfiguration
+            ]);
+
+            doCheck = true;
+            doDoc = true;
+            doDocFail = true;
+            RUSTFLAGS = "--cfg tokio_unstable";
+            cargoTestOptions = f: f ++ [ "--all" ];
+
+            override = { preBuild ? "", ... }: {
+              preBuild = preBuild + ''
+                # logRun "cargo clippy --all-targets --all-features -- -D warnings"
+              '';
+            };
+            postInstall = ''
+              cp nix-install.sh $out/bin/nix-install.sh
+            '';
+          };
+        in
+        rec {
+          harmonic = naerskLib.buildPackage sharedAttrs;
+        } // nixpkgs.lib.optionalAttrs (prev.hostPlatform.system == "x86_64-linux") rec {
+          default = harmonicStatic;
+          harmonicStatic = naerskLib.buildPackage
+            (sharedAttrs // {
+              CARGO_BUILD_TARGET = "x86_64-unknown-linux-musl";
+            });
+        } // nixpkgs.lib.optionalAttrs (prev.hostPlatform.system == "aarch64-linux") rec {
+          default = harmonicStatic;
+          harmonicStatic = naerskLib.buildPackage
+            (sharedAttrs // {
+              CARGO_BUILD_TARGET = "aarch64-unknown-linux-musl";
+            });
+        };
+
+
+      devShells = forAllSystems (system:
         let
           toolchain = fenixToolchain system;
+          pkgs = (nixpkgsFor.${system});
           eclint = import ./nix/eclint.nix { inherit pkgs; };
           check = import ./nix/check.nix { inherit pkgs eclint toolchain; };
         in
@@ -74,11 +120,9 @@
           };
         });
 
-      checks = forAllSystems ({ system, pkgs, ... }:
+      checks = forAllSystems (system:
         let
-          pkgs = import nixpkgs {
-            inherit system;
-          };
+          pkgs = (nixpkgsFor.${system});
           toolchain = fenixToolchain system;
           eclint = import ./nix/eclint.nix { inherit pkgs; };
           check = import ./nix/check.nix { inherit pkgs eclint toolchain; };
@@ -106,56 +150,20 @@
           '';
         });
 
-      packages = forAllSystems
-        ({ system, pkgs, lib, ... }:
-          let
-            naerskLib = pkgs.callPackage naersk {
-              cargo = fenixToolchain system;
-              rustc = fenixToolchain system;
-            };
-
-            sharedAttrs = {
-              pname = "harmonic";
-              version = "0.0.0-unreleased";
-              src = self;
-
-              nativeBuildInputs = with pkgs; [ ];
-              buildInputs = with pkgs; [ ] ++ lib.optionals (pkgs.stdenv.isDarwin) (with pkgs.darwin.apple_sdk.frameworks; [
-                SystemConfiguration
-              ]);
-
-              doCheck = true;
-              doDoc = true;
-              doDocFail = true;
-              RUSTFLAGS = "--cfg tracing_unstable --cfg tokio_unstable";
-              cargoTestOptions = f: f ++ [ "--all" ];
-
-              override = { preBuild ? "", ... }: {
-                preBuild = preBuild + ''
-                  # logRun "cargo clippy --all-targets --all-features -- -D warnings"
-                '';
-              };
-              postInstall = ''
-                cp nix-install.sh $out/bin/nix-install.sh
-              '';
-            };
-          in
-          rec {
-            harmonic = naerskLib.buildPackage
-              (sharedAttrs // { });
-            default = self.packages.${system}.harmonic;
-          } // lib.optionalAttrs (system == "x86_64-linux") rec {
-            default = harmonicStatic;
-            harmonicStatic = naerskLib.buildPackage
-              (sharedAttrs // {
-                CARGO_BUILD_TARGET = "x86_64-unknown-linux-musl";
-              });
-          } // lib.optionalAttrs (system == "aarch64-linux") rec {
-            default = harmonicStatic;
-            harmonicStatic = naerskLib.buildPackage
-              (sharedAttrs // {
-                CARGO_BUILD_TARGET = "aarch64-unknown-linux-musl";
-              });
-          });
+      packages = forAllSystems (system:
+        let
+          pkgs = nixpkgsFor.${system};
+        in
+        {
+          inherit (pkgs) harmonic;
+        } // nixpkgs.lib.optionalAttrs (system == "x86_64-linux") {
+          inherit (pkgs) harmonicStatic;
+          default = pkgs.harmonicStatic;
+        } // nixpkgs.lib.optionalAttrs (system == "aarch64-linux") {
+          inherit (pkgs) harmonicStatic;
+          default = pkgs.harmonicStatic;
+        } // nixpkgs.lib.optionalAttrs (pkgs.stdenv.isDarwin) {
+          default = pkgs.harmonic;
+        });
     };
 }
