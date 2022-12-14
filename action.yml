@@ -148,6 +148,7 @@ runs:
 
         if [ -n "${{ inputs.local-root }}" ]; then
           python -m http.server --directory ${{ inputs.local-root }} --bind 0.0.0.0 8000 &
+          export HTTP_PID=$!
           echo "Started simple http server for ${{ inputs.local-root }} on 0.0.0.0:8000"
           while (! (: </dev/tcp/localhost/8000) &> /dev/null); do
             sleep 1
@@ -183,5 +184,10 @@ runs:
         echo "Set HARMONIC_NO_CONFIRM=$HARMONIC_NO_CONFIRM"
 
         curl --retry 20 -L $NIX_INSTALL_URL | sh -s -- install ${{ inputs.planner }} ${{ inputs.extra-args }}
+
+        if [ -n "$HTTP_PID" ]; then
+          kill $HTTP_PID
+        fi
+
 
 

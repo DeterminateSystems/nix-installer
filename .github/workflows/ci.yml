@@ -111,6 +111,9 @@ jobs:
         run: sudo -E /nix/harmonic uninstall
         env:
           HARMONIC_NO_CONFIRM: true
+          HARMONIC_LOGGER: pretty
+          HARMONIC_LOG_DIRECTIVES: harmonic=trace
+          RUST_BACKTRACE: full
       - name: Repeated install
         uses: ./
         with:
@@ -144,6 +147,9 @@ jobs:
         run: sudo -E /nix/harmonic uninstall
         env:
           HARMONIC_NO_CONFIRM: true
+          HARMONIC_LOGGER: pretty
+          HARMONIC_LOG_DIRECTIVES: harmonic=trace
+          RUST_BACKTRACE: full
 
   run-steam-deck:
     name: Run Steam Deck (mock)
@@ -181,6 +187,9 @@ jobs:
         run: sudo -E /nix/harmonic uninstall
         env:
           HARMONIC_NO_CONFIRM: true
+          HARMONIC_LOGGER: pretty
+          HARMONIC_LOG_DIRECTIVES: harmonic=trace
+          RUST_BACKTRACE: full
       - name: Repeated install
         uses: ./
         with:
@@ -216,6 +225,9 @@ jobs:
         run: sudo -E /nix/harmonic uninstall
         env:
           HARMONIC_NO_CONFIRM: true
+          HARMONIC_LOGGER: pretty
+          HARMONIC_LOG_DIRECTIVES: harmonic=trace
+          RUST_BACKTRACE: full
 
   build-x86_64-darwin:
     name: Build x86_64 Darwin
@@ -264,6 +276,9 @@ jobs:
         run: sudo -E /nix/harmonic uninstall
         env:
           HARMONIC_NO_CONFIRM: true
+          HARMONIC_LOGGER: pretty
+          HARMONIC_LOG_DIRECTIVES: harmonic=trace
+          RUST_BACKTRACE: full
       - name: Repeated install
         uses: ./
         with:
@@ -297,4 +312,7 @@ jobs:
         run: sudo -E /nix/harmonic uninstall
         env:
           HARMONIC_NO_CONFIRM: true
+          HARMONIC_LOGGER: pretty
+          HARMONIC_LOG_DIRECTIVES: harmonic=trace
+          RUST_BACKTRACE: full
         
