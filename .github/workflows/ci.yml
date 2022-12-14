@@ -115,7 +115,7 @@ jobs:
           HARMONIC_LOG_DIRECTIVES: harmonic=trace
           RUST_BACKTRACE: full
       - name: Ensure `nix` is removed
-        run:
+        run: |
           if systemctl is-active nix-daemon.socket; then
             echo "nix-daemon.socket was still running"
             exit 1
@@ -165,7 +165,7 @@ jobs:
           HARMONIC_LOG_DIRECTIVES: harmonic=trace
           RUST_BACKTRACE: full
       - name: Ensure `nix` is removed
-        run:
+        run: |
           if systemctl is-active nix-daemon.socket; then
             echo "nix-daemon.socket was still running"
             exit 1
@@ -219,7 +219,7 @@ jobs:
           HARMONIC_LOG_DIRECTIVES: harmonic=trace
           RUST_BACKTRACE: full
       - name: Ensure `nix` is removed
-        run:
+        run: |
           if systemctl is-active nix-daemon.socket; then
             echo "nix-daemon.socket was still running"
             exit 1
@@ -271,7 +271,7 @@ jobs:
           HARMONIC_LOG_DIRECTIVES: harmonic=trace
           RUST_BACKTRACE: full
       - name: Ensure `nix` is removed
-        run:
+        run: |
           if systemctl is-active nix-daemon.socket; then
             echo "nix-daemon.socket was still running"
             exit 1
