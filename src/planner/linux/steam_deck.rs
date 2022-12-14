@@ -203,6 +203,10 @@ impl Planner for SteamDeck {
                 .await
                 .map_err(PlannerError::Action)?
                 .boxed(),
+            CreateDirectory::plan("/home/nix", None, None, 0o0755, true)
+                .await
+                .map_err(PlannerError::Action)?
+                .boxed(),
             nix_directory_unit.boxed(),
             create_bind_mount_unit.boxed(),
             ensure_symlinked_units_resolve_unit.boxed(),
