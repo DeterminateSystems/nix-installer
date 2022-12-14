@@ -114,6 +114,20 @@ jobs:
           HARMONIC_LOGGER: pretty
           HARMONIC_LOG_DIRECTIVES: harmonic=trace
           RUST_BACKTRACE: full
+      - name: Ensure `nix` is removed
+        run:
+          if systemctl is-active nix-daemon.socket; then
+            echo "nix-daemon.socket was still running"
+            exit 1
+          fi
+          if systemctl is-active nix-daemon.service; then
+            echo "nix-daemon.service was still running"
+            exit 1
+          fi
+          if [ -e /nix ]; then
+            echo "/nix exists"
+            exit 1
+          fi
       - name: Repeated install
         uses: ./
         with:
@@ -150,6 +164,20 @@ jobs:
           HARMONIC_LOGGER: pretty
           HARMONIC_LOG_DIRECTIVES: harmonic=trace
           RUST_BACKTRACE: full
+      - name: Ensure `nix` is removed
+        run:
+          if systemctl is-active nix-daemon.socket; then
+            echo "nix-daemon.socket was still running"
+            exit 1
+          fi
+          if systemctl is-active nix-daemon.service; then
+            echo "nix-daemon.service was still running"
+            exit 1
+          fi
+          if [ -e /nix ]; then
+            echo "/nix exists"
+            exit 1
+          fi
 
   run-steam-deck:
     name: Run Steam Deck (mock)
@@ -190,6 +218,20 @@ jobs:
           HARMONIC_LOGGER: pretty
           HARMONIC_LOG_DIRECTIVES: harmonic=trace
           RUST_BACKTRACE: full
+      - name: Ensure `nix` is removed
+        run:
+          if systemctl is-active nix-daemon.socket; then
+            echo "nix-daemon.socket was still running"
+            exit 1
+          fi
+          if systemctl is-active nix-daemon.service; then
+            echo "nix-daemon.service was still running"
+            exit 1
+          fi
+          if [ -e /nix ]; then
+            echo "/nix exists"
+            exit 1
+          fi
       - name: Repeated install
         uses: ./
         with:
@@ -228,6 +270,20 @@ jobs:
           HARMONIC_LOGGER: pretty
           HARMONIC_LOG_DIRECTIVES: harmonic=trace
           RUST_BACKTRACE: full
+      - name: Ensure `nix` is removed
+        run:
+          if systemctl is-active nix-daemon.socket; then
+            echo "nix-daemon.socket was still running"
+            exit 1
+          fi
+          if systemctl is-active nix-daemon.service; then
+            echo "nix-daemon.service was still running"
+            exit 1
+          fi
+          if [ -e /nix ]; then
+            echo "/nix exists"
+            exit 1
+          fi
 
   build-x86_64-darwin:
     name: Build x86_64 Darwin
