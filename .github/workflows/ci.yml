@@ -232,6 +232,10 @@ jobs:
             echo "/nix exists"
             exit 1
           fi
+          if [ -e ./ci-test-nix ]; then
+            echo "./ci-test-nix exists"
+            exit 1
+          fi
       - name: Repeated install
         uses: ./
         with:
@@ -282,6 +286,10 @@ jobs:
           fi
           if [ -e /nix ]; then
             echo "/nix exists"
+            exit 1
+          fi
+          if [ -e ./ci-test-nix ]; then
+            echo "./ci-test-nix exists"
             exit 1
           fi
 

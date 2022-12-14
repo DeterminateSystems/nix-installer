@@ -100,7 +100,12 @@ impl Planner for SteamDeck {
     }
 
     async fn plan(&self) -> Result<Vec<StatefulAction<Box<dyn Action>>>, PlannerError> {
-        let persistence = &self.persistence;
+        let persistence = &self.persistence.canonicalize().map_err(|e| {
+            PlannerError::Custom(Box::new(SteamDeckError::Canonicalization(
+                self.persistence.clone(),
+                e,
+            )))
+        })?;
 
         let nix_directory_buf = format!(
             "\
@@ -246,4 +251,10 @@ impl Into<BuiltinPlanner> for SteamDeck {
     fn into(self) -> BuiltinPlanner {
         BuiltinPlanner::SteamDeck(self)
     }
+}
+
+#[derive(thiserror::Error, Debug)]
+enum SteamDeckError {
+    #[error("Canonicalizing `{0}`")]
+    Canonicalization(PathBuf, #[source] std::io::Error),
 }
