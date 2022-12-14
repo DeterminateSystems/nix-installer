@@ -154,8 +154,8 @@ runs:
           done
           export NIX_INSTALL_URL=0.0.0.0:8000/nix-install.sh
           echo "Set NIX_INSTALL_URL=$NIX_INSTALL_URL/nix-install.sh"
-          export NIX_INSTALL_UPDATE_ROOT=http://0.0.0.0:8000/
-          echo "Set NIX_INSTALL_UPDATE_ROOT=$NIX_INSTALL_UPDATE_ROOT"
+          export NIX_INSTALL_BINARY_ROOT=http://0.0.0.0:8000/
+          echo "Set NIX_INSTALL_BINARY_ROOT=$NIX_INSTALL_BINARY_ROOT"
           export NIX_INSTALL_FORCE_ALLOW_HTTP=1
           echo "Set NIX_INSTALL_FORCE_ALLOW_HTTP=$NIX_INSTALL_FORCE_ALLOW_HTTP"
         else

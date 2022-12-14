@@ -21,8 +21,8 @@ fi
 
 set -u
 
-# If NIX_INSTALL_UPDATE_ROOT is unset or empty, default it.
-NIX_INSTALL_UPDATE_ROOT="${NIX_INSTALL_UPDATE_ROOT:-https://install.determinate.systems/nix}"
+# If NIX_INSTALL_BINARY_ROOT is unset or empty, default it.
+NIX_INSTALL_BINARY_ROOT="${NIX_INSTALL_BINARY_ROOT:-https://install.determinate.systems/nix}"
 
 main() {
     downloader --check
@@ -44,7 +44,7 @@ main() {
             ;;
     esac
 
-    local _url="${NIX_INSTALL_OVERRIDE_URL-${NIX_INSTALL_UPDATE_ROOT}/harmonic-${_arch}${_ext}}"
+    local _url="${NIX_INSTALL_OVERRIDE_URL-${NIX_INSTALL_BINARY_ROOT}/harmonic-${_arch}${_ext}}"
 
     local _dir
     if ! _dir="$(ensure mktemp -d)"; then
