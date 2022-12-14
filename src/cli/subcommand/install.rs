@@ -136,12 +136,29 @@ impl CommandExecute for Install {
                 if let Some(expected) = err.expected() {
                     was_expected = true;
                     eprintln!("{}", expected.red())
+                } else {
+                    println!(
+                        "\
+                        {success}\n\
+                        To get started using Nix, open a new shell or run `{shell_reminder}`\n\
+                        ",
+                        success = "Nix was installed successfully!".green().bold(),
+                        shell_reminder = match std::env::var("SHELL") {
+                            Ok(val) if val.contains("fish") =>
+                                ". /nix/var/nix/profiles/default/etc/profile.d/nix-daemon.fish"
+                                    .bold(),
+                            Ok(_) | Err(_) =>
+                                ". /nix/var/nix/profiles/default/etc/profile.d/nix-daemon.sh".bold(),
+                        },
+                    );
                 }
+
                 if !was_expected {
                     let error = eyre!(err).wrap_err("Install failure");
                     tracing::error!("{:?}", error);
                 };
 
+                eprintln!("{}", "Installation failure, offering to revert...".red());
                 if !interaction::confirm(
                     install_plan
                         .describe_uninstall(explain)
@@ -161,6 +178,15 @@ impl CommandExecute for Install {
                         return Ok(ExitCode::FAILURE);
                     }
                     return Err(e.into());
+                } else {
+                    println!(
+                        "\
+                        {message}\n\
+                        ",
+                        message = "Partial Nix install was uninstalled successfully!"
+                            .white()
+                            .bold(),
+                    );
                 }
             } else {
                 if let Some(expected) = err.expected() {
@@ -172,20 +198,6 @@ impl CommandExecute for Install {
                 return Err(error);
             }
         }
-
-        println!(
-            "\
-            {success}\n\
-            To get started using Nix, open a new shell or run `{shell_reminder}`\n\
-            ",
-            success = "Nix was installed successfully!".green().bold(),
-            shell_reminder = match std::env::var("SHELL") {
-                Ok(val) if val.contains("fish") =>
-                    ". /nix/var/nix/profiles/default/etc/profile.d/nix-daemon.fish".bold(),
-                Ok(_) | Err(_) =>
-                    ". /nix/var/nix/profiles/default/etc/profile.d/nix-daemon.sh".bold(),
-            },
-        );
 
         Ok(ExitCode::SUCCESS)
     }

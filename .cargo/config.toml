@@ -1,2 +1,2 @@
 [build]
-rustflags=["--cfg", "tracing_unstable", "--cfg", "tokio_unstable"]
+rustflags=["--cfg", "tokio_unstable"]
