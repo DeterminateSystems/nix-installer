@@ -11,6 +11,7 @@ use crate::{
     Action, BuiltinPlanner,
 };
 use std::{collections::HashMap, path::Path};
+use tokio::process::Command;
 
 /// A planner for Linux multi-user installs
 #[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
@@ -37,7 +38,7 @@ impl Planner for LinuxMulti {
         }
 
         // For now, we don't try to repair the user's Nix install or anything special.
-        if let Ok(_) = tokio::process::Command::new("nix-env")
+        if let Ok(_) = Command::new("nix-env")
             .arg("--version")
             .stdin(std::process::Stdio::null())
             .status()

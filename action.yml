@@ -178,6 +178,10 @@ runs:
           echo "Set RUST_BACKTRACE=$RUST_BACKTRACE"
         fi
 
+
+        export HARMONIC_NO_CONFIRM=1
+        echo "Set HARMONIC_NO_CONFIRM=$HARMONIC_NO_CONFIRM"
+
         EXEC="curl --retry 20 -L $NIX_INSTALL_URL | sh -s -- install ${{ inputs.planner }} ${{ inputs.extra-args }}"
         echo "Executing \`$EXEC\`"
         $EXEC
