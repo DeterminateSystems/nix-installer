@@ -179,7 +179,7 @@ runs:
         fi
 
 
-        export HARMONIC_NO_CONFIRM=1
+        export HARMONIC_NO_CONFIRM=true
         echo "Set HARMONIC_NO_CONFIRM=$HARMONIC_NO_CONFIRM"
 
         curl --retry 20 -L $NIX_INSTALL_URL | sh -s -- install ${{ inputs.planner }} ${{ inputs.extra-args }}
