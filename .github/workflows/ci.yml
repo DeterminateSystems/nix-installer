@@ -109,6 +109,8 @@ jobs:
           github-token: ${{ secrets.GITHUB_TOKEN }}
       - name: Initial uninstall (without a `nix run` first)
         run: sudo -E /nix/harmonic uninstall
+        env:
+          HARMONIC_NO_CONFIRM: true
       - name: Repeated install
         uses: ./
         with:
@@ -140,6 +142,8 @@ jobs:
         shell: fish --login {0}
       - name: Repeated uninstall
         run: sudo -E /nix/harmonic uninstall
+        env:
+          HARMONIC_NO_CONFIRM: true
 
   run-steam-deck:
     name: Run Steam Deck (mock)
@@ -175,6 +179,8 @@ jobs:
           extra-args: --persistence ./ci-test-nix
       - name: Initial uninstall (without a `nix run` first)
         run: sudo -E /nix/harmonic uninstall
+        env:
+          HARMONIC_NO_CONFIRM: true
       - name: Repeated install
         uses: ./
         with:
@@ -208,6 +214,8 @@ jobs:
         shell: fish --login {0}
       - name: Repeated uninstall
         run: sudo -E /nix/harmonic uninstall
+        env:
+          HARMONIC_NO_CONFIRM: true
 
   build-x86_64-darwin:
     name: Build x86_64 Darwin
@@ -254,6 +262,8 @@ jobs:
           github-token: ${{ secrets.GITHUB_TOKEN }}
       - name: Initial uninstall (without a `nix run` first)
         run: sudo -E /nix/harmonic uninstall
+        env:
+          HARMONIC_NO_CONFIRM: true
       - name: Repeated install
         uses: ./
         with:
@@ -285,4 +295,6 @@ jobs:
         shell: fish --login {0}
       - name: Repeated uninstall
         run: sudo -E /nix/harmonic uninstall
+        env:
+          HARMONIC_NO_CONFIRM: true
         
