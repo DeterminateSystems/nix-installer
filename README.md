@@ -195,6 +195,6 @@ jobs:
       uses: determinatesystems/harmonic@main
       with:
         github-token: ${{ secrets.GITHUB_TOKEN }}
-    - name: Build
-      run: nix build .#
+    - name: Run `nix build`
+      run: nix build .
 ```
