@@ -67,6 +67,7 @@ impl Action for CreateFile {
         user = self.user,
         group = self.group,
         mode = self.mode.map(|v| tracing::field::display(format!("{:#o}", v))),
+        buf = tracing::field::Empty,
     ))]
     async fn execute(&mut self) -> Result<(), ActionError> {
         let Self {
@@ -77,6 +78,11 @@ impl Action for CreateFile {
             buf,
             force: _,
         } = self;
+
+        if tracing::enabled!(tracing::Level::TRACE) {
+            let span = tracing::Span::current();
+            span.record("buf", &buf);
+        }
 
         let mut options = OpenOptions::new();
         options.create_new(true).write(true).read(true);
