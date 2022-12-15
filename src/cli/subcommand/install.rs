@@ -9,6 +9,7 @@ use crate::{
     error::HasExpectedErrors,
     plan::RECEIPT_LOCATION,
     planner::Planner,
+    settings::CommonSettings,
     BuiltinPlanner, InstallPlan,
 };
 use clap::{ArgAction, Parser};
@@ -29,6 +30,9 @@ pub struct Install {
         global = true
     )]
     pub no_confirm: bool,
+
+    #[clap(flatten)]
+    pub settings: CommonSettings,
 
     #[clap(
         long,
@@ -53,6 +57,7 @@ impl CommandExecute for Install {
             no_confirm,
             plan,
             planner,
+            settings,
             explain,
         } = self;
 
@@ -97,7 +102,7 @@ impl CommandExecute for Install {
                 serde_json::from_str(&install_plan_string)?
             },
             (None, None) => {
-                let builtin_planner = BuiltinPlanner::default()
+                let builtin_planner = BuiltinPlanner::from_common_settings(settings)
                     .await
                     .map_err(|e| eyre::eyre!(e))?;
                 let res = builtin_planner.plan().await;

@@ -61,26 +61,44 @@ pub struct CommonSettings {
     /// Number of build users to create
     #[cfg_attr(
         feature = "cli",
-        clap(long, default_value = "32", env = "HARMONIC_DAEMON_USER_COUNT")
+        clap(
+            long,
+            default_value = "32",
+            env = "HARMONIC_DAEMON_USER_COUNT",
+            global = true
+        )
     )]
     pub(crate) daemon_user_count: usize,
 
     /// The Nix build group name
     #[cfg_attr(
         feature = "cli",
-        clap(long, default_value = "nixbld", env = "HARMONIC_NIX_BUILD_GROUP_NAME")
+        clap(
+            long,
+            default_value = "nixbld",
+            env = "HARMONIC_NIX_BUILD_GROUP_NAME",
+            global = true
+        )
     )]
     pub(crate) nix_build_group_name: String,
 
     /// The Nix build group GID
     #[cfg_attr(
         feature = "cli",
-        clap(long, default_value_t = 3000, env = "HARMONIC_NIX_BUILD_GROUP_ID")
+        clap(
+            long,
+            default_value_t = 3000,
+            env = "HARMONIC_NIX_BUILD_GROUP_ID",
+            global = true
+        )
     )]
     pub(crate) nix_build_group_id: usize,
 
     /// The Nix build user prefix (user numbers will be postfixed)
-    #[cfg_attr(feature = "cli", clap(long, env = "HARMONIC_NIX_BUILD_USER_PREFIX"))]
+    #[cfg_attr(
+        feature = "cli",
+        clap(long, env = "HARMONIC_NIX_BUILD_USER_PREFIX", global = true)
+    )]
     #[cfg_attr(
         all(target_os = "macos", feature = "cli"),
         clap(default_value = "_nixbld")
@@ -92,7 +110,10 @@ pub struct CommonSettings {
     pub(crate) nix_build_user_prefix: String,
 
     /// The Nix build user base UID (ascending)
-    #[cfg_attr(feature = "cli", clap(long, env = "HARMONIC_NIX_BUILD_USER_ID_BASE"))]
+    #[cfg_attr(
+        feature = "cli",
+        clap(long, env = "HARMONIC_NIX_BUILD_USER_ID_BASE", global = true)
+    )]
     #[cfg_attr(all(target_os = "macos", feature = "cli"), clap(default_value_t = 300))]
     #[cfg_attr(
         all(target_os = "linux", feature = "cli"),
@@ -101,7 +122,10 @@ pub struct CommonSettings {
     pub(crate) nix_build_user_id_base: usize,
 
     /// The Nix package URL
-    #[cfg_attr(feature = "cli", clap(long, env = "HARMONIC_NIX_PACKAGE_URL"))]
+    #[cfg_attr(
+        feature = "cli",
+        clap(long, env = "HARMONIC_NIX_PACKAGE_URL", global = true)
+    )]
     #[cfg_attr(
         all(target_os = "macos", target_arch = "x86_64", feature = "cli"),
         clap(
@@ -129,7 +153,7 @@ pub struct CommonSettings {
     pub(crate) nix_package_url: Url,
 
     /// Extra configuration lines for `/etc/nix.conf`
-    #[cfg_attr(feature = "cli", clap(long, env = "HARMONIC_EXTRA_CONF"))]
+    #[cfg_attr(feature = "cli", clap(long, action = ArgAction::Set, num_args = 0.., value_delimiter = ',', env = "HARMONIC_EXTRA_CONF", global = true))]
     pub extra_conf: Vec<String>,
 
     /// If Harmonic should forcibly recreate files it finds existing
