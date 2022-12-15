@@ -11,6 +11,7 @@ use std::{
     time::Duration,
 };
 use tokio::process::Command;
+use tracing::{span, Span};
 
 pub const NIX_VOLUME_MOUNTD_DEST: &str = "/Library/LaunchDaemons/org.nixos.darwin-store.plist";
 
@@ -143,6 +144,15 @@ impl Action for CreateNixVolume {
         )
     }
 
+    fn tracing_span(&self) -> Span {
+        span!(
+            tracing::Level::DEBUG,
+            "create_apfs_volume",
+            disk = tracing::field::display(self.disk.display()),
+            name = self.name
+        )
+    }
+
     fn execute_description(&self) -> Vec<ActionDescription> {
         let Self {
             disk: _, name: _, ..
@@ -150,7 +160,7 @@ impl Action for CreateNixVolume {
         vec![ActionDescription::new(self.tracing_synopsis(), vec![])]
     }
 
-    #[tracing::instrument(level = "debug", skip_all, fields(destination,))]
+    #[tracing::instrument(level = "debug", skip_all)]
     async fn execute(&mut self) -> Result<(), ActionError> {
         let Self {
             disk: _,
@@ -213,7 +223,7 @@ impl Action for CreateNixVolume {
         )]
     }
 
-    #[tracing::instrument(level = "debug", skip_all, fields(disk, name))]
+    #[tracing::instrument(level = "debug", skip_all)]
     async fn revert(&mut self) -> Result<(), ActionError> {
         let Self {
             disk: _,

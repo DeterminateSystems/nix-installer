@@ -1,4 +1,5 @@
 use tokio::process::Command;
+use tracing::{span, Span};
 
 use crate::action::{ActionError, StatefulAction};
 use crate::execute_command;
@@ -28,13 +29,19 @@ impl Action for KickstartLaunchctlService {
         format!("Kickstart the launchctl unit `{unit}`")
     }
 
+    fn tracing_span(&self) -> Span {
+        span!(
+            tracing::Level::DEBUG,
+            "kickstart_launchctl_service",
+            unit = %self.unit,
+        )
+    }
+
     fn execute_description(&self) -> Vec<ActionDescription> {
         vec![ActionDescription::new(self.tracing_synopsis(), vec![])]
     }
 
-    #[tracing::instrument(level = "debug", skip_all, fields(
-        unit = %self.unit,
-    ))]
+    #[tracing::instrument(level = "debug", skip_all)]
     async fn execute(&mut self) -> Result<(), ActionError> {
         let Self { unit } = self;
 
@@ -56,9 +63,7 @@ impl Action for KickstartLaunchctlService {
         vec![]
     }
 
-    #[tracing::instrument(level = "debug", skip_all, fields(
-        unit = %self.unit,
-    ))]
+    #[tracing::instrument(level = "debug", skip_all)]
     async fn revert(&mut self) -> Result<(), ActionError> {
         // noop
         Ok(())

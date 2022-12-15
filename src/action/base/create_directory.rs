@@ -4,6 +4,7 @@ use std::path::{Path, PathBuf};
 use nix::unistd::{chown, Group, User};
 
 use tokio::fs::{create_dir, remove_dir_all};
+use tracing::{span, Span};
 
 use crate::action::{Action, ActionDescription, ActionState};
 use crate::action::{ActionError, StatefulAction};
@@ -74,16 +75,24 @@ impl Action for CreateDirectory {
         format!("Create directory `{}`", self.path.display())
     }
 
+    fn tracing_span(&self) -> Span {
+        span!(
+            tracing::Level::DEBUG,
+            "create_directory",
+            path = tracing::field::display(self.path.display()),
+            user = self.user,
+            group = self.group,
+            mode = self
+                .mode
+                .map(|v| tracing::field::display(format!("{:#o}", v))),
+        )
+    }
+
     fn execute_description(&self) -> Vec<ActionDescription> {
         vec![ActionDescription::new(self.tracing_synopsis(), vec![])]
     }
 
-    #[tracing::instrument(level = "debug", skip_all, fields(
-        path = %self.path.display(),
-        user = self.user,
-        group = self.group,
-        mode = self.mode.map(|v| tracing::field::display(format!("{:#o}", v))),
-    ))]
+    #[tracing::instrument(level = "debug", skip_all)]
     async fn execute(&mut self) -> Result<(), ActionError> {
         let Self {
             path,
@@ -150,12 +159,7 @@ impl Action for CreateDirectory {
         )]
     }
 
-    #[tracing::instrument(level = "debug", skip_all, fields(
-        path = %self.path.display(),
-        user = self.user,
-        group = self.group,
-        mode = self.mode.map(|v| tracing::field::display(format!("{:#o}", v))),
-    ))]
+    #[tracing::instrument(level = "debug", skip_all)]
     async fn revert(&mut self) -> Result<(), ActionError> {
         let Self {
             path,

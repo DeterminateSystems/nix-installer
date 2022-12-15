@@ -6,6 +6,7 @@ use crate::{
     settings::CommonSettings,
 };
 use tokio::task::JoinSet;
+use tracing::{span, Instrument, Span};
 
 #[derive(Debug, serde::Deserialize, serde::Serialize, Clone)]
 pub struct CreateUsersAndGroups {
@@ -62,6 +63,18 @@ impl Action for CreateUsersAndGroups {
         )
     }
 
+    fn tracing_span(&self) -> Span {
+        span!(
+            tracing::Level::DEBUG,
+            "create_users_and_group",
+            daemon_user_count = self.daemon_user_count,
+            nix_build_group_name = self.nix_build_group_name,
+            nix_build_group_id = self.nix_build_group_id,
+            nix_build_user_prefix = self.nix_build_user_prefix,
+            nix_build_user_id_base = self.nix_build_user_id_base,
+        )
+    }
+
     fn execute_description(&self) -> Vec<ActionDescription> {
         let Self {
             daemon_user_count: _,
@@ -91,13 +104,7 @@ impl Action for CreateUsersAndGroups {
         vec![ActionDescription::new(self.tracing_synopsis(), explanation)]
     }
 
-    #[tracing::instrument(level = "debug", skip_all, fields(
-        daemon_user_count = self.daemon_user_count,
-        nix_build_group_name = self.nix_build_group_name,
-        nix_build_group_id = self.nix_build_group_id,
-        nix_build_user_prefix = self.nix_build_user_prefix,
-        nix_build_user_id_base = self.nix_build_user_id_base,
-    ))]
+    #[tracing::instrument(level = "debug", skip_all)]
     async fn execute(&mut self) -> Result<(), ActionError> {
         let Self {
             create_users,
@@ -129,9 +136,10 @@ impl Action for CreateUsersAndGroups {
                 let mut set = JoinSet::new();
                 let mut errors: Vec<Box<ActionError>> = Vec::new();
                 for (idx, create_user) in create_users.iter_mut().enumerate() {
+                    let span = tracing::Span::current().clone();
                     let mut create_user_clone = create_user.clone();
                     let _abort_handle = set.spawn(async move {
-                        create_user_clone.try_execute().await?;
+                        create_user_clone.try_execute().instrument(span).await?;
                         Result::<_, _>::Ok((idx, create_user_clone))
                     });
                 }
@@ -188,13 +196,7 @@ impl Action for CreateUsersAndGroups {
         )]
     }
 
-    #[tracing::instrument(level = "debug", skip_all, fields(
-        daemon_user_count = self.daemon_user_count,
-        nix_build_group_name = self.nix_build_group_name,
-        nix_build_group_id = self.nix_build_group_id,
-        nix_build_user_prefix = self.nix_build_user_prefix,
-        nix_build_user_id_base = self.nix_build_user_id_base,
-    ))]
+    #[tracing::instrument(level = "debug", skip_all)]
     async fn revert(&mut self) -> Result<(), ActionError> {
         let Self {
             create_users,
@@ -210,9 +212,10 @@ impl Action for CreateUsersAndGroups {
         let mut errors = Vec::default();
 
         for (idx, create_user) in create_users.iter().enumerate() {
+            let span = tracing::Span::current().clone();
             let mut create_user_clone = create_user.clone();
             let _abort_handle = set.spawn(async move {
-                create_user_clone.try_revert().await?;
+                create_user_clone.try_revert().instrument(span).await?;
                 Result::<_, ActionError>::Ok((idx, create_user_clone))
             });
         }

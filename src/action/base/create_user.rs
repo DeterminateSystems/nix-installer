@@ -1,4 +1,5 @@
 use tokio::process::Command;
+use tracing::{span, Span};
 
 use crate::action::ActionError;
 use crate::execute_command;
@@ -38,6 +39,18 @@ impl Action for CreateUser {
             self.name, self.uid, self.groupname, self.gid
         )
     }
+
+    fn tracing_span(&self) -> Span {
+        span!(
+            tracing::Level::DEBUG,
+            "create_user",
+            user = self.name,
+            uid = self.uid,
+            groupname = self.groupname,
+            gid = self.gid,
+        )
+    }
+
     fn execute_description(&self) -> Vec<ActionDescription> {
         vec![ActionDescription::new(
             self.tracing_synopsis(),
@@ -47,12 +60,7 @@ impl Action for CreateUser {
         )]
     }
 
-    #[tracing::instrument(level = "debug", skip_all, fields(
-        user = self.name,
-        uid = self.uid,
-        groupname = self.groupname,
-        gid = self.gid,
-    ))]
+    #[tracing::instrument(level = "debug", skip_all)]
     async fn execute(&mut self) -> Result<(), ActionError> {
         let Self {
             name,
@@ -231,11 +239,7 @@ impl Action for CreateUser {
         )]
     }
 
-    #[tracing::instrument(level = "debug", skip_all, fields(
-        user = self.name,
-        uid = self.uid,
-        gid = self.gid,
-    ))]
+    #[tracing::instrument(level = "debug", skip_all)]
     async fn revert(&mut self) -> Result<(), ActionError> {
         let Self {
             name,

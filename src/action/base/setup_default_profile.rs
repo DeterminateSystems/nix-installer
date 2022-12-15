@@ -6,6 +6,7 @@ use crate::{
 use glob::glob;
 
 use tokio::process::Command;
+use tracing::{span, Span};
 
 use crate::action::{Action, ActionDescription};
 
@@ -31,13 +32,19 @@ impl Action for SetupDefaultProfile {
         "Setup the default Nix profile".to_string()
     }
 
+    fn tracing_span(&self) -> Span {
+        span!(
+            tracing::Level::DEBUG,
+            "setup_default_profile",
+            channels = self.channels.join(","),
+        )
+    }
+
     fn execute_description(&self) -> Vec<ActionDescription> {
         vec![ActionDescription::new(self.tracing_synopsis(), vec![])]
     }
 
-    #[tracing::instrument(level = "debug", skip_all, fields(
-        channels = %self.channels.join(","),
-    ))]
+    #[tracing::instrument(level = "debug", skip_all)]
     async fn execute(&mut self) -> Result<(), ActionError> {
         let Self { channels } = self;
 
@@ -156,9 +163,7 @@ impl Action for SetupDefaultProfile {
         )]
     }
 
-    #[tracing::instrument(level = "debug", skip_all, fields(
-        channels = %self.channels.join(","),
-    ))]
+    #[tracing::instrument(level = "debug", skip_all)]
     async fn revert(&mut self) -> Result<(), ActionError> {
         std::env::remove_var("NIX_SSL_CERT_FILE");
 

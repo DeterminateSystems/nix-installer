@@ -1,5 +1,6 @@
 use nix::unistd::{chown, Group, User};
 
+use crate::action::{Action, ActionDescription, ActionError, StatefulAction};
 use std::{
     io::SeekFrom,
     os::unix::prelude::PermissionsExt,
@@ -9,8 +10,7 @@ use tokio::{
     fs::{remove_file, OpenOptions},
     io::{AsyncReadExt, AsyncSeekExt, AsyncWriteExt},
 };
-
-use crate::action::{Action, ActionDescription, ActionError, StatefulAction};
+use tracing::{span, Span};
 
 /** Create a file at the given location with the provided `buf`,
 optionally with an owning user, group, and mode.
@@ -58,17 +58,30 @@ impl Action for CreateOrAppendFile {
         format!("Create or append file `{}`", self.path.display())
     }
 
+    fn tracing_span(&self) -> Span {
+        let span = span!(
+            tracing::Level::DEBUG,
+            "create_or_append_file",
+            path = tracing::field::display(self.path.display()),
+            user = self.user,
+            group = self.group,
+            mode = self
+                .mode
+                .map(|v| tracing::field::display(format!("{:#o}", v))),
+            buf = tracing::field::Empty,
+        );
+
+        if tracing::enabled!(tracing::Level::TRACE) {
+            span.record("buf", &self.buf);
+        }
+        span
+    }
+
     fn execute_description(&self) -> Vec<ActionDescription> {
         vec![ActionDescription::new(self.tracing_synopsis(), vec![])]
     }
 
-    #[tracing::instrument(level = "debug", skip_all, fields(
-        path = %self.path.display(),
-        user = self.user,
-        group = self.group,
-        mode = self.mode.map(|v| tracing::field::display(format!("{:#o}", v))),
-        buf = tracing::field::Empty,
-    ))]
+    #[tracing::instrument(level = "debug", skip_all)]
     async fn execute(&mut self) -> Result<(), ActionError> {
         let Self {
             path,
@@ -77,11 +90,6 @@ impl Action for CreateOrAppendFile {
             mode,
             buf,
         } = self;
-
-        if tracing::enabled!(tracing::Level::TRACE) {
-            let span = tracing::Span::current();
-            span.record("buf", &buf);
-        }
 
         let mut file = OpenOptions::new()
             .create(true)
@@ -148,12 +156,7 @@ impl Action for CreateOrAppendFile {
         )]
     }
 
-    #[tracing::instrument(level = "debug", skip_all, fields(
-        path = %self.path.display(),
-        user = self.user,
-        group = self.group,
-        mode = self.mode.map(|v| tracing::field::display(format!("{:#o}", v))),
-    ))]
+    #[tracing::instrument(level = "debug", skip_all)]
     async fn revert(&mut self) -> Result<(), ActionError> {
         let Self {
             path,

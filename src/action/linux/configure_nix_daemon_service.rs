@@ -3,6 +3,7 @@ use std::path::{Path, PathBuf};
 use target_lexicon::OperatingSystem;
 use tokio::fs::remove_file;
 use tokio::process::Command;
+use tracing::{span, Span};
 
 use crate::action::{ActionError, StatefulAction};
 use crate::execute_command;
@@ -50,6 +51,11 @@ impl Action for ConfigureNixDaemonService {
     fn tracing_synopsis(&self) -> String {
         "Configure Nix daemon related settings with systemd".to_string()
     }
+
+    fn tracing_span(&self) -> Span {
+        span!(tracing::Level::DEBUG, "configure_nix_daemon",)
+    }
+
     fn execute_description(&self) -> Vec<ActionDescription> {
         vec![ActionDescription::new(
             self.tracing_synopsis(),

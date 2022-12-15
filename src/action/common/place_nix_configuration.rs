@@ -1,3 +1,5 @@
+use tracing::{span, Span};
+
 use crate::action::base::{CreateDirectory, CreateFile};
 use crate::action::{Action, ActionDescription, ActionError, StatefulAction};
 
@@ -48,6 +50,10 @@ impl PlaceNixConfiguration {
 impl Action for PlaceNixConfiguration {
     fn tracing_synopsis(&self) -> String {
         format!("Place the Nix configuration in `{NIX_CONF}`")
+    }
+
+    fn tracing_span(&self) -> Span {
+        span!(tracing::Level::DEBUG, "place_nix_configuration",)
     }
 
     fn execute_description(&self) -> Vec<ActionDescription> {

@@ -1,5 +1,7 @@
 use std::path::{Path, PathBuf};
 
+use tracing::{span, Span};
+
 use crate::action::{Action, ActionDescription, ActionError, StatefulAction};
 
 const DEST: &str = "/nix/store";
@@ -27,6 +29,15 @@ impl Action for MoveUnpackedNix {
         "Move the downloaded Nix into `/nix`".to_string()
     }
 
+    fn tracing_span(&self) -> Span {
+        span!(
+            tracing::Level::DEBUG,
+            "mount_unpacked_nix",
+            src = tracing::field::display(self.src.display()),
+            dest = DEST,
+        )
+    }
+
     fn execute_description(&self) -> Vec<ActionDescription> {
         vec![ActionDescription::new(
             format!("Move the downloaded Nix into `/nix`"),
@@ -37,10 +48,7 @@ impl Action for MoveUnpackedNix {
         )]
     }
 
-    #[tracing::instrument(level = "debug", skip_all, fields(
-        src = %self.src.display(),
-        dest = DEST,
-    ))]
+    #[tracing::instrument(level = "debug", skip_all)]
     async fn execute(&mut self) -> Result<(), ActionError> {
         let Self { src } = self;
 
@@ -73,10 +81,7 @@ impl Action for MoveUnpackedNix {
         vec![/* Deliberately empty -- this is a noop */]
     }
 
-    #[tracing::instrument(level = "debug", skip_all, fields(
-        src = %self.src.display(),
-        dest = DEST,
-    ))]
+    #[tracing::instrument(level = "debug", skip_all)]
     async fn revert(&mut self) -> Result<(), ActionError> {
         // Noop
         Ok(())

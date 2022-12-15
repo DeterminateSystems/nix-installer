@@ -1,6 +1,7 @@
 use std::path::{Path, PathBuf};
 
 use tokio::process::Command;
+use tracing::{span, Span};
 
 use crate::action::{ActionError, StatefulAction};
 use crate::execute_command;
@@ -32,13 +33,19 @@ impl Action for BootstrapApfsVolume {
         format!("Bootstrap and kickstart `{}`", self.path.display())
     }
 
+    fn tracing_span(&self) -> Span {
+        span!(
+            tracing::Level::DEBUG,
+            "bootstrap_volume",
+            path = %self.path.display(),
+        )
+    }
+
     fn execute_description(&self) -> Vec<ActionDescription> {
         vec![ActionDescription::new(self.tracing_synopsis(), vec![])]
     }
 
-    #[tracing::instrument(level = "debug", skip_all, fields(
-        path = %self.path.display(),
-    ))]
+    #[tracing::instrument(level = "debug", skip_all)]
     async fn execute(&mut self) -> Result<(), ActionError> {
         let Self { path } = self;
 
@@ -70,9 +77,7 @@ impl Action for BootstrapApfsVolume {
         )]
     }
 
-    #[tracing::instrument(level = "debug", skip_all, fields(
-        path = %self.path.display(),
-    ))]
+    #[tracing::instrument(level = "debug", skip_all)]
     async fn revert(&mut self) -> Result<(), ActionError> {
         let Self { path } = self;
 

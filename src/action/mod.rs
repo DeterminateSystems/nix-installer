@@ -45,6 +45,7 @@ A custom [`Action`] can be created then used in a custom [`Planner`](crate::plan
 
 ```rust,no_run
 use std::{error::Error, collections::HashMap};
+use tracing::{Span, span};
 use harmonic::{
     InstallPlan,
     settings::{CommonSettings, InstallSettingsError},
@@ -71,13 +72,19 @@ impl Action for MyAction {
         "My action".to_string()
     }
 
+    fn tracing_span(&self) -> Span {
+        span!(
+            tracing::Level::DEBUG,
+            "my_action",
+            // Tracing fields here ...
+        )
+    }
+
     fn execute_description(&self) -> Vec<ActionDescription> {
         vec![ActionDescription::new(self.tracing_synopsis(), vec![])]
     }
 
-    #[tracing::instrument(level = "debug", skip_all, fields(
-        // Tracing fields...
-    ))]
+    #[tracing::instrument(level = "debug", skip_all)]
     async fn execute(&mut self) -> Result<(), ActionError> {
         // Execute steps ...
         Ok(())
@@ -87,9 +94,7 @@ impl Action for MyAction {
          vec![ActionDescription::new(self.tracing_synopsis(), vec![])]
     }
 
-    #[tracing::instrument(level = "debug", skip_all, fields(
-        // Tracing fields...
-    ))]
+    #[tracing::instrument(level = "debug", skip_all)]
     async fn revert(&mut self) -> Result<(), ActionError> {
         // Revert steps...
         Ok(())
@@ -159,6 +164,7 @@ mod stateful;
 pub use stateful::{ActionState, StatefulAction};
 use std::error::Error;
 use tokio::task::JoinError;
+use tracing::Span;
 
 use crate::error::HasExpectedErrors;
 
@@ -172,6 +178,14 @@ use crate::error::HasExpectedErrors;
 pub trait Action: Send + Sync + std::fmt::Debug + dyn_clone::DynClone {
     /// A synopsis of the action for tracing purposes
     fn tracing_synopsis(&self) -> String;
+    /// A tracing span suitable for the action
+    ///
+    /// It should be [`tracing::Level::DEBUG`] and contain the same name as the [`typetag::serde`] entry.
+    ///
+    /// It may contain any fields, and will be attached in the [`StatefulAction::try_execute`] and [`StatefulAction::try_revert`] functions.
+    ///
+    /// See [`tracing::Span`] for more details.
+    fn tracing_span(&self) -> Span;
     /// A description of what this action would do during execution
     ///
     /// If this action calls sub-[`Action`]s, care should be taken to use [`StatefulAction::describe_execute`] on those actions, not [`execute_description`][Action::execute_description].

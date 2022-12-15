@@ -1,3 +1,5 @@
+use tracing::{span, Span};
+
 use crate::action::base::CreateDirectory;
 use crate::action::{Action, ActionDescription, ActionError, StatefulAction};
 
@@ -43,6 +45,10 @@ impl CreateNixTree {
 impl Action for CreateNixTree {
     fn tracing_synopsis(&self) -> String {
         "Create a directory tree in `/nix`".to_string()
+    }
+
+    fn tracing_span(&self) -> Span {
+        span!(tracing::Level::DEBUG, "create_nix_tree",)
     }
 
     fn execute_description(&self) -> Vec<ActionDescription> {

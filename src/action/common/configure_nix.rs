@@ -10,6 +10,7 @@ use crate::{
 };
 
 use reqwest::Url;
+use tracing::{span, Instrument, Span};
 
 /**
 Configure Nix and start it
@@ -68,6 +69,10 @@ impl Action for ConfigureNix {
         "Configure Nix".to_string()
     }
 
+    fn tracing_span(&self) -> Span {
+        span!(tracing::Level::DEBUG, "configure_nix",)
+    }
+
     fn execute_description(&self) -> Vec<ActionDescription> {
         let Self {
             setup_default_profile,
@@ -98,17 +103,46 @@ impl Action for ConfigureNix {
         } = self;
 
         if let Some(configure_shell_profile) = configure_shell_profile {
+            let span = tracing::Span::current().clone();
+            let (span2, span3, span4) = (span.clone(), span.clone(), span.clone());
             tokio::try_join!(
-                async move { setup_default_profile.try_execute().await },
-                async move { place_nix_configuration.try_execute().await },
-                async move { place_channel_configuration.try_execute().await },
-                async move { configure_shell_profile.try_execute().await },
+                async move { setup_default_profile.try_execute().instrument(span).await },
+                async move {
+                    place_nix_configuration
+                        .try_execute()
+                        .instrument(span2)
+                        .await
+                },
+                async move {
+                    place_channel_configuration
+                        .try_execute()
+                        .instrument(span3)
+                        .await
+                },
+                async move {
+                    configure_shell_profile
+                        .try_execute()
+                        .instrument(span4)
+                        .await
+                },
             )?;
         } else {
+            let span = tracing::Span::current().clone();
+            let (span2, span3) = (span.clone(), span.clone());
             tokio::try_join!(
-                async move { setup_default_profile.try_execute().await },
-                async move { place_nix_configuration.try_execute().await },
-                async move { place_channel_configuration.try_execute().await },
+                async move { setup_default_profile.try_execute().instrument(span).await },
+                async move {
+                    place_nix_configuration
+                        .try_execute()
+                        .instrument(span2)
+                        .await
+                },
+                async move {
+                    place_channel_configuration
+                        .try_execute()
+                        .instrument(span3)
+                        .await
+                },
             )?;
         };
         configure_nix_daemon_service.try_execute().await?;
