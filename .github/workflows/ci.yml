@@ -97,7 +97,7 @@ jobs:
         run: |
           chmod +x ./nix-installer
           mkdir install-root
-          cp nix-install.sh install-root/nix-install.sh
+          cp nix-installer.sh install-root/nix-installer.sh
           mv nix-installer install-root/nix-installer-x86_64-linux
       - name: Initial install
         uses: ./
@@ -193,7 +193,7 @@ jobs:
         run: |
           chmod +x ./nix-installer
           mkdir install-root
-          cp nix-install.sh install-root/nix-install.sh
+          cp nix-installer.sh install-root/nix-installer.sh
           mv nix-installer install-root/nix-installer-x86_64-linux
       - name: Make the CI look like a steam deck
         run: |
@@ -326,7 +326,7 @@ jobs:
         run: |
           chmod +x ./nix-installer
           mkdir install-root
-          cp nix-install.sh install-root/nix-install.sh
+          cp nix-installer.sh install-root/nix-installer.sh
           mv nix-installer install-root/nix-installer-x86_64-darwin
       - name: Initial install
         uses: ./

@@ -53,7 +53,7 @@ inputs:
     required: true
     default: https://install.determinate.systems/nix
   local-root:
-    description: A local `nix-installer` binary root, overrides the `nix-installer-url` setting (binaries should be named `nix-installer-$ARCH`, eg. `nix-installer-x86_64-linux`)
+    description: A local `nix-installer` binary root, overrides the `nix-installer-url` setting (a `nix-installer.sh` should exist, binaries should be named `nix-installer-$ARCH`, eg. `nix-installer-x86_64-linux`)
     required: false
   logger:
     description: The logger to use for install (eg. `pretty`, `json`, `full`, `compact`)
@@ -160,7 +160,7 @@ runs:
           done
           export NIX_INSTALLER_FORCE_ALLOW_HTTP="1"
           echo "Set NIX_INSTALLER_FORCE_ALLOW_HTTP=$NIX_INSTALLER_FORCE_ALLOW_HTTP"
-          export NIX_INSTALLER_URL=0.0.0.0:8000/nix-install.sh
+          export NIX_INSTALLER_URL=0.0.0.0:8000/nix-installer.sh
           echo "Set NIX_INSTALLER_URL=$NIX_INSTALLER_URL"
           export NIX_INSTALLER_FORCE_ALLOW_HTTP=http://0.0.0.0:8000/
           echo "Set NIX_INSTALLER_FORCE_ALLOW_HTTP=$NIX_INSTALLER_FORCE_ALLOW_HTTP"
