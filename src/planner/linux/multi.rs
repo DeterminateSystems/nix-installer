@@ -1,3 +1,5 @@
+use tokio::process::Command;
+
 use crate::{
     action::{
         base::CreateDirectory,
@@ -34,6 +36,20 @@ impl Planner for LinuxMulti {
         // NixOS always sets up this file as part of setting up /etc itself: https://github.com/NixOS/nixpkgs/blob/bdd39e5757d858bd6ea58ed65b4a2e52c8ed11ca/nixos/modules/system/etc/setup-etc.pl#L145
         if Path::new("/etc/NIXOS").exists() {
             return Err(PlannerError::NixOs);
+        }
+
+        // We currently do not support SELinux
+        match Command::new("getenforce").output().await {
+            Ok(output) => {
+                let stdout_string = String::from_utf8(output.stdout).map_err(PlannerError::Utf8)?;
+                tracing::trace!(getenforce_stdout = stdout_string, "SELinux detected");
+                match stdout_string.trim() {
+                    "Enforcing" => return Err(PlannerError::SelinuxEnforcing),
+                    _ => (),
+                }
+            },
+            Err(e) if e.kind() == std::io::ErrorKind::NotFound => (),
+            Err(e) => panic!("{:?}", e),
         }
 
         // For now, we don't try to repair the user's Nix install or anything special.
@@ -80,14 +96,4 @@ impl Into<BuiltinPlanner> for LinuxMulti {
     fn into(self) -> BuiltinPlanner {
         BuiltinPlanner::LinuxMulti(self)
     }
-}
-
-#[derive(thiserror::Error, Debug)]
-enum LinuxMultiError {
-    #[error("Error planning action")]
-    Action(
-        #[source]
-        #[from]
-        Box<dyn std::error::Error + Send + Sync>,
-    ),
 }
