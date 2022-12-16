@@ -24,7 +24,7 @@ You can manually plan, execute, then revert an [`Action`] like so:
 
 ```rust,no_run
 # async fn wrapper() {
-use nix-installer::action::base::CreateDirectory;
+use nix_installer::action::base::CreateDirectory;
 let mut action = CreateDirectory::plan("/nix", None, None, 0o0755, true).await.unwrap();
 action.try_execute().await.unwrap();
 action.try_revert().await.unwrap();
