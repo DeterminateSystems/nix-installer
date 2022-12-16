@@ -48,8 +48,12 @@ impl Planner for LinuxMulti {
                     _ => (),
                 }
             },
+            // The device doesn't have SELinux set up
             Err(e) if e.kind() == std::io::ErrorKind::NotFound => (),
-            Err(e) => panic!("{:?}", e),
+            // Some unknown error
+            Err(e) => {
+                tracing::warn!(error = ?e, "Got an error checking for SELinux setting, this install may fail if SELinux is set to `Enforcing`")
+            },
         }
 
         // For now, we don't try to repair the user's Nix install or anything special.
