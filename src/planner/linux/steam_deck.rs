@@ -255,6 +255,6 @@ impl Into<BuiltinPlanner> for SteamDeck {
 
 #[derive(thiserror::Error, Debug)]
 enum SteamDeckError {
-    #[error("`{0}` is not an path that can be canonicalized into an absolute path, bind mounts require an absolute path")]
+    #[error("`{0}` is not a path that can be canonicalized into an absolute path, bind mounts require an absolute path")]
     AbsolutePathRequired(PathBuf),
 }
