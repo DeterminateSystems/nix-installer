@@ -192,7 +192,7 @@ jobs:
     steps:
     - uses: actions/checkout@v3
     - name: Install Nix
-      uses: determinatesystems/harmonic@main
+      uses: DeterminateSystems/harmonic@main
       with:
         github-token: ${{ secrets.GITHUB_TOKEN }}
     - name: Run `nix build`

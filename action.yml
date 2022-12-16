@@ -53,7 +53,7 @@ inputs:
     required: true
     default: https://install.determinate.systems/nix
   local-root:
-    description: A local `harmonic` binary root, overrides the `nix-install` setting (binaries should be named `harmonic-$ARCH`, eg. `harmonic-$x86_64-linux`)
+    description: A local `harmonic` binary root, overrides the `nix-install` setting (binaries should be named `harmonic-$ARCH`, eg. `harmonic-x86_64-linux`)
     required: false
   logger:
     description: The logger to use for install (eg. `pretty`, `json`, `full`, `compact`)
@@ -185,7 +185,6 @@ runs:
           export RUST_BACKTRACE=${{ inputs.backtrace }}
           echo "Set RUST_BACKTRACE=$RUST_BACKTRACE"
         fi
-
 
         export HARMONIC_NO_CONFIRM=true
         echo "Set HARMONIC_NO_CONFIRM=$HARMONIC_NO_CONFIRM"

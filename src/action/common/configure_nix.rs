@@ -103,44 +103,65 @@ impl Action for ConfigureNix {
         } = self;
 
         if let Some(configure_shell_profile) = configure_shell_profile {
-            let span = tracing::Span::current().clone();
-            let (span2, span3, span4) = (span.clone(), span.clone(), span.clone());
+            let setup_default_profile_span = tracing::Span::current().clone();
+            let (
+                place_nix_configuration_span,
+                place_channel_configuration_span,
+                configure_shell_profile_span,
+            ) = (
+                setup_default_profile_span.clone(),
+                setup_default_profile_span.clone(),
+                setup_default_profile_span.clone(),
+            );
             tokio::try_join!(
-                async move { setup_default_profile.try_execute().instrument(span).await },
+                async move {
+                    setup_default_profile
+                        .try_execute()
+                        .instrument(setup_default_profile_span)
+                        .await
+                },
                 async move {
                     place_nix_configuration
                         .try_execute()
-                        .instrument(span2)
+                        .instrument(place_nix_configuration_span)
                         .await
                 },
                 async move {
                     place_channel_configuration
                         .try_execute()
-                        .instrument(span3)
+                        .instrument(place_channel_configuration_span)
                         .await
                 },
                 async move {
                     configure_shell_profile
                         .try_execute()
-                        .instrument(span4)
+                        .instrument(configure_shell_profile_span)
                         .await
                 },
             )?;
         } else {
-            let span = tracing::Span::current().clone();
-            let (span2, span3) = (span.clone(), span.clone());
+            let place_channel_configuration_span = tracing::Span::current().clone();
+            let (setup_default_profile_span, place_nix_configuration_span) = (
+                place_channel_configuration_span.clone(),
+                place_channel_configuration_span.clone(),
+            );
             tokio::try_join!(
-                async move { setup_default_profile.try_execute().instrument(span).await },
+                async move {
+                    setup_default_profile
+                        .try_execute()
+                        .instrument(setup_default_profile_span)
+                        .await
+                },
                 async move {
                     place_nix_configuration
                         .try_execute()
-                        .instrument(span2)
+                        .instrument(place_nix_configuration_span)
                         .await
                 },
                 async move {
                     place_channel_configuration
                         .try_execute()
-                        .instrument(span3)
+                        .instrument(place_channel_configuration)
                         .await
                 },
             )?;

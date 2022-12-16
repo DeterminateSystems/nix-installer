@@ -41,7 +41,7 @@ impl CreateDirectory {
             let metadata = tokio::fs::metadata(path)
                 .await
                 .map_err(|e| ActionError::GettingMetadata(path.to_path_buf(), e))?;
-            if metadata.is_dir() || metadata.is_symlink() {
+            if metadata.is_dir() {
                 tracing::debug!(
                     "Creating directory `{}` already complete, skipping",
                     path.display(),
