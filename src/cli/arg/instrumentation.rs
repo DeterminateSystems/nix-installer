@@ -2,7 +2,9 @@ use atty::Stream;
 use eyre::WrapErr;
 use std::error::Error;
 use tracing_error::ErrorLayer;
-use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt, EnvFilter};
+use tracing_subscriber::{
+    filter::Directive, layer::SubscriberExt, util::SubscriberInitExt, EnvFilter,
+};
 
 #[derive(Clone, Default, Debug, clap::ValueEnum)]
 pub enum Logger {
@@ -33,6 +35,11 @@ pub struct Instrumentation {
     /// Which logger to use
     #[clap(long, env = "HARMONIC_LOGGER", default_value_t = Default::default(), global = true)]
     pub logger: Logger,
+    /// Tracing directives
+    ///
+    /// See https://docs.rs/tracing-subscriber/latest/tracing_subscriber/filter/struct.EnvFilter.html#directives
+    #[clap(long = "log-directive", global = true, env = "HARMONIC_LOG_DIRECTIVES", value_delimiter = ',', num_args = 0..)]
+    pub log_directives: Vec<Directive>,
 }
 
 impl<'a> Instrumentation {
@@ -120,7 +127,7 @@ impl<'a> Instrumentation {
     }
 
     pub fn filter_layer(&self) -> eyre::Result<EnvFilter> {
-        let filter_layer = match EnvFilter::try_from_default_env() {
+        let mut filter_layer = match EnvFilter::try_from_default_env() {
             Ok(layer) => layer,
             Err(e) => {
                 // Catch a parse error and report it, ignore a missing env.
@@ -133,6 +140,11 @@ impl<'a> Instrumentation {
                 EnvFilter::try_new(&format!("{}={}", env!("CARGO_PKG_NAME"), self.log_level()))?
             },
         };
+
+        for directive in &self.log_directives {
+            let directive_clone = directive.clone();
+            filter_layer = filter_layer.add_directive(directive_clone);
+        }
 
         Ok(filter_layer)
     }

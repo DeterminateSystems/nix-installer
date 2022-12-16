@@ -82,7 +82,7 @@ use std::collections::HashMap;
 use crate::{
     action::{ActionError, StatefulAction},
     error::HasExpectedErrors,
-    settings::InstallSettingsError,
+    settings::{CommonSettings, InstallSettingsError},
     Action, HarmonicError, InstallPlan,
 };
 
@@ -142,6 +142,16 @@ impl BuiltinPlanner {
             },
             _ => Err(PlannerError::UnsupportedArchitecture(target_lexicon::HOST)),
         }
+    }
+
+    pub async fn from_common_settings(settings: CommonSettings) -> Result<Self, PlannerError> {
+        let mut built = Self::default().await?;
+        match &mut built {
+            BuiltinPlanner::LinuxMulti(inner) => inner.settings = settings,
+            BuiltinPlanner::DarwinMulti(inner) => inner.settings = settings,
+            BuiltinPlanner::SteamDeck(inner) => inner.settings = settings,
+        }
+        Ok(built)
     }
 
     pub async fn plan(self) -> Result<InstallPlan, HarmonicError> {

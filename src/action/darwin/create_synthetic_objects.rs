@@ -1,4 +1,5 @@
 use tokio::process::Command;
+use tracing::{span, Span};
 
 use crate::execute_command;
 
@@ -22,6 +23,10 @@ impl Action for CreateSyntheticObjects {
         "Create objects defined in `/etc/synthetic.conf`".to_string()
     }
 
+    fn tracing_span(&self) -> Span {
+        span!(tracing::Level::DEBUG, "create_synthetic_objects",)
+    }
+
     fn execute_description(&self) -> Vec<ActionDescription> {
         vec![ActionDescription::new(
             self.tracing_synopsis(),
@@ -29,7 +34,7 @@ impl Action for CreateSyntheticObjects {
         )]
     }
 
-    #[tracing::instrument(level = "debug", skip_all, fields())]
+    #[tracing::instrument(level = "debug", skip_all)]
     async fn execute(&mut self) -> Result<(), ActionError> {
         // Yup we literally call both and ignore the error! Reasoning: https://github.com/NixOS/nix/blob/95331cb9c99151cbd790ceb6ddaf49fc1c0da4b3/scripts/create-darwin-volume.sh#L261
         execute_command(
@@ -59,7 +64,7 @@ impl Action for CreateSyntheticObjects {
         )]
     }
 
-    #[tracing::instrument(level = "debug", skip_all, fields())]
+    #[tracing::instrument(level = "debug", skip_all)]
     async fn revert(&mut self) -> Result<(), ActionError> {
         // Yup we literally call both and ignore the error! Reasoning: https://github.com/NixOS/nix/blob/95331cb9c99151cbd790ceb6ddaf49fc1c0da4b3/scripts/create-darwin-volume.sh#L261
         execute_command(

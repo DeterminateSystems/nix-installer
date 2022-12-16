@@ -1,4 +1,5 @@
 use tokio::process::Command;
+use tracing::{span, Span};
 
 use crate::action::ActionError;
 use crate::execute_command;
@@ -37,10 +38,16 @@ impl Action for CreateGroup {
         )]
     }
 
-    #[tracing::instrument(level = "debug", skip_all, fields(
-        user = self.name,
-        gid = self.gid,
-    ))]
+    fn tracing_span(&self) -> Span {
+        span!(
+            tracing::Level::DEBUG,
+            "create_group",
+            user = self.name,
+            gid = self.gid,
+        )
+    }
+
+    #[tracing::instrument(level = "debug", skip_all)]
     async fn execute(&mut self) -> Result<(), ActionError> {
         let Self { name, gid } = self;
 
@@ -108,10 +115,7 @@ impl Action for CreateGroup {
         )]
     }
 
-    #[tracing::instrument(level = "debug", skip_all, fields(
-        user = self.name,
-        gid = self.gid,
-    ))]
+    #[tracing::instrument(level = "debug", skip_all)]
     async fn revert(&mut self) -> Result<(), ActionError> {
         let Self { name, gid: _ } = self;
 

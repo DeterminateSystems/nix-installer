@@ -1,6 +1,7 @@
 use std::path::{Path, PathBuf};
 
 use tokio::process::Command;
+use tracing::{span, Span};
 
 use crate::action::{ActionError, StatefulAction};
 use crate::execute_command;
@@ -34,14 +35,20 @@ impl Action for UnmountApfsVolume {
         format!("Unmount the `{}` APFS volume", self.name)
     }
 
+    fn tracing_span(&self) -> Span {
+        span!(
+            tracing::Level::DEBUG,
+            "unmount_volume",
+            disk = tracing::field::display(self.disk.display()),
+            name = self.name,
+        )
+    }
+
     fn execute_description(&self) -> Vec<ActionDescription> {
         vec![ActionDescription::new(self.tracing_synopsis(), vec![])]
     }
 
-    #[tracing::instrument(level = "debug", skip_all, fields(
-        disk = %self.disk.display(),
-        name = %self.name,
-    ))]
+    #[tracing::instrument(level = "debug", skip_all)]
     async fn execute(&mut self) -> Result<(), ActionError> {
         let Self { disk: _, name } = self;
 
@@ -62,10 +69,7 @@ impl Action for UnmountApfsVolume {
         vec![ActionDescription::new(self.tracing_synopsis(), vec![])]
     }
 
-    #[tracing::instrument(level = "debug", skip_all, fields(
-        disk = %self.disk.display(),
-        name = %self.name,
-    ))]
+    #[tracing::instrument(level = "debug", skip_all)]
     async fn revert(&mut self) -> Result<(), ActionError> {
         let Self { disk: _, name } = self;
 

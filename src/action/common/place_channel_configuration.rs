@@ -2,6 +2,7 @@ use crate::action::base::CreateFile;
 use crate::action::ActionError;
 use crate::action::{Action, ActionDescription, StatefulAction};
 use reqwest::Url;
+use tracing::{span, Span};
 
 /**
 Place a channel configuration containing `channels` to the `$ROOT_HOME/.nix-channels` file
@@ -54,13 +55,24 @@ impl Action for PlaceChannelConfiguration {
         )
     }
 
+    fn tracing_span(&self) -> Span {
+        span!(
+            tracing::Level::DEBUG,
+            "place_channel_configuration",
+            channels = self
+                .channels
+                .iter()
+                .map(|(c, u)| format!("{c}={u}"))
+                .collect::<Vec<_>>()
+                .join(", "),
+        )
+    }
+
     fn execute_description(&self) -> Vec<ActionDescription> {
         vec![ActionDescription::new(self.tracing_synopsis(), vec![])]
     }
 
-    #[tracing::instrument(level = "debug", skip_all, fields(
-        channels = self.channels.iter().map(|(c, u)| format!("{c}={u}")).collect::<Vec<_>>().join(", "),
-    ))]
+    #[tracing::instrument(level = "debug", skip_all)]
     async fn execute(&mut self) -> Result<(), ActionError> {
         let Self {
             create_file,
@@ -82,9 +94,7 @@ impl Action for PlaceChannelConfiguration {
         )]
     }
 
-    #[tracing::instrument(level = "debug", skip_all, fields(
-        channels = self.channels.iter().map(|(c, u)| format!("{c}={u}")).collect::<Vec<_>>().join(", "),
-    ))]
+    #[tracing::instrument(level = "debug", skip_all)]
     async fn revert(&mut self) -> Result<(), ActionError> {
         let Self {
             create_file,

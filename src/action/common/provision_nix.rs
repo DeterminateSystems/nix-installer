@@ -1,3 +1,5 @@
+use tracing::{span, Span};
+
 use super::{CreateNixTree, CreateUsersAndGroups};
 use crate::{
     action::{
@@ -46,6 +48,10 @@ impl ProvisionNix {
 impl Action for ProvisionNix {
     fn tracing_synopsis(&self) -> String {
         "Provision Nix".to_string()
+    }
+
+    fn tracing_span(&self) -> Span {
+        span!(tracing::Level::DEBUG, "provision_nix",)
     }
 
     fn execute_description(&self) -> Vec<ActionDescription> {

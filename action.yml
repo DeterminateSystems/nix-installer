@@ -1,0 +1,199 @@
+name: Harmonic
+description: Install Nix
+inputs:
+  planner:
+    description: A planner to use
+    required: false
+  extra-args:
+    description: Extra args to pass to the planner (prefer using structured `with:` arguments unless using a custom planner!)
+    required: false
+  github-token:
+    description: A Github Token so that authenticated requests can be made (set this to `secrets.GITHUB_TOKEN`)
+  channels:
+    description: Channel(s) to add (eg `nixpkgs=https://nixos.org/channels/nixpkgs-unstable`)
+    required: false
+  modify-profile:
+    description: Modify the user profile to automatically load nix
+    required: false
+  daemon-user-count:
+    description: Number of build users to create
+    required: false
+  nix-build-group-name:
+    description: The Nix build group name
+    required: false
+  nix-build-group-id:
+    description: The Nix build group GID
+    required: false
+  nix-build-user-prefix:
+    description: The Nix build user prefix (user numbers will be postfixed)
+    required: false
+  nix-build-user-base:
+    description: The Nix build user base UID (ascending)
+    required: false
+  nix-package-url:
+    description: The Nix package URL
+    required: false
+  extra-conf:
+    description: Extra configuration lines for `/etc/nix.conf` (includes `access-tokens` with `secrets.GITHUB_TOKEN` automatically if `github-token` is set)
+    required: false
+  mac-encrypt:
+    description: Force encryption on the volume (Mac only)
+    required: false
+  mac-case-sensitive:
+    description: Use a case sensitive volume (Mac only)
+    required: false
+  mac-volume-label:
+    description: The label for the created APFS volume (Mac only)
+    required: false
+  mac-root-disk:
+    description: The root disk of the target (Mac only)
+    required: false
+  nix-install-url:
+    description: A URL pointing to a harmonic `nix-install.sh` script
+    required: true
+    default: https://install.determinate.systems/nix
+  local-root:
+    description: A local `harmonic` binary root, overrides the `nix-install` setting (binaries should be named `harmonic-$ARCH`, eg. `harmonic-x86_64-linux`)
+    required: false
+  logger:
+    description: The logger to use for install (eg. `pretty`, `json`, `full`, `compact`)
+    required: false
+  log-directives:
+    description: A list of Tracing directives, comma separated (eg. `harmonic=trace`, see https://docs.rs/tracing-subscriber/latest/tracing_subscriber/filter/struct.EnvFilter.html#directives)
+    required: false
+  backtrace:
+    description: The setting for `RUST_BACKTRACE` (see https://doc.rust-lang.org/std/backtrace/index.html#environment-variables)
+    required: false
+
+
+runs:
+  using: composite
+  steps:
+    - name: Install Nix
+      shell: bash
+      run: |
+        if [ -n "${{ inputs.channels }}" ]; then
+          export HARMONIC_CHANNELS=${{ inputs.channels }}
+          echo "Set HARMONIC_CHANNELS=$HARMONIC_CHANNELS"
+        fi
+
+        if [ -n "${{ inputs.modify-profile }}" ]; then
+          export HARMONIC_MODIFY_PROFILE=${{ inputs.modify-profile }}
+          echo "Set HARMONIC_MODIFY_PROFILE=$HARMONIC_MODIFY_PROFILE"
+        fi
+
+        if [ -n "${{ inputs.daemon-user-count }}" ]; then
+          export HARMONIC_DAEMON_USER_COUNT=${{ inputs.daemon-user-count }}
+          echo "Set HARMONIC_DAEMON_USER_COUNT=$HARMONIC_DAEMON_USER_COUNT"
+        fi
+
+        if [ -n "${{ inputs.nix-build-group-name }}" ]; then
+          export HARMONIC_NIX_BUILD_GROUP_NAME=${{ inputs.nix-build-group-name }}
+          echo "Set HARMONIC_NIX_BUILD_GROUP_NAME=$HARMONIC_NIX_BUILD_GROUP_NAME"
+        fi
+
+        if [ -n "${{ inputs.nix-build-group-id }}" ]; then
+          export HARMONIC_NIX_BUILD_GROUP_ID=${{ inputs.nix-build-group-id }}
+          echo "Set HARMONIC_NIX_BUILD_GROUP_ID=$HARMONIC_NIX_BUILD_GROUP_ID"
+        fi
+
+        if [ -n "${{ inputs.nix-build-user-prefix }}" ]; then
+          export HARMONIC_NIX_BUILD_USER_ID_BASE=${{ inputs.nix-build-user-prefix }}
+          echo "Set HARMONIC_NIX_BUILD_USER_ID_BASE=$HARMONIC_NIX_BUILD_USER_ID_BASE"
+        fi
+
+        if [ -n "${{ inputs.nix-build-user-base }}" ]; then
+          export HARMONIC_NIX_BUILD_USER_PREFIX=${{ inputs.nix-build-user-base }}
+          echo "Set HARMONIC_NIX_BUILD_USER_PREFIX=$HARMONIC_NIX_BUILD_USER_PREFIX"
+        fi
+
+        if [ -n "${{ inputs.nix-package-url }}" ]; then
+          export HARMONIC_NIX_PACKAGE_URL=${{ inputs.nix-package-url }}
+          echo "Set HARMONIC_NIX_PACKAGE_URL=$HARMONIC_NIX_PACKAGE_URL"
+        fi
+
+        if [ -n "${{ inputs.extra-conf }}" ]; then
+          if [ -n "${{ inputs.github-token }}" ]; then
+            export HARMONIC_EXTRA_CONF="${{ inputs.extra-conf }}\naccess-tokens = github.com=${{ inputs.github-token }}"
+          else
+            export HARMONIC_EXTRA_CONF="${{ inputs.extra-conf }}"
+          fi
+          echo "Set HARMONIC_EXTRA_CONF=$HARMONIC_EXTRA_CONF"
+        else
+          if [ -n "${{ inputs.github-token }}" ]; then
+            export HARMONIC_EXTRA_CONF="access-tokens = github.com=${{ inputs.github-token }}"
+            echo "Set HARMONIC_EXTRA_CONF=$HARMONIC_EXTRA_CONF"
+          fi
+        fi
+
+        if [ -n "${{ inputs.mac-encrypt }}" ]; then
+          export HARMONIC_ENCRYPT=${{ inputs.mac-encrypt }}
+          echo "Set HARMONIC_ENCRYPT=$HARMONIC_ENCRYPT"
+        fi
+
+        if [ -n "${{ inputs.mac-case-sensitive }}" ]; then
+          export HARMONIC_CASE_SENSITIVE=${{ inputs.mac-case-sensitive }}
+          echo "Set HARMONIC_CASE_SENSITIVE=$HARMONIC_CASE_SENSITIVE"
+        fi
+
+        if [ -n "${{ inputs.mac-volume-label }}" ]; then
+          export HARMONIC_VOLUME_LABEL=${{ inputs.mac-volume-label }}
+          echo "Set HARMONIC_VOLUME_LABEL=$HARMONIC_VOLUME_LABEL"
+        fi
+
+        if [ -n "${{ inputs.mac-root-disk }}" ]; then
+          export HARMONIC_ROOT_DISK=${{ inputs.mac-root-disk }}
+          echo "Set HARMONIC_ROOT_DISK=$HARMONIC_ROOT_DISK"
+        fi
+
+        if [ -n "${{ inputs.local-root }}" ]; then
+          if [ "$RUNNER_OS" == "macOS" ]; then
+            export PYTHON="python3"
+          else
+            export PYTHON="python"
+          fi
+          $PYTHON -m http.server --directory ${{ inputs.local-root }} --bind 0.0.0.0 8000 &
+          export HTTP_PID=$!
+          echo "Started simple http server for ${{ inputs.local-root }} on 0.0.0.0:8000"
+          while (! (: </dev/tcp/localhost/8000) &> /dev/null); do
+            sleep 1
+          done
+          export NIX_INSTALL_FORCE_ALLOW_HTTP="1"
+          echo "Set NIX_INSTALL_FORCE_ALLOW_HTTP=$NIX_INSTALL_FORCE_ALLOW_HTTP"
+          export NIX_INSTALL_URL=0.0.0.0:8000/nix-install.sh
+          echo "Set NIX_INSTALL_URL=$NIX_INSTALL_URL"
+          export NIX_INSTALL_BINARY_ROOT=http://0.0.0.0:8000/
+          echo "Set NIX_INSTALL_BINARY_ROOT=$NIX_INSTALL_BINARY_ROOT"
+          export NIX_INSTALL_FORCE_ALLOW_HTTP=1
+          echo "Set NIX_INSTALL_FORCE_ALLOW_HTTP=$NIX_INSTALL_FORCE_ALLOW_HTTP"
+        else
+          export NIX_INSTALL_URL=${{ inputs.nix-install-url }}
+          echo "Set NIX_INSTALL_URL=$NIX_INSTALL_URL"
+        fi
+
+        if [ -n "${{ inputs.logger }}" ]; then
+          export HARMONIC_LOGGER=${{ inputs.logger }}
+          echo "Set HARMONIC_LOGGER=$HARMONIC_LOGGER"
+        fi
+
+        if [ -n "${{ inputs.log-directives }}" ]; then
+          export HARMONIC_LOG_DIRECTIVES=${{ inputs.log-directives }}
+          echo "Set HARMONIC_LOG_DIRECTIVES=$HARMONIC_LOG_DIRECTIVES"
+        fi
+
+        if [ -n "${{ inputs.backtrace }}" ]; then
+          export RUST_BACKTRACE=${{ inputs.backtrace }}
+          echo "Set RUST_BACKTRACE=$RUST_BACKTRACE"
+        fi
+
+        export HARMONIC_NO_CONFIRM=true
+        echo "Set HARMONIC_NO_CONFIRM=$HARMONIC_NO_CONFIRM"
+
+        curl --retry 20 -L $NIX_INSTALL_URL | sh -s -- install ${{ inputs.planner }} ${{ inputs.extra-args }}
+
+        if [ -n "$HTTP_PID" ]; then
+          kill $HTTP_PID
+        fi
+
+
+

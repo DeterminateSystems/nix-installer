@@ -9,6 +9,7 @@ use crate::{
     error::HasExpectedErrors,
     plan::RECEIPT_LOCATION,
     planner::Planner,
+    settings::CommonSettings,
     BuiltinPlanner, InstallPlan,
 };
 use clap::{ArgAction, Parser};
@@ -30,6 +31,9 @@ pub struct Install {
     )]
     pub no_confirm: bool,
 
+    #[clap(flatten)]
+    pub settings: CommonSettings,
+
     #[clap(
         long,
         env = "HARMONIC_EXPLAIN",
@@ -47,12 +51,13 @@ pub struct Install {
 
 #[async_trait::async_trait]
 impl CommandExecute for Install {
-    #[tracing::instrument(level = "debug", skip_all, fields())]
+    #[tracing::instrument(level = "debug", skip_all)]
     async fn execute(self) -> eyre::Result<ExitCode> {
         let Self {
             no_confirm,
             plan,
             planner,
+            settings,
             explain,
         } = self;
 
@@ -97,7 +102,7 @@ impl CommandExecute for Install {
                 serde_json::from_str(&install_plan_string)?
             },
             (None, None) => {
-                let builtin_planner = BuiltinPlanner::default()
+                let builtin_planner = BuiltinPlanner::from_common_settings(settings)
                     .await
                     .map_err(|e| eyre::eyre!(e))?;
                 let res = builtin_planner.plan().await;

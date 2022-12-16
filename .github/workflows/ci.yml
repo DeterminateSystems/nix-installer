@@ -5,14 +5,6 @@ on:
   push:
     branches: [main]
 
-env:
-  NIX_INSTALL_FORCE_ALLOW_HTTP: "1"
-  NIX_INSTALL_UPDATE_ROOT: "http://0.0.0.0:8000"
-  RUST_BACKTRACE: "full"
-  HARMONIC_VERBOSITY: "2"
-  HARMONIC_NO_CONFIRM: "true"
-  HARMONIC_LOGGER: "pretty"
-
 jobs:
   lints:
     name: Lints
@@ -37,12 +29,6 @@ jobs:
         run: nix develop --store ~/.ci-store --command check-nixpkgs-fmt
       - name: Check EditorConfig conformance
         run: nix develop --store ~/.ci-store --command check-editorconfig
-      - name: Create artifact for `nix-install.sh`
-        uses: actions/upload-artifact@v3
-        with:
-          name: nix-install
-          path: |
-            nix-install.sh
 
   build-x86_64-linux:
     name: Build x86_64 Linux
@@ -102,29 +88,54 @@ jobs:
     runs-on: ubuntu-22.04
     needs: [build-x86_64-linux, lints]
     steps:
+      - uses: actions/checkout@v3
       - run: sudo apt install fish zsh
       - uses: actions/download-artifact@v3
         with:
           name: harmonic-x86_64-linux
-      - uses: actions/download-artifact@v3
-        with:
-          name: nix-install
       - name: Move & set executable
         run: |
           chmod +x ./harmonic
-          mv harmonic harmonic-x86_64-linux
+          mkdir install-root
+          cp nix-install.sh install-root/nix-install.sh
+          mv harmonic install-root/harmonic-x86_64-linux
       - name: Initial install
-        run: |
-          python -m http.server --bind 0.0.0.0 8000 &
-          timeout 20 bash -c 'until printf "" 2>>/dev/null >>/dev/tcp/localhost/8000; do echo "Waiting for server..."; sleep 1; done'
-          curl -L http://0.0.0.0:8000/nix-install.sh | sh -s -- install linux-multi --extra-conf "access-tokens = github.com=${{ secrets.GITHUB_TOKEN }}"
+        uses: ./
+        with:
+          local-root: install-root/
+          logger: pretty
+          log-directives: harmonic=trace
+          backtrace: full
+          github-token: ${{ secrets.GITHUB_TOKEN }}
       - name: Initial uninstall (without a `nix run` first)
         run: sudo -E /nix/harmonic uninstall
-      - name: Repeated install
+        env:
+          HARMONIC_NO_CONFIRM: true
+          HARMONIC_LOGGER: pretty
+          HARMONIC_LOG_DIRECTIVES: harmonic=trace
+          RUST_BACKTRACE: full
+      - name: Ensure `nix` is removed
         run: |
-          python -m http.server --bind 0.0.0.0 8000 &
-          timeout 20 bash -c 'until printf "" 2>>/dev/null >>/dev/tcp/localhost/8000; do echo "Waiting for server..."; sleep 1; done'
-          curl -L http://0.0.0.0:8000/nix-install.sh | sh -s -- install linux-multi --extra-conf "access-tokens = github.com=${{ secrets.GITHUB_TOKEN }}"
+          if systemctl is-active nix-daemon.socket; then
+            echo "nix-daemon.socket was still running"
+            exit 1
+          fi
+          if systemctl is-active nix-daemon.service; then
+            echo "nix-daemon.service was still running"
+            exit 1
+          fi
+          if [ -e /nix ]; then
+            echo "/nix exists"
+            exit 1
+          fi
+      - name: Repeated install
+        uses: ./
+        with:
+          local-root: install-root/
+          logger: pretty
+          log-directives: harmonic=trace
+          backtrace: full
+          github-token: ${{ secrets.GITHUB_TOKEN }}
       - name: echo $PATH
         run: echo $PATH
       - name: Test `nix` with `$GITHUB_PATH`
@@ -148,23 +159,42 @@ jobs:
         shell: fish --login {0}
       - name: Repeated uninstall
         run: sudo -E /nix/harmonic uninstall
+        env:
+          HARMONIC_NO_CONFIRM: true
+          HARMONIC_LOGGER: pretty
+          HARMONIC_LOG_DIRECTIVES: harmonic=trace
+          RUST_BACKTRACE: full
+      - name: Ensure `nix` is removed
+        run: |
+          if systemctl is-active nix-daemon.socket; then
+            echo "nix-daemon.socket was still running"
+            exit 1
+          fi
+          if systemctl is-active nix-daemon.service; then
+            echo "nix-daemon.service was still running"
+            exit 1
+          fi
+          if [ -e /nix ]; then
+            echo "/nix exists"
+            exit 1
+          fi
 
   run-steam-deck:
     name: Run Steam Deck (mock)
     runs-on: ubuntu-22.04
     needs: [build-x86_64-linux, lints]
     steps:
+      - uses: actions/checkout@v3
       - run: sudo apt install fish zsh
       - uses: actions/download-artifact@v3
         with:
           name: harmonic-x86_64-linux
-      - uses: actions/download-artifact@v3
-        with:
-          name: nix-install
       - name: Move & set executable
         run: |
           chmod +x ./harmonic
-          mv harmonic harmonic-x86_64-linux
+          mkdir install-root
+          cp nix-install.sh install-root/nix-install.sh
+          mv harmonic install-root/harmonic-x86_64-linux
       - name: Make the CI look like a steam deck
         run: |
           mkdir -p ~/bin
@@ -172,17 +202,50 @@ jobs:
           sudo chmod +x /bin/steamos-readonly
           sudo useradd -m deck
       - name: Initial install
-        run: |
-          python -m http.server --bind 0.0.0.0 8000 &
-          timeout 20 bash -c 'until printf "" 2>>/dev/null >>/dev/tcp/localhost/8000; do echo "Waiting for server..."; sleep 1; done'
-          curl -L http://0.0.0.0:8000/nix-install.sh | sh -s -- install steam-deck --persistence `pwd`/ci-test-nix --extra-conf "access-tokens = github.com=${{ secrets.GITHUB_TOKEN }}"
+        uses: ./
+        with:
+          local-root: install-root/
+          logger: pretty
+          log-directives: harmonic=trace
+          backtrace: full
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          planner: steam-deck
+          extra-args: --persistence /home/runner/.ci-test-nix-home
       - name: Initial uninstall (without a `nix run` first)
         run: sudo -E /nix/harmonic uninstall
-      - name: Repeated install
+        env:
+          HARMONIC_NO_CONFIRM: true
+          HARMONIC_LOGGER: pretty
+          HARMONIC_LOG_DIRECTIVES: harmonic=trace
+          RUST_BACKTRACE: full
+      - name: Ensure `nix` is removed
         run: |
-          python -m http.server --bind 0.0.0.0 8000 &
-          timeout 20 bash -c 'until printf "" 2>>/dev/null >>/dev/tcp/localhost/8000; do echo "Waiting for server..."; sleep 1; done'
-          curl -L http://0.0.0.0:8000/nix-install.sh | sh -s -- install steam-deck --persistence `pwd`/ci-test-nix --extra-conf "access-tokens = github.com=${{ secrets.GITHUB_TOKEN }}"
+          if systemctl is-active nix-daemon.socket; then
+            echo "nix-daemon.socket was still running"
+            exit 1
+          fi
+          if systemctl is-active nix-daemon.service; then
+            echo "nix-daemon.service was still running"
+            exit 1
+          fi
+          if [ -e /nix ]; then
+            echo "/nix exists"
+            exit 1
+          fi
+          if [ -e /home/runner/.ci-test-nix-home ]; then
+            echo "/home/runner/.ci-test-nix-home exists"
+            exit 1
+          fi
+      - name: Repeated install
+        uses: ./
+        with:
+          local-root: install-root/
+          logger: pretty
+          log-directives: harmonic=trace
+          backtrace: full
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          planner: steam-deck
+          extra-args: --persistence /home/runner/.ci-test-nix-home
       - name: echo $PATH
         run: echo $PATH
       - name: Test `nix` with `$GITHUB_PATH`
@@ -206,6 +269,29 @@ jobs:
         shell: fish --login {0}
       - name: Repeated uninstall
         run: sudo -E /nix/harmonic uninstall
+        env:
+          HARMONIC_NO_CONFIRM: true
+          HARMONIC_LOGGER: pretty
+          HARMONIC_LOG_DIRECTIVES: harmonic=trace
+          RUST_BACKTRACE: full
+      - name: Ensure `nix` is removed
+        run: |
+          if systemctl is-active nix-daemon.socket; then
+            echo "nix-daemon.socket was still running"
+            exit 1
+          fi
+          if systemctl is-active nix-daemon.service; then
+            echo "nix-daemon.service was still running"
+            exit 1
+          fi
+          if [ -e /nix ]; then
+            echo "/nix exists"
+            exit 1
+          fi
+          if [ -e /home/runner/.ci-test-nix-home ]; then
+            echo "/home/runner/.ci-test-nix-home exists"
+            exit 1
+          fi
 
   build-x86_64-darwin:
     name: Build x86_64 Darwin
@@ -231,29 +317,40 @@ jobs:
     runs-on: macos-12
     needs: [build-x86_64-darwin, lints]
     steps:
+      - uses: actions/checkout@v3
       - run: brew install fish coreutils
       - uses: actions/download-artifact@v3
         with:
           name: harmonic-x86_64-darwin
-      - uses: actions/download-artifact@v3
-        with:
-          name: nix-install
       - name: Move & set executable
         run: |
           chmod +x ./harmonic
-          mv harmonic harmonic-x86_64-darwin
+          mkdir install-root
+          cp nix-install.sh install-root/nix-install.sh
+          mv harmonic install-root/harmonic-x86_64-darwin
       - name: Initial install
-        run: |
-          python3 -m http.server --bind 0.0.0.0 8000 &
-          gtimeout 20 bash -c 'until printf "" 2>>/dev/null >>/dev/tcp/localhost/8000; do echo "Waiting for server..."; sleep 1; done'
-          curl -L http://0.0.0.0:8000/nix-install.sh | sh -s -- install darwin-multi --extra-conf "access-tokens = github.com=${{ secrets.GITHUB_TOKEN }}"
+        uses: ./
+        with:
+          local-root: install-root/
+          logger: pretty
+          log-directives: harmonic=trace
+          backtrace: full
+          github-token: ${{ secrets.GITHUB_TOKEN }}
       - name: Initial uninstall (without a `nix run` first)
         run: sudo -E /nix/harmonic uninstall
+        env:
+          HARMONIC_NO_CONFIRM: true
+          HARMONIC_LOGGER: pretty
+          HARMONIC_LOG_DIRECTIVES: harmonic=trace
+          RUST_BACKTRACE: full
       - name: Repeated install
-        run: |
-          python -m http.server --bind 0.0.0.0 8000 &
-          timeout 20 bash -c 'until printf "" 2>>/dev/null >>/dev/tcp/localhost/8000; do echo "Waiting for server..."; sleep 1; done'
-          curl -L http://0.0.0.0:8000/nix-install.sh | sh -s -- install darwin-multi --extra-conf "access-tokens = github.com=${{ secrets.GITHUB_TOKEN }}"
+        uses: ./
+        with:
+          local-root: install-root/
+          logger: pretty
+          log-directives: harmonic=trace
+          backtrace: full
+          github-token: ${{ secrets.GITHUB_TOKEN }}
       - name: echo $PATH
         run: echo $PATH
       - name: Test `nix` with `$GITHUB_PATH`
@@ -277,4 +374,9 @@ jobs:
         shell: fish --login {0}
       - name: Repeated uninstall
         run: sudo -E /nix/harmonic uninstall
+        env:
+          HARMONIC_NO_CONFIRM: true
+          HARMONIC_LOGGER: pretty
+          HARMONIC_LOG_DIRECTIVES: harmonic=trace
+          RUST_BACKTRACE: full
         

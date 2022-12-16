@@ -1,4 +1,5 @@
 use nix::unistd::{chown, Group, User};
+use tracing::{span, Span};
 
 use std::path::{Path, PathBuf};
 use tokio::{
@@ -58,16 +59,31 @@ impl Action for CreateFile {
     fn tracing_synopsis(&self) -> String {
         format!("Create or overwrite file `{}`", self.path.display())
     }
+
+    fn tracing_span(&self) -> Span {
+        let span = span!(
+            tracing::Level::DEBUG,
+            "create_file",
+            path = tracing::field::display(self.path.display()),
+            user = self.user,
+            group = self.group,
+            mode = self
+                .mode
+                .map(|v| tracing::field::display(format!("{:#o}", v))),
+            buf = tracing::field::Empty,
+        );
+
+        if tracing::enabled!(tracing::Level::TRACE) {
+            span.record("buf", &self.buf);
+        }
+        span
+    }
+
     fn execute_description(&self) -> Vec<ActionDescription> {
         vec![ActionDescription::new(self.tracing_synopsis(), vec![])]
     }
 
-    #[tracing::instrument(level = "debug", skip_all, fields(
-        path = %self.path.display(),
-        user = self.user,
-        group = self.group,
-        mode = self.mode.map(|v| tracing::field::display(format!("{:#o}", v))),
-    ))]
+    #[tracing::instrument(level = "debug", skip_all)]
     async fn execute(&mut self) -> Result<(), ActionError> {
         let Self {
             path,
@@ -77,6 +93,11 @@ impl Action for CreateFile {
             buf,
             force: _,
         } = self;
+
+        if tracing::enabled!(tracing::Level::TRACE) {
+            let span = tracing::Span::current();
+            span.record("buf", &buf);
+        }
 
         let mut options = OpenOptions::new();
         options.create_new(true).write(true).read(true);
@@ -135,12 +156,7 @@ impl Action for CreateFile {
         )]
     }
 
-    #[tracing::instrument(level = "debug", skip_all, fields(
-        path = %self.path.display(),
-        user = self.user,
-        group = self.group,
-        mode = self.mode.map(|v| tracing::field::display(format!("{:#o}", v))),
-    ))]
+    #[tracing::instrument(level = "debug", skip_all)]
     async fn revert(&mut self) -> Result<(), ActionError> {
         let Self {
             path,

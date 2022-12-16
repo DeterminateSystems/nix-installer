@@ -10,6 +10,7 @@ use crate::{
 };
 
 use reqwest::Url;
+use tracing::{span, Instrument, Span};
 
 /**
 Configure Nix and start it
@@ -68,6 +69,10 @@ impl Action for ConfigureNix {
         "Configure Nix".to_string()
     }
 
+    fn tracing_span(&self) -> Span {
+        span!(tracing::Level::DEBUG, "configure_nix",)
+    }
+
     fn execute_description(&self) -> Vec<ActionDescription> {
         let Self {
             setup_default_profile,
@@ -98,17 +103,67 @@ impl Action for ConfigureNix {
         } = self;
 
         if let Some(configure_shell_profile) = configure_shell_profile {
+            let setup_default_profile_span = tracing::Span::current().clone();
+            let (
+                place_nix_configuration_span,
+                place_channel_configuration_span,
+                configure_shell_profile_span,
+            ) = (
+                setup_default_profile_span.clone(),
+                setup_default_profile_span.clone(),
+                setup_default_profile_span.clone(),
+            );
             tokio::try_join!(
-                async move { setup_default_profile.try_execute().await },
-                async move { place_nix_configuration.try_execute().await },
-                async move { place_channel_configuration.try_execute().await },
-                async move { configure_shell_profile.try_execute().await },
+                async move {
+                    setup_default_profile
+                        .try_execute()
+                        .instrument(setup_default_profile_span)
+                        .await
+                },
+                async move {
+                    place_nix_configuration
+                        .try_execute()
+                        .instrument(place_nix_configuration_span)
+                        .await
+                },
+                async move {
+                    place_channel_configuration
+                        .try_execute()
+                        .instrument(place_channel_configuration_span)
+                        .await
+                },
+                async move {
+                    configure_shell_profile
+                        .try_execute()
+                        .instrument(configure_shell_profile_span)
+                        .await
+                },
             )?;
         } else {
+            let place_channel_configuration_span = tracing::Span::current().clone();
+            let (setup_default_profile_span, place_nix_configuration_span) = (
+                place_channel_configuration_span.clone(),
+                place_channel_configuration_span.clone(),
+            );
             tokio::try_join!(
-                async move { setup_default_profile.try_execute().await },
-                async move { place_nix_configuration.try_execute().await },
-                async move { place_channel_configuration.try_execute().await },
+                async move {
+                    setup_default_profile
+                        .try_execute()
+                        .instrument(setup_default_profile_span)
+                        .await
+                },
+                async move {
+                    place_nix_configuration
+                        .try_execute()
+                        .instrument(place_nix_configuration_span)
+                        .await
+                },
+                async move {
+                    place_channel_configuration
+                        .try_execute()
+                        .instrument(place_channel_configuration_span)
+                        .await
+                },
             )?;
         };
         configure_nix_daemon_service.try_execute().await?;

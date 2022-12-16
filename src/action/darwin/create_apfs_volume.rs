@@ -1,6 +1,7 @@
 use std::path::{Path, PathBuf};
 
 use tokio::process::Command;
+use tracing::{span, Span};
 
 use crate::action::{ActionError, StatefulAction};
 use crate::execute_command;
@@ -41,15 +42,21 @@ impl Action for CreateApfsVolume {
         )
     }
 
+    fn tracing_span(&self) -> Span {
+        span!(
+            tracing::Level::DEBUG,
+            "create_volume",
+            disk = %self.disk.display(),
+            name = %self.name,
+            case_sensitive = %self.case_sensitive,
+        )
+    }
+
     fn execute_description(&self) -> Vec<ActionDescription> {
         vec![ActionDescription::new(self.tracing_synopsis(), vec![])]
     }
 
-    #[tracing::instrument(level = "debug", skip_all, fields(
-        disk = %self.disk.display(),
-        name = %self.name,
-        case_sensitive = %self.case_sensitive,
-    ))]
+    #[tracing::instrument(level = "debug", skip_all)]
     async fn execute(&mut self) -> Result<(), ActionError> {
         let Self {
             disk,
@@ -91,11 +98,7 @@ impl Action for CreateApfsVolume {
         )]
     }
 
-    #[tracing::instrument(level = "debug", skip_all, fields(
-        disk = %self.disk.display(),
-        name = %self.name,
-        case_sensitive = %self.case_sensitive,
-    ))]
+    #[tracing::instrument(level = "debug", skip_all)]
     async fn revert(&mut self) -> Result<(), ActionError> {
         let Self {
             disk: _,

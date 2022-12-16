@@ -2,6 +2,7 @@ use std::path::PathBuf;
 
 use bytes::Buf;
 use reqwest::Url;
+use tracing::{span, Span};
 
 use crate::action::{Action, ActionDescription, ActionError, StatefulAction};
 
@@ -31,14 +32,20 @@ impl Action for FetchAndUnpackNix {
         format!("Fetch `{}` to `{}`", self.url, self.dest.display())
     }
 
+    fn tracing_span(&self) -> Span {
+        span!(
+            tracing::Level::DEBUG,
+            "fetch_and_unpack_nix",
+            url = tracing::field::display(&self.url),
+            dest = tracing::field::display(self.dest.display()),
+        )
+    }
+
     fn execute_description(&self) -> Vec<ActionDescription> {
         vec![ActionDescription::new(self.tracing_synopsis(), vec![])]
     }
 
-    #[tracing::instrument(level = "debug", skip_all, fields(
-        url = %self.url,
-        dest = %self.dest.display(),
-    ))]
+    #[tracing::instrument(level = "debug", skip_all)]
     async fn execute(&mut self) -> Result<(), ActionError> {
         let Self { url, dest } = self;
 
@@ -66,10 +73,7 @@ impl Action for FetchAndUnpackNix {
         vec![/* Deliberately empty -- this is a noop */]
     }
 
-    #[tracing::instrument(level = "debug", skip_all, fields(
-        url = %self.url,
-        dest = %self.dest.display(),
-    ))]
+    #[tracing::instrument(level = "debug", skip_all)]
     async fn revert(&mut self) -> Result<(), ActionError> {
         let Self { url: _, dest: _ } = self;
 

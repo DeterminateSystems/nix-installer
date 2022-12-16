@@ -7,6 +7,7 @@ use crate::{
 use rand::Rng;
 use std::path::{Path, PathBuf};
 use tokio::process::Command;
+use tracing::{span, Span};
 
 /**
 Encrypt an APFS volume
@@ -40,6 +41,14 @@ impl Action for EncryptApfsVolume {
             "Encrypt volume `{}` on disk `{}`",
             self.name,
             self.disk.display()
+        )
+    }
+
+    fn tracing_span(&self) -> Span {
+        span!(
+            tracing::Level::DEBUG,
+            "encrypt_volume",
+            disk = tracing::field::display(self.disk.display()),
         )
     }
 

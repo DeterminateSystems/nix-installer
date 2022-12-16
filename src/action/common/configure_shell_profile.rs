@@ -4,6 +4,7 @@ use crate::action::{Action, ActionDescription, ActionError, StatefulAction};
 use nix::unistd::User;
 use std::path::{Path, PathBuf};
 use tokio::task::JoinSet;
+use tracing::{span, Instrument, Span};
 
 // Fish has different syntax than zsh/bash, treat it separate
 const PROFILE_FISH_SUFFIX: &str = "conf.d/nix.fish";
@@ -141,6 +142,10 @@ impl Action for ConfigureShellProfile {
         "Configure the shell profiles".to_string()
     }
 
+    fn tracing_span(&self) -> Span {
+        span!(tracing::Level::DEBUG, "configure_shell_profile",)
+    }
+
     fn execute_description(&self) -> Vec<ActionDescription> {
         vec![ActionDescription::new(
             self.tracing_synopsis(),
@@ -166,8 +171,10 @@ impl Action for ConfigureShellProfile {
             let span = tracing::Span::current().clone();
             let mut create_or_append_file_clone = create_or_append_file.clone();
             let _abort_handle = set.spawn(async move {
-                let _ = span.enter();
-                create_or_append_file_clone.try_execute().await?;
+                create_or_append_file_clone
+                    .try_execute()
+                    .instrument(span)
+                    .await?;
                 Result::<_, ActionError>::Ok((idx, create_or_append_file_clone))
             });
         }
