@@ -4,7 +4,7 @@
 # This script is based off https://github.com/rust-lang/rustup/blob/8f6b53628ad996ad86f9c6225fa500cddf860905/rustup-init.sh
 
 # This is just a little script that can be downloaded from the internet to
-# install `nix-install`. It just does platform detection, downloads the installer
+# install `nix-installer`. It just does platform detection, downloads the installer
 # and runs it.
 
 # It runs on Unix shells like {a,ba,da,k,z}sh. It uses the common `local`
@@ -52,7 +52,7 @@ main() {
         # propagate exit status.
         exit 1
     fi
-    local _file="${_dir}/nix-install${_ext}"
+    local _file="${_dir}/nix-installer${_ext}"
 
     local _ansi_escapes_are_valid=false
     if [ -t 2 ]; then
@@ -92,7 +92,7 @@ main() {
     ensure chmod u+x "$_file"
     if [ ! -x "$_file" ]; then
         printf '%s\n' "Cannot execute $_file (likely because of mounting /tmp as noexec)." 1>&2
-        printf '%s\n' "Please copy the file to a location where you can execute binaries and run ./nix-install${_ext}." 1>&2
+        printf '%s\n' "Please copy the file to a location where you can execute binaries and run ./nix-installer${_ext}." 1>&2
         exit 1
     fi
 
