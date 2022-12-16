@@ -161,7 +161,7 @@ impl Action for ConfigureNix {
                 async move {
                     place_channel_configuration
                         .try_execute()
-                        .instrument(place_channel_configuration)
+                        .instrument(place_channel_configuration_span)
                         .await
                 },
             )?;
