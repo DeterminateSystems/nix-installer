@@ -22,7 +22,7 @@ fi
 set -u
 
 # If NIX_INSTALLER_FORCE_ALLOW_HTTP is unset or empty, default it.
-NIX_INSTALLER_FORCE_ALLOW_HTTP="${NIX_INSTALLER_FORCE_ALLOW_HTTP:-https://install.determinate.systems/nix}"
+NIX_INSTALLER_BINARY_ROOT="${NIX_INSTALLER_BINARY_ROOT:-https://install.determinate.systems/nix}"
 
 main() {
     downloader --check
@@ -44,7 +44,7 @@ main() {
             ;;
     esac
 
-    local _url="${NIX_INSTALLER_OVERRIDE_URL-${NIX_INSTALLER_FORCE_ALLOW_HTTP}/nix-installer-${_arch}${_ext}}"
+    local _url="${NIX_INSTALLER_OVERRIDE_URL-${NIX_INSTALLER_BINARY_ROOT}/nix-installer-${_arch}${_ext}}"
 
     local _dir
     if ! _dir="$(ensure mktemp -d)"; then
