@@ -1,5 +1,3 @@
-use tokio::process::Command;
-
 use crate::{
     action::{
         base::CreateDirectory,
@@ -13,6 +11,7 @@ use crate::{
     Action, BuiltinPlanner,
 };
 use std::{collections::HashMap, path::Path};
+use tokio::process::Command;
 
 /// A planner for Linux multi-user installs
 #[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
