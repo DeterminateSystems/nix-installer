@@ -1,7 +1,7 @@
 use std::process::ExitCode;
 
 use clap::Parser;
-use harmonic::cli::CommandExecute;
+use nix_installer::cli::CommandExecute;
 
 #[tokio::main]
 async fn main() -> color_eyre::Result<ExitCode> {
@@ -13,7 +13,7 @@ async fn main() -> color_eyre::Result<ExitCode> {
         })
         .install()?;
 
-    let cli = harmonic::cli::HarmonicCli::parse();
+    let cli = nix_installer::cli::NixInstallerCli::parse();
 
     cli.instrumentation.setup()?;
 

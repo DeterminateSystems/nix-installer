@@ -14,15 +14,15 @@ if [ "$KSH_VERSION" = 'Version JM 93t+ 2010-03-05' ]; then
     # The version of ksh93 that ships with many illumos systems does not
     # support the "local" extension.  Print a message rather than fail in
     # subtle ways later on:
-    echo 'harmonic does not work with this ksh93 version; please try bash!' >&2
+    echo 'nix-installer does not work with this ksh93 version; please try bash!' >&2
     exit 1
 fi
 
 
 set -u
 
-# If NIX_INSTALL_BINARY_ROOT is unset or empty, default it.
-NIX_INSTALL_BINARY_ROOT="${NIX_INSTALL_BINARY_ROOT:-https://install.determinate.systems/nix}"
+# If NIX_INSTALLER_FORCE_ALLOW_HTTP is unset or empty, default it.
+NIX_INSTALLER_FORCE_ALLOW_HTTP="${NIX_INSTALLER_FORCE_ALLOW_HTTP:-https://install.determinate.systems/nix}"
 
 main() {
     downloader --check
@@ -44,7 +44,7 @@ main() {
             ;;
     esac
 
-    local _url="${NIX_INSTALL_OVERRIDE_URL-${NIX_INSTALL_BINARY_ROOT}/harmonic-${_arch}${_ext}}"
+    local _url="${NIX_INSTALLER_OVERRIDE_URL-${NIX_INSTALLER_FORCE_ALLOW_HTTP}/nix-installer-${_arch}${_ext}}"
 
     local _dir
     if ! _dir="$(ensure mktemp -d)"; then
@@ -77,7 +77,7 @@ main() {
                 ;;
         esac
     done
-    if [ "${HARMONIC_NO_CONFIRM-}" ]; then
+    if [ "${NIX_INSTALLER_NO_CONFIRM-}" ]; then
         need_tty=no
     fi
 
@@ -201,7 +201,7 @@ get_architecture() {
 }
 
 say() {
-    printf 'harmonic: %s\n' "$1"
+    printf 'nix-installer: %s\n' "$1"
 }
 
 err() {
@@ -261,7 +261,7 @@ downloader() {
         get_ciphersuites_for_curl
         _ciphersuites="$RETVAL"
         if [ -n "$_ciphersuites" ]; then
-            if [ -n "${NIX_INSTALL_FORCE_ALLOW_HTTP-}" ]; then
+            if [ -n "${NIX_INSTALLER_FORCE_ALLOW_HTTP-}" ]; then
                 _err=$(curl $_retry --silent --show-error --fail --location "$1" --output "$2" 2>&1)
             else
                 _err=$(curl $_retry --proto '=https' --tlsv1.2 --ciphers "$_ciphersuites" --silent --show-error --fail --location "$1" --output "$2" 2>&1)

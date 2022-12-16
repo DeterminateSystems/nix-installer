@@ -1,6 +1,6 @@
 /*! A [Nix](https://github.com/NixOS/nix) installer and uninstaller.
 
-Harmonic breaks down into three main concepts:
+`nix-installer` breaks down into three main concepts:
 
 * [`Action`]: An executable or revertable step, possibly orcestrating sub-[`Action`]s using things
   like [`JoinSet`](tokio::task::JoinSet)s.
@@ -10,12 +10,12 @@ Harmonic breaks down into three main concepts:
 
 It is possible to create custom [`Action`]s and [`Planner`](planner::Planner)s to suit the needs of your project, team, or organization.
 
-In the simplest case, Harmonic can be asked to determine a default plan for the platform and install
+In the simplest case, `nix-installer` can be asked to determine a default plan for the platform and install
 it, uninstalling if anything goes wrong:
 
 ```rust,no_run
 use std::error::Error;
-use harmonic::InstallPlan;
+use nix_installer::InstallPlan;
 
 # async fn default_install() -> color_eyre::Result<()> {
 let mut plan = InstallPlan::default().await?;
@@ -38,7 +38,7 @@ Sometimes choosing a specific plan is desired:
 
 ```rust,no_run
 use std::error::Error;
-use harmonic::{InstallPlan, planner::{Planner, linux::SteamDeck}};
+use nix_installer::{InstallPlan, planner::{Planner, linux::SteamDeck}};
 
 # async fn chosen_planner_install() -> color_eyre::Result<()> {
 let planner = SteamDeck::default().await?;
@@ -81,7 +81,7 @@ use std::{ffi::OsStr, process::Output};
 use action::Action;
 
 pub use channel_value::ChannelValue;
-pub use error::HarmonicError;
+pub use error::NixInstallerError;
 pub use plan::InstallPlan;
 use planner::BuiltinPlanner;
 

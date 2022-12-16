@@ -129,7 +129,7 @@ impl Action for CreateGroup {
             | OperatingSystem::Darwin => {
                 // TODO(@hoverbear): Make this actually work...
                 // Right now, our test machines do not have a secure token and cannot delete users.
-                tracing::warn!("Harmonic currently cannot delete groups on Mac due to https://github.com/DeterminateSystems/harmonic/issues/33. This is a no-op, installing with harmonic again will use the existing group.");
+                tracing::warn!("`nix-installer` currently cannot delete groups on Mac due to https://github.com/DeterminateSystems/nix-installer/issues/33. This is a no-op, installing with `nix-installer` again will use the existing group.");
                 // execute_command(Command::new("/usr/bin/dscl").args([
                 //     ".",
                 //     "-delete",

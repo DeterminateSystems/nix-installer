@@ -30,15 +30,15 @@ impl std::fmt::Display for Logger {
 #[derive(clap::Args, Debug)]
 pub struct Instrumentation {
     /// Enable debug logs, -vv for trace
-    #[clap(short = 'v', env = "HARMONIC_VERBOSITY", long, action = clap::ArgAction::Count, global = true)]
+    #[clap(short = 'v', env = "NIX_INSTALLER_VERBOSITY", long, action = clap::ArgAction::Count, global = true)]
     pub verbose: u8,
     /// Which logger to use
-    #[clap(long, env = "HARMONIC_LOGGER", default_value_t = Default::default(), global = true)]
+    #[clap(long, env = "NIX_INSTALLER_LOGGER", default_value_t = Default::default(), global = true)]
     pub logger: Logger,
     /// Tracing directives
     ///
     /// See https://docs.rs/tracing-subscriber/latest/tracing_subscriber/filter/struct.EnvFilter.html#directives
-    #[clap(long = "log-directive", global = true, env = "HARMONIC_LOG_DIRECTIVES", value_delimiter = ',', num_args = 0..)]
+    #[clap(long = "log-directive", global = true, env = "NIX_INSTALLER_LOG_DIRECTIVES", value_delimiter = ',', num_args = 0..)]
     pub log_directives: Vec<Directive>,
 }
 
@@ -137,7 +137,11 @@ impl<'a> Instrumentation {
                         _ => return Err(e).wrap_err_with(|| "parsing RUST_LOG directives"),
                     }
                 }
-                EnvFilter::try_new(&format!("{}={}", env!("CARGO_PKG_NAME"), self.log_level()))?
+                EnvFilter::try_new(&format!(
+                    "{}={}",
+                    env!("CARGO_PKG_NAME").replace("-", "_"),
+                    self.log_level()
+                ))?
             },
         };
 

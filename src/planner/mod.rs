@@ -13,7 +13,7 @@ A custom [`Planner`] can be created:
 
 ```rust,no_run
 use std::{error::Error, collections::HashMap};
-use harmonic::{
+use nix_installer::{
     InstallPlan,
     settings::{CommonSettings, InstallSettingsError},
     planner::{Planner, PlannerError, linux::SteamDeck},
@@ -83,7 +83,7 @@ use crate::{
     action::{ActionError, StatefulAction},
     error::HasExpectedErrors,
     settings::{CommonSettings, InstallSettingsError},
-    Action, HarmonicError, InstallPlan,
+    Action, InstallPlan, NixInstallerError,
 };
 
 /// Something which can be used to plan out an [`InstallPlan`]
@@ -154,7 +154,7 @@ impl BuiltinPlanner {
         Ok(built)
     }
 
-    pub async fn plan(self) -> Result<InstallPlan, HarmonicError> {
+    pub async fn plan(self) -> Result<InstallPlan, NixInstallerError> {
         match self {
             BuiltinPlanner::LinuxMulti(planner) => InstallPlan::plan(planner).await,
             BuiltinPlanner::DarwinMulti(planner) => InstallPlan::plan(planner).await,
@@ -173,8 +173,8 @@ impl BuiltinPlanner {
 /// An error originating from a [`Planner`]
 #[derive(thiserror::Error, Debug)]
 pub enum PlannerError {
-    /// Harmonic does not have a default planner for the target architecture right now
-    #[error("Harmonic does not have a default planner for the `{0}` architecture right now, pass a specific archetype")]
+    /// `nix-installer` does not have a default planner for the target architecture right now
+    #[error("`nix-installer` does not have a default planner for the `{0}` architecture right now, pass a specific archetype")]
     UnsupportedArchitecture(target_lexicon::Triple),
     /// Error executing action
     #[error("Error executing action")]

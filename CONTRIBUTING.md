@@ -1,14 +1,14 @@
-# Contributing to Harmonic
+# Contributing to `nix-installer`
 
-We're excited to see what you'd like to contribute to Harmonic!
+We're excited to see what you'd like to contribute to `nix-installer`!
 
-Regardless of what (or how much) you contribute to Harmonic, we value your time
+Regardless of what (or how much) you contribute to `nix-installer`, we value your time
 and energy trying to improve the tool.
 
 In order to ensure we all have a good experience, please review this document
 if you have any questions about the process.
 
-**Regular Rust committer?** Contributing to Harmonic should feel similar to
+**Regular Rust committer?** Contributing to `nix-installer` should feel similar to
 contributing to other serious Rust ecosystem projects. You may already know
 the process and expectations of you, this document shouldn't contain any
 surprises.
@@ -69,13 +69,13 @@ Here are how to do various kinds of contributions.
 
 ## Bug Reports
 
-Create an issue on [the issue page](https://github.com/DeterminateSystems/harmonic/issues).
+Create an issue on [the issue page](https://github.com/DeterminateSystems/nix-installer/issues).
 
 It should contain:
 
 1. Your OS (Linux, Mac) and architecture (x86_64, aarch64)
-2. Your Harmonic version (`harmonic --version`)
-3. The thing you tried to run (eg `harmonic`)
+2. Your `nix-installer`` version (`nix-installer --version`)
+3. The thing you tried to run (eg `nix-installer`)
 4. What happened (the output of the command, please)
 5. What you expected to happen
 6. If you tried to fix it, what did you try?
@@ -85,10 +85,10 @@ It should contain:
 
 For **minor** fixes, documentation, or changes which **do not** have a
 tangible impact on user experience, feel free to open a
-[pull request](https://github.com/DeterminateSystems/harmonic/pulls) directly.
+[pull request](https://github.com/DeterminateSystems/nix-installer/pulls) directly.
 
 If the code improvement is not minor, such as new features or user facing
-changes, an [issue](https://github.com/DeterminateSystems/harmonic/issues)
+changes, an [issue](https://github.com/DeterminateSystems/nix-installer/issues)
 proposing the change is **required** for non-maintainers.
 
 Please:
@@ -103,16 +103,16 @@ Please:
 
 ## Non-code contributions
 
-Please open an [issue](https://github.com/DeterminateSystems/harmonic/issues)
+Please open an [issue](https://github.com/DeterminateSystems/nix-installer/issues)
 to chat about your contribution and figure out how to best integrate it into
 the project.
 
 
-# Who maintains Harmonic and why?
+# Who maintains `nix-installer` and why?
 
-Harmonic is maintained by [Determinate Systems](https://determinate.systems/) in
+`nix-installer` is maintained by [Determinate Systems](https://determinate.systems/) in
 an effort to explore Nix installer ideas.
 
-Determinate Systems has no plans to monetize or relicense Harmonic. If your
+Determinate Systems has no plans to monetize or relicense `nix-installer`. If your
 enterprise requires a support contact in order to adopt a tool, please contact
 Determinate Systems and something can be worked out.

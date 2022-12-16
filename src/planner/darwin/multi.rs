@@ -31,7 +31,7 @@ pub struct DarwinMulti {
             long,
             action(ArgAction::Set),
             default_value = "false",
-            env = "HARMONIC_ENCRYPT"
+            env = "NIX_INSTALLER_ENCRYPT"
         )
     )]
     pub encrypt: Option<bool>,
@@ -42,18 +42,18 @@ pub struct DarwinMulti {
             long,
             action(ArgAction::SetTrue),
             default_value = "false",
-            env = "HARMONIC_CASE_SENSITIVE"
+            env = "NIX_INSTALLER_CASE_SENSITIVE"
         )
     )]
     pub case_sensitive: bool,
     /// The label for the created APFS volume
     #[cfg_attr(
         feature = "cli",
-        clap(long, default_value = "Nix Store", env = "HARMONIC_VOLUME_LABEL")
+        clap(long, default_value = "Nix Store", env = "NIX_INSTALLER_VOLUME_LABEL")
     )]
     pub volume_label: String,
     /// The root disk of the target
-    #[cfg_attr(feature = "cli", clap(long, env = "HARMONIC_ROOT_DISK"))]
+    #[cfg_attr(feature = "cli", clap(long, env = "NIX_INSTALLER_ROOT_DISK"))]
     pub root_disk: Option<String>,
 }
 

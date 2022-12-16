@@ -1,8 +1,8 @@
-# Harmonic
+# Nix Installer
 
-> **Harmonic is pre-release and experimental.** Don't run it on machines you care about.
+> **`nix-installer` is pre-release and experimental.** Don't run it on machines you care about.
 
-Harmonic is an opinionated, experimental Nix installer.
+`nix-installer` is an opinionated, experimental Nix installer.
 
 > Try it on a machine/VM you don't care about!
 >
@@ -12,7 +12,7 @@ Harmonic is an opinionated, experimental Nix installer.
 
 ## Status
 
-Harmonic is **pre-release and experimental**. It is not ready for you to use! *Please* don't use it on a machine you are not planning to obliterate!
+`nix-installer` is **pre-release and experimental**. It is not ready for you to use! *Please* don't use it on a machine you are not planning to obliterate!
 
 Planned support:
 
@@ -32,7 +32,7 @@ Planned support:
 Differing from the current official [Nix](https://github.com/NixOS/nix) installer scripts:
 
 * Nix is installed with the `nix-command` and `flakes` features enabled in the `nix.conf`
-* Harmonic stores an installation receipt (for uninstalling) at `/nix/receipt.json` as well as a copy of the install binary at `/nix/harmonic`
+* `nix-installer` stores an installation receipt (for uninstalling) at `/nix/receipt.json` as well as a copy of the install binary at `/nix/nix-installer`
 
 ## Motivations
 
@@ -50,38 +50,38 @@ So far, our explorations have been quite fruitful, so we wanted to share and kee
 
 ## Building
 
-Since you'll be using Harmonic to install Nix on systems without Nix, the default build is a static binary.
+Since you'll be using `nix-installer` to install Nix on systems without Nix, the default build is a static binary.
 
 Build it on a system with Nix:
 
 ```bash
-nix build github:determinatesystems/harmonic
+nix build github:determinatesystems/nix-installer
 ```
 
-Then copy the `result/bin/harmonic` to the machine you wish to run it on.
+Then copy the `result/bin/nix-installer` to the machine you wish to run it on.
 
 ## Installing
 
 Install Nix with the default planner and options:
 
 ```bash
-./harmonic install
+./nix-installer install
 ```
 
-> `harmonic` will elevate itself if it is not run as `root` using `sudo`. If you use `doas` or `please` you may need to elevate `harmonic` yourself.
+> `nix-installer` will elevate itself if it is not run as `root` using `sudo`. If you use `doas` or `please` you may need to elevate `nix-installer` yourself.
 
-To observe verbose logging, either use `harmonic -v`, this tool [also respects the `RUST_LOG` environment](https://docs.rs/tracing-subscriber/latest/tracing_subscriber/filter/struct.EnvFilter.html#directives). (Eg `RUST_LOG=harmonic=trace harmonic`).
+To observe verbose logging, either use `nix-installer -v`, this tool [also respects the `RUST_LOG` environment](https://docs.rs/tracing-subscriber/latest/tracing_subscriber/filter/struct.EnvFilter.html#directives). (Eg `RUST_LOG=nix_installer=trace nix-installer`).
 
-Harmonic installs Nix by following a *plan* made by a *planner*. Review the available planners:
+`nix-installer` installs Nix by following a *plan* made by a *planner*. Review the available planners:
 
 ```bash
-$ ./harmonic install --help
+$ ./nix-installer install --help
 Execute an install (possibly using an existing plan)
 
-To pass custom options, select a planner, for example `harmonic install linux-multi --help`
+To pass custom options, select a planner, for example `nix-installer install linux-multi --help`
 
-Usage: harmonic install [OPTIONS] [PLAN]
-       harmonic install <COMMAND>
+Usage: nix-installer install [OPTIONS] [PLAN]
+       nix-installer install <COMMAND>
 
 Commands:
   linux-multi
@@ -98,14 +98,14 @@ Commands:
 Planners have their own options and defaults, sharing most of them in common:
 
 ```bash
-$ ./harmonic install linux-multi --help
+$ ./nix-installer install linux-multi --help
 A standard Linux multi-user install
 
-Usage: harmonic install linux-multi [OPTIONS]
+Usage: nix-installer install linux-multi [OPTIONS]
 
 Options:
       --channels <channel>
-          Channel(s) to add [env: HARMONIC_CHANNEL=] [default: nixpkgs=https://nixos.org/channels/nixpkgs-unstable]
+          Channel(s) to add [env: NIX_INSTALLER_CHANNEL=] [default: nixpkgs=https://nixos.org/channels/nixpkgs-unstable]
       --no-confirm
           
   -v, --verbose...
@@ -115,23 +115,23 @@ Options:
       --logger <LOGGER>
           Which logger to use [default: compact] [possible values: compact, full, pretty, json]
       --modify-profile
-          Modify the user profile to automatically load nix [env: HARMONIC_NO_MODIFY_PROFILE=]
+          Modify the user profile to automatically load nix [env: NIX_INSTALLER_NO_MODIFY_PROFILE=]
       --daemon-user-count <DAEMON_USER_COUNT>
-          Number of build users to create [env: HARMONIC_DAEMON_USER_COUNT=] [default: 32]
+          Number of build users to create [env: NIX_INSTALLER_DAEMON_USER_COUNT=] [default: 32]
       --nix-build-group-name <NIX_BUILD_GROUP_NAME>
-          The Nix build group name [env: HARMONIC_NIX_BUILD_GROUP_NAME=] [default: nixbld]
+          The Nix build group name [env: NIX_INSTALLER_NIX_BUILD_GROUP_NAME=] [default: nixbld]
       --nix-build-group-id <NIX_BUILD_GROUP_ID>
-          The Nix build group GID [env: HARMONIC_NIX_BUILD_GROUP_ID=] [default: 3000]
+          The Nix build group GID [env: NIX_INSTALLER_NIX_BUILD_GROUP_ID=] [default: 3000]
       --nix-build-user-prefix <NIX_BUILD_USER_PREFIX>
-          The Nix build user prefix (user numbers will be postfixed) [env: HARMONIC_NIX_BUILD_USER_PREFIX=] [default: nixbld]
+          The Nix build user prefix (user numbers will be postfixed) [env: NIX_INSTALLER_NIX_BUILD_USER_PREFIX=] [default: nixbld]
       --nix-build-user-id-base <NIX_BUILD_USER_ID_BASE>
-          The Nix build user base UID (ascending) [env: HARMONIC_NIX_BUILD_USER_ID_BASE=] [default: 3000]
+          The Nix build user base UID (ascending) [env: NIX_INSTALLER_NIX_BUILD_USER_ID_BASE=] [default: 3000]
       --nix-package-url <NIX_PACKAGE_URL>
-          The Nix package URL [env: HARMONIC_NIX_PACKAGE_URL=] [default: https://releases.nixos.org/nix/nix-2.12.0/nix-2.12.0-x86_64-linux.tar.xz]
+          The Nix package URL [env: NIX_INSTALLER_NIX_PACKAGE_URL=] [default: https://releases.nixos.org/nix/nix-2.12.0/nix-2.12.0-x86_64-linux.tar.xz]
       --extra-conf <EXTRA_CONF>
-          Extra configuration lines for `/etc/nix.conf` [env: HARMONIC_EXTRA_CONF=]
+          Extra configuration lines for `/etc/nix.conf` [env: NIX_INSTALLER_EXTRA_CONF=]
       --force
-          If Harmonic should forcibly recreate files it finds existing [env: HARMONIC_FORCE=]
+          Forcibly recreate files it finds existing [env: NIX_INSTALLER_FORCE=]
   -h, --help
           Print help information
 ```
@@ -139,25 +139,25 @@ Options:
 Planners can be configured via environment variable, or by the command arguments.
 
 ```bash
-$ HARMONIC_DAEMON_USER_COUNT=4 ./harmonic install linux-multi --nix-build-user-id-base 4000 --help
+$ NIX_INSTALLER_DAEMON_USER_COUNT=4 ./nix-installer install linux-multi --nix-build-user-id-base 4000 --help
 ```
 
 ## Uninstalling
 
-You can remove a Harmonic-installed Nix by running
+You can remove a `nix-installer`-installed Nix by running
 
 ```bash
-/nix/harmonic uninstall
+/nix/nix-installer uninstall
 ```
 
 ## As a library
 
 > We haven't published to [crates.io](https://crates.io/) yet. We plan to for 0.0.1.
 
-Add `harmonic` to your dependencies:
+Add `nix-installer` to your dependencies:
 
 ```bash
-cargo add --git https://github.com/DeterminateSystems/harmonic
+cargo add --git https://github.com/DeterminateSystems/nix-installer
 ```
 
 > **Building a CLI?** Check out the `cli` feature flag for `clap` integration.
@@ -165,19 +165,19 @@ cargo add --git https://github.com/DeterminateSystems/harmonic
 Then it's possible to review the documentation:
 
 ```bash
-cargo doc --open -p harmonic
+cargo doc --open -p nix-installer
 ```
 
 Documentation is also available via `nix` build:
 
 ```bash
-nix build github:DeterminateSystems/harmonic#harmonic.doc
-firefox result-doc/harmonic/index.html
+nix build github:DeterminateSystems/nix-installer#nix-installer.doc
+firefox result-doc/nix-installer/index.html
 ```
 
 ## As a Github Action
 
-You can use Harmonic as a Github action like so:
+You can use `nix-installer` as a Github action like so:
 
 ```yaml
 on:
@@ -192,7 +192,7 @@ jobs:
     steps:
     - uses: actions/checkout@v3
     - name: Install Nix
-      uses: DeterminateSystems/harmonic@main
+      uses: DeterminateSystems/nix-installer@main
       with:
         github-token: ${{ secrets.GITHUB_TOKEN }}
     - name: Run `nix build`

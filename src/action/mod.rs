@@ -24,7 +24,7 @@ You can manually plan, execute, then revert an [`Action`] like so:
 
 ```rust,no_run
 # async fn wrapper() {
-use harmonic::action::base::CreateDirectory;
+use nix-installer::action::base::CreateDirectory;
 let mut action = CreateDirectory::plan("/nix", None, None, 0o0755, true).await.unwrap();
 action.try_execute().await.unwrap();
 action.try_revert().await.unwrap();
@@ -46,7 +46,7 @@ A custom [`Action`] can be created then used in a custom [`Planner`](crate::plan
 ```rust,no_run
 use std::{error::Error, collections::HashMap};
 use tracing::{Span, span};
-use harmonic::{
+use nix_installer::{
     InstallPlan,
     settings::{CommonSettings, InstallSettingsError},
     planner::{Planner, PlannerError, linux::SteamDeck},

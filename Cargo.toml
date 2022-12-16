@@ -1,5 +1,5 @@
 [package]
-name = "harmonic"
+name = "nix-installer"
 description = "A `nix` installer"
 version = "0.0.0-unreleased"
 edition = "2021"
@@ -16,7 +16,7 @@ default = ["cli"]
 cli = [ "eyre", "color-eyre", "clap", "tracing-subscriber", "tracing-error", "atty" ]
 
 [[bin]]
-name = "harmonic"
+name = "nix-installer"
 required-features = [ "cli" ]
 
 [dependencies]
