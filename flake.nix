@@ -25,7 +25,12 @@
     let
       supportedSystems = [ "x86_64-linux" "aarch64-linux" "x86_64-darwin" "aarch64-darwin" ];
 
-      forAllSystems = f: nixpkgs.lib.genAttrs supportedSystems (system: f system);
+      forAllSystems = f: nixpkgs.lib.genAttrs supportedSystems (system: f rec {
+        inherit system;
+        pkgs = import nixpkgs { inherit system; overlays = [ self.overlays.default ]; };
+        lib = pkgs.lib;
+      });
+
       nixpkgsFor = forAllSystems (system: import nixpkgs { inherit system; overlays = [ self.overlays.default ]; });
 
       fenixToolchain = system: with fenix.packages.${system};
@@ -92,10 +97,9 @@
         };
 
 
-      devShells = forAllSystems (system:
+      devShells = forAllSystems ({ system, pkgs, ... }:
         let
           toolchain = fenixToolchain system;
-          pkgs = (nixpkgsFor.${system});
           eclint = import ./nix/eclint.nix { inherit pkgs; };
           check = import ./nix/check.nix { inherit pkgs eclint toolchain; };
         in
@@ -120,9 +124,8 @@
           };
         });
 
-      checks = forAllSystems (system:
+      checks = forAllSystems ({ system, pkgs, ... }:
         let
-          pkgs = (nixpkgsFor.${system});
           toolchain = fenixToolchain system;
           eclint = import ./nix/eclint.nix { inherit pkgs; };
           check = import ./nix/check.nix { inherit pkgs eclint toolchain; };
@@ -150,10 +153,7 @@
           '';
         });
 
-      packages = forAllSystems (system:
-        let
-          pkgs = nixpkgsFor.${system};
-        in
+      packages = forAllSystems ({ system, pkgs, ... }:
         {
           inherit (pkgs) harmonic;
         } // nixpkgs.lib.optionalAttrs (system == "x86_64-linux") {
