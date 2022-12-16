@@ -31,8 +31,6 @@
         lib = pkgs.lib;
       });
 
-      nixpkgsFor = forAllSystems (system: import nixpkgs { inherit system; overlays = [ self.overlays.default ]; });
-
       fenixToolchain = system: with fenix.packages.${system};
         combine ([
           stable.clippy
