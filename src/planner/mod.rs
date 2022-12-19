@@ -77,7 +77,7 @@ match plan.install(None).await {
 pub mod darwin;
 pub mod linux;
 
-use std::collections::HashMap;
+use std::{collections::HashMap, string::FromUtf8Error};
 
 use crate::{
     action::{ActionError, StatefulAction},
@@ -189,6 +189,12 @@ pub enum PlannerError {
     /// A MacOS (Darwin) plist related error
     #[error(transparent)]
     Plist(#[from] plist::Error),
+    /// A Linux SELinux related error
+    #[error("This installer doesn't yet support SELinux in `Enforcing` mode. If SELinux is important to you, please see https://github.com/DeterminateSystems/harmonic/issues/124. You can also try again after setting SELinux to `Permissive` mode with `setenforce Permissive`")]
+    SelinuxEnforcing,
+    /// A UTF-8 related error
+    #[error("UTF-8 error")]
+    Utf8(#[from] FromUtf8Error),
     /// Custom planner error
     #[error("Custom planner error")]
     Custom(#[source] Box<dyn std::error::Error + Send + Sync>),
@@ -205,6 +211,8 @@ impl HasExpectedErrors for PlannerError {
             PlannerError::Action(_) => None,
             PlannerError::InstallSettings(_) => None,
             PlannerError::Plist(_) => None,
+            PlannerError::Utf8(_) => None,
+            PlannerError::SelinuxEnforcing => Some(Box::new(self)),
             PlannerError::Custom(_) => None,
             this @ PlannerError::NixOs => Some(Box::new(this)),
             this @ PlannerError::NixExists => Some(Box::new(this)),
