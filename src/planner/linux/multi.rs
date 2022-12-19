@@ -37,6 +37,24 @@ impl Planner for LinuxMulti {
             return Err(PlannerError::NixOs);
         }
 
+        // We currently do not support SELinux
+        match Command::new("getenforce").output().await {
+            Ok(output) => {
+                let stdout_string = String::from_utf8(output.stdout).map_err(PlannerError::Utf8)?;
+                tracing::trace!(getenforce_stdout = stdout_string, "SELinux detected");
+                match stdout_string.trim() {
+                    "Enforcing" => return Err(PlannerError::SelinuxEnforcing),
+                    _ => (),
+                }
+            },
+            // The device doesn't have SELinux set up
+            Err(e) if e.kind() == std::io::ErrorKind::NotFound => (),
+            // Some unknown error
+            Err(e) => {
+                tracing::warn!(error = ?e, "Got an error checking for SELinux setting, this install may fail if SELinux is set to `Enforcing`")
+            },
+        }
+
         // For now, we don't try to repair the user's Nix install or anything special.
         if let Ok(_) = Command::new("nix-env")
             .arg("--version")
@@ -81,14 +99,4 @@ impl Into<BuiltinPlanner> for LinuxMulti {
     fn into(self) -> BuiltinPlanner {
         BuiltinPlanner::LinuxMulti(self)
     }
-}
-
-#[derive(thiserror::Error, Debug)]
-enum LinuxMultiError {
-    #[error("Error planning action")]
-    Action(
-        #[source]
-        #[from]
-        Box<dyn std::error::Error + Send + Sync>,
-    ),
 }

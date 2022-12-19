@@ -55,7 +55,7 @@ pub enum NixInstallerError {
     ),
 }
 
-pub(crate) trait HasExpectedErrors {
+pub(crate) trait HasExpectedErrors: std::error::Error + Sized + Send + Sync {
     fn expected<'a>(&'a self) -> Option<Box<dyn std::error::Error + 'a>>;
 }
 

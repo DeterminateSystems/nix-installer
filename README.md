@@ -16,13 +16,15 @@
 
 Planned support:
 
-* [x] Multi-user x86_64 Linux with systemd init
-* [x] Multi-user aarch64 Linux with systemd init
+* [x] Multi-user x86_64 Linux with systemd init, no SELinux
+* [x] Multi-user aarch64 Linux with systemd init, no SELinux
 * [x] Multi-user x86_64 MacOS
     + Note: User deletion is currently unimplemented, you need to use a user with a secure token and `dscl . -delete /Users/_nixbuild*` where `*` is each user number.
 * [x] Multi-user aarch64 MacOS
     + Note: User deletion is currently unimplemented, you need to use a user with a secure token and `dscl . -delete /Users/_nixbuild*` where `*` is each user number.
 * [x] Valve Steam Deck
+* [ ] Multi-user x86_64 Linux with systemd init, with SELinux
+* [ ] Multi-user aarch64 Linux with systemd init, with SELinux
 * [ ] Single-user x86_64 Linux
 * [ ] Single-user aarch64 Linux
 * [ ] Others...
