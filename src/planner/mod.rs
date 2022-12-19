@@ -190,7 +190,7 @@ pub enum PlannerError {
     #[error(transparent)]
     Plist(#[from] plist::Error),
     /// A Linux SELinux related error
-    #[error("This installer doesn't yet support SELinux in `Enforcing` mode. If SELinux is important to you, please see https://github.com/DeterminateSystems/harmonic/issues/124. You can also try again after setting SELinux to `Permissive` mode with `setenforce Permissive`")]
+    #[error("This installer doesn't yet support SELinux in `Enforcing` mode. If SELinux is important to you, please see https://github.com/DeterminateSystems/nix-installer/issues/124. You can also try again after setting SELinux to `Permissive` mode with `setenforce Permissive`")]
     SelinuxEnforcing,
     /// A UTF-8 related error
     #[error("UTF-8 error")]
