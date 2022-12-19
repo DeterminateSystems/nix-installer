@@ -18,13 +18,13 @@ use owo_colors::OwoColorize;
 
 /// Execute an install (possibly using an existing plan)
 ///
-/// To pass custom options, select a planner, for example `harmonic install linux-multi --help`
+/// To pass custom options, select a planner, for example `nix-installer install linux-multi --help`
 #[derive(Debug, Parser)]
 #[command(args_conflicts_with_subcommands = true)]
 pub struct Install {
     #[clap(
         long,
-        env = "HARMONIC_NO_CONFIRM",
+        env = "NIX_INSTALLER_NO_CONFIRM",
         action(ArgAction::SetTrue),
         default_value = "false",
         global = true
@@ -36,13 +36,13 @@ pub struct Install {
 
     #[clap(
         long,
-        env = "HARMONIC_EXPLAIN",
+        env = "NIX_INSTALLER_EXPLAIN",
         action(ArgAction::SetTrue),
         default_value = "false",
         global = true
     )]
     pub explain: bool,
-    #[clap(env = "HARMONIC_PLAN")]
+    #[clap(env = "NIX_INSTALLER_PLAN")]
     pub plan: Option<PathBuf>,
 
     #[clap(subcommand)]

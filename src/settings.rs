@@ -38,7 +38,7 @@ pub struct CommonSettings {
             value_parser,
             name = "channel",
             action = clap::ArgAction::Append,
-            env = "HARMONIC_CHANNELS",
+            env = "NIX_INSTALLER_CHANNELS",
             default_value = "nixpkgs=https://nixos.org/channels/nixpkgs-unstable",
         )
     )]
@@ -52,7 +52,7 @@ pub struct CommonSettings {
             action(ArgAction::SetFalse),
             default_value = "true",
             global = true,
-            env = "HARMONIC_NO_MODIFY_PROFILE",
+            env = "NIX_INSTALLER_NO_MODIFY_PROFILE",
             name = "no-modify-profile"
         )
     )]
@@ -64,7 +64,7 @@ pub struct CommonSettings {
         clap(
             long,
             default_value = "32",
-            env = "HARMONIC_DAEMON_USER_COUNT",
+            env = "NIX_INSTALLER_DAEMON_USER_COUNT",
             global = true
         )
     )]
@@ -76,7 +76,7 @@ pub struct CommonSettings {
         clap(
             long,
             default_value = "nixbld",
-            env = "HARMONIC_NIX_BUILD_GROUP_NAME",
+            env = "NIX_INSTALLER_NIX_BUILD_GROUP_NAME",
             global = true
         )
     )]
@@ -88,7 +88,7 @@ pub struct CommonSettings {
         clap(
             long,
             default_value_t = 3000,
-            env = "HARMONIC_NIX_BUILD_GROUP_ID",
+            env = "NIX_INSTALLER_NIX_BUILD_GROUP_ID",
             global = true
         )
     )]
@@ -97,7 +97,7 @@ pub struct CommonSettings {
     /// The Nix build user prefix (user numbers will be postfixed)
     #[cfg_attr(
         feature = "cli",
-        clap(long, env = "HARMONIC_NIX_BUILD_USER_PREFIX", global = true)
+        clap(long, env = "NIX_INSTALLER_NIX_BUILD_USER_PREFIX", global = true)
     )]
     #[cfg_attr(
         all(target_os = "macos", feature = "cli"),
@@ -112,7 +112,7 @@ pub struct CommonSettings {
     /// The Nix build user base UID (ascending)
     #[cfg_attr(
         feature = "cli",
-        clap(long, env = "HARMONIC_NIX_BUILD_USER_ID_BASE", global = true)
+        clap(long, env = "NIX_INSTALLER_NIX_BUILD_USER_ID_BASE", global = true)
     )]
     #[cfg_attr(all(target_os = "macos", feature = "cli"), clap(default_value_t = 300))]
     #[cfg_attr(
@@ -124,7 +124,7 @@ pub struct CommonSettings {
     /// The Nix package URL
     #[cfg_attr(
         feature = "cli",
-        clap(long, env = "HARMONIC_NIX_PACKAGE_URL", global = true)
+        clap(long, env = "NIX_INSTALLER_NIX_PACKAGE_URL", global = true)
     )]
     #[cfg_attr(
         all(target_os = "macos", target_arch = "x86_64", feature = "cli"),
@@ -153,10 +153,10 @@ pub struct CommonSettings {
     pub(crate) nix_package_url: Url,
 
     /// Extra configuration lines for `/etc/nix.conf`
-    #[cfg_attr(feature = "cli", clap(long, action = ArgAction::Set, num_args = 0.., value_delimiter = ',', env = "HARMONIC_EXTRA_CONF", global = true))]
+    #[cfg_attr(feature = "cli", clap(long, action = ArgAction::Set, num_args = 0.., value_delimiter = ',', env = "NIX_INSTALLER_EXTRA_CONF", global = true))]
     pub extra_conf: Vec<String>,
 
-    /// If Harmonic should forcibly recreate files it finds existing
+    /// If `nix-installer` should forcibly recreate files it finds existing
     #[cfg_attr(
         feature = "cli",
         clap(
@@ -164,7 +164,7 @@ pub struct CommonSettings {
             action(ArgAction::SetTrue),
             default_value = "false",
             global = true,
-            env = "HARMONIC_FORCE"
+            env = "NIX_INSTALLER_FORCE"
         )
     )]
     pub(crate) force: bool,
@@ -341,7 +341,7 @@ impl CommonSettings {
         self
     }
 
-    /// If Harmonic should forcibly recreate files it finds existing
+    /// If `nix-installer` should forcibly recreate files it finds existing
     pub fn force(&mut self, force: bool) -> &mut Self {
         self.force = force;
         self
@@ -351,8 +351,8 @@ impl CommonSettings {
 /// An error originating from a [`Planner::settings`](crate::planner::Planner::settings)
 #[derive(thiserror::Error, Debug)]
 pub enum InstallSettingsError {
-    /// Harmonic does not support the architecture right now
-    #[error("Harmonic does not support the `{0}` architecture right now")]
+    /// `nix-installer` does not support the architecture right now
+    #[error("`nix-installer` does not support the `{0}` architecture right now")]
     UnsupportedArchitecture(target_lexicon::Triple),
     /// Parsing URL
     #[error("Parsing URL")]

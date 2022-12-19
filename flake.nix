@@ -1,5 +1,5 @@
 {
-  description = "harmonic";
+  description = "A Nix Installer";
 
   inputs = {
     nixpkgs.url = "github:nixos/nixpkgs/nixos-22.05";
@@ -53,7 +53,7 @@
             rustc = toolchain;
           };
           sharedAttrs = {
-            pname = "harmonic";
+            pname = "nix-installer";
             version = "0.0.0-unreleased";
             src = self;
 
@@ -74,21 +74,21 @@
               '';
             };
             postInstall = ''
-              cp nix-install.sh $out/bin/nix-install.sh
+              cp nix-installer.sh $out/bin/nix-installer.sh
             '';
           };
         in
         rec {
-          harmonic = naerskLib.buildPackage sharedAttrs;
+          nix-installer = naerskLib.buildPackage sharedAttrs;
         } // nixpkgs.lib.optionalAttrs (prev.hostPlatform.system == "x86_64-linux") rec {
-          default = harmonicStatic;
-          harmonicStatic = naerskLib.buildPackage
+          default = nix-installer-static;
+          nix-installer-static = naerskLib.buildPackage
             (sharedAttrs // {
               CARGO_BUILD_TARGET = "x86_64-unknown-linux-musl";
             });
         } // nixpkgs.lib.optionalAttrs (prev.hostPlatform.system == "aarch64-linux") rec {
-          default = harmonicStatic;
-          harmonicStatic = naerskLib.buildPackage
+          default = nix-installer-static;
+          nix-installer-static = naerskLib.buildPackage
             (sharedAttrs // {
               CARGO_BUILD_TARGET = "aarch64-unknown-linux-musl";
             });
@@ -153,15 +153,15 @@
 
       packages = forAllSystems ({ system, pkgs, ... }:
         {
-          inherit (pkgs) harmonic;
+          inherit (pkgs) nix-installer;
         } // nixpkgs.lib.optionalAttrs (system == "x86_64-linux") {
-          inherit (pkgs) harmonicStatic;
-          default = pkgs.harmonicStatic;
+          inherit (pkgs) nix-installer-static;
+          default = pkgs.nix-installer-static;
         } // nixpkgs.lib.optionalAttrs (system == "aarch64-linux") {
-          inherit (pkgs) harmonicStatic;
-          default = pkgs.harmonicStatic;
+          inherit (pkgs) nix-installer-static;
+          default = pkgs.nix-installer-static;
         } // nixpkgs.lib.optionalAttrs (pkgs.stdenv.isDarwin) {
-          default = pkgs.harmonic;
+          default = pkgs.nix-installer;
         });
     };
 }

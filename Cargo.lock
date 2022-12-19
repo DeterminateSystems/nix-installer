@@ -528,41 +528,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "harmonic"
-version = "0.0.0-unreleased"
-dependencies = [
- "async-trait",
- "atty",
- "bytes 1.3.0",
- "clap",
- "color-eyre",
- "dirs",
- "dyn-clone",
- "eyre",
- "glob",
- "nix",
- "owo-colors",
- "plist",
- "rand",
- "reqwest",
- "semver",
- "serde",
- "serde_json",
- "serde_with",
- "tar",
- "target-lexicon",
- "term",
- "thiserror",
- "tokio",
- "tracing",
- "tracing-error",
- "tracing-subscriber",
- "typetag",
- "url",
- "xz2",
-]
-
-[[package]]
 name = "hashbrown"
 version = "0.12.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -912,6 +877,41 @@ dependencies = [
  "cfg-if",
  "libc",
  "static_assertions",
+]
+
+[[package]]
+name = "nix-installer"
+version = "0.0.0-unreleased"
+dependencies = [
+ "async-trait",
+ "atty",
+ "bytes 1.3.0",
+ "clap",
+ "color-eyre",
+ "dirs",
+ "dyn-clone",
+ "eyre",
+ "glob",
+ "nix",
+ "owo-colors",
+ "plist",
+ "rand",
+ "reqwest",
+ "semver",
+ "serde",
+ "serde_json",
+ "serde_with",
+ "tar",
+ "target-lexicon",
+ "term",
+ "thiserror",
+ "tokio",
+ "tracing",
+ "tracing-error",
+ "tracing-subscriber",
+ "typetag",
+ "url",
+ "xz2",
 ]
 
 [[package]]

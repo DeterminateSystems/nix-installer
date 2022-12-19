@@ -6,7 +6,7 @@ mod uninstall;
 use uninstall::Uninstall;
 
 #[derive(Debug, clap::Subcommand)]
-pub enum HarmonicSubcommand {
+pub enum NixInstallerSubcommand {
     Plan(Plan),
     Install(Install),
     Uninstall(Uninstall),

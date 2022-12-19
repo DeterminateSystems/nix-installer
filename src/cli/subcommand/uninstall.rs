@@ -17,12 +17,12 @@ use rand::Rng;
 
 use crate::cli::{interaction, CommandExecute};
 
-/// Uninstall a previously installed Nix (only Harmonic done installs supported)
+/// Uninstall a previously installed Nix (only `nix-installer` done installs supported)
 #[derive(Debug, Parser)]
 pub struct Uninstall {
     #[clap(
         long,
-        env = "HARMONIC_NO_CONFIRM",
+        env = "NIX_INSTALLER_NO_CONFIRM",
         action(ArgAction::SetTrue),
         default_value = "false",
         global = true
@@ -30,7 +30,7 @@ pub struct Uninstall {
     pub no_confirm: bool,
     #[clap(
         long,
-        env = "HARMONIC_EXPLAIN",
+        env = "NIX_INSTALLER_EXPLAIN",
         action(ArgAction::SetTrue),
         default_value = "false",
         global = true
@@ -52,14 +52,14 @@ impl CommandExecute for Uninstall {
 
         ensure_root()?;
 
-        // During install, `harmonic` will store a copy of itself in `/nix/harmonic`
-        // If the user opted to run that particular copy of Harmonic to do this uninstall,
+        // During install, `nix-installer` will store a copy of itself in `/nix/nix-installer`
+        // If the user opted to run that particular copy of `nix-installer` to do this uninstall,
         // well, we have a problem, since the binary would delete itself.
         // Instead, detect if we're in that location, if so, move the binary and `execv` it.
         if let Ok(current_exe) = std::env::current_exe() {
-            if current_exe.as_path() == Path::new("/nix/harmonic") {
+            if current_exe.as_path() == Path::new("/nix/nix-installer") {
                 tracing::debug!(
-                    "Detected uninstall from `/nix/harmonic`, moving executable and re-executing"
+                    "Detected uninstall from `/nix/nix-installer`, moving executable and re-executing"
                 );
                 let temp = std::env::temp_dir();
                 let random_trailer: String = {
@@ -76,10 +76,10 @@ impl CommandExecute for Uninstall {
                         })
                         .collect()
                 };
-                let temp_exe = temp.join(&format!("harmonic-{random_trailer}"));
+                let temp_exe = temp.join(&format!("nix-installer-{random_trailer}"));
                 tokio::fs::copy(&current_exe, &temp_exe)
                     .await
-                    .wrap_err("Copying harmonic to tempdir")?;
+                    .wrap_err("Copying nix-installer to tempdir")?;
                 let args = std::env::args();
                 let mut arg_vec_cstring = vec![];
                 for arg in args {
@@ -90,24 +90,24 @@ impl CommandExecute for Uninstall {
 
                 tracing::trace!("Execv'ing `{temp_exe_cstring:?} {arg_vec_cstring:?}`");
                 nix::unistd::execv(&temp_exe_cstring, &arg_vec_cstring)
-                    .wrap_err("Executing copied Harmonic")?;
+                    .wrap_err("Executing copied `nix-installer`")?;
             }
         }
 
-        // During install, `harmonic` will store a copy of itself in `/nix/harmonic`
-        // If the user opted to run that particular copy of Harmonic to do this uninstall,
+        // During install, `nix-installer` will store a copy of itself in `/nix/nix-installer`
+        // If the user opted to run that particular copy of `nix-installer` to do this uninstall,
         // well, we have a problem, since the binary would delete itself.
         // Instead, detect if we're in that location, if so, move the binary and `execv` it.
         if let Ok(current_exe) = std::env::current_exe() {
-            if current_exe.as_path() == Path::new("/nix/harmonic") {
+            if current_exe.as_path() == Path::new("/nix/nix-installer") {
                 tracing::debug!(
-                    "Detected uninstall from `/nix/harmonic`, moving executable and re-executing"
+                    "Detected uninstall from `/nix/nix-installer`, moving executable and re-executing"
                 );
                 let temp = std::env::temp_dir();
-                let temp_exe = temp.join("harmonic");
+                let temp_exe = temp.join("nix-installer");
                 tokio::fs::copy(&current_exe, &temp_exe)
                     .await
-                    .wrap_err("Copying harmonic to tempdir")?;
+                    .wrap_err("Copying `nix-installer` to tempdir")?;
                 let args = std::env::args();
                 let mut arg_vec_cstring = vec![];
                 for arg in args {
@@ -117,7 +117,7 @@ impl CommandExecute for Uninstall {
                     .wrap_err("Making C string of executable path")?;
 
                 nix::unistd::execv(&temp_exe_cstring, &arg_vec_cstring)
-                    .wrap_err("Executing copied Harmonic")?;
+                    .wrap_err("Executing copied `nix-installer`")?;
             }
         }
 

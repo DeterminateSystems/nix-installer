@@ -12,7 +12,7 @@ use owo_colors::OwoColorize;
 use std::{ffi::CString, process::ExitCode};
 use tokio::sync::broadcast::{Receiver, Sender};
 
-use self::subcommand::HarmonicSubcommand;
+use self::subcommand::NixInstallerSubcommand;
 
 #[async_trait::async_trait]
 pub trait CommandExecute {
@@ -24,16 +24,16 @@ pub trait CommandExecute {
 /// Plans a Nix install, prompts for confirmation, then executes it
 #[derive(Debug, Parser)]
 #[clap(version)]
-pub struct HarmonicCli {
+pub struct NixInstallerCli {
     #[clap(flatten)]
     pub instrumentation: arg::Instrumentation,
 
     #[clap(subcommand)]
-    pub subcommand: HarmonicSubcommand,
+    pub subcommand: NixInstallerSubcommand,
 }
 
 #[async_trait::async_trait]
-impl CommandExecute for HarmonicCli {
+impl CommandExecute for NixInstallerCli {
     #[tracing::instrument(level = "debug", skip_all)]
     async fn execute(self) -> eyre::Result<ExitCode> {
         let Self {
@@ -42,9 +42,9 @@ impl CommandExecute for HarmonicCli {
         } = self;
 
         match subcommand {
-            HarmonicSubcommand::Plan(plan) => plan.execute().await,
-            HarmonicSubcommand::Install(install) => install.execute().await,
-            HarmonicSubcommand::Uninstall(revert) => revert.execute().await,
+            NixInstallerSubcommand::Plan(plan) => plan.execute().await,
+            NixInstallerSubcommand::Install(install) => install.execute().await,
+            NixInstallerSubcommand::Uninstall(revert) => revert.execute().await,
         }
     }
 }
@@ -88,7 +88,7 @@ pub fn ensure_root() -> eyre::Result<()> {
     if !is_root() {
         eprintln!(
             "{}",
-            "Harmonic needs to run as `root`, attempting to escalate now via `sudo`..."
+            "`nix-installer` needs to run as `root`, attempting to escalate now via `sudo`..."
                 .yellow()
                 .dimmed()
         );
@@ -106,7 +106,7 @@ pub fn ensure_root() -> eyre::Result<()> {
                 // CI
                 "GITHUB_PATH" => true,
                 // Our own environments
-                key if key.starts_with("HARMONIC") => true,
+                key if key.starts_with("NIX_INSTALLER") => true,
                 _ => false,
             };
             if preserve {
@@ -127,7 +127,7 @@ pub fn ensure_root() -> eyre::Result<()> {
 
         tracing::trace!("Execvp'ing `{sudo_cstring:?}` with args `{arg_vec_cstring:?}`");
         nix::unistd::execvp(&sudo_cstring, &arg_vec_cstring)
-            .wrap_err("Executing Harmonic as `root` via `sudo`")?;
+            .wrap_err("Executing `nix-installer` as `root` via `sudo`")?;
     }
     Ok(())
 }

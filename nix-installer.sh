@@ -4,7 +4,7 @@
 # This script is based off https://github.com/rust-lang/rustup/blob/8f6b53628ad996ad86f9c6225fa500cddf860905/rustup-init.sh
 
 # This is just a little script that can be downloaded from the internet to
-# install `nix-install`. It just does platform detection, downloads the installer
+# install `nix-installer`. It just does platform detection, downloads the installer
 # and runs it.
 
 # It runs on Unix shells like {a,ba,da,k,z}sh. It uses the common `local`
@@ -14,15 +14,15 @@ if [ "$KSH_VERSION" = 'Version JM 93t+ 2010-03-05' ]; then
     # The version of ksh93 that ships with many illumos systems does not
     # support the "local" extension.  Print a message rather than fail in
     # subtle ways later on:
-    echo 'harmonic does not work with this ksh93 version; please try bash!' >&2
+    echo 'nix-installer does not work with this ksh93 version; please try bash!' >&2
     exit 1
 fi
 
 
 set -u
 
-# If NIX_INSTALL_BINARY_ROOT is unset or empty, default it.
-NIX_INSTALL_BINARY_ROOT="${NIX_INSTALL_BINARY_ROOT:-https://install.determinate.systems/nix}"
+# If NIX_INSTALLER_FORCE_ALLOW_HTTP is unset or empty, default it.
+NIX_INSTALLER_BINARY_ROOT="${NIX_INSTALLER_BINARY_ROOT:-https://install.determinate.systems/nix}"
 
 main() {
     downloader --check
@@ -44,7 +44,7 @@ main() {
             ;;
     esac
 
-    local _url="${NIX_INSTALL_OVERRIDE_URL-${NIX_INSTALL_BINARY_ROOT}/harmonic-${_arch}${_ext}}"
+    local _url="${NIX_INSTALLER_OVERRIDE_URL-${NIX_INSTALLER_BINARY_ROOT}/nix-installer-${_arch}${_ext}}"
 
     local _dir
     if ! _dir="$(ensure mktemp -d)"; then
@@ -52,7 +52,7 @@ main() {
         # propagate exit status.
         exit 1
     fi
-    local _file="${_dir}/nix-install${_ext}"
+    local _file="${_dir}/nix-installer${_ext}"
 
     local _ansi_escapes_are_valid=false
     if [ -t 2 ]; then
@@ -77,7 +77,7 @@ main() {
                 ;;
         esac
     done
-    if [ "${HARMONIC_NO_CONFIRM-}" ]; then
+    if [ "${NIX_INSTALLER_NO_CONFIRM-}" ]; then
         need_tty=no
     fi
 
@@ -92,7 +92,7 @@ main() {
     ensure chmod u+x "$_file"
     if [ ! -x "$_file" ]; then
         printf '%s\n' "Cannot execute $_file (likely because of mounting /tmp as noexec)." 1>&2
-        printf '%s\n' "Please copy the file to a location where you can execute binaries and run ./nix-install${_ext}." 1>&2
+        printf '%s\n' "Please copy the file to a location where you can execute binaries and run ./nix-installer${_ext}." 1>&2
         exit 1
     fi
 
@@ -201,7 +201,7 @@ get_architecture() {
 }
 
 say() {
-    printf 'harmonic: %s\n' "$1"
+    printf 'nix-installer: %s\n' "$1"
 }
 
 err() {
@@ -261,7 +261,7 @@ downloader() {
         get_ciphersuites_for_curl
         _ciphersuites="$RETVAL"
         if [ -n "$_ciphersuites" ]; then
-            if [ -n "${NIX_INSTALL_FORCE_ALLOW_HTTP-}" ]; then
+            if [ -n "${NIX_INSTALLER_FORCE_ALLOW_HTTP-}" ]; then
                 _err=$(curl $_retry --silent --show-error --fail --location "$1" --output "$2" 2>&1)
             else
                 _err=$(curl $_retry --proto '=https' --tlsv1.2 --ciphers "$_ciphersuites" --silent --show-error --fail --location "$1" --output "$2" 2>&1)
