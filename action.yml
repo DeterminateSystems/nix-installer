@@ -167,7 +167,7 @@ runs:
           export NIX_INSTALLER_FORCE_ALLOW_HTTP=1
           echo "Set NIX_INSTALLER_FORCE_ALLOW_HTTP=$NIX_INSTALLER_FORCE_ALLOW_HTTP"
         else
-          export NIX_INSTALLER_URL=${{ inputs.nix-install-url }}
+          export NIX_INSTALLER_URL=${{ inputs.nix-installer-url }}
           echo "Set NIX_INSTALLER_URL=$NIX_INSTALLER_URL"
         fi
 
