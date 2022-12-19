@@ -45,18 +45,18 @@ jobs:
         with:
           path: ~/.ci-store
           key: build-store-x86_64-linux-${{ hashFiles('**/Cargo.lock', '**/flake.lock') }}-v1
-      - name: Build harmonicStatic
-        run: nix build --store ~/.ci-store --print-build-logs .#packages.x86_64-linux.harmonicStatic
+      - name: Build `nix-installer-static`
+        run: nix build --store ~/.ci-store --print-build-logs .#packages.x86_64-linux.nix-installer-static
       - name: Copy artifact
         run: |
-          RESULT=$(nix eval --raw --store ~/.ci-store --print-build-logs .#packages.x86_64-linux.harmonicStatic --apply "x: \"$HOME/.ci-store\${x}\"")
-          cp $RESULT/bin/harmonic harmonic
-      - name: Create artifact for x86_64-linux harmonic
+          RESULT=$(nix eval --raw --store ~/.ci-store --print-build-logs .#packages.x86_64-linux.nix-installer-static --apply "x: \"$HOME/.ci-store\${x}\"")
+          cp $RESULT/bin/nix-installer nix-installer
+      - name: Create artifact for x86_64-linux nix-installer
         uses: actions/upload-artifact@v3
         with:
-          name: harmonic-x86_64-linux
+          name: nix-installer-x86_64-linux
           path: |
-            harmonic
+            nix-installer
 
   # Various feature variations or versions of the build which we expect to always work
   # Since it uses the `build-store-x86_64-linux-*` cache it should be quite fast
@@ -76,8 +76,8 @@ jobs:
         with:
           path: ~/.ci-store
           key: build-store-x86_64-linux-${{ hashFiles('**/Cargo.lock', '**/flake.lock') }}-v1
-      - name: Build harmonic
-        run: nix build --store ~/.ci-store --print-build-logs .#packages.x86_64-linux.harmonic
+      - name: Build `nix-installer`
+        run: nix build --store ~/.ci-store --print-build-logs .#packages.x86_64-linux.nix-installer
       - name: Test `nix develop` build without default features
         run: nix develop --store ~/.ci-store --print-build-logs .# --command "cargo" build --no-default-features
       - name: Test `nix develop` build all features
@@ -92,27 +92,27 @@ jobs:
       - run: sudo apt install fish zsh
       - uses: actions/download-artifact@v3
         with:
-          name: harmonic-x86_64-linux
+          name: nix-installer-x86_64-linux
       - name: Move & set executable
         run: |
-          chmod +x ./harmonic
+          chmod +x ./nix-installer
           mkdir install-root
-          cp nix-install.sh install-root/nix-install.sh
-          mv harmonic install-root/harmonic-x86_64-linux
+          cp nix-installer.sh install-root/nix-installer.sh
+          mv nix-installer install-root/nix-installer-x86_64-linux
       - name: Initial install
         uses: ./
         with:
           local-root: install-root/
           logger: pretty
-          log-directives: harmonic=trace
+          log-directives: nix_installer=trace
           backtrace: full
           github-token: ${{ secrets.GITHUB_TOKEN }}
       - name: Initial uninstall (without a `nix run` first)
-        run: sudo -E /nix/harmonic uninstall
+        run: sudo -E /nix/nix-installer uninstall
         env:
-          HARMONIC_NO_CONFIRM: true
-          HARMONIC_LOGGER: pretty
-          HARMONIC_LOG_DIRECTIVES: harmonic=trace
+          NIX_INSTALLER_NO_CONFIRM: true
+          NIX_INSTALLER_LOGGER: pretty
+          NIX_INSTALLER_LOG_DIRECTIVES: nix_installer=trace
           RUST_BACKTRACE: full
       - name: Ensure `nix` is removed
         run: |
@@ -133,7 +133,7 @@ jobs:
         with:
           local-root: install-root/
           logger: pretty
-          log-directives: harmonic=trace
+          log-directives: nix_installer=trace
           backtrace: full
           github-token: ${{ secrets.GITHUB_TOKEN }}
       - name: echo $PATH
@@ -158,11 +158,11 @@ jobs:
         if: success() || failure()
         shell: fish --login {0}
       - name: Repeated uninstall
-        run: sudo -E /nix/harmonic uninstall
+        run: sudo -E /nix/nix-installer uninstall
         env:
-          HARMONIC_NO_CONFIRM: true
-          HARMONIC_LOGGER: pretty
-          HARMONIC_LOG_DIRECTIVES: harmonic=trace
+          NIX_INSTALLER_NO_CONFIRM: true
+          NIX_INSTALLER_LOGGER: pretty
+          NIX_INSTALLER_LOG_DIRECTIVES: nix_installer=trace
           RUST_BACKTRACE: full
       - name: Ensure `nix` is removed
         run: |
@@ -188,13 +188,13 @@ jobs:
       - run: sudo apt install fish zsh
       - uses: actions/download-artifact@v3
         with:
-          name: harmonic-x86_64-linux
+          name: nix-installer-x86_64-linux
       - name: Move & set executable
         run: |
-          chmod +x ./harmonic
+          chmod +x ./nix-installer
           mkdir install-root
-          cp nix-install.sh install-root/nix-install.sh
-          mv harmonic install-root/harmonic-x86_64-linux
+          cp nix-installer.sh install-root/nix-installer.sh
+          mv nix-installer install-root/nix-installer-x86_64-linux
       - name: Make the CI look like a steam deck
         run: |
           mkdir -p ~/bin
@@ -206,17 +206,17 @@ jobs:
         with:
           local-root: install-root/
           logger: pretty
-          log-directives: harmonic=trace
+          log-directives: nix_installer=trace
           backtrace: full
           github-token: ${{ secrets.GITHUB_TOKEN }}
           planner: steam-deck
           extra-args: --persistence /home/runner/.ci-test-nix-home
       - name: Initial uninstall (without a `nix run` first)
-        run: sudo -E /nix/harmonic uninstall
+        run: sudo -E /nix/nix-installer uninstall
         env:
-          HARMONIC_NO_CONFIRM: true
-          HARMONIC_LOGGER: pretty
-          HARMONIC_LOG_DIRECTIVES: harmonic=trace
+          NIX_INSTALLER_NO_CONFIRM: true
+          NIX_INSTALLER_LOGGER: pretty
+          NIX_INSTALLER_LOG_DIRECTIVES: nix_installer=trace
           RUST_BACKTRACE: full
       - name: Ensure `nix` is removed
         run: |
@@ -241,7 +241,7 @@ jobs:
         with:
           local-root: install-root/
           logger: pretty
-          log-directives: harmonic=trace
+          log-directives: nix_installer=trace
           backtrace: full
           github-token: ${{ secrets.GITHUB_TOKEN }}
           planner: steam-deck
@@ -268,11 +268,11 @@ jobs:
         if: success() || failure()
         shell: fish --login {0}
       - name: Repeated uninstall
-        run: sudo -E /nix/harmonic uninstall
+        run: sudo -E /nix/nix-installer uninstall
         env:
-          HARMONIC_NO_CONFIRM: true
-          HARMONIC_LOGGER: pretty
-          HARMONIC_LOG_DIRECTIVES: harmonic=trace
+          NIX_INSTALLER_NO_CONFIRM: true
+          NIX_INSTALLER_LOGGER: pretty
+          NIX_INSTALLER_LOG_DIRECTIVES: nix_installer=trace
           RUST_BACKTRACE: full
       - name: Ensure `nix` is removed
         run: |
@@ -303,14 +303,14 @@ jobs:
           extra_nix_config: |
             access-tokens = github.com=${{ secrets.GITHUB_TOKEN }}
       # Runs clippy as part of the preBuild.
-      - name: Build harmonic
-        run: nix build .#packages.x86_64-darwin.harmonic -L
-      - name: Create artifact for x86_64-darwin harmonic
+      - name: Build nix-installer
+        run: nix build .#packages.x86_64-darwin.nix-installer -L
+      - name: Create artifact for x86_64-darwin nix-installer
         uses: actions/upload-artifact@v3
         with:
-          name: harmonic-x86_64-darwin
+          name: nix-installer-x86_64-darwin
           path: |
-            result/bin/harmonic
+            result/bin/nix-installer
 
   run-x86_64-darwin:
     name: Run x86_64 Darwin
@@ -321,34 +321,34 @@ jobs:
       - run: brew install fish coreutils
       - uses: actions/download-artifact@v3
         with:
-          name: harmonic-x86_64-darwin
+          name: nix-installer-x86_64-darwin
       - name: Move & set executable
         run: |
-          chmod +x ./harmonic
+          chmod +x ./nix-installer
           mkdir install-root
-          cp nix-install.sh install-root/nix-install.sh
-          mv harmonic install-root/harmonic-x86_64-darwin
+          cp nix-installer.sh install-root/nix-installer.sh
+          mv nix-installer install-root/nix-installer-x86_64-darwin
       - name: Initial install
         uses: ./
         with:
           local-root: install-root/
           logger: pretty
-          log-directives: harmonic=trace
+          log-directives: nix_installer=trace
           backtrace: full
           github-token: ${{ secrets.GITHUB_TOKEN }}
       - name: Initial uninstall (without a `nix run` first)
-        run: sudo -E /nix/harmonic uninstall
+        run: sudo -E /nix/nix-installer uninstall
         env:
-          HARMONIC_NO_CONFIRM: true
-          HARMONIC_LOGGER: pretty
-          HARMONIC_LOG_DIRECTIVES: harmonic=trace
+          NIX_INSTALLER_NO_CONFIRM: true
+          NIX_INSTALLER_LOGGER: pretty
+          NIX_INSTALLER_LOG_DIRECTIVES: nix_installer=trace
           RUST_BACKTRACE: full
       - name: Repeated install
         uses: ./
         with:
           local-root: install-root/
           logger: pretty
-          log-directives: harmonic=trace
+          log-directives: nix_installer=trace
           backtrace: full
           github-token: ${{ secrets.GITHUB_TOKEN }}
       - name: echo $PATH
@@ -373,10 +373,10 @@ jobs:
         if: success() || failure()
         shell: fish --login {0}
       - name: Repeated uninstall
-        run: sudo -E /nix/harmonic uninstall
+        run: sudo -E /nix/nix-installer uninstall
         env:
-          HARMONIC_NO_CONFIRM: true
-          HARMONIC_LOGGER: pretty
-          HARMONIC_LOG_DIRECTIVES: harmonic=trace
+          NIX_INSTALLER_NO_CONFIRM: true
+          NIX_INSTALLER_LOGGER: pretty
+          NIX_INSTALLER_LOG_DIRECTIVES: nix_installer=trace
           RUST_BACKTRACE: full
         

@@ -56,7 +56,7 @@ Repeated step:
         -device virtio-net-pci,netdev=net0 \
         -netdev user,id=net0,hostfwd=tcp::2222-:22
     ```
-3. **Do your testing!** You can `ssh deck@localhost -p 2222` in and use `rsync -e 'ssh -p 2222' result/bin/harmonic deck@localhost:harmonic` to send a harmonic build.
+3. **Do your testing!** You can `ssh deck@localhost -p 2222` in and use `rsync -e 'ssh -p 2222' result/bin/nix-installer deck@localhost:nix-installer` to send a `nix-installer build.
 4. Delete `steamos-hack.qcow2`
 */
 use std::{collections::HashMap, path::PathBuf};
@@ -80,7 +80,7 @@ pub struct SteamDeck {
         feature = "cli",
         clap(
             long,
-            env = "HARMONIC_STEAM_DECK_PERSISTENCE",
+            env = "NIX_INSTALLER_STEAM_DECK_PERSISTENCE",
             default_value = "/home/nix"
         )
     )]

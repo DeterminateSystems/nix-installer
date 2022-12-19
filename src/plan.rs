@@ -3,7 +3,7 @@ use std::{path::PathBuf, str::FromStr};
 use crate::{
     action::{Action, ActionDescription, StatefulAction},
     planner::{BuiltinPlanner, Planner},
-    HarmonicError,
+    NixInstallerError,
 };
 use owo_colors::OwoColorize;
 use semver::{Version, VersionReq};
@@ -27,7 +27,7 @@ pub struct InstallPlan {
 }
 
 impl InstallPlan {
-    pub async fn default() -> Result<Self, HarmonicError> {
+    pub async fn default() -> Result<Self, NixInstallerError> {
         let planner = BuiltinPlanner::default().await?.boxed();
         let actions = planner.plan().await?;
 
@@ -38,7 +38,7 @@ impl InstallPlan {
         })
     }
 
-    pub async fn plan<P>(planner: P) -> Result<Self, HarmonicError>
+    pub async fn plan<P>(planner: P) -> Result<Self, NixInstallerError>
     where
         P: Planner + 'static,
     {
@@ -50,7 +50,7 @@ impl InstallPlan {
         })
     }
     #[tracing::instrument(level = "debug", skip_all)]
-    pub fn describe_install(&self, explain: bool) -> Result<String, HarmonicError> {
+    pub fn describe_install(&self, explain: bool) -> Result<String, NixInstallerError> {
         let Self {
             planner,
             actions,
@@ -111,7 +111,7 @@ impl InstallPlan {
     pub async fn install(
         &mut self,
         cancel_channel: impl Into<Option<Receiver<()>>>,
-    ) -> Result<(), HarmonicError> {
+    ) -> Result<(), NixInstallerError> {
         let Self {
             version: _,
             actions,
@@ -130,7 +130,7 @@ impl InstallPlan {
                     if let Err(err) = write_receipt(self.clone()).await {
                         tracing::error!("Error saving receipt: {:?}", err);
                     }
-                    return Err(HarmonicError::Cancelled);
+                    return Err(NixInstallerError::Cancelled);
                 }
             }
 
@@ -139,19 +139,19 @@ impl InstallPlan {
                 if let Err(err) = write_receipt(self.clone()).await {
                     tracing::error!("Error saving receipt: {:?}", err);
                 }
-                return Err(HarmonicError::Action(err));
+                return Err(NixInstallerError::Action(err));
             }
         }
 
         write_receipt(self.clone()).await?;
         copy_self_to_nix_store()
             .await
-            .map_err(|e| HarmonicError::CopyingSelf(e))?;
+            .map_err(|e| NixInstallerError::CopyingSelf(e))?;
         Ok(())
     }
 
     #[tracing::instrument(level = "debug", skip_all)]
-    pub fn describe_uninstall(&self, explain: bool) -> Result<String, HarmonicError> {
+    pub fn describe_uninstall(&self, explain: bool) -> Result<String, NixInstallerError> {
         let Self {
             version: _,
             planner,
@@ -213,7 +213,7 @@ impl InstallPlan {
     pub async fn uninstall(
         &mut self,
         cancel_channel: impl Into<Option<Receiver<()>>>,
-    ) -> Result<(), HarmonicError> {
+    ) -> Result<(), NixInstallerError> {
         let Self {
             version: _,
             actions,
@@ -232,7 +232,7 @@ impl InstallPlan {
                     if let Err(err) = write_receipt(self.clone()).await {
                         tracing::error!("Error saving receipt: {:?}", err);
                     }
-                    return Err(HarmonicError::Cancelled);
+                    return Err(NixInstallerError::Cancelled);
                 }
             }
 
@@ -241,7 +241,7 @@ impl InstallPlan {
                 if let Err(err) = write_receipt(self.clone()).await {
                     tracing::error!("Error saving receipt: {:?}", err);
                 }
-                return Err(HarmonicError::Action(err));
+                return Err(NixInstallerError::Action(err));
             }
         }
 
@@ -249,22 +249,22 @@ impl InstallPlan {
     }
 }
 
-async fn write_receipt(plan: InstallPlan) -> Result<(), HarmonicError> {
+async fn write_receipt(plan: InstallPlan) -> Result<(), NixInstallerError> {
     tokio::fs::create_dir_all("/nix")
         .await
-        .map_err(|e| HarmonicError::RecordingReceipt(PathBuf::from("/nix"), e))?;
+        .map_err(|e| NixInstallerError::RecordingReceipt(PathBuf::from("/nix"), e))?;
     let install_receipt_path = PathBuf::from(RECEIPT_LOCATION);
     let self_json =
-        serde_json::to_string_pretty(&plan).map_err(HarmonicError::SerializingReceipt)?;
+        serde_json::to_string_pretty(&plan).map_err(NixInstallerError::SerializingReceipt)?;
     tokio::fs::write(&install_receipt_path, self_json)
         .await
-        .map_err(|e| HarmonicError::RecordingReceipt(install_receipt_path, e))?;
-    Result::<(), HarmonicError>::Ok(())
+        .map_err(|e| NixInstallerError::RecordingReceipt(install_receipt_path, e))?;
+    Result::<(), NixInstallerError>::Ok(())
 }
 
 fn current_version() -> Result<Version, semver::Error> {
-    let harmonic_version_str = env!("CARGO_PKG_VERSION");
-    Version::from_str(harmonic_version_str)
+    let nix_installer_version_str = env!("CARGO_PKG_VERSION");
+    Version::from_str(nix_installer_version_str)
 }
 
 fn ensure_version<'de, D: Deserializer<'de>>(d: D) -> Result<Version, D::Error> {
@@ -274,16 +274,16 @@ fn ensure_version<'de, D: Deserializer<'de>>(d: D) -> Result<Version, D::Error> 
             "Could not parse version `{plan_version}` as a version requirement, please report this",
         ))
     })?;
-    let harmonic_version = current_version().map_err(|_e| {
+    let nix_installer_version = current_version().map_err(|_e| {
         D::Error::custom(&format!(
-            "Could not parse Harmonic's version `{}` as a valid version according to Semantic Versioning, therefore the plan version ({plan_version}) compatibility cannot be checked", env!("CARGO_PKG_VERSION")
+            "Could not parse `nix-installer`'s version `{}` as a valid version according to Semantic Versioning, therefore the plan version ({plan_version}) compatibility cannot be checked", env!("CARGO_PKG_VERSION")
         ))
     })?;
-    if req.matches(&harmonic_version) {
+    if req.matches(&nix_installer_version) {
         Ok(plan_version)
     } else {
         Err(D::Error::custom(&format!(
-            "This version of Harmonic ({harmonic_version}) is not compatible with this plan's version ({plan_version}), check for a compatible version at `/nix/harmonic` or download the matching release from https://github.com/DeterminateSystems/harmonic/releases",
+            "This version of `nix-installer` ({nix_installer_version}) is not compatible with this plan's version ({plan_version}), check for a compatible version at `/nix/nix-installer` or download the matching release from https://github.com/DeterminateSystems/nix-installer/releases",
         )))
     }
 }
@@ -291,7 +291,7 @@ fn ensure_version<'de, D: Deserializer<'de>>(d: D) -> Result<Version, D::Error> 
 #[tracing::instrument(level = "debug")]
 async fn copy_self_to_nix_store() -> Result<(), std::io::Error> {
     let path = std::env::current_exe()?;
-    tokio::fs::copy(path, "/nix/harmonic").await?;
+    tokio::fs::copy(path, "/nix/nix-installer").await?;
     Ok(())
 }
 
@@ -299,10 +299,10 @@ async fn copy_self_to_nix_store() -> Result<(), std::io::Error> {
 mod test {
     use semver::Version;
 
-    use crate::{planner::BuiltinPlanner, HarmonicError, InstallPlan};
+    use crate::{planner::BuiltinPlanner, InstallPlan, NixInstallerError};
 
     #[tokio::test]
-    async fn ensure_version_allows_compatible() -> Result<(), HarmonicError> {
+    async fn ensure_version_allows_compatible() -> Result<(), NixInstallerError> {
         let planner = BuiltinPlanner::default().await?;
         let good_version = Version::parse(env!("CARGO_PKG_VERSION"))?;
         let value = serde_json::json!({
@@ -316,7 +316,7 @@ mod test {
     }
 
     #[tokio::test]
-    async fn ensure_version_denies_incompatible() -> Result<(), HarmonicError> {
+    async fn ensure_version_denies_incompatible() -> Result<(), NixInstallerError> {
         let planner = BuiltinPlanner::default().await?;
         let bad_version = Version::parse("9999999999999.9999999999.99999999")?;
         let value = serde_json::json!({

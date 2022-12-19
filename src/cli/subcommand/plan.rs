@@ -13,7 +13,7 @@ use crate::cli::CommandExecute;
 pub struct Plan {
     #[clap(subcommand)]
     pub planner: Option<BuiltinPlanner>,
-    #[clap(env = "HARMONIC_PLAN", default_value = "/dev/stdout")]
+    #[clap(env = "NIX_INSTALLER_PLAN", default_value = "/dev/stdout")]
     pub output: PathBuf,
 }
 
