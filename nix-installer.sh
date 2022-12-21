@@ -102,7 +102,7 @@ main() {
         # doesn't have stdin to pass to its children. Instead we're going
         # to explicitly connect /dev/tty to the installer's stdin.
         if [ ! -t 1 ]; then
-            err "Unable to run interactively. Run with -y to accept defaults, --help for additional options"
+            err "Unable to run interactively. Run with --no-confirm to accept defaults, --help for additional options"
         fi
 
         ignore "$_file" "$@" < /dev/tty
