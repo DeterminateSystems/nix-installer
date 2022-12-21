@@ -25,11 +25,13 @@
     let
       supportedSystems = [ "x86_64-linux" "aarch64-linux" "x86_64-darwin" "aarch64-darwin" ];
 
-      forAllSystems = f: nixpkgs.lib.genAttrs supportedSystems (system: f rec {
+      forAllSystems = f: nixpkgs.lib.genAttrs supportedSystems (system: (forSystem system f));
+
+      forSystem = system: f: f rec {
         inherit system;
         pkgs = import nixpkgs { inherit system; overlays = [ self.overlays.default ]; };
         lib = pkgs.lib;
-      });
+      };
 
       fenixToolchain = system: with fenix.packages.${system};
         combine ([
@@ -163,5 +165,11 @@
         } // nixpkgs.lib.optionalAttrs (pkgs.stdenv.isDarwin) {
           default = pkgs.nix-installer;
         });
+
+      hydraJobs = {
+        distros = import ./tests/nix/distros {
+          inherit forSystem;
+        };
+      };
     };
 }
