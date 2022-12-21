@@ -4,6 +4,9 @@ description = "A `nix` installer"
 version = "0.0.0-unreleased"
 edition = "2021"
 resolver = "2"
+license = "LGPL-2.1"
+repository = "https://github.com/DeterminateSystems/nix-installer"
+documentation = "https://docs.rs/nix-installer/latest/nix_installer"
 
 [package.metadata.riff.targets.aarch64-apple-darwin]
 build-inputs = ["darwin.apple_sdk.frameworks.Security"]
