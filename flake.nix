@@ -13,6 +13,12 @@
       url = "github:nix-community/naersk";
       inputs.nixpkgs.follows = "nixpkgs";
     };
+
+    nix = {
+      url = "github:nixos/nix";
+      inputs.nixpkgs.follows = "nixpkgs";
+    };
+
   };
 
   outputs =
@@ -20,6 +26,7 @@
     , nixpkgs
     , fenix
     , naersk
+    , nix
     , ...
     } @ inputs:
     let
@@ -169,6 +176,7 @@
       hydraJobs = {
         distros = import ./tests/nix/distros {
           inherit forSystem;
+          inherit (nix.hydraJobs) binaryTarball;
         };
       };
     };

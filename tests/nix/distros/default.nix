@@ -1,11 +1,11 @@
-{ forSystem }:
+{ forSystem, binaryTarball }:
 
 let
 
   installScripts = {
     install-default = {
       script = ''
-        ./nix-installer install linux-multi --no-confirm
+        ./nix-installer install --channels "" --nix-package-url "file://nix.tar.xz" --no-confirm
       '';
     };
   };
@@ -109,6 +109,7 @@ let
         postBoot = image.postBoot or "";
         installScript = installScripts.${testName}.script;
         installer = nix-installer-static;
+        binaryTarball = binaryTarball.${system};
       }
       ''
         shopt -s nullglob
@@ -166,6 +167,9 @@ let
 
         echo "Copying installer..."
         scp -P 20022 $ssh_opts $installer/bin/nix-installer vagrant@localhost:nix-installer
+
+        echo "Copying nix tarball..."
+        scp -P 20022 $ssh_opts $binaryTarball/nix-*.tar.xz vagrant@localhost:nix.tar.xz
 
         echo "Running installer..."
         $ssh "set -eux; $installScript"
