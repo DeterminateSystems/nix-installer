@@ -64,7 +64,9 @@
           sharedAttrs = {
             pname = "nix-installer";
             version = "0.0.0-unreleased";
-            src = self;
+            src = builtins.filterSource
+              (path: type: baseNameOf path != "nix" && baseNameOf path != ".github")
+              self;
 
             nativeBuildInputs = with final; [ ];
             buildInputs = with final; [ ] ++ lib.optionals (final.stdenv.isDarwin) (with final.darwin.apple_sdk.frameworks; [
@@ -174,7 +176,7 @@
         });
 
       hydraJobs = {
-        distros = import ./tests/nix/distros {
+        distros = import ./nix/tests/distros {
           inherit forSystem;
           inherit (nix.hydraJobs) binaryTarball;
         };

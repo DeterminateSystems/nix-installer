@@ -40,7 +40,7 @@ impl clap::builder::TypedValueParser for ChannelValueParser {
         let (name, url) = buf.split_once('=').ok_or_else(|| {
             clap::Error::raw(
                 clap::error::ErrorKind::InvalidValue,
-                "Should be formatted `name=url`",
+                "`--channel` should be formatted `name=url`, eg `--channel nixpkgs=https://nixos.org/channels/nixpkgs-unstable`. To not use a channel, pass `--channel`",
             )
         })?;
         let name = name.to_owned();

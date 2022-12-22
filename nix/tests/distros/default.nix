@@ -5,7 +5,8 @@ let
   installScripts = {
     install-default = {
       script = ''
-        ./nix-installer install --channels "" --nix-package-url "file://nix.tar.xz" --no-confirm
+        NIX_PATH=$(readlink -f nix.tar.xz)
+        RUST_BACKTRACE="full" ./nix-installer install --logger pretty --log-directive nix_installer=trace --channel --nix-package-url "file://$NIX_PATH" --no-confirm
       '';
     };
   };

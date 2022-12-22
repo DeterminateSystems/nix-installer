@@ -36,7 +36,8 @@ pub struct CommonSettings {
         clap(
             long,
             value_parser,
-            name = "channel",
+            long = "channel",
+            num_args = 0..,
             action = clap::ArgAction::Append,
             env = "NIX_INSTALLER_CHANNELS",
             default_value = "nixpkgs=https://nixos.org/channels/nixpkgs-unstable",

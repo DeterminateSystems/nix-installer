@@ -1,3 +1,5 @@
+use std::path::{Path, PathBuf};
+
 use crate::{
     action::{ActionError, StatefulAction},
     execute_command, set_env,
@@ -5,7 +7,7 @@ use crate::{
 
 use glob::glob;
 
-use tokio::process::Command;
+use tokio::{io::AsyncWriteExt, process::Command};
 use tracing::{span, Span};
 
 use crate::action::{Action, ActionDescription};
@@ -94,12 +96,90 @@ impl Action for SetupDefaultProfile {
             )));
         };
 
+        {
+            let reginfo_path =
+                Path::new(crate::action::base::move_unpacked_nix::DEST).join(".reginfo");
+            let reginfo = tokio::fs::read(&reginfo_path)
+                .await
+                .map_err(|e| ActionError::Read(reginfo_path.to_path_buf(), e))?;
+            let mut load_db_command = Command::new(nix_pkg.join("bin/nix-store"));
+            load_db_command.process_group(0);
+            load_db_command.arg("--load-db");
+            load_db_command.stdin(std::process::Stdio::piped());
+            load_db_command.env(
+                "HOME",
+                dirs::home_dir().ok_or_else(|| {
+                    ActionError::Custom(Box::new(SetupDefaultProfileError::NoRootHome))
+                })?,
+            );
+            let load_db_command_str = format!("{:?}", load_db_command.as_std());
+            tracing::trace!(
+                "Executing `{load_db_command_str}` with stdin from `{}`",
+                reginfo_path.display()
+            );
+            let mut handle = load_db_command
+                .spawn()
+                .map_err(|e| ActionError::Command(e))?;
+
+            let mut stdin = handle.stdin.take().unwrap();
+            stdin
+                .write_all(&reginfo)
+                .await
+                .map_err(|e| ActionError::Write(PathBuf::from("/dev/stdin"), e))?;
+            stdin
+                .flush()
+                .await
+                .map_err(|e| ActionError::Write(PathBuf::from("/dev/stdin"), e))?;
+            drop(stdin);
+            tracing::trace!(
+                "Wrote `{}` to stdin of `nix-store --load-db`",
+                reginfo_path.display()
+            );
+
+            let output = handle
+                .wait_with_output()
+                .await
+                .map_err(ActionError::Command)?;
+            match output.status.success() {
+                true => (),
+                false => {
+                    return Err(ActionError::Command(std::io::Error::new(
+                        std::io::ErrorKind::Other,
+                        format!(
+                            "Command `{load_db_command_str}` failed status, stderr:\n{}\n",
+                            String::from_utf8(output.stderr)
+                                .unwrap_or_else(|_e| String::from("<Non-UTF-8>"))
+                        ),
+                    )))
+                },
+            };
+        }
+
         // Install `nix` itself into the store
         execute_command(
             Command::new(nix_pkg.join("bin/nix-env"))
                 .process_group(0)
                 .arg("-i")
                 .arg(&nix_pkg)
+                .stdin(std::process::Stdio::null())
+                .env(
+                    "HOME",
+                    dirs::home_dir().ok_or_else(|| {
+                        ActionError::Custom(Box::new(SetupDefaultProfileError::NoRootHome))
+                    })?,
+                )
+                .env(
+                    "NIX_SSL_CERT_FILE",
+                    nss_ca_cert_pkg.join("etc/ssl/certs/ca-bundle.crt"),
+                ), /* This is apparently load bearing... */
+        )
+        .await
+        .map_err(|e| ActionError::Command(e))?;
+
+        // Install `nix` itself into the store
+        execute_command(
+            Command::new(nix_pkg.join("bin/nix-env"))
+                .process_group(0)
                 .arg("-i")
                 .arg(&nss_ca_cert_pkg)
                 .stdin(std::process::Stdio::null())
@@ -116,19 +196,6 @@ impl Action for SetupDefaultProfile {
         )
         .await
         .map_err(|e| ActionError::Command(e))?;
-
-        // Install `nss-cacert` into the store
-        // execute_command(
-        //     Command::new(nix_pkg.join("bin/nix-env"))
-        //         .arg("-i")
-        //         .arg(&nss_ca_cert_pkg)
-        //         .env(
-        //             "NIX_SSL_CERT_FILE",
-        //             nss_ca_cert_pkg.join("etc/ssl/certs/ca-bundle.crt"),
-        //         ),
-        // )
-        // .await
-        // .map_err(|e| SetupDefaultProfileError::Command(e).boxed())?;
 
         set_env(
             "NIX_SSL_CERT_FILE",
