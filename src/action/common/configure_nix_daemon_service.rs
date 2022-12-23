@@ -156,7 +156,7 @@ impl Action for ConfigureNixDaemonService {
                         .process_group(0)
                         .arg("enable")
                         .arg("--now")
-                        .arg("nix-daemon.socket"),
+                        .arg(SOCKET_SRC),
                 )
                 .await
                 .map_err(ActionError::Command)?;

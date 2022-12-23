@@ -1,14 +1,14 @@
 /*!  [`Action`](crate::action::Action)s for Darwin based systems
 */
 
-mod bootstrap_apfs_volume;
-mod create_apfs_volume;
-mod create_nix_volume;
-mod create_synthetic_objects;
-mod enable_ownership;
-mod encrypt_apfs_volume;
-mod kickstart_launchctl_service;
-mod unmount_apfs_volume;
+pub(crate) mod bootstrap_apfs_volume;
+pub(crate) mod create_apfs_volume;
+pub(crate) mod create_nix_volume;
+pub(crate) mod create_synthetic_objects;
+pub(crate) mod enable_ownership;
+pub(crate) mod encrypt_apfs_volume;
+pub(crate) mod kickstart_launchctl_service;
+pub(crate) mod unmount_apfs_volume;
 
 pub use bootstrap_apfs_volume::{BootstrapApfsVolume, BootstrapVolumeError};
 pub use create_apfs_volume::{CreateApfsVolume, CreateVolumeError};

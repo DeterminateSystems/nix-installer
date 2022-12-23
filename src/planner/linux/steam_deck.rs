@@ -223,10 +223,6 @@ impl Planner for SteamDeck {
                 .await
                 .map_err(PlannerError::Action)?
                 .boxed(),
-            StartSystemdUnit::plan("nix-daemon.socket".to_string())
-                .await
-                .map_err(PlannerError::Action)?
-                .boxed(),
         ])
     }
 

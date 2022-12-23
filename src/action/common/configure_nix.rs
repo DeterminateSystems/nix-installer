@@ -1,8 +1,10 @@
 use crate::{
     action::{
         base::SetupDefaultProfile,
-        common::{ConfigureShellProfile, PlaceChannelConfiguration, PlaceNixConfiguration},
-        linux::ConfigureNixDaemonService,
+        common::{
+            ConfigureNixDaemonService, ConfigureShellProfile, PlaceChannelConfiguration,
+            PlaceNixConfiguration,
+        },
         Action, ActionDescription, ActionError, StatefulAction,
     },
     channel_value::ChannelValue,
