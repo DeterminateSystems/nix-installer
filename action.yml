@@ -1,5 +1,8 @@
-name: Harmonic
-description: Install Nix
+name: Nix Installer
+branding:
+  icon: 'box'
+  color: 'purple'
+description: An experimental Nix installer using `nix-install`
 inputs:
   planner:
     description: A planner to use
