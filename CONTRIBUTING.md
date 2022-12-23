@@ -148,7 +148,7 @@ In general, it's a good idea to test on the closest you can get to the desired t
 
 Please include an full guide on how to create the best known virtual testing environment for that device. 
 
-**A link is not sufficient, it may break. Please provide a full summary of steps to take.**
+**A link is not sufficient, it may break.** Please provide a full summary of steps to take, link to any original source and give them credit if it is appropriate.
 
 It's perfectly fine if they are manual or labor intensive, as these should be a one time thing and get snapshotted prior to running tests.
 
@@ -196,7 +196,7 @@ nix build .#hydraJobs.vm-test.all.x86_64-linux.install-default -L
 To run a specific distribution listed in the `nix flake show` output:
 
 ```bash
-nix build .#hydraJobs.vm-test.all.x86_64-linux.install-default -L
+nix build .#hydraJobs.vm-test.rhel-v7.x86_64-linux.install-default -L
 ```
 
 <details>
