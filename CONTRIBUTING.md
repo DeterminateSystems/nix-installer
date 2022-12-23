@@ -182,9 +182,9 @@ git+file:///home/ana/git/determinatesystems/harmonic
 │       ├───rhel-v9
 │       │   └───x86_64-linux
 │       │       └───install-default: derivation 'installer-test-rhel-v9-install-default'
-│       └───"ubuntu-v22.04"
+│       └───ubuntu-v22_04
 │           └───x86_64-linux
-│               └───install-default: derivation 'installer-test-ubuntu-v22.04-install-default'
+│               └───install-default: derivation 'installer-test-ubuntu-v22_04-install-default'
 ```
 
 To run all of the currently supported tests:

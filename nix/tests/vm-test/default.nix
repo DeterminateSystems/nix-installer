@@ -18,7 +18,7 @@ let
 
     # End of standard support https://wiki.ubuntu.com/Releases
     /*
-      "ubuntu-14-04" = {
+      "ubuntu-v14_04" = {
       image = import <nix/fetchurl.nix> {
       url = "https://app.vagrantup.com/ubuntu/boxes/trusty64/versions/20190514.0.0/providers/virtualbox.box";
       hash = "sha256-iUUXyRY8iW7DGirb0zwGgf1fRbLA7wimTJKgP7l/OQ8=";
@@ -29,7 +29,7 @@ let
     */
 
     # End of standard support https://wiki.ubuntu.com/Releases
-    /* "ubuntu-v16.04" = {
+    /* "ubuntu-v16_04" = {
       image = import <nix/fetchurl.nix> {
       url = "https://app.vagrantup.com/generic/boxes/ubuntu1604/versions/4.1.12/providers/libvirt.box";
       hash = "sha256-lO4oYQR2tCh5auxAYe6bPOgEqOgv3Y3GC1QM1tEEEU8=";
@@ -39,7 +39,7 @@ let
       };
     */
 
-    "ubuntu-v22.04" = {
+    "ubuntu-v22_04" = {
       image = import <nix/fetchurl.nix> {
         url = "https://app.vagrantup.com/generic/boxes/ubuntu2204/versions/4.1.12/providers/libvirt.box";
         hash = "sha256-HNll0Qikw/xGIcogni5lz01vUv+R3o8xowP2EtqjuUQ=";
@@ -61,7 +61,7 @@ let
     # Currently fails with 'error while loading shared libraries:
     # libsodium.so.23: cannot stat shared object: Invalid argument'.
     /*
-      "rhel-6" = {
+      "rhel-v6" = {
       image = import <nix/fetchurl.nix> {
       url = "https://app.vagrantup.com/generic/boxes/rhel6/versions/4.1.12/providers/libvirt.box";
       hash = "sha256-QwzbvRoRRGqUCQptM7X/InRWFSP2sqwRt2HaaO6zBGM=";
