@@ -140,18 +140,15 @@ impl Action for SetupDefaultProfile {
                 .wait_with_output()
                 .await
                 .map_err(ActionError::Command)?;
-            match output.status.success() {
-                true => (),
-                false => {
-                    return Err(ActionError::Command(std::io::Error::new(
-                        std::io::ErrorKind::Other,
-                        format!(
-                            "Command `{load_db_command_str}` failed status, stderr:\n{}\n",
-                            String::from_utf8(output.stderr)
-                                .unwrap_or_else(|_e| String::from("<Non-UTF-8>"))
-                        ),
-                    )))
-                },
+            if !output.status.success() {
+                return Err(ActionError::Command(std::io::Error::new(
+                    std::io::ErrorKind::Other,
+                    format!(
+                        "Command `{load_db_command_str}` failed status, stderr:\n{}\n",
+                        String::from_utf8(output.stderr)
+                            .unwrap_or_else(|_e| String::from("<Non-UTF-8>"))
+                    ),
+                )));
             };
         }
 
