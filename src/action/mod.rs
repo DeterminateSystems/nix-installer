@@ -32,8 +32,8 @@ action.try_revert().await.unwrap();
 ```
 
 A general guidance for what determines how fine-grained an [`Action`] should be is the unit of
-reversion. The [`ConfigureNixDaemonService`](linux::ConfigureNixDaemonService) action is a good
-example of this,it takes several steps, such as running `systemd-tmpfiles`, and calling
+reversion. The [`ConfigureNixDaemonService`](common::ConfigureNixDaemonService) action is a good
+example of this, it takes several steps, such as running `systemd-tmpfiles`, and calling
 `systemctl link` on some systemd units.
 
 Where possible, tasks which could break during execution should be broken up, as uninstalling/installing

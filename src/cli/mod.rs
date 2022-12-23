@@ -99,7 +99,7 @@ pub fn ensure_root() -> eyre::Result<()> {
         arg_vec_cstring.push(sudo_cstring.clone());
 
         let mut preserve_env_list = vec![];
-        for (key, _value) in std::env::vars() {
+        for (key, value) in std::env::vars() {
             let preserve = match key.as_str() {
                 // Rust logging/backtrace bits we use
                 "RUST_LOG" | "RUST_BACKTRACE" => true,
@@ -110,15 +110,19 @@ pub fn ensure_root() -> eyre::Result<()> {
                 _ => false,
             };
             if preserve {
-                preserve_env_list.push(key);
+                preserve_env_list.push(format!("{key}=\"{value}\""));
             }
         }
 
         if !preserve_env_list.is_empty() {
-            arg_vec_cstring.push(
-                CString::new(format!("--preserve-env={}", preserve_env_list.join(",")))
-                    .wrap_err("Building a `--preserve-env` argument for `sudo`")?,
-            );
+            arg_vec_cstring
+                .push(CString::new("env").wrap_err("Building a `env` argument for `sudo`")?);
+            for env in preserve_env_list {
+                arg_vec_cstring.push(
+                    CString::new(env.clone())
+                        .wrap_err_with(|| format!("Building a `{}` argument for `sudo`", env))?,
+                );
+            }
         }
 
         for arg in args {

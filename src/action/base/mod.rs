@@ -1,13 +1,13 @@
 //! Base [`Action`](crate::action::Action)s that themselves have no other actions as dependencies
 
-mod create_directory;
-mod create_file;
-mod create_group;
-mod create_or_append_file;
-mod create_user;
-mod fetch_and_unpack_nix;
-mod move_unpacked_nix;
-mod setup_default_profile;
+pub(crate) mod create_directory;
+pub(crate) mod create_file;
+pub(crate) mod create_group;
+pub(crate) mod create_or_append_file;
+pub(crate) mod create_user;
+pub(crate) mod fetch_and_unpack_nix;
+pub(crate) mod move_unpacked_nix;
+pub(crate) mod setup_default_profile;
 
 pub use create_directory::CreateDirectory;
 pub use create_file::CreateFile;

@@ -78,10 +78,12 @@ impl Planner for LinuxMulti {
                 .await
                 .map_err(PlannerError::Action)?
                 .boxed(),
-            StartSystemdUnit::plan("nix-daemon.socket".to_string())
-                .await
-                .map_err(|v| PlannerError::Action(v.into()))?
-                .boxed(),
+            StartSystemdUnit::plan(
+                crate::action::common::configure_nix_daemon_service::SOCKET_SRC.to_string(),
+            )
+            .await
+            .map_err(|v| PlannerError::Action(v.into()))?
+            .boxed(),
         ])
     }
 
