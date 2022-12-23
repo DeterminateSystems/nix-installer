@@ -31,12 +31,12 @@ let
     # End of standard support https://wiki.ubuntu.com/Releases
     /* "ubuntu-v16.04" = {
       image = import <nix/fetchurl.nix> {
-        url = "https://app.vagrantup.com/generic/boxes/ubuntu1604/versions/4.1.12/providers/libvirt.box";
-        hash = "sha256-lO4oYQR2tCh5auxAYe6bPOgEqOgv3Y3GC1QM1tEEEU8=";
+      url = "https://app.vagrantup.com/generic/boxes/ubuntu1604/versions/4.1.12/providers/libvirt.box";
+      hash = "sha256-lO4oYQR2tCh5auxAYe6bPOgEqOgv3Y3GC1QM1tEEEU8=";
       };
       rootDisk = "box.img";
       system = "x86_64-linux";
-    };
+      };
     */
 
     "ubuntu-v22.04" = {
@@ -213,7 +213,8 @@ let
     )
     images;
 
-in vm-tests // {
+in
+vm-tests // {
   all."x86_64-linux".install-default = (with (forSystem "x86_64-linux" ({ system, pkgs, ... }: pkgs)); pkgs.releaseTools.aggregate {
     name = "all";
     constituents = pkgs.lib.mapAttrsToList (name: value: value."x86_64-linux".install-default) vm-tests;
