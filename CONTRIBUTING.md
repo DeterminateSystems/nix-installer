@@ -74,7 +74,7 @@ Create an issue on [the issue page](https://github.com/DeterminateSystems/nix-in
 It should contain:
 
 1. Your OS (Linux, Mac) and architecture (x86_64, aarch64)
-2. Your `nix-installer`` version (`nix-installer --version`)
+2. Your `nix-installer` version (`nix-installer --version`)
 3. The thing you tried to run (eg `nix-installer`)
 4. What happened (the output of the command, please)
 5. What you expected to happen
@@ -111,7 +111,46 @@ the project.
 
 Some snippets or workflows for development.
 
-## Qemu VM tests
+
+## Direnv support
+
+While `nix develop` should work perfectly fine for development, contributors may prefer to enable [`direnv`](https://direnv.net/) or [`nix-direnv`](https://github.com/nix-community/nix-direnv) support.
+
+From the project folder:
+
+```bash
+direnv allow
+```
+
+If using an editor, it may be preferable to adopt an addon to enter the environment:
+
+* [`vim`](https://github.com/direnv/direnv.vim)
+* [VSCode](https://marketplace.visualstudio.com/items?itemName=mkhl.direnv)
+
+
+## Testing Installs
+
+If you're hacking on `nix-installer`, you likely already have Nix and cannot test locally.
+
+> That's probably a good thing! You should test in a sandbox.
+
+Automated [`qemu` tests][#qemu-vm-tests] exist and should be prefered for oneshot testing of changes.
+
+For interactive testing, tools like [`libvirt`](https://libvirt.org/) via [`virt-manager`](https://virt-manager.org/) or [`vagrant`](https://www.vagrantup.com/) can be used to spin up machines and run experiments.
+
+When running such interactive tests, consider creating a snapshot of the VM right before running the installer, so you can quickly roll back if something happens.
+
+In general, it's a good idea to test on the closest you can get to the desired target environment. For example, when testing the Steam Deck planner it's a good idea to run that test in a Steam Deck VM as described in detail in the planner.
+
+
+<details>
+  <summary><strong>Adding a planner for specific hardware?</strong></summary>
+
+Please include an full guide on how to create the best known virtual testing environment for that device. A link is not sufficient, it may break, provide a full summary of steps to take. It's perfectly fine if they are manual or labor intensive, as these should be a one time thing and get snapshotted prior to running tests.
+
+</details>
+
+## `qemu` VM tests
 
 In `nix/tests/vm-test` there exists some Nix derivations which we expose in the flake via `hydraJobs`.
 
@@ -157,7 +196,7 @@ nix build .#hydraJobs.vm-test.all.x86_64-linux.install-default -L
 ```
 
 <details>
-  <summary>**Adding a distro?**</summary>
+  <summary><strong>Adding a distro?</strong></summary>
 
 Notice how `rhel-v7` has a `v7`, not just `7`? That's so the test output shows correctly, as Nix will interpret the first `-\d` (eg `-7`, `-123213`) as a version, and not show it in the output. 
 
