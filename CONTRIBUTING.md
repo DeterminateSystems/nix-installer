@@ -162,8 +162,8 @@ These should be visible in `nix flake show`:
 
 ```
 ❯ nix flake show
-warning: Git tree '/home/ana/git/determinatesystems/harmonic' is dirty
-git+file:///home/ana/git/determinatesystems/harmonic
+warning: Git tree '/home/ana/git/determinatesystems/nix-installer' is dirty
+git+file:///home/ana/git/determinatesystems/nix-installer
 # ...
 ├───hydraJobs
 │   └───vm-test
