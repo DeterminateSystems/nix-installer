@@ -64,9 +64,11 @@
           sharedAttrs = {
             pname = "nix-installer";
             version = "0.0.0-unreleased";
-            src = builtins.filterSource
-              (path: type: baseNameOf path != "nix" && baseNameOf path != ".github")
-              self;
+            src = builtins.path {
+              name = "nix-installer-source";
+              path = self;
+              filter = (path: type: baseNameOf path != "nix" || baseNameOf path != ".github");
+            };
 
             nativeBuildInputs = with final; [ ];
             buildInputs = with final; [ ] ++ lib.optionals (final.stdenv.isDarwin) (with final.darwin.apple_sdk.frameworks; [

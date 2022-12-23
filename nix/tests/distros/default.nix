@@ -1,3 +1,4 @@
+# Largely derived from https://github.com/NixOS/nix/blob/14f7dae3e4eb0c34192d0077383a7f2a2d630129/tests/installer/default.nix
 { forSystem, binaryTarball }:
 
 let
@@ -15,6 +16,7 @@ let
 
   images = {
 
+    # End of standard support https://wiki.ubuntu.com/Releases
     /*
       "ubuntu-14-04" = {
       image = import <nix/fetchurl.nix> {
@@ -26,7 +28,8 @@ let
       };
     */
 
-    "ubuntu-16-04" = {
+    # End of standard support https://wiki.ubuntu.com/Releases
+    /* "ubuntu-v16.04" = {
       image = import <nix/fetchurl.nix> {
         url = "https://app.vagrantup.com/generic/boxes/ubuntu1604/versions/4.1.12/providers/libvirt.box";
         hash = "sha256-lO4oYQR2tCh5auxAYe6bPOgEqOgv3Y3GC1QM1tEEEU8=";
@@ -34,8 +37,9 @@ let
       rootDisk = "box.img";
       system = "x86_64-linux";
     };
+    */
 
-    "ubuntu-22-04" = {
+    "ubuntu-v22.04" = {
       image = import <nix/fetchurl.nix> {
         url = "https://app.vagrantup.com/generic/boxes/ubuntu2204/versions/4.1.12/providers/libvirt.box";
         hash = "sha256-HNll0Qikw/xGIcogni5lz01vUv+R3o8xowP2EtqjuUQ=";
@@ -44,7 +48,7 @@ let
       system = "x86_64-linux";
     };
 
-    "fedora-36" = {
+    "fedora-v36" = {
       image = import <nix/fetchurl.nix> {
         url = "https://app.vagrantup.com/generic/boxes/fedora36/versions/4.1.12/providers/libvirt.box";
         hash = "sha256-rxPgnDnFkTDwvdqn2CV3ZUo3re9AdPtSZ9SvOHNvaks=";
@@ -67,16 +71,17 @@ let
       };
     */
 
-    "rhel-7" = {
+    "rhel-v7" = {
       image = import <nix/fetchurl.nix> {
         url = "https://app.vagrantup.com/generic/boxes/rhel7/versions/4.1.12/providers/libvirt.box";
         hash = "sha256-b4afnqKCO9oWXgYHb9DeQ2berSwOjS27rSd9TxXDc/U=";
       };
       rootDisk = "box.img";
+      postBoot = disableSELinux;
       system = "x86_64-linux";
     };
 
-    "rhel-8" = {
+    "rhel-v8" = {
       image = import <nix/fetchurl.nix> {
         url = "https://app.vagrantup.com/generic/boxes/rhel8/versions/4.1.12/providers/libvirt.box";
         hash = "sha256-zFOPjSputy1dPgrQRixBXmlyN88cAKjJ21VvjSWUCUY=";
@@ -86,7 +91,7 @@ let
       postBoot = disableSELinux;
     };
 
-    "rhel-9" = {
+    "rhel-v9" = {
       image = import <nix/fetchurl.nix> {
         url = "https://app.vagrantup.com/generic/boxes/rhel9/versions/4.1.12/providers/libvirt.box";
         hash = "sha256-vL/FbB3kK1rcSaR627nWmScYGKGk4seSmAdq6N5diMg=";
@@ -196,16 +201,21 @@ let
         touch $out
       '';
 
-in
+  vm-tests = builtins.mapAttrs
+    (imageName: image:
+      {
+        ${image.system} = builtins.mapAttrs
+          (testName: test:
+            makeTest imageName testName
+          )
+          installScripts;
+      }
+    )
+    images;
 
-builtins.mapAttrs
-  (imageName: image:
-    {
-      ${image.system} = builtins.mapAttrs
-        (testName: test:
-          makeTest imageName testName
-        )
-        installScripts;
-    }
-  )
-  images
+in vm-tests // {
+  all."x86_64-linux".install-default = (with (forSystem "x86_64-linux" ({ system, pkgs, ... }: pkgs)); pkgs.releaseTools.aggregate {
+    name = "all";
+    constituents = pkgs.lib.mapAttrsToList (name: value: value."x86_64-linux".install-default) vm-tests;
+  });
+}
