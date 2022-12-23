@@ -4,7 +4,7 @@ use tracing::{span, Span};
 
 use crate::action::{Action, ActionDescription, ActionError, StatefulAction};
 
-const DEST: &str = "/nix/store";
+pub(crate) const DEST: &str = "/nix/";
 
 /**
 Move an unpacked Nix at `src` to `/nix`
@@ -64,15 +64,23 @@ impl Action for MoveUnpackedNix {
         );
         let found_nix_path = found_nix_paths.into_iter().next().unwrap();
         let src_store = found_nix_path.join("store");
-        let dest = Path::new(DEST);
+        let dest = Path::new(DEST).join("store");
         tracing::trace!(src = %src_store.display(), dest = %dest.display(), "Renaming");
-        tokio::fs::rename(src_store.clone(), dest)
+        tokio::fs::rename(&src_store, &dest)
             .await
             .map_err(|e| ActionError::Rename(src_store.clone(), dest.to_owned(), e))?;
 
-        tokio::fs::remove_dir_all(src)
+        let src_reginfo = found_nix_path.join(".reginfo");
+
+        // Move_unpacked_nix expects it here
+        let dest_reginfo = Path::new(DEST).join(".reginfo");
+        tokio::fs::rename(&src_reginfo, &dest_reginfo)
             .await
-            .map_err(|e| ActionError::Rename(src_store, dest.to_owned(), e))?;
+            .map_err(|e| ActionError::Rename(src_reginfo.clone(), dest_reginfo.to_owned(), e))?;
+
+        tokio::fs::remove_dir_all(&src)
+            .await
+            .map_err(|e| ActionError::Remove(src.clone(), e))?;
 
         Ok(())
     }

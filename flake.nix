@@ -13,6 +13,12 @@
       url = "github:nix-community/naersk";
       inputs.nixpkgs.follows = "nixpkgs";
     };
+
+    nix = {
+      url = "github:nixos/nix";
+      inputs.nixpkgs.follows = "nixpkgs";
+    };
+
   };
 
   outputs =
@@ -20,16 +26,19 @@
     , nixpkgs
     , fenix
     , naersk
+    , nix
     , ...
     } @ inputs:
     let
       supportedSystems = [ "x86_64-linux" "aarch64-linux" "x86_64-darwin" "aarch64-darwin" ];
 
-      forAllSystems = f: nixpkgs.lib.genAttrs supportedSystems (system: f rec {
+      forAllSystems = f: nixpkgs.lib.genAttrs supportedSystems (system: (forSystem system f));
+
+      forSystem = system: f: f rec {
         inherit system;
         pkgs = import nixpkgs { inherit system; overlays = [ self.overlays.default ]; };
         lib = pkgs.lib;
-      });
+      };
 
       fenixToolchain = system: with fenix.packages.${system};
         combine ([
@@ -55,7 +64,11 @@
           sharedAttrs = {
             pname = "nix-installer";
             version = "0.0.0-unreleased";
-            src = self;
+            src = builtins.path {
+              name = "nix-installer-source";
+              path = self;
+              filter = (path: type: baseNameOf path != "nix" || baseNameOf path != ".github");
+            };
 
             nativeBuildInputs = with final; [ ];
             buildInputs = with final; [ ] ++ lib.optionals (final.stdenv.isDarwin) (with final.darwin.apple_sdk.frameworks; [
@@ -163,5 +176,12 @@
         } // nixpkgs.lib.optionalAttrs (pkgs.stdenv.isDarwin) {
           default = pkgs.nix-installer;
         });
+
+      hydraJobs = {
+        vm-test = import ./nix/tests/vm-test {
+          inherit forSystem;
+          inherit (nix.hydraJobs) binaryTarball;
+        };
+      };
     };
 }

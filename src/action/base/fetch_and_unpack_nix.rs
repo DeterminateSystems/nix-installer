@@ -1,6 +1,6 @@
 use std::path::PathBuf;
 
-use bytes::Buf;
+use bytes::{Buf, Bytes};
 use reqwest::Url;
 use tracing::{span, Span};
 
@@ -20,6 +20,15 @@ impl FetchAndUnpackNix {
     pub async fn plan(url: Url, dest: PathBuf) -> Result<StatefulAction<Self>, ActionError> {
         // TODO(@hoverbear): Check URL exists?
         // TODO(@hoverbear): Check tempdir exists
+
+        match url.scheme() {
+            "https" | "http" | "file" => (),
+            _ => {
+                return Err(ActionError::Custom(Box::new(
+                    FetchUrlError::UnknownUrlScheme,
+                )))
+            },
+        };
 
         Ok(Self { url, dest }.into())
     }
@@ -49,13 +58,28 @@ impl Action for FetchAndUnpackNix {
     async fn execute(&mut self) -> Result<(), ActionError> {
         let Self { url, dest } = self;
 
-        let res = reqwest::get(url.clone())
-            .await
-            .map_err(|e| ActionError::Custom(Box::new(FetchUrlError::Reqwest(e))))?;
-        let bytes = res
-            .bytes()
-            .await
-            .map_err(|e| ActionError::Custom(Box::new(FetchUrlError::Reqwest(e))))?;
+        let bytes = match url.scheme() {
+            "https" | "http" => {
+                let res = reqwest::get(url.clone())
+                    .await
+                    .map_err(|e| ActionError::Custom(Box::new(FetchUrlError::Reqwest(e))))?;
+                res.bytes()
+                    .await
+                    .map_err(|e| ActionError::Custom(Box::new(FetchUrlError::Reqwest(e))))?
+            },
+            "file" => {
+                let buf = tokio::fs::read(url.path())
+                    .await
+                    .map_err(|e| ActionError::Read(PathBuf::from(url.path()), e))?;
+                Bytes::from(buf)
+            },
+            _ => {
+                return Err(ActionError::Custom(Box::new(
+                    FetchUrlError::UnknownUrlScheme,
+                )))
+            },
+        };
+
         // TODO(@Hoverbear): Pick directory
         tracing::trace!("Unpacking tar.xz");
         let dest_clone = dest.clone();
@@ -91,4 +115,6 @@ pub enum FetchUrlError {
     ),
     #[error("Unarchiving error")]
     Unarchive(#[source] std::io::Error),
+    #[error("Unknown url scheme")]
+    UnknownUrlScheme,
 }

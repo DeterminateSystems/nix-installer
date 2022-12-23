@@ -290,7 +290,7 @@ pub enum ActionError {
         std::path::PathBuf,
         #[source] std::io::Error,
     ),
-    #[error("Remove path `{0}`")]
+    #[error("Read path `{0}`")]
     Read(std::path::PathBuf, #[source] std::io::Error),
     #[error("Open path `{0}`")]
     Open(std::path::PathBuf, #[source] std::io::Error),

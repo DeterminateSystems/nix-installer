@@ -74,7 +74,7 @@ Create an issue on [the issue page](https://github.com/DeterminateSystems/nix-in
 It should contain:
 
 1. Your OS (Linux, Mac) and architecture (x86_64, aarch64)
-2. Your `nix-installer`` version (`nix-installer --version`)
+2. Your `nix-installer` version (`nix-installer --version`)
 3. The thing you tried to run (eg `nix-installer`)
 4. What happened (the output of the command, please)
 5. What you expected to happen
@@ -107,6 +107,136 @@ Please open an [issue](https://github.com/DeterminateSystems/nix-installer/issue
 to chat about your contribution and figure out how to best integrate it into
 the project.
 
+# Development
+
+Some snippets or workflows for development.
+
+
+## Direnv support
+
+While `nix develop` should work perfectly fine for development, contributors may prefer to enable [`direnv`](https://direnv.net/) or [`nix-direnv`](https://github.com/nix-community/nix-direnv) support.
+
+From the project folder:
+
+```bash
+direnv allow
+```
+
+If using an editor, it may be preferable to adopt an addon to enter the environment:
+
+* [`vim`](https://github.com/direnv/direnv.vim)
+* [VSCode](https://marketplace.visualstudio.com/items?itemName=mkhl.direnv)
+
+
+## Testing Installs
+
+If you're hacking on `nix-installer`, you likely already have Nix and cannot test locally.
+
+> That's probably a good thing! You should test in a sandbox.
+
+Automated [`qemu` tests][#qemu-vm-tests] exist and should be preferred for oneshot testing of changes.
+
+For interactive testing, tools like [`libvirt`](https://libvirt.org/) via [`virt-manager`](https://virt-manager.org/) or [`vagrant`](https://www.vagrantup.com/) can be used to spin up machines and run experiments.
+
+When running such interactive tests, consider creating a snapshot of the VM right before running the installer, so you can quickly roll back if something happens.
+
+In general, it's a good idea to test on the closest you can get to the desired target environment. For example, when testing the Steam Deck planner it's a good idea to run that test in a Steam Deck VM as described in detail in the planner.
+
+
+<details>
+  <summary><strong>Adding a planner for specific hardware?</strong></summary>
+
+Please include an full guide on how to create the best known virtual testing environment for that device. 
+
+**A link is not sufficient, it may break.** Please provide a full summary of steps to take, link to any original source and give them credit if it is appropriate.
+
+It's perfectly fine if they are manual or labor intensive, as these should be a one time thing and get snapshotted prior to running tests.
+
+</details>
+
+## `qemu` VM tests
+
+In `nix/tests/vm-test` there exists some Nix derivations which we expose in the flake via `hydraJobs`.
+
+These should be visible in `nix flake show`:
+
+```
+❯ nix flake show
+warning: Git tree '/home/ana/git/determinatesystems/nix-installer' is dirty
+git+file:///home/ana/git/determinatesystems/nix-installer
+# ...
+├───hydraJobs
+│   └───vm-test
+│       ├───all
+│       │   └───x86_64-linux
+│       │       └───install-default: derivation 'all'
+│       ├───fedora-v36
+│       │   └───x86_64-linux
+│       │       └───install-default: derivation 'installer-test-fedora-v36-install-default'
+│       ├───rhel-v7
+│       │   └───x86_64-linux
+│       │       └───install-default: derivation 'installer-test-rhel-v7-install-default'
+│       ├───rhel-v8
+│       │   └───x86_64-linux
+│       │       └───install-default: derivation 'installer-test-rhel-v8-install-default'
+│       ├───rhel-v9
+│       │   └───x86_64-linux
+│       │       └───install-default: derivation 'installer-test-rhel-v9-install-default'
+│       └───ubuntu-v22_04
+│           └───x86_64-linux
+│               └───install-default: derivation 'installer-test-ubuntu-v22_04-install-default'
+```
+
+To run all of the currently supported tests:
+
+```bash
+nix build .#hydraJobs.vm-test.all.x86_64-linux.install-default -L
+```
+
+To run a specific distribution listed in the `nix flake show` output:
+
+```bash
+nix build .#hydraJobs.vm-test.rhel-v7.x86_64-linux.install-default -L
+```
+
+For PR review, you can also test arbitrary branches or checkouts like so:
+
+```bash
+nix build github:determinatesystems/nix-installer/${BRANCH}#hydraJobs.vm-test.ubuntu-v22_04.x86_64-linux.install-default -L
+```
+
+<details>
+  <summary><strong>Adding a distro?</strong></summary>
+
+Notice how `rhel-v7` has a `v7`, not just `7`? That's so the test output shows correctly, as Nix will interpret the first `-\d` (eg `-7`, `-123213`) as a version, and not show it in the output. 
+
+Using `v7` instead turns:
+
+```
+# ...
+installer-test-rhel> Unpacking Vagrant box /nix/store/8maga4w267f77agb93inbg54whh5lxhn-libvirt.box...
+installer-test-rhel> Vagrantfile
+installer-test-rhel> box.img
+installer-test-rhel> info.json
+installer-test-rhel> metadata.json
+installer-test-rhel> Formatting './disk.qcow2', fmt=qcow2 cluster_size=65536 extended_l2=off compression_type=zlib size=137438953472 backing_file=./box.img backing_fmt=qcow2 lazy_refcounts=off refcount_bits=16
+# ...
+```
+
+Into this:
+
+```
+# ...
+installer-test-rhel-v7-install-default> Unpacking Vagrant box /nix/store/8maga4w267f77agb93inbg54whh5lxhn-libvirt.box...
+installer-test-rhel-v7-install-default> Vagrantfile
+installer-test-rhel-v7-install-default> box.img
+installer-test-rhel-v7-install-default> info.json
+installer-test-rhel-v7-install-default> metadata.json
+installer-test-rhel-v7-install-default> Formatting './disk.qcow2', fmt=qcow2 cluster_size=65536 extended_l2=off compression_type=zlib size=137438953472 backing_file=./box.img backing_fmt=qcow2 lazy_refcounts=off refcount_bits=16
+# ...
+```
+
+</details>
 
 # Who maintains `nix-installer` and why?
 

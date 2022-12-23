@@ -30,13 +30,13 @@ Settings which only apply to certain [`Planner`](crate::planner::Planner)s shoul
 #[derive(Debug, serde::Deserialize, serde::Serialize, Clone)]
 #[cfg_attr(feature = "cli", derive(clap::Parser))]
 pub struct CommonSettings {
-    /// Channel(s) to add
+    /// Channel(s) to add, for no default channel, pass `--channel`
     #[cfg_attr(
         feature = "cli",
         clap(
-            long,
             value_parser,
-            name = "channel",
+            long = "channel",
+            num_args = 0..,
             action = clap::ArgAction::Append,
             env = "NIX_INSTALLER_CHANNELS",
             default_value = "nixpkgs=https://nixos.org/channels/nixpkgs-unstable",
