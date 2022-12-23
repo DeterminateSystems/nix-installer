@@ -10,11 +10,11 @@ use crate::execute_command;
 
 use crate::action::{Action, ActionDescription};
 
-pub const SERVICE_SRC: &str = "/nix/var/nix/profiles/default/lib/systemd/system/nix-daemon.service";
-pub const SOCKET_SRC: &str = "/nix/var/nix/profiles/default/lib/systemd/system/nix-daemon.socket";
-pub const TMPFILES_SRC: &str = "/nix/var/nix/profiles/default/lib/tmpfiles.d/nix-daemon.conf";
-pub const TMPFILES_DEST: &str = "/etc/tmpfiles.d/nix-daemon.conf";
-pub const DARWIN_NIX_DAEMON_DEST: &str = "/Library/LaunchDaemons/org.nixos.nix-daemon.plist";
+const SERVICE_SRC: &str = "/nix/var/nix/profiles/default/lib/systemd/system/nix-daemon.service";
+const SOCKET_SRC: &str = "/nix/var/nix/profiles/default/lib/systemd/system/nix-daemon.socket";
+const TMPFILES_SRC: &str = "/nix/var/nix/profiles/default/lib/tmpfiles.d/nix-daemon.conf";
+const TMPFILES_DEST: &str = "/etc/tmpfiles.d/nix-daemon.conf";
+const DARWIN_NIX_DAEMON_DEST: &str = "/Library/LaunchDaemons/org.nixos.nix-daemon.plist";
 
 /**
 Run systemd utilities to configure the Nix daemon
@@ -147,6 +147,16 @@ impl Action for ConfigureNixDaemonService {
                         .process_group(0)
                         .arg("daemon-reload")
                         .stdin(std::process::Stdio::null()),
+                )
+                .await
+                .map_err(ActionError::Command)?;
+
+                execute_command(
+                    Command::new("systemctl")
+                        .process_group(0)
+                        .arg("enable")
+                        .arg("--now")
+                        .arg(SOCKET_SRC),
                 )
                 .await
                 .map_err(ActionError::Command)?;
