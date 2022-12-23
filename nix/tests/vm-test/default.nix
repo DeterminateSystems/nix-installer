@@ -17,6 +17,7 @@ let
   images = {
 
     # End of standard support https://wiki.ubuntu.com/Releases
+    # No systemd
     /*
       "ubuntu-v14_04" = {
       image = import <nix/fetchurl.nix> {
@@ -66,6 +67,7 @@ let
       hash = "sha256-QwzbvRoRRGqUCQptM7X/InRWFSP2sqwRt2HaaO6zBGM=";
       };
       rootDisk = "box.img";
+      postBoot = disableSELinux;
       system = "x86_64-linux";
       };
     */

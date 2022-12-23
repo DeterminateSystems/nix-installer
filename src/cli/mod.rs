@@ -110,7 +110,7 @@ pub fn ensure_root() -> eyre::Result<()> {
                 _ => false,
             };
             if preserve {
-                preserve_env_list.push(format!("{key}=\"{value}\""));
+                preserve_env_list.push(format!("{key}={value}"));
             }
         }
 
