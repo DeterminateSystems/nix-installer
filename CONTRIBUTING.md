@@ -107,6 +107,87 @@ Please open an [issue](https://github.com/DeterminateSystems/nix-installer/issue
 to chat about your contribution and figure out how to best integrate it into
 the project.
 
+# Development
+
+Some snippets or workflows for development.
+
+## Qemu VM tests
+
+In `nix/tests/vm-test` there exists some Nix derivations which we expose in the flake via `hydraJobs`.
+
+These should be visible in `nix flake show`:
+
+```
+❯ nix flake show
+warning: Git tree '/home/ana/git/determinatesystems/harmonic' is dirty
+git+file:///home/ana/git/determinatesystems/harmonic
+# ...
+├───hydraJobs
+│   └───vm-test
+│       ├───all
+│       │   └───x86_64-linux
+│       │       └───install-default: derivation 'all'
+│       ├───fedora-v36
+│       │   └───x86_64-linux
+│       │       └───install-default: derivation 'installer-test-fedora-v36-install-default'
+│       ├───rhel-v7
+│       │   └───x86_64-linux
+│       │       └───install-default: derivation 'installer-test-rhel-v7-install-default'
+│       ├───rhel-v8
+│       │   └───x86_64-linux
+│       │       └───install-default: derivation 'installer-test-rhel-v8-install-default'
+│       ├───rhel-v9
+│       │   └───x86_64-linux
+│       │       └───install-default: derivation 'installer-test-rhel-v9-install-default'
+│       └───"ubuntu-v22.04"
+│           └───x86_64-linux
+│               └───install-default: derivation 'installer-test-ubuntu-v22.04-install-default'
+```
+
+To run all of the currently supported tests:
+
+```bash
+nix build .#hydraJobs.vm-test.all.x86_64-linux.install-default -L
+```
+
+To run a specific distribution listed in the `nix flake show` output:
+
+```bash
+nix build .#hydraJobs.vm-test.all.x86_64-linux.install-default -L
+```
+
+<details>
+  <summary>**Adding a distro?**</summary>
+
+Notice how `rhel-v7` has a `v7`, not just `7`? That's so the test output shows correctly, as Nix will interpret the first `-\d` (eg `-7`, `-123213`) as a version, and not show it in the output. 
+
+Using `v7` instead turns:
+
+```
+# ...
+installer-test-rhel> Unpacking Vagrant box /nix/store/8maga4w267f77agb93inbg54whh5lxhn-libvirt.box...
+installer-test-rhel> Vagrantfile
+installer-test-rhel> box.img
+installer-test-rhel> info.json
+installer-test-rhel> metadata.json
+installer-test-rhel> Formatting './disk.qcow2', fmt=qcow2 cluster_size=65536 extended_l2=off compression_type=zlib size=137438953472 backing_file=./box.img backing_fmt=qcow2 lazy_refcounts=off refcount_bits=16
+# ...
+```
+
+Into this:
+
+```
+# ...
+installer-test-rhel-v7-install-default> Unpacking Vagrant box /nix/store/8maga4w267f77agb93inbg54whh5lxhn-libvirt.box...
+installer-test-rhel-v7-install-default> Vagrantfile
+installer-test-rhel-v7-install-default> box.img
+installer-test-rhel-v7-install-default> info.json
+installer-test-rhel-v7-install-default> metadata.json
+installer-test-rhel-v7-install-default> Formatting './disk.qcow2', fmt=qcow2 cluster_size=65536 extended_l2=off compression_type=zlib size=137438953472 backing_file=./box.img backing_fmt=qcow2 lazy_refcounts=off refcount_bits=16
+# ...
+```
+
+</details>
 
 # Who maintains `nix-installer` and why?
 

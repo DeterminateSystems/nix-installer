@@ -178,7 +178,7 @@
         });
 
       hydraJobs = {
-        distros = import ./nix/tests/distros {
+        vm-test = import ./nix/tests/vm-test {
           inherit forSystem;
           inherit (nix.hydraJobs) binaryTarball;
         };
