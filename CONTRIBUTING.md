@@ -199,6 +199,12 @@ To run a specific distribution listed in the `nix flake show` output:
 nix build .#hydraJobs.vm-test.rhel-v7.x86_64-linux.install-default -L
 ```
 
+For PR review, you can also test arbitrary branches or checkouts like so:
+
+```bash
+nix build github:determinatesystems/nix-installer/${BRANCH}#hydraJobs.vm-test.ubuntu-v22_04.x86_64-linux.install-default -L
+```
+
 <details>
   <summary><strong>Adding a distro?</strong></summary>
 
