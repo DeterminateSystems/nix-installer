@@ -91,6 +91,12 @@ impl Action for CreateOrAppendFile {
             buf,
         } = self;
 
+        let existed = match tokio::fs::metadata(&path).await {
+            Ok(_) => true,
+            Err(e) if e.kind() == std::io::ErrorKind::NotFound => false,
+            Err(e) => return Err(ActionError::GettingMetadata(path.to_owned(), e))
+        };
+
         let mut file = OpenOptions::new()
             .create(true)
             .write(true)
@@ -143,6 +149,10 @@ impl Action for CreateOrAppendFile {
             tokio::fs::set_permissions(&path, PermissionsExt::from_mode(*mode))
                 .await
                 .map_err(|e| ActionError::SetPermissions(*mode, path.to_owned(), e))?;
+        } else if !existed {
+            tokio::fs::set_permissions(&path, PermissionsExt::from_mode(0o644))
+                .await
+                .map_err(|e| ActionError::SetPermissions(0o644, path.to_owned(), e))?;
         }
 
         Ok(())
