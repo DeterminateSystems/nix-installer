@@ -114,6 +114,8 @@ impl Planner for SteamDeck {
             PropagatesStopTo=nix-daemon.service\n\
             PropagatesStopTo=nix.mount\n\
             DefaultDependencies=no\n\
+            After=grub-recordfail.service\n\
+            After=steamos-finish-oobe-migration.service\n\
             \n\
             [Service]\n\
             Type=oneshot\n\
