@@ -123,7 +123,7 @@ impl CommandExecute for Install {
                             return Ok(ExitCode::FAILURE)
                         }
                         existing_receipt
-                    } ,
+                    },
                     None => {
                         let res = builtin_planner.plan().await;
                         match res {
