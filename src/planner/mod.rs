@@ -168,6 +168,22 @@ impl BuiltinPlanner {
             BuiltinPlanner::SteamDeck(i) => i.boxed(),
         }
     }
+
+    pub fn typetag_name(&self) -> &'static str {
+        match self {
+            BuiltinPlanner::LinuxMulti(i) => i.typetag_name(),
+            BuiltinPlanner::DarwinMulti(i) => i.typetag_name(),
+            BuiltinPlanner::SteamDeck(i) => i.typetag_name(),
+        }
+    }
+
+    pub fn settings(&self) -> Result<HashMap<String, serde_json::Value>, InstallSettingsError> {
+        match self {
+            BuiltinPlanner::LinuxMulti(i) => i.settings(),
+            BuiltinPlanner::DarwinMulti(i) => i.settings(),
+            BuiltinPlanner::SteamDeck(i) => i.settings(),
+        }
+    }
 }
 
 /// An error originating from a [`Planner`]
