@@ -95,6 +95,12 @@ impl Action for CreateOrAppendFile {
             .create(true)
             .write(true)
             .read(true)
+            // If the file is created, ensure that it has harmless
+            // permissions regardless of whether the mode will be
+            // changed later (if we ever create setuid executables,
+            // they should only become setuid once they are owned by
+            // the appropriate user)
+            .mode(0o644 & mode.unwrap_or(0o644))
             .open(&path)
             .await
             .map_err(|e| ActionError::Open(path.to_owned(), e))?;
@@ -128,13 +134,16 @@ impl Action for CreateOrAppendFile {
             None
         };
 
+        // Change ownership _before_ applying mode, to ensure that if
+        // a file needs to be setuid it will never be setuid for the
+        // wrong user
+        chown(path, uid, gid).map_err(|e| ActionError::Chown(path.clone(), e))?;
+
         if let Some(mode) = mode {
             tokio::fs::set_permissions(&path, PermissionsExt::from_mode(*mode))
                 .await
                 .map_err(|e| ActionError::SetPermissions(*mode, path.to_owned(), e))?;
         }
-
-        chown(path, uid, gid).map_err(|e| ActionError::Chown(path.clone(), e))?;
 
         Ok(())
     }
