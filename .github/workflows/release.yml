@@ -1,16 +1,20 @@
 name: Release
 
-permissions:
-  contents: write
-
 on:
   push:
     tags:
       - "v*.*.*"
+    branches:
+      # NOTE: make sure any branches here are also valid directory names,
+      # otherwise creating the directory and uploading to s3 will fail
+      - 'main'
 
 jobs:
   release:
     runs-on: ubuntu-latest
+    permissions:
+      contents: write # In order to upload artifacts to GitHub releases
+      id-token: write # In order to request a JWT for AWS auth
     steps:
       - name: Checkout
         uses: actions/checkout@v3
@@ -19,7 +23,8 @@ jobs:
         with:
           buildkite_token: ${{ secrets.BUILDKITE_TOKEN }}
           output_path: artifacts
-      - name: Publish Release
+      - name: Publish Release (Tag)
+        if: github.ref_type == 'tag'
         uses: softprops/action-gh-release@v1
         with:
           fail_on_unmatched_files: true
@@ -27,3 +32,31 @@ jobs:
           files: |
             artifacts/**
             nix-installer.sh
+      - name: Configure AWS Credentials
+        if: github.ref_type == 'branch'
+        uses: aws-actions/configure-aws-credentials@v1
+        with:
+          role-to-assume: ${{ secrets.AWS_S3_UPLOAD_ROLE }}
+          aws-region: us-east-2
+      - name: Publish Release (Branch)
+        if: github.ref_type == 'branch'
+        run: |
+          sudo chown $USER: -R artifacts/
+
+          LATEST_BRANCH="latest_${{ github.ref_name }}"
+          mkdir "$LATEST_BRANCH"
+          mkdir "$GITHUB_SHA"
+
+          cp nix-installer.sh "$GITHUB_SHA"/
+          cp nix-installer.sh "$LATEST_BRANCH"/
+
+          for artifact in $(find artifacts/ -type f); do
+            chmod +x "$artifact"
+            cp "$artifact" "$GITHUB_SHA"/
+            cp "$artifact" "$LATEST_BRANCH"/
+          done
+
+          # TODO: determine if these binaries have already been uploaded / are the exact same (try download and then hash if already exists as latest_*?)
+
+          aws s3 sync "$GITHUB_SHA"/ s3://${{ secrets.AWS_S3_UPLOAD_BUCKET }}/"$GITHUB_SHA"/ --acl public-read
+          aws s3 sync "$LATEST_BRANCH"/ s3://${{ secrets.AWS_S3_UPLOAD_BUCKET }}/"$LATEST_BRANCH"/ --acl public-read
