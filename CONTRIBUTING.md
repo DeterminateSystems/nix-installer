@@ -238,6 +238,11 @@ installer-test-rhel-v7-install-default> Formatting './disk.qcow2', fmt=qcow2 clu
 
 </details>
 
+## Testing the `action.yml`
+
+The `action.yml` is used directly in the CI process, so it is automatically tested for most changes.
+
+If you are working on the `action.yml` There is an integration test for `action.yml` at https://github.com/DeterminateSystems/nix-installer-example. You can create PRs there to prompt rebuilds, please refer to what you might be working on in the PR description so readers can easily find your work. (The commits don't have to be meaningful, `git commit --allow-empty -m "prod at ci"` is perfectly reasonable.)
 
 # Releases
 
@@ -260,7 +265,6 @@ To cut a release:
 * Once you are certain the release is good, `cargo publish` it
   + **Warning:** While you can re-release Github releases, it is not possible to do the same on `crates.io`
 * Create a PR bumping the version up one minor in the `Cargo.toml`, adding `-unreleased` at the end (`v0.0.2-unreleased`)
-
 
 # Who maintains `nix-installer` and why?
 
