@@ -1,5 +1,5 @@
 steps:
-  - label: build-aarch64-darwin
+  - label: nix-installer-aarch64-darwin
     agents:
       mac: 1
       system: aarch64-darwin
