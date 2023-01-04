@@ -1,6 +1,7 @@
 use nix::unistd::{chown, Group, User};
 
 use crate::action::{Action, ActionDescription, ActionError, StatefulAction};
+use rand::Rng;
 use std::{
     io::SeekFrom,
     os::unix::prelude::PermissionsExt,
@@ -99,7 +100,10 @@ impl Action for CreateOrInsertFile {
         // atomically
         let parent_dir = path.parent().expect("File must be in a directory");
         let mut temp_file_path = parent_dir.to_owned();
-        temp_file_path.push("nix-installer-tmp");
+        {
+            let mut rng = rand::thread_rng();
+            temp_file_path.push(format!("nix-installer-tmp.{}", rng.gen::<u32>()));
+        }
         let mut temp_file = OpenOptions::new()
             .create(true)
             // If the file is created, ensure that it has harmless
@@ -111,7 +115,7 @@ impl Action for CreateOrInsertFile {
             .open(&temp_file_path)
             .await
             .map_err(|e| {
-                ActionError::Open(format!("<temporary file in {:?}>", parent_dir).into(), e)
+                ActionError::Open(temp_file_path.clone(), e)
             })?;
 
         temp_file
