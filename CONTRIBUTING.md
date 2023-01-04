@@ -256,7 +256,7 @@ To cut a release:
 * Once the PR tests pass and it has been reviewed, merge it
 * `git pull` on the `main` branch
 * Tag the release (`git tag v0.0.1`)
-* Push the tag (`git push --tags`)
+* Push the tag (`git push origin v0.0.1`)
 * The CI should produce artifacts via Buildkite and create a "Draft" release containing them on GitHub
   + This will take a bit, use this time to draft a changelog
 * Review the draft release, test the artifacts in a VM
