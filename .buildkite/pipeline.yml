@@ -1,4 +1,13 @@
 steps:
+  - label: nix-installer-x86_64-darwin
+    agents:
+      mac: 1
+      system: x86_64-darwin
+      nix: 1
+    command:
+      - nix --extra-experimental-features "nix-command flakes" build .#packages.x86_64-darwin.nix-installer -L
+      - cp result/bin/nix-installer ./nix-installer-x86_64-darwin
+      - buildkite-agent artifact upload nix-installer-x86_64-darwin
   - label: nix-installer-aarch64-darwin
     agents:
       mac: 1

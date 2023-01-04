@@ -157,73 +157,75 @@ impl CommandExecute for Install {
 
         let (tx, rx1) = signal_channel().await?;
 
-        if let Err(err) = install_plan.install(rx1).await {
-            if !no_confirm {
-                let mut was_expected = false;
-                if let Some(expected) = err.expected() {
-                    was_expected = true;
-                    eprintln!("{}", expected.red())
+        match install_plan.install(rx1).await {
+            Err(err) => {
+                if !no_confirm {
+                    let mut was_expected = false;
+                    if let Some(expected) = err.expected() {
+                        was_expected = true;
+                        eprintln!("{}", expected.red())
+                    }
+                    if !was_expected {
+                        let error = eyre!(err).wrap_err("Install failure");
+                        tracing::error!("{:?}", error);
+                    };
+
+                    eprintln!("{}", "Installation failure, offering to revert...".red());
+                    if !interaction::confirm(
+                        install_plan
+                            .describe_uninstall(explain)
+                            .map_err(|e| eyre!(e))?,
+                        true,
+                    )
+                    .await?
+                    {
+                        interaction::clean_exit_with_message("Okay, didn't do anything! Bye!")
+                            .await;
+                    }
+                    let rx2 = tx.subscribe();
+                    let res = install_plan.uninstall(rx2).await;
+
+                    if let Err(e) = res {
+                        if let Some(expected) = e.expected() {
+                            eprintln!("{}", expected.red());
+                            return Ok(ExitCode::FAILURE);
+                        }
+                        return Err(e.into());
+                    } else {
+                        println!(
+                            "\
+                            {message}\n\
+                            ",
+                            message = "Partial Nix install was uninstalled successfully!"
+                                .white()
+                                .bold(),
+                        );
+                    }
                 } else {
-                    println!(
-                        "\
-                        {success}\n\
-                        To get started using Nix, open a new shell or run `{shell_reminder}`\n\
-                        ",
-                        success = "Nix was installed successfully!".green().bold(),
-                        shell_reminder = match std::env::var("SHELL") {
-                            Ok(val) if val.contains("fish") =>
-                                ". /nix/var/nix/profiles/default/etc/profile.d/nix-daemon.fish"
-                                    .bold(),
-                            Ok(_) | Err(_) =>
-                                ". /nix/var/nix/profiles/default/etc/profile.d/nix-daemon.sh".bold(),
-                        },
-                    );
-                }
-
-                if !was_expected {
-                    let error = eyre!(err).wrap_err("Install failure");
-                    tracing::error!("{:?}", error);
-                };
-
-                eprintln!("{}", "Installation failure, offering to revert...".red());
-                if !interaction::confirm(
-                    install_plan
-                        .describe_uninstall(explain)
-                        .map_err(|e| eyre!(e))?,
-                    true,
-                )
-                .await?
-                {
-                    interaction::clean_exit_with_message("Okay, didn't do anything! Bye!").await;
-                }
-                let rx2 = tx.subscribe();
-                let res = install_plan.uninstall(rx2).await;
-
-                if let Err(e) = res {
-                    if let Some(expected) = e.expected() {
+                    if let Some(expected) = err.expected() {
                         eprintln!("{}", expected.red());
                         return Ok(ExitCode::FAILURE);
                     }
-                    return Err(e.into());
-                } else {
-                    println!(
-                        "\
-                        {message}\n\
-                        ",
-                        message = "Partial Nix install was uninstalled successfully!"
-                            .white()
-                            .bold(),
-                    );
-                }
-            } else {
-                if let Some(expected) = err.expected() {
-                    eprintln!("{}", expected.red());
-                    return Ok(ExitCode::FAILURE);
-                }
 
-                let error = eyre!(err).wrap_err("Install failure");
-                return Err(error);
-            }
+                    let error = eyre!(err).wrap_err("Install failure");
+                    return Err(error);
+                }
+            },
+            Ok(_) => {
+                println!(
+                    "\
+                    {success}\n\
+                    To get started using Nix, open a new shell or run `{shell_reminder}`\n\
+                    ",
+                    success = "Nix was installed successfully!".green().bold(),
+                    shell_reminder = match std::env::var("SHELL") {
+                        Ok(val) if val.contains("fish") =>
+                            ". /nix/var/nix/profiles/default/etc/profile.d/nix-daemon.fish".bold(),
+                        Ok(_) | Err(_) =>
+                            ". /nix/var/nix/profiles/default/etc/profile.d/nix-daemon.sh".bold(),
+                    },
+                );
+            },
         }
 
         Ok(ExitCode::SUCCESS)
