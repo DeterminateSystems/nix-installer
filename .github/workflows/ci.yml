@@ -142,7 +142,7 @@ jobs:
         if: success() || failure()
         run: |
           nix run nixpkgs#fortune
-          nix profile add nixpkgs#fortune
+          nix profile install nixpkgs#fortune
           fortune
           nix store gc
           nix run nixpkgs#fortune
@@ -257,7 +257,7 @@ jobs:
         if: success() || failure()
         run: |
           nix run nixpkgs#fortune
-          nix profile add nixpkgs#fortune
+          nix profile install nixpkgs#fortune
           fortune
           nix store gc
           nix run nixpkgs#fortune
@@ -367,7 +367,7 @@ jobs:
         if: success() || failure()
         run: |
           nix run nixpkgs#fortune
-          nix profile add nixpkgs#fortune
+          nix profile install nixpkgs#fortune
           fortune
           nix store gc
           nix run nixpkgs#fortune
