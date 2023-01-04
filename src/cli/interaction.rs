@@ -19,8 +19,8 @@ pub(crate) async fn confirm(question: impl AsRef<str>, default: bool) -> eyre::R
     ",
         question = question.as_ref(),
         are_you_sure = "Proceed?".bright_white().bold(),
-        no = "N".red().bold(),
-        yes = "y".green(),
+        no = if default {"n"} else {"N"}.red(),
+        yes = if default {"Y"} else {"y"}.green(),
     );
 
     term.write_all(with_confirm.as_bytes())?;
