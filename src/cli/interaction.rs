@@ -18,7 +18,7 @@ pub(crate) async fn confirm(question: impl AsRef<str>, default: bool) -> eyre::R
         {are_you_sure} ({yes}/{no}): \
     ",
         question = question.as_ref(),
-        are_you_sure = "Proceed?".bright_white().bold(),
+        are_you_sure = "Proceed?".bold(),
         no = "N".red().bold(),
         yes = "y".green(),
     );
