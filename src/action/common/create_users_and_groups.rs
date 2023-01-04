@@ -119,48 +119,50 @@ impl Action for CreateUsersAndGroups {
         // Create group
         create_group.try_execute().await?;
 
-        // Mac is apparently not threadsafe here...
-        use target_lexicon::OperatingSystem;
-        match OperatingSystem::host() {
-            OperatingSystem::MacOSX {
-                major: _,
-                minor: _,
-                patch: _,
-            }
-            | OperatingSystem::Darwin => {
-                for create_user in create_users.iter_mut() {
-                    create_user.try_execute().await?;
-                }
-            },
-            _ => {
-                let mut set = JoinSet::new();
-                let mut errors: Vec<Box<ActionError>> = Vec::new();
-                for (idx, create_user) in create_users.iter_mut().enumerate() {
-                    let span = tracing::Span::current().clone();
-                    let mut create_user_clone = create_user.clone();
-                    let _abort_handle = set.spawn(async move {
-                        create_user_clone.try_execute().instrument(span).await?;
-                        Result::<_, _>::Ok((idx, create_user_clone))
-                    });
-                }
-
-                while let Some(result) = set.join_next().await {
-                    match result {
-                        Ok(Ok((idx, success))) => create_users[idx] = success,
-                        Ok(Err(e)) => errors.push(Box::new(e)),
-                        Err(e) => return Err(ActionError::Join(e))?,
-                    };
-                }
-
-                if !errors.is_empty() {
-                    if errors.len() == 1 {
-                        return Err(errors.into_iter().next().unwrap().into());
-                    } else {
-                        return Err(ActionError::Children(errors));
-                    }
-                }
-            },
-        };
+        // Mac and Fedora 36 are apparently not threadsafe here...
+        //
+        // use target_lexicon::OperatingSystem;
+        // match OperatingSystem::host() {
+        //     OperatingSystem::MacOSX {
+        //         major: _,
+        //         minor: _,
+        //         patch: _,
+        //     }
+        //     | OperatingSystem::Darwin => {
+        //
+        //     },
+        //     _ => {
+        //         let mut set = JoinSet::new();
+        //         let mut errors: Vec<Box<ActionError>> = Vec::new();
+        //         for (idx, create_user) in create_users.iter_mut().enumerate() {
+        //             let span = tracing::Span::current().clone();
+        //             let mut create_user_clone = create_user.clone();
+        //             let _abort_handle = set.spawn(async move {
+        //                 create_user_clone.try_execute().instrument(span).await?;
+        //                 Result::<_, _>::Ok((idx, create_user_clone))
+        //             });
+        //         }
+        //
+        //         while let Some(result) = set.join_next().await {
+        //             match result {
+        //                 Ok(Ok((idx, success))) => create_users[idx] = success,
+        //                 Ok(Err(e)) => errors.push(Box::new(e)),
+        //                 Err(e) => return Err(ActionError::Join(e))?,
+        //             };
+        //         }
+        //
+        //         if !errors.is_empty() {
+        //             if errors.len() == 1 {
+        //                 return Err(errors.into_iter().next().unwrap().into());
+        //             } else {
+        //                 return Err(ActionError::Children(errors));
+        //             }
+        //         }
+        //     },
+        // };
+        for create_user in create_users.iter_mut() {
+            create_user.try_execute().await?;
+        }
 
         Ok(())
     }
