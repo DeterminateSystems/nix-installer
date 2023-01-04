@@ -557,7 +557,7 @@
                 "configure_shell_profile": {
                     "action": {
                         "create_directories": [],
-                        "create_or_append_files": [
+                        "create_or_insert_files": [
                             {
                                 "action": {
                                     "path": "/etc/bashrc",
