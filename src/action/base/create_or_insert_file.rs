@@ -164,7 +164,9 @@ impl Action for CreateOrInsertFile {
                 .map_err(|e| ActionError::SetPermissions(0o644, path.to_owned(), e))?;
         }
 
-        tokio::fs::rename(&temp_file_path, &path).await.map_err(|e| ActionError::Copy(path.to_owned(), temp_file_path.to_owned(), e))?;
+        tokio::fs::rename(&temp_file_path, &path)
+            .await
+            .map_err(|e| ActionError::Rename(path.to_owned(), temp_file_path.to_owned(), e))?;
 
         Ok(())
     }
