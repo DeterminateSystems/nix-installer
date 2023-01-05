@@ -106,6 +106,7 @@ impl Action for CreateOrInsertFile {
         }
         let mut temp_file = OpenOptions::new()
             .create(true)
+            .write(true)
             // If the file is created, ensure that it has harmless
             // permissions regardless of whether the mode will be
             // changed later (if we ever create setuid executables,
