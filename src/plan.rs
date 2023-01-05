@@ -236,7 +236,7 @@ impl InstallPlan {
                 }
             }
 
-            tracing::info!("Step: {}", action.tracing_synopsis());
+            tracing::info!("Revert: {}", action.tracing_synopsis());
             if let Err(err) = action.try_revert().await {
                 if let Err(err) = write_receipt(self.clone()).await {
                     tracing::error!("Error saving receipt: {:?}", err);
