@@ -205,20 +205,6 @@ impl CommandExecute for Install {
                         eprintln!("{}", expected.red());
                         return Ok(ExitCode::FAILURE);
                     }
-                    return Err(e.into());
-                } else {
-                    println!(
-                        "\
-                        {message}\n\
-                        ",
-                        message = "Partial Nix install was uninstalled successfully!".bold(),
-                    );
-                }
-            } else {
-                if let Some(expected) = err.expected() {
-                    eprintln!("{}", expected.red());
-                    return Ok(ExitCode::FAILURE);
-                }
 
                     let error = eyre!(err).wrap_err("Install failure");
                     return Err(error);
