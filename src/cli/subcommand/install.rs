@@ -80,13 +80,16 @@ impl CommandExecute for Install {
                 match existing_receipt {
                     Some(existing_receipt) => {
                         if existing_receipt.planner.typetag_name() != chosen_planner.typetag_name() {
-                            return Err(eyre!("Found existing plan in `{RECEIPT_LOCATION}` which used a different planner, try uninstalling the existing install"))
+                            eprintln!("{}", format!("Found existing plan in `{RECEIPT_LOCATION}` which used a different planner, try uninstalling the existing install").red());
+                            return Ok(ExitCode::FAILURE)
                         }
                         if existing_receipt.planner.settings().map_err(|e| eyre!(e))? != chosen_planner.settings().map_err(|e| eyre!(e))? {
-                            return Err(eyre!("Found existing plan in `{RECEIPT_LOCATION}` which used different planner settings, try uninstalling the existing install"))
+                            eprintln!("{}", format!("Found existing plan in `{RECEIPT_LOCATION}` which used different planner settings, try uninstalling the existing install").red());
+                            return Ok(ExitCode::FAILURE)
                         }
                         if existing_receipt.actions.iter().all(|v| v.state == ActionState::Completed) {
-                            return Err(eyre!("Found existing plan in `{RECEIPT_LOCATION}`, with the same settings, already completed, try uninstalling and reinstalling if Nix isn't working"))
+                            eprintln!("{}", format!("Found existing plan in `{RECEIPT_LOCATION}`, with the same settings, already completed, try uninstalling and reinstalling if Nix isn't working").red());
+                            return Ok(ExitCode::FAILURE)
                         }
                         existing_receipt
                     } ,
@@ -105,16 +108,35 @@ impl CommandExecute for Install {
                 let builtin_planner = BuiltinPlanner::from_common_settings(settings)
                     .await
                     .map_err(|e| eyre::eyre!(e))?;
-                let res = builtin_planner.plan().await;
-                match res {
-                    Ok(plan) => plan,
-                    Err(e) => {
-                        if let Some(expected) = e.expected() {
-                            eprintln!("{}", expected.red());
-                            return Ok(ExitCode::FAILURE);
+                match existing_receipt {
+                    Some(existing_receipt) => {
+                        if existing_receipt.planner.typetag_name() != builtin_planner.typetag_name() {
+                            eprintln!("{}", format!("Found existing plan in `{RECEIPT_LOCATION}` which used a different planner, try uninstalling the existing install").red());
+                            return Ok(ExitCode::FAILURE)
                         }
-                        return Err(e.into())
-                    }
+                        if existing_receipt.planner.settings().map_err(|e| eyre!(e))? != builtin_planner.settings().map_err(|e| eyre!(e))? {
+                            eprintln!("{}", format!("Found existing plan in `{RECEIPT_LOCATION}` which used different planner settings, try uninstalling the existing install").red());
+                            return Ok(ExitCode::FAILURE)
+                        }
+                        if existing_receipt.actions.iter().all(|v| v.state == ActionState::Completed) {
+                            eprintln!("{}", format!("Found existing plan in `{RECEIPT_LOCATION}`, with the same settings, already completed, try uninstalling and reinstalling if Nix isn't working").red());
+                            return Ok(ExitCode::FAILURE)
+                        }
+                        existing_receipt
+                    },
+                    None => {
+                        let res = builtin_planner.plan().await;
+                        match res {
+                            Ok(plan) => plan,
+                            Err(e) => {
+                                if let Some(expected) = e.expected() {
+                                    eprintln!("{}", expected.red());
+                                    return Ok(ExitCode::FAILURE);
+                                }
+                                return Err(e.into())
+                            }
+                        }
+                    },
                 }
             },
             (Some(_), Some(_)) => return Err(eyre!("`--plan` conflicts with passing a planner, a planner creates plans, so passing an existing plan doesn't make sense")),
@@ -135,73 +157,75 @@ impl CommandExecute for Install {
 
         let (tx, rx1) = signal_channel().await?;
 
-        if let Err(err) = install_plan.install(rx1).await {
-            if !no_confirm {
-                let mut was_expected = false;
-                if let Some(expected) = err.expected() {
-                    was_expected = true;
-                    eprintln!("{}", expected.red())
+        match install_plan.install(rx1).await {
+            Err(err) => {
+                if !no_confirm {
+                    let mut was_expected = false;
+                    if let Some(expected) = err.expected() {
+                        was_expected = true;
+                        eprintln!("{}", expected.red())
+                    }
+                    if !was_expected {
+                        let error = eyre!(err).wrap_err("Install failure");
+                        tracing::error!("{:?}", error);
+                    };
+
+                    eprintln!("{}", "Installation failure, offering to revert...".red());
+                    if !interaction::confirm(
+                        install_plan
+                            .describe_uninstall(explain)
+                            .map_err(|e| eyre!(e))?,
+                        true,
+                    )
+                    .await?
+                    {
+                        interaction::clean_exit_with_message("Okay, didn't do anything! Bye!")
+                            .await;
+                    }
+                    let rx2 = tx.subscribe();
+                    let res = install_plan.uninstall(rx2).await;
+
+                    if let Err(e) = res {
+                        if let Some(expected) = e.expected() {
+                            eprintln!("{}", expected.red());
+                            return Ok(ExitCode::FAILURE);
+                        }
+                        return Err(e.into());
+                    } else {
+                        println!(
+                            "\
+                            {message}\n\
+                            ",
+                            message = "Partial Nix install was uninstalled successfully!"
+                                .white()
+                                .bold(),
+                        );
+                    }
                 } else {
-                    println!(
-                        "\
-                        {success}\n\
-                        To get started using Nix, open a new shell or run `{shell_reminder}`\n\
-                        ",
-                        success = "Nix was installed successfully!".green().bold(),
-                        shell_reminder = match std::env::var("SHELL") {
-                            Ok(val) if val.contains("fish") =>
-                                ". /nix/var/nix/profiles/default/etc/profile.d/nix-daemon.fish"
-                                    .bold(),
-                            Ok(_) | Err(_) =>
-                                ". /nix/var/nix/profiles/default/etc/profile.d/nix-daemon.sh".bold(),
-                        },
-                    );
-                }
-
-                if !was_expected {
-                    let error = eyre!(err).wrap_err("Install failure");
-                    tracing::error!("{:?}", error);
-                };
-
-                eprintln!("{}", "Installation failure, offering to revert...".red());
-                if !interaction::confirm(
-                    install_plan
-                        .describe_uninstall(explain)
-                        .map_err(|e| eyre!(e))?,
-                    true,
-                )
-                .await?
-                {
-                    interaction::clean_exit_with_message("Okay, didn't do anything! Bye!").await;
-                }
-                let rx2 = tx.subscribe();
-                let res = install_plan.uninstall(rx2).await;
-
-                if let Err(e) = res {
-                    if let Some(expected) = e.expected() {
+                    if let Some(expected) = err.expected() {
                         eprintln!("{}", expected.red());
                         return Ok(ExitCode::FAILURE);
                     }
-                    return Err(e.into());
-                } else {
-                    println!(
-                        "\
-                        {message}\n\
-                        ",
-                        message = "Partial Nix install was uninstalled successfully!"
-                            .white()
-                            .bold(),
-                    );
-                }
-            } else {
-                if let Some(expected) = err.expected() {
-                    eprintln!("{}", expected.red());
-                    return Ok(ExitCode::FAILURE);
-                }
 
-                let error = eyre!(err).wrap_err("Install failure");
-                return Err(error);
-            }
+                    let error = eyre!(err).wrap_err("Install failure");
+                    return Err(error);
+                }
+            },
+            Ok(_) => {
+                println!(
+                    "\
+                    {success}\n\
+                    To get started using Nix, open a new shell or run `{shell_reminder}`\n\
+                    ",
+                    success = "Nix was installed successfully!".green().bold(),
+                    shell_reminder = match std::env::var("SHELL") {
+                        Ok(val) if val.contains("fish") =>
+                            ". /nix/var/nix/profiles/default/etc/profile.d/nix-daemon.fish".bold(),
+                        Ok(_) | Err(_) =>
+                            ". /nix/var/nix/profiles/default/etc/profile.d/nix-daemon.sh".bold(),
+                    },
+                );
+            },
         }
 
         Ok(ExitCode::SUCCESS)
