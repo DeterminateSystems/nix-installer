@@ -570,7 +570,7 @@
                             },
                             {
                                 "action": {
-                                    "path": "/etc/zshrc",
+                                    "path": "/etc/zshenv",
                                     "user": null,
                                     "group": null,
                                     "mode": 493,

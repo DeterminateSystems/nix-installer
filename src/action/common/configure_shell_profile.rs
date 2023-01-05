@@ -23,9 +23,9 @@ const PROFILE_FISH_PREFIXES: &[&str] = &[
 const PROFILE_TARGETS: &[&str] = &[
     "/etc/bashrc",
     "/etc/profile.d/nix.sh",
-    "/etc/zshrc",
+    "/etc/zshenv",
     "/etc/bash.bashrc",
-    "/etc/zsh/zshrc",
+    "/etc/zsh/zshenv",
 ];
 const PROFILE_NIX_FILE_SHELL: &str = "/nix/var/nix/profiles/default/etc/profile.d/nix-daemon.sh";
 const PROFILE_NIX_FILE_FISH: &str = "/nix/var/nix/profiles/default/etc/profile.d/nix-daemon.fish";
