@@ -196,8 +196,7 @@ impl CommandExecute for Install {
                             "\
                             {message}\n\
                             ",
-                            message = "Partial Nix install was uninstalled successfully!"
-                                .bold(),
+                            message = "Partial Nix install was uninstalled successfully!".bold(),
                         );
                     }
                 } else {
