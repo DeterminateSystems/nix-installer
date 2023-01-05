@@ -33,6 +33,7 @@ jobs:
           mkdir "$LATEST_BRANCH"
           mkdir "$GITHUB_SHA"
 
+          sed -i "s@https://install.determinate.systems/nix@https://install.determinate.systems/nix/rev/$GITHUB_SHA@" nix-installer.sh
           cp nix-installer.sh "$GITHUB_SHA"/
           cp nix-installer.sh "$LATEST_BRANCH"/
 

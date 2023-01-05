@@ -18,6 +18,9 @@ jobs:
         with:
           buildkite_token: ${{ secrets.BUILDKITE_TOKEN }}
           output_path: artifacts
+      - name: Fixup URL in nix-installer.sh
+        run: |
+          sed -i "s@https://install.determinate.systems/nix@https://install.determinate.systems/nix/tag/$GITHUB_REF_NAME@" nix-installer.sh
       - name: Publish Release (Tag)
         uses: softprops/action-gh-release@v1
         with:
