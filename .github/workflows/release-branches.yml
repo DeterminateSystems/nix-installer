@@ -1,9 +1,7 @@
-name: Release
+name: Release Branch
 
 on:
   push:
-    tags:
-      - "v*.*.*"
     branches:
       # NOTE: make sure any branches here are also valid directory names,
       # otherwise creating the directory and uploading to s3 will fail
@@ -13,7 +11,6 @@ jobs:
   release:
     runs-on: ubuntu-latest
     permissions:
-      contents: write # In order to upload artifacts to GitHub releases
       id-token: write # In order to request a JWT for AWS auth
     steps:
       - name: Checkout
@@ -23,23 +20,12 @@ jobs:
         with:
           buildkite_token: ${{ secrets.BUILDKITE_TOKEN }}
           output_path: artifacts
-      - name: Publish Release (Tag)
-        if: github.ref_type == 'tag'
-        uses: softprops/action-gh-release@v1
-        with:
-          fail_on_unmatched_files: true
-          draft: true
-          files: |
-            artifacts/**
-            nix-installer.sh
       - name: Configure AWS Credentials
-        if: github.ref_type == 'branch'
         uses: aws-actions/configure-aws-credentials@v1
         with:
           role-to-assume: ${{ secrets.AWS_S3_UPLOAD_ROLE }}
           aws-region: us-east-2
       - name: Publish Release (Branch)
-        if: github.ref_type == 'branch'
         run: |
           sudo chown $USER: -R artifacts/
 
