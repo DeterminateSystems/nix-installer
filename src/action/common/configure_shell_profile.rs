@@ -120,7 +120,7 @@ impl ConfigureShellProfile {
             if let Ok(Some(runner)) = User::from_name("runner") {
                 buf += &format!(
                     "/nix/var/nix/profiles/per-user/{}/profile/bin\n",
-                    runner.uid
+                    runner.name
                 );
             }
             create_or_append_files

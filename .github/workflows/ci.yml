@@ -140,7 +140,12 @@ jobs:
         run: echo $PATH
       - name: Test `nix` with `$GITHUB_PATH`
         if: success() || failure()
-        run: nix run nixpkgs#fortune
+        run: |
+          nix run nixpkgs#fortune
+          nix profile install nixpkgs#fortune
+          fortune
+          nix store gc
+          nix run nixpkgs#fortune
       - name: Test bash
         run: nix-instantiate -E 'builtins.currentTime' --eval
         if: success() || failure()
@@ -250,7 +255,12 @@ jobs:
         run: echo $PATH
       - name: Test `nix` with `$GITHUB_PATH`
         if: success() || failure()
-        run: nix run nixpkgs#fortune
+        run: |
+          nix run nixpkgs#fortune
+          nix profile install nixpkgs#fortune
+          fortune
+          nix store gc
+          nix run nixpkgs#fortune
       - name: Test bash
         run: nix-instantiate -E 'builtins.currentTime' --eval
         if: success() || failure()
@@ -355,7 +365,12 @@ jobs:
         run: echo $PATH
       - name: Test `nix` with `$GITHUB_PATH`
         if: success() || failure()
-        run: nix run nixpkgs#fortune
+        run: |
+          nix run nixpkgs#fortune
+          nix profile install nixpkgs#fortune
+          fortune
+          nix store gc
+          nix run nixpkgs#fortune
       - name: Test bash
         run: nix-instantiate -E 'builtins.currentTime' --eval
         if: success() || failure()
