@@ -146,7 +146,9 @@ impl Action for CreateOrInsertFile {
         };
 
         if let Some(ref mut orig_file) = orig_file {
-            tokio::io::copy(orig_file, &mut temp_file).await.map_err(|e| ActionError::Copy(path.to_owned(), temp_file_path.to_owned(), e))?;
+            tokio::io::copy(orig_file, &mut temp_file)
+                .await
+                .map_err(|e| ActionError::Copy(path.to_owned(), temp_file_path.to_owned(), e))?;
         }
 
         // Change ownership _before_ applying mode, to ensure that if

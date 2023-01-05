@@ -91,7 +91,7 @@ impl Action for CreateOrAppendFile {
         let existed = match tokio::fs::metadata(&path).await {
             Ok(_) => true,
             Err(e) if e.kind() == std::io::ErrorKind::NotFound => false,
-            Err(e) => return Err(ActionError::GettingMetadata(path.to_owned(), e))
+            Err(e) => return Err(ActionError::GettingMetadata(path.to_owned(), e)),
         };
 
         let mut file = OpenOptions::new()
