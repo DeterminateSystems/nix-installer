@@ -79,7 +79,7 @@ impl InstallPlan {
             plan_settings = planner
                 .settings()?
                 .into_iter()
-                .map(|(k, v)| format!("* {k}: {v}", k = k.bold().white()))
+                .map(|(k, v)| format!("* {k}: {v}", k = k.bold()))
                 .collect::<Vec<_>>()
                 .join("\n"),
             actions = actions
@@ -180,7 +180,7 @@ impl InstallPlan {
             plan_settings = planner
                 .settings()?
                 .into_iter()
-                .map(|(k, v)| format!("* {k}: {v}", k = k.bold().white()))
+                .map(|(k, v)| format!("* {k}: {v}", k = k.bold()))
                 .collect::<Vec<_>>()
                 .join("\n"),
             actions = actions
