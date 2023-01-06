@@ -27,6 +27,9 @@ jobs:
           aws-region: us-east-2
       - name: Publish Release (Branch)
         run: |
+          # If the revision directory has already been created in S3 somehow, we don't want to reupload
+          aws s3 ls "$AWS_BUCKET"/"$GITHUB_SHA"/ && exit 1
+
           sudo chown $USER: -R artifacts/
 
           LATEST_BRANCH="latest_${{ github.ref_name }}"
@@ -42,8 +45,6 @@ jobs:
             cp "$artifact" "$GITHUB_SHA"/
             cp "$artifact" "$LATEST_BRANCH"/
           done
-
-          # TODO: determine if these binaries have already been uploaded / are the exact same (try download and then hash if already exists as latest_*?)
 
           aws s3 sync "$GITHUB_SHA"/ s3://${{ secrets.AWS_S3_UPLOAD_BUCKET }}/"$GITHUB_SHA"/ --acl public-read
           aws s3 sync "$LATEST_BRANCH"/ s3://${{ secrets.AWS_S3_UPLOAD_BUCKET }}/"$LATEST_BRANCH"/ --acl public-read

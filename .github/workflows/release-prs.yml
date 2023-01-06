@@ -35,6 +35,9 @@ jobs:
         env:
           AWS_BUCKET: ${{ secrets.AWS_S3_UPLOAD_BUCKET }}
         run: |
+          # If the revision directory has already been created in S3 somehow, we don't want to reupload
+          aws s3 ls "$AWS_BUCKET"/"$GITHUB_SHA"/ && exit 1
+
           sudo chown $USER: -R artifacts/
 
           PR="pr_${{ github.event.pull_request.number }}"
@@ -50,8 +53,6 @@ jobs:
             cp "$artifact" "$GITHUB_SHA"/
             cp "$artifact" "$PR"/
           done
-
-          # TODO: determine if these binaries have already been uploaded / are the exact same (try download and then hash if already exists as latest_*?)
 
           aws s3 sync "$GITHUB_SHA"/ s3://"$AWS_BUCKET"/"$GITHUB_SHA"/ --acl public-read
           aws s3 sync "$PR"/ s3://"$AWS_BUCKET"/"$PR"/ --acl public-read
