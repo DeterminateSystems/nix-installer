@@ -1,4 +1,4 @@
-use std::{os::unix::prelude::PermissionsExt, path::PathBuf, str::FromStr};
+use std::{path::PathBuf, str::FromStr};
 
 use crate::{
     action::{Action, ActionDescription, StatefulAction},
