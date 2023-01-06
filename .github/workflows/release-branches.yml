@@ -26,25 +26,8 @@ jobs:
           role-to-assume: ${{ secrets.AWS_S3_UPLOAD_ROLE }}
           aws-region: us-east-2
       - name: Publish Release (Branch)
+        env:
+          AWS_BUCKET: ${{ secrets.AWS_S3_UPLOAD_BUCKET }}
         run: |
-          # If the revision directory has already been created in S3 somehow, we don't want to reupload
-          aws s3 ls "$AWS_BUCKET"/"$GITHUB_SHA"/ && exit 1
-
-          sudo chown $USER: -R artifacts/
-
           LATEST_BRANCH="latest_${{ github.ref_name }}"
-          mkdir "$LATEST_BRANCH"
-          mkdir "$GITHUB_SHA"
-
-          sed -i "s@https://install.determinate.systems/nix@https://install.determinate.systems/nix/rev/$GITHUB_SHA@" nix-installer.sh
-          cp nix-installer.sh "$GITHUB_SHA"/
-          cp nix-installer.sh "$LATEST_BRANCH"/
-
-          for artifact in $(find artifacts/ -type f); do
-            chmod +x "$artifact"
-            cp "$artifact" "$GITHUB_SHA"/
-            cp "$artifact" "$LATEST_BRANCH"/
-          done
-
-          aws s3 sync "$GITHUB_SHA"/ s3://${{ secrets.AWS_S3_UPLOAD_BUCKET }}/"$GITHUB_SHA"/ --acl public-read
-          aws s3 sync "$LATEST_BRANCH"/ s3://${{ secrets.AWS_S3_UPLOAD_BUCKET }}/"$LATEST_BRANCH"/ --acl public-read
+          ./upload_s3.sh "$LATEST_BRANCH"
