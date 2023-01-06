@@ -1,4 +1,5 @@
 use std::{
+    os::unix::prelude::PermissionsExt,
     path::{Path, PathBuf},
     process::ExitCode,
 };
@@ -160,6 +161,9 @@ impl CommandExecute for Install {
         match install_plan.install(rx1).await {
             Err(err) => {
                 if !no_confirm {
+                    // Attempt to copy self to the store if possible, but since the install failed, this might not work, that's ok.
+                    copy_self_to_nix_store().await.ok();
+
                     let mut was_expected = false;
                     if let Some(expected) = err.expected() {
                         was_expected = true;
@@ -210,6 +214,9 @@ impl CommandExecute for Install {
                 }
             },
             Ok(_) => {
+                copy_self_to_nix_store()
+                    .await
+                    .wrap_err("Copying `nix-installer` to `/nix/nix-installer`")?;
                 println!(
                     "\
                     {success}\n\
@@ -228,4 +235,12 @@ impl CommandExecute for Install {
 
         Ok(ExitCode::SUCCESS)
     }
+}
+
+#[tracing::instrument(level = "debug")]
+async fn copy_self_to_nix_store() -> Result<(), std::io::Error> {
+    let path = std::env::current_exe()?;
+    tokio::fs::copy(path, "/nix/nix-installer").await?;
+    tokio::fs::set_permissions("/nix/nix-installer", PermissionsExt::from_mode(0o0755)).await?;
+    Ok(())
 }
