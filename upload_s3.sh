@@ -34,4 +34,4 @@ for file in $(find "$GITHUB_SHA" -type f); do
 done
 
 aws s3 sync "$GITHUB_SHA"/ s3://"$AWS_BUCKET"/"$GITHUB_SHA"/ --acl public-read
-aws s3 sync "$GITHUB_SHA"/ s3://"$AWS_BUCKET"/"$DEST"/ --acl public-read
+aws s3 sync s3://"$AWS_BUCKET"/"$GITHUB_SHA"/ s3://"$AWS_BUCKET"/"$DEST"/ --acl public-read
