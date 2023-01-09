@@ -1,4 +1,4 @@
-use crate::action::base::{CreateDirectory, CreateOrAppendFile};
+use crate::action::base::{create_or_insert_into_file, CreateDirectory, CreateOrInsertIntoFile};
 use crate::action::{Action, ActionDescription, ActionError, StatefulAction};
 
 use nix::unistd::User;
@@ -23,9 +23,9 @@ const PROFILE_FISH_PREFIXES: &[&str] = &[
 const PROFILE_TARGETS: &[&str] = &[
     "/etc/bashrc",
     "/etc/profile.d/nix.sh",
-    "/etc/zshrc",
+    "/etc/zshenv",
     "/etc/bash.bashrc",
-    "/etc/zsh/zshrc",
+    "/etc/zsh/zshenv",
 ];
 const PROFILE_NIX_FILE_SHELL: &str = "/nix/var/nix/profiles/default/etc/profile.d/nix-daemon.sh";
 const PROFILE_NIX_FILE_FISH: &str = "/nix/var/nix/profiles/default/etc/profile.d/nix-daemon.fish";
@@ -36,13 +36,13 @@ Configure any detected shell profiles to include Nix support
 #[derive(Debug, serde::Deserialize, serde::Serialize, Clone)]
 pub struct ConfigureShellProfile {
     create_directories: Vec<StatefulAction<CreateDirectory>>,
-    create_or_append_files: Vec<StatefulAction<CreateOrAppendFile>>,
+    create_or_insert_into_files: Vec<StatefulAction<CreateOrInsertIntoFile>>,
 }
 
 impl ConfigureShellProfile {
     #[tracing::instrument(level = "debug", skip_all)]
     pub async fn plan() -> Result<StatefulAction<Self>, ActionError> {
-        let mut create_or_append_files = Vec::default();
+        let mut create_or_insert_files = Vec::default();
         let mut create_directories = Vec::default();
 
         let shell_buf = format!(
@@ -61,17 +61,18 @@ impl ConfigureShellProfile {
             if let Some(parent) = profile_target_path.parent() {
                 if !parent.exists() {
                     tracing::trace!(
-                        "Did not plan to edit `{profile_target}` as it's parent folder does not exist."
+                        "Did not plan to edit `{profile_target}` as its parent folder does not exist."
                     );
                     continue;
                 }
-                create_or_append_files.push(
-                    CreateOrAppendFile::plan(
+                create_or_insert_files.push(
+                    CreateOrInsertIntoFile::plan(
                         profile_target_path,
                         None,
                         None,
                         0o0755,
                         shell_buf.to_string(),
+                        create_or_insert_into_file::Position::Beginning,
                     )
                     .await?,
                 );
@@ -106,9 +107,16 @@ impl ConfigureShellProfile {
                 );
             }
 
-            create_or_append_files.push(
-                CreateOrAppendFile::plan(profile_target, None, None, 0o0755, fish_buf.to_string())
-                    .await?,
+            create_or_insert_files.push(
+                CreateOrInsertIntoFile::plan(
+                    profile_target,
+                    None,
+                    None,
+                    0o0755,
+                    fish_buf.to_string(),
+                    create_or_insert_into_file::Position::Beginning,
+                )
+                .await?,
             );
         }
 
@@ -123,13 +131,22 @@ impl ConfigureShellProfile {
                     runner.name
                 );
             }
-            create_or_append_files
-                .push(CreateOrAppendFile::plan(&github_path, None, None, None, buf).await?)
+            create_or_insert_files.push(
+                CreateOrInsertIntoFile::plan(
+                    &github_path,
+                    None,
+                    None,
+                    None,
+                    buf,
+                    create_or_insert_into_file::Position::End,
+                )
+                .await?,
+            )
         }
 
         Ok(Self {
             create_directories,
-            create_or_append_files,
+            create_or_insert_into_files: create_or_insert_files,
         }
         .into())
     }
@@ -156,7 +173,7 @@ impl Action for ConfigureShellProfile {
     #[tracing::instrument(level = "debug", skip_all)]
     async fn execute(&mut self) -> Result<(), ActionError> {
         let Self {
-            create_or_append_files,
+            create_or_insert_into_files,
             create_directories,
         } = self;
 
@@ -167,22 +184,22 @@ impl Action for ConfigureShellProfile {
         let mut set = JoinSet::new();
         let mut errors = Vec::default();
 
-        for (idx, create_or_append_file) in create_or_append_files.iter().enumerate() {
+        for (idx, create_or_insert_into_file) in create_or_insert_into_files.iter().enumerate() {
             let span = tracing::Span::current().clone();
-            let mut create_or_append_file_clone = create_or_append_file.clone();
+            let mut create_or_insert_into_file_clone = create_or_insert_into_file.clone();
             let _abort_handle = set.spawn(async move {
-                create_or_append_file_clone
+                create_or_insert_into_file_clone
                     .try_execute()
                     .instrument(span)
                     .await?;
-                Result::<_, ActionError>::Ok((idx, create_or_append_file_clone))
+                Result::<_, ActionError>::Ok((idx, create_or_insert_into_file_clone))
             });
         }
 
         while let Some(result) = set.join_next().await {
             match result {
-                Ok(Ok((idx, create_or_append_file))) => {
-                    create_or_append_files[idx] = create_or_append_file
+                Ok(Ok((idx, create_or_insert_into_file))) => {
+                    create_or_insert_into_files[idx] = create_or_insert_into_file
                 },
                 Ok(Err(e)) => errors.push(Box::new(e)),
                 Err(e) => return Err(e.into()),
@@ -211,24 +228,24 @@ impl Action for ConfigureShellProfile {
     async fn revert(&mut self) -> Result<(), ActionError> {
         let Self {
             create_directories,
-            create_or_append_files,
+            create_or_insert_into_files,
         } = self;
 
         let mut set = JoinSet::new();
         let mut errors: Vec<Box<ActionError>> = Vec::default();
 
-        for (idx, create_or_append_file) in create_or_append_files.iter().enumerate() {
-            let mut create_or_append_file_clone = create_or_append_file.clone();
+        for (idx, create_or_insert_into_file) in create_or_insert_into_files.iter().enumerate() {
+            let mut create_or_insert_file_clone = create_or_insert_into_file.clone();
             let _abort_handle = set.spawn(async move {
-                create_or_append_file_clone.try_revert().await?;
-                Result::<_, _>::Ok((idx, create_or_append_file_clone))
+                create_or_insert_file_clone.try_revert().await?;
+                Result::<_, _>::Ok((idx, create_or_insert_file_clone))
             });
         }
 
         while let Some(result) = set.join_next().await {
             match result {
-                Ok(Ok((idx, create_or_append_file))) => {
-                    create_or_append_files[idx] = create_or_append_file
+                Ok(Ok((idx, create_or_insert_into_file))) => {
+                    create_or_insert_into_files[idx] = create_or_insert_into_file
                 },
                 Ok(Err(e)) => errors.push(Box::new(e)),
                 Err(e) => return Err(e.into()),

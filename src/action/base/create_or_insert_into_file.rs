@@ -1,6 +1,7 @@
 use nix::unistd::{chown, Group, User};
 
 use crate::action::{Action, ActionDescription, ActionError, StatefulAction};
+use rand::Rng;
 use std::{
     io::SeekFrom,
     os::unix::prelude::PermissionsExt,
@@ -12,24 +13,29 @@ use tokio::{
 };
 use tracing::{span, Span};
 
-/** Create a file at the given location with the provided `buf`,
-optionally with an owning user, group, and mode.
+#[derive(Debug, serde::Deserialize, serde::Serialize, Clone, PartialEq, Eq)]
+pub enum Position {
+    Beginning,
+    End,
+}
 
-If the file exists, the provided `buf` will be appended.
+/** Create a file at the given location with the provided `buf` as
+contents, optionally with an owning user, group, and mode.
 
-If `force` is set, the file will always be overwritten (and deleted)
-regardless of its presence prior to install.
+If the file exists, the provided `buf` will be inserted at its
+beginning or end, depending on the position field.
  */
 #[derive(Debug, serde::Deserialize, serde::Serialize, Clone)]
-pub struct CreateOrAppendFile {
+pub struct CreateOrInsertIntoFile {
     path: PathBuf,
     user: Option<String>,
     group: Option<String>,
     mode: Option<u32>,
     buf: String,
+    position: Position,
 }
 
-impl CreateOrAppendFile {
+impl CreateOrInsertIntoFile {
     #[tracing::instrument(level = "debug", skip_all)]
     pub async fn plan(
         path: impl AsRef<Path>,
@@ -37,6 +43,7 @@ impl CreateOrAppendFile {
         group: impl Into<Option<String>>,
         mode: impl Into<Option<u32>>,
         buf: String,
+        position: Position,
     ) -> Result<StatefulAction<Self>, ActionError> {
         let path = path.as_ref().to_path_buf();
 
@@ -46,22 +53,23 @@ impl CreateOrAppendFile {
             group: group.into(),
             mode: mode.into(),
             buf,
+            position,
         }
         .into())
     }
 }
 
 #[async_trait::async_trait]
-#[typetag::serde(name = "create_or_append_file")]
-impl Action for CreateOrAppendFile {
+#[typetag::serde(name = "create_or_insert_into_file")]
+impl Action for CreateOrInsertIntoFile {
     fn tracing_synopsis(&self) -> String {
-        format!("Create or append file `{}`", self.path.display())
+        format!("Create or insert file `{}`", self.path.display())
     }
 
     fn tracing_span(&self) -> Span {
         let span = span!(
             tracing::Level::DEBUG,
-            "create_or_append_file",
+            "create_or_insert_file",
             path = tracing::field::display(self.path.display()),
             user = self.user,
             group = self.group,
@@ -89,23 +97,63 @@ impl Action for CreateOrAppendFile {
             group,
             mode,
             buf,
+            position,
         } = self;
 
-        let mut file = OpenOptions::new()
+        let mut orig_file = match OpenOptions::new().read(true).open(&path).await {
+            Ok(f) => Some(f),
+            Err(e) if e.kind() == std::io::ErrorKind::NotFound => None,
+            Err(e) => return Err(ActionError::Open(path.to_owned(), e)),
+        };
+
+        // Create a temporary file in the same directory as the one
+        // that the final file goes in, so that we can rename it
+        // atomically
+        let parent_dir = path.parent().expect("File must be in a directory");
+        let mut temp_file_path = parent_dir.to_owned();
+        {
+            let mut rng = rand::thread_rng();
+            temp_file_path.push(format!("nix-installer-tmp.{}", rng.gen::<u32>()));
+        }
+        let mut temp_file = OpenOptions::new()
             .create(true)
             .write(true)
-            .read(true)
-            .open(&path)
+            // If the file is created, ensure that it has harmless
+            // permissions regardless of whether the mode will be
+            // changed later (if we ever create setuid executables,
+            // they should only become setuid once they are owned by
+            // the appropriate user)
+            .mode(0o600)
+            .open(&temp_file_path)
             .await
-            .map_err(|e| ActionError::Open(path.to_owned(), e))?;
+            .map_err(|e| {
+                ActionError::Open(temp_file_path.clone(), e)
+            })?;
 
-        file.seek(SeekFrom::End(0))
-            .await
-            .map_err(|e| ActionError::Seek(path.to_owned(), e))?;
+        if *position == Position::End {
+            if let Some(ref mut orig_file) = orig_file {
+                tokio::io::copy(orig_file, &mut temp_file)
+                    .await
+                    .map_err(|e| {
+                        ActionError::Copy(path.to_owned(), temp_file_path.to_owned(), e)
+                    })?;
+            }
+        }
 
-        file.write_all(buf.as_bytes())
+        temp_file
+            .write_all(buf.as_bytes())
             .await
-            .map_err(|e| ActionError::Write(path.to_owned(), e))?;
+            .map_err(|e| ActionError::Write(temp_file_path.clone(), e))?;
+
+        if *position == Position::Beginning {
+            if let Some(ref mut orig_file) = orig_file {
+                tokio::io::copy(orig_file, &mut temp_file)
+                    .await
+                    .map_err(|e| {
+                        ActionError::Copy(path.to_owned(), temp_file_path.to_owned(), e)
+                    })?;
+            }
+        }
 
         let gid = if let Some(group) = group {
             Some(
@@ -128,13 +176,24 @@ impl Action for CreateOrAppendFile {
             None
         };
 
+        // Change ownership _before_ applying mode, to ensure that if
+        // a file needs to be setuid it will never be setuid for the
+        // wrong user
+        chown(&temp_file_path, uid, gid).map_err(|e| ActionError::Chown(path.clone(), e))?;
+
         if let Some(mode) = mode {
-            tokio::fs::set_permissions(&path, PermissionsExt::from_mode(*mode))
+            tokio::fs::set_permissions(&temp_file_path, PermissionsExt::from_mode(*mode))
                 .await
                 .map_err(|e| ActionError::SetPermissions(*mode, path.to_owned(), e))?;
+        } else if orig_file.is_some() {
+            tokio::fs::set_permissions(&temp_file_path, PermissionsExt::from_mode(0o644))
+                .await
+                .map_err(|e| ActionError::SetPermissions(0o644, path.to_owned(), e))?;
         }
 
-        chown(path, uid, gid).map_err(|e| ActionError::Chown(path.clone(), e))?;
+        tokio::fs::rename(&temp_file_path, &path)
+            .await
+            .map_err(|e| ActionError::Rename(path.to_owned(), temp_file_path.to_owned(), e))?;
 
         Ok(())
     }
@@ -146,6 +205,7 @@ impl Action for CreateOrAppendFile {
             group: _,
             mode: _,
             buf,
+            position: _,
         } = &self;
         vec![ActionDescription::new(
             format!("Delete Nix related fragment from file `{}`", path.display()),
@@ -164,6 +224,7 @@ impl Action for CreateOrAppendFile {
             group: _,
             mode: _,
             buf,
+            position: _,
         } = self;
         let mut file = OpenOptions::new()
             .create(false)
@@ -171,12 +232,12 @@ impl Action for CreateOrAppendFile {
             .read(true)
             .open(&path)
             .await
-            .map_err(|e| ActionError::Read(path.to_owned(), e))?;
+            .map_err(|e| ActionError::Open(path.to_owned(), e))?;
 
         let mut file_contents = String::default();
         file.read_to_string(&mut file_contents)
             .await
-            .map_err(|e| ActionError::Seek(path.to_owned(), e))?;
+            .map_err(|e| ActionError::Read(path.to_owned(), e))?;
 
         if let Some(start) = file_contents.rfind(buf.as_str()) {
             let end = start + buf.len();
