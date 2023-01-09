@@ -144,9 +144,7 @@ impl InstallPlan {
         }
 
         write_receipt(self.clone()).await?;
-        copy_self_to_nix_store()
-            .await
-            .map_err(|e| NixInstallerError::CopyingSelf(e))?;
+
         Ok(())
     }
 
@@ -286,13 +284,6 @@ fn ensure_version<'de, D: Deserializer<'de>>(d: D) -> Result<Version, D::Error> 
             "This version of `nix-installer` ({nix_installer_version}) is not compatible with this plan's version ({plan_version}), check for a compatible version at `/nix/nix-installer` or download the matching release from https://github.com/DeterminateSystems/nix-installer/releases",
         )))
     }
-}
-
-#[tracing::instrument(level = "debug")]
-async fn copy_self_to_nix_store() -> Result<(), std::io::Error> {
-    let path = std::env::current_exe()?;
-    tokio::fs::copy(path, "/nix/nix-installer").await?;
-    Ok(())
 }
 
 #[cfg(test)]
