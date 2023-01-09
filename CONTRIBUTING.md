@@ -251,7 +251,7 @@ If you are working on the `action.yml` There is an integration test for `action.
 To cut a release:
 
 * Create a release branch from `main` (`git checkout -b release-v0.0.1`)
-* Remove the `-unreleased` from the `version` field in `Cargo.toml`
+* Remove the `-unreleased` from the `version` field in `Cargo.toml` and `flake.nix`
 * Push the branch, create a PR ("Release v0.0.1")
 * Once the PR tests pass and it has been reviewed, merge it
 * `git pull` on the `main` branch
@@ -264,7 +264,7 @@ To cut a release:
 * Undraft the release
 * Once you are certain the release is good, `cargo publish` it
   + **Warning:** While you can re-release Github releases, it is not possible to do the same on `crates.io`
-* Create a PR bumping the version up one minor in the `Cargo.toml`, adding `-unreleased` at the end (`v0.0.2-unreleased`)
+* Create a PR bumping the version up one minor in the `Cargo.toml` and `flake.nix`, adding `-unreleased` at the end (`v0.0.2-unreleased`)
 
 # Who maintains `nix-installer` and why?
 
