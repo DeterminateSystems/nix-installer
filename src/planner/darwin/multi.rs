@@ -105,6 +105,9 @@ impl Planner for DarwinMulti {
         let encrypt = if self.encrypt == None {
             Command::new("/usr/bin/fdesetup")
                 .arg("isactive")
+                .stdout(std::process::Stdio::null())
+                .stderr(std::process::Stdio::null())
+                .process_group(0)
                 .status()
                 .await
                 .map_err(|e| PlannerError::Custom(Box::new(e)))?
