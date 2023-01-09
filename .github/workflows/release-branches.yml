@@ -29,6 +29,6 @@ jobs:
         env:
           AWS_BUCKET: ${{ secrets.AWS_S3_UPLOAD_BUCKET }}
         run: |
-          LATEST_BRANCH="latest_${{ github.ref_name }}"
+          BRANCH="branch_${{ github.ref_name }}"
           GIT_ISH="$GITHUB_SHA"
-          ./upload_s3.sh "$LATEST_BRANCH" "$GIT_ISH"
+          ./upload_s3.sh "$BRANCH" "$GIT_ISH"
