@@ -33,4 +33,5 @@ jobs:
           AWS_BUCKET: ${{ secrets.AWS_S3_UPLOAD_BUCKET }}
         run: |
           PR="pr_${{ github.event.pull_request.number }}"
-          ./upload_s3.sh "$PR"
+          GIT_ISH="${{ github.event.pull_request.head.sha }}"
+          ./upload_s3.sh "$PR" "$GIT_ISH"
