@@ -1,4 +1,4 @@
-use crate::action::base::{CreateDirectory, CreateOrInsertIntoFile, create_or_insert_into_file};
+use crate::action::base::{create_or_insert_into_file, CreateDirectory, CreateOrInsertIntoFile};
 use crate::action::{Action, ActionDescription, ActionError, StatefulAction};
 
 use nix::unistd::User;
@@ -108,8 +108,15 @@ impl ConfigureShellProfile {
             }
 
             create_or_insert_files.push(
-                CreateOrInsertIntoFile::plan(profile_target, None, None, 0o0755, fish_buf.to_string(), create_or_insert_into_file::Position::Beginning)
-                    .await?,
+                CreateOrInsertIntoFile::plan(
+                    profile_target,
+                    None,
+                    None,
+                    0o0755,
+                    fish_buf.to_string(),
+                    create_or_insert_into_file::Position::Beginning,
+                )
+                .await?,
             );
         }
 
@@ -124,8 +131,17 @@ impl ConfigureShellProfile {
                     runner.name
                 );
             }
-            create_or_insert_files
-                .push(CreateOrInsertIntoFile::plan(&github_path, None, None, None, buf, create_or_insert_into_file::Position::End).await?)
+            create_or_insert_files.push(
+                CreateOrInsertIntoFile::plan(
+                    &github_path,
+                    None,
+                    None,
+                    None,
+                    buf,
+                    create_or_insert_into_file::Position::End,
+                )
+                .await?,
+            )
         }
 
         Ok(Self {

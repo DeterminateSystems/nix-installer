@@ -97,7 +97,7 @@ impl Action for CreateOrInsertIntoFile {
             group,
             mode,
             buf,
-            position
+            position,
         } = self;
 
         let mut orig_file = match OpenOptions::new().read(true).open(&path).await {
@@ -134,7 +134,9 @@ impl Action for CreateOrInsertIntoFile {
             if let Some(ref mut orig_file) = orig_file {
                 tokio::io::copy(orig_file, &mut temp_file)
                     .await
-                    .map_err(|e| ActionError::Copy(path.to_owned(), temp_file_path.to_owned(), e))?;
+                    .map_err(|e| {
+                        ActionError::Copy(path.to_owned(), temp_file_path.to_owned(), e)
+                    })?;
             }
         }
 
@@ -147,7 +149,9 @@ impl Action for CreateOrInsertIntoFile {
             if let Some(ref mut orig_file) = orig_file {
                 tokio::io::copy(orig_file, &mut temp_file)
                     .await
-                    .map_err(|e| ActionError::Copy(path.to_owned(), temp_file_path.to_owned(), e))?;
+                    .map_err(|e| {
+                        ActionError::Copy(path.to_owned(), temp_file_path.to_owned(), e)
+                    })?;
             }
         }
 

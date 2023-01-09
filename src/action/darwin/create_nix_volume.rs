@@ -1,5 +1,5 @@
 use crate::action::{
-    base::{CreateFile, CreateOrInsertIntoFile, create_or_insert_into_file},
+    base::{create_or_insert_into_file, CreateFile, CreateOrInsertIntoFile},
     darwin::{
         BootstrapApfsVolume, CreateApfsVolume, CreateSyntheticObjects, EnableOwnership,
         EncryptApfsVolume, UnmountApfsVolume,
