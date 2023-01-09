@@ -29,7 +29,7 @@ for file in $(find "$GITHUB_SHA" -type f); do
 
   if [[ "$md5" == "$obj_md5" ]]; then
     echo "Artifact $artifact was already uploaded; exiting"
-    exit 1
+    exit 0
   fi
 done
 
