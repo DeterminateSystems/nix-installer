@@ -79,7 +79,7 @@ impl InstallPlan {
             plan_settings = planner
                 .settings()?
                 .into_iter()
-                .map(|(k, v)| format!("* {k}: {v}", k = k.bold().white()))
+                .map(|(k, v)| format!("* {k}: {v}", k = k.bold()))
                 .collect::<Vec<_>>()
                 .join("\n"),
             actions = actions
@@ -180,7 +180,7 @@ impl InstallPlan {
             plan_settings = planner
                 .settings()?
                 .into_iter()
-                .map(|(k, v)| format!("* {k}: {v}", k = k.bold().white()))
+                .map(|(k, v)| format!("* {k}: {v}", k = k.bold()))
                 .collect::<Vec<_>>()
                 .join("\n"),
             actions = actions
@@ -236,7 +236,7 @@ impl InstallPlan {
                 }
             }
 
-            tracing::info!("Step: {}", action.tracing_synopsis());
+            tracing::info!("Revert: {}", action.tracing_synopsis());
             if let Err(err) = action.try_revert().await {
                 if let Err(err) = write_receipt(self.clone()).await {
                     tracing::error!("Error saving receipt: {:?}", err);
