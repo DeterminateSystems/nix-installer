@@ -24,7 +24,7 @@ done
 for file in $(find "$GITHUB_SHA" -type f); do
   artifact_path="$DEST"/"$(basename "$artifact")"
   md5="$(md5sum "$artifact" | cut -d' ' -f1)"
-  obj="$(aws s3api head-object --bucket "$AWS_BUCKET" --key "$artifact_path")"
+  obj="$(aws s3api head-object --bucket "$AWS_BUCKET" --key "$artifact_path" || echo '{}')"
   obj_md5="$(jq -r .ETag <<<"$obj" | jq -r)" # head-object call returns ETag quoted, so `jq -r` again to unquote it
 
   if [[ "$md5" == "$obj_md5" ]]; then
