@@ -1,4 +1,4 @@
-use crate::action::base::{CreateDirectory, CreateOrInsertFile};
+use crate::action::base::{CreateDirectory, CreateOrInsertIntoFile, create_or_insert_into_file};
 use crate::action::{Action, ActionDescription, ActionError, StatefulAction};
 
 use nix::unistd::User;
@@ -36,7 +36,7 @@ Configure any detected shell profiles to include Nix support
 #[derive(Debug, serde::Deserialize, serde::Serialize, Clone)]
 pub struct ConfigureShellProfile {
     create_directories: Vec<StatefulAction<CreateDirectory>>,
-    create_or_insert_files: Vec<StatefulAction<CreateOrInsertFile>>,
+    create_or_insert_into_files: Vec<StatefulAction<CreateOrInsertIntoFile>>,
 }
 
 impl ConfigureShellProfile {
@@ -66,12 +66,13 @@ impl ConfigureShellProfile {
                     continue;
                 }
                 create_or_insert_files.push(
-                    CreateOrInsertFile::plan(
+                    CreateOrInsertIntoFile::plan(
                         profile_target_path,
                         None,
                         None,
                         0o0755,
                         shell_buf.to_string(),
+                        create_or_insert_into_file::Position::Beginning,
                     )
                     .await?,
                 );
@@ -107,7 +108,7 @@ impl ConfigureShellProfile {
             }
 
             create_or_insert_files.push(
-                CreateOrInsertFile::plan(profile_target, None, None, 0o0755, fish_buf.to_string())
+                CreateOrInsertIntoFile::plan(profile_target, None, None, 0o0755, fish_buf.to_string(), create_or_insert_into_file::Position::Beginning)
                     .await?,
             );
         }
@@ -124,12 +125,12 @@ impl ConfigureShellProfile {
                 );
             }
             create_or_insert_files
-                .push(CreateOrInsertFile::plan(&github_path, None, None, None, buf).await?)
+                .push(CreateOrInsertIntoFile::plan(&github_path, None, None, None, buf, create_or_insert_into_file::Position::End).await?)
         }
 
         Ok(Self {
             create_directories,
-            create_or_insert_files,
+            create_or_insert_into_files: create_or_insert_files,
         }
         .into())
     }
@@ -156,7 +157,7 @@ impl Action for ConfigureShellProfile {
     #[tracing::instrument(level = "debug", skip_all)]
     async fn execute(&mut self) -> Result<(), ActionError> {
         let Self {
-            create_or_insert_files,
+            create_or_insert_into_files,
             create_directories,
         } = self;
 
@@ -167,22 +168,22 @@ impl Action for ConfigureShellProfile {
         let mut set = JoinSet::new();
         let mut errors = Vec::default();
 
-        for (idx, create_or_insert_file) in create_or_insert_files.iter().enumerate() {
+        for (idx, create_or_insert_into_file) in create_or_insert_into_files.iter().enumerate() {
             let span = tracing::Span::current().clone();
-            let mut create_or_insert_file_clone = create_or_insert_file.clone();
+            let mut create_or_insert_into_file_clone = create_or_insert_into_file.clone();
             let _abort_handle = set.spawn(async move {
-                create_or_insert_file_clone
+                create_or_insert_into_file_clone
                     .try_execute()
                     .instrument(span)
                     .await?;
-                Result::<_, ActionError>::Ok((idx, create_or_insert_file_clone))
+                Result::<_, ActionError>::Ok((idx, create_or_insert_into_file_clone))
             });
         }
 
         while let Some(result) = set.join_next().await {
             match result {
-                Ok(Ok((idx, create_or_insert_file))) => {
-                    create_or_insert_files[idx] = create_or_insert_file
+                Ok(Ok((idx, create_or_insert_into_file))) => {
+                    create_or_insert_into_files[idx] = create_or_insert_into_file
                 },
                 Ok(Err(e)) => errors.push(Box::new(e)),
                 Err(e) => return Err(e.into()),
@@ -211,14 +212,14 @@ impl Action for ConfigureShellProfile {
     async fn revert(&mut self) -> Result<(), ActionError> {
         let Self {
             create_directories,
-            create_or_insert_files,
+            create_or_insert_into_files,
         } = self;
 
         let mut set = JoinSet::new();
         let mut errors: Vec<Box<ActionError>> = Vec::default();
 
-        for (idx, create_or_insert_file) in create_or_insert_files.iter().enumerate() {
-            let mut create_or_insert_file_clone = create_or_insert_file.clone();
+        for (idx, create_or_insert_into_file) in create_or_insert_into_files.iter().enumerate() {
+            let mut create_or_insert_file_clone = create_or_insert_into_file.clone();
             let _abort_handle = set.spawn(async move {
                 create_or_insert_file_clone.try_revert().await?;
                 Result::<_, _>::Ok((idx, create_or_insert_file_clone))
@@ -227,8 +228,8 @@ impl Action for ConfigureShellProfile {
 
         while let Some(result) = set.join_next().await {
             match result {
-                Ok(Ok((idx, create_or_insert_file))) => {
-                    create_or_insert_files[idx] = create_or_insert_file
+                Ok(Ok((idx, create_or_insert_into_file))) => {
+                    create_or_insert_into_files[idx] = create_or_insert_into_file
                 },
                 Ok(Err(e)) => errors.push(Box::new(e)),
                 Err(e) => return Err(e.into()),
