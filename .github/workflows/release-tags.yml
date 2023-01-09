@@ -1,7 +1,4 @@
-name: Release
-
-permissions:
-  contents: write
+name: Release Tags
 
 on:
   push:
@@ -11,6 +8,8 @@ on:
 jobs:
   release:
     runs-on: ubuntu-latest
+    permissions:
+      contents: write # In order to upload artifacts to GitHub releases
     steps:
       - name: Checkout
         uses: actions/checkout@v3
@@ -19,7 +18,10 @@ jobs:
         with:
           buildkite_token: ${{ secrets.BUILDKITE_TOKEN }}
           output_path: artifacts
-      - name: Publish Release
+      - name: Fixup URL in nix-installer.sh
+        run: |
+          sed -i "s@https://install.determinate.systems/nix@https://install.determinate.systems/nix/tag/$GITHUB_REF_NAME@" nix-installer.sh
+      - name: Publish Release (Tag)
         uses: softprops/action-gh-release@v1
         with:
           fail_on_unmatched_files: true
