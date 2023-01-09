@@ -185,12 +185,6 @@ let
         $ssh <<EOF
           set -ex
 
-          # FIXME: get rid of this; ideally ssh should just work.
-          source ~/.bash_profile || true
-          source ~/.bash_login || true
-          source ~/.profile || true
-          source /etc/bashrc || true
-
           nix-env --version
           nix --extra-experimental-features nix-command store ping
 

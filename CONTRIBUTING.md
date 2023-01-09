@@ -244,6 +244,27 @@ The `action.yml` is used directly in the CI process, so it is automatically test
 
 If you are working on the `action.yml` There is an integration test for `action.yml` at https://github.com/DeterminateSystems/nix-installer-example. You can create PRs there to prompt rebuilds, please refer to what you might be working on in the PR description so readers can easily find your work. (The commits don't have to be meaningful, `git commit --allow-empty -m "prod at ci"` is perfectly reasonable.)
 
+# Releases
+
+> `nix-installer` is still experimental, so this process may change.
+
+To cut a release:
+
+* Create a release branch from `main` (`git checkout -b release-v0.0.1`)
+* Remove the `-unreleased` from the `version` field in `Cargo.toml`
+* Push the branch, create a PR ("Release v0.0.1")
+* Once the PR tests pass and it has been reviewed, merge it
+* `git pull` on the `main` branch
+* Tag the release (`git tag v0.0.1`)
+* Push the tag (`git push origin v0.0.1`)
+* The CI should produce artifacts via Buildkite and create a "Draft" release containing them on GitHub
+  + This will take a bit, use this time to draft a changelog
+* Review the draft release, test the artifacts in a VM
+* Create a changelog following the format of last release
+* Undraft the release
+* Once you are certain the release is good, `cargo publish` it
+  + **Warning:** While you can re-release Github releases, it is not possible to do the same on `crates.io`
+* Create a PR bumping the version up one minor in the `Cargo.toml`, adding `-unreleased` at the end (`v0.0.2-unreleased`)
 
 # Who maintains `nix-installer` and why?
 

@@ -1,0 +1,36 @@
+name: Release PR
+
+on:
+  pull_request:
+    types:
+      - opened
+      - reopened
+      - synchronize
+      - labeled
+
+jobs:
+  release:
+    # Only intra-repo PRs are allowed to have PR artifacts uploaded
+    if: github.event.pull_request.head.repo.full_name == 'DeterminateSystems/nix-installer' && contains(github.event.pull_request.labels.*.name, 'upload to s3')
+    runs-on: ubuntu-latest
+    permissions:
+      id-token: write # In order to request a JWT for AWS auth
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+      - name: Download Buildkite Artifacts
+        uses: EnricoMi/download-buildkite-artifact-action@v1.14
+        with:
+          buildkite_token: ${{ secrets.BUILDKITE_TOKEN }}
+          output_path: artifacts
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v1
+        with:
+          role-to-assume: ${{ secrets.AWS_S3_UPLOAD_ROLE }}
+          aws-region: us-east-2
+      - name: Publish Release (PR)
+        env:
+          AWS_BUCKET: ${{ secrets.AWS_S3_UPLOAD_BUCKET }}
+        run: |
+          PR="pr_${{ github.event.pull_request.number }}"
+          ./upload_s3.sh "$PR"
