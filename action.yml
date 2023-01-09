@@ -18,7 +18,7 @@ inputs:
   modify-profile:
     description: Modify the user profile to automatically load nix
     required: false
-  daemon-user-count:
+  nix-build-user-count:
     description: Number of build users to create
     required: false
   nix-build-group-name:
@@ -86,8 +86,8 @@ runs:
         fi
 
         if [ -n "${{ inputs.daemon-user-count }}" ]; then
-          export NIX_INSTALLER_DAEMON_USER_COUNT=${{ inputs.daemon-user-count }}
-          echo "Set NIX_INSTALLER_DAEMON_USER_COUNT=$NIX_INSTALLER_DAEMON_USER_COUNT"
+          export NIX_INSTALLER_NIX_BUILD_USER_COUNT=${{ inputs.nix-build-user-count }}
+          echo "Set NIX_INSTALLER_NIX_BUILD_USER_COUNT=$NIX_INSTALLER_NIX_BUILD_USER_COUNT"
         fi
 
         if [ -n "${{ inputs.nix-build-group-name }}" ]; then

@@ -64,11 +64,12 @@ pub struct CommonSettings {
         clap(
             long,
             default_value = "32",
-            env = "NIX_INSTALLER_DAEMON_USER_COUNT",
+            alias = "daemon-user-count",
+            env = "NIX_INSTALLER_NIX_BUILD_USER_COUNT",
             global = true
         )
     )]
-    pub(crate) daemon_user_count: usize,
+    pub(crate) nix_build_user_count: usize,
 
     /// The Nix build group name
     #[cfg_attr(
@@ -209,7 +210,7 @@ impl CommonSettings {
         };
 
         Ok(Self {
-            daemon_user_count: 32,
+            nix_build_user_count: 32,
             channels: vec![ChannelValue(
                 "nixpkgs".into(),
                 reqwest::Url::parse("https://nixos.org/channels/nixpkgs-unstable")
@@ -231,7 +232,7 @@ impl CommonSettings {
         let Self {
             channels,
             modify_profile,
-            daemon_user_count,
+            nix_build_user_count,
             nix_build_group_name,
             nix_build_group_id,
             nix_build_user_prefix,
@@ -256,8 +257,8 @@ impl CommonSettings {
             serde_json::to_value(modify_profile)?,
         );
         map.insert(
-            "daemon_user_count".into(),
-            serde_json::to_value(daemon_user_count)?,
+            "nix_build_user_count".into(),
+            serde_json::to_value(nix_build_user_count)?,
         );
         map.insert(
             "nix_build_group_name".into(),
@@ -289,8 +290,8 @@ impl CommonSettings {
 // Builder Pattern
 impl CommonSettings {
     /// Number of build users to create
-    pub fn daemon_user_count(&mut self, count: usize) -> &mut Self {
-        self.daemon_user_count = count;
+    pub fn nix_build_user_count(&mut self, count: usize) -> &mut Self {
+        self.nix_build_user_count = count;
         self
     }
 
