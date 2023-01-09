@@ -1,8 +1,9 @@
 # Nix Installer
 
-> **`nix-installer` is pre-release and experimental.** Don't run it on machines you care about.
+![[Crates.io](https://img.shields.io/crates/v/nix-installer)](https://crates.io/crates/nix-installer)
+![[Docs.rs](https://img.shields.io/docsrs/nix-installer)](https://docs.rs/nix-installer/latest/nix_installer/)
 
-`nix-installer` is an opinionated, experimental Nix installer.
+`nix-installer` is an opinionated, **experimental** Nix installer.
 
 > Try it on a machine/VM you don't care about!
 >
@@ -12,7 +13,7 @@
 
 ## Status
 
-`nix-installer` is **pre-release and experimental**. It is not ready for you to use! *Please* don't use it on a machine you are not planning to obliterate!
+`nix-installer` is **pre-release and experimental**. It is not ready for high reliability use! *Please* don't use it on a business critical machine!
 
 Planned support:
 
@@ -62,6 +63,8 @@ nix build github:determinatesystems/nix-installer
 
 Then copy the `result/bin/nix-installer` to the machine you wish to run it on.
 
+If you don't have Nix, yet still want to contribute, you can also run `cargo build` like a normal Rust crate.
+
 ## Installing
 
 Install Nix with the default planner and options:
@@ -106,36 +109,90 @@ A standard Linux multi-user install
 Usage: nix-installer install linux-multi [OPTIONS]
 
 Options:
-      --channels <channel>
-          Channel(s) to add [env: NIX_INSTALLER_CHANNEL=] [default: nixpkgs=https://nixos.org/channels/nixpkgs-unstable]
-      --no-confirm
+      --channel [<CHANNELS>...]
+          Channel(s) to add, for no default channel, pass `--channel`
           
+          [env: NIX_INSTALLER_CHANNELS=]
+          [default: nixpkgs=https://nixos.org/channels/nixpkgs-unstable]
+
+      --no-confirm
+          [env: NIX_INSTALLER_NO_CONFIRM=]
+
   -v, --verbose...
           Enable debug logs, -vv for trace
-      --explain
           
+          [env: NIX_INSTALLER_VERBOSITY=]
+
       --logger <LOGGER>
-          Which logger to use [default: compact] [possible values: compact, full, pretty, json]
+          Which logger to use
+          
+          [env: NIX_INSTALLER_LOGGER=]
+          [default: compact]
+          [possible values: compact, full, pretty, json]
+
       --modify-profile
-          Modify the user profile to automatically load nix [env: NIX_INSTALLER_NO_MODIFY_PROFILE=]
-      --daemon-user-count <DAEMON_USER_COUNT>
-          Number of build users to create [env: NIX_INSTALLER_DAEMON_USER_COUNT=] [default: 32]
+          Modify the user profile to automatically load nix
+          
+          [env: NIX_INSTALLER_NO_MODIFY_PROFILE=]
+
+      --log-directive [<LOG_DIRECTIVES>...]
+          Tracing directives
+          
+          See https://docs.rs/tracing-subscriber/latest/tracing_subscriber/filter/struct.EnvFilter.html#directives
+          
+          [env: NIX_INSTALLER_LOG_DIRECTIVES=]
+
+      --nix-build-user-count <NIX_BUILD_USER_COUNT>
+          Number of build users to create
+          
+          [env: NIX_INSTALLER_NIX_BUILD_USER_COUNT=]
+          [default: 32]
+
       --nix-build-group-name <NIX_BUILD_GROUP_NAME>
-          The Nix build group name [env: NIX_INSTALLER_NIX_BUILD_GROUP_NAME=] [default: nixbld]
+          The Nix build group name
+          
+          [env: NIX_INSTALLER_NIX_BUILD_GROUP_NAME=]
+          [default: nixbld]
+
       --nix-build-group-id <NIX_BUILD_GROUP_ID>
-          The Nix build group GID [env: NIX_INSTALLER_NIX_BUILD_GROUP_ID=] [default: 3000]
+          The Nix build group GID
+          
+          [env: NIX_INSTALLER_NIX_BUILD_GROUP_ID=]
+          [default: 3000]
+
       --nix-build-user-prefix <NIX_BUILD_USER_PREFIX>
-          The Nix build user prefix (user numbers will be postfixed) [env: NIX_INSTALLER_NIX_BUILD_USER_PREFIX=] [default: nixbld]
+          The Nix build user prefix (user numbers will be postfixed)
+          
+          [env: NIX_INSTALLER_NIX_BUILD_USER_PREFIX=]
+          [default: nixbld]
+
       --nix-build-user-id-base <NIX_BUILD_USER_ID_BASE>
-          The Nix build user base UID (ascending) [env: NIX_INSTALLER_NIX_BUILD_USER_ID_BASE=] [default: 3000]
+          The Nix build user base UID (ascending)
+          
+          [env: NIX_INSTALLER_NIX_BUILD_USER_ID_BASE=]
+          [default: 3000]
+
       --nix-package-url <NIX_PACKAGE_URL>
-          The Nix package URL [env: NIX_INSTALLER_NIX_PACKAGE_URL=] [default: https://releases.nixos.org/nix/nix-2.12.0/nix-2.12.0-x86_64-linux.tar.xz]
-      --extra-conf <EXTRA_CONF>
-          Extra configuration lines for `/etc/nix.conf` [env: NIX_INSTALLER_EXTRA_CONF=]
+          The Nix package URL
+          
+          [env: NIX_INSTALLER_NIX_PACKAGE_URL=]
+          [default: https://releases.nixos.org/nix/nix-2.12.0/nix-2.12.0-x86_64-linux.tar.xz]
+
+      --extra-conf [<EXTRA_CONF>...]
+          Extra configuration lines for `/etc/nix.conf`
+          
+          [env: NIX_INSTALLER_EXTRA_CONF=]
+
       --force
-          Forcibly recreate files it finds existing [env: NIX_INSTALLER_FORCE=]
+          If `nix-installer` should forcibly recreate files it finds existing
+          
+          [env: NIX_INSTALLER_FORCE=]
+
+      --explain
+          [env: NIX_INSTALLER_EXPLAIN=]
+
   -h, --help
-          Print help information
+          Print help information (use `-h` for a summary)
 ```
 
 Planners can be configured via environment variable, or by the command arguments.
@@ -154,17 +211,15 @@ You can remove a `nix-installer`-installed Nix by running
 
 ## As a library
 
-> We haven't published to [crates.io](https://crates.io/) yet. We plan to for 0.0.1.
-
 Add `nix-installer` to your dependencies:
 
 ```bash
-cargo add --git https://github.com/DeterminateSystems/nix-installer
+cargo add nix-installer
 ```
 
 > **Building a CLI?** Check out the `cli` feature flag for `clap` integration.
 
-Then it's possible to review the documentation:
+Then it's possible to review the [documentation](https://docs.rs/nix-installer/latest/nix_installer/):
 
 ```bash
 cargo doc --open -p nix-installer
