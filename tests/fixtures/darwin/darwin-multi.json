@@ -92,7 +92,7 @@
                 },
                 "create_users_and_group": {
                     "action": {
-                        "daemon_user_count": 32,
+                        "nix_build_user_count": 32,
                         "nix_build_group_name": "nixbld",
                         "nix_build_group_id": 3000,
                         "nix_build_user_prefix": "_nixbld",
@@ -665,7 +665,7 @@
                 ]
             ],
             "modify_profile": true,
-            "daemon_user_count": 32,
+            "nix_build_user_count": 32,
             "nix_build_group_name": "nixbld",
             "nix_build_group_id": 3000,
             "nix_build_user_prefix": "_nixbld",

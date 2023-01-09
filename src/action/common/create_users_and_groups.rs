@@ -10,7 +10,7 @@ use tracing::{span, Instrument, Span};
 
 #[derive(Debug, serde::Deserialize, serde::Serialize, Clone)]
 pub struct CreateUsersAndGroups {
-    daemon_user_count: usize,
+    nix_build_user_count: usize,
     nix_build_group_name: String,
     nix_build_group_id: usize,
     nix_build_user_prefix: String,
@@ -28,7 +28,7 @@ impl CreateUsersAndGroups {
             settings.nix_build_group_id,
         );
         // TODO(@hoverbear): CHeck if they exist, error if so
-        let create_users = (0..settings.daemon_user_count)
+        let create_users = (0..settings.nix_build_user_count)
             .map(|count| {
                 CreateUser::plan(
                     format!("{}{count}", settings.nix_build_user_prefix),
@@ -39,7 +39,7 @@ impl CreateUsersAndGroups {
             })
             .collect();
         Ok(Self {
-            daemon_user_count: settings.daemon_user_count,
+            nix_build_user_count: settings.nix_build_user_count,
             nix_build_group_name: settings.nix_build_group_name,
             nix_build_group_id: settings.nix_build_group_id,
             nix_build_user_prefix: settings.nix_build_user_prefix,
@@ -58,7 +58,7 @@ impl Action for CreateUsersAndGroups {
         format!(
             "Create build users (UID {}-{}) and group (GID {})",
             self.nix_build_user_id_base,
-            self.nix_build_user_id_base + self.daemon_user_count,
+            self.nix_build_user_id_base + self.nix_build_user_count,
             self.nix_build_group_id
         )
     }
@@ -67,7 +67,7 @@ impl Action for CreateUsersAndGroups {
         span!(
             tracing::Level::DEBUG,
             "create_users_and_group",
-            daemon_user_count = self.daemon_user_count,
+            nix_build_user_count = self.nix_build_user_count,
             nix_build_group_name = self.nix_build_group_name,
             nix_build_group_id = self.nix_build_group_id,
             nix_build_user_prefix = self.nix_build_user_prefix,
@@ -77,7 +77,7 @@ impl Action for CreateUsersAndGroups {
 
     fn execute_description(&self) -> Vec<ActionDescription> {
         let Self {
-            daemon_user_count: _,
+            nix_build_user_count: _,
             nix_build_group_name: _,
             nix_build_group_id: _,
             nix_build_user_prefix: _,
@@ -109,7 +109,7 @@ impl Action for CreateUsersAndGroups {
         let Self {
             create_users,
             create_group,
-            daemon_user_count: _,
+            nix_build_user_count: _,
             nix_build_group_name: _,
             nix_build_group_id: _,
             nix_build_user_prefix: _,
@@ -167,7 +167,7 @@ impl Action for CreateUsersAndGroups {
 
     fn revert_description(&self) -> Vec<ActionDescription> {
         let Self {
-            daemon_user_count: _,
+            nix_build_user_count: _,
             nix_build_group_name: _,
             nix_build_group_id: _,
             nix_build_user_prefix: _,
@@ -201,7 +201,7 @@ impl Action for CreateUsersAndGroups {
         let Self {
             create_users,
             create_group,
-            daemon_user_count: _,
+            nix_build_user_count: _,
             nix_build_group_name: _,
             nix_build_group_id: _,
             nix_build_user_prefix: _,
