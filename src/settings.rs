@@ -232,7 +232,7 @@ impl CommonSettings {
         let Self {
             channels,
             modify_profile,
-            nix_build_user_count: nix_user_count,
+            nix_build_user_count,
             nix_build_group_name,
             nix_build_group_id,
             nix_build_user_prefix,
@@ -257,8 +257,8 @@ impl CommonSettings {
             serde_json::to_value(modify_profile)?,
         );
         map.insert(
-            "nix_user_count".into(),
-            serde_json::to_value(nix_user_count)?,
+            "nix_build_user_count".into(),
+            serde_json::to_value(nix_build_user_count)?,
         );
         map.insert(
             "nix_build_group_name".into(),
@@ -290,7 +290,7 @@ impl CommonSettings {
 // Builder Pattern
 impl CommonSettings {
     /// Number of build users to create
-    pub fn nix_user_count(&mut self, count: usize) -> &mut Self {
+    pub fn nix_build_user_count(&mut self, count: usize) -> &mut Self {
         self.nix_build_user_count = count;
         self
     }
