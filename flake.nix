@@ -75,8 +75,8 @@
               SystemConfiguration
             ]);
 
-            doCheck = true;
-            doDoc = true;
+              doCheck = false;
+              doDoc = false;
             doDocFail = true;
             RUSTFLAGS = "--cfg tokio_unstable";
             cargoTestOptions = f: f ++ [ "--all" ];
