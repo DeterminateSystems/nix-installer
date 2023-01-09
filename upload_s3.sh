@@ -1,5 +1,8 @@
 set -eu
 
+DEST="$1"
+GIT_ISH="$2"
+
 # If the revision directory has already been created in S3 somehow, we don't want to reupload
 if aws s3 ls "$AWS_BUCKET"/"$GIT_ISH"/; then
   echo "Revision $GIT_ISH was already uploaded; exiting"
@@ -7,9 +10,6 @@ if aws s3 ls "$AWS_BUCKET"/"$GIT_ISH"/; then
 fi
 
 sudo chown $USER: -R artifacts/
-
-DEST="$1"
-GIT_ISH="$2"
 
 mkdir "$GIT_ISH"
 
