@@ -1,5 +1,5 @@
 use crate::action::{
-    base::{CreateFile, CreateOrAppendFile},
+    base::{CreateFile, CreateOrInsertIntoFile, create_or_insert_into_file},
     darwin::{
         BootstrapApfsVolume, CreateApfsVolume, CreateSyntheticObjects, EnableOwnership,
         EncryptApfsVolume, UnmountApfsVolume,
@@ -22,11 +22,11 @@ pub struct CreateNixVolume {
     name: String,
     case_sensitive: bool,
     encrypt: bool,
-    create_or_append_synthetic_conf: StatefulAction<CreateOrAppendFile>,
+    create_or_append_synthetic_conf: StatefulAction<CreateOrInsertIntoFile>,
     create_synthetic_objects: StatefulAction<CreateSyntheticObjects>,
     unmount_volume: StatefulAction<UnmountApfsVolume>,
     create_volume: StatefulAction<CreateApfsVolume>,
-    create_or_append_fstab: StatefulAction<CreateOrAppendFile>,
+    create_or_append_fstab: StatefulAction<CreateOrInsertIntoFile>,
     encrypt_volume: Option<StatefulAction<EncryptApfsVolume>>,
     setup_volume_daemon: StatefulAction<CreateFile>,
     bootstrap_volume: StatefulAction<BootstrapApfsVolume>,
@@ -42,12 +42,13 @@ impl CreateNixVolume {
         encrypt: bool,
     ) -> Result<StatefulAction<Self>, ActionError> {
         let disk = disk.as_ref();
-        let create_or_append_synthetic_conf = CreateOrAppendFile::plan(
+        let create_or_append_synthetic_conf = CreateOrInsertIntoFile::plan(
             "/etc/synthetic.conf",
             None,
             None,
             0o0655,
             "nix\n".into(), /* The newline is required otherwise it segfaults */
+            create_or_insert_into_file::Position::End,
         )
         .await
         .map_err(|e| ActionError::Child(Box::new(e)))?;
@@ -58,12 +59,13 @@ impl CreateNixVolume {
 
         let create_volume = CreateApfsVolume::plan(disk, name.clone(), case_sensitive).await?;
 
-        let create_or_append_fstab = CreateOrAppendFile::plan(
+        let create_or_append_fstab = CreateOrInsertIntoFile::plan(
             "/etc/fstab",
             None,
             None,
             0o0655,
             format!("NAME=\"{name}\" /nix apfs rw,noauto,nobrowse,suid,owners"),
+            create_or_insert_into_file::Position::End,
         )
         .await
         .map_err(|e| ActionError::Child(Box::new(e)))?;

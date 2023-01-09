@@ -13,21 +13,29 @@ use tokio::{
 };
 use tracing::{span, Span};
 
-/** Create a file at the given location with the provided `buf`,
-optionally with an owning user, group, and mode.
+#[derive(Debug, serde::Deserialize, serde::Serialize, Clone, PartialEq, Eq)]
+pub enum Position {
+    Beginning,
+    End,
+}
 
-If the file exists, the provided `buf` will be inserted at its beginning.
+/** Create a file at the given location with the provided `buf` as
+contents, optionally with an owning user, group, and mode.
+
+If the file exists, the provided `buf` will be inserted at its
+beginning or end, depending on the position field.
  */
 #[derive(Debug, serde::Deserialize, serde::Serialize, Clone)]
-pub struct CreateOrInsertFile {
+pub struct CreateOrInsertIntoFile {
     path: PathBuf,
     user: Option<String>,
     group: Option<String>,
     mode: Option<u32>,
     buf: String,
+    position: Position,
 }
 
-impl CreateOrInsertFile {
+impl CreateOrInsertIntoFile {
     #[tracing::instrument(level = "debug", skip_all)]
     pub async fn plan(
         path: impl AsRef<Path>,
@@ -35,6 +43,7 @@ impl CreateOrInsertFile {
         group: impl Into<Option<String>>,
         mode: impl Into<Option<u32>>,
         buf: String,
+        position: Position,
     ) -> Result<StatefulAction<Self>, ActionError> {
         let path = path.as_ref().to_path_buf();
 
@@ -44,14 +53,15 @@ impl CreateOrInsertFile {
             group: group.into(),
             mode: mode.into(),
             buf,
+            position,
         }
         .into())
     }
 }
 
 #[async_trait::async_trait]
-#[typetag::serde(name = "create_or_insert_file")]
-impl Action for CreateOrInsertFile {
+#[typetag::serde(name = "create_or_insert_into_file")]
+impl Action for CreateOrInsertIntoFile {
     fn tracing_synopsis(&self) -> String {
         format!("Create or insert file `{}`", self.path.display())
     }
@@ -87,6 +97,7 @@ impl Action for CreateOrInsertFile {
             group,
             mode,
             buf,
+            position
         } = self;
 
         let mut orig_file = match OpenOptions::new().read(true).open(&path).await {
@@ -119,10 +130,26 @@ impl Action for CreateOrInsertFile {
                 ActionError::Open(temp_file_path.clone(), e)
             })?;
 
+        if *position == Position::End {
+            if let Some(ref mut orig_file) = orig_file {
+                tokio::io::copy(orig_file, &mut temp_file)
+                    .await
+                    .map_err(|e| ActionError::Copy(path.to_owned(), temp_file_path.to_owned(), e))?;
+            }
+        }
+
         temp_file
             .write_all(buf.as_bytes())
             .await
             .map_err(|e| ActionError::Write(temp_file_path.clone(), e))?;
+
+        if *position == Position::Beginning {
+            if let Some(ref mut orig_file) = orig_file {
+                tokio::io::copy(orig_file, &mut temp_file)
+                    .await
+                    .map_err(|e| ActionError::Copy(path.to_owned(), temp_file_path.to_owned(), e))?;
+            }
+        }
 
         let gid = if let Some(group) = group {
             Some(
@@ -144,12 +171,6 @@ impl Action for CreateOrInsertFile {
         } else {
             None
         };
-
-        if let Some(ref mut orig_file) = orig_file {
-            tokio::io::copy(orig_file, &mut temp_file)
-                .await
-                .map_err(|e| ActionError::Copy(path.to_owned(), temp_file_path.to_owned(), e))?;
-        }
 
         // Change ownership _before_ applying mode, to ensure that if
         // a file needs to be setuid it will never be setuid for the
@@ -180,6 +201,7 @@ impl Action for CreateOrInsertFile {
             group: _,
             mode: _,
             buf,
+            position: _,
         } = &self;
         vec![ActionDescription::new(
             format!("Delete Nix related fragment from file `{}`", path.display()),
@@ -198,6 +220,7 @@ impl Action for CreateOrInsertFile {
             group: _,
             mode: _,
             buf,
+            position: _,
         } = self;
         let mut file = OpenOptions::new()
             .create(false)
@@ -205,12 +228,12 @@ impl Action for CreateOrInsertFile {
             .read(true)
             .open(&path)
             .await
-            .map_err(|e| ActionError::Read(path.to_owned(), e))?;
+            .map_err(|e| ActionError::Open(path.to_owned(), e))?;
 
         let mut file_contents = String::default();
         file.read_to_string(&mut file_contents)
             .await
-            .map_err(|e| ActionError::Seek(path.to_owned(), e))?;
+            .map_err(|e| ActionError::Read(path.to_owned(), e))?;
 
         if let Some(start) = file_contents.rfind(buf.as_str()) {
             let end = start + buf.len();
