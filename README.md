@@ -135,18 +135,18 @@ Options:
           
           [env: NIX_INSTALLER_NO_MODIFY_PROFILE=]
 
-      --daemon-user-count <DAEMON_USER_COUNT>
-          Number of build users to create
-          
-          [env: NIX_INSTALLER_DAEMON_USER_COUNT=]
-          [default: 32]
-
       --log-directive [<LOG_DIRECTIVES>...]
           Tracing directives
           
           See https://docs.rs/tracing-subscriber/latest/tracing_subscriber/filter/struct.EnvFilter.html#directives
           
           [env: NIX_INSTALLER_LOG_DIRECTIVES=]
+
+      --nix-build-user-count <NIX_BUILD_USER_COUNT>
+          Number of build users to create
+          
+          [env: NIX_INSTALLER_NIX_BUILD_USER_COUNT=]
+          [default: 32]
 
       --nix-build-group-name <NIX_BUILD_GROUP_NAME>
           The Nix build group name
