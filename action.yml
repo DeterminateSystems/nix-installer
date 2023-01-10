@@ -117,7 +117,7 @@ runs:
 
         if [ -n "${{ inputs.extra-conf }}" ]; then
           if [ -n "${{ inputs.github-token }}" ]; then
-            export NIX_INSTALLER_EXTRA_CONF=<<-EOF
+            export NIX_INSTALLER_EXTRA_CONF=<<EOF
               ${{ inputs.extra-conf }}
               access-tokens = github.com=${{ inputs.github-token }}
             EOF
