@@ -20,6 +20,7 @@ in
       codespell \
         --ignore-words-list ba,sur,crate,pullrequest,pullrequests,ser \
         --skip target \
+        --skip .git \
         .
     '';
   });
@@ -39,6 +40,15 @@ in
     runtimeInputs = with pkgs; [ eclint ];
     text = ''
       eclint .
+    '';
+  });
+
+  # Semver
+  check-semver = (writeShellApplication {
+    name = "check-semver";
+    runtimeInputs = with pkgs; [ cargo-semver-checks ];
+    text = ''
+      cargo-semver-checks semver-checks check-release
     '';
   });
 }

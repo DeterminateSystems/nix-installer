@@ -2,7 +2,7 @@
   description = "A Nix Installer";
 
   inputs = {
-    nixpkgs.url = "github:nixos/nixpkgs/nixos-22.05";
+    nixpkgs.url = "github:nixos/nixpkgs/nixos-22.11";
 
     fenix = {
       url = "github:nix-community/fenix";
@@ -130,6 +130,7 @@
               check.check-spelling
               check.check-nixpkgs-fmt
               check.check-editorconfig
+              check.check-semver
             ]
             ++ lib.optionals (pkgs.stdenv.isDarwin) (with pkgs; [ libiconv ]);
           };
