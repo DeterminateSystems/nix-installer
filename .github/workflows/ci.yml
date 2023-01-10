@@ -138,6 +138,7 @@ jobs:
           log-directives: nix_installer=trace
           backtrace: full
           github-token: ${{ secrets.GITHUB_TOKEN }}
+          extra-conf: trusted-users = root runner
       - name: echo $PATH
         run: echo $PATH
       - name: Test `nix` with `$GITHUB_PATH`
