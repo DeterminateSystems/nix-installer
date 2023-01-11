@@ -268,10 +268,10 @@ impl Action for CreateOrInsertIntoFile {
 
 #[tokio::test]
 async fn creates_and_deletes_file() -> eyre::Result<()> {
-    let temp_dir = tempdir::TempDir::new("nix-installer-create-or-insert-into-file")?;
-    let temp_file = temp_dir.path().join("creates_and_deletes_file");
+    let temp_dir = tempdir::TempDir::new("nix_installer_create_or_insert_into_file")?;
+    let test_file = temp_dir.path().join("creates_and_deletes_file");
     let mut action = CreateOrInsertIntoFile::plan(
-        temp_file.clone(),
+        test_file.clone(),
         None,
         None,
         None,
@@ -284,23 +284,23 @@ async fn creates_and_deletes_file() -> eyre::Result<()> {
 
     action.try_revert().await?;
 
-    assert!(!temp_file.exists(), "File should have been deleted");
+    assert!(!test_file.exists(), "File should have been deleted");
 
     Ok(())
 }
 
 #[tokio::test]
 async fn edits_and_reverts_file() -> eyre::Result<()> {
-    let temp_dir = tempdir::TempDir::new("nix-installer-create-or-insert-into-file")?;
-    let temp_file = temp_dir.path().join("edits_and_reverts_file");
+    let temp_dir = tempdir::TempDir::new("nix_installer_create_or_insert_into_file")?;
+    let test_file = temp_dir.path().join("edits_and_reverts_file");
 
     let test_content = "Some other content";
-    tokio::fs::write(&temp_file, test_content)
+    tokio::fs::write(&test_file, test_content)
         .await
         .expect("Could not write to test temp file");
 
     let mut action = CreateOrInsertIntoFile::plan(
-        temp_file.clone(),
+        test_file.clone(),
         None,
         None,
         None,
@@ -313,9 +313,9 @@ async fn edits_and_reverts_file() -> eyre::Result<()> {
 
     action.try_revert().await?;
 
-    assert!(temp_file.exists(), "File should have not been deleted");
+    assert!(test_file.exists(), "File should have not been deleted");
 
-    let read_content = tokio::fs::read_to_string(temp_file)
+    let read_content = tokio::fs::read_to_string(test_file)
         .await
         .expect("Could not read test temp file");
 
