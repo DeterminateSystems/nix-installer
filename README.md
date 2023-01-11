@@ -20,7 +20,7 @@ Current and planned support:
 * [x] Multi-user MacOS (aarch64 and x86_64)
     + Note: User deletion is currently unimplemented, you need to use a user with a secure token and `dscl . -delete /Users/_nixbuild*` where `*` is each user number.
 * [x] Valve Steam Deck
-* [ ] Multi-user Linux with systemd init & SELinux
+* [ ] Multi-user Linux (aarch64 and x86_64) with systemd init & SELinux
 * [ ] Single-user Linux (aarch64 and x86_64)
 * [ ] Others...
 
@@ -53,12 +53,19 @@ Install Nix with the default planner and options:
 curl -L https://install.determinate.systems/nix | sh -s -- install
 ```
 
+Or, to download a platform specific Installer binary yourself:
+
+```bash
+$ curl -sL -o nix-installer https://install.determinate.systems/nix/nix-installer-x86_64-linux
+$ chmod +x nix-installer
+```
+
 > `nix-installer` will elevate itself if needed using `sudo`. If you use `doas` or `please` you may need to elevate `nix-installer` yourself.
 
 `nix-installer` installs Nix by following a *plan* made by a *planner*. Review the available planners:
 
 ```bash
-$ curl -L https://install.determinate.systems/nix | sh -s -- install --help
+$ ./nix-installer install --help
 Execute an install (possibly using an existing plan)
 
 To pass custom options, select a planner, for example `nix-installer install linux-multi --help`
@@ -81,7 +88,7 @@ Commands:
 Planners have their own options and defaults, sharing most of them in common:
 
 ```bash
-$ curl -L https://install.determinate.systems/nix | sh -s -- install linux-multi --help
+$ ./nix-installer install linux-multi --help
 A standard Linux multi-user install
 
 Usage: nix-installer install linux-multi [OPTIONS]
@@ -106,6 +113,8 @@ Planners can be configured via environment variable or command arguments:
 
 ```bash
 $ curl -L https://install.determinate.systems/nix | NIX_BUILD_USER_COUNT=4 sh -s -- install linux-multi --nix-build-user-id-base 4000
+# Or...
+$ NIX_BUILD_USER_COUNT=4 ./nix-installer install linux-multi --nix-build-user-id-base 4000
 ```
 
 
