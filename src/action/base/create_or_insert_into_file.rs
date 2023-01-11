@@ -291,7 +291,7 @@ async fn creates_and_deletes_file() -> eyre::Result<()> {
 
 #[tokio::test]
 async fn edits_and_reverts_file() -> eyre::Result<()> {
-    let temp_dir = tempdir::TempDir::new("nix-installer-tests")?;
+    let temp_dir = tempdir::TempDir::new("nix-installer-create-or-insert-into-file")?;
     let temp_file = temp_dir.path().join("edits_and_reverts_file");
 
     let test_content = "Some other content";
