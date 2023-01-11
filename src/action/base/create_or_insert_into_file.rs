@@ -254,7 +254,7 @@ impl Action for CreateOrInsertIntoFile {
                 .map_err(|e| ActionError::Seek(path.to_owned(), e))?;
             file.set_len(0)
                 .await
-                .map_err(|e| ActionError::SetLen(path.to_owned(), e))?;
+                .map_err(|e| ActionError::Truncate(path.to_owned(), e))?;
             file.write_all(file_contents.as_bytes())
                 .await
                 .map_err(|e| ActionError::Write(path.to_owned(), e))?;
