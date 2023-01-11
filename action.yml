@@ -178,7 +178,7 @@ runs:
           else
             if [ -n "$TAG" ]; then
               export NIX_INSTALLER_URL=https://install.determinate.systems/nix/tag/$TAG
-            else if [ -n "$REVISION" ]; then
+            elif [ -n "$REVISION" ]; then
               export NIX_INSTALLER_URL=https://install.determinate.systems/nix/rev/$REVISION
             else
               export NIX_INSTALLER_URL=https://install.determinate.systems/nix/branch/$BRANCH
