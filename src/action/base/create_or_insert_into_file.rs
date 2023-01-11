@@ -244,7 +244,7 @@ impl Action for CreateOrInsertIntoFile {
             file_contents.replace_range(start..end, "")
         }
 
-        if buf.is_empty() {
+        if file_contents.is_empty() {
             remove_file(&path)
                 .await
                 .map_err(|e| ActionError::Remove(path.to_owned(), e))?;
@@ -252,10 +252,74 @@ impl Action for CreateOrInsertIntoFile {
             file.seek(SeekFrom::Start(0))
                 .await
                 .map_err(|e| ActionError::Seek(path.to_owned(), e))?;
+            file.set_len(0)
+                .await
+                .map_err(|e| ActionError::SetLen(path.to_owned(), e))?;
             file.write_all(file_contents.as_bytes())
                 .await
                 .map_err(|e| ActionError::Write(path.to_owned(), e))?;
+            file.flush()
+                .await
+                .map_err(|e| ActionError::Flush(path.to_owned(), e))?;
         }
         Ok(())
     }
+}
+
+#[tokio::test]
+async fn creates_and_deletes_file() -> eyre::Result<()> {
+    let temp_dir = tempdir::TempDir::new("nix-installer-tests")?;
+    let temp_file = temp_dir.path().join("creates_and_deletes_file");
+    let mut action = CreateOrInsertIntoFile::plan(
+        temp_file.clone(),
+        None,
+        None,
+        None,
+        "Test".into(),
+        Position::Beginning,
+    )
+    .await?;
+
+    action.try_execute().await?;
+
+    action.try_revert().await?;
+
+    assert!(!temp_file.exists(), "File should have been deleted");
+
+    Ok(())
+}
+
+#[tokio::test]
+async fn edits_and_reverts_file() -> eyre::Result<()> {
+    let temp_dir = tempdir::TempDir::new("nix-installer-tests")?;
+    let temp_file = temp_dir.path().join("edits_and_reverts_file");
+
+    let test_content = "Some other content";
+    tokio::fs::write(&temp_file, test_content)
+        .await
+        .expect("Could not write to test temp file");
+
+    let mut action = CreateOrInsertIntoFile::plan(
+        temp_file.clone(),
+        None,
+        None,
+        None,
+        "Test".into(),
+        Position::Beginning,
+    )
+    .await?;
+
+    action.try_execute().await?;
+
+    action.try_revert().await?;
+
+    assert!(temp_file.exists(), "File should have not been deleted");
+
+    let read_content = tokio::fs::read_to_string(temp_file)
+        .await
+        .expect("Could not read test temp file");
+
+    assert_eq!(test_content, read_content);
+
+    Ok(())
 }
