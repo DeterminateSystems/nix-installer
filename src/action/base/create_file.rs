@@ -174,3 +174,39 @@ impl Action for CreateFile {
         Ok(())
     }
 }
+
+#[tokio::test]
+async fn creates_and_deletes_file() -> eyre::Result<()> {
+    let temp_dir = tempdir::TempDir::new("nix_installer_tests_create_file")?;
+    let test_file = temp_dir.path().join("creates_and_deletes_file");
+    let mut action =
+        CreateFile::plan(test_file.clone(), None, None, None, "Test".into(), false).await?;
+
+    action.try_execute().await?;
+
+    action.try_revert().await?;
+
+    assert!(!test_file.exists(), "File should have been deleted");
+
+    Ok(())
+}
+
+#[tokio::test]
+async fn creates_and_deletes_file_even_if_edited() -> eyre::Result<()> {
+    let temp_dir = tempdir::TempDir::new("nix_installer_tests_create_file")?;
+    let test_file = temp_dir
+        .path()
+        .join("creates_and_deletes_file_even_if_edited");
+    let mut action =
+        CreateFile::plan(test_file.clone(), None, None, None, "Test".into(), false).await?;
+
+    action.try_execute().await?;
+
+    tokio::fs::write(test_file.as_path(), "More content").await?;
+
+    action.try_revert().await?;
+
+    assert!(!test_file.exists(), "File should have been deleted");
+
+    Ok(())
+}
