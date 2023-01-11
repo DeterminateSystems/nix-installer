@@ -75,8 +75,17 @@ runs:
       run: |
         IDENTIFIER=$(basename $GITHUB_ACTION_PATH)
         TAG=$(echo "v0.1.0" | { perl -nle'print if m{^v(?P<major>0|[1-9]\d*)\.(?P<minor>0|[1-9]\d*)\.(?P<patch>0|[1-9]\d*)(?:-(?P<prerelease>(?:0|[1-9]\d*|\d*[a-zA-Z-][0-9a-zA-Z-]*)(?:\.(?:0|[1-9]\d*|\d*[a-zA-Z-][0-9a-zA-Z-]*))*))?(?:\+(?P<buildmetadata>[0-9a-zA-Z-]+(?:\.[0-9a-zA-Z-]+)*))?$}' || true; })
-        REVISION=$(echo $IDENTIFIER | { grep -oP '^[0-9a-f]{40}$' || true; })
+        if [ -n "$TAG" ]; then
+          echo "Set TAG=$TAG"
+        fi
+        REVISION=$(echo $IDENTIFIER | { perl -nle'print if m{^[0-9a-f]{40}$}' || true; })
+        if [ -n "$REVISION" ]; then
+          echo "Set REVISION=$REVISION"
+        fi
         BRANCH=$IDENTIFIER
+        if [ -n "$BRANCH" ]; then
+          echo "Set BRANCH=$BRANCH"
+        fi
         
         if [ -n "${{ inputs.channels }}" ]; then
           export NIX_INSTALLER_CHANNELS=${{ inputs.channels }}
