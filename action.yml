@@ -53,8 +53,7 @@ inputs:
     required: false
   nix-installer-url:
     description: A URL pointing to a `nix-installer.sh` script
-    required: true
-    default: https://install.determinate.systems/nix
+    required: false
   local-root:
     description: A local `nix-installer` binary root, overrides the `nix-installer-url` setting (a `nix-installer.sh` should exist, binaries should be named `nix-installer-$ARCH`, eg. `nix-installer-x86_64-linux`)
     required: false
@@ -68,13 +67,19 @@ inputs:
     description: The setting for `RUST_BACKTRACE` (see https://doc.rust-lang.org/std/backtrace/index.html#environment-variables)
     required: false
 
-
 runs:
   using: composite
   steps:
     - name: Install Nix
       shell: bash
       run: |
+        IDENTIFIER=$(basename $GITHUB_ACTION_PATH)
+        # This could be a branch, revision, or tag
+        # Tag: https://semver.org/#is-there-a-suggested-regular-expression-regex-to-check-a-semver-string
+        TAG=$(echo $IDENTIFIER | grep -oP '^v(?P<major>0|[1-9]\d*)\.(?P<minor>0|[1-9]\d*)\.(?P<patch>0|[1-9]\d*)(?:-(?P<prerelease>(?:0|[1-9]\d*|\d*[a-zA-Z-][0-9a-zA-Z-]*)(?:\.(?:0|[1-9]\d*|\d*[a-zA-Z-][0-9a-zA-Z-]*))*))?(?:\+(?P<buildmetadata>[0-9a-zA-Z-]+(?:\.[0-9a-zA-Z-]+)*))?$')
+        # Branch or revision can behave the same
+        REVISION=$(git --work-tree=$GITHUB_ACTION_PATH/harmonic --git-dir=$GITHUB_ACTION_PATH/harmonic/.git rev-parse HEAD)
+        
         if [ -n "${{ inputs.channels }}" ]; then
           export NIX_INSTALLER_CHANNELS=${{ inputs.channels }}
           echo "Set NIX_INSTALLER_CHANNELS=$NIX_INSTALLER_CHANNELS"
@@ -170,7 +175,16 @@ runs:
           export NIX_INSTALLER_FORCE_ALLOW_HTTP=1
           echo "Set NIX_INSTALLER_FORCE_ALLOW_HTTP=$NIX_INSTALLER_FORCE_ALLOW_HTTP"
         else
-          export NIX_INSTALLER_URL=${{ inputs.nix-installer-url }}
+          if [ -n "${{ inputs.nix-installer-url }}" ]; then
+            export NIX_INSTALLER_URL=${{ inputs.nix-installer-url }}
+          else
+            if [ -n "$TAG" ]; then
+              export NIX_INSTALLER_URL=https://install.determinate.systems/nix/tag/$TAG
+            else
+              export NIX_INSTALLER_URL=https://install.determinate.systems/nix/rev/$REVISION
+            fi
+          fi
+
           echo "Set NIX_INSTALLER_URL=$NIX_INSTALLER_URL"
         fi
 
