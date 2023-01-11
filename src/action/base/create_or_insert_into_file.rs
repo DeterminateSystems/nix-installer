@@ -266,60 +266,65 @@ impl Action for CreateOrInsertIntoFile {
     }
 }
 
-#[tokio::test]
-async fn creates_and_deletes_file() -> eyre::Result<()> {
-    let temp_dir = tempdir::TempDir::new("nix_installer_create_or_insert_into_file")?;
-    let test_file = temp_dir.path().join("creates_and_deletes_file");
-    let mut action = CreateOrInsertIntoFile::plan(
-        test_file.clone(),
-        None,
-        None,
-        None,
-        "Test".into(),
-        Position::Beginning,
-    )
-    .await?;
+#[cfg(test)]
+mod test {
+    use super::*;
 
-    action.try_execute().await?;
+    #[tokio::test]
+    async fn creates_and_deletes_file() -> eyre::Result<()> {
+        let temp_dir = tempdir::TempDir::new("nix_installer_create_or_insert_into_file")?;
+        let test_file = temp_dir.path().join("creates_and_deletes_file");
+        let mut action = CreateOrInsertIntoFile::plan(
+            test_file.clone(),
+            None,
+            None,
+            None,
+            "Test".into(),
+            Position::Beginning,
+        )
+        .await?;
 
-    action.try_revert().await?;
+        action.try_execute().await?;
 
-    assert!(!test_file.exists(), "File should have been deleted");
+        action.try_revert().await?;
 
-    Ok(())
-}
+        assert!(!test_file.exists(), "File should have been deleted");
 
-#[tokio::test]
-async fn edits_and_reverts_file() -> eyre::Result<()> {
-    let temp_dir = tempdir::TempDir::new("nix_installer_create_or_insert_into_file")?;
-    let test_file = temp_dir.path().join("edits_and_reverts_file");
+        Ok(())
+    }
 
-    let test_content = "Some other content";
-    tokio::fs::write(&test_file, test_content)
-        .await
-        .expect("Could not write to test temp file");
+    #[tokio::test]
+    async fn edits_and_reverts_file() -> eyre::Result<()> {
+        let temp_dir = tempdir::TempDir::new("nix_installer_create_or_insert_into_file")?;
+        let test_file = temp_dir.path().join("edits_and_reverts_file");
 
-    let mut action = CreateOrInsertIntoFile::plan(
-        test_file.clone(),
-        None,
-        None,
-        None,
-        "Test".into(),
-        Position::Beginning,
-    )
-    .await?;
+        let test_content = "Some other content";
+        tokio::fs::write(&test_file, test_content)
+            .await
+            .expect("Could not write to test temp file");
 
-    action.try_execute().await?;
+        let mut action = CreateOrInsertIntoFile::plan(
+            test_file.clone(),
+            None,
+            None,
+            None,
+            "Test".into(),
+            Position::Beginning,
+        )
+        .await?;
 
-    action.try_revert().await?;
+        action.try_execute().await?;
 
-    assert!(test_file.exists(), "File should have not been deleted");
+        action.try_revert().await?;
 
-    let read_content = tokio::fs::read_to_string(test_file)
-        .await
-        .expect("Could not read test temp file");
+        assert!(test_file.exists(), "File should have not been deleted");
 
-    assert_eq!(test_content, read_content);
+        let read_content = tokio::fs::read_to_string(test_file)
+            .await
+            .expect("Could not read test temp file");
 
-    Ok(())
+        assert_eq!(test_content, read_content);
+
+        Ok(())
+    }
 }
