@@ -74,7 +74,7 @@ runs:
       shell: bash
       run: |
         IDENTIFIER=$(basename $GITHUB_ACTION_PATH)
-        TAG=$(echo $IDENTIFIER | { grep -oP '^v(?P<major>0|[1-9]\d*)\.(?P<minor>0|[1-9]\d*)\.(?P<patch>0|[1-9]\d*)(?:-(?P<prerelease>(?:0|[1-9]\d*|\d*[a-zA-Z-][0-9a-zA-Z-]*)(?:\.(?:0|[1-9]\d*|\d*[a-zA-Z-][0-9a-zA-Z-]*))*))?(?:\+(?P<buildmetadata>[0-9a-zA-Z-]+(?:\.[0-9a-zA-Z-]+)*))?$' || true })
+        TAG=$(echo $IDENTIFIER | { grep -oP '^v(?P<major>0|[1-9]\d*)\.(?P<minor>0|[1-9]\d*)\.(?P<patch>0|[1-9]\d*)(?:-(?P<prerelease>(?:0|[1-9]\d*|\d*[a-zA-Z-][0-9a-zA-Z-]*)(?:\.(?:0|[1-9]\d*|\d*[a-zA-Z-][0-9a-zA-Z-]*))*))?(?:\+(?P<buildmetadata>[0-9a-zA-Z-]+(?:\.[0-9a-zA-Z-]+)*))?$' || true; })
         REVISION=$(git --work-tree=$GITHUB_ACTION_PATH --git-dir=$GITHUB_ACTION_PATH/.git rev-parse HEAD)
         
         if [ -n "${{ inputs.channels }}" ]; then
