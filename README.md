@@ -20,10 +20,8 @@ Current and planned support:
 * [x] Multi-user MacOS (aarch64 and x86_64)
     + Note: User deletion is currently unimplemented, you need to use a user with a secure token and `dscl . -delete /Users/_nixbuild*` where `*` is each user number.
 * [x] Valve Steam Deck
-* [ ] Multi-user x86_64 Linux with systemd init, with SELinux
-* [ ] Multi-user aarch64 Linux with systemd init, with SELinux
-* [ ] Single-user x86_64 Linux
-* [ ] Single-user aarch64 Linux
+* [ ] Multi-user Linux with systemd init & SELinux
+* [ ] Single-user Linux (aarch64 and x86_64)
 * [ ] Others...
 
 ## Installation Differences
