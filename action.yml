@@ -78,7 +78,7 @@ runs:
         # Tag: https://semver.org/#is-there-a-suggested-regular-expression-regex-to-check-a-semver-string
         TAG=$(echo $IDENTIFIER | grep -oP '^v(?P<major>0|[1-9]\d*)\.(?P<minor>0|[1-9]\d*)\.(?P<patch>0|[1-9]\d*)(?:-(?P<prerelease>(?:0|[1-9]\d*|\d*[a-zA-Z-][0-9a-zA-Z-]*)(?:\.(?:0|[1-9]\d*|\d*[a-zA-Z-][0-9a-zA-Z-]*))*))?(?:\+(?P<buildmetadata>[0-9a-zA-Z-]+(?:\.[0-9a-zA-Z-]+)*))?$')
         # Branch or revision can behave the same
-        REVISION=$(git --work-tree=$GITHUB_ACTION_PATH/harmonic --git-dir=$GITHUB_ACTION_PATH/harmonic/.git rev-parse HEAD)
+        REVISION=$(git --work-tree=$GITHUB_ACTION_PATH --git-dir=$GITHUB_ACTION_PATH/.git rev-parse HEAD)
         
         if [ -n "${{ inputs.channels }}" ]; then
           export NIX_INSTALLER_CHANNELS=${{ inputs.channels }}
