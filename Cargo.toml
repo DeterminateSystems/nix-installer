@@ -16,7 +16,7 @@ build-inputs = ["darwin.apple_sdk.frameworks.Security"]
 
 [features]
 default = ["cli"]
-cli = [ "eyre", "color-eyre", "clap", "tracing-subscriber", "tracing-error", "atty" ]
+cli = ["eyre", "color-eyre", "clap", "tracing-subscriber", "tracing-error", "atty"]
 
 [[bin]]
 name = "nix-installer"
@@ -55,6 +55,7 @@ term = { version = "0.7.0", default-features = false }
 
 [dev-dependencies]
 eyre = { version = "0.6.8", default-features = false, features = [ "track-caller" ] }
+tempdir = "0.3.7"
 
 [profile.release]
 strip = true  # Automatically strip symbols from the binary.
