@@ -115,19 +115,17 @@ runs:
           echo "Set NIX_INSTALLER_NIX_PACKAGE_URL=$NIX_INSTALLER_NIX_PACKAGE_URL"
         fi
 
+        export NIX_INSTALLER_EXTRA_CONF_FILE=/tmp/extra-nix-config
+        touch $NIX_INSTALLER_EXTRA_CONF_FILE
         if [ -n "${{ inputs.extra-conf }}" ]; then
-          if [ -n "${{ inputs.github-token }}" ]; then
-            export NIX_INSTALLER_EXTRA_CONF="${{ inputs.extra-conf }}access-tokens = github.com=${{ inputs.github-token }}"
-          else
-            export NIX_INSTALLER_EXTRA_CONF="${{ inputs.extra-conf }}"
-          fi
-          echo "Set NIX_INSTALLER_EXTRA_CONF=$NIX_INSTALLER_EXTRA_CONF"
-        else
-          if [ -n "${{ inputs.github-token }}" ]; then
-            export NIX_INSTALLER_EXTRA_CONF="access-tokens = github.com=${{ inputs.github-token }}"
-            echo "Set NIX_INSTALLER_EXTRA_CONF=$NIX_INSTALLER_EXTRA_CONF"
-          fi
+          echo "${{ inputs.extra-conf }}" >> $NIX_INSTALLER_EXTRA_CONF_FILE
         fi
+        if [ -n "${{ inputs.github-token }}" ]; then
+          echo "access-tokens = github.com=${{ inputs.github-token }}" >> $NIX_INSTALLER_EXTRA_CONF_FILE
+        fi
+        
+        export NIX_INSTALLER_EXTRA_CONF="$(cat $NIX_INSTALLER_EXTRA_CONF_FILE)"
+        echo "Set NIX_INSTALLER_EXTRA_CONF=$NIX_INSTALLER_EXTRA_CONF"
 
         if [ -n "${{ inputs.mac-encrypt }}" ]; then
           export NIX_INSTALLER_ENCRYPT=${{ inputs.mac-encrypt }}

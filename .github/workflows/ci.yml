@@ -346,6 +346,8 @@ jobs:
           log-directives: nix_installer=trace
           backtrace: full
           github-token: ${{ secrets.GITHUB_TOKEN }}
+          extra-conf: |
+            trusted-users = root runner
       - name: Initial uninstall (without a `nix run` first)
         run: sudo -E /nix/nix-installer uninstall
         env:
@@ -361,6 +363,7 @@ jobs:
           log-directives: nix_installer=trace
           backtrace: full
           github-token: ${{ secrets.GITHUB_TOKEN }}
+          extra-conf: trusted-users = root runner
       - name: echo $PATH
         run: echo $PATH
       - name: Test `nix` with `$GITHUB_PATH`
