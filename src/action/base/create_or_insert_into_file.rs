@@ -268,7 +268,7 @@ impl Action for CreateOrInsertIntoFile {
 
 #[tokio::test]
 async fn creates_and_deletes_file() -> eyre::Result<()> {
-    let temp_dir = tempdir::TempDir::new("nix-installer-tests")?;
+    let temp_dir = tempdir::TempDir::new("nix-installer-create-or-insert-into-file")?;
     let temp_file = temp_dir.path().join("creates_and_deletes_file");
     let mut action = CreateOrInsertIntoFile::plan(
         temp_file.clone(),
