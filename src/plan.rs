@@ -71,7 +71,7 @@ impl InstallPlan {
             {actions}\n\
         ",
             maybe_explain = if !explain {
-                " (`--explain` for more context)"
+                " (`--explain` during invocation or `e` at the prompt for more context)"
             } else {
                 ""
             },
