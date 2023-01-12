@@ -50,7 +50,6 @@ pub(crate) async fn prompt(
                 } else {
                     "[e]xplain"
                 }
-                .green()
             )
         } else {
             "".into()
