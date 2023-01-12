@@ -30,35 +30,10 @@ jobs:
       - name: Check EditorConfig conformance
         run: nix develop --store ~/.ci-store --command check-editorconfig
 
-  # Various feature variations or versions of the build which we expect to always work
-  # Since it uses the `build-store-x86_64-linux-*` cache it should be quite fast
-  build-variants-x86_64-linux:
-    name: Build x86_64 Linux (Variants)
-    runs-on: ubuntu-22.04
-    needs: build-x86_64-linux # Only run this if the normal checks work, to avoid clogging builders
-    steps:
-      - uses: actions/checkout@v3
-      - uses: cachix/install-nix-action@v17
-        with:
-          extra_nix_config: |
-            access-tokens = github.com=${{ secrets.GITHUB_TOKEN }}
-      - name: Cache build store (x86_64-linux)
-        id: build-store-x86_64-linux
-        uses: actions/cache@v3
-        with:
-          path: ~/.ci-store
-          key: build-store-x86_64-linux-${{ hashFiles('**/Cargo.lock', '**/flake.lock') }}-v1
-      - name: Build `nix-installer`
-        run: nix build --store ~/.ci-store --print-build-logs .#packages.x86_64-linux.nix-installer
-      - name: Test `nix develop` build without default features
-        run: nix develop --store ~/.ci-store --print-build-logs .# --command "cargo" build --no-default-features
-      - name: Test `nix develop` build all features
-        run: nix develop --store ~/.ci-store --print-build-logs .# --command "cargo" build --all-features
-
   run-x86_64-linux:
     name: Run x86_64 Linux
     runs-on: ubuntu-22.04
-    needs: [build-x86_64-linux, lints]
+    needs: [lints]
     steps:
       - name: Download Buildkite Artifacts
         uses: EnricoMi/download-buildkite-artifact-action@v1.14
@@ -160,7 +135,7 @@ jobs:
   run-steam-deck:
     name: Run Steam Deck (mock)
     runs-on: ubuntu-22.04
-    needs: [build-x86_64-linux, lints]
+    needs: [lints]
     steps:
       - name: Download Buildkite Artifacts
         uses: EnricoMi/download-buildkite-artifact-action@v1.14
@@ -280,7 +255,7 @@ jobs:
   run-x86_64-darwin:
     name: Run x86_64 Darwin
     runs-on: macos-12
-    needs: [build-x86_64-darwin, lints]
+    needs: [lints]
     steps:
       - name: Download Buildkite Artifacts
         uses: EnricoMi/download-buildkite-artifact-action@v1.14
