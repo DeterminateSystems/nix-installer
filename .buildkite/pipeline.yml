@@ -25,6 +25,9 @@ steps:
       - nix --extra-experimental-features "nix-command flakes" build .#packages.x86_64-linux.nix-installer-static -L
       - cp result/bin/nix-installer ./nix-installer-x86_64-linux
       - buildkite-agent artifact upload nix-installer-x86_64-linux
+      - nix --extra-experimental-features "nix-command flakes" build .#packages.x86_64-linux.nix-installer -L
+      - nix --extra-experimental-features "nix-command flakes" develop .# --command "cargo" build --no-default-features
+      - nix --extra-experimental-features "nix-command flakes" develop .# --command "cargo" build --all-features
   - label: nix-installer-aarch64-linux
     agents:
       system: aarch64-linux
