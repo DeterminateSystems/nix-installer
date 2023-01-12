@@ -53,8 +53,7 @@ inputs:
     required: false
   nix-installer-url:
     description: A URL pointing to a `nix-installer.sh` script
-    required: true
-    default: https://install.determinate.systems/nix
+    required: false
   local-root:
     description: A local `nix-installer` binary root, overrides the `nix-installer-url` setting (a `nix-installer.sh` should exist, binaries should be named `nix-installer-$ARCH`, eg. `nix-installer-x86_64-linux`)
     required: false
@@ -68,13 +67,30 @@ inputs:
     description: The setting for `RUST_BACKTRACE` (see https://doc.rust-lang.org/std/backtrace/index.html#environment-variables)
     required: false
 
-
 runs:
   using: composite
   steps:
     - name: Install Nix
       shell: bash
       run: |
+        IDENTIFIER=$(basename $GITHUB_ACTION_PATH)
+        TAG=$(echo "$IDENTIFIER" | { perl -nle'print if m{^v(?P<major>0|[1-9]\d*)\.(?P<minor>0|[1-9]\d*)\.(?P<patch>0|[1-9]\d*)(?:-(?P<prerelease>(?:0|[1-9]\d*|\d*[a-zA-Z-][0-9a-zA-Z-]*)(?:\.(?:0|[1-9]\d*|\d*[a-zA-Z-][0-9a-zA-Z-]*))*))?(?:\+(?P<buildmetadata>[0-9a-zA-Z-]+(?:\.[0-9a-zA-Z-]+)*))?$}' || true; })
+        if [ -n "$TAG" ]; then
+          echo "Set TAG=$TAG"
+        fi
+        if [ -z "$TAG" ]; then
+          REVISION=$(echo $IDENTIFIER | { perl -nle'print if m{^[0-9a-f]{40}$}' || true; })
+          if [ -n "$REVISION" ]; then
+            echo "Set REVISION=$REVISION"
+          fi
+          if [ -z "$REVISION" ]; then
+            BRANCH=$IDENTIFIER
+            if [ -n "$BRANCH" ]; then
+              echo "Set BRANCH=$BRANCH"
+            fi
+          fi
+        fi
+        
         if [ -n "${{ inputs.channels }}" ]; then
           export NIX_INSTALLER_CHANNELS=${{ inputs.channels }}
           echo "Set NIX_INSTALLER_CHANNELS=$NIX_INSTALLER_CHANNELS"
@@ -168,7 +184,18 @@ runs:
           export NIX_INSTALLER_FORCE_ALLOW_HTTP=1
           echo "Set NIX_INSTALLER_FORCE_ALLOW_HTTP=$NIX_INSTALLER_FORCE_ALLOW_HTTP"
         else
-          export NIX_INSTALLER_URL=${{ inputs.nix-installer-url }}
+          if [ -n "${{ inputs.nix-installer-url }}" ]; then
+            export NIX_INSTALLER_URL=${{ inputs.nix-installer-url }}
+          else
+            if [ -n "$TAG" ]; then
+              export NIX_INSTALLER_URL=https://install.determinate.systems/nix/tag/$TAG
+            elif [ -n "$REVISION" ]; then
+              export NIX_INSTALLER_URL=https://install.determinate.systems/nix/rev/$REVISION
+            else
+              export NIX_INSTALLER_URL=https://install.determinate.systems/nix/branch/$BRANCH
+            fi
+          fi
+
           echo "Set NIX_INSTALLER_URL=$NIX_INSTALLER_URL"
         fi
 

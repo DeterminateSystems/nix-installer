@@ -21,6 +21,8 @@ for artifact in $(find artifacts/ -type f); do
   cp "$artifact" "$GIT_ISH"/
 done
 
+aws s3 sync "$GIT_ISH"/ s3://"$AWS_BUCKET"/"$GIT_ISH"/ --acl public-read
+
 # If any artifact already exists in S3 and the hash is the same, we don't want to reupload
 for file in $(find "$GIT_ISH" -type f); do
   artifact_path="$DEST"/"$(basename "$artifact")"
@@ -34,5 +36,4 @@ for file in $(find "$GIT_ISH" -type f); do
   fi
 done
 
-aws s3 sync "$GIT_ISH"/ s3://"$AWS_BUCKET"/"$GIT_ISH"/ --acl public-read
 aws s3 sync s3://"$AWS_BUCKET"/"$GIT_ISH"/ s3://"$AWS_BUCKET"/"$DEST"/ --acl public-read
