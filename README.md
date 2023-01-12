@@ -5,29 +5,23 @@
 
 `nix-installer` is an opinionated, **experimental** Nix installer.
 
-> Try it on a machine/VM you don't care about!
->
-> ```bash
-> curl -L https://install.determinate.systems/nix | sh -s -- install
-> ```
+
+```bash
+curl -L https://install.determinate.systems/nix | sh -s -- install
+```
 
 ## Status
 
 `nix-installer` is **pre-release and experimental**. It is not ready for high reliability use! *Please* don't use it on a business critical machine!
 
-Planned support:
+Current and planned support:
 
-* [x] Multi-user x86_64 Linux with systemd init, no SELinux
-* [x] Multi-user aarch64 Linux with systemd init, no SELinux
-* [x] Multi-user x86_64 MacOS
-    + Note: User deletion is currently unimplemented, you need to use a user with a secure token and `dscl . -delete /Users/_nixbuild*` where `*` is each user number.
-* [x] Multi-user aarch64 MacOS
+* [x] Multi-user Linux (aarch64 and x86_64) with systemd init, no SELinux
+* [x] Multi-user MacOS (aarch64 and x86_64)
     + Note: User deletion is currently unimplemented, you need to use a user with a secure token and `dscl . -delete /Users/_nixbuild*` where `*` is each user number.
 * [x] Valve Steam Deck
-* [ ] Multi-user x86_64 Linux with systemd init, with SELinux
-* [ ] Multi-user aarch64 Linux with systemd init, with SELinux
-* [ ] Single-user x86_64 Linux
-* [ ] Single-user aarch64 Linux
+* [ ] Multi-user Linux (aarch64 and x86_64) with systemd init & SELinux
+* [ ] Single-user Linux (aarch64 and x86_64)
 * [ ] Others...
 
 ## Installation Differences
@@ -51,31 +45,22 @@ Our team wishes to experiment with the idea of an installer in a more structured
 
 So far, our explorations have been quite fruitful, so we wanted to share and keep exploring.
 
-## Building
-
-Since you'll be using `nix-installer` to install Nix on systems without Nix, the default build is a static binary.
-
-Build it on a system with Nix:
-
-```bash
-nix build github:determinatesystems/nix-installer
-```
-
-Then copy the `result/bin/nix-installer` to the machine you wish to run it on.
-
-If you don't have Nix, yet still want to contribute, you can also run `cargo build` like a normal Rust crate.
-
-## Installing
+## Usage
 
 Install Nix with the default planner and options:
 
 ```bash
-./nix-installer install
+curl -L https://install.determinate.systems/nix | sh -s -- install
 ```
 
-> `nix-installer` will elevate itself if it is not run as `root` using `sudo`. If you use `doas` or `please` you may need to elevate `nix-installer` yourself.
+Or, to download a platform specific Installer binary yourself:
 
-To observe verbose logging, either use `nix-installer -v`, this tool [also respects the `RUST_LOG` environment](https://docs.rs/tracing-subscriber/latest/tracing_subscriber/filter/struct.EnvFilter.html#directives). (Eg `RUST_LOG=nix_installer=trace nix-installer`).
+```bash
+$ curl -sL -o nix-installer https://install.determinate.systems/nix/nix-installer-x86_64-linux
+$ chmod +x nix-installer
+```
+
+> `nix-installer` will elevate itself if needed using `sudo`. If you use `doas` or `please` you may need to elevate `nix-installer` yourself.
 
 `nix-installer` installs Nix by following a *plan* made by a *planner*. Review the available planners:
 
@@ -109,97 +94,29 @@ A standard Linux multi-user install
 Usage: nix-installer install linux-multi [OPTIONS]
 
 Options:
-      --channel [<CHANNELS>...]
-          Channel(s) to add, for no default channel, pass `--channel`
-          
-          [env: NIX_INSTALLER_CHANNELS=]
-          [default: nixpkgs=https://nixos.org/channels/nixpkgs-unstable]
-
-      --no-confirm
-          [env: NIX_INSTALLER_NO_CONFIRM=]
-
-  -v, --verbose...
-          Enable debug logs, -vv for trace
-          
-          [env: NIX_INSTALLER_VERBOSITY=]
-
-      --logger <LOGGER>
-          Which logger to use
-          
-          [env: NIX_INSTALLER_LOGGER=]
-          [default: compact]
-          [possible values: compact, full, pretty, json]
-
-      --modify-profile
-          Modify the user profile to automatically load nix
-          
-          [env: NIX_INSTALLER_NO_MODIFY_PROFILE=]
-
-      --log-directive [<LOG_DIRECTIVES>...]
-          Tracing directives
-          
-          See https://docs.rs/tracing-subscriber/latest/tracing_subscriber/filter/struct.EnvFilter.html#directives
-          
-          [env: NIX_INSTALLER_LOG_DIRECTIVES=]
-
+# ...
       --nix-build-user-count <NIX_BUILD_USER_COUNT>
           Number of build users to create
           
           [env: NIX_INSTALLER_NIX_BUILD_USER_COUNT=]
           [default: 32]
 
-      --nix-build-group-name <NIX_BUILD_GROUP_NAME>
-          The Nix build group name
-          
-          [env: NIX_INSTALLER_NIX_BUILD_GROUP_NAME=]
-          [default: nixbld]
-
-      --nix-build-group-id <NIX_BUILD_GROUP_ID>
-          The Nix build group GID
-          
-          [env: NIX_INSTALLER_NIX_BUILD_GROUP_ID=]
-          [default: 3000]
-
-      --nix-build-user-prefix <NIX_BUILD_USER_PREFIX>
-          The Nix build user prefix (user numbers will be postfixed)
-          
-          [env: NIX_INSTALLER_NIX_BUILD_USER_PREFIX=]
-          [default: nixbld]
-
       --nix-build-user-id-base <NIX_BUILD_USER_ID_BASE>
           The Nix build user base UID (ascending)
           
           [env: NIX_INSTALLER_NIX_BUILD_USER_ID_BASE=]
           [default: 3000]
-
-      --nix-package-url <NIX_PACKAGE_URL>
-          The Nix package URL
-          
-          [env: NIX_INSTALLER_NIX_PACKAGE_URL=]
-          [default: https://releases.nixos.org/nix/nix-2.12.0/nix-2.12.0-x86_64-linux.tar.xz]
-
-      --extra-conf [<EXTRA_CONF>...]
-          Extra configuration lines for `/etc/nix.conf`
-          
-          [env: NIX_INSTALLER_EXTRA_CONF=]
-
-      --force
-          If `nix-installer` should forcibly recreate files it finds existing
-          
-          [env: NIX_INSTALLER_FORCE=]
-
-      --explain
-          [env: NIX_INSTALLER_EXPLAIN=]
-
-  -h, --help
-          Print help information (use `-h` for a summary)
+# ...
 ```
 
-Planners can be configured via environment variable, or by the command arguments.
+Planners can be configured via environment variable or command arguments:
 
 ```bash
-$ NIX_INSTALLER_DAEMON_USER_COUNT=4 ./nix-installer install linux-multi --nix-build-user-id-base 4000 --help
+$ curl -L https://install.determinate.systems/nix | NIX_BUILD_USER_COUNT=4 sh -s -- install linux-multi --nix-build-user-id-base 4000
+# Or...
+$ NIX_BUILD_USER_COUNT=4 ./nix-installer install linux-multi --nix-build-user-id-base 4000
 ```
+
 
 ## Uninstalling
 
@@ -209,28 +126,6 @@ You can remove a `nix-installer`-installed Nix by running
 /nix/nix-installer uninstall
 ```
 
-## As a library
-
-Add `nix-installer` to your dependencies:
-
-```bash
-cargo add nix-installer
-```
-
-> **Building a CLI?** Check out the `cli` feature flag for `clap` integration.
-
-Then it's possible to review the [documentation](https://docs.rs/nix-installer/latest/nix_installer/):
-
-```bash
-cargo doc --open -p nix-installer
-```
-
-Documentation is also available via `nix` build:
-
-```bash
-nix build github:DeterminateSystems/nix-installer#nix-installer.doc
-firefox result-doc/nix-installer/index.html
-```
 
 ## As a Github Action
 
@@ -256,4 +151,60 @@ jobs:
         github-token: ${{ secrets.GITHUB_TOKEN }}
     - name: Run `nix build`
       run: nix build .
+```
+
+
+## Building
+
+Since you'll be using `nix-installer` to install Nix on systems without Nix, the default build is a static binary.
+
+Build a portable binary on a system with Nix:
+
+```bash
+nix build -L github:determinatesystems/nix-installer#nix-installer-static
+```
+
+Then copy the `result/bin/nix-installer` to the machine you wish to run it on.
+
+You can also add `nix-installer` to your system without having Nix:
+
+```bash
+RUSTFLAGS="--cfg tokio_unstable" cargo install nix-installer
+nix-installer --help
+```
+
+To make this build portable, pass ` --target x86_64-unknown-linux-musl`.
+
+> We currently require `--cfg tokio_unstable` as we utilize [Tokio's process groups](https://docs.rs/tokio/1.24.1/tokio/process/struct.Command.html#method.process_group), which wrap stable `std` APIs, but are unstable due to it requiring an MSRV bump.
+
+
+## As a library
+
+Add `nix-installer` to your dependencies:
+
+```bash
+cargo add nix-installer
+```
+
+> **Building a CLI?** Check out the `cli` feature flag for `clap` integration.
+
+You'll also need to edit your `.cargo/config.toml` to use `tokio_unstable`:
+
+```toml
+# .cargo/config.toml
+[build]
+rustflags=["--cfg", "tokio_unstable"]
+```
+
+Then it's possible to review the [documentation](https://docs.rs/nix-installer/latest/nix_installer/):
+
+```bash
+cargo doc --open -p nix-installer
+```
+
+Documentation is also available via `nix` build:
+
+```bash
+nix build github:DeterminateSystems/nix-installer#nix-installer.doc
+firefox result-doc/nix-installer/index.html
 ```
