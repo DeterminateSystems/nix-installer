@@ -29,6 +29,8 @@ jobs:
         run: nix develop --store ~/.ci-store --command check-nixpkgs-fmt
       - name: Check EditorConfig conformance
         run: nix develop --store ~/.ci-store --command check-editorconfig
+      - name: Check Semantic Versioning is respected
+        run: nix develop --store ~/.ci-store --command check-semver
 
   build-x86_64-linux:
     name: Build x86_64 Linux

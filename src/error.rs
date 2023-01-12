@@ -29,7 +29,7 @@ pub enum NixInstallerError {
         #[source]
         serde_json::Error,
     ),
-    /// An error ocurring when a signal is issued along [`InstallPlan::install`](crate::InstallPlan::install)'s `cancel_channel` argument
+    /// An error occurring when a signal is issued along [`InstallPlan::install`](crate::InstallPlan::install)'s `cancel_channel` argument
     #[error("Cancelled by user")]
     Cancelled,
     /// Semver error
