@@ -148,19 +148,19 @@ impl CommandExecute for Install {
         };
 
         if !no_confirm {
-            let mut explaining = explain;
+            let mut currently_explaining = explain;
             loop {
                 match interaction::prompt(
                     install_plan
-                        .describe_install(explaining)
+                        .describe_install(currently_explaining)
                         .map_err(|e| eyre!(e))?,
                     PromptChoice::Yes,
-                    explaining,
+                    currently_explaining,
                 )
                 .await?
                 {
                     PromptChoice::Yes => break,
-                    PromptChoice::Explain => explaining = true,
+                    PromptChoice::Explain => currently_explaining = true,
                     PromptChoice::No => {
                         interaction::clean_exit_with_message("Okay, didn't do anything! Bye!").await
                     },
@@ -187,19 +187,19 @@ impl CommandExecute for Install {
                     };
 
                     eprintln!("{}", "Installation failure, offering to revert...".red());
-                    let mut explaining = explain;
+                    let mut currently_currently_explaining = explain;
                     loop {
                         match interaction::prompt(
                             install_plan
-                                .describe_uninstall(explaining)
+                                .describe_uninstall(currently_explaining)
                                 .map_err(|e| eyre!(e))?,
                             PromptChoice::Yes,
-                            explaining,
+                            currently_explaining,
                         )
                         .await?
                         {
                             PromptChoice::Yes => break,
-                            PromptChoice::Explain => explaining = true,
+                            PromptChoice::Explain => currently_explaining = true,
                             PromptChoice::No => {
                                 interaction::clean_exit_with_message(
                                     "Okay, didn't do anything! Bye!",

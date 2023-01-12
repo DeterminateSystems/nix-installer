@@ -17,7 +17,7 @@ pub enum PromptChoice {
 pub(crate) async fn prompt(
     question: impl AsRef<str>,
     default: PromptChoice,
-    explaining: bool,
+    currently_explaining: bool,
 ) -> eyre::Result<PromptChoice> {
     let stdout = stdout();
     let mut term =
@@ -42,7 +42,7 @@ pub(crate) async fn prompt(
             "n"
         }
         .green(),
-        maybe_explain = if !explaining {
+        maybe_explain = if !currently_explaining {
             format!(
                 "/{}",
                 if default == PromptChoice::Explain {

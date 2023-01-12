@@ -127,17 +127,18 @@ impl CommandExecute for Uninstall {
         let mut plan: InstallPlan = serde_json::from_str(&install_receipt_string)?;
 
         if !no_confirm {
-            let mut explaining = explain;
+            let mut currently_explaining = explain;
             loop {
                 match interaction::prompt(
-                    plan.describe_uninstall(explaining).map_err(|e| eyre!(e))?,
+                    plan.describe_uninstall(currently_explaining)
+                        .map_err(|e| eyre!(e))?,
                     PromptChoice::Yes,
-                    explaining,
+                    currently_explaining,
                 )
                 .await?
                 {
                     PromptChoice::Yes => break,
-                    PromptChoice::Explain => explaining = true,
+                    PromptChoice::Explain => currently_explaining = true,
                     PromptChoice::No => {
                         interaction::clean_exit_with_message("Okay, didn't do anything! Bye!").await
                     },
