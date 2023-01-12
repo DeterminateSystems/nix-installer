@@ -6,7 +6,11 @@ use std::{
 
 use crate::{
     action::ActionState,
-    cli::{ensure_root, interaction, signal_channel, CommandExecute},
+    cli::{
+        ensure_root,
+        interaction::{self, PromptChoice},
+        signal_channel, CommandExecute,
+    },
     error::HasExpectedErrors,
     plan::RECEIPT_LOCATION,
     planner::Planner,
@@ -144,15 +148,23 @@ impl CommandExecute for Install {
         };
 
         if !no_confirm {
-            if !interaction::confirm(
-                install_plan
-                    .describe_install(explain)
-                    .map_err(|e| eyre!(e))?,
-                true,
-            )
-            .await?
-            {
-                interaction::clean_exit_with_message("Okay, didn't do anything! Bye!").await;
+            let mut currently_explaining = explain;
+            loop {
+                match interaction::prompt(
+                    install_plan
+                        .describe_install(currently_explaining)
+                        .map_err(|e| eyre!(e))?,
+                    PromptChoice::Yes,
+                    currently_explaining,
+                )
+                .await?
+                {
+                    PromptChoice::Yes => break,
+                    PromptChoice::Explain => currently_explaining = true,
+                    PromptChoice::No => {
+                        interaction::clean_exit_with_message("Okay, didn't do anything! Bye!").await
+                    },
+                }
             }
         }
 
@@ -175,16 +187,26 @@ impl CommandExecute for Install {
                     };
 
                     eprintln!("{}", "Installation failure, offering to revert...".red());
-                    if !interaction::confirm(
-                        install_plan
-                            .describe_uninstall(explain)
-                            .map_err(|e| eyre!(e))?,
-                        true,
-                    )
-                    .await?
-                    {
-                        interaction::clean_exit_with_message("Okay, didn't do anything! Bye!")
-                            .await;
+                    let mut currently_explaining = explain;
+                    loop {
+                        match interaction::prompt(
+                            install_plan
+                                .describe_uninstall(currently_explaining)
+                                .map_err(|e| eyre!(e))?,
+                            PromptChoice::Yes,
+                            currently_explaining,
+                        )
+                        .await?
+                        {
+                            PromptChoice::Yes => break,
+                            PromptChoice::Explain => currently_explaining = true,
+                            PromptChoice::No => {
+                                interaction::clean_exit_with_message(
+                                    "Okay, didn't do anything! Bye!",
+                                )
+                                .await
+                            },
+                        }
                     }
                     let rx2 = tx.subscribe();
                     let res = install_plan.uninstall(rx2).await;

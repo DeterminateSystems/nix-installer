@@ -5,7 +5,7 @@ use std::{
 };
 
 use crate::{
-    cli::{ensure_root, signal_channel},
+    cli::{ensure_root, interaction::PromptChoice, signal_channel},
     error::HasExpectedErrors,
     plan::RECEIPT_LOCATION,
     InstallPlan,
@@ -127,13 +127,22 @@ impl CommandExecute for Uninstall {
         let mut plan: InstallPlan = serde_json::from_str(&install_receipt_string)?;
 
         if !no_confirm {
-            if !interaction::confirm(
-                plan.describe_uninstall(explain).map_err(|e| eyre!(e))?,
-                true,
-            )
-            .await?
-            {
-                interaction::clean_exit_with_message("Okay, didn't do anything! Bye!").await;
+            let mut currently_explaining = explain;
+            loop {
+                match interaction::prompt(
+                    plan.describe_uninstall(currently_explaining)
+                        .map_err(|e| eyre!(e))?,
+                    PromptChoice::Yes,
+                    currently_explaining,
+                )
+                .await?
+                {
+                    PromptChoice::Yes => break,
+                    PromptChoice::Explain => currently_explaining = true,
+                    PromptChoice::No => {
+                        interaction::clean_exit_with_message("Okay, didn't do anything! Bye!").await
+                    },
+                }
             }
         }
 

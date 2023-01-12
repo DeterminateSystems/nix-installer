@@ -61,8 +61,8 @@ impl Action for ConfigureNixDaemonService {
             self.tracing_synopsis(),
             vec![
                 "Run `systemd-tempfiles --create --prefix=/nix/var/nix`".to_string(),
-                "Run `systemctl link {SERVICE_SRC}`".to_string(),
-                "Run `systemctl link {SOCKET_SRC}`".to_string(),
+                format!("Run `systemctl link {SERVICE_SRC}`"),
+                format!("Run `systemctl link {SOCKET_SRC}`"),
                 "Run `systemctl daemon-reload`".to_string(),
             ],
         )]

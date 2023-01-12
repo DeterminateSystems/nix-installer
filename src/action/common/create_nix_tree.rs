@@ -52,21 +52,17 @@ impl Action for CreateNixTree {
     }
 
     fn execute_description(&self) -> Vec<ActionDescription> {
+        let Self { create_directories } = &self;
+
+        let mut create_directory_descriptions = Vec::new();
+        for create_directory in create_directories {
+            if let Some(val) = create_directory.describe_execute().iter().next() {
+                create_directory_descriptions.push(val.description.clone())
+            }
+        }
         vec![ActionDescription::new(
             self.tracing_synopsis(),
-            vec![
-                format!(
-                    "Nix and the Nix daemon require a Nix Store, which will be stored at `/nix`"
-                ),
-                format!(
-                    "Creates: {}",
-                    PATHS
-                        .iter()
-                        .map(|v| format!("`{v}`"))
-                        .collect::<Vec<_>>()
-                        .join(", ")
-                ),
-            ],
+            create_directory_descriptions,
         )]
     }
 

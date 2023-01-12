@@ -42,7 +42,7 @@ impl Action for MoveUnpackedNix {
         vec![ActionDescription::new(
             format!("Move the downloaded Nix into `/nix`"),
             vec![format!(
-                "Nix is being downloaded to `{}` and should be in `nix`",
+                "Nix is being downloaded to `{}` and should be in `/nix`",
                 self.src.display(),
             )],
         )]

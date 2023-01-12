@@ -66,15 +66,10 @@ impl InstallPlan {
             \n\
             {plan_settings}\n\
             \n\
-            The following actions will be taken{maybe_explain}:\n\
+            The following actions will be taken:\n\
             \n\
             {actions}\n\
         ",
-            maybe_explain = if !explain {
-                " (`--explain` for more context)"
-            } else {
-                ""
-            },
             planner = planner.typetag_name(),
             plan_settings = planner
                 .settings()?
