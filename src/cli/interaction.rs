@@ -31,24 +31,24 @@ pub(crate) async fn prompt(
         question = question.as_ref(),
         are_you_sure = "Proceed?".bold(),
         no = if default == PromptChoice::No {
-            "N"
+            "[N]o"
         } else {
-            "n"
+            "[n]o"
         }
         .red(),
         yes = if default == PromptChoice::Yes {
-            "Y"
+            "[Y]es"
         } else {
-            "n"
+            "[y]es"
         }
         .green(),
         maybe_explain = if !currently_explaining {
             format!(
                 "/{}",
                 if default == PromptChoice::Explain {
-                    "E"
+                    "[E]xplain"
                 } else {
-                    "e"
+                    "[e]xplain"
                 }
                 .green()
             )
