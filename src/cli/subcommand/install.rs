@@ -187,7 +187,7 @@ impl CommandExecute for Install {
                     };
 
                     eprintln!("{}", "Installation failure, offering to revert...".red());
-                    let mut currently_currently_explaining = explain;
+                    let mut currently_explaining = explain;
                     loop {
                         match interaction::prompt(
                             install_plan
