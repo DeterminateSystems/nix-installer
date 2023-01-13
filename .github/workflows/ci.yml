@@ -11,10 +11,10 @@ jobs:
     runs-on: ubuntu-22.04
     steps:
       - uses: actions/checkout@v3
-      - uses: cachix/install-nix-action@v17
+      - name: Install Nix
+        uses: DeterminateSystems/nix-installer-action@main
         with:
-          extra_nix_config: |
-            access-tokens = github.com=${{ secrets.GITHUB_TOKEN }}
+          github-token: ${{ secrets.GITHUB_TOKEN }}
       - name: Cache lint store (x86_64-linux)
         id: lint-store-x86_64-linux
         uses: actions/cache@v3
@@ -35,10 +35,10 @@ jobs:
     runs-on: ubuntu-22.04
     steps:
       - uses: actions/checkout@v3
-      - uses: cachix/install-nix-action@v17
+      - name: Install Nix
+        uses: DeterminateSystems/nix-installer-action@main
         with:
-          extra_nix_config: |
-            access-tokens = github.com=${{ secrets.GITHUB_TOKEN }}
+          github-token: ${{ secrets.GITHUB_TOKEN }}
       - name: Cache build store (x86_64-linux)
         id: build-store-x86_64-linux
         uses: actions/cache@v3
@@ -66,10 +66,10 @@ jobs:
     needs: build-x86_64-linux # Only run this if the normal checks work, to avoid clogging builders
     steps:
       - uses: actions/checkout@v3
-      - uses: cachix/install-nix-action@v17
+      - name: Install Nix
+        uses: DeterminateSystems/nix-installer-action@main
         with:
-          extra_nix_config: |
-            access-tokens = github.com=${{ secrets.GITHUB_TOKEN }}
+          github-token: ${{ secrets.GITHUB_TOKEN }}
       - name: Cache build store (x86_64-linux)
         id: build-store-x86_64-linux
         uses: actions/cache@v3
@@ -100,7 +100,7 @@ jobs:
           cp nix-installer.sh install-root/nix-installer.sh
           mv nix-installer install-root/nix-installer-x86_64-linux
       - name: Initial install
-        uses: ./
+        uses: DeterminateSystems/nix-installer-action@main
         with:
           local-root: install-root/
           logger: pretty
@@ -129,7 +129,7 @@ jobs:
             exit 1
           fi
       - name: Repeated install
-        uses: ./
+        uses: DeterminateSystems/nix-installer-action@main
         with:
           local-root: install-root/
           logger: pretty
@@ -207,7 +207,7 @@ jobs:
           sudo chmod +x /bin/steamos-readonly
           sudo useradd -m deck
       - name: Initial install
-        uses: ./
+        uses: DeterminateSystems/nix-installer-action@main
         with:
           local-root: install-root/
           logger: pretty
@@ -242,7 +242,7 @@ jobs:
             exit 1
           fi
       - name: Repeated install
-        uses: ./
+        uses: DeterminateSystems/nix-installer-action@main
         with:
           local-root: install-root/
           logger: pretty
@@ -308,10 +308,10 @@ jobs:
     runs-on: macos-12
     steps:
       - uses: actions/checkout@v3
-      - uses: cachix/install-nix-action@v17
+      - name: Install Nix
+        uses: DeterminateSystems/nix-installer-action@main
         with:
-          extra_nix_config: |
-            access-tokens = github.com=${{ secrets.GITHUB_TOKEN }}
+          github-token: ${{ secrets.GITHUB_TOKEN }}
       # Runs clippy as part of the preBuild.
       - name: Build nix-installer
         run: nix build .#packages.x86_64-darwin.nix-installer -L
@@ -339,7 +339,7 @@ jobs:
           cp nix-installer.sh install-root/nix-installer.sh
           mv nix-installer install-root/nix-installer-x86_64-darwin
       - name: Initial install
-        uses: ./
+        uses: DeterminateSystems/nix-installer-action@main
         with:
           local-root: install-root/
           logger: pretty
@@ -356,7 +356,7 @@ jobs:
           NIX_INSTALLER_LOG_DIRECTIVES: nix_installer=trace
           RUST_BACKTRACE: full
       - name: Repeated install
-        uses: ./
+        uses: DeterminateSystems/nix-installer-action@main
         with:
           local-root: install-root/
           logger: pretty
