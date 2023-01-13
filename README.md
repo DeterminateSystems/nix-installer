@@ -129,7 +129,7 @@ You can remove a `nix-installer`-installed Nix by running
 
 ## As a Github Action
 
-You can use the [`nix-installer-action`](https://github.com/DeterminateSystems/nix-installer-action) Github action like so:
+You can use the [`nix-installer-action`](https://github.com/DeterminateSystems/nix-installer-action) Github Action like so:
 
 ```yaml
 on:
