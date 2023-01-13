@@ -30,7 +30,7 @@ jobs:
         env:
           AWS_BUCKET: ${{ secrets.AWS_S3_UPLOAD_BUCKET }}
         run: |
-          ./upload_s3.sh "$GITHUB_SHA" "$GIT_ISH"
+          ./upload_s3.sh "$GITHUB_REF_NAME" "$GITHUB_SHA"
       - name: Publish Release to GitHub (Tag)
         uses: softprops/action-gh-release@v1
         with:
