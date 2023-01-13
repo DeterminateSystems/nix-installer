@@ -129,7 +129,7 @@ You can remove a `nix-installer`-installed Nix by running
 
 ## As a Github Action
 
-You can use `nix-installer` as a Github action like so:
+You can use the [`nix-installer-action`](https://github.com/DeterminateSystems/nix-installer-action) Github action like so:
 
 ```yaml
 on:
@@ -144,7 +144,7 @@ jobs:
     steps:
     - uses: actions/checkout@v3
     - name: Install Nix
-      uses: DeterminateSystems/nix-installer@main
+      uses: DeterminateSystems/nix-installer-action@main
       with:
         # Allow the installed Nix to make authenticated Github requests.
         # If you skip this, you will likely get rate limited.
