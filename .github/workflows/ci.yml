@@ -100,7 +100,7 @@ jobs:
           cp nix-installer.sh install-root/nix-installer.sh
           mv nix-installer install-root/nix-installer-x86_64-linux
       - name: Initial install
-        uses: ./
+        uses: determinatesystems@nix-installer-action
         with:
           local-root: install-root/
           logger: pretty
@@ -129,7 +129,7 @@ jobs:
             exit 1
           fi
       - name: Repeated install
-        uses: ./
+        uses: determinatesystems@nix-installer-action
         with:
           local-root: install-root/
           logger: pretty
@@ -207,7 +207,7 @@ jobs:
           sudo chmod +x /bin/steamos-readonly
           sudo useradd -m deck
       - name: Initial install
-        uses: ./
+        uses: determinatesystems@nix-installer-action
         with:
           local-root: install-root/
           logger: pretty
@@ -242,7 +242,7 @@ jobs:
             exit 1
           fi
       - name: Repeated install
-        uses: ./
+        uses: determinatesystems@nix-installer-action
         with:
           local-root: install-root/
           logger: pretty
@@ -339,7 +339,7 @@ jobs:
           cp nix-installer.sh install-root/nix-installer.sh
           mv nix-installer install-root/nix-installer-x86_64-darwin
       - name: Initial install
-        uses: ./
+        uses: determinatesystems@nix-installer-action
         with:
           local-root: install-root/
           logger: pretty
@@ -356,7 +356,7 @@ jobs:
           NIX_INSTALLER_LOG_DIRECTIVES: nix_installer=trace
           RUST_BACKTRACE: full
       - name: Repeated install
-        uses: ./
+        uses: determinatesystems@nix-installer-action
         with:
           local-root: install-root/
           logger: pretty
