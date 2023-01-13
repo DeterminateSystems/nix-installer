@@ -106,6 +106,8 @@ impl Action for SetupDefaultProfile {
             load_db_command.process_group(0);
             load_db_command.arg("--load-db");
             load_db_command.stdin(std::process::Stdio::piped());
+            load_db_command.stdout(std::process::Stdio::piped());
+            load_db_command.stderr(std::process::Stdio::piped());
             load_db_command.env(
                 "HOME",
                 dirs::home_dir().ok_or_else(|| {
