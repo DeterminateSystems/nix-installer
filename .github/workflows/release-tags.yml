@@ -21,6 +21,17 @@ jobs:
       - name: Fixup URL in nix-installer.sh
         run: |
           sed -i "s@https://install.determinate.systems/nix@https://install.determinate.systems/nix/tag/$GITHUB_REF_NAME@" nix-installer.sh
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v1
+        with:
+          role-to-assume: ${{ secrets.AWS_S3_UPLOAD_ROLE }}
+          aws-region: us-east-2
+      - name: Publish Release (PR)
+        env:
+          AWS_BUCKET: ${{ secrets.AWS_S3_UPLOAD_BUCKET }}
+        run: |
+          GIT_ISH="${{ github.event.pull_request.head.sha }}"
+          ./upload_s3.sh "$GITHUB_REF_NAME" "$GIT_ISH"
       - name: Publish Release (Tag)
         uses: softprops/action-gh-release@v1
         with:
