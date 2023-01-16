@@ -248,6 +248,8 @@ If you are working on the `action.yml` There is an integration test for `action.
 
 > `nix-installer` is still experimental, so this process may change.
 
+This package uses [Semantic Verisoning](https://semver.org/). When determining the version number for a new release refer to Semantic Versioning for guidance. You can use the `check-semver` command alias from within the development environment to validate your changes don't break semver.
+
 To cut a release:
 
 * Create a release branch from `main` (`git checkout -b release-v0.0.1`)
