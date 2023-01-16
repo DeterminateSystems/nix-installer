@@ -173,7 +173,8 @@ impl Action for CreateDirectory {
             .read_dir()
             .map_err(|e| ActionError::Read(path.clone(), e))?
             .next()
-            .is_some();
+            .is_none();
+
         match (is_empty, force_prune_on_revert) {
             (true, _) | (false, true) => remove_dir_all(path.clone())
                 .await
@@ -182,6 +183,67 @@ impl Action for CreateDirectory {
                 tracing::debug!("Not removing `{}`, the folder is not empty", path.display());
             },
         };
+
+        Ok(())
+    }
+}
+
+#[cfg(test)]
+mod test {
+    use super::*;
+
+    #[tokio::test]
+    async fn creates_and_deletes_empty_directory() -> eyre::Result<()> {
+        let temp_dir = tempdir::TempDir::new("nix_installer_tests_create_file")?;
+        let test_dir = temp_dir.path().join("creates_and_deletes_empty_directory");
+        let mut action = CreateDirectory::plan(test_dir.clone(), None, None, None, false).await?;
+
+        action.try_execute().await?;
+
+        action.try_revert().await?;
+
+        assert!(!test_dir.exists(), "Folder should have been deleted");
+
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn creates_and_deletes_populated_directory_if_prune_true() -> eyre::Result<()> {
+        let temp_dir = tempdir::TempDir::new("nix_installer_tests_create_file")?;
+        let test_dir = temp_dir
+            .path()
+            .join("creates_and_deletes_populated_directory_if_prune_true");
+        let mut action = CreateDirectory::plan(test_dir.clone(), None, None, None, true).await?;
+
+        action.try_execute().await?;
+
+        let stub_file = test_dir.as_path().join("stub");
+        tokio::fs::write(stub_file, "More content").await?;
+
+        action.try_revert().await?;
+
+        assert!(!test_dir.exists(), "Folder should have been deleted");
+
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn creates_and_leaves_populated_directory_if_prune_false() -> eyre::Result<()> {
+        let temp_dir = tempdir::TempDir::new("nix_installer_tests_create_file")?;
+        let test_dir = temp_dir
+            .path()
+            .join("creates_and_leaves_populated_directory_if_prune_false");
+        let mut action = CreateDirectory::plan(test_dir.clone(), None, None, None, false).await?;
+
+        action.try_execute().await?;
+
+        let stub_file = test_dir.as_path().join("stub");
+        tokio::fs::write(&stub_file, "More content").await?;
+
+        action.try_revert().await?;
+
+        assert!(test_dir.exists(), "Folder should not have been deleted");
+        assert!(stub_file.exists(), "Folder should not have been deleted");
 
         Ok(())
     }

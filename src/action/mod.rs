@@ -298,6 +298,10 @@ pub enum ActionError {
     Write(std::path::PathBuf, #[source] std::io::Error),
     #[error("Seek path `{0}`")]
     Seek(std::path::PathBuf, #[source] std::io::Error),
+    #[error("Flushing `{0}`")]
+    Flush(std::path::PathBuf, #[source] std::io::Error),
+    #[error("Truncating `{0}`")]
+    Truncate(std::path::PathBuf, #[source] std::io::Error),
     #[error("Getting uid for user `{0}`")]
     UserId(String, #[source] nix::errno::Errno),
     #[error("Getting user `{0}`")]
