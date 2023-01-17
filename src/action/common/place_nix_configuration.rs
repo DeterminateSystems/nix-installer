@@ -32,7 +32,7 @@ impl PlaceNixConfiguration {
             \n\
             auto-optimise-store = true\n\
             \n\
-            bash-prompt-prefix = (nix)\n\
+            bash-prompt-prefix = (nix:$name)\n\
         ",
             extra_conf = extra_conf.join("\n"),
         );
