@@ -34,7 +34,7 @@ impl PlaceNixConfiguration {
             \n\
             auto-optimise-store = true\n\
             \n\
-            bash-prompt-prefix = (nix:$name)\n\
+            bash-prompt-prefix = (nix:$name)\\040\n\
         ",
             extra_conf = extra_conf.join("\n"),
             version = env!("CARGO_PKG_VERSION"),
