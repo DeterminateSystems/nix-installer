@@ -144,7 +144,7 @@ jobs:
     steps:
     - uses: actions/checkout@v3
     - name: Install Nix
-      uses: DeterminateSystems/nix-installer-action
+      uses: DeterminateSystems/nix-installer-action@main
       with:
         # Allow the installed Nix to make authenticated Github requests.
         # If you skip this, you will likely get rate limited.
