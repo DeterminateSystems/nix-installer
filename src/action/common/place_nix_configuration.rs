@@ -31,6 +31,8 @@ impl PlaceNixConfiguration {
             experimental-features = nix-command flakes\n\
             \n\
             auto-optimise-store = true\n\
+            \n\
+            bash-prompt-prefix = (nix)\n\
         ",
             extra_conf = extra_conf.join("\n"),
         );
