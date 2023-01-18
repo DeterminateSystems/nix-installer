@@ -17,7 +17,7 @@
         "action": "provision_nix",
         "fetch_nix": {
           "action": {
-            "url": "https://releases.nixos.org/nix/nix-2.12.0/nix-2.12.0-x86_64-linux.tar.xz",
+            "url": "https://releases.nixos.org/nix/nix-2.13.0/nix-2.13.0-x86_64-linux.tar.xz",
             "dest": "/nix/temp-install-dir"
           },
           "state": "Uncompleted"
@@ -328,7 +328,7 @@
       "modify_profile": true,
       "nix_build_group_name": "nixbld",
       "nix_build_group_id": 3000,
-      "nix_package_url": "https://releases.nixos.org/nix/nix-2.12.0/nix-2.12.0-x86_64-linux.tar.xz",
+      "nix_package_url": "https://releases.nixos.org/nix/nix-2.13.0/nix-2.13.0-x86_64-linux.tar.xz",
       "extra_conf": [],
       "force": false
     }
