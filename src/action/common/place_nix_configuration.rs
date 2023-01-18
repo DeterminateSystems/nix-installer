@@ -18,7 +18,6 @@ pub struct PlaceNixConfiguration {
 impl PlaceNixConfiguration {
     #[tracing::instrument(level = "debug", skip_all)]
     pub async fn plan(
-        nix_build_group_name: String,
         extra_conf: Vec<String>,
         force: bool,
     ) -> Result<StatefulAction<Self>, ActionError> {
@@ -28,11 +27,11 @@ impl PlaceNixConfiguration {
             \n\
             {extra_conf}\n\
             \n\
-            build-users-group = {nix_build_group_name}\n\
-            \n\
-            experimental-features = nix-command flakes\n\
+            experimental-features = nix-command flakes auto-allocate-uids\n\
             \n\
             auto-optimise-store = true\n\
+            \n\
+            auto-allocate-uids = true\n\
             \n\
             bash-prompt-prefix = (nix:$name)\\040\n\
         ",

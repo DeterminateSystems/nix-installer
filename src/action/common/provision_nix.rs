@@ -1,9 +1,9 @@
 use tracing::{span, Span};
 
-use super::{CreateNixTree, CreateUsersAndGroups};
+use super::CreateNixTree;
 use crate::{
     action::{
-        base::{FetchAndUnpackNix, MoveUnpackedNix},
+        base::{CreateGroup, FetchAndUnpackNix, MoveUnpackedNix},
         Action, ActionDescription, ActionError, StatefulAction,
     },
     settings::CommonSettings,
@@ -16,7 +16,7 @@ Place Nix and it's requirements onto the target
 #[derive(Debug, serde::Deserialize, serde::Serialize, Clone)]
 pub struct ProvisionNix {
     fetch_nix: StatefulAction<FetchAndUnpackNix>,
-    create_users_and_group: StatefulAction<CreateUsersAndGroups>,
+    create_group: StatefulAction<CreateGroup>,
     create_nix_tree: StatefulAction<CreateNixTree>,
     move_unpacked_nix: StatefulAction<MoveUnpackedNix>,
 }
@@ -29,13 +29,16 @@ impl ProvisionNix {
             PathBuf::from("/nix/temp-install-dir"),
         )
         .await?;
-        let create_users_and_group = CreateUsersAndGroups::plan(settings.clone()).await?;
+        let create_group = CreateGroup::plan(
+            settings.nix_build_group_name.clone(),
+            settings.nix_build_group_id,
+        );
         let create_nix_tree = CreateNixTree::plan().await?;
         let move_unpacked_nix =
             MoveUnpackedNix::plan(PathBuf::from("/nix/temp-install-dir")).await?;
         Ok(Self {
             fetch_nix,
-            create_users_and_group,
+            create_group,
             create_nix_tree,
             move_unpacked_nix,
         }
@@ -57,14 +60,14 @@ impl Action for ProvisionNix {
     fn execute_description(&self) -> Vec<ActionDescription> {
         let Self {
             fetch_nix,
-            create_users_and_group,
+            create_group,
             create_nix_tree,
             move_unpacked_nix,
         } = &self;
 
         let mut buf = Vec::default();
         buf.append(&mut fetch_nix.describe_execute());
-        buf.append(&mut create_users_and_group.describe_execute());
+        buf.append(&mut create_group.describe_execute());
         buf.append(&mut create_nix_tree.describe_execute());
         buf.append(&mut move_unpacked_nix.describe_execute());
 
@@ -76,7 +79,7 @@ impl Action for ProvisionNix {
         let Self {
             fetch_nix,
             create_nix_tree,
-            create_users_and_group,
+            create_group,
             move_unpacked_nix,
         } = self;
 
@@ -87,7 +90,7 @@ impl Action for ProvisionNix {
             Result::<_, ActionError>::Ok(fetch_nix_clone)
         });
 
-        create_users_and_group.try_execute().await?;
+        create_group.try_execute().await?;
         create_nix_tree.try_execute().await?;
 
         *fetch_nix = fetch_nix_handle.await.map_err(ActionError::Join)??;
@@ -99,7 +102,7 @@ impl Action for ProvisionNix {
     fn revert_description(&self) -> Vec<ActionDescription> {
         let Self {
             fetch_nix,
-            create_users_and_group,
+            create_group,
             create_nix_tree,
             move_unpacked_nix,
         } = &self;
@@ -107,7 +110,7 @@ impl Action for ProvisionNix {
         let mut buf = Vec::default();
         buf.append(&mut move_unpacked_nix.describe_revert());
         buf.append(&mut create_nix_tree.describe_revert());
-        buf.append(&mut create_users_and_group.describe_revert());
+        buf.append(&mut create_group.describe_revert());
         buf.append(&mut fetch_nix.describe_revert());
         buf
     }
@@ -117,7 +120,7 @@ impl Action for ProvisionNix {
         let Self {
             fetch_nix,
             create_nix_tree,
-            create_users_and_group,
+            create_group,
             move_unpacked_nix,
         } = self;
 
@@ -128,7 +131,7 @@ impl Action for ProvisionNix {
             Result::<_, ActionError>::Ok(fetch_nix_clone)
         });
 
-        if let Err(err) = create_users_and_group.try_revert().await {
+        if let Err(err) = create_group.try_revert().await {
             fetch_nix_handle.abort();
             return Err(err);
         }

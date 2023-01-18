@@ -45,12 +45,8 @@ impl ConfigureNix {
         };
         let place_channel_configuration =
             PlaceChannelConfiguration::plan(channels, settings.force).await?;
-        let place_nix_configuration = PlaceNixConfiguration::plan(
-            settings.nix_build_group_name.clone(),
-            settings.extra_conf.clone(),
-            settings.force,
-        )
-        .await?;
+        let place_nix_configuration =
+            PlaceNixConfiguration::plan(settings.extra_conf.clone(), settings.force).await?;
         let configure_nix_daemon_service = ConfigureNixDaemonService::plan().await?;
 
         Ok(Self {
