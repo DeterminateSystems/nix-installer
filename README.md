@@ -7,7 +7,7 @@
 
 
 ```bash
-curl -L https://install.determinate.systems/nix | sh -s -- install
+curl --proto '=https' --tlsv1.2 -sSf -L https://install.determinate.systems/nix | sh -s -- install
 ```
 
 ## Status
@@ -50,7 +50,7 @@ So far, our explorations have been quite fruitful, so we wanted to share and kee
 Install Nix with the default planner and options:
 
 ```bash
-curl -L https://install.determinate.systems/nix | sh -s -- install
+curl --proto '=https' --tlsv1.2 -sSf -L https://install.determinate.systems/nix | sh -s -- install
 ```
 
 Or, to download a platform specific Installer binary yourself:
@@ -112,7 +112,7 @@ Options:
 Planners can be configured via environment variable or command arguments:
 
 ```bash
-$ curl -L https://install.determinate.systems/nix | NIX_BUILD_USER_COUNT=4 sh -s -- install linux-multi --nix-build-user-id-base 4000
+$ curl --proto '=https' --tlsv1.2 -sSf -L https://install.determinate.systems/nix | NIX_BUILD_USER_COUNT=4 sh -s -- install linux-multi --nix-build-user-id-base 4000
 # Or...
 $ NIX_BUILD_USER_COUNT=4 ./nix-installer install linux-multi --nix-build-user-id-base 4000
 ```
