@@ -38,6 +38,10 @@ done
 sed -i "s@https://install.determinate.systems/nix@$DEST_INSTALL_URL@" "$DEST/nix-installer.sh"
 sed -i "s@https://install.determinate.systems/nix@https://install.determinate.systems/nix/rev/$GIT_ISH@" "$GIT_ISH/nix-installer.sh"
 
+if is_tag; then
+  cp "$DEST/nix-installer.sh" ./nix-installer.sh
+fi
+
 # If any artifact already exists in S3 and the hash is the same, we don't want to reupload
 check_reupload() {
   dest="$1"
