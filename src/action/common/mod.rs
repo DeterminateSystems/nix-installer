@@ -10,7 +10,7 @@ pub(crate) mod place_nix_configuration;
 pub(crate) mod provision_nix;
 
 pub use configure_nix::ConfigureNix;
-pub use configure_nix_daemon_service::{ConfigureNixDaemonService, ConfigureNixDaemonServiceError};
+pub use configure_nix_daemon_service::{ConfigureInitService, ConfigureNixDaemonServiceError};
 pub use configure_shell_profile::ConfigureShellProfile;
 pub use create_nix_tree::CreateNixTree;
 pub use create_users_and_groups::CreateUsersAndGroups;

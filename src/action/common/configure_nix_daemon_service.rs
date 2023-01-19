@@ -9,47 +9,41 @@ use crate::action::{ActionError, StatefulAction};
 use crate::execute_command;
 
 use crate::action::{Action, ActionDescription};
+use crate::settings::InitSystem;
 
 const SERVICE_SRC: &str = "/nix/var/nix/profiles/default/lib/systemd/system/nix-daemon.service";
 const SOCKET_SRC: &str = "/nix/var/nix/profiles/default/lib/systemd/system/nix-daemon.socket";
 const TMPFILES_SRC: &str = "/nix/var/nix/profiles/default/lib/tmpfiles.d/nix-daemon.conf";
 const TMPFILES_DEST: &str = "/etc/tmpfiles.d/nix-daemon.conf";
 const DARWIN_NIX_DAEMON_DEST: &str = "/Library/LaunchDaemons/org.nixos.nix-daemon.plist";
-
+const DARWIN_NIX_DAEMON_SOURCE: &str =
+    "/nix/var/nix/profiles/default/Library/LaunchDaemons/org.nixos.nix-daemon.plist";
 /**
-Run systemd utilities to configure the Nix daemon
+Configure the init to run the Nix daemon
 */
 #[derive(Debug, serde::Deserialize, serde::Serialize, Clone)]
-pub struct ConfigureNixDaemonService {}
+pub struct ConfigureInitService {
+    init: InitSystem,
+}
 
-impl ConfigureNixDaemonService {
+impl ConfigureInitService {
     #[tracing::instrument(level = "debug", skip_all)]
-    pub async fn plan() -> Result<StatefulAction<Self>, ActionError> {
-        match OperatingSystem::host() {
-            OperatingSystem::MacOSX {
-                major: _,
-                minor: _,
-                patch: _,
-            }
-            | OperatingSystem::Darwin => (),
-            _ => {
-                if !Path::new("/run/systemd/system").exists() {
-                    return Err(ActionError::Custom(Box::new(
-                        ConfigureNixDaemonServiceError::InitNotSupported,
-                    )));
-                }
-            },
-        };
-
-        Ok(Self {}.into())
+    pub async fn plan(init: InitSystem) -> Result<StatefulAction<Self>, ActionError> {
+        Ok(Self { init }.into())
     }
 }
 
 #[async_trait::async_trait]
 #[typetag::serde(name = "configure_nix_daemon")]
-impl Action for ConfigureNixDaemonService {
+impl Action for ConfigureInitService {
     fn tracing_synopsis(&self) -> String {
-        "Configure Nix daemon related settings with systemd".to_string()
+        match self.init {
+            InitSystem::Systemd => "Configure Nix daemon related settings with systemd".to_string(),
+            InitSystem::Launchd => {
+                "Configure Nix daemon related settings with launchctl".to_string()
+            },
+            InitSystem::None => "Leave the Nix daemon unconfigured".to_string(),
+        }
     }
 
     fn tracing_span(&self) -> Span {
@@ -57,29 +51,38 @@ impl Action for ConfigureNixDaemonService {
     }
 
     fn execute_description(&self) -> Vec<ActionDescription> {
-        vec![ActionDescription::new(
-            self.tracing_synopsis(),
-            vec![
-                "Run `systemd-tempfiles --create --prefix=/nix/var/nix`".to_string(),
-                format!("Run `systemctl link {SERVICE_SRC}`"),
-                format!("Run `systemctl link {SOCKET_SRC}`"),
-                "Run `systemctl daemon-reload`".to_string(),
-            ],
-        )]
+        match self.init {
+            InitSystem::Systemd => {
+                vec![ActionDescription::new(
+                    self.tracing_synopsis(),
+                    vec![
+                        "Run `systemd-tempfiles --create --prefix=/nix/var/nix`".to_string(),
+                        format!("Run `systemctl link {SERVICE_SRC}`"),
+                        format!("Run `systemctl link {SOCKET_SRC}`"),
+                        "Run `systemctl daemon-reload`".to_string(),
+                    ],
+                )]
+            },
+            InitSystem::Launchd => {
+                vec![ActionDescription::new(
+                    self.tracing_synopsis(),
+                    vec![
+                        format!("Copy `{DARWIN_NIX_DAEMON_SOURCE}` to `DARWIN_NIX_DAEMON_DEST`"),
+                        format!("Run `launchctl load {DARWIN_NIX_DAEMON_DEST}`"),
+                    ],
+                )]
+            },
+            InitSystem::None => Vec::new(),
+        }
     }
 
     #[tracing::instrument(level = "debug", skip_all)]
     async fn execute(&mut self) -> Result<(), ActionError> {
-        let Self {} = self;
+        let Self { init } = self;
 
-        match OperatingSystem::host() {
-            OperatingSystem::MacOSX {
-                major: _,
-                minor: _,
-                patch: _,
-            }
-            | OperatingSystem::Darwin => {
-                let src = Path::new("/nix/var/nix/profiles/default/Library/LaunchDaemons/org.nixos.nix-daemon.plist");
+        match init {
+            InitSystem::Launchd => {
+                let src = Path::new(DARWIN_NIX_DAEMON_SOURCE);
                 tokio::fs::copy(src.clone(), DARWIN_NIX_DAEMON_DEST)
                     .await
                     .map_err(|e| {
@@ -100,7 +103,7 @@ impl Action for ConfigureNixDaemonService {
                 .await
                 .map_err(ActionError::Command)?;
             },
-            _ => {
+            InitSystem::Systemd => {
                 tracing::trace!(src = TMPFILES_SRC, dest = TMPFILES_DEST, "Symlinking");
                 tokio::fs::symlink(TMPFILES_SRC, TMPFILES_DEST)
                     .await
@@ -161,32 +164,41 @@ impl Action for ConfigureNixDaemonService {
                 .await
                 .map_err(ActionError::Command)?;
             },
+            InitSystem::None => {
+                // Nothing here, no init system
+            },
         };
 
         Ok(())
     }
 
     fn revert_description(&self) -> Vec<ActionDescription> {
-        vec![ActionDescription::new(
-            "Unconfigure Nix daemon related settings with systemd".to_string(),
-            vec![
-                "Run `systemctl disable {SOCKET_SRC}`".to_string(),
-                "Run `systemctl disable {SERVICE_SRC}`".to_string(),
-                "Run `systemd-tempfiles --remove --prefix=/nix/var/nix`".to_string(),
-                "Run `systemctl daemon-reload`".to_string(),
-            ],
-        )]
+        match self.init {
+            InitSystem::Systemd => {
+                vec![ActionDescription::new(
+                    "Unconfigure Nix daemon related settings with systemd".to_string(),
+                    vec![
+                        "Run `systemctl disable {SOCKET_SRC}`".to_string(),
+                        "Run `systemctl disable {SERVICE_SRC}`".to_string(),
+                        "Run `systemd-tempfiles --remove --prefix=/nix/var/nix`".to_string(),
+                        "Run `systemctl daemon-reload`".to_string(),
+                    ],
+                )]
+            },
+            InitSystem::Launchd => {
+                vec![ActionDescription::new(
+                    "Unconfigure Nix daemon related settings with launchctl".to_string(),
+                    vec!["Run `launchctl unload {DARWIN_NIX_DAEMON_DEST}`".to_string()],
+                )]
+            },
+            InitSystem::None => Vec::new(),
+        }
     }
 
     #[tracing::instrument(level = "debug", skip_all)]
     async fn revert(&mut self) -> Result<(), ActionError> {
-        match OperatingSystem::host() {
-            OperatingSystem::MacOSX {
-                major: _,
-                minor: _,
-                patch: _,
-            }
-            | OperatingSystem::Darwin => {
+        match self.init {
+            InitSystem::Launchd => {
                 execute_command(
                     Command::new("launchctl")
                         .process_group(0)
@@ -196,7 +208,7 @@ impl Action for ConfigureNixDaemonService {
                 .await
                 .map_err(ActionError::Command)?;
             },
-            _ => {
+            InitSystem::Systemd => {
                 // We separate stop and disable (instead of using `--now`) to avoid cases where the service isn't started, but is enabled.
 
                 let socket_is_active = is_active("nix-daemon.socket").await?;
@@ -270,6 +282,9 @@ impl Action for ConfigureNixDaemonService {
                 )
                 .await
                 .map_err(ActionError::Command)?;
+            },
+            InitSystem::None => {
+                // Nothing here, no init
             },
         };
 

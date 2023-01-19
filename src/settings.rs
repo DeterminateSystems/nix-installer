@@ -1,12 +1,12 @@
 /*! Configurable knobs and their related errors
 */
-use std::collections::HashMap;
+use std::{collections::HashMap, path::Path};
 
 #[cfg(feature = "cli")]
 use clap::ArgAction;
 use url::Url;
 
-use crate::channel_value::ChannelValue;
+use crate::{channel_value::ChannelValue, planner::PlannerError};
 
 /// Default [`nix_package_url`](CommonSettings::nix_package_url) for Linux x86_64
 pub const NIX_X64_64_LINUX_URL: &str =
@@ -20,6 +20,23 @@ pub const NIX_X64_64_DARWIN_URL: &str =
 /// Default [`nix_package_url`](CommonSettings::nix_package_url) for Darwin aarch64
 pub const NIX_AARCH64_DARWIN_URL: &str =
     "https://releases.nixos.org/nix/nix-2.12.0/nix-2.12.0-aarch64-darwin.tar.xz";
+
+#[derive(Clone, Copy, serde::Serialize, serde::Deserialize, Debug, clap::ValueEnum)]
+pub enum InitSystem {
+    None,
+    Systemd,
+    Launchd,
+}
+
+impl std::fmt::Display for InitSystem {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            InitSystem::None => write!(f, "none"),
+            InitSystem::Systemd => write!(f, "systemd"),
+            InitSystem::Launchd => write!(f, "launchd"),
+        }
+    }
+}
 
 /** Common settings used by all [`BuiltinPlanner`](crate::planner::BuiltinPlanner)s
 
@@ -43,6 +60,17 @@ pub struct CommonSettings {
         )
     )]
     pub(crate) channels: Vec<ChannelValue>,
+
+    #[cfg_attr(feature = "cli", clap(value_parser, long, env = "NIX_INSTALLER_INIT",))]
+    #[cfg_attr(
+        all(target_os = "macos", feature = "cli"),
+        clap(default_value_t = InitSystem::Launchd)
+    )]
+    #[cfg_attr(
+        all(target_os = "linux", feature = "cli"),
+        clap(default_value_t = InitSystem::Systemd)
+    )]
+    pub(crate) init: InitSystem,
 
     /// Modify the user profile to automatically load nix
     #[cfg_attr(
@@ -177,6 +205,7 @@ impl CommonSettings {
         let url;
         let nix_build_user_prefix;
         let nix_build_user_id_base;
+        let init;
 
         use target_lexicon::{Architecture, OperatingSystem};
         match (Architecture::host(), OperatingSystem::host()) {
@@ -184,23 +213,27 @@ impl CommonSettings {
                 url = NIX_X64_64_LINUX_URL;
                 nix_build_user_prefix = "nixbld";
                 nix_build_user_id_base = 3000;
+                init = linux_detect_init()?;
             },
             (Architecture::Aarch64(_), OperatingSystem::Linux) => {
                 url = NIX_AARCH64_LINUX_URL;
                 nix_build_user_prefix = "nixbld";
                 nix_build_user_id_base = 3000;
+                init = linux_detect_init()?;
             },
             (Architecture::X86_64, OperatingSystem::MacOSX { .. })
             | (Architecture::X86_64, OperatingSystem::Darwin) => {
                 url = NIX_X64_64_DARWIN_URL;
                 nix_build_user_prefix = "_nixbld";
                 nix_build_user_id_base = 300;
+                init = InitSystem::Launchd;
             },
             (Architecture::Aarch64(_), OperatingSystem::MacOSX { .. })
             | (Architecture::Aarch64(_), OperatingSystem::Darwin) => {
                 url = NIX_AARCH64_DARWIN_URL;
                 nix_build_user_prefix = "_nixbld";
                 nix_build_user_id_base = 300;
+                init = InitSystem::Launchd;
             },
             _ => {
                 return Err(InstallSettingsError::UnsupportedArchitecture(
@@ -216,6 +249,7 @@ impl CommonSettings {
                 reqwest::Url::parse("https://nixos.org/channels/nixpkgs-unstable")
                     .expect("Embedded default URL was not a URL, please report this"),
             )],
+            init,
             modify_profile: true,
             nix_build_group_name: String::from("nixbld"),
             nix_build_group_id: 3000,
@@ -238,6 +272,7 @@ impl CommonSettings {
             nix_build_user_prefix,
             nix_build_user_id_base,
             nix_package_url,
+            init,
             extra_conf,
             force,
         } = self;
@@ -252,6 +287,7 @@ impl CommonSettings {
                     .collect::<Vec<_>>(),
             )?,
         );
+        map.insert("init".into(), serde_json::to_value(init)?);
         map.insert(
             "modify_profile".into(),
             serde_json::to_value(modify_profile)?,
@@ -284,6 +320,20 @@ impl CommonSettings {
         map.insert("force".into(), serde_json::to_value(force)?);
 
         Ok(map)
+    }
+}
+
+fn linux_detect_init() -> Result<InitSystem, InstallSettingsError> {
+    let mut detected = None;
+    if !Path::new("/run/systemd/system").exists() {
+        detected = Some(InitSystem::Systemd)
+    }
+    // TODO: Other inits
+
+    if let Some(detected) = detected {
+        return Ok(detected);
+    } else {
+        return Err(InstallSettingsError::InitNotSupported);
     }
 }
 
@@ -369,4 +419,6 @@ pub enum InstallSettingsError {
         #[from]
         serde_json::Error,
     ),
+    #[error("No supported init system found")]
+    InitNotSupported,
 }

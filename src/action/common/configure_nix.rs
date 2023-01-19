@@ -2,7 +2,7 @@ use crate::{
     action::{
         base::SetupDefaultProfile,
         common::{
-            ConfigureNixDaemonService, ConfigureShellProfile, PlaceChannelConfiguration,
+            ConfigureInitService, ConfigureShellProfile, PlaceChannelConfiguration,
             PlaceNixConfiguration,
         },
         Action, ActionDescription, ActionError, StatefulAction,
@@ -23,20 +23,13 @@ pub struct ConfigureNix {
     configure_shell_profile: Option<StatefulAction<ConfigureShellProfile>>,
     place_channel_configuration: StatefulAction<PlaceChannelConfiguration>,
     place_nix_configuration: StatefulAction<PlaceNixConfiguration>,
-    configure_nix_daemon_service: StatefulAction<ConfigureNixDaemonService>,
+    configure_nix_daemon_service: StatefulAction<ConfigureInitService>,
 }
 
 impl ConfigureNix {
     #[tracing::instrument(level = "debug", skip_all)]
     pub async fn plan(settings: &CommonSettings) -> Result<StatefulAction<Self>, ActionError> {
-        let channels: Vec<(String, Url)> = settings
-            .channels
-            .iter()
-            .map(|ChannelValue(channel, url)| (channel.to_string(), url.clone()))
-            .collect();
-
-        let setup_default_profile =
-            SetupDefaultProfile::plan(channels.iter().map(|(v, _k)| v.clone()).collect()).await?;
+        let setup_default_profile = SetupDefaultProfile::plan(settings.channels.clone()).await?;
 
         let configure_shell_profile = if settings.modify_profile {
             Some(ConfigureShellProfile::plan().await?)
@@ -44,14 +37,14 @@ impl ConfigureNix {
             None
         };
         let place_channel_configuration =
-            PlaceChannelConfiguration::plan(channels, settings.force).await?;
+            PlaceChannelConfiguration::plan(settings.channels.clone(), settings.force).await?;
         let place_nix_configuration = PlaceNixConfiguration::plan(
             settings.nix_build_group_name.clone(),
             settings.extra_conf.clone(),
             settings.force,
         )
         .await?;
-        let configure_nix_daemon_service = ConfigureNixDaemonService::plan().await?;
+        let configure_nix_daemon_service = ConfigureInitService::plan(settings.init).await?;
 
         Ok(Self {
             place_channel_configuration,
