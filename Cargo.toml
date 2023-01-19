@@ -1,7 +1,7 @@
 [package]
 name = "nix-installer"
 description = "A `nix` installer"
-version = "0.0.2-unreleased"
+version = "0.0.2"
 edition = "2021"
 resolver = "2"
 license = "LGPL-2.1"
