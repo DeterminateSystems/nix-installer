@@ -19,9 +19,6 @@ jobs:
         with:
           buildkite_token: ${{ secrets.BUILDKITE_TOKEN }}
           output_path: artifacts
-      - name: Fixup URL in nix-installer.sh
-        run: |
-          sed -i "s@https://install.determinate.systems/nix@https://install.determinate.systems/nix/tag/$GITHUB_REF_NAME@" nix-installer.sh
       - name: Configure AWS Credentials
         uses: aws-actions/configure-aws-credentials@v1
         with:
@@ -31,7 +28,7 @@ jobs:
         env:
           AWS_BUCKET: ${{ secrets.AWS_S3_UPLOAD_BUCKET }}
         run: |
-          ./upload_s3.sh "$GITHUB_REF_NAME" "$GITHUB_SHA"
+          ./upload_s3.sh "$GITHUB_REF_NAME" "$GITHUB_SHA" "https://install.determinate.systems/nix/tag/$GITHUB_REF_NAME"
       - name: Publish Release to GitHub (Tag)
         uses: softprops/action-gh-release@v1
         with:
