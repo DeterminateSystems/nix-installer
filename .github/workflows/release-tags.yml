@@ -10,6 +10,7 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: write # In order to upload artifacts to GitHub releases
+      id-token: write # In order to request a JWT for AWS auth
     steps:
       - name: Checkout
         uses: actions/checkout@v3
