@@ -31,7 +31,7 @@ pub struct MyPlanner {
 impl Planner for MyPlanner {
     async fn default() -> Result<Self, PlannerError> {
         Ok(Self {
-            common: CommonSettings::default()?,
+            common: CommonSettings::default().await?,
         })
     }
 
