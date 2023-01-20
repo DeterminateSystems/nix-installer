@@ -24,12 +24,16 @@ Configure the init to run the Nix daemon
 #[derive(Debug, serde::Deserialize, serde::Serialize, Clone)]
 pub struct ConfigureInitService {
     init: InitSystem,
+    start_daemon: bool,
 }
 
 impl ConfigureInitService {
     #[tracing::instrument(level = "debug", skip_all)]
-    pub async fn plan(init: InitSystem) -> Result<StatefulAction<Self>, ActionError> {
-        Ok(Self { init }.into())
+    pub async fn plan(
+        init: InitSystem,
+        start_daemon: bool,
+    ) -> Result<StatefulAction<Self>, ActionError> {
+        Ok(Self { init, start_daemon }.into())
     }
 }
 
@@ -51,34 +55,35 @@ impl Action for ConfigureInitService {
     }
 
     fn execute_description(&self) -> Vec<ActionDescription> {
+        let mut vec = Vec::new();
         match self.init {
             InitSystem::Systemd => {
-                vec![ActionDescription::new(
-                    self.tracing_synopsis(),
-                    vec![
-                        "Run `systemd-tempfiles --create --prefix=/nix/var/nix`".to_string(),
-                        format!("Run `systemctl link {SERVICE_SRC}`"),
-                        format!("Run `systemctl link {SOCKET_SRC}`"),
-                        "Run `systemctl daemon-reload`".to_string(),
-                    ],
-                )]
+                let mut explanation = vec![
+                    "Run `systemd-tempfiles --create --prefix=/nix/var/nix`".to_string(),
+                    format!("Run `systemctl link {SERVICE_SRC}`"),
+                    format!("Run `systemctl link {SOCKET_SRC}`"),
+                    "Run `systemctl daemon-reload`".to_string(),
+                ];
+                if self.start_daemon {
+                    explanation.push(format!("Run `systemctl enable --now {SOCKET_SRC}`"));
+                }
+                vec.push(ActionDescription::new(self.tracing_synopsis(), explanation))
             },
-            InitSystem::Launchd => {
-                vec![ActionDescription::new(
-                    self.tracing_synopsis(),
-                    vec![
-                        format!("Copy `{DARWIN_NIX_DAEMON_SOURCE}` to `DARWIN_NIX_DAEMON_DEST`"),
-                        format!("Run `launchctl load {DARWIN_NIX_DAEMON_DEST}`"),
-                    ],
-                )]
-            },
-            InitSystem::None => Vec::new(),
+            InitSystem::Launchd => vec.push(ActionDescription::new(
+                self.tracing_synopsis(),
+                vec![
+                    format!("Copy `{DARWIN_NIX_DAEMON_SOURCE}` to `DARWIN_NIX_DAEMON_DEST`"),
+                    format!("Run `launchctl load {DARWIN_NIX_DAEMON_DEST}`"),
+                ],
+            )),
+            InitSystem::None => (),
         }
+        vec
     }
 
     #[tracing::instrument(level = "debug", skip_all)]
     async fn execute(&mut self) -> Result<(), ActionError> {
-        let Self { init } = self;
+        let Self { init, start_daemon } = self;
 
         match init {
             InitSystem::Launchd => {
@@ -145,24 +150,26 @@ impl Action for ConfigureInitService {
                 .await
                 .map_err(ActionError::Command)?;
 
-                execute_command(
-                    Command::new("systemctl")
-                        .process_group(0)
-                        .arg("daemon-reload")
-                        .stdin(std::process::Stdio::null()),
-                )
-                .await
-                .map_err(ActionError::Command)?;
+                if self.start_daemon {
+                    execute_command(
+                        Command::new("systemctl")
+                            .process_group(0)
+                            .arg("daemon-reload")
+                            .stdin(std::process::Stdio::null()),
+                    )
+                    .await
+                    .map_err(ActionError::Command)?;
 
-                execute_command(
-                    Command::new("systemctl")
-                        .process_group(0)
-                        .arg("enable")
-                        .arg("--now")
-                        .arg(SOCKET_SRC),
-                )
-                .await
-                .map_err(ActionError::Command)?;
+                    execute_command(
+                        Command::new("systemctl")
+                            .process_group(0)
+                            .arg("enable")
+                            .arg("--now")
+                            .arg(SOCKET_SRC),
+                    )
+                    .await
+                    .map_err(ActionError::Command)?;
+                }
             },
             InitSystem::None => {
                 // Nothing here, no init system

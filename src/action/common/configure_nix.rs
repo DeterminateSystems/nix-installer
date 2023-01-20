@@ -44,7 +44,8 @@ impl ConfigureNix {
             settings.force,
         )
         .await?;
-        let configure_nix_daemon_service = ConfigureInitService::plan(settings.init).await?;
+        let configure_nix_daemon_service =
+            ConfigureInitService::plan(settings.init, settings.start_daemon).await?;
 
         Ok(Self {
             place_channel_configuration,

@@ -61,6 +61,7 @@ pub struct CommonSettings {
     )]
     pub(crate) channels: Vec<ChannelValue>,
 
+    /// Which init system to configure
     #[cfg_attr(feature = "cli", clap(value_parser, long, env = "NIX_INSTALLER_INIT",))]
     #[cfg_attr(
         all(target_os = "macos", feature = "cli"),
@@ -72,6 +73,20 @@ pub struct CommonSettings {
     )]
     pub(crate) init: InitSystem,
 
+    /// Start the daemon (if not `--init none`)
+    #[cfg_attr(
+        feature = "cli",
+        clap(
+            value_parser,
+            long,
+            action(ArgAction::SetFalse),
+            env = "NIX_INSTALLER_NO_START_DAEMON",
+            default_value_t = true,
+            long = "no-start-daemon"
+        )
+    )]
+    pub(crate) start_daemon: bool,
+
     /// Modify the user profile to automatically load nix
     #[cfg_attr(
         feature = "cli",
@@ -81,7 +96,7 @@ pub struct CommonSettings {
             default_value = "true",
             global = true,
             env = "NIX_INSTALLER_NO_MODIFY_PROFILE",
-            name = "no-modify-profile"
+            long = "no-modify-profile"
         )
     )]
     pub(crate) modify_profile: bool,
@@ -250,6 +265,7 @@ impl CommonSettings {
                     .expect("Embedded default URL was not a URL, please report this"),
             )],
             init,
+            start_daemon: true,
             modify_profile: true,
             nix_build_group_name: String::from("nixbld"),
             nix_build_group_id: 3000,
@@ -273,6 +289,7 @@ impl CommonSettings {
             nix_build_user_id_base,
             nix_package_url,
             init,
+            start_daemon,
             extra_conf,
             force,
         } = self;
@@ -288,6 +305,7 @@ impl CommonSettings {
             )?,
         );
         map.insert("init".into(), serde_json::to_value(init)?);
+        map.insert("start_daemon".into(), serde_json::to_value(start_daemon)?);
         map.insert(
             "modify_profile".into(),
             serde_json::to_value(modify_profile)?,
@@ -348,6 +366,18 @@ impl CommonSettings {
     /// Channel(s) to add
     pub fn channels(&mut self, channels: impl IntoIterator<Item = (String, Url)>) -> &mut Self {
         self.channels = channels.into_iter().map(Into::into).collect();
+        self
+    }
+
+    /// Which init system to configure
+    pub fn init(&mut self, init: InitSystem) -> &mut Self {
+        self.init = init;
+        self
+    }
+
+    /// Start the daemon (if `init` is not [`InitSystem::None`])
+    pub fn start_daemon(&mut self, toggle: bool) -> &mut Self {
+        self.start_daemon = toggle;
         self
     }
 
