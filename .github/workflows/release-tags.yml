@@ -37,3 +37,10 @@ jobs:
           files: |
             artifacts/**
             nix-installer.sh
+      - name: Install Instructions (Tag)
+        run: |
+          cat <<EOF
+          This tag can be installed by running the following command:
+
+          curl --proto '=https' --tlsv1.2 -sSf -L https://install.determinate.systems/nix/tag/$GITHUB_REF_NAME | sh -s -- install
+          EOF
