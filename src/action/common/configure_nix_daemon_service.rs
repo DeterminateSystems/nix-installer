@@ -69,13 +69,15 @@ impl Action for ConfigureInitService {
                 }
                 vec.push(ActionDescription::new(self.tracing_synopsis(), explanation))
             },
-            InitSystem::Launchd => vec.push(ActionDescription::new(
-                self.tracing_synopsis(),
-                vec![
-                    format!("Copy `{DARWIN_NIX_DAEMON_SOURCE}` to `DARWIN_NIX_DAEMON_DEST`"),
-                    format!("Run `launchctl load {DARWIN_NIX_DAEMON_DEST}`"),
-                ],
-            )),
+            InitSystem::Launchd => {
+                let mut explanation = vec![format!(
+                    "Copy `{DARWIN_NIX_DAEMON_SOURCE}` to `DARWIN_NIX_DAEMON_DEST`"
+                )];
+                if self.start_daemon {
+                    explanation.push(format!("Run `launchctl load {DARWIN_NIX_DAEMON_DEST}`"));
+                }
+                vec.push(ActionDescription::new(self.tracing_synopsis(), explanation))
+            },
             InitSystem::None => (),
         }
         vec
@@ -98,15 +100,17 @@ impl Action for ConfigureInitService {
                         )
                     })?;
 
-                execute_command(
-                    Command::new("launchctl")
-                        .process_group(0)
-                        .arg("load")
-                        .arg(DARWIN_NIX_DAEMON_DEST)
-                        .stdin(std::process::Stdio::null()),
-                )
-                .await
-                .map_err(ActionError::Command)?;
+                if *start_daemon {
+                    execute_command(
+                        Command::new("launchctl")
+                            .process_group(0)
+                            .arg("load")
+                            .arg(DARWIN_NIX_DAEMON_DEST)
+                            .stdin(std::process::Stdio::null()),
+                    )
+                    .await
+                    .map_err(ActionError::Command)?;
+                }
             },
             InitSystem::Systemd => {
                 tracing::trace!(src = TMPFILES_SRC, dest = TMPFILES_DEST, "Symlinking");
