@@ -343,7 +343,7 @@ impl CommonSettings {
 
 fn linux_detect_init() -> Result<InitSystem, InstallSettingsError> {
     let mut detected = None;
-    if !Path::new("/run/systemd/system").exists() {
+    if Path::new("/run/systemd/system").exists() {
         detected = Some(InitSystem::Systemd)
     }
     // TODO: Other inits
