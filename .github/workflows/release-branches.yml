@@ -32,3 +32,14 @@ jobs:
           BRANCH="branch_${{ github.ref_name }}"
           GIT_ISH="$GITHUB_SHA"
           ./upload_s3.sh "$BRANCH" "$GIT_ISH" "https://install.determinate.systems/nix/rev/$GIT_ISH"
+      - name: Install Instructions (Branch)
+        run: |
+          cat <<EOF
+          This commit can be installed by running the following command:
+
+          curl --proto '=https' --tlsv1.2 -sSf -L https://install.determinate.systems/nix/rev/$GITHUB_SHA | sh -s -- install
+
+          The latest commit from this branch can be installed by running the following command:
+
+          curl --proto '=https' --tlsv1.2 -sSf -L https://install.determinate.systems/nix/branch/${{ github.ref_name }} | sh -s -- install
+          EOF
