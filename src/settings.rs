@@ -10,16 +10,16 @@ use crate::{channel_value::ChannelValue, planner::PlannerError};
 
 /// Default [`nix_package_url`](CommonSettings::nix_package_url) for Linux x86_64
 pub const NIX_X64_64_LINUX_URL: &str =
-    "https://releases.nixos.org/nix/nix-2.12.0/nix-2.12.0-x86_64-linux.tar.xz";
+    "https://releases.nixos.org/nix/nix-2.13.0/nix-2.13.0-x86_64-linux.tar.xz";
 /// Default [`nix_package_url`](CommonSettings::nix_package_url) for Linux aarch64
 pub const NIX_AARCH64_LINUX_URL: &str =
-    "https://releases.nixos.org/nix/nix-2.12.0/nix-2.12.0-aarch64-linux.tar.xz";
+    "https://releases.nixos.org/nix/nix-2.13.0/nix-2.13.0-aarch64-linux.tar.xz";
 /// Default [`nix_package_url`](CommonSettings::nix_package_url) for Darwin x86_64
 pub const NIX_X64_64_DARWIN_URL: &str =
-    "https://releases.nixos.org/nix/nix-2.12.0/nix-2.12.0-x86_64-darwin.tar.xz";
+    "https://releases.nixos.org/nix/nix-2.13.0/nix-2.13.0-x86_64-darwin.tar.xz";
 /// Default [`nix_package_url`](CommonSettings::nix_package_url) for Darwin aarch64
 pub const NIX_AARCH64_DARWIN_URL: &str =
-    "https://releases.nixos.org/nix/nix-2.12.0/nix-2.12.0-aarch64-darwin.tar.xz";
+    "https://releases.nixos.org/nix/nix-2.13.0/nix-2.13.0-aarch64-darwin.tar.xz";
 
 #[derive(Clone, Copy, serde::Serialize, serde::Deserialize, Debug, clap::ValueEnum)]
 pub enum InitSystem {
@@ -86,19 +86,6 @@ pub struct CommonSettings {
     )]
     pub(crate) modify_profile: bool,
 
-    /// Number of build users to create
-    #[cfg_attr(
-        feature = "cli",
-        clap(
-            long,
-            default_value = "32",
-            alias = "daemon-user-count",
-            env = "NIX_INSTALLER_NIX_BUILD_USER_COUNT",
-            global = true
-        )
-    )]
-    pub(crate) nix_build_user_count: usize,
-
     /// The Nix build group name
     #[cfg_attr(
         feature = "cli",
@@ -122,33 +109,6 @@ pub struct CommonSettings {
         )
     )]
     pub(crate) nix_build_group_id: usize,
-
-    /// The Nix build user prefix (user numbers will be postfixed)
-    #[cfg_attr(
-        feature = "cli",
-        clap(long, env = "NIX_INSTALLER_NIX_BUILD_USER_PREFIX", global = true)
-    )]
-    #[cfg_attr(
-        all(target_os = "macos", feature = "cli"),
-        clap(default_value = "_nixbld")
-    )]
-    #[cfg_attr(
-        all(target_os = "linux", feature = "cli"),
-        clap(default_value = "nixbld")
-    )]
-    pub(crate) nix_build_user_prefix: String,
-
-    /// The Nix build user base UID (ascending)
-    #[cfg_attr(
-        feature = "cli",
-        clap(long, env = "NIX_INSTALLER_NIX_BUILD_USER_ID_BASE", global = true)
-    )]
-    #[cfg_attr(all(target_os = "macos", feature = "cli"), clap(default_value_t = 300))]
-    #[cfg_attr(
-        all(target_os = "linux", feature = "cli"),
-        clap(default_value_t = 3000)
-    )]
-    pub(crate) nix_build_user_id_base: usize,
 
     /// The Nix package URL
     #[cfg_attr(
@@ -203,36 +163,26 @@ impl CommonSettings {
     /// The default settings for the given Architecture & Operating System
     pub fn default() -> Result<Self, InstallSettingsError> {
         let url;
-        let nix_build_user_prefix;
-        let nix_build_user_id_base;
         let init;
 
         use target_lexicon::{Architecture, OperatingSystem};
         match (Architecture::host(), OperatingSystem::host()) {
             (Architecture::X86_64, OperatingSystem::Linux) => {
                 url = NIX_X64_64_LINUX_URL;
-                nix_build_user_prefix = "nixbld";
-                nix_build_user_id_base = 3000;
                 init = linux_detect_init()?;
             },
             (Architecture::Aarch64(_), OperatingSystem::Linux) => {
                 url = NIX_AARCH64_LINUX_URL;
-                nix_build_user_prefix = "nixbld";
-                nix_build_user_id_base = 3000;
                 init = linux_detect_init()?;
             },
             (Architecture::X86_64, OperatingSystem::MacOSX { .. })
             | (Architecture::X86_64, OperatingSystem::Darwin) => {
                 url = NIX_X64_64_DARWIN_URL;
-                nix_build_user_prefix = "_nixbld";
-                nix_build_user_id_base = 300;
                 init = InitSystem::Launchd;
             },
             (Architecture::Aarch64(_), OperatingSystem::MacOSX { .. })
             | (Architecture::Aarch64(_), OperatingSystem::Darwin) => {
                 url = NIX_AARCH64_DARWIN_URL;
-                nix_build_user_prefix = "_nixbld";
-                nix_build_user_id_base = 300;
                 init = InitSystem::Launchd;
             },
             _ => {
@@ -243,7 +193,6 @@ impl CommonSettings {
         };
 
         Ok(Self {
-            nix_build_user_count: 32,
             channels: vec![ChannelValue(
                 "nixpkgs".into(),
                 reqwest::Url::parse("https://nixos.org/channels/nixpkgs-unstable")
@@ -253,8 +202,6 @@ impl CommonSettings {
             modify_profile: true,
             nix_build_group_name: String::from("nixbld"),
             nix_build_group_id: 3000,
-            nix_build_user_prefix: nix_build_user_prefix.to_string(),
-            nix_build_user_id_base,
             nix_package_url: url.parse()?,
             extra_conf: Default::default(),
             force: false,
@@ -266,11 +213,8 @@ impl CommonSettings {
         let Self {
             channels,
             modify_profile,
-            nix_build_user_count,
             nix_build_group_name,
             nix_build_group_id,
-            nix_build_user_prefix,
-            nix_build_user_id_base,
             nix_package_url,
             init,
             extra_conf,
@@ -293,24 +237,12 @@ impl CommonSettings {
             serde_json::to_value(modify_profile)?,
         );
         map.insert(
-            "nix_build_user_count".into(),
-            serde_json::to_value(nix_build_user_count)?,
-        );
-        map.insert(
             "nix_build_group_name".into(),
             serde_json::to_value(nix_build_group_name)?,
         );
         map.insert(
             "nix_build_group_id".into(),
             serde_json::to_value(nix_build_group_id)?,
-        );
-        map.insert(
-            "nix_build_user_prefix".into(),
-            serde_json::to_value(nix_build_user_prefix)?,
-        );
-        map.insert(
-            "nix_build_user_id_base".into(),
-            serde_json::to_value(nix_build_user_id_base)?,
         );
         map.insert(
             "nix_package_url".into(),
@@ -339,12 +271,6 @@ fn linux_detect_init() -> Result<InitSystem, InstallSettingsError> {
 
 // Builder Pattern
 impl CommonSettings {
-    /// Number of build users to create
-    pub fn nix_build_user_count(&mut self, count: usize) -> &mut Self {
-        self.nix_build_user_count = count;
-        self
-    }
-
     /// Channel(s) to add
     pub fn channels(&mut self, channels: impl IntoIterator<Item = (String, Url)>) -> &mut Self {
         self.channels = channels.into_iter().map(Into::into).collect();
@@ -366,18 +292,6 @@ impl CommonSettings {
     /// The Nix build group GID
     pub fn nix_build_group_id(&mut self, count: usize) -> &mut Self {
         self.nix_build_group_id = count;
-        self
-    }
-
-    /// The Nix build user prefix (user numbers will be postfixed)
-    pub fn nix_build_user_prefix(&mut self, val: String) -> &mut Self {
-        self.nix_build_user_prefix = val;
-        self
-    }
-
-    /// The Nix build user base UID (ascending)
-    pub fn nix_build_user_id_base(&mut self, count: usize) -> &mut Self {
-        self.nix_build_user_id_base = count;
         self
     }
 

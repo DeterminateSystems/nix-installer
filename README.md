@@ -18,7 +18,6 @@ Current and planned support:
 
 * [x] Multi-user Linux (aarch64 and x86_64) with systemd init, no SELinux
 * [x] Multi-user MacOS (aarch64 and x86_64)
-    + Note: User deletion is currently unimplemented, you need to use a user with a secure token and `dscl . -delete /Users/_nixbuild*` where `*` is each user number.
 * [x] Valve Steam Deck
 * [ ] Multi-user Linux (aarch64 and x86_64) with systemd init & SELinux
 * [ ] Single-user Linux (aarch64 and x86_64)
@@ -28,8 +27,9 @@ Current and planned support:
 
 Differing from the current official [Nix](https://github.com/NixOS/nix) installer scripts:
 
-* Nix is installed with the `nix-command` and `flakes` features enabled in the `nix.conf`
+* Nix is installed with the `auto-uid-allocation`, `nix-command`, and `flakes` experimental features enabled in the `nix.conf`
 * `nix-installer` stores an installation receipt (for uninstalling) at `/nix/receipt.json` as well as a copy of the install binary at `/nix/nix-installer`
+* `auto-uid-alloction` is set to `true`
 
 ## Motivations
 
@@ -95,16 +95,16 @@ Usage: nix-installer install linux-multi [OPTIONS]
 
 Options:
 # ...
-      --nix-build-user-count <NIX_BUILD_USER_COUNT>
-          Number of build users to create
+      --nix-build-group-name <NIX_BUILD_GROUP_NAME>
+          The Nix build group name
           
-          [env: NIX_INSTALLER_NIX_BUILD_USER_COUNT=]
-          [default: 32]
+          [env: NIX_INSTALLER_NIX_BUILD_GROUP_NAME=]
+          [default: nixbld]
 
-      --nix-build-user-id-base <NIX_BUILD_USER_ID_BASE>
-          The Nix build user base UID (ascending)
+      --nix-build-group-id <NIX_BUILD_GROUP_ID>
+          The Nix build group GID
           
-          [env: NIX_INSTALLER_NIX_BUILD_USER_ID_BASE=]
+          [env: NIX_INSTALLER_NIX_BUILD_GROUP_ID=]
           [default: 3000]
 # ...
 ```
@@ -112,9 +112,9 @@ Options:
 Planners can be configured via environment variable or command arguments:
 
 ```bash
-$ curl --proto '=https' --tlsv1.2 -sSf -L https://install.determinate.systems/nix | NIX_BUILD_USER_COUNT=4 sh -s -- install linux-multi --nix-build-user-id-base 4000
+$ curl --proto '=https' --tlsv1.2 -sSf -L https://install.determinate.systems/nix | NIX_BUILD_GROUP_NAME=nixbuilder sh -s -- install linux-multi --nix-build-group-id 4000
 # Or...
-$ NIX_BUILD_USER_COUNT=4 ./nix-installer install linux-multi --nix-build-user-id-base 4000
+$ NIX_BUILD_GROUP_NAME=nixbuilder ./nix-installer install linux-multi --nix-build-group-id 4000
 ```
 
 
@@ -188,7 +188,7 @@ cargo add nix-installer
 
 > **Building a CLI?** Check out the `cli` feature flag for `clap` integration.
 
-You'll also need to edit your `.cargo/config.toml` to use `tokio_unstable`:
+You'll also need to edit your `.cargo/config.toml` to use `tokio_unstable` as we utilize [Tokio's process groups](https://docs.rs/tokio/1.24.1/tokio/process/struct.Command.html#method.process_group), which wrap stable `std` APIs, but are unstable due to it requiring an MSRV bump:
 
 ```toml
 # .cargo/config.toml
