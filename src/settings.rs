@@ -228,13 +228,13 @@ impl CommonSettings {
                 url = NIX_X64_64_LINUX_URL;
                 nix_build_user_prefix = "nixbld";
                 nix_build_user_id_base = 3000;
-                init = linux_detect_init()?;
+                init = linux_detect_init();
             },
             (Architecture::Aarch64(_), OperatingSystem::Linux) => {
                 url = NIX_AARCH64_LINUX_URL;
                 nix_build_user_prefix = "nixbld";
                 nix_build_user_id_base = 3000;
-                init = linux_detect_init()?;
+                init = linux_detect_init();
             },
             (Architecture::X86_64, OperatingSystem::MacOSX { .. })
             | (Architecture::X86_64, OperatingSystem::Darwin) => {
@@ -341,18 +341,13 @@ impl CommonSettings {
     }
 }
 
-fn linux_detect_init() -> Result<InitSystem, InstallSettingsError> {
-    let mut detected = None;
+fn linux_detect_init() -> InitSystem {
+    let mut detected = InitSystem::None;
     if Path::new("/run/systemd/system").exists() {
-        detected = Some(InitSystem::Systemd)
+        detected = InitSystem::Systemd
     }
     // TODO: Other inits
-
-    if let Some(detected) = detected {
-        return Ok(detected);
-    } else {
-        return Err(InstallSettingsError::InitNotSupported);
-    }
+    detected
 }
 
 // Builder Pattern
