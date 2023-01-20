@@ -15,7 +15,8 @@ const SOCKET_SRC: &str = "/nix/var/nix/profiles/default/lib/systemd/system/nix-d
 const TMPFILES_SRC: &str = "/nix/var/nix/profiles/default/lib/tmpfiles.d/nix-daemon.conf";
 const TMPFILES_DEST: &str = "/etc/tmpfiles.d/nix-daemon.conf";
 const DARWIN_NIX_DAEMON_DEST: &str = "/Library/LaunchDaemons/org.nixos.nix-daemon.plist";
-
+const DARWIN_NIX_DAEMON_SOURCE: &str =
+    "/nix/var/nix/profiles/default/Library/LaunchDaemons/org.nixos.nix-daemon.plist";
 /**
 Run systemd utilities to configure the Nix daemon
 */
@@ -57,15 +58,30 @@ impl Action for ConfigureNixDaemonService {
     }
 
     fn execute_description(&self) -> Vec<ActionDescription> {
-        vec![ActionDescription::new(
-            self.tracing_synopsis(),
-            vec![
-                "Run `systemd-tempfiles --create --prefix=/nix/var/nix`".to_string(),
-                format!("Run `systemctl link {SERVICE_SRC}`"),
-                format!("Run `systemctl link {SOCKET_SRC}`"),
-                "Run `systemctl daemon-reload`".to_string(),
-            ],
-        )]
+        match OperatingSystem::host() {
+            OperatingSystem::MacOSX {
+                major: _,
+                minor: _,
+                patch: _,
+            }
+            | OperatingSystem::Darwin => vec![ActionDescription::new(
+                self.tracing_synopsis(),
+                vec![
+                    format!("Copy `{DARWIN_NIX_DAEMON_SOURCE}` to `DARWIN_NIX_DAEMON_DEST`"),
+                    format!("Run `launchctl load {DARWIN_NIX_DAEMON_DEST}`"),
+                ],
+            )],
+            _ => vec![ActionDescription::new(
+                self.tracing_synopsis(),
+                vec![
+                    "Run `systemd-tempfiles --create --prefix=/nix/var/nix`".to_string(),
+                    format!("Run `systemctl link {SERVICE_SRC}`"),
+                    format!("Run `systemctl link {SOCKET_SRC}`"),
+                    "Run `systemctl daemon-reload`".to_string(),
+                    format!("Run `systemctl enable --now {SOCKET_SRC}`"),
+                ],
+            )],
+        }
     }
 
     #[tracing::instrument(level = "debug", skip_all)]
@@ -79,7 +95,7 @@ impl Action for ConfigureNixDaemonService {
                 patch: _,
             }
             | OperatingSystem::Darwin => {
-                let src = Path::new("/nix/var/nix/profiles/default/Library/LaunchDaemons/org.nixos.nix-daemon.plist");
+                let src = Path::new(DARWIN_NIX_DAEMON_SOURCE);
                 tokio::fs::copy(src.clone(), DARWIN_NIX_DAEMON_DEST)
                     .await
                     .map_err(|e| {
@@ -167,15 +183,26 @@ impl Action for ConfigureNixDaemonService {
     }
 
     fn revert_description(&self) -> Vec<ActionDescription> {
-        vec![ActionDescription::new(
-            "Unconfigure Nix daemon related settings with systemd".to_string(),
-            vec![
-                "Run `systemctl disable {SOCKET_SRC}`".to_string(),
-                "Run `systemctl disable {SERVICE_SRC}`".to_string(),
-                "Run `systemd-tempfiles --remove --prefix=/nix/var/nix`".to_string(),
-                "Run `systemctl daemon-reload`".to_string(),
-            ],
-        )]
+        match OperatingSystem::host() {
+            OperatingSystem::MacOSX {
+                major: _,
+                minor: _,
+                patch: _,
+            }
+            | OperatingSystem::Darwin => vec![ActionDescription::new(
+                "Unconfigure Nix daemon related settings with launchd".to_string(),
+                vec!["Run `launchctl unload {DARWIN_NIX_DAEMON_DEST}`".to_string()],
+            )],
+            _ => vec![ActionDescription::new(
+                "Unconfigure Nix daemon related settings with systemd".to_string(),
+                vec![
+                    "Run `systemctl disable {SOCKET_SRC}`".to_string(),
+                    "Run `systemctl disable {SERVICE_SRC}`".to_string(),
+                    "Run `systemd-tempfiles --remove --prefix=/nix/var/nix`".to_string(),
+                    "Run `systemctl daemon-reload`".to_string(),
+                ],
+            )],
+        }
     }
 
     #[tracing::instrument(level = "debug", skip_all)]
