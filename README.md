@@ -212,6 +212,8 @@ firefox result-doc/nix-installer/index.html
 
 In Docker/Podman containers or WSL instances where an init (like `systemd`) is not present, pass `--init none`.
 
+> When `--init none` is used, only `root` can run Nix.
+
 For Docker containers (without an init):
 
 ```docker
@@ -260,7 +262,9 @@ If [systemd is enabled](https://ubuntu.com/blog/ubuntu-wsl-enable-systemd) it's 
 curl --proto '=https' --tlsv1.2 -sSf -L https://install.determinate.systems/nix | sh -s -- install
 ```
 
-If systemd is not enabled, pass `--init none` at the end of the command.
+If systemd is not enabled, pass `--init none` at the end of the command:
+
+> When `--init none` is used, only `root` can run Nix.
 
 ```bash
 curl --proto '=https' --tlsv1.2 -sSf -L https://install.determinate.systems/nix | sh -s -- install --init none

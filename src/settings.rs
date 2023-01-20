@@ -1,9 +1,10 @@
 /*! Configurable knobs and their related errors
 */
-use std::{collections::HashMap, path::Path};
+use std::{collections::HashMap, path::Path, process::ExitStatus};
 
 #[cfg(feature = "cli")]
 use clap::ArgAction;
+use tokio::process::Command;
 use url::Url;
 
 use crate::{channel_value::ChannelValue, planner::PlannerError};
@@ -61,7 +62,7 @@ pub struct CommonSettings {
     )]
     pub(crate) channels: Vec<ChannelValue>,
 
-    /// Which init system to configure
+    /// Which init system to configure (if `--init none` Nix will be root-only)
     #[cfg_attr(feature = "cli", clap(value_parser, long, env = "NIX_INSTALLER_INIT",))]
     #[cfg_attr(
         all(target_os = "macos", feature = "cli"),
@@ -216,11 +217,12 @@ pub struct CommonSettings {
 
 impl CommonSettings {
     /// The default settings for the given Architecture & Operating System
-    pub fn default() -> Result<Self, InstallSettingsError> {
+    pub async fn default() -> Result<Self, InstallSettingsError> {
         let url;
         let nix_build_user_prefix;
         let nix_build_user_id_base;
         let init;
+        let start_daemon;
 
         use target_lexicon::{Architecture, OperatingSystem};
         match (Architecture::host(), OperatingSystem::host()) {
@@ -228,27 +230,27 @@ impl CommonSettings {
                 url = NIX_X64_64_LINUX_URL;
                 nix_build_user_prefix = "nixbld";
                 nix_build_user_id_base = 3000;
-                init = linux_detect_init();
+                (init, start_daemon) = linux_detect_init().await;
             },
             (Architecture::Aarch64(_), OperatingSystem::Linux) => {
                 url = NIX_AARCH64_LINUX_URL;
                 nix_build_user_prefix = "nixbld";
                 nix_build_user_id_base = 3000;
-                init = linux_detect_init();
+                (init, start_daemon) = linux_detect_init().await;
             },
             (Architecture::X86_64, OperatingSystem::MacOSX { .. })
             | (Architecture::X86_64, OperatingSystem::Darwin) => {
                 url = NIX_X64_64_DARWIN_URL;
                 nix_build_user_prefix = "_nixbld";
                 nix_build_user_id_base = 300;
-                init = InitSystem::Launchd;
+                (init, start_daemon) = (InitSystem::Launchd, true);
             },
             (Architecture::Aarch64(_), OperatingSystem::MacOSX { .. })
             | (Architecture::Aarch64(_), OperatingSystem::Darwin) => {
                 url = NIX_AARCH64_DARWIN_URL;
                 nix_build_user_prefix = "_nixbld";
                 nix_build_user_id_base = 300;
-                init = InitSystem::Launchd;
+                (init, start_daemon) = (InitSystem::Launchd, true);
             },
             _ => {
                 return Err(InstallSettingsError::UnsupportedArchitecture(
@@ -265,7 +267,7 @@ impl CommonSettings {
                     .expect("Embedded default URL was not a URL, please report this"),
             )],
             init,
-            start_daemon: true,
+            start_daemon,
             modify_profile: true,
             nix_build_group_name: String::from("nixbld"),
             nix_build_group_id: 3000,
@@ -341,13 +343,31 @@ impl CommonSettings {
     }
 }
 
-fn linux_detect_init() -> InitSystem {
+async fn linux_detect_init() -> (InitSystem, bool) {
     let mut detected = InitSystem::None;
+    let mut started = false;
     if Path::new("/run/systemd/system").exists() {
-        detected = InitSystem::Systemd
+        println!("WOW /run/systemd/system EXISTS");
+        detected = InitSystem::Systemd;
+        started = if Command::new("systemctl")
+            .arg("status")
+            .status()
+            .await
+            .ok()
+            .map(|exit| exit.success())
+            .unwrap_or(false)
+        {
+            println!("WOW systemd is started");
+            true
+        } else {
+            println!("WOW systemd is not started");
+            false
+        }
     }
+
+    println!("WOW INIT IS {detected}");
     // TODO: Other inits
-    detected
+    (detected, started)
 }
 
 // Builder Pattern

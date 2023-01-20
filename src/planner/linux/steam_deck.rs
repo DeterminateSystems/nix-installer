@@ -95,7 +95,7 @@ impl Planner for SteamDeck {
     async fn default() -> Result<Self, PlannerError> {
         Ok(Self {
             persistence: PathBuf::from("/home/nix"),
-            settings: CommonSettings::default()?,
+            settings: CommonSettings::default().await?,
         })
     }
 

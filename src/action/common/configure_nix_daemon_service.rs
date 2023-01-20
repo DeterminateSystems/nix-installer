@@ -150,7 +150,7 @@ impl Action for ConfigureInitService {
                 .await
                 .map_err(ActionError::Command)?;
 
-                if self.start_daemon {
+                if *start_daemon {
                     execute_command(
                         Command::new("systemctl")
                             .process_group(0)

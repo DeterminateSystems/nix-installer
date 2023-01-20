@@ -25,7 +25,7 @@ pub struct LinuxMulti {
 impl Planner for LinuxMulti {
     async fn default() -> Result<Self, PlannerError> {
         Ok(Self {
-            settings: CommonSettings::default()?,
+            settings: CommonSettings::default().await?,
         })
     }
 

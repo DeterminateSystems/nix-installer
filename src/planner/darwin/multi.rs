@@ -76,7 +76,7 @@ async fn default_root_disk() -> Result<String, PlannerError> {
 impl Planner for DarwinMulti {
     async fn default() -> Result<Self, PlannerError> {
         Ok(Self {
-            settings: CommonSettings::default()?,
+            settings: CommonSettings::default().await?,
             root_disk: Some(default_root_disk().await?),
             case_sensitive: false,
             encrypt: None,
