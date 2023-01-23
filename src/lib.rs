@@ -41,7 +41,10 @@ use std::error::Error;
 use nix_installer::{InstallPlan, planner::{Planner, linux::SteamDeck}};
 
 # async fn chosen_planner_install() -> color_eyre::Result<()> {
+#[cfg(target_os = "linux")]
 let planner = SteamDeck::default().await?;
+#[cfg(target_os = "macos")]
+let planner = DarwinMulti::default().await?;
 
 // Or call `crate::planner::BuiltinPlanner::default()`
 // Match on the result to customize.
