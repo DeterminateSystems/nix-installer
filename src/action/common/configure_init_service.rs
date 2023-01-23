@@ -196,8 +196,8 @@ impl Action for ConfigureInitService {
 
     fn revert_description(&self) -> Vec<ActionDescription> {
         match self.init {
+            #[cfg(target_os = "linux")]
             InitSystem::Systemd => {
-                #[cfg(target_os = "linux")]
                 vec![ActionDescription::new(
                     "Unconfigure Nix daemon related settings with systemd".to_string(),
                     vec![
