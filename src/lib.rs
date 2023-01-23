@@ -34,7 +34,7 @@ match plan.install(None).await {
 # }
 ```
 
-Sometimes choosing a specific plan is desired:
+Sometimes choosing a specific planner is desired:
 
 ```rust,no_run
 use std::error::Error;
