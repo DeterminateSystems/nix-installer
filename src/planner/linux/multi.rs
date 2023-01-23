@@ -1,12 +1,12 @@
 use crate::{
     action::{
         base::CreateDirectory,
-        common::{ConfigureNix, ProvisionNix},
+        common::{ConfigureInitService, ConfigureNix, ProvisionNix},
         StatefulAction,
     },
     planner::{Planner, PlannerError},
     settings::CommonSettings,
-    settings::InstallSettingsError,
+    settings::{InitSettings, InstallSettingsError},
     Action, BuiltinPlanner,
 };
 use std::{collections::HashMap, path::Path};
@@ -18,6 +18,8 @@ use tokio::process::Command;
 pub struct LinuxMulti {
     #[cfg_attr(feature = "cli", clap(flatten))]
     pub settings: CommonSettings,
+    #[cfg_attr(feature = "cli", clap(flatten))]
+    pub init: InitSettings,
 }
 
 #[async_trait::async_trait]
@@ -26,6 +28,7 @@ impl Planner for LinuxMulti {
     async fn default() -> Result<Self, PlannerError> {
         Ok(Self {
             settings: CommonSettings::default().await?,
+            init: InitSettings::default().await?,
         })
     }
 
@@ -77,14 +80,19 @@ impl Planner for LinuxMulti {
                 .await
                 .map_err(PlannerError::Action)?
                 .boxed(),
+            ConfigureInitService::plan(self.init.init, self.init.start_daemon)
+                .await
+                .map_err(PlannerError::Action)?
+                .boxed(),
         ])
     }
 
     fn settings(&self) -> Result<HashMap<String, serde_json::Value>, InstallSettingsError> {
-        let Self { settings } = self;
+        let Self { settings, init } = self;
         let mut map = HashMap::default();
 
         map.extend(settings.settings()?.into_iter());
+        map.extend(init.settings()?.into_iter());
 
         Ok(map)
     }

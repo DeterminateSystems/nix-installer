@@ -1,6 +1,5 @@
-use std::path::{Path, PathBuf};
+use std::path::PathBuf;
 
-use target_lexicon::OperatingSystem;
 use tokio::fs::remove_file;
 use tokio::process::Command;
 use tracing::{span, Span};
@@ -11,11 +10,17 @@ use crate::execute_command;
 use crate::action::{Action, ActionDescription};
 use crate::settings::InitSystem;
 
+#[cfg(target_os = "linux")]
 const SERVICE_SRC: &str = "/nix/var/nix/profiles/default/lib/systemd/system/nix-daemon.service";
+#[cfg(target_os = "linux")]
 const SOCKET_SRC: &str = "/nix/var/nix/profiles/default/lib/systemd/system/nix-daemon.socket";
+#[cfg(target_os = "linux")]
 const TMPFILES_SRC: &str = "/nix/var/nix/profiles/default/lib/tmpfiles.d/nix-daemon.conf";
+#[cfg(target_os = "linux")]
 const TMPFILES_DEST: &str = "/etc/tmpfiles.d/nix-daemon.conf";
+#[cfg(target_os = "macos")]
 const DARWIN_NIX_DAEMON_DEST: &str = "/Library/LaunchDaemons/org.nixos.nix-daemon.plist";
+#[cfg(target_os = "macos")]
 const DARWIN_NIX_DAEMON_SOURCE: &str =
     "/nix/var/nix/profiles/default/Library/LaunchDaemons/org.nixos.nix-daemon.plist";
 /**
@@ -42,7 +47,9 @@ impl ConfigureInitService {
 impl Action for ConfigureInitService {
     fn tracing_synopsis(&self) -> String {
         match self.init {
+            #[cfg(target_os = "linux")]
             InitSystem::Systemd => "Configure Nix daemon related settings with systemd".to_string(),
+            #[cfg(target_os = "macos")]
             InitSystem::Launchd => {
                 "Configure Nix daemon related settings with launchctl".to_string()
             },
@@ -57,6 +64,7 @@ impl Action for ConfigureInitService {
     fn execute_description(&self) -> Vec<ActionDescription> {
         let mut vec = Vec::new();
         match self.init {
+            #[cfg(target_os = "linux")]
             InitSystem::Systemd => {
                 let mut explanation = vec![
                     "Run `systemd-tempfiles --create --prefix=/nix/var/nix`".to_string(),
@@ -69,6 +77,7 @@ impl Action for ConfigureInitService {
                 }
                 vec.push(ActionDescription::new(self.tracing_synopsis(), explanation))
             },
+            #[cfg(target_os = "macos")]
             InitSystem::Launchd => {
                 let mut explanation = vec![format!(
                     "Copy `{DARWIN_NIX_DAEMON_SOURCE}` to `DARWIN_NIX_DAEMON_DEST`"
@@ -88,6 +97,7 @@ impl Action for ConfigureInitService {
         let Self { init, start_daemon } = self;
 
         match init {
+            #[cfg(target_os = "macos")]
             InitSystem::Launchd => {
                 let src = Path::new(DARWIN_NIX_DAEMON_SOURCE);
                 tokio::fs::copy(src.clone(), DARWIN_NIX_DAEMON_DEST)
@@ -112,6 +122,7 @@ impl Action for ConfigureInitService {
                     .map_err(ActionError::Command)?;
                 }
             },
+            #[cfg(target_os = "linux")]
             InitSystem::Systemd => {
                 tracing::trace!(src = TMPFILES_SRC, dest = TMPFILES_DEST, "Symlinking");
                 tokio::fs::symlink(TMPFILES_SRC, TMPFILES_DEST)
@@ -186,6 +197,7 @@ impl Action for ConfigureInitService {
     fn revert_description(&self) -> Vec<ActionDescription> {
         match self.init {
             InitSystem::Systemd => {
+                #[cfg(target_os = "linux")]
                 vec![ActionDescription::new(
                     "Unconfigure Nix daemon related settings with systemd".to_string(),
                     vec![
@@ -196,6 +208,7 @@ impl Action for ConfigureInitService {
                     ],
                 )]
             },
+            #[cfg(target_os = "macos")]
             InitSystem::Launchd => {
                 vec![ActionDescription::new(
                     "Unconfigure Nix daemon related settings with launchctl".to_string(),
@@ -209,6 +222,7 @@ impl Action for ConfigureInitService {
     #[tracing::instrument(level = "debug", skip_all)]
     async fn revert(&mut self) -> Result<(), ActionError> {
         match self.init {
+            #[cfg(target_os = "macos")]
             InitSystem::Launchd => {
                 execute_command(
                     Command::new("launchctl")
@@ -219,6 +233,7 @@ impl Action for ConfigureInitService {
                 .await
                 .map_err(ActionError::Command)?;
             },
+            #[cfg(target_os = "linux")]
             InitSystem::Systemd => {
                 // We separate stop and disable (instead of using `--now`) to avoid cases where the service isn't started, but is enabled.
 

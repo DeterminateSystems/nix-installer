@@ -25,7 +25,9 @@ pub const NIX_AARCH64_DARWIN_URL: &str =
 #[derive(Clone, Copy, serde::Serialize, serde::Deserialize, Debug, clap::ValueEnum)]
 pub enum InitSystem {
     None,
+    #[cfg(target_os = "linux")]
     Systemd,
+    #[cfg(target_os = "macos")]
     Launchd,
 }
 
@@ -33,7 +35,9 @@ impl std::fmt::Display for InitSystem {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             InitSystem::None => write!(f, "none"),
+            #[cfg(target_os = "linux")]
             InitSystem::Systemd => write!(f, "systemd"),
+            #[cfg(target_os = "macos")]
             InitSystem::Launchd => write!(f, "launchd"),
         }
     }
@@ -61,32 +65,6 @@ pub struct CommonSettings {
         )
     )]
     pub(crate) channels: Vec<ChannelValue>,
-
-    /// Which init system to configure (if `--init none` Nix will be root-only)
-    #[cfg_attr(feature = "cli", clap(value_parser, long, env = "NIX_INSTALLER_INIT",))]
-    #[cfg_attr(
-        all(target_os = "macos", feature = "cli"),
-        clap(default_value_t = InitSystem::Launchd)
-    )]
-    #[cfg_attr(
-        all(target_os = "linux", feature = "cli"),
-        clap(default_value_t = InitSystem::Systemd)
-    )]
-    pub(crate) init: InitSystem,
-
-    /// Start the daemon (if not `--init none`)
-    #[cfg_attr(
-        feature = "cli",
-        clap(
-            value_parser,
-            long,
-            action(ArgAction::SetFalse),
-            env = "NIX_INSTALLER_NO_START_DAEMON",
-            default_value_t = true,
-            long = "no-start-daemon"
-        )
-    )]
-    pub(crate) start_daemon: bool,
 
     /// Modify the user profile to automatically load nix
     #[cfg_attr(
@@ -221,36 +199,34 @@ impl CommonSettings {
         let url;
         let nix_build_user_prefix;
         let nix_build_user_id_base;
-        let init;
-        let start_daemon;
 
         use target_lexicon::{Architecture, OperatingSystem};
         match (Architecture::host(), OperatingSystem::host()) {
+            #[cfg(target_os = "linux")]
             (Architecture::X86_64, OperatingSystem::Linux) => {
                 url = NIX_X64_64_LINUX_URL;
                 nix_build_user_prefix = "nixbld";
                 nix_build_user_id_base = 3000;
-                (init, start_daemon) = linux_detect_init().await;
             },
+            #[cfg(target_os = "linux")]
             (Architecture::Aarch64(_), OperatingSystem::Linux) => {
                 url = NIX_AARCH64_LINUX_URL;
                 nix_build_user_prefix = "nixbld";
                 nix_build_user_id_base = 3000;
-                (init, start_daemon) = linux_detect_init().await;
             },
+            #[cfg(target_os = "macos")]
             (Architecture::X86_64, OperatingSystem::MacOSX { .. })
             | (Architecture::X86_64, OperatingSystem::Darwin) => {
                 url = NIX_X64_64_DARWIN_URL;
                 nix_build_user_prefix = "_nixbld";
                 nix_build_user_id_base = 300;
-                (init, start_daemon) = (InitSystem::Launchd, true);
             },
+            #[cfg(target_os = "macos")]
             (Architecture::Aarch64(_), OperatingSystem::MacOSX { .. })
             | (Architecture::Aarch64(_), OperatingSystem::Darwin) => {
                 url = NIX_AARCH64_DARWIN_URL;
                 nix_build_user_prefix = "_nixbld";
                 nix_build_user_id_base = 300;
-                (init, start_daemon) = (InitSystem::Launchd, true);
             },
             _ => {
                 return Err(InstallSettingsError::UnsupportedArchitecture(
@@ -266,8 +242,6 @@ impl CommonSettings {
                 reqwest::Url::parse("https://nixos.org/channels/nixpkgs-unstable")
                     .expect("Embedded default URL was not a URL, please report this"),
             )],
-            init,
-            start_daemon,
             modify_profile: true,
             nix_build_group_name: String::from("nixbld"),
             nix_build_group_id: 3000,
@@ -290,8 +264,6 @@ impl CommonSettings {
             nix_build_user_prefix,
             nix_build_user_id_base,
             nix_package_url,
-            init,
-            start_daemon,
             extra_conf,
             force,
         } = self;
@@ -306,8 +278,6 @@ impl CommonSettings {
                     .collect::<Vec<_>>(),
             )?,
         );
-        map.insert("init".into(), serde_json::to_value(init)?);
-        map.insert("start_daemon".into(), serde_json::to_value(start_daemon)?);
         map.insert(
             "modify_profile".into(),
             serde_json::to_value(modify_profile)?,
@@ -384,18 +354,6 @@ impl CommonSettings {
         self
     }
 
-    /// Which init system to configure
-    pub fn init(&mut self, init: InitSystem) -> &mut Self {
-        self.init = init;
-        self
-    }
-
-    /// Start the daemon (if `init` is not [`InitSystem::None`])
-    pub fn start_daemon(&mut self, toggle: bool) -> &mut Self {
-        self.start_daemon = toggle;
-        self
-    }
-
     /// Modify the user profile to automatically load nix
     pub fn modify_profile(&mut self, toggle: bool) -> &mut Self {
         self.modify_profile = toggle;
@@ -440,6 +398,96 @@ impl CommonSettings {
     /// If `nix-installer` should forcibly recreate files it finds existing
     pub fn force(&mut self, force: bool) -> &mut Self {
         self.force = force;
+        self
+    }
+}
+
+#[serde_with::serde_as]
+#[derive(Debug, serde::Deserialize, serde::Serialize, Clone)]
+#[cfg_attr(feature = "cli", derive(clap::Parser))]
+pub struct InitSettings {
+    /// Which init system to configure (if `--init none` Nix will be root-only)
+    #[cfg_attr(feature = "cli", clap(value_parser, long, env = "NIX_INSTALLER_INIT",))]
+    #[cfg_attr(
+        all(target_os = "macos", feature = "cli"),
+        clap(default_value_t = InitSystem::Launchd)
+    )]
+    #[cfg_attr(
+        all(target_os = "linux", feature = "cli"),
+        clap(default_value_t = InitSystem::Systemd)
+    )]
+    pub(crate) init: InitSystem,
+
+    /// Start the daemon (if not `--init none`)
+    #[cfg_attr(
+        feature = "cli",
+        clap(
+            value_parser,
+            long,
+            action(ArgAction::SetFalse),
+            env = "NIX_INSTALLER_NO_START_DAEMON",
+            default_value_t = true,
+            long = "no-start-daemon"
+        )
+    )]
+    pub(crate) start_daemon: bool,
+}
+
+impl InitSettings {
+    /// The default settings for the given Architecture & Operating System
+    pub async fn default() -> Result<Self, InstallSettingsError> {
+        let init;
+        let start_daemon;
+
+        use target_lexicon::{Architecture, OperatingSystem};
+        match (Architecture::host(), OperatingSystem::host()) {
+            #[cfg(target_os = "linux")]
+            (Architecture::X86_64, OperatingSystem::Linux) => {
+                (init, start_daemon) = linux_detect_init().await;
+            },
+            #[cfg(target_os = "linux")]
+            (Architecture::Aarch64(_), OperatingSystem::Linux) => {
+                (init, start_daemon) = linux_detect_init().await;
+            },
+            #[cfg(target_os = "macos")]
+            (Architecture::X86_64, OperatingSystem::MacOSX { .. })
+            | (Architecture::X86_64, OperatingSystem::Darwin) => {
+                (init, start_daemon) = (InitSystem::Launchd, true);
+            },
+            #[cfg(target_os = "macos")]
+            (Architecture::Aarch64(_), OperatingSystem::MacOSX { .. })
+            | (Architecture::Aarch64(_), OperatingSystem::Darwin) => {
+                (init, start_daemon) = (InitSystem::Launchd, true);
+            },
+            _ => {
+                return Err(InstallSettingsError::UnsupportedArchitecture(
+                    target_lexicon::HOST,
+                ))
+            },
+        };
+
+        Ok(Self { init, start_daemon })
+    }
+
+    /// A listing of the settings, suitable for [`Planner::settings`](crate::planner::Planner::settings)
+    pub fn settings(&self) -> Result<HashMap<String, serde_json::Value>, InstallSettingsError> {
+        let Self { init, start_daemon } = self;
+        let mut map = HashMap::default();
+
+        map.insert("init".into(), serde_json::to_value(init)?);
+        map.insert("start_daemon".into(), serde_json::to_value(start_daemon)?);
+        Ok(map)
+    }
+
+    /// Which init system to configure
+    pub fn init(&mut self, init: InitSystem) -> &mut Self {
+        self.init = init;
+        self
+    }
+
+    /// Start the daemon (if `init` is not [`InitSystem::None`])
+    pub fn start_daemon(&mut self, toggle: bool) -> &mut Self {
+        self.start_daemon = toggle;
         self
     }
 }

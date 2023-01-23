@@ -23,7 +23,6 @@ pub struct ConfigureNix {
     configure_shell_profile: Option<StatefulAction<ConfigureShellProfile>>,
     place_channel_configuration: StatefulAction<PlaceChannelConfiguration>,
     place_nix_configuration: StatefulAction<PlaceNixConfiguration>,
-    configure_nix_daemon_service: StatefulAction<ConfigureInitService>,
 }
 
 impl ConfigureNix {
@@ -44,14 +43,11 @@ impl ConfigureNix {
             settings.force,
         )
         .await?;
-        let configure_nix_daemon_service =
-            ConfigureInitService::plan(settings.init, settings.start_daemon).await?;
 
         Ok(Self {
             place_channel_configuration,
             place_nix_configuration,
             setup_default_profile,
-            configure_nix_daemon_service,
             configure_shell_profile,
         }
         .into())
@@ -72,14 +68,12 @@ impl Action for ConfigureNix {
     fn execute_description(&self) -> Vec<ActionDescription> {
         let Self {
             setup_default_profile,
-            configure_nix_daemon_service,
             place_nix_configuration,
             place_channel_configuration,
             configure_shell_profile,
         } = &self;
 
         let mut buf = setup_default_profile.describe_execute();
-        buf.append(&mut configure_nix_daemon_service.describe_execute());
         buf.append(&mut place_nix_configuration.describe_execute());
         buf.append(&mut place_channel_configuration.describe_execute());
         if let Some(configure_shell_profile) = configure_shell_profile {
@@ -92,7 +86,6 @@ impl Action for ConfigureNix {
     async fn execute(&mut self) -> Result<(), ActionError> {
         let Self {
             setup_default_profile,
-            configure_nix_daemon_service,
             place_nix_configuration,
             place_channel_configuration,
             configure_shell_profile,
@@ -162,7 +155,6 @@ impl Action for ConfigureNix {
                 },
             )?;
         };
-        configure_nix_daemon_service.try_execute().await?;
 
         Ok(())
     }
@@ -170,7 +162,6 @@ impl Action for ConfigureNix {
     fn revert_description(&self) -> Vec<ActionDescription> {
         let Self {
             setup_default_profile,
-            configure_nix_daemon_service,
             place_nix_configuration,
             place_channel_configuration,
             configure_shell_profile,
@@ -182,7 +173,6 @@ impl Action for ConfigureNix {
         }
         buf.append(&mut place_channel_configuration.describe_revert());
         buf.append(&mut place_nix_configuration.describe_revert());
-        buf.append(&mut configure_nix_daemon_service.describe_revert());
         buf.append(&mut setup_default_profile.describe_revert());
 
         buf
@@ -192,13 +182,11 @@ impl Action for ConfigureNix {
     async fn revert(&mut self) -> Result<(), ActionError> {
         let Self {
             setup_default_profile,
-            configure_nix_daemon_service,
             place_nix_configuration,
             place_channel_configuration,
             configure_shell_profile,
         } = self;
 
-        configure_nix_daemon_service.try_revert().await?;
         if let Some(configure_shell_profile) = configure_shell_profile {
             configure_shell_profile.try_revert().await?;
         }
