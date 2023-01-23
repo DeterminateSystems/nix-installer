@@ -2,7 +2,6 @@ use crate::action::base::CreateFile;
 use crate::action::ActionError;
 use crate::action::{Action, ActionDescription, StatefulAction};
 use crate::ChannelValue;
-use reqwest::Url;
 use tracing::{span, Span};
 
 /**

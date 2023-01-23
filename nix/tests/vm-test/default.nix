@@ -10,13 +10,13 @@ let
         RUST_BACKTRACE="full" ./nix-installer install --logger pretty --log-directive nix_installer=trace --channel --nix-package-url "file://$NIX_PATH" --no-confirm
       '';
       check = ''
-          set -ex
+        set -ex
 
-          nix-env --version
-          nix --extra-experimental-features nix-command store ping
+        nix-env --version
+        nix --extra-experimental-features nix-command store ping
 
-          out=$(nix-build --no-substitute -E 'derivation { name = "foo"; system = "x86_64-linux"; builder = "/bin/sh"; args = ["-c" "echo foobar > $out"]; }')
-          [[ $(cat $out) = foobar ]]
+        out=$(nix-build --no-substitute -E 'derivation { name = "foo"; system = "x86_64-linux"; builder = "/bin/sh"; args = ["-c" "echo foobar > $out"]; }')
+        [[ $(cat $out) = foobar ]]
       '';
     };
     install-no-start-daemon = {
@@ -25,24 +25,24 @@ let
         RUST_BACKTRACE="full" ./nix-installer install linux-multi --no-start-daemon --logger pretty --log-directive nix_installer=trace --channel --nix-package-url "file://$NIX_PATH" --no-confirm
       '';
       check = ''
-          set -ex
+        set -ex
 
-          if systemctl is-active nix-daemon.socket; then
-            echo "nix-daemon.socket was running, should not be"
-            exit 1
-          fi
-          if systemctl is-active nix-daemon.service; then
-            echo "nix-daemon.service was running, should not be"
-            exit 1
-          fi
+        if systemctl is-active nix-daemon.socket; then
+          echo "nix-daemon.socket was running, should not be"
+          exit 1
+        fi
+        if systemctl is-active nix-daemon.service; then
+          echo "nix-daemon.service was running, should not be"
+          exit 1
+        fi
 
-          sudo systemctl start nix-daemon.socket
+        sudo systemctl start nix-daemon.socket
 
-          nix-env --version
-          nix --extra-experimental-features nix-command store ping
+        nix-env --version
+        nix --extra-experimental-features nix-command store ping
 
-          out=$(nix-build --no-substitute -E 'derivation { name = "foo"; system = "x86_64-linux"; builder = "/bin/sh"; args = ["-c" "echo foobar > $out"]; }')
-          [[ $(cat $out) = foobar ]]
+        out=$(nix-build --no-substitute -E 'derivation { name = "foo"; system = "x86_64-linux"; builder = "/bin/sh"; args = ["-c" "echo foobar > $out"]; }')
+        [[ $(cat $out) = foobar ]]
       '';
     };
     install-daemonless = {
@@ -51,14 +51,14 @@ let
         RUST_BACKTRACE="full" ./nix-installer install linux-multi --init none --logger pretty --log-directive nix_installer=trace --channel --nix-package-url "file://$NIX_PATH" --no-confirm
       '';
       check = ''
-          set -ex
+        set -ex
 
-          sudo -i nix-env --version
-          sudo -i nix --extra-experimental-features nix-command store ping
+        sudo -i nix-env --version
+        sudo -i nix --extra-experimental-features nix-command store ping
 
-          echo 'derivation { name = "foo"; system = "x86_64-linux"; builder = "/bin/sh"; args = ["-c" "echo foobar > $out"]; }' | sudo tee -a /drv
-          out=$(sudo -i nix-build --no-substitute /drv)
-          [[ $(cat $out) = foobar ]]
+        echo 'derivation { name = "foo"; system = "x86_64-linux"; builder = "/bin/sh"; args = ["-c" "echo foobar > $out"]; }' | sudo tee -a /drv
+        out=$(sudo -i nix-build --no-substitute /drv)
+        [[ $(cat $out) = foobar ]]
       '';
     };
   };

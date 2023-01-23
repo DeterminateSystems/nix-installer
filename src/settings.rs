@@ -1,13 +1,13 @@
 /*! Configurable knobs and their related errors
 */
-use std::{collections::HashMap, path::Path, process::ExitStatus};
+use std::{collections::HashMap, path::Path};
 
 #[cfg(feature = "cli")]
 use clap::ArgAction;
 use tokio::process::Command;
 use url::Url;
 
-use crate::{channel_value::ChannelValue, planner::PlannerError};
+use crate::channel_value::ChannelValue;
 
 /// Default [`nix_package_url`](CommonSettings::nix_package_url) for Linux x86_64
 pub const NIX_X64_64_LINUX_URL: &str =
@@ -22,7 +22,8 @@ pub const NIX_X64_64_DARWIN_URL: &str =
 pub const NIX_AARCH64_DARWIN_URL: &str =
     "https://releases.nixos.org/nix/nix-2.12.0/nix-2.12.0-aarch64-darwin.tar.xz";
 
-#[derive(Clone, Copy, serde::Serialize, serde::Deserialize, Debug, clap::ValueEnum)]
+#[derive(Debug, serde::Deserialize, serde::Serialize, Clone, Copy)]
+#[cfg_attr(feature = "cli", derive(clap::ValueEnum))]
 pub enum InitSystem {
     None,
     #[cfg(target_os = "linux")]
@@ -311,7 +312,7 @@ impl CommonSettings {
         Ok(map)
     }
 }
-
+#[cfg(target_os = "linux")]
 async fn linux_detect_init() -> (InitSystem, bool) {
     let mut detected = InitSystem::None;
     let mut started = false;

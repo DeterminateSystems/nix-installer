@@ -1,17 +1,12 @@
 use crate::{
     action::{
         base::SetupDefaultProfile,
-        common::{
-            ConfigureInitService, ConfigureShellProfile, PlaceChannelConfiguration,
-            PlaceNixConfiguration,
-        },
+        common::{ConfigureShellProfile, PlaceChannelConfiguration, PlaceNixConfiguration},
         Action, ActionDescription, ActionError, StatefulAction,
     },
-    channel_value::ChannelValue,
     settings::CommonSettings,
 };
 
-use reqwest::Url;
 use tracing::{span, Instrument, Span};
 
 /**
