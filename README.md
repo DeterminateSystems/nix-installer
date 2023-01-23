@@ -16,11 +16,12 @@ curl --proto '=https' --tlsv1.2 -sSf -L https://install.determinate.systems/nix 
 
 Current and planned support:
 
-* [x] Multi-user Linux (aarch64 and x86_64) with systemd init, no SELinux
-* [x] Multi-user MacOS (aarch64 and x86_64)
-* [x] Valve Steam Deck
-* [ ] Multi-user Linux (aarch64 and x86_64) with systemd init & SELinux
-* [ ] Single-user Linux (aarch64 and x86_64)
+* [x] Multi-user Linux (aarch64 and x86_64) with systemd integration, no SELinux
+* [x] Root-only Linux (aarch64 and x86_64) with no init integration, no SELinux
+* [x] Multi-user MacOS (aarch64 and x86_64) with launchd integration
+* [x] Rooot-only MacOS (aarch64 and x86_64) with no init integration
+* [x] SteamOS on the Valve Steam Deck
+* [ ] Multi-user Linux (aarch64 and x86_64) with systemd integration & SELinux
 * [ ] Others...
 
 ## Installation Differences
@@ -212,7 +213,11 @@ firefox result-doc/nix-installer/index.html
 
 In Docker/Podman containers or WSL instances where an init (like `systemd`) is not present, pass `--init none`.
 
-> When `--init none` is used, only `root` can run Nix.
+> When `--init none` is used, only `root` or sudoers can run Nix:
+>
+> ```bash
+> sudo -i nix run nixpkgs#hello
+> ```
 
 For Docker containers (without an init):
 
@@ -227,7 +232,9 @@ ENV PATH="${PATH}:/nix/var/nix/profiles/default/bin"
 RUN nix run nixpkgs#hello
 ```
 
-Podman containers require `sandbox = false` in your `Nix.conf`, for containers without an init:
+Podman containers require `sandbox = false` in your `Nix.conf`.
+
+For podman containers without an init:
 
 ```dockerfile
 # Dockerfile
@@ -264,7 +271,12 @@ curl --proto '=https' --tlsv1.2 -sSf -L https://install.determinate.systems/nix 
 
 If systemd is not enabled, pass `--init none` at the end of the command:
 
-> When `--init none` is used, only `root` can run Nix.
+> When `--init none` is used, only `root` or sudoers can run Nix:
+>
+> ```bash
+> sudo -i nix run nixpkgs#hello
+> ```
+
 
 ```bash
 curl --proto '=https' --tlsv1.2 -sSf -L https://install.determinate.systems/nix | sh -s -- install --init none

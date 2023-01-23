@@ -1,6 +1,6 @@
 /*! Configurable knobs and their related errors
 */
-use std::{collections::HashMap, path::Path};
+use std::collections::HashMap;
 
 #[cfg(feature = "cli")]
 use clap::ArgAction;
@@ -316,8 +316,7 @@ impl CommonSettings {
 async fn linux_detect_init() -> (InitSystem, bool) {
     let mut detected = InitSystem::None;
     let mut started = false;
-    if Path::new("/run/systemd/system").exists() {
-        println!("WOW /run/systemd/system EXISTS");
+    if std::path::Path::new("/run/systemd/system").exists() {
         detected = InitSystem::Systemd;
         started = if Command::new("systemctl")
             .arg("status")
@@ -327,10 +326,8 @@ async fn linux_detect_init() -> (InitSystem, bool) {
             .map(|exit| exit.success())
             .unwrap_or(false)
         {
-            println!("WOW systemd is started");
             true
         } else {
-            println!("WOW systemd is not started");
             false
         }
     }

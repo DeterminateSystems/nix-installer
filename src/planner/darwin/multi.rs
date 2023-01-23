@@ -7,7 +7,7 @@ use tokio::process::Command;
 use crate::{
     action::{
         common::{ConfigureInitService, ConfigureNix, ProvisionNix},
-        darwin::{CreateNixVolume, KickstartLaunchctlService},
+        darwin::CreateNixVolume,
         StatefulAction,
     },
     execute_command,
@@ -145,10 +145,6 @@ impl Planner for DarwinMulti {
                 .map_err(PlannerError::Action)?
                 .boxed(),
             ConfigureInitService::plan(self.init.init, self.init.start_daemon)
-                .await
-                .map_err(PlannerError::Action)?
-                .boxed(),
-            KickstartLaunchctlService::plan("system/org.nixos.nix-daemon".into())
                 .await
                 .map_err(PlannerError::Action)?
                 .boxed(),

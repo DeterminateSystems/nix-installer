@@ -1,6 +1,5 @@
 use std::path::PathBuf;
 
-use tokio::fs::remove_file;
 use tokio::process::Command;
 use tracing::{span, Span};
 
@@ -110,12 +109,23 @@ impl Action for ConfigureInitService {
                         )
                     })?;
 
+                execute_command(
+                    Command::new("launchctl")
+                        .process_group(0)
+                        .arg("load")
+                        .arg(DARWIN_NIX_DAEMON_DEST)
+                        .stdin(std::process::Stdio::null()),
+                )
+                .await
+                .map_err(ActionError::Command)?;
+
                 if *start_daemon {
                     execute_command(
                         Command::new("launchctl")
                             .process_group(0)
-                            .arg("load")
-                            .arg(DARWIN_NIX_DAEMON_DEST)
+                            .arg("kickstart")
+                            .arg("-k")
+                            .arg("system/org.nixos.nix-daemon")
                             .stdin(std::process::Stdio::null()),
                     )
                     .await
@@ -296,7 +306,7 @@ impl Action for ConfigureInitService {
                 .await
                 .map_err(ActionError::Command)?;
 
-                remove_file(TMPFILES_DEST)
+                tokio::fs::remove_file(TMPFILES_DEST)
                     .await
                     .map_err(|e| ActionError::Remove(PathBuf::from(TMPFILES_DEST), e))?;
 
