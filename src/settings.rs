@@ -70,11 +70,10 @@ pub struct CommonSettings {
     #[cfg_attr(
         feature = "cli",
         clap(
-            long,
             action(ArgAction::SetFalse),
             default_value = "true",
             global = true,
-            env = "NIX_INSTALLER_NO_MODIFY_PROFILE",
+            env = "NIX_INSTALLER_MODIFY_PROFILE",
             long = "no-modify-profile"
         )
     )]

@@ -98,7 +98,7 @@ Please:
 * Follow existing conventions and style within the code the best you can
 * Describe in your PR the problem and solution so reviewers don't need to
   rebuild much context
-* Run `nix check` and `nix build`
+* Run `nix flake check` and `nix build`
 
 
 ## Non-code contributions
