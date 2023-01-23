@@ -190,13 +190,13 @@ git+file:///home/ana/git/determinatesystems/nix-installer
 To run all of the currently supported tests:
 
 ```bash
-nix build .#hydraJobs.vm-test.all.x86_64-linux.install-default -L
+nix build .#hydraJobs.vm-test.all.x86_64-linux.all -L
 ```
 
 To run a specific distribution listed in the `nix flake show` output:
 
 ```bash
-nix build .#hydraJobs.vm-test.rhel-v7.x86_64-linux.install-default -L
+nix build .#hydraJobs.vm-test.rhel-v7.x86_64-linux.all -L
 ```
 
 For PR review, you can also test arbitrary branches or checkouts like so:
