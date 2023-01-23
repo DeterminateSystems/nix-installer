@@ -49,7 +49,7 @@ use tracing::{Span, span};
 use nix_installer::{
     InstallPlan,
     settings::{CommonSettings, InstallSettingsError},
-    planner::{Planner, PlannerError, linux::SteamDeck},
+    planner::{Planner, PlannerError},
     action::{Action, ActionError, StatefulAction, ActionDescription},
 };
 

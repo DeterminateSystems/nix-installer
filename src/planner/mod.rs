@@ -16,8 +16,8 @@ use std::{error::Error, collections::HashMap};
 use nix_installer::{
     InstallPlan,
     settings::{CommonSettings, InstallSettingsError},
-    planner::{Planner, PlannerError, linux::SteamDeck},
-    action::{Action, StatefulAction, linux::StartSystemdUnit},
+    planner::{Planner, PlannerError},
+    action::{Action, StatefulAction, base::CreateFile},
 };
 
 #[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
@@ -39,7 +39,7 @@ impl Planner for MyPlanner {
         Ok(vec![
             // ...
 
-                StartSystemdUnit::plan("nix-daemon.socket")
+                CreateFile::plan("/example", None, None, None, "Example".to_string(), false)
                     .await
                     .map_err(PlannerError::Action)?.boxed(),
         ])
