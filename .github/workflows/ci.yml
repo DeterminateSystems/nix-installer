@@ -106,7 +106,6 @@ jobs:
           logger: pretty
           log-directives: nix_installer=trace
           backtrace: full
-          nix-installer-pr: 188
           github-token: ${{ secrets.GITHUB_TOKEN }}
       - name: Initial uninstall (without a `nix run` first)
         run: sudo -E /nix/nix-installer uninstall
@@ -136,7 +135,6 @@ jobs:
           logger: pretty
           log-directives: nix_installer=trace
           backtrace: full
-          nix-installer-pr: 188
           github-token: ${{ secrets.GITHUB_TOKEN }}
       - name: echo $PATH
         run: echo $PATH
@@ -206,11 +204,11 @@ jobs:
         uses: DeterminateSystems/nix-installer-action@start-daemon-and-init
         with:
           init: none
+          planner: linux-multi
           local-root: install-root/
           logger: pretty
           log-directives: nix_installer=trace
           backtrace: full
-          nix-installer-pr: 188
           github-token: ${{ secrets.GITHUB_TOKEN }}
       - name: Ensure daemon was not configured with init
         run: |
@@ -239,11 +237,11 @@ jobs:
         uses: DeterminateSystems/nix-installer-action@start-daemon-and-init
         with:
           init: none
+          planner: linux-multi
           local-root: install-root/
           logger: pretty
           log-directives: nix_installer=trace
           backtrace: full
-          nix-installer-pr: 188
           github-token: ${{ secrets.GITHUB_TOKEN }}
       - name: echo $PATH
         run: echo $PATH
@@ -322,7 +320,6 @@ jobs:
           logger: pretty
           log-directives: nix_installer=trace
           backtrace: full
-          nix-installer-pr: 188
           github-token: ${{ secrets.GITHUB_TOKEN }}
           planner: steam-deck
           extra-args: --persistence /home/runner/.ci-test-nix-home
@@ -358,7 +355,6 @@ jobs:
           logger: pretty
           log-directives: nix_installer=trace
           backtrace: full
-          nix-installer-pr: 188
           github-token: ${{ secrets.GITHUB_TOKEN }}
           planner: steam-deck
           extra-args: --persistence /home/runner/.ci-test-nix-home
@@ -456,7 +452,6 @@ jobs:
           logger: pretty
           log-directives: nix_installer=trace
           backtrace: full
-          nix-installer-pr: 188
           github-token: ${{ secrets.GITHUB_TOKEN }}
           extra-conf: |
             trusted-users = root runner
@@ -474,7 +469,6 @@ jobs:
           logger: pretty
           log-directives: nix_installer=trace
           backtrace: full
-          nix-installer-pr: 188
           github-token: ${{ secrets.GITHUB_TOKEN }}
           extra-conf: trusted-users = root runner
       - name: echo $PATH
@@ -531,11 +525,11 @@ jobs:
         uses: DeterminateSystems/nix-installer-action@start-daemon-and-init
         with:
           init: none
+          planner: darwin-multi
           local-root: install-root/
           logger: pretty
           log-directives: nix_installer=trace
           backtrace: full
-          nix-installer-pr: 188
           github-token: ${{ secrets.GITHUB_TOKEN }}
           extra-conf: |
             trusted-users = root runner
@@ -550,11 +544,11 @@ jobs:
         uses: DeterminateSystems/nix-installer-action@start-daemon-and-init
         with:
           init: none
+          planner: darwin-multi
           local-root: install-root/
           logger: pretty
           log-directives: nix_installer=trace
           backtrace: full
-          nix-installer-pr: 188
           github-token: ${{ secrets.GITHUB_TOKEN }}
           extra-conf: trusted-users = root runner
       - name: echo $PATH

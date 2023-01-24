@@ -314,12 +314,17 @@ impl CommonSettings {
 }
 #[cfg(target_os = "linux")]
 async fn linux_detect_init() -> (InitSystem, bool) {
+    use std::process::Stdio;
+
     let mut detected = InitSystem::None;
     let mut started = false;
     if std::path::Path::new("/run/systemd/system").exists() {
         detected = InitSystem::Systemd;
         started = if Command::new("systemctl")
             .arg("status")
+            .stdin(Stdio::null())
+            .stdout(Stdio::null())
+            .stderr(Stdio::null())
             .status()
             .await
             .ok()
@@ -332,7 +337,6 @@ async fn linux_detect_init() -> (InitSystem, bool) {
         }
     }
 
-    println!("WOW INIT IS {detected}");
     // TODO: Other inits
     (detected, started)
 }
