@@ -422,7 +422,7 @@ pub struct InitSettings {
             value_parser,
             long,
             action(ArgAction::SetFalse),
-            env = "NIX_INSTALLER_NO_START_DAEMON",
+            env = "NIX_INSTALLER_START_DAEMON",
             default_value_t = true,
             long = "no-start-daemon"
         )
