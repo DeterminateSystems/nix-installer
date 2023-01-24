@@ -14,7 +14,7 @@ use crate::{
     os::darwin::DiskUtilOutput,
     planner::{Planner, PlannerError},
     settings::InstallSettingsError,
-    settings::{CommonSettings, InitSettings},
+    settings::{CommonSettings, InitSettings, InitSystem},
     Action, BuiltinPlanner,
 };
 
@@ -24,8 +24,6 @@ use crate::{
 pub struct DarwinMulti {
     #[cfg_attr(feature = "cli", clap(flatten))]
     pub settings: CommonSettings,
-    #[cfg_attr(feature = "cli", clap(flatten))]
-    pub init: InitSettings,
 
     /// Force encryption on the volume
     #[cfg_attr(
@@ -80,7 +78,6 @@ impl Planner for DarwinMulti {
     async fn default() -> Result<Self, PlannerError> {
         Ok(Self {
             settings: CommonSettings::default().await?,
-            init: InitSettings::default().await?,
             root_disk: Some(default_root_disk().await?),
             case_sensitive: false,
             encrypt: None,
@@ -144,7 +141,7 @@ impl Planner for DarwinMulti {
                 .await
                 .map_err(PlannerError::Action)?
                 .boxed(),
-            ConfigureInitService::plan(self.init.init, self.init.start_daemon)
+            ConfigureInitService::plan(InitSystem::Launchd, true)
                 .await
                 .map_err(PlannerError::Action)?
                 .boxed(),
@@ -154,7 +151,6 @@ impl Planner for DarwinMulti {
     fn settings(&self) -> Result<HashMap<String, serde_json::Value>, InstallSettingsError> {
         let Self {
             settings,
-            init,
             encrypt,
             volume_label,
             case_sensitive,
@@ -163,7 +159,6 @@ impl Planner for DarwinMulti {
         let mut map = HashMap::default();
 
         map.extend(settings.settings()?.into_iter());
-        map.extend(init.settings()?.into_iter());
         map.insert("volume_encrypt".into(), serde_json::to_value(encrypt)?);
         map.insert("volume_label".into(), serde_json::to_value(volume_label)?);
         map.insert("root_disk".into(), serde_json::to_value(root_disk)?);
