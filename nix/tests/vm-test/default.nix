@@ -248,17 +248,17 @@ let
             makeTest imageName testName
           )
           installScripts) // {
-            all = (with (forSystem "x86_64-linux" ({ system, pkgs, ... }: pkgs)); pkgs.releaseTools.aggregate {
-                name = "all";
-                constituents = (
-                  pkgs.lib.mapAttrsToList
-                    (testName: test:
-                      makeTest imageName testName
-                    )
-                    installScripts
-                  );
-              });
-          };
+          all = (with (forSystem "x86_64-linux" ({ system, pkgs, ... }: pkgs)); pkgs.releaseTools.aggregate {
+            name = "all";
+            constituents = (
+              pkgs.lib.mapAttrsToList
+                (testName: test:
+                  makeTest imageName testName
+                )
+                installScripts
+            );
+          });
+        };
       }
     )
     images;
