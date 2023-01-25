@@ -242,12 +242,23 @@ let
 
   vm-tests = builtins.mapAttrs
     (imageName: image:
-      {
-        ${image.system} = builtins.mapAttrs
+      rec {
+        ${image.system} = (builtins.mapAttrs
           (testName: test:
             makeTest imageName testName
           )
-          installScripts;
+          installScripts) // {
+            all = (with (forSystem "x86_64-linux" ({ system, pkgs, ... }: pkgs)); pkgs.releaseTools.aggregate {
+                name = "all";
+                constituents = (
+                  pkgs.lib.mapAttrsToList
+                    (testName: test:
+                      makeTest imageName testName
+                    )
+                    installScripts
+                  );
+              });
+          };
       }
     )
     images;
