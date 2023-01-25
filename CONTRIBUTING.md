@@ -238,7 +238,7 @@ installer-test-rhel-v7-install-default> Formatting './disk.qcow2', fmt=qcow2 clu
 
 </details>
 
-## `podman` container tests
+## Container tests
 
 
 In `nix/tests/container-test` there exists some Nix derivations which we expose in the flake via `hydraJobs`.
@@ -253,31 +253,43 @@ git+file:///home/ana/git/determinatesystems/nix-installer
 ├───hydraJobs
 │   ├───container-test
 │   │   ├───all
-│   │   │   └───x86_64-linux: derivation 'all'
+│   │   │   └───x86_64-linux
+│   │   │       ├───all: derivation 'all'
+│   │   │       ├───docker: derivation 'all'
+│   │   │       └───podman: derivation 'all'
 │   │   ├───ubuntu-v18_04
-│   │   │   └───x86_64-linux: derivation 'vm-test-run-container-test-ubuntu-v18_04'
+│   │   │   └───x86_64-linux
+│   │   │       ├───all: derivation 'all'
+│   │   │       ├───docker: derivation 'vm-test-run-container-test-ubuntu-v18_04'
+│   │   │       └───podman: derivation 'vm-test-run-container-test-ubuntu-v18_04'
 │   │   ├───ubuntu-v20_04
-│   │   │   └───x86_64-linux: derivation 'vm-test-run-container-test-ubuntu-v20_04'
+│   │   │   └───x86_64-linux
+│   │   │       ├───all: derivation 'all'
+│   │   │       ├───docker: derivation 'vm-test-run-container-test-ubuntu-v20_04'
+│   │   │       └───podman: derivation 'vm-test-run-container-test-ubuntu-v20_04'
 │   │   └───ubuntu-v22_04
-│   │       └───x86_64-linux: derivation 'vm-test-run-container-test-ubuntu-v22_04'
+│   │       └───x86_64-linux
+│   │           ├───all: derivation 'all'
+│   │           ├───docker: derivation 'vm-test-run-container-test-ubuntu-v22_04'
+│   │           └───podman: derivation 'vm-test-run-container-test-ubuntu-v22_04'
 ```
 
 To run all of the currently supported tests:
 
 ```bash
-nix build .#hydraJobs.container-test.all.x86_64-linux -L
+nix build .#hydraJobs.container-test.all.x86_64-linux.all -L
 ```
 
 To run a specific distribution listed in the `nix flake show` output:
 
 ```bash
-nix build .#hydraJobs.container-test.ubuntu-v22_04.x86_64-linux -L
+nix build .#hydraJobs.container-test.ubuntu-v22_04.x86_64-linux.docker -L
 ```
 
 For PR review, you can also test arbitrary branches or checkouts like so:
 
 ```bash
-nix build github:determinatesystems/nix-installer/${BRANCH}#hydraJobs.container-test.ubuntu-v22_04.x86_64-linux -L
+nix build github:determinatesystems/nix-installer/${BRANCH}#hydraJobs.container-test.ubuntu-v22_04.x86_64-linux.podman -L
 ```
 
 <details>
