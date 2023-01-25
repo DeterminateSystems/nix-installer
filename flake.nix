@@ -182,6 +182,10 @@
           inherit forSystem;
           inherit (nix.hydraJobs) binaryTarball;
         };
+        container-test = import ./nix/tests/container-test {
+          inherit forSystem;
+          inherit (nix.hydraJobs) binaryTarball;
+        };
       };
     };
 }
