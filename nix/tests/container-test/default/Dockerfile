@@ -1,4 +1,4 @@
-FROM ubuntu:22.04
+FROM default
 COPY nix-installer /nix-installer
 RUN chmod +x /nix-installer
 COPY binary-tarball /binary-tarball
