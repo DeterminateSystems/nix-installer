@@ -238,6 +238,82 @@ installer-test-rhel-v7-install-default> Formatting './disk.qcow2', fmt=qcow2 clu
 
 </details>
 
+## `podman` container tests
+
+
+In `nix/tests/container-test` there exists some Nix derivations which we expose in the flake via `hydraJobs`.
+
+These should be visible in `nix flake show`:
+
+```
+❯ nix flake show
+warning: Git tree '/home/ana/git/determinatesystems/nix-installer' is dirty
+git+file:///home/ana/git/determinatesystems/nix-installer
+# ...
+├───hydraJobs
+│   ├───container-test
+│   │   ├───all
+│   │   │   └───x86_64-linux: derivation 'all'
+│   │   ├───ubuntu-v18_04
+│   │   │   └───x86_64-linux: derivation 'vm-test-run-container-test-ubuntu-v18_04'
+│   │   ├───ubuntu-v20_04
+│   │   │   └───x86_64-linux: derivation 'vm-test-run-container-test-ubuntu-v20_04'
+│   │   └───ubuntu-v22_04
+│   │       └───x86_64-linux: derivation 'vm-test-run-container-test-ubuntu-v22_04'
+```
+
+To run all of the currently supported tests:
+
+```bash
+nix build .#hydraJobs.container-test.all.x86_64-linux -L
+```
+
+To run a specific distribution listed in the `nix flake show` output:
+
+```bash
+nix build .#hydraJobs.container-test.ubuntu-v22_04.x86_64-linux -L
+```
+
+For PR review, you can also test arbitrary branches or checkouts like so:
+
+```bash
+nix build github:determinatesystems/nix-installer/${BRANCH}#hydraJobs.container-test.ubuntu-v22_04.x86_64-linux -L
+```
+
+<details>
+  <summary><strong>Adding a distro?</strong></summary>
+
+Notice how `ubuntu-v20_02` has a `v20`, not just `20`? That's so the test output shows correctly, as Nix will interpret the first `-\d` (eg `-20`, `-123213`) as a version, and not show it in the output. 
+
+Using `v20` instead turns:
+
+```
+# ...
+vm-test-run-container-test-ubuntu> machine # [   23.385182] dhcpcd[670]: vethae56f366: deleting address fe80::c036:c8ff:fe04:5832
+vm-test-run-container-test-ubuntu> machine # this derivation will be built:
+vm-test-run-container-test-ubuntu> machine #   /nix/store/9qb0l9n1gsmcyynfmndnq3qpmlvq8rln-foo.drv
+vm-test-run-container-test-ubuntu> machine # [   23.424605] dhcpcd[670]: vethae56f366: removing interface
+vm-test-run-container-test-ubuntu> machine # building '/nix/store/9qb0l9n1gsmcyynfmndnq3qpmlvq8rln-foo.drv'...
+vm-test-run-container-test-ubuntu> machine # [   23.371066] systemd[1]: crun-buildah-buildah1810857047.scope: Deactivated successfully.
+# ...
+```
+
+Into this:
+
+```
+# ...
+vm-test-run-container-test-ubuntu-v18_04> machine # [   23.385182] dhcpcd[670]: vethae56f366: deleting address fe80::c036:c8ff:fe04:5832
+vm-test-run-container-test-ubuntu-v20_04> machine # this derivation will be built:
+vm-test-run-container-test-ubuntu-v20_04> machine #   /nix/store/9qb0l9n1gsmcyynfmndnq3qpmlvq8rln-foo.drv
+vm-test-run-container-test-ubuntu-v18_04> machine # [   23.424605] dhcpcd[670]: vethae56f366: removing interface
+vm-test-run-container-test-ubuntu-v20_04> machine # building '/nix/store/9qb0l9n1gsmcyynfmndnq3qpmlvq8rln-foo.drv'...
+vm-test-run-container-test-ubuntu-v20_04> machine # [   23.371066] systemd[1]: crun-buildah-buildah1810857047.scope: Deactivated successfully.
+# ...
+```
+
+</details>
+
+
 ## Testing the `action.yml`
 
 The `action.yml` is used directly in the CI process, so it is automatically tested for most changes.
