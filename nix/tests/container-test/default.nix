@@ -37,7 +37,7 @@ let
 
   };
 
-  makeTest = imageName:
+  makeTest = containerTool: imageName:
     let image = images.${imageName}; in
     with (forSystem image.system ({ system, pkgs, lib, ... }: pkgs));
     testers.nixosTest
@@ -46,7 +46,7 @@ let
         nodes = {
           machine =
             { config, pkgs, ... }: {
-              virtualisation.podman.enable = true;
+              virtualisation.${containerTool}.enable = true;
             };
         };
         # installer = nix-installer-static;
@@ -58,22 +58,45 @@ let
           machine.copy_from_host("${image.tester}", "/test/Dockerfile")
           machine.copy_from_host("${nix-installer-static}", "/test/nix-installer")
           machine.copy_from_host("${binaryTarball.${system}}", "/test/binary-tarball")
-          machine.succeed("podman import /image default")
-          machine.succeed("podman build -t test /test")
+          machine.succeed("${containerTool} import /image default")
+          machine.succeed("${containerTool} build -t test /test")
         '';
       };
 
   container-tests = builtins.mapAttrs
-    (imageName: image: {
-      ${image.system} = makeTest imageName;
-    })
+    (imageName: image: (with (forSystem "x86_64-linux" ({ system, pkgs, ... }: pkgs)); {
+      ${image.system} = rec {
+        docker = makeTest "docker" imageName;
+        podman = makeTest "podman" imageName;
+        all = pkgs.releaseTools.aggregate {
+            name = "all";
+            constituents = [
+              docker
+              podman
+            ];
+          };
+      };
+    }))
     images;
 
 in
-container-tests // rec {
-  all."x86_64-linux" = (with (forSystem "x86_64-linux" ({ system, pkgs, ... }: pkgs)); pkgs.releaseTools.aggregate {
-    name = "all";
-    constituents = pkgs.lib.mapAttrsToList (name: value: value."x86_64-linux") container-tests;
-  });
+container-tests // {
+  all."x86_64-linux" = rec {
+    all = (with (forSystem "x86_64-linux" ({ system, pkgs, ... }: pkgs)); pkgs.releaseTools.aggregate {
+      name = "all";
+      constituents = [
+        docker
+        podman
+      ];
+    });
+    docker = (with (forSystem "x86_64-linux" ({ system, pkgs, ... }: pkgs)); pkgs.releaseTools.aggregate {
+      name = "all";
+      constituents = pkgs.lib.mapAttrsToList (name: value: value."x86_64-linux".docker) container-tests;
+    });
+    podman = (with (forSystem "x86_64-linux" ({ system, pkgs, ... }: pkgs)); pkgs.releaseTools.aggregate {
+      name = "all";
+      constituents = pkgs.lib.mapAttrsToList (name: value: value."x86_64-linux".podman) container-tests;
+    });
+  };
 }
 
