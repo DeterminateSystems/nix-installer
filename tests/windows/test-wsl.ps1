@@ -1,3 +1,4 @@
+param([switch]$Systemd = $false)
 Set-StrictMode -Version Latest
 $ErrorActionPreference = "Stop"
 
@@ -40,9 +41,22 @@ if ($LastExitCode -ne 0) {
     exit $LastExitCode 
 }
 
+if ($Systemd) {
+    $wslConf = "[boot]`nsystemd=true"
+    New-Item -Path "\\wsl$\$DistroName\etc\wsl.conf" -ItemType "file" -Value $wslConf
+    wsl --shutdown
+    if ($LastExitCode -ne 0) {
+        exit $LastExitCode 
+    }
+}
+
 Write-Output "Building and runnings nix-installer in $DistroName..."
 Copy-Item -Recurse "$PSScriptRoot\..\.." -Destination "\\wsl$\$DistroName\nix-installer"
-wsl --distribution $DistroName bash --login -c "/root/.cargo/bin/cargo run --quiet --manifest-path /nix-installer/Cargo.toml -- install linux-multi --no-confirm --init none"
+$MaybeInitChoice = switch ($Systemd) {
+    $true { "" }
+    $false { "--init none" }
+}
+wsl --distribution $DistroName bash --login -c "/root/.cargo/bin/cargo run --quiet --manifest-path /nix-installer/Cargo.toml -- install linux-multi --no-confirm $MaybeInitChoice"
 if ($LastExitCode -ne 0) {
     exit $LastExitCode 
 }
@@ -52,3 +66,10 @@ wsl --distribution $DistroName bash --login -c "nix run nixpkgs#hello"
 if ($LastExitCode -ne 0) {
     exit $LastExitCode 
 }
+
+Write-Output "Unregistering $DistroName and removing $InstallRoot..."
+wsl --unregister $DistroName
+if ($LastExitCode -ne 0) {
+    exit $LastExitCode 
+}
+Remove-Item $InstallRoot

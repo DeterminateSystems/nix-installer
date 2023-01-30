@@ -325,6 +325,32 @@ vm-test-run-container-test-ubuntu-v20_04> machine # [   23.371066] systemd[1]: c
 
 </details>
 
+## WSL tests
+
+On a Windows Machine with WSL2 enabled (and updated to [support systemd](https://ubuntu.com/blog/ubuntu-wsl-enable-systemd)) you can test using WSL the scripts in `tests/windows`:
+
+```powershell
+.\tests\windows\test-wsl.ps1
+.\tests\windows\test-wsl.ps1 -Systemd
+```
+
+If something breaks you may need to unregister the test WSL instance. First, look for the distro prefixed with `nix-installer-test`:
+
+```powershell
+$ wsl --list
+Windows Subsystem for Linux Distributions:
+Ubuntu (Default)
+nix-installer-test-ubuntu-jammy
+```
+
+Then delete it:
+
+```powershell
+wsl --unregister nix-installer-test-ubuntu-jammy
+```
+
+You can also remove your `$HOME/nix-installer-wsl-tests-temp` folder whenever you wish.
+
 
 ## Testing the `action.yml`
 
