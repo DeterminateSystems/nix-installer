@@ -19,7 +19,6 @@ Current and planned support:
 * [x] Multi-user Linux (aarch64 and x86_64) with systemd integration, no SELinux
 * [x] Root-only Linux (aarch64 and x86_64) with no init integration, no SELinux
 * [x] Multi-user MacOS (aarch64 and x86_64) with launchd integration
-* [x] Rooot-only MacOS (aarch64 and x86_64) with no init integration
 * [x] SteamOS on the Valve Steam Deck
 * [ ] Multi-user Linux (aarch64 and x86_64) with systemd integration & SELinux
 * [ ] Others...
