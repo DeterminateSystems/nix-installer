@@ -232,6 +232,6 @@ pub enum CreateFstabEntryError {
     Uuid(String, #[source] uuid::Error),
     #[error("No volume labelled `{0}` present, cannot get UUID to add to /etc/fstab")]
     NoVolume(String),
-    #[error("An `/etc/fstab` entry for the volume labelled `{0}` already exists, if a Nix Store already exists it may need to be removed with `diskutil apfs deleteVolume \"{0}\"), this entry should be removed from `/etc/fstab`")]
+    #[error("An `/etc/fstab` entry for the volume labelled `{0}` already exists. If a Nix Store already exists it may need to be deleted with `diskutil apfs deleteVolume \"{0}\") and should be removed from `/etc/fstab`")]
     EntryExists(String),
 }
