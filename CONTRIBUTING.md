@@ -156,7 +156,7 @@ It's perfectly fine if they are manual or labor intensive, as these should be a 
 
 ## `qemu` VM tests
 
-In `nix/tests/vm-test` there exists some Nix derivations which we expose in the flake via `hydraJobs`.
+For x86_64 Linux we have some additional QEMU based tests. In `nix/tests/vm-test` there exists some Nix derivations which we expose in the flake via `hydraJobs`.
 
 These should be visible in `nix flake show`:
 
@@ -241,7 +241,7 @@ installer-test-rhel-v7-install-default> Formatting './disk.qcow2', fmt=qcow2 clu
 ## Container tests
 
 
-In `nix/tests/container-test` there exists some Nix derivations which we expose in the flake via `hydraJobs`.
+For x86_64 Linux we have some additional container tests. In `nix/tests/container-test` there exists some Nix derivations which we expose in the flake via `hydraJobs`.
 
 These should be visible in `nix flake show`:
 
