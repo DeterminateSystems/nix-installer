@@ -69,12 +69,12 @@ let
         docker = makeTest "docker" imageName;
         podman = makeTest "podman" imageName;
         all = pkgs.releaseTools.aggregate {
-            name = "all";
-            constituents = [
-              docker
-              podman
-            ];
-          };
+          name = "all";
+          constituents = [
+            docker
+            podman
+          ];
+        };
       };
     }))
     images;

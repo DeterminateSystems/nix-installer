@@ -18,8 +18,8 @@ in
     runtimeInputs = with pkgs; [ git codespell ];
     text = ''
       codespell \
-        --ignore-words-list ba,sur,crate,pullrequest,pullrequests,ser \
-        --skip target \
+        --ignore-words-list ba,sur,crate,pullrequest,pullrequests,ser,distroname \
+        --skip target,.git \
         .
     '';
   });
