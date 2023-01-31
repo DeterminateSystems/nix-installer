@@ -5,7 +5,7 @@
 # https://github.com/DeterminateSystems/nix-installer/releases then pick the version and platform
 # most appropriate for your deployment target.
 #
-# This is just a little script selects and downloads the right `nix-installer`. It does
+# This is just a little script that selects and downloads the right `nix-installer`. It does
 # platform detection, downloads the installer, and runs it; that's it.
 #
 # It runs on Unix shells like {a,ba,da,k,z}sh. It uses the common `local`
