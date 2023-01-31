@@ -1,14 +1,17 @@
 #!/bin/sh
 # shellcheck shell=dash
 
-# This script is based off https://github.com/rust-lang/rustup/blob/8f6b53628ad996ad86f9c6225fa500cddf860905/rustup-init.sh
-
-# This is just a little script that can be downloaded from the internet to
-# install `nix-installer`. It just does platform detection, downloads the installer
-# and runs it.
-
+# If you need an offline install, or you'd prefer to run the binary directly, head to 
+# https://github.com/DeterminateSystems/nix-installer/releases then pick the version and platform
+# most appropriate for your deployment target.
+#
+# This is just a little script that selects and downloads the right `nix-installer`. It does
+# platform detection, downloads the installer, and runs it; that's it.
+#
 # It runs on Unix shells like {a,ba,da,k,z}sh. It uses the common `local`
 # extension. Note: Most shells limit `local` to 1 var per line, contra bash.
+
+# This script is based off https://github.com/rust-lang/rustup/blob/8f6b53628ad996ad86f9c6225fa500cddf860905/rustup-init.sh
 
 if [ "$KSH_VERSION" = 'Version JM 93t+ 2010-03-05' ]; then
     # The version of ksh93 that ships with many illumos systems does not
