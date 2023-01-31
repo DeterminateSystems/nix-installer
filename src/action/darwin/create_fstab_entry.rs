@@ -221,7 +221,7 @@ fn fstab_entry(uuid: &Uuid, apfs_volume_label: &str) -> String {
     format!(
         "\
         {prelude_comment}\n\
-        UUID=\"{uuid}\" /nix apfs rw,noauto,nobrowse,suid,owners\n\
+        UUID={uuid} /nix apfs rw,noauto,nobrowse,suid,owners\n\
         "
     )
 }
