@@ -1,0 +1,687 @@
+{
+  "version": "0.1.0-unreleased",
+  "actions": [
+    {
+      "action": {
+        "action": "create_apfs_volume",
+        "disk": "disk3",
+        "name": "Nix Store",
+        "case_sensitive": false,
+        "encrypt": true,
+        "create_or_append_synthetic_conf": {
+          "action": {
+            "path": "/etc/synthetic.conf",
+            "user": null,
+            "group": null,
+            "mode": 429,
+            "buf": "nix\n",
+            "position": "End"
+          },
+          "state": "Uncompleted"
+        },
+        "create_synthetic_objects": {
+          "action": null,
+          "state": "Uncompleted"
+        },
+        "unmount_volume": {
+          "action": {
+            "disk": "disk3",
+            "name": "Nix Store"
+          },
+          "state": "Uncompleted"
+        },
+        "create_volume": {
+          "action": {
+            "disk": "disk3",
+            "name": "Nix Store",
+            "case_sensitive": false
+          },
+          "state": "Uncompleted"
+        },
+        "create_or_append_fstab": {
+          "action": {
+            "path": "/etc/fstab",
+            "user": null,
+            "group": null,
+            "mode": 429,
+            "buf": "NAME=\"Nix Store\" /nix apfs rw,noauto,nobrowse,suid,owners",
+            "position": "End"
+          },
+          "state": "Uncompleted"
+        },
+        "encrypt_volume": {
+          "action": {
+            "disk": "disk3",
+            "name": "Nix Store"
+          },
+          "state": "Uncompleted"
+        },
+        "setup_volume_daemon": {
+          "action": {
+            "path": "/Library/LaunchDaemons/org.nixos.darwin-store.plist",
+            "user": null,
+            "group": null,
+            "mode": null,
+            "buf": "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<!DOCTYPE plist PUBLIC \"-//Apple Computer//DTD PLIST 1.0//EN\" \"http://www.apple.com/DTDs/PropertyList-1.0.dtd\">\n<plist version=\"1.0\">\n<dict>\n<key>RunAtLoad</key>\n<true/>\n<key>Label</key>\n<string>org.nixos.darwin-store</string>\n<key>ProgramArguments</key>\n<array>\n<string>/bin/sh</string>\n\n<string>-c</string>\n\n<string>/usr/bin/security find-generic-password -s \"Nix Store\" -w |  /usr/sbin/diskutil apfs unlockVolume \"Nix Store\" -mountpoint /nix -stdinpassphrase</string>\n</array>\n</dict>\n</plist>\n",
+            "force": false
+          },
+          "state": "Uncompleted"
+        },
+        "bootstrap_volume": {
+          "action": {
+            "path": "/Library/LaunchDaemons/org.nixos.darwin-store.plist"
+          },
+          "state": "Uncompleted"
+        },
+        "enable_ownership": {
+          "action": {
+            "path": "/nix"
+          },
+          "state": "Uncompleted"
+        }
+      },
+      "state": "Uncompleted"
+    },
+    {
+      "action": {
+        "action": "provision_nix",
+        "fetch_nix": {
+          "action": {
+            "url": "https://releases.nixos.org/nix/nix-2.12.0/nix-2.12.0-aarch64-darwin.tar.xz",
+            "dest": "/nix/temp-install-dir"
+          },
+          "state": "Uncompleted"
+        },
+        "create_users_and_group": {
+          "action": {
+            "nix_build_user_count": 32,
+            "nix_build_group_name": "nixbld",
+            "nix_build_group_id": 3000,
+            "nix_build_user_prefix": "_nixbld",
+            "nix_build_user_id_base": 300,
+            "create_group": {
+              "action": {
+                "name": "nixbld",
+                "gid": 3000
+              },
+              "state": "Uncompleted"
+            },
+            "create_users": [
+              {
+                "action": {
+                  "name": "_nixbld0",
+                  "uid": 300,
+                  "groupname": "nixbld",
+                  "gid": 3000
+                },
+                "state": "Uncompleted"
+              },
+              {
+                "action": {
+                  "name": "_nixbld1",
+                  "uid": 301,
+                  "groupname": "nixbld",
+                  "gid": 3000
+                },
+                "state": "Uncompleted"
+              },
+              {
+                "action": {
+                  "name": "_nixbld2",
+                  "uid": 302,
+                  "groupname": "nixbld",
+                  "gid": 3000
+                },
+                "state": "Uncompleted"
+              },
+              {
+                "action": {
+                  "name": "_nixbld3",
+                  "uid": 303,
+                  "groupname": "nixbld",
+                  "gid": 3000
+                },
+                "state": "Uncompleted"
+              },
+              {
+                "action": {
+                  "name": "_nixbld4",
+                  "uid": 304,
+                  "groupname": "nixbld",
+                  "gid": 3000
+                },
+                "state": "Uncompleted"
+              },
+              {
+                "action": {
+                  "name": "_nixbld5",
+                  "uid": 305,
+                  "groupname": "nixbld",
+                  "gid": 3000
+                },
+                "state": "Uncompleted"
+              },
+              {
+                "action": {
+                  "name": "_nixbld6",
+                  "uid": 306,
+                  "groupname": "nixbld",
+                  "gid": 3000
+                },
+                "state": "Uncompleted"
+              },
+              {
+                "action": {
+                  "name": "_nixbld7",
+                  "uid": 307,
+                  "groupname": "nixbld",
+                  "gid": 3000
+                },
+                "state": "Uncompleted"
+              },
+              {
+                "action": {
+                  "name": "_nixbld8",
+                  "uid": 308,
+                  "groupname": "nixbld",
+                  "gid": 3000
+                },
+                "state": "Uncompleted"
+              },
+              {
+                "action": {
+                  "name": "_nixbld9",
+                  "uid": 309,
+                  "groupname": "nixbld",
+                  "gid": 3000
+                },
+                "state": "Uncompleted"
+              },
+              {
+                "action": {
+                  "name": "_nixbld10",
+                  "uid": 310,
+                  "groupname": "nixbld",
+                  "gid": 3000
+                },
+                "state": "Uncompleted"
+              },
+              {
+                "action": {
+                  "name": "_nixbld11",
+                  "uid": 311,
+                  "groupname": "nixbld",
+                  "gid": 3000
+                },
+                "state": "Uncompleted"
+              },
+              {
+                "action": {
+                  "name": "_nixbld12",
+                  "uid": 312,
+                  "groupname": "nixbld",
+                  "gid": 3000
+                },
+                "state": "Uncompleted"
+              },
+              {
+                "action": {
+                  "name": "_nixbld13",
+                  "uid": 313,
+                  "groupname": "nixbld",
+                  "gid": 3000
+                },
+                "state": "Uncompleted"
+              },
+              {
+                "action": {
+                  "name": "_nixbld14",
+                  "uid": 314,
+                  "groupname": "nixbld",
+                  "gid": 3000
+                },
+                "state": "Uncompleted"
+              },
+              {
+                "action": {
+                  "name": "_nixbld15",
+                  "uid": 315,
+                  "groupname": "nixbld",
+                  "gid": 3000
+                },
+                "state": "Uncompleted"
+              },
+              {
+                "action": {
+                  "name": "_nixbld16",
+                  "uid": 316,
+                  "groupname": "nixbld",
+                  "gid": 3000
+                },
+                "state": "Uncompleted"
+              },
+              {
+                "action": {
+                  "name": "_nixbld17",
+                  "uid": 317,
+                  "groupname": "nixbld",
+                  "gid": 3000
+                },
+                "state": "Uncompleted"
+              },
+              {
+                "action": {
+                  "name": "_nixbld18",
+                  "uid": 318,
+                  "groupname": "nixbld",
+                  "gid": 3000
+                },
+                "state": "Uncompleted"
+              },
+              {
+                "action": {
+                  "name": "_nixbld19",
+                  "uid": 319,
+                  "groupname": "nixbld",
+                  "gid": 3000
+                },
+                "state": "Uncompleted"
+              },
+              {
+                "action": {
+                  "name": "_nixbld20",
+                  "uid": 320,
+                  "groupname": "nixbld",
+                  "gid": 3000
+                },
+                "state": "Uncompleted"
+              },
+              {
+                "action": {
+                  "name": "_nixbld21",
+                  "uid": 321,
+                  "groupname": "nixbld",
+                  "gid": 3000
+                },
+                "state": "Uncompleted"
+              },
+              {
+                "action": {
+                  "name": "_nixbld22",
+                  "uid": 322,
+                  "groupname": "nixbld",
+                  "gid": 3000
+                },
+                "state": "Uncompleted"
+              },
+              {
+                "action": {
+                  "name": "_nixbld23",
+                  "uid": 323,
+                  "groupname": "nixbld",
+                  "gid": 3000
+                },
+                "state": "Uncompleted"
+              },
+              {
+                "action": {
+                  "name": "_nixbld24",
+                  "uid": 324,
+                  "groupname": "nixbld",
+                  "gid": 3000
+                },
+                "state": "Uncompleted"
+              },
+              {
+                "action": {
+                  "name": "_nixbld25",
+                  "uid": 325,
+                  "groupname": "nixbld",
+                  "gid": 3000
+                },
+                "state": "Uncompleted"
+              },
+              {
+                "action": {
+                  "name": "_nixbld26",
+                  "uid": 326,
+                  "groupname": "nixbld",
+                  "gid": 3000
+                },
+                "state": "Uncompleted"
+              },
+              {
+                "action": {
+                  "name": "_nixbld27",
+                  "uid": 327,
+                  "groupname": "nixbld",
+                  "gid": 3000
+                },
+                "state": "Uncompleted"
+              },
+              {
+                "action": {
+                  "name": "_nixbld28",
+                  "uid": 328,
+                  "groupname": "nixbld",
+                  "gid": 3000
+                },
+                "state": "Uncompleted"
+              },
+              {
+                "action": {
+                  "name": "_nixbld29",
+                  "uid": 329,
+                  "groupname": "nixbld",
+                  "gid": 3000
+                },
+                "state": "Uncompleted"
+              },
+              {
+                "action": {
+                  "name": "_nixbld30",
+                  "uid": 330,
+                  "groupname": "nixbld",
+                  "gid": 3000
+                },
+                "state": "Uncompleted"
+              },
+              {
+                "action": {
+                  "name": "_nixbld31",
+                  "uid": 331,
+                  "groupname": "nixbld",
+                  "gid": 3000
+                },
+                "state": "Uncompleted"
+              }
+            ]
+          },
+          "state": "Uncompleted"
+        },
+        "create_nix_tree": {
+          "action": {
+            "create_directories": [
+              {
+                "action": {
+                  "path": "/nix/var",
+                  "user": null,
+                  "group": null,
+                  "mode": 493,
+                  "force_prune_on_revert": false
+                },
+                "state": "Uncompleted"
+              },
+              {
+                "action": {
+                  "path": "/nix/var/log",
+                  "user": null,
+                  "group": null,
+                  "mode": 493,
+                  "force_prune_on_revert": false
+                },
+                "state": "Uncompleted"
+              },
+              {
+                "action": {
+                  "path": "/nix/var/log/nix",
+                  "user": null,
+                  "group": null,
+                  "mode": 493,
+                  "force_prune_on_revert": false
+                },
+                "state": "Uncompleted"
+              },
+              {
+                "action": {
+                  "path": "/nix/var/log/nix/drvs",
+                  "user": null,
+                  "group": null,
+                  "mode": 493,
+                  "force_prune_on_revert": false
+                },
+                "state": "Uncompleted"
+              },
+              {
+                "action": {
+                  "path": "/nix/var/nix",
+                  "user": null,
+                  "group": null,
+                  "mode": 493,
+                  "force_prune_on_revert": false
+                },
+                "state": "Uncompleted"
+              },
+              {
+                "action": {
+                  "path": "/nix/var/nix/db",
+                  "user": null,
+                  "group": null,
+                  "mode": 493,
+                  "force_prune_on_revert": false
+                },
+                "state": "Uncompleted"
+              },
+              {
+                "action": {
+                  "path": "/nix/var/nix/gcroots",
+                  "user": null,
+                  "group": null,
+                  "mode": 493,
+                  "force_prune_on_revert": false
+                },
+                "state": "Uncompleted"
+              },
+              {
+                "action": {
+                  "path": "/nix/var/nix/gcroots/per-user",
+                  "user": null,
+                  "group": null,
+                  "mode": 493,
+                  "force_prune_on_revert": false
+                },
+                "state": "Uncompleted"
+              },
+              {
+                "action": {
+                  "path": "/nix/var/nix/profiles",
+                  "user": null,
+                  "group": null,
+                  "mode": 493,
+                  "force_prune_on_revert": false
+                },
+                "state": "Uncompleted"
+              },
+              {
+                "action": {
+                  "path": "/nix/var/nix/profiles/per-user",
+                  "user": null,
+                  "group": null,
+                  "mode": 493,
+                  "force_prune_on_revert": false
+                },
+                "state": "Uncompleted"
+              },
+              {
+                "action": {
+                  "path": "/nix/var/nix/temproots",
+                  "user": null,
+                  "group": null,
+                  "mode": 493,
+                  "force_prune_on_revert": false
+                },
+                "state": "Uncompleted"
+              },
+              {
+                "action": {
+                  "path": "/nix/var/nix/userpool",
+                  "user": null,
+                  "group": null,
+                  "mode": 493,
+                  "force_prune_on_revert": false
+                },
+                "state": "Uncompleted"
+              },
+              {
+                "action": {
+                  "path": "/nix/var/nix/daemon-socket",
+                  "user": null,
+                  "group": null,
+                  "mode": 493,
+                  "force_prune_on_revert": false
+                },
+                "state": "Uncompleted"
+              }
+            ]
+          },
+          "state": "Uncompleted"
+        },
+        "move_unpacked_nix": {
+          "action": {
+            "src": "/nix/temp-install-dir"
+          },
+          "state": "Uncompleted"
+        }
+      },
+      "state": "Uncompleted"
+    },
+    {
+      "action": {
+        "action": "configure_nix",
+        "setup_default_profile": {
+          "action": {
+            "channels": [
+              [
+                "nixpkgs",
+                "https://nixos.org/channels/nixpkgs-unstable"
+              ]
+            ]
+          },
+          "state": "Uncompleted"
+        },
+        "configure_shell_profile": {
+          "action": {
+            "create_directories": [],
+            "create_or_insert_into_files": [
+              {
+                "action": {
+                  "path": "/etc/bashrc",
+                  "user": null,
+                  "group": null,
+                  "mode": 493,
+                  "buf": "\n# Nix\nif [ -e '/nix/var/nix/profiles/default/etc/profile.d/nix-daemon.sh' ]; then\n    . '/nix/var/nix/profiles/default/etc/profile.d/nix-daemon.sh'\nfi\n# End Nix\n\n        \n",
+                  "position": "Beginning"
+                },
+                "state": "Uncompleted"
+              },
+              {
+                "action": {
+                  "path": "/etc/zshenv",
+                  "user": null,
+                  "group": null,
+                  "mode": 493,
+                  "buf": "\n# Nix\nif [ -e '/nix/var/nix/profiles/default/etc/profile.d/nix-daemon.sh' ]; then\n    . '/nix/var/nix/profiles/default/etc/profile.d/nix-daemon.sh'\nfi\n# End Nix\n\n        \n",
+                  "position": "Beginning"
+                },
+                "state": "Uncompleted"
+              },
+              {
+                "action": {
+                  "path": "/etc/bash.bashrc",
+                  "user": null,
+                  "group": null,
+                  "mode": 493,
+                  "buf": "\n# Nix\nif [ -e '/nix/var/nix/profiles/default/etc/profile.d/nix-daemon.sh' ]; then\n    . '/nix/var/nix/profiles/default/etc/profile.d/nix-daemon.sh'\nfi\n# End Nix\n\n        \n",
+                  "position": "Beginning"
+                },
+                "state": "Uncompleted"
+              }
+            ]
+          },
+          "state": "Uncompleted"
+        },
+        "place_channel_configuration": {
+          "action": {
+            "channels": [
+              [
+                "nixpkgs",
+                "https://nixos.org/channels/nixpkgs-unstable"
+              ]
+            ],
+            "create_file": {
+              "action": {
+                "path": "/Users/ephemeraladmin/.nix-channels",
+                "user": null,
+                "group": null,
+                "mode": 436,
+                "buf": "https://nixos.org/channels/nixpkgs-unstable nixpkgs",
+                "force": false
+              },
+              "state": "Uncompleted"
+            }
+          },
+          "state": "Uncompleted"
+        },
+        "place_nix_configuration": {
+          "action": {
+            "create_directory": {
+              "action": {
+                "path": "/etc/nix",
+                "user": null,
+                "group": null,
+                "mode": 493,
+                "force_prune_on_revert": false
+              },
+              "state": "Uncompleted"
+            },
+            "create_file": {
+              "action": {
+                "path": "/etc/nix/nix.conf",
+                "user": null,
+                "group": null,
+                "mode": 436,
+                "buf": "# Generated by https://github.com/DeterminateSystems/nix-installer, version 0.1.0-unreleased.\n\n\n\nbuild-users-group = nixbld\n\nexperimental-features = nix-command flakes\n\nauto-optimise-store = true\n\nbash-prompt-prefix = (nix:$name)\\040\n",
+                "force": false
+              },
+              "state": "Uncompleted"
+            }
+          },
+          "state": "Uncompleted"
+        }
+      },
+      "state": "Uncompleted"
+    },
+    {
+      "action": {
+        "action": "configure_nix_daemon",
+        "init": "Launchd",
+        "start_daemon": true
+      },
+      "state": "Uncompleted"
+    }
+  ],
+  "planner": {
+    "planner": "darwin-multi",
+    "settings": {
+      "channels": [
+        [
+          "nixpkgs",
+          "https://nixos.org/channels/nixpkgs-unstable"
+        ]
+      ],
+      "modify_profile": true,
+      "nix_build_user_count": 32,
+      "nix_build_group_name": "nixbld",
+      "nix_build_group_id": 3000,
+      "nix_build_user_prefix": "_nixbld",
+      "nix_build_user_id_base": 300,
+      "nix_package_url": "https://releases.nixos.org/nix/nix-2.12.0/nix-2.12.0-aarch64-darwin.tar.xz",
+      "extra_conf": [],
+      "force": false
+    },
+    "encrypt": null,
+    "case_sensitive": false,
+    "volume_label": "Nix Store",
+    "root_disk": "disk3"
+  }
+}
