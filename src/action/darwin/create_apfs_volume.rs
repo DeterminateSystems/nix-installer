@@ -22,6 +22,19 @@ impl CreateApfsVolume {
         name: String,
         case_sensitive: bool,
     ) -> Result<StatefulAction<Self>, ActionError> {
+        let output = execute_command(Command::new("/usr/sbin/diskutil").args(["apfs", "list"]))
+            .await
+            .map_err(ActionError::Command)?;
+
+        let output_string = String::from_utf8(output.stdout)?;
+        for line in output_string.lines() {
+            if line.contains("Name:") && line.contains(&name) {
+                return Err(ActionError::Custom(Box::new(
+                    CreateApfsVolumeError::ExistingVolume(name),
+                )));
+            }
+        }
+
         Ok(Self {
             disk: disk.as_ref().to_path_buf(),
             name,
@@ -120,7 +133,7 @@ impl Action for CreateApfsVolume {
 }
 
 #[derive(Debug, thiserror::Error)]
-pub enum CreateVolumeError {
-    #[error("Failed to execute command")]
-    Command(#[source] std::io::Error),
+pub enum CreateApfsVolumeError {
+    #[error("Existing volume called `{0}` found in `diskutil apfs list`, delete it with `diskutil apfs deleteVolume \"{0}\"`")]
+    ExistingVolume(String),
 }

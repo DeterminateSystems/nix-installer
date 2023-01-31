@@ -11,7 +11,7 @@ pub(crate) mod kickstart_launchctl_service;
 pub(crate) mod unmount_apfs_volume;
 
 pub use bootstrap_apfs_volume::{BootstrapApfsVolume, BootstrapVolumeError};
-pub use create_apfs_volume::{CreateApfsVolume, CreateVolumeError};
+pub use create_apfs_volume::{CreateApfsVolume, CreateApfsVolumeError};
 pub use create_nix_volume::{CreateNixVolume, NIX_VOLUME_MOUNTD_DEST};
 pub use create_synthetic_objects::{CreateSyntheticObjects, CreateSyntheticObjectsError};
 pub use enable_ownership::{EnableOwnership, EnableOwnershipError};
