@@ -35,7 +35,7 @@ owo-colors = { version = "3.5.0", default-features = false, features = [ "suppor
 reqwest = { version = "0.11.11", default-features = false, features = ["rustls-tls", "stream"] }
 serde = { version = "1.0.144", default-features = false, features = [ "std", "derive" ] }
 serde_json = { version = "1.0.85", default-features = false, features = [ "std" ] }
-serde_with = { version = "2.0.1", default-features = false, features = [ "std", "macros" ] }
+serde_with = { version = "2.2.0", default-features = false, features = [ "std", "macros" ] }
 tar = { version = "0.4.38", default-features = false, features = [ "xattr" ] }
 target-lexicon = { version = "0.12.4", default-features = false, features = [ "std" ] }
 thiserror = { version = "1.0.33", default-features = false }
