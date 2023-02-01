@@ -1,7 +1,6 @@
 /*! [`BuiltinPlanner`]s and traits to create new types which can be used to plan out an [`InstallPlan`]
 
-It's a [`Planner`]s job to construct (if possible) a valid [`InstallPlan`] for the host. Some planners,
-like [`LinuxMulti`](linux::LinuxMulti), are operating system specific. Others, like [`SteamDeck`](linux::SteamDeck), are device specific.
+It's a [`Planner`]s job to construct (if possible) a valid [`InstallPlan`] for the host. Some planners are operating system specific, others are device specific.
 
 [`Planner`]s contain their planner specific settings, typically alongside a [`CommonSettings`][crate::settings::CommonSettings].
 
@@ -16,8 +15,8 @@ use std::{error::Error, collections::HashMap};
 use nix_installer::{
     InstallPlan,
     settings::{CommonSettings, InstallSettingsError},
-    planner::{Planner, PlannerError, linux::SteamDeck},
-    action::{Action, StatefulAction, linux::StartSystemdUnit},
+    planner::{Planner, PlannerError},
+    action::{Action, StatefulAction, base::CreateFile},
 };
 
 #[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
@@ -31,7 +30,7 @@ pub struct MyPlanner {
 impl Planner for MyPlanner {
     async fn default() -> Result<Self, PlannerError> {
         Ok(Self {
-            common: CommonSettings::default()?,
+            common: CommonSettings::default().await?,
         })
     }
 
@@ -39,7 +38,7 @@ impl Planner for MyPlanner {
         Ok(vec![
             // ...
 
-                StartSystemdUnit::plan("nix-daemon.socket")
+                CreateFile::plan("/example", None, None, None, "Example".to_string(), false)
                     .await
                     .map_err(PlannerError::Action)?.boxed(),
         ])
@@ -74,7 +73,9 @@ match plan.install(None).await {
 ```
 
 */
+#[cfg(target_os = "macos")]
 pub mod darwin;
+#[cfg(target_os = "linux")]
 pub mod linux;
 
 use std::{collections::HashMap, string::FromUtf8Error};
@@ -113,11 +114,14 @@ dyn_clone::clone_trait_object!(Planner);
 #[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
 #[cfg_attr(feature = "cli", derive(clap::Subcommand))]
 pub enum BuiltinPlanner {
+    #[cfg(target_os = "linux")]
     /// A standard Linux multi-user install
     LinuxMulti(linux::LinuxMulti),
     /// A standard MacOS (Darwin) multi-user install
+    #[cfg(target_os = "macos")]
     DarwinMulti(darwin::DarwinMulti),
     /// A specialized install suitable for the Valve Steam Deck console
+    #[cfg(target_os = "linux")]
     SteamDeck(linux::SteamDeck),
 }
 
@@ -126,16 +130,20 @@ impl BuiltinPlanner {
     pub async fn default() -> Result<Self, PlannerError> {
         use target_lexicon::{Architecture, OperatingSystem};
         match (Architecture::host(), OperatingSystem::host()) {
+            #[cfg(target_os = "linux")]
             (Architecture::X86_64, OperatingSystem::Linux) => {
                 Ok(Self::LinuxMulti(linux::LinuxMulti::default().await?))
             },
+            #[cfg(target_os = "linux")]
             (Architecture::Aarch64(_), OperatingSystem::Linux) => {
                 Ok(Self::LinuxMulti(linux::LinuxMulti::default().await?))
             },
+            #[cfg(target_os = "macos")]
             (Architecture::X86_64, OperatingSystem::MacOSX { .. })
             | (Architecture::X86_64, OperatingSystem::Darwin) => {
                 Ok(Self::DarwinMulti(darwin::DarwinMulti::default().await?))
             },
+            #[cfg(target_os = "macos")]
             (Architecture::Aarch64(_), OperatingSystem::MacOSX { .. })
             | (Architecture::Aarch64(_), OperatingSystem::Darwin) => {
                 Ok(Self::DarwinMulti(darwin::DarwinMulti::default().await?))
@@ -147,41 +155,56 @@ impl BuiltinPlanner {
     pub async fn from_common_settings(settings: CommonSettings) -> Result<Self, PlannerError> {
         let mut built = Self::default().await?;
         match &mut built {
+            #[cfg(target_os = "linux")]
             BuiltinPlanner::LinuxMulti(inner) => inner.settings = settings,
-            BuiltinPlanner::DarwinMulti(inner) => inner.settings = settings,
+            #[cfg(target_os = "linux")]
             BuiltinPlanner::SteamDeck(inner) => inner.settings = settings,
+            #[cfg(target_os = "macos")]
+            BuiltinPlanner::DarwinMulti(inner) => inner.settings = settings,
         }
         Ok(built)
     }
 
     pub async fn plan(self) -> Result<InstallPlan, NixInstallerError> {
         match self {
+            #[cfg(target_os = "linux")]
             BuiltinPlanner::LinuxMulti(planner) => InstallPlan::plan(planner).await,
-            BuiltinPlanner::DarwinMulti(planner) => InstallPlan::plan(planner).await,
+            #[cfg(target_os = "linux")]
             BuiltinPlanner::SteamDeck(planner) => InstallPlan::plan(planner).await,
+            #[cfg(target_os = "macos")]
+            BuiltinPlanner::DarwinMulti(planner) => InstallPlan::plan(planner).await,
         }
     }
     pub fn boxed(self) -> Box<dyn Planner> {
         match self {
+            #[cfg(target_os = "linux")]
             BuiltinPlanner::LinuxMulti(i) => i.boxed(),
-            BuiltinPlanner::DarwinMulti(i) => i.boxed(),
+            #[cfg(target_os = "linux")]
             BuiltinPlanner::SteamDeck(i) => i.boxed(),
+            #[cfg(target_os = "macos")]
+            BuiltinPlanner::DarwinMulti(i) => i.boxed(),
         }
     }
 
     pub fn typetag_name(&self) -> &'static str {
         match self {
+            #[cfg(target_os = "linux")]
             BuiltinPlanner::LinuxMulti(i) => i.typetag_name(),
-            BuiltinPlanner::DarwinMulti(i) => i.typetag_name(),
+            #[cfg(target_os = "linux")]
             BuiltinPlanner::SteamDeck(i) => i.typetag_name(),
+            #[cfg(target_os = "macos")]
+            BuiltinPlanner::DarwinMulti(i) => i.typetag_name(),
         }
     }
 
     pub fn settings(&self) -> Result<HashMap<String, serde_json::Value>, InstallSettingsError> {
         match self {
+            #[cfg(target_os = "linux")]
             BuiltinPlanner::LinuxMulti(i) => i.settings(),
-            BuiltinPlanner::DarwinMulti(i) => i.settings(),
+            #[cfg(target_os = "linux")]
             BuiltinPlanner::SteamDeck(i) => i.settings(),
+            #[cfg(target_os = "macos")]
+            BuiltinPlanner::DarwinMulti(i) => i.settings(),
         }
     }
 }

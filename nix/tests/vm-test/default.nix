@@ -5,9 +5,60 @@ let
 
   installScripts = {
     install-default = {
-      script = ''
+      install = ''
         NIX_PATH=$(readlink -f nix.tar.xz)
         RUST_BACKTRACE="full" ./nix-installer install --logger pretty --log-directive nix_installer=trace --channel --nix-package-url "file://$NIX_PATH" --no-confirm
+      '';
+      check = ''
+        set -ex
+
+        nix-env --version
+        nix --extra-experimental-features nix-command store ping
+
+        out=$(nix-build --no-substitute -E 'derivation { name = "foo"; system = "x86_64-linux"; builder = "/bin/sh"; args = ["-c" "echo foobar > $out"]; }')
+        [[ $(cat $out) = foobar ]]
+      '';
+    };
+    install-no-start-daemon = {
+      install = ''
+        NIX_PATH=$(readlink -f nix.tar.xz)
+        RUST_BACKTRACE="full" ./nix-installer install linux-multi --no-start-daemon --logger pretty --log-directive nix_installer=trace --channel --nix-package-url "file://$NIX_PATH" --no-confirm
+      '';
+      check = ''
+        set -ex
+
+        if systemctl is-active nix-daemon.socket; then
+          echo "nix-daemon.socket was running, should not be"
+          exit 1
+        fi
+        if systemctl is-active nix-daemon.service; then
+          echo "nix-daemon.service was running, should not be"
+          exit 1
+        fi
+
+        sudo systemctl start nix-daemon.socket
+
+        nix-env --version
+        nix --extra-experimental-features nix-command store ping
+
+        out=$(nix-build --no-substitute -E 'derivation { name = "foo"; system = "x86_64-linux"; builder = "/bin/sh"; args = ["-c" "echo foobar > $out"]; }')
+        [[ $(cat $out) = foobar ]]
+      '';
+    };
+    install-daemonless = {
+      install = ''
+        NIX_PATH=$(readlink -f nix.tar.xz)
+        RUST_BACKTRACE="full" ./nix-installer install linux-multi --init none --logger pretty --log-directive nix_installer=trace --channel --nix-package-url "file://$NIX_PATH" --no-confirm
+      '';
+      check = ''
+        set -ex
+
+        sudo -i nix-env --version
+        sudo -i nix --extra-experimental-features nix-command store ping
+
+        echo 'derivation { name = "foo"; system = "x86_64-linux"; builder = "/bin/sh"; args = ["-c" "echo foobar > $out"]; }' | sudo tee -a /drv
+        out=$(sudo -i nix-build --no-substitute /drv)
+        [[ $(cat $out) = foobar ]]
       '';
     };
   };
@@ -114,7 +165,8 @@ let
         buildInputs = [ qemu_kvm openssh ];
         image = image.image;
         postBoot = image.postBoot or "";
-        installScript = installScripts.${testName}.script;
+        installScript = installScripts.${testName}.install;
+        checkScript = installScripts.${testName}.check;
         installer = nix-installer-static;
         binaryTarball = binaryTarball.${system};
       }
@@ -182,15 +234,7 @@ let
         $ssh "set -eux; $installScript"
 
         echo "Testing Nix installation..."
-        $ssh <<EOF
-          set -ex
-
-          nix-env --version
-          nix --extra-experimental-features nix-command store ping
-
-          out=\$(nix-build --no-substitute -E 'derivation { name = "foo"; system = "x86_64-linux"; builder = "/bin/sh"; args = ["-c" "echo foobar > \$out"]; }')
-          [[ \$(cat \$out) = foobar ]]
-        EOF
+        $ssh "set -eux; $checkScript"
 
         echo "Done!"
         touch $out
@@ -198,20 +242,47 @@ let
 
   vm-tests = builtins.mapAttrs
     (imageName: image:
-      {
-        ${image.system} = builtins.mapAttrs
+      rec {
+        ${image.system} = (builtins.mapAttrs
           (testName: test:
             makeTest imageName testName
           )
-          installScripts;
+          installScripts) // {
+          all = (with (forSystem "x86_64-linux" ({ system, pkgs, ... }: pkgs)); pkgs.releaseTools.aggregate {
+            name = "all";
+            constituents = (
+              pkgs.lib.mapAttrsToList
+                (testName: test:
+                  makeTest imageName testName
+                )
+                installScripts
+            );
+          });
+        };
       }
     )
     images;
 
 in
-vm-tests // {
+vm-tests // rec {
   all."x86_64-linux".install-default = (with (forSystem "x86_64-linux" ({ system, pkgs, ... }: pkgs)); pkgs.releaseTools.aggregate {
     name = "all";
     constituents = pkgs.lib.mapAttrsToList (name: value: value."x86_64-linux".install-default) vm-tests;
+  });
+  all."x86_64-linux".install-no-start-daemon = (with (forSystem "x86_64-linux" ({ system, pkgs, ... }: pkgs)); pkgs.releaseTools.aggregate {
+    name = "all";
+    constituents = pkgs.lib.mapAttrsToList (name: value: value."x86_64-linux".install-default) vm-tests;
+  });
+  all."x86_64-linux".install-daemonless = (with (forSystem "x86_64-linux" ({ system, pkgs, ... }: pkgs)); pkgs.releaseTools.aggregate {
+    name = "all";
+    constituents = pkgs.lib.mapAttrsToList (name: value: value."x86_64-linux".install-daemonless) vm-tests;
+  });
+  all."x86_64-linux".all = (with (forSystem "x86_64-linux" ({ system, pkgs, ... }: pkgs)); pkgs.releaseTools.aggregate {
+    name = "all";
+    constituents = [
+      all."x86_64-linux".install-default
+      all."x86_64-linux".install-no-start-daemon
+      all."x86_64-linux".install-daemonless
+    ];
   });
 }

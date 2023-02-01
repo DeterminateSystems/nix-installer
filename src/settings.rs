@@ -21,6 +21,30 @@ pub const NIX_X64_64_DARWIN_URL: &str =
 pub const NIX_AARCH64_DARWIN_URL: &str =
     "https://releases.nixos.org/nix/nix-2.12.0/nix-2.12.0-aarch64-darwin.tar.xz";
 
+#[derive(Debug, serde::Deserialize, serde::Serialize, Clone, Copy)]
+#[cfg_attr(feature = "cli", derive(clap::ValueEnum))]
+pub enum InitSystem {
+    #[cfg(not(target_os = "macos"))]
+    None,
+    #[cfg(target_os = "linux")]
+    Systemd,
+    #[cfg(target_os = "macos")]
+    Launchd,
+}
+
+impl std::fmt::Display for InitSystem {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            #[cfg(not(target_os = "macos"))]
+            InitSystem::None => write!(f, "none"),
+            #[cfg(target_os = "linux")]
+            InitSystem::Systemd => write!(f, "systemd"),
+            #[cfg(target_os = "macos")]
+            InitSystem::Launchd => write!(f, "launchd"),
+        }
+    }
+}
+
 /** Common settings used by all [`BuiltinPlanner`](crate::planner::BuiltinPlanner)s
 
 Settings which only apply to certain [`Planner`](crate::planner::Planner)s should be located in the planner.
@@ -173,29 +197,33 @@ pub struct CommonSettings {
 
 impl CommonSettings {
     /// The default settings for the given Architecture & Operating System
-    pub fn default() -> Result<Self, InstallSettingsError> {
+    pub async fn default() -> Result<Self, InstallSettingsError> {
         let url;
         let nix_build_user_prefix;
         let nix_build_user_id_base;
 
         use target_lexicon::{Architecture, OperatingSystem};
         match (Architecture::host(), OperatingSystem::host()) {
+            #[cfg(target_os = "linux")]
             (Architecture::X86_64, OperatingSystem::Linux) => {
                 url = NIX_X64_64_LINUX_URL;
                 nix_build_user_prefix = "nixbld";
                 nix_build_user_id_base = 3000;
             },
+            #[cfg(target_os = "linux")]
             (Architecture::Aarch64(_), OperatingSystem::Linux) => {
                 url = NIX_AARCH64_LINUX_URL;
                 nix_build_user_prefix = "nixbld";
                 nix_build_user_id_base = 3000;
             },
+            #[cfg(target_os = "macos")]
             (Architecture::X86_64, OperatingSystem::MacOSX { .. })
             | (Architecture::X86_64, OperatingSystem::Darwin) => {
                 url = NIX_X64_64_DARWIN_URL;
                 nix_build_user_prefix = "_nixbld";
                 nix_build_user_id_base = 300;
             },
+            #[cfg(target_os = "macos")]
             (Architecture::Aarch64(_), OperatingSystem::MacOSX { .. })
             | (Architecture::Aarch64(_), OperatingSystem::Darwin) => {
                 url = NIX_AARCH64_DARWIN_URL;
@@ -286,6 +314,34 @@ impl CommonSettings {
         Ok(map)
     }
 }
+#[cfg(target_os = "linux")]
+async fn linux_detect_init() -> (InitSystem, bool) {
+    use std::process::Stdio;
+
+    let mut detected = InitSystem::None;
+    let mut started = false;
+    if std::path::Path::new("/run/systemd/system").exists() {
+        detected = InitSystem::Systemd;
+        started = if tokio::process::Command::new("systemctl")
+            .arg("status")
+            .stdin(Stdio::null())
+            .stdout(Stdio::null())
+            .stderr(Stdio::null())
+            .status()
+            .await
+            .ok()
+            .map(|exit| exit.success())
+            .unwrap_or(false)
+        {
+            true
+        } else {
+            false
+        }
+    }
+
+    // TODO: Other inits
+    (detected, started)
+}
 
 // Builder Pattern
 impl CommonSettings {
@@ -349,6 +405,96 @@ impl CommonSettings {
     }
 }
 
+#[serde_with::serde_as]
+#[derive(Debug, serde::Deserialize, serde::Serialize, Clone)]
+#[cfg_attr(feature = "cli", derive(clap::Parser))]
+pub struct InitSettings {
+    /// Which init system to configure (if `--init none` Nix will be root-only)
+    #[cfg_attr(feature = "cli", clap(value_parser, long, env = "NIX_INSTALLER_INIT",))]
+    #[cfg_attr(
+        all(target_os = "macos", feature = "cli"),
+        clap(default_value_t = InitSystem::Launchd)
+    )]
+    #[cfg_attr(
+        all(target_os = "linux", feature = "cli"),
+        clap(default_value_t = InitSystem::Systemd)
+    )]
+    pub(crate) init: InitSystem,
+
+    /// Start the daemon (if not `--init none`)
+    #[cfg_attr(
+        feature = "cli",
+        clap(
+            value_parser,
+            long,
+            action(ArgAction::SetFalse),
+            env = "NIX_INSTALLER_START_DAEMON",
+            default_value_t = true,
+            long = "no-start-daemon"
+        )
+    )]
+    pub(crate) start_daemon: bool,
+}
+
+impl InitSettings {
+    /// The default settings for the given Architecture & Operating System
+    pub async fn default() -> Result<Self, InstallSettingsError> {
+        let init;
+        let start_daemon;
+
+        use target_lexicon::{Architecture, OperatingSystem};
+        match (Architecture::host(), OperatingSystem::host()) {
+            #[cfg(target_os = "linux")]
+            (Architecture::X86_64, OperatingSystem::Linux) => {
+                (init, start_daemon) = linux_detect_init().await;
+            },
+            #[cfg(target_os = "linux")]
+            (Architecture::Aarch64(_), OperatingSystem::Linux) => {
+                (init, start_daemon) = linux_detect_init().await;
+            },
+            #[cfg(target_os = "macos")]
+            (Architecture::X86_64, OperatingSystem::MacOSX { .. })
+            | (Architecture::X86_64, OperatingSystem::Darwin) => {
+                (init, start_daemon) = (InitSystem::Launchd, true);
+            },
+            #[cfg(target_os = "macos")]
+            (Architecture::Aarch64(_), OperatingSystem::MacOSX { .. })
+            | (Architecture::Aarch64(_), OperatingSystem::Darwin) => {
+                (init, start_daemon) = (InitSystem::Launchd, true);
+            },
+            _ => {
+                return Err(InstallSettingsError::UnsupportedArchitecture(
+                    target_lexicon::HOST,
+                ))
+            },
+        };
+
+        Ok(Self { init, start_daemon })
+    }
+
+    /// A listing of the settings, suitable for [`Planner::settings`](crate::planner::Planner::settings)
+    pub fn settings(&self) -> Result<HashMap<String, serde_json::Value>, InstallSettingsError> {
+        let Self { init, start_daemon } = self;
+        let mut map = HashMap::default();
+
+        map.insert("init".into(), serde_json::to_value(init)?);
+        map.insert("start_daemon".into(), serde_json::to_value(start_daemon)?);
+        Ok(map)
+    }
+
+    /// Which init system to configure
+    pub fn init(&mut self, init: InitSystem) -> &mut Self {
+        self.init = init;
+        self
+    }
+
+    /// Start the daemon (if one is configured)
+    pub fn start_daemon(&mut self, toggle: bool) -> &mut Self {
+        self.start_daemon = toggle;
+        self
+    }
+}
+
 /// An error originating from a [`Planner::settings`](crate::planner::Planner::settings)
 #[derive(thiserror::Error, Debug)]
 pub enum InstallSettingsError {
@@ -369,4 +515,6 @@ pub enum InstallSettingsError {
         #[from]
         serde_json::Error,
     ),
+    #[error("No supported init system found")]
+    InitNotSupported,
 }

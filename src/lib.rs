@@ -34,14 +34,17 @@ match plan.install(None).await {
 # }
 ```
 
-Sometimes choosing a specific plan is desired:
+Sometimes choosing a specific planner is desired:
 
 ```rust,no_run
 use std::error::Error;
-use nix_installer::{InstallPlan, planner::{Planner, linux::SteamDeck}};
+use nix_installer::{InstallPlan, planner::Planner};
 
 # async fn chosen_planner_install() -> color_eyre::Result<()> {
-let planner = SteamDeck::default().await?;
+#[cfg(target_os = "linux")]
+let planner = nix_installer::planner::linux::SteamDeck::default().await?;
+#[cfg(target_os = "macos")]
+let planner = nix_installer::planner::darwin::DarwinMulti::default().await?;
 
 // Or call `crate::planner::BuiltinPlanner::default()`
 // Match on the result to customize.
