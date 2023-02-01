@@ -152,62 +152,6 @@ jobs:
       run: nix build .
 ```
 
-
-## Building
-
-Since you'll be using `nix-installer` to install Nix on systems without Nix, the default build is a static binary.
-
-Build a portable binary on a system with Nix:
-
-```bash
-nix build -L github:determinatesystems/nix-installer#nix-installer-static
-```
-
-Then copy the `result/bin/nix-installer` to the machine you wish to run it on.
-
-You can also add `nix-installer` to your system without having Nix:
-
-```bash
-RUSTFLAGS="--cfg tokio_unstable" cargo install nix-installer
-nix-installer --help
-```
-
-To make this build portable, pass ` --target x86_64-unknown-linux-musl`.
-
-> We currently require `--cfg tokio_unstable` as we utilize [Tokio's process groups](https://docs.rs/tokio/1.24.1/tokio/process/struct.Command.html#method.process_group), which wrap stable `std` APIs, but are unstable due to it requiring an MSRV bump.
-
-
-## As a library
-
-Add `nix-installer` to your dependencies:
-
-```bash
-cargo add nix-installer
-```
-
-> **Building a CLI?** Check out the `cli` feature flag for `clap` integration.
-
-You'll also need to edit your `.cargo/config.toml` to use `tokio_unstable` as we utilize [Tokio's process groups](https://docs.rs/tokio/1.24.1/tokio/process/struct.Command.html#method.process_group), which wrap stable `std` APIs, but are unstable due to it requiring an MSRV bump:
-
-```toml
-# .cargo/config.toml
-[build]
-rustflags=["--cfg", "tokio_unstable"]
-```
-
-Then it's possible to review the [documentation](https://docs.rs/nix-installer/latest/nix_installer/):
-
-```bash
-cargo doc --open -p nix-installer
-```
-
-Documentation is also available via `nix` build:
-
-```bash
-nix build github:DeterminateSystems/nix-installer#nix-installer.doc
-firefox result-doc/nix-installer/index.html
-```
-
 ## In a container
 
 In Docker/Podman containers or WSL instances where an init (like `systemd`) is not present, pass `--init none`.
@@ -280,3 +224,66 @@ If systemd is not enabled, pass `--init none` at the end of the command:
 ```bash
 curl --proto '=https' --tlsv1.2 -sSf -L https://install.determinate.systems/nix | sh -s -- install --init none
 ```
+
+## Building a binary
+
+Since you'll be using `nix-installer` to install Nix on systems without Nix, the default build is a static binary.
+
+Build a portable Linux binary on a system with Nix:
+
+```bash
+nix build -L github:determinatesystems/nix-installer#nix-installer-static
+```
+
+On Mac:
+
+```bash
+nix build -L github:determinatesystems/nix-installer#nix-installer
+```
+
+Then copy the `result/bin/nix-installer` to the machine you wish to run it on.
+
+You can also add `nix-installer` to a system without Nix via `cargo`:
+
+```bash
+RUSTFLAGS="--cfg tokio_unstable" cargo install nix-installer
+nix-installer --help
+```
+
+To make this build portable, pass ` --target x86_64-unknown-linux-musl`.
+
+> We currently require `--cfg tokio_unstable` as we utilize [Tokio's process groups](https://docs.rs/tokio/1.24.1/tokio/process/struct.Command.html#method.process_group), which wrap stable `std` APIs, but are unstable due to it requiring an MSRV bump.
+
+
+## As a library
+
+Add `nix-installer` to your dependencies:
+
+```bash
+cargo add nix-installer
+```
+
+> **Building a CLI?** Check out the `cli` feature flag for `clap` integration.
+
+You'll also need to edit your `.cargo/config.toml` to use `tokio_unstable` as we utilize [Tokio's process groups](https://docs.rs/tokio/1.24.1/tokio/process/struct.Command.html#method.process_group), which wrap stable `std` APIs, but are unstable due to it requiring an MSRV bump:
+
+```toml
+# .cargo/config.toml
+[build]
+rustflags=["--cfg", "tokio_unstable"]
+```
+
+Then it's possible to review the [documentation](https://docs.rs/nix-installer/latest/nix_installer/):
+
+```bash
+cargo doc --open -p nix-installer
+```
+
+Documentation is also available via `nix` build:
+
+```bash
+nix build github:DeterminateSystems/nix-installer#nix-installer.doc
+firefox result-doc/nix-installer/index.html
+```
+
+
