@@ -9,6 +9,7 @@ on:
 
 jobs:
   release:
+    concurrency: release
     runs-on: ubuntu-latest
     permissions:
       id-token: write # In order to request a JWT for AWS auth
