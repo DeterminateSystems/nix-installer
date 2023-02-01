@@ -13,6 +13,8 @@ use std::{
 use tokio::process::Command;
 use tracing::{span, Span};
 
+use super::create_fstab_entry::CreateFstabEntry;
+
 pub const NIX_VOLUME_MOUNTD_DEST: &str = "/Library/LaunchDaemons/org.nixos.darwin-store.plist";
 
 /// Create an APFS volume
@@ -26,7 +28,7 @@ pub struct CreateNixVolume {
     create_synthetic_objects: StatefulAction<CreateSyntheticObjects>,
     unmount_volume: StatefulAction<UnmountApfsVolume>,
     create_volume: StatefulAction<CreateApfsVolume>,
-    create_or_append_fstab: StatefulAction<CreateOrInsertIntoFile>,
+    create_fstab_entry: StatefulAction<CreateFstabEntry>,
     encrypt_volume: Option<StatefulAction<EncryptApfsVolume>>,
     setup_volume_daemon: StatefulAction<CreateFile>,
     bootstrap_volume: StatefulAction<BootstrapApfsVolume>,
@@ -59,16 +61,9 @@ impl CreateNixVolume {
 
         let create_volume = CreateApfsVolume::plan(disk, name.clone(), case_sensitive).await?;
 
-        let create_or_append_fstab = CreateOrInsertIntoFile::plan(
-            "/etc/fstab",
-            None,
-            None,
-            0o0655,
-            format!("NAME=\"{name}\" /nix apfs rw,noauto,nobrowse,suid,owners"),
-            create_or_insert_into_file::Position::End,
-        )
-        .await
-        .map_err(|e| ActionError::Child(Box::new(e)))?;
+        let create_fstab_entry = CreateFstabEntry::plan(name.clone())
+            .await
+            .map_err(|e| ActionError::Child(Box::new(e)))?;
 
         let encrypt_volume = if encrypt {
             Some(EncryptApfsVolume::plan(disk, &name).await?)
@@ -125,7 +120,7 @@ impl CreateNixVolume {
             create_synthetic_objects,
             unmount_volume,
             create_volume,
-            create_or_append_fstab,
+            create_fstab_entry,
             encrypt_volume,
             setup_volume_daemon,
             bootstrap_volume,
@@ -173,7 +168,7 @@ impl Action for CreateNixVolume {
             create_synthetic_objects,
             unmount_volume,
             create_volume,
-            create_or_append_fstab,
+            create_fstab_entry,
             encrypt_volume,
             setup_volume_daemon,
             bootstrap_volume,
@@ -184,7 +179,7 @@ impl Action for CreateNixVolume {
         create_synthetic_objects.try_execute().await?;
         unmount_volume.try_execute().await.ok(); // We actually expect this may fail.
         create_volume.try_execute().await?;
-        create_or_append_fstab.try_execute().await?;
+        create_fstab_entry.try_execute().await?;
         if let Some(encrypt_volume) = encrypt_volume {
             encrypt_volume.try_execute().await?;
         }
@@ -236,7 +231,7 @@ impl Action for CreateNixVolume {
             create_synthetic_objects,
             unmount_volume,
             create_volume,
-            create_or_append_fstab,
+            create_fstab_entry,
             encrypt_volume,
             setup_volume_daemon,
             bootstrap_volume,
@@ -249,7 +244,7 @@ impl Action for CreateNixVolume {
         if let Some(encrypt_volume) = encrypt_volume {
             encrypt_volume.try_revert().await?;
         }
-        create_or_append_fstab.try_revert().await?;
+        create_fstab_entry.try_revert().await?;
 
         unmount_volume.try_revert().await?;
         create_volume.try_revert().await?;

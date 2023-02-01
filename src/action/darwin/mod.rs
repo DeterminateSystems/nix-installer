@@ -3,6 +3,7 @@
 
 pub(crate) mod bootstrap_apfs_volume;
 pub(crate) mod create_apfs_volume;
+pub(crate) mod create_fstab_entry;
 pub(crate) mod create_nix_volume;
 pub(crate) mod create_synthetic_objects;
 pub(crate) mod enable_ownership;
