@@ -1,19 +1,12 @@
-use nix::unistd::{chown, Group, User};
 use uuid::Uuid;
 
 use crate::{
     action::{Action, ActionDescription, ActionError, StatefulAction},
     execute_command,
 };
-use rand::Rng;
-use std::{
-    io::SeekFrom,
-    os::unix::prelude::PermissionsExt,
-    path::{Path, PathBuf},
-    str::FromStr,
-};
+use std::{io::SeekFrom, path::Path};
 use tokio::{
-    fs::{remove_file, OpenOptions},
+    fs::OpenOptions,
     io::{AsyncReadExt, AsyncSeekExt, AsyncWriteExt},
     process::Command,
 };
