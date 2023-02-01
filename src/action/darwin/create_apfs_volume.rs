@@ -5,6 +5,7 @@ use tracing::{span, Span};
 
 use crate::action::{ActionError, StatefulAction};
 use crate::execute_command;
+use serde::Deserialize;
 
 use crate::action::{Action, ActionDescription};
 
@@ -22,6 +23,22 @@ impl CreateApfsVolume {
         name: String,
         case_sensitive: bool,
     ) -> Result<StatefulAction<Self>, ActionError> {
+        let output =
+            execute_command(Command::new("/usr/sbin/diskutil").args(["apfs", "list", "-plist"]))
+                .await
+                .map_err(ActionError::Command)?;
+
+        let parsed: DiskUtilApfsListOutput = plist::from_bytes(&output.stdout)?;
+        for container in parsed.containers {
+            for volume in container.volumes {
+                if volume.name == name {
+                    return Err(ActionError::Custom(Box::new(
+                        CreateApfsVolumeError::ExistingVolume(name),
+                    )));
+                }
+            }
+        }
+
         Ok(Self {
             disk: disk.as_ref().to_path_buf(),
             name,
@@ -120,7 +137,25 @@ impl Action for CreateApfsVolume {
 }
 
 #[derive(Debug, thiserror::Error)]
-pub enum CreateVolumeError {
-    #[error("Failed to execute command")]
-    Command(#[source] std::io::Error),
+pub enum CreateApfsVolumeError {
+    #[error("Existing volume called `{0}` found in `diskutil apfs list`, delete it with `diskutil apfs deleteVolume \"{0}\"`")]
+    ExistingVolume(String),
+}
+
+#[derive(Deserialize, Clone, Debug)]
+#[serde(rename_all = "PascalCase")]
+struct DiskUtilApfsListOutput {
+    containers: Vec<DiskUtilApfsContainer>,
+}
+
+#[derive(Deserialize, Clone, Debug)]
+#[serde(rename_all = "PascalCase")]
+struct DiskUtilApfsContainer {
+    volumes: Vec<DiskUtilApfsListVolume>,
+}
+
+#[derive(Deserialize, Clone, Debug)]
+#[serde(rename_all = "PascalCase")]
+struct DiskUtilApfsListVolume {
+    name: String,
 }

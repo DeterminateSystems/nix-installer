@@ -114,6 +114,7 @@ pub struct CommonSettings {
         feature = "cli",
         clap(long, env = "NIX_INSTALLER_NIX_BUILD_USER_ID_BASE", global = true)
     )]
+    // Service users on Mac should be between 200-400
     #[cfg_attr(all(target_os = "macos", feature = "cli"), clap(default_value_t = 300))]
     #[cfg_attr(
         all(target_os = "linux", feature = "cli"),
