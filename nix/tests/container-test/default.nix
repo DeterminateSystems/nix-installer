@@ -49,8 +49,6 @@ let
               virtualisation.${containerTool}.enable = true;
             };
         };
-        # installer = nix-installer-static;
-        # binaryTarball = binaryTarball.${system};
         testScript = ''
           machine.start()
           machine.copy_from_host("${image.tarball}", "/image")
