@@ -327,6 +327,9 @@ pub enum ActionError {
         #[from]
         std::string::FromUtf8Error,
     ),
+    /// A MacOS (Darwin) plist related error
+    #[error(transparent)]
+    Plist(#[from] plist::Error),
 }
 
 impl HasExpectedErrors for ActionError {

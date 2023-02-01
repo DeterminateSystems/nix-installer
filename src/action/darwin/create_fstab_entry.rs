@@ -4,6 +4,7 @@ use crate::{
     action::{Action, ActionDescription, ActionError, StatefulAction},
     execute_command,
 };
+use serde::Deserialize;
 use std::{io::SeekFrom, path::Path};
 use tokio::{
     fs::OpenOptions,
@@ -75,13 +76,7 @@ impl Action for CreateFstabEntry {
     async fn execute(&mut self) -> Result<(), ActionError> {
         let Self { apfs_volume_label } = self;
         let fstab_path = Path::new(FSTAB_PATH);
-        let uuid = get_uuid_for_label(&apfs_volume_label)
-            .await?
-            .ok_or_else(|| {
-                ActionError::Custom(Box::new(CreateFstabEntryError::NoVolume(
-                    apfs_volume_label.clone(),
-                )))
-            })?;
+        let uuid = get_uuid_for_label(&apfs_volume_label).await?;
         let fstab_entry = fstab_entry(&uuid, apfs_volume_label);
 
         let mut fstab = tokio::fs::OpenOptions::new()
@@ -126,13 +121,7 @@ impl Action for CreateFstabEntry {
     async fn revert(&mut self) -> Result<(), ActionError> {
         let Self { apfs_volume_label } = self;
         let fstab_path = Path::new(FSTAB_PATH);
-        let uuid = get_uuid_for_label(&apfs_volume_label)
-            .await?
-            .ok_or_else(|| {
-                ActionError::Custom(Box::new(CreateFstabEntryError::NoVolume(
-                    apfs_volume_label.clone(),
-                )))
-            })?;
+        let uuid = get_uuid_for_label(&apfs_volume_label).await?;
         let fstab_entry = fstab_entry(&uuid, apfs_volume_label);
 
         let mut file = OpenOptions::new()
@@ -170,11 +159,12 @@ impl Action for CreateFstabEntry {
     }
 }
 
-async fn get_uuid_for_label(apfs_volume_label: &str) -> Result<Option<Uuid>, ActionError> {
+async fn get_uuid_for_label(apfs_volume_label: &str) -> Result<Uuid, ActionError> {
     let output = execute_command(
         Command::new("/usr/sbin/diskutil")
             .process_group(0)
             .arg("info")
+            .arg("-plist")
             .arg(apfs_volume_label)
             .stdin(std::process::Stdio::null())
             .stdout(std::process::Stdio::piped()),
@@ -182,27 +172,9 @@ async fn get_uuid_for_label(apfs_volume_label: &str) -> Result<Option<Uuid>, Act
     .await
     .map_err(|e| ActionError::Command(e))?;
 
-    let stdout = String::from_utf8(output.stdout)?;
+    let parsed: DiskUtilApfsInfoOutput = plist::from_bytes(&output.stdout)?;
 
-    let mut found = None;
-    for line in stdout.lines() {
-        let prefix = "Volume UUID:";
-        let trimmed = line.trim();
-        if let Some(index) = trimmed.find(prefix) {
-            let maybe_uuid = trimmed[(index + prefix.len())..].trim();
-            let uuid = Uuid::parse_str(maybe_uuid).map_err(|err| {
-                ActionError::Custom(Box::new(CreateFstabEntryError::Uuid(
-                    maybe_uuid.to_string(),
-                    err,
-                )))
-            })?;
-
-            found = Some(uuid);
-            break;
-        }
-    }
-
-    Ok(found)
+    Ok(parsed.volume_uuid)
 }
 
 fn fstab_prelude_comment(apfs_volume_label: &str) -> String {
@@ -221,10 +193,13 @@ fn fstab_entry(uuid: &Uuid, apfs_volume_label: &str) -> String {
 
 #[derive(thiserror::Error, Debug)]
 pub enum CreateFstabEntryError {
-    #[error("UUID error: {0}")]
-    Uuid(String, #[source] uuid::Error),
-    #[error("No volume labelled `{0}` present, cannot get UUID to add to /etc/fstab")]
-    NoVolume(String),
     #[error("An `/etc/fstab` entry for the volume labelled `{0}` already exists. If a Nix Store already exists it may need to be deleted with `diskutil apfs deleteVolume \"{0}\") and should be removed from `/etc/fstab`")]
     EntryExists(String),
+}
+
+#[derive(Deserialize, Clone, Debug)]
+#[serde(rename_all = "PascalCase")]
+struct DiskUtilApfsInfoOutput {
+    #[serde(rename = "VolumeUUID")]
+    volume_uuid: Uuid,
 }
