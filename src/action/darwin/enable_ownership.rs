@@ -62,7 +62,7 @@ impl Action for EnableOwnership {
             .await
             .map_err(ActionError::Command)?
             .stdout;
-            let the_plist: DiskUtilOutput = plist::from_reader(Cursor::new(buf)).unwrap();
+            let the_plist: DiskUtilOutput = plist::from_reader(Cursor::new(buf))?;
 
             the_plist.global_permissions_enabled
         };
@@ -97,7 +97,4 @@ impl Action for EnableOwnership {
 pub enum EnableOwnershipError {
     #[error("Failed to execute command")]
     Command(#[source] std::io::Error),
-    /// A MacOS (Darwin) plist related error
-    #[error(transparent)]
-    Plist(#[from] plist::Error),
 }
