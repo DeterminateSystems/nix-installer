@@ -97,4 +97,7 @@ impl Action for EnableOwnership {
 pub enum EnableOwnershipError {
     #[error("Failed to execute command")]
     Command(#[source] std::io::Error),
+    /// A MacOS (Darwin) plist related error
+    #[error(transparent)]
+    Plist(#[from] plist::Error),
 }
