@@ -52,6 +52,7 @@ impl Action for ConfigureInitService {
             InitSystem::Launchd => {
                 "Configure Nix daemon related settings with launchctl".to_string()
             },
+            #[cfg(not(target_os = "macos"))]
             InitSystem::None => "Leave the Nix daemon unconfigured".to_string(),
         }
     }
@@ -86,6 +87,7 @@ impl Action for ConfigureInitService {
                 }
                 vec.push(ActionDescription::new(self.tracing_synopsis(), explanation))
             },
+            #[cfg(not(target_os = "macos"))]
             InitSystem::None => (),
         }
         vec
@@ -196,6 +198,7 @@ impl Action for ConfigureInitService {
                     .map_err(ActionError::Command)?;
                 }
             },
+            #[cfg(not(target_os = "macos"))]
             InitSystem::None => {
                 // Nothing here, no init system
             },
@@ -225,6 +228,7 @@ impl Action for ConfigureInitService {
                     vec!["Run `launchctl unload {DARWIN_NIX_DAEMON_DEST}`".to_string()],
                 )]
             },
+            #[cfg(not(target_os = "macos"))]
             InitSystem::None => Vec::new(),
         }
     }
@@ -319,6 +323,7 @@ impl Action for ConfigureInitService {
                 .await
                 .map_err(ActionError::Command)?;
             },
+            #[cfg(not(target_os = "macos"))]
             InitSystem::None => {
                 // Nothing here, no init
             },
@@ -334,6 +339,7 @@ pub enum ConfigureNixDaemonServiceError {
     InitNotSupported,
 }
 
+#[cfg(target_os = "linux")]
 async fn is_active(unit: &str) -> Result<bool, ActionError> {
     let output = Command::new("systemctl")
         .arg("is-active")
@@ -350,6 +356,7 @@ async fn is_active(unit: &str) -> Result<bool, ActionError> {
     }
 }
 
+#[cfg(target_os = "linux")]
 async fn is_enabled(unit: &str) -> Result<bool, ActionError> {
     let output = Command::new("systemctl")
         .arg("is-enabled")

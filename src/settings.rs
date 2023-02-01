@@ -4,7 +4,6 @@ use std::collections::HashMap;
 
 #[cfg(feature = "cli")]
 use clap::ArgAction;
-use tokio::process::Command;
 use url::Url;
 
 use crate::channel_value::ChannelValue;
@@ -25,6 +24,7 @@ pub const NIX_AARCH64_DARWIN_URL: &str =
 #[derive(Debug, serde::Deserialize, serde::Serialize, Clone, Copy)]
 #[cfg_attr(feature = "cli", derive(clap::ValueEnum))]
 pub enum InitSystem {
+    #[cfg(not(target_os = "macos"))]
     None,
     #[cfg(target_os = "linux")]
     Systemd,
@@ -35,6 +35,7 @@ pub enum InitSystem {
 impl std::fmt::Display for InitSystem {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
+            #[cfg(not(target_os = "macos"))]
             InitSystem::None => write!(f, "none"),
             #[cfg(target_os = "linux")]
             InitSystem::Systemd => write!(f, "systemd"),
@@ -320,7 +321,7 @@ async fn linux_detect_init() -> (InitSystem, bool) {
     let mut started = false;
     if std::path::Path::new("/run/systemd/system").exists() {
         detected = InitSystem::Systemd;
-        started = if Command::new("systemctl")
+        started = if tokio::process::Command::new("systemctl")
             .arg("status")
             .stdin(Stdio::null())
             .stdout(Stdio::null())
@@ -486,7 +487,7 @@ impl InitSettings {
         self
     }
 
-    /// Start the daemon (if `init` is not [`InitSystem::None`])
+    /// Start the daemon (if one is configured)
     pub fn start_daemon(&mut self, toggle: bool) -> &mut Self {
         self.start_daemon = toggle;
         self

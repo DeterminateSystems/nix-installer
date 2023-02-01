@@ -1,7 +1,10 @@
 use nix_installer::InstallPlan;
 
+#[cfg(target_os = "linux")]
 const LINUX_MULTI: &str = include_str!("./fixtures/linux/linux-multi.json");
+#[cfg(target_os = "linux")]
 const STEAM_DECK: &str = include_str!("./fixtures/linux/steam-deck.json");
+#[cfg(target_os = "macos")]
 const DARWIN_MULTI: &str = include_str!("./fixtures/darwin/darwin-multi.json");
 
 // Ensure existing plans still parse

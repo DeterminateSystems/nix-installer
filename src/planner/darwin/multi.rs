@@ -14,7 +14,7 @@ use crate::{
     os::darwin::DiskUtilOutput,
     planner::{Planner, PlannerError},
     settings::InstallSettingsError,
-    settings::{CommonSettings, InitSettings, InitSystem},
+    settings::{CommonSettings, InitSystem},
     Action, BuiltinPlanner,
 };
 
