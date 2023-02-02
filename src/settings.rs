@@ -464,6 +464,10 @@ impl InitSettings {
                 (init, start_daemon) = linux_detect_init().await;
             },
             #[cfg(target_os = "linux")]
+            (Architecture::X86_32(_), OperatingSystem::Linux) => {
+                (init, start_daemon) = linux_detect_init().await;
+            },
+            #[cfg(target_os = "linux")]
             (Architecture::Aarch64(_), OperatingSystem::Linux) => {
                 (init, start_daemon) = linux_detect_init().await;
             },
