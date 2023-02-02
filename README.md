@@ -16,12 +16,11 @@ curl --proto '=https' --tlsv1.2 -sSf -L https://install.determinate.systems/nix 
 
 Current and planned support:
 
-* [x] Multi-user Linux (aarch64 and x86_64) with systemd init, no SELinux
-* [x] Multi-user MacOS (aarch64 and x86_64)
-    + Note: User deletion is currently unimplemented, you need to use a user with a secure token and `dscl . -delete /Users/_nixbuild*` where `*` is each user number.
-* [x] Valve Steam Deck
-* [ ] Multi-user Linux (aarch64 and x86_64) with systemd init & SELinux
-* [ ] Single-user Linux (aarch64 and x86_64)
+* [x] Multi-user Linux (aarch64 and x86_64) with systemd integration, no SELinux
+* [x] Root-only Linux (aarch64 and x86_64) with no init integration, no SELinux
+* [x] Multi-user MacOS (aarch64 and x86_64) with launchd integration
+* [x] SteamOS on the Valve Steam Deck
+* [ ] Multi-user Linux (aarch64 and x86_64) with systemd integration & SELinux
 * [ ] Others...
 
 ## Installation Differences
@@ -95,16 +94,16 @@ Usage: nix-installer install linux-multi [OPTIONS]
 
 Options:
 # ...
-      --nix-build-user-count <NIX_BUILD_USER_COUNT>
-          Number of build users to create
+      --nix-build-group-name <NIX_BUILD_GROUP_NAME>
+          The Nix build group name
           
-          [env: NIX_INSTALLER_NIX_BUILD_USER_COUNT=]
-          [default: 32]
+          [env: NIX_INSTALLER_NIX_BUILD_GROUP_NAME=]
+          [default: nixbld]
 
-      --nix-build-user-id-base <NIX_BUILD_USER_ID_BASE>
-          The Nix build user base UID (ascending)
+      --nix-build-group-id <NIX_BUILD_GROUP_ID>
+          The Nix build group GID
           
-          [env: NIX_INSTALLER_NIX_BUILD_USER_ID_BASE=]
+          [env: NIX_INSTALLER_NIX_BUILD_GROUP_ID=]
           [default: 3000]
 # ...
 ```
@@ -112,9 +111,9 @@ Options:
 Planners can be configured via environment variable or command arguments:
 
 ```bash
-$ curl --proto '=https' --tlsv1.2 -sSf -L https://install.determinate.systems/nix | NIX_BUILD_USER_COUNT=4 sh -s -- install linux-multi --nix-build-user-id-base 4000
+$ curl --proto '=https' --tlsv1.2 -sSf -L https://install.determinate.systems/nix | NIX_BUILD_GROUP_NAME=nixbuilder sh -s -- install linux-multi --nix-build-group-id 4000
 # Or...
-$ NIX_BUILD_USER_COUNT=4 ./nix-installer install linux-multi --nix-build-user-id-base 4000
+$ NIX_BUILD_GROUP_NAME=nixbuilder ./nix-installer install linux-multi --nix-build-group-id 4000
 ```
 
 
@@ -145,28 +144,102 @@ jobs:
     - uses: actions/checkout@v3
     - name: Install Nix
       uses: DeterminateSystems/nix-installer-action@main
-      with:
-        # Allow the installed Nix to make authenticated Github requests.
-        # If you skip this, you will likely get rate limited.
-        github-token: ${{ secrets.GITHUB_TOKEN }}
     - name: Run `nix build`
       run: nix build .
 ```
 
+## In a container
 
-## Building
+In Docker/Podman containers or WSL instances where an init (like `systemd`) is not present, pass `--init none`.
+
+> When `--init none` is used, only `root` or sudoers can run Nix:
+>
+> ```bash
+> sudo -i nix run nixpkgs#hello
+> ```
+
+For Docker containers (without an init):
+
+```dockerfile
+# Dockerfile
+FROM ubuntu:latest
+RUN apt update -y
+RUN apt install curl -y
+COPY nix-installer /nix-installer
+RUN /nix-installer install linux-multi --init none --no-confirm
+ENV PATH="${PATH}:/nix/var/nix/profiles/default/bin"
+RUN nix run nixpkgs#hello
+```
+
+Podman containers require `sandbox = false` in your `Nix.conf`.
+
+For podman containers without an init:
+
+```dockerfile
+# Dockerfile
+FROM ubuntu:latest
+RUN apt update -y
+RUN apt install curl -y
+COPY nix-installer /nix-installer
+RUN /nix-installer install linux-multi --extra-conf "sandbox = false" --init none --no-confirm
+ENV PATH="${PATH}:/nix/var/nix/profiles/default/bin"
+RUN nix run nixpkgs#hello
+```
+
+For Podman containers with an init:
+
+```dockerfile
+# Dockerfile
+FROM ubuntu:latest
+RUN apt update -y
+RUN apt install curl systemd -y
+COPY nix-installer /nix-installer
+RUN /nix-installer install linux-multi --extra-conf "sandbox = false" --no-start-daemon --no-confirm
+ENV PATH="${PATH}:/nix/var/nix/profiles/default/bin"
+RUN nix run nixpkgs#hello
+CMD [ "/usr/sbin/init" ]
+```
+
+## In WSL
+
+If [systemd is enabled](https://ubuntu.com/blog/ubuntu-wsl-enable-systemd) it's possible to install Nix as normal using the command at the top of this document:
+
+```bash
+curl --proto '=https' --tlsv1.2 -sSf -L https://install.determinate.systems/nix | sh -s -- install
+```
+
+If systemd is not enabled, pass `--init none` at the end of the command:
+
+> When `--init none` is used, only `root` or sudoers can run Nix:
+>
+> ```bash
+> sudo -i nix run nixpkgs#hello
+> ```
+
+
+```bash
+curl --proto '=https' --tlsv1.2 -sSf -L https://install.determinate.systems/nix | sh -s -- install --init none
+```
+
+## Building a binary
 
 Since you'll be using `nix-installer` to install Nix on systems without Nix, the default build is a static binary.
 
-Build a portable binary on a system with Nix:
+Build a portable Linux binary on a system with Nix:
 
 ```bash
 nix build -L github:determinatesystems/nix-installer#nix-installer-static
 ```
 
+On Mac:
+
+```bash
+nix build -L github:determinatesystems/nix-installer#nix-installer
+```
+
 Then copy the `result/bin/nix-installer` to the machine you wish to run it on.
 
-You can also add `nix-installer` to your system without having Nix:
+You can also add `nix-installer` to a system without Nix via `cargo`:
 
 ```bash
 RUSTFLAGS="--cfg tokio_unstable" cargo install nix-installer
@@ -188,7 +261,7 @@ cargo add nix-installer
 
 > **Building a CLI?** Check out the `cli` feature flag for `clap` integration.
 
-You'll also need to edit your `.cargo/config.toml` to use `tokio_unstable`:
+You'll also need to edit your `.cargo/config.toml` to use `tokio_unstable` as we utilize [Tokio's process groups](https://docs.rs/tokio/1.24.1/tokio/process/struct.Command.html#method.process_group), which wrap stable `std` APIs, but are unstable due to it requiring an MSRV bump:
 
 ```toml
 # .cargo/config.toml
@@ -208,3 +281,5 @@ Documentation is also available via `nix` build:
 nix build github:DeterminateSystems/nix-installer#nix-installer.doc
 firefox result-doc/nix-installer/index.html
 ```
+
+

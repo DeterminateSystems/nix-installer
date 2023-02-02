@@ -64,12 +64,12 @@ use std::{collections::HashMap, path::PathBuf};
 use crate::{
     action::{
         base::{CreateDirectory, CreateFile},
-        common::{ConfigureNix, ProvisionNix},
+        common::{ConfigureInitService, ConfigureNix, ProvisionNix},
         linux::StartSystemdUnit,
         Action, StatefulAction,
     },
     planner::{Planner, PlannerError},
-    settings::{CommonSettings, InstallSettingsError},
+    settings::{CommonSettings, InitSystem, InstallSettingsError},
     BuiltinPlanner,
 };
 
@@ -95,7 +95,7 @@ impl Planner for SteamDeck {
     async fn default() -> Result<Self, PlannerError> {
         Ok(Self {
             persistence: PathBuf::from("/home/nix"),
-            settings: CommonSettings::default()?,
+            settings: CommonSettings::default().await?,
         })
     }
 
@@ -222,6 +222,11 @@ impl Planner for SteamDeck {
                 .map_err(PlannerError::Action)?
                 .boxed(),
             ConfigureNix::plan(&self.settings)
+                .await
+                .map_err(PlannerError::Action)?
+                .boxed(),
+            // Init is required for the steam-deck archetype to make the `/nix` mount
+            ConfigureInitService::plan(InitSystem::Systemd, true)
                 .await
                 .map_err(PlannerError::Action)?
                 .boxed(),

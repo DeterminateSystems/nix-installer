@@ -1,7 +1,7 @@
 use crate::action::base::CreateFile;
 use crate::action::ActionError;
 use crate::action::{Action, ActionDescription, StatefulAction};
-use reqwest::Url;
+use crate::ChannelValue;
 use tracing::{span, Span};
 
 /**
@@ -9,19 +9,19 @@ Place a channel configuration containing `channels` to the `$ROOT_HOME/.nix-chan
  */
 #[derive(Debug, serde::Deserialize, serde::Serialize, Clone)]
 pub struct PlaceChannelConfiguration {
-    channels: Vec<(String, Url)>,
+    channels: Vec<ChannelValue>,
     create_file: StatefulAction<CreateFile>,
 }
 
 impl PlaceChannelConfiguration {
     #[tracing::instrument(level = "debug", skip_all)]
     pub async fn plan(
-        channels: Vec<(String, Url)>,
+        channels: Vec<ChannelValue>,
         force: bool,
     ) -> Result<StatefulAction<Self>, ActionError> {
         let buf = channels
             .iter()
-            .map(|(name, url)| format!("{} {}", url, name))
+            .map(|ChannelValue(name, url)| format!("{} {}", url, name))
             .collect::<Vec<_>>()
             .join("\n");
         let create_file = CreateFile::plan(
@@ -62,7 +62,7 @@ impl Action for PlaceChannelConfiguration {
             channels = self
                 .channels
                 .iter()
-                .map(|(c, u)| format!("{c}={u}"))
+                .map(|ChannelValue(c, u)| format!("{c}={u}"))
                 .collect::<Vec<_>>()
                 .join(", "),
         )

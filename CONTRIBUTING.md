@@ -156,7 +156,7 @@ It's perfectly fine if they are manual or labor intensive, as these should be a 
 
 ## `qemu` VM tests
 
-In `nix/tests/vm-test` there exists some Nix derivations which we expose in the flake via `hydraJobs`.
+For x86_64 Linux we have some additional QEMU based tests. In `nix/tests/vm-test` there exists some Nix derivations which we expose in the flake via `hydraJobs`.
 
 These should be visible in `nix flake show`:
 
@@ -190,13 +190,13 @@ git+file:///home/ana/git/determinatesystems/nix-installer
 To run all of the currently supported tests:
 
 ```bash
-nix build .#hydraJobs.vm-test.all.x86_64-linux.install-default -L
+nix build .#hydraJobs.vm-test.all.x86_64-linux.all -L
 ```
 
 To run a specific distribution listed in the `nix flake show` output:
 
 ```bash
-nix build .#hydraJobs.vm-test.rhel-v7.x86_64-linux.install-default -L
+nix build .#hydraJobs.vm-test.rhel-v7.x86_64-linux.all -L
 ```
 
 For PR review, you can also test arbitrary branches or checkouts like so:
@@ -237,6 +237,120 @@ installer-test-rhel-v7-install-default> Formatting './disk.qcow2', fmt=qcow2 clu
 ```
 
 </details>
+
+## Container tests
+
+
+For x86_64 Linux we have some additional container tests. In `nix/tests/container-test` there exists some Nix derivations which we expose in the flake via `hydraJobs`.
+
+These should be visible in `nix flake show`:
+
+```
+❯ nix flake show
+warning: Git tree '/home/ana/git/determinatesystems/nix-installer' is dirty
+git+file:///home/ana/git/determinatesystems/nix-installer
+# ...
+├───hydraJobs
+│   ├───container-test
+│   │   ├───all
+│   │   │   └───x86_64-linux
+│   │   │       ├───all: derivation 'all'
+│   │   │       ├───docker: derivation 'all'
+│   │   │       └───podman: derivation 'all'
+│   │   ├───ubuntu-v18_04
+│   │   │   └───x86_64-linux
+│   │   │       ├───all: derivation 'all'
+│   │   │       ├───docker: derivation 'vm-test-run-container-test-ubuntu-v18_04'
+│   │   │       └───podman: derivation 'vm-test-run-container-test-ubuntu-v18_04'
+│   │   ├───ubuntu-v20_04
+│   │   │   └───x86_64-linux
+│   │   │       ├───all: derivation 'all'
+│   │   │       ├───docker: derivation 'vm-test-run-container-test-ubuntu-v20_04'
+│   │   │       └───podman: derivation 'vm-test-run-container-test-ubuntu-v20_04'
+│   │   └───ubuntu-v22_04
+│   │       └───x86_64-linux
+│   │           ├───all: derivation 'all'
+│   │           ├───docker: derivation 'vm-test-run-container-test-ubuntu-v22_04'
+│   │           └───podman: derivation 'vm-test-run-container-test-ubuntu-v22_04'
+```
+
+To run all of the currently supported tests:
+
+```bash
+nix build .#hydraJobs.container-test.all.x86_64-linux.all -L
+```
+
+To run a specific distribution listed in the `nix flake show` output:
+
+```bash
+nix build .#hydraJobs.container-test.ubuntu-v22_04.x86_64-linux.docker -L
+```
+
+For PR review, you can also test arbitrary branches or checkouts like so:
+
+```bash
+nix build github:determinatesystems/nix-installer/${BRANCH}#hydraJobs.container-test.ubuntu-v22_04.x86_64-linux.podman -L
+```
+
+<details>
+  <summary><strong>Adding a distro?</strong></summary>
+
+Notice how `ubuntu-v20_02` has a `v20`, not just `20`? That's so the test output shows correctly, as Nix will interpret the first `-\d` (eg `-20`, `-123213`) as a version, and not show it in the output. 
+
+Using `v20` instead turns:
+
+```
+# ...
+vm-test-run-container-test-ubuntu> machine # [   23.385182] dhcpcd[670]: vethae56f366: deleting address fe80::c036:c8ff:fe04:5832
+vm-test-run-container-test-ubuntu> machine # this derivation will be built:
+vm-test-run-container-test-ubuntu> machine #   /nix/store/9qb0l9n1gsmcyynfmndnq3qpmlvq8rln-foo.drv
+vm-test-run-container-test-ubuntu> machine # [   23.424605] dhcpcd[670]: vethae56f366: removing interface
+vm-test-run-container-test-ubuntu> machine # building '/nix/store/9qb0l9n1gsmcyynfmndnq3qpmlvq8rln-foo.drv'...
+vm-test-run-container-test-ubuntu> machine # [   23.371066] systemd[1]: crun-buildah-buildah1810857047.scope: Deactivated successfully.
+# ...
+```
+
+Into this:
+
+```
+# ...
+vm-test-run-container-test-ubuntu-v18_04> machine # [   23.385182] dhcpcd[670]: vethae56f366: deleting address fe80::c036:c8ff:fe04:5832
+vm-test-run-container-test-ubuntu-v20_04> machine # this derivation will be built:
+vm-test-run-container-test-ubuntu-v20_04> machine #   /nix/store/9qb0l9n1gsmcyynfmndnq3qpmlvq8rln-foo.drv
+vm-test-run-container-test-ubuntu-v18_04> machine # [   23.424605] dhcpcd[670]: vethae56f366: removing interface
+vm-test-run-container-test-ubuntu-v20_04> machine # building '/nix/store/9qb0l9n1gsmcyynfmndnq3qpmlvq8rln-foo.drv'...
+vm-test-run-container-test-ubuntu-v20_04> machine # [   23.371066] systemd[1]: crun-buildah-buildah1810857047.scope: Deactivated successfully.
+# ...
+```
+
+</details>
+
+## WSL tests
+
+On a Windows Machine with WSL2 enabled (and updated to [support systemd](https://ubuntu.com/blog/ubuntu-wsl-enable-systemd)) you can test using WSL the scripts in `tests/windows`:
+
+```powershell
+.\tests\windows\test-wsl.ps1
+.\tests\windows\test-wsl.ps1 -Systemd
+```
+
+If something breaks you may need to unregister the test WSL instance. First, look for the distro prefixed with `nix-installer-test`:
+
+```powershell
+$ wsl --list
+Windows Subsystem for Linux Distributions:
+Ubuntu (Default)
+nix-installer-test-ubuntu-jammy
+```
+
+Then delete it:
+
+```powershell
+wsl --unregister nix-installer-test-ubuntu-jammy
+```
+
+You can also remove your `$HOME/nix-installer-wsl-tests-temp` folder whenever you wish.
+
 
 ## Testing the `action.yml`
 

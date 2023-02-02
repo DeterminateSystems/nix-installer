@@ -32,7 +32,7 @@ action.try_revert().await.unwrap();
 ```
 
 A general guidance for what determines how fine-grained an [`Action`] should be is the unit of
-reversion. The [`ConfigureNixDaemonService`](common::ConfigureNixDaemonService) action is a good
+reversion. The [`ConfigureInitService`](common::ConfigureInitService) action is a good
 example of this, it takes several steps, such as running `systemd-tmpfiles`, and calling
 `systemctl link` on some systemd units.
 
@@ -49,7 +49,7 @@ use tracing::{Span, span};
 use nix_installer::{
     InstallPlan,
     settings::{CommonSettings, InstallSettingsError},
-    planner::{Planner, PlannerError, linux::SteamDeck},
+    planner::{Planner, PlannerError},
     action::{Action, ActionError, StatefulAction, ActionDescription},
 };
 
@@ -112,7 +112,7 @@ pub struct MyPlanner {
 impl Planner for MyPlanner {
     async fn default() -> Result<Self, PlannerError> {
         Ok(Self {
-            common: CommonSettings::default()?,
+            common: CommonSettings::default().await?,
         })
     }
 
