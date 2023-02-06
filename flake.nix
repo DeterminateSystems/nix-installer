@@ -15,7 +15,7 @@
     };
 
     nix = {
-      url = "github:nixos/nix";
+      url = "github:nixos/nix/2.12.0";
       inputs.nixpkgs.follows = "nixpkgs";
     };
 
@@ -36,7 +36,7 @@
 
       forSystem = system: f: f rec {
         inherit system;
-        pkgs = import nixpkgs { inherit system; overlays = [ self.overlays.default ]; };
+        pkgs = import nixpkgs { inherit system; overlays = [ self.overlays.default nix.overlays.default ]; };
         lib = pkgs.lib;
       };
 
