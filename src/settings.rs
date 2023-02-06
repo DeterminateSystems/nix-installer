@@ -11,6 +11,9 @@ use crate::channel_value::ChannelValue;
 /// Default [`nix_package_url`](CommonSettings::nix_package_url) for Linux x86_64
 pub const NIX_X64_64_LINUX_URL: &str =
     "https://releases.nixos.org/nix/nix-2.12.0/nix-2.12.0-x86_64-linux.tar.xz";
+/// Default [`nix_package_url`](CommonSettings::nix_package_url) for Linux x86 (32 bit)
+pub const NIX_I686_LINUX_URL: &str =
+    "https://releases.nixos.org/nix/nix-2.12.0/nix-2.12.0-i686-linux.tar.xz";
 /// Default [`nix_package_url`](CommonSettings::nix_package_url) for Linux aarch64
 pub const NIX_AARCH64_LINUX_URL: &str =
     "https://releases.nixos.org/nix/nix-2.12.0/nix-2.12.0-aarch64-linux.tar.xz";
@@ -170,6 +173,12 @@ pub struct CommonSettings {
         )
     )]
     #[cfg_attr(
+        all(target_os = "linux", target_arch = "x86", feature = "cli"),
+        clap(
+            default_value = NIX_I686_LINUX_URL,
+        )
+    )]
+    #[cfg_attr(
         all(target_os = "linux", target_arch = "aarch64", feature = "cli"),
         clap(
             default_value = NIX_AARCH64_LINUX_URL,
@@ -207,6 +216,12 @@ impl CommonSettings {
             #[cfg(target_os = "linux")]
             (Architecture::X86_64, OperatingSystem::Linux) => {
                 url = NIX_X64_64_LINUX_URL;
+                nix_build_user_prefix = "nixbld";
+                nix_build_user_id_base = 3000;
+            },
+            #[cfg(target_os = "linux")]
+            (Architecture::X86_32(_), OperatingSystem::Linux) => {
+                url = NIX_I686_LINUX_URL;
                 nix_build_user_prefix = "nixbld";
                 nix_build_user_id_base = 3000;
             },
@@ -446,6 +461,10 @@ impl InitSettings {
         match (Architecture::host(), OperatingSystem::host()) {
             #[cfg(target_os = "linux")]
             (Architecture::X86_64, OperatingSystem::Linux) => {
+                (init, start_daemon) = linux_detect_init().await;
+            },
+            #[cfg(target_os = "linux")]
+            (Architecture::X86_32(_), OperatingSystem::Linux) => {
                 (init, start_daemon) = linux_detect_init().await;
             },
             #[cfg(target_os = "linux")]

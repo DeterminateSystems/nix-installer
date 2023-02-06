@@ -30,7 +30,7 @@
     , ...
     } @ inputs:
     let
-      supportedSystems = [ "x86_64-linux" "aarch64-linux" "x86_64-darwin" "aarch64-darwin" ];
+      supportedSystems = [ "i686-linux" "x86_64-linux" "aarch64-linux" "x86_64-darwin" "aarch64-darwin" ];
 
       forAllSystems = f: nixpkgs.lib.genAttrs supportedSystems (system: (forSystem system f));
 
@@ -49,6 +49,8 @@
           stable.rust-src
         ] ++ nixpkgs.lib.optionals (system == "x86_64-linux") [
           targets.x86_64-unknown-linux-musl.stable.rust-std
+        ] ++ nixpkgs.lib.optionals (system == "i686-linux") [
+          targets.i686-unknown-linux-musl.stable.rust-std
         ] ++ nixpkgs.lib.optionals (system == "aarch64-linux") [
           targets.aarch64-unknown-linux-musl.stable.rust-std
         ]);
@@ -98,6 +100,12 @@
           nix-installer-static = naerskLib.buildPackage
             (sharedAttrs // {
               CARGO_BUILD_TARGET = "x86_64-unknown-linux-musl";
+            });
+        } // nixpkgs.lib.optionalAttrs (prev.hostPlatform.system == "i686-linux") rec {
+          default = nix-installer-static;
+          nix-installer-static = naerskLib.buildPackage
+            (sharedAttrs // {
+              CARGO_BUILD_TARGET = "i686-unknown-linux-musl";
             });
         } // nixpkgs.lib.optionalAttrs (prev.hostPlatform.system == "aarch64-linux") rec {
           default = nix-installer-static;
@@ -168,6 +176,9 @@
         {
           inherit (pkgs) nix-installer;
         } // nixpkgs.lib.optionalAttrs (system == "x86_64-linux") {
+          inherit (pkgs) nix-installer-static;
+          default = pkgs.nix-installer-static;
+        } // nixpkgs.lib.optionalAttrs (system == "i686-linux") {
           inherit (pkgs) nix-installer-static;
           default = pkgs.nix-installer-static;
         } // nixpkgs.lib.optionalAttrs (system == "aarch64-linux") {

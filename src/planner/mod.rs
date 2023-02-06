@@ -135,6 +135,10 @@ impl BuiltinPlanner {
                 Ok(Self::LinuxMulti(linux::LinuxMulti::default().await?))
             },
             #[cfg(target_os = "linux")]
+            (Architecture::X86_32(_), OperatingSystem::Linux) => {
+                Ok(Self::LinuxMulti(linux::LinuxMulti::default().await?))
+            },
+            #[cfg(target_os = "linux")]
             (Architecture::Aarch64(_), OperatingSystem::Linux) => {
                 Ok(Self::LinuxMulti(linux::LinuxMulti::default().await?))
             },
