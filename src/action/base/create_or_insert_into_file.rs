@@ -118,7 +118,7 @@ impl CreateOrInsertIntoFile {
                 .map_err(|e| ActionError::Read(this.path.clone(), e))?;
 
             if discovered_buf.contains(&this.buf) {
-                return Ok(StatefulAction::completed(this));
+                return Ok(StatefulAction::skipped(this));
             }
 
             // If not, we can't skip this, so we still do it
