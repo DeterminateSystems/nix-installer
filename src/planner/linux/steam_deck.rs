@@ -152,6 +152,7 @@ impl Planner for SteamDeck {
             Requires=nix-directory.service\n\
             ConditionPathIsDirectory=/nix\n\
             DefaultDependencies=no\n\
+            RequiredBy=nix-daemon.service\n\
             \n\
             [Mount]\n\
             What={persistence}\n\
@@ -188,7 +189,7 @@ impl Planner for SteamDeck {
             Type=oneshot\n\
             RemainAfterExit=yes\n\
             ExecStart=/usr/bin/systemctl daemon-reload\n\
-            ExecStart=/usr/bin/systemctl restart --no-block sockets.target timers.target multi-user.target\n\
+            ExecStart=/usr/bin/systemctl restart --no-block nix-daemon.service\n\
             \n\
             [Install]\n\
             WantedBy=sysinit.target\n\
