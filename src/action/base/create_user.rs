@@ -52,7 +52,7 @@ impl CreateUser {
                 ));
             }
 
-            return Ok(StatefulAction::completed(this));
+            return Ok(StatefulAction::skipped(this));
         }
 
         Ok(StatefulAction::uncompleted(this))
