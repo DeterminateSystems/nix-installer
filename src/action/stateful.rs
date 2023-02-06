@@ -217,6 +217,27 @@ where
             },
         }
     }
+
+    pub fn completed(action: A) -> Self {
+        Self {
+            state: ActionState::Completed,
+            action,
+        }
+    }
+
+    pub fn skipped(action: A) -> Self {
+        Self {
+            state: ActionState::Skipped,
+            action,
+        }
+    }
+
+    pub fn uncompleted(action: A) -> Self {
+        Self {
+            state: ActionState::Uncompleted,
+            action,
+        }
+    }
 }
 
 /** The state of an [`Action`](crate::action::Action)

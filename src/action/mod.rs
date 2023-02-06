@@ -262,8 +262,16 @@ pub enum ActionError {
     }).collect::<Vec<_>>().join(" & "))]
     Children(Vec<Box<ActionError>>),
     /// The path already exists
-    #[error("Path exists `{0}`")]
+    #[error(
+        "`{0}` exists with different content than planned, consider removing it with `rm {0}`"
+    )]
     Exists(std::path::PathBuf),
+    #[error("`{0}` exists with a different uid ({1}) than planned ({2}), consider removing it with `rm {0}`")]
+    FileUserMismatch(std::path::PathBuf, u32, u32),
+    #[error("`{0}` exists with a different gid ({1}) than planned ({2}), consider removing it with `rm {0}`")]
+    FileGroupMismatch(std::path::PathBuf, u32, u32),
+    #[error("`{0}` exists with a different mode ({1:o}) than planned ({2:o}), consider removing it with `rm {0}`")]
+    FileModeMismatch(std::path::PathBuf, u32, u32),
     #[error("Getting metadata for {0}`")]
     GettingMetadata(std::path::PathBuf, #[source] std::io::Error),
     #[error("Creating directory `{0}`")]
@@ -303,11 +311,11 @@ pub enum ActionError {
     #[error("Truncating `{0}`")]
     Truncate(std::path::PathBuf, #[source] std::io::Error),
     #[error("Getting uid for user `{0}`")]
-    UserId(String, #[source] nix::errno::Errno),
+    GettingUserId(String, #[source] nix::errno::Errno),
     #[error("Getting user `{0}`")]
     NoUser(String),
     #[error("Getting gid for group `{0}`")]
-    GroupId(String, #[source] nix::errno::Errno),
+    GettingGroupId(String, #[source] nix::errno::Errno),
     #[error("Getting group `{0}`")]
     NoGroup(String),
     #[error("Chowning path `{0}`")]

@@ -4,11 +4,11 @@ use crate::action::{Action, ActionDescription, ActionError, StatefulAction};
 use rand::Rng;
 use std::{
     io::SeekFrom,
-    os::unix::prelude::PermissionsExt,
+    os::{linux::fs::MetadataExt, unix::prelude::PermissionsExt},
     path::{Path, PathBuf},
 };
 use tokio::{
-    fs::{remove_file, OpenOptions},
+    fs::{remove_file, File, OpenOptions},
     io::{AsyncReadExt, AsyncSeekExt, AsyncWriteExt},
 };
 use tracing::{span, Span};
@@ -46,16 +46,85 @@ impl CreateOrInsertIntoFile {
         position: Position,
     ) -> Result<StatefulAction<Self>, ActionError> {
         let path = path.as_ref().to_path_buf();
-
-        Ok(Self {
+        let mode = mode.into();
+        let user = user.into();
+        let group = group.into();
+        let this = Self {
             path,
-            user: user.into(),
-            group: group.into(),
-            mode: mode.into(),
+            user,
+            group,
+            mode,
             buf,
             position,
+        };
+        if this.path.exists() {
+            // If the path exists, perhaps we can just skip this
+            let mut file = File::open(&this.path)
+                .await
+                .map_err(|e| ActionError::Open(this.path.clone(), e))?;
+
+            let metadata = file
+                .metadata()
+                .await
+                .map_err(|e| ActionError::GettingMetadata(this.path.clone(), e))?;
+            if let Some(mode) = mode {
+                // Does the file have the right permissions?
+                let discovered_mode = metadata.permissions().mode();
+                if discovered_mode != mode {
+                    return Err(ActionError::FileModeMismatch(
+                        this.path.clone(),
+                        discovered_mode,
+                        mode,
+                    ));
+                }
+            }
+
+            // Does it have the right user/group?
+            if let Some(user) = &this.user {
+                // If the file exists, the user must also exist to be correct.
+                let expected_uid = User::from_name(user.as_str())
+                    .map_err(|e| ActionError::GettingUserId(user.clone(), e))?
+                    .ok_or_else(|| ActionError::NoUser(user.clone()))?
+                    .uid;
+                let found_uid = metadata.st_uid();
+                if found_uid == expected_uid.as_raw() {
+                    return Err(ActionError::FileUserMismatch(
+                        this.path.clone(),
+                        found_uid,
+                        expected_uid.as_raw(),
+                    ));
+                }
+            }
+            if let Some(group) = &this.group {
+                // If the file exists, the group must also exist to be correct.
+                let expected_gid = Group::from_name(group.as_str())
+                    .map_err(|e| ActionError::GettingGroupId(group.clone(), e))?
+                    .ok_or_else(|| ActionError::NoUser(group.clone()))?
+                    .gid;
+                let found_gid = metadata.st_gid();
+                if found_gid == expected_gid.as_raw() {
+                    return Err(ActionError::FileGroupMismatch(
+                        this.path.clone(),
+                        found_gid,
+                        expected_gid.as_raw(),
+                    ));
+                }
+            }
+
+            // Does it have the right content?
+            let mut discovered_buf = String::new();
+            file.read_to_string(&mut discovered_buf)
+                .await
+                .map_err(|e| ActionError::Read(this.path.clone(), e))?;
+
+            if discovered_buf.contains(&this.buf) {
+                return Ok(StatefulAction::completed(this));
+            }
+
+            // If not, we can't skip this, so we still do it
         }
-        .into())
+
+        Ok(this.into())
     }
 }
 
@@ -158,7 +227,7 @@ impl Action for CreateOrInsertIntoFile {
         let gid = if let Some(group) = group {
             Some(
                 Group::from_name(group.as_str())
-                    .map_err(|e| ActionError::GroupId(group.clone(), e))?
+                    .map_err(|e| ActionError::GettingGroupId(group.clone(), e))?
                     .ok_or(ActionError::NoGroup(group.clone()))?
                     .gid,
             )
@@ -168,7 +237,7 @@ impl Action for CreateOrInsertIntoFile {
         let uid = if let Some(user) = user {
             Some(
                 User::from_name(user.as_str())
-                    .map_err(|e| ActionError::UserId(user.clone(), e))?
+                    .map_err(|e| ActionError::GettingUserId(user.clone(), e))?
                     .ok_or(ActionError::NoUser(user.clone()))?
                     .uid,
             )
