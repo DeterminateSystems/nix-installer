@@ -189,7 +189,7 @@ impl Planner for SteamDeck {
             Type=oneshot\n\
             RemainAfterExit=yes\n\
             ExecStart=/usr/bin/systemctl daemon-reload\n\
-            ExecStart=/usr/bin/systemctl restart --no-block nix-daemon.service\n\
+            ExecStart=/usr/bin/systemctl start --no-block sockets.target timers.target multi-user.target\n\
             \n\
             [Install]\n\
             WantedBy=sysinit.target\n\
