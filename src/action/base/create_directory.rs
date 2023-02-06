@@ -105,7 +105,7 @@ impl Action for CreateDirectory {
         let gid = if let Some(group) = group {
             Some(
                 Group::from_name(group.as_str())
-                    .map_err(|e| ActionError::GroupId(group.clone(), e))?
+                    .map_err(|e| ActionError::GettingGroupId(group.clone(), e))?
                     .ok_or(ActionError::NoGroup(group.clone()))?
                     .gid,
             )
@@ -115,7 +115,7 @@ impl Action for CreateDirectory {
         let uid = if let Some(user) = user {
             Some(
                 User::from_name(user.as_str())
-                    .map_err(|e| ActionError::UserId(user.clone(), e))?
+                    .map_err(|e| ActionError::GettingUserId(user.clone(), e))?
                     .ok_or(ActionError::NoUser(user.clone()))?
                     .uid,
             )
