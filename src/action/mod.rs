@@ -341,7 +341,12 @@ pub enum ActionError {
 }
 
 impl HasExpectedErrors for ActionError {
-    fn expected(&self) -> Option<Box<dyn std::error::Error>> {
-        None
+    fn expected<'a>(&'a self) -> Option<Box<dyn std::error::Error + 'a>> {
+        match self {
+            Self::FileUserMismatch(_, _, _)
+            | Self::FileGroupMismatch(_, _, _)
+            | Self::FileModeMismatch(_, _, _) => Some(Box::new(self)),
+            _ => None,
+        }
     }
 }
