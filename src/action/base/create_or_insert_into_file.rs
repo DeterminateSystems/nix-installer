@@ -4,7 +4,7 @@ use crate::action::{Action, ActionDescription, ActionError, StatefulAction};
 use rand::Rng;
 use std::{
     io::SeekFrom,
-    os::{linux::fs::MetadataExt, unix::prelude::PermissionsExt},
+    os::{unix::fs::MetadataExt, unix::prelude::PermissionsExt},
     path::{Path, PathBuf},
 };
 use tokio::{
@@ -86,7 +86,7 @@ impl CreateOrInsertIntoFile {
                     .map_err(|e| ActionError::GettingUserId(user.clone(), e))?
                     .ok_or_else(|| ActionError::NoUser(user.clone()))?
                     .uid;
-                let found_uid = metadata.st_uid();
+                let found_uid = metadata.uid();
                 if found_uid == expected_uid.as_raw() {
                     return Err(ActionError::FileUserMismatch(
                         this.path.clone(),
@@ -101,7 +101,7 @@ impl CreateOrInsertIntoFile {
                     .map_err(|e| ActionError::GettingGroupId(group.clone(), e))?
                     .ok_or_else(|| ActionError::NoUser(group.clone()))?
                     .gid;
-                let found_gid = metadata.st_gid();
+                let found_gid = metadata.gid();
                 if found_gid == expected_gid.as_raw() {
                     return Err(ActionError::FileGroupMismatch(
                         this.path.clone(),
