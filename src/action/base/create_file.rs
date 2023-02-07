@@ -2,7 +2,7 @@ use nix::unistd::{chown, Group, User};
 use tracing::{span, Span};
 
 use std::{
-    os::{linux::fs::MetadataExt, unix::fs::PermissionsExt},
+    os::{unix::fs::MetadataExt, unix::fs::PermissionsExt},
     path::{Path, PathBuf},
 };
 use tokio::{
@@ -80,7 +80,7 @@ impl CreateFile {
                     .map_err(|e| ActionError::GettingUserId(user.clone(), e))?
                     .ok_or_else(|| ActionError::NoUser(user.clone()))?
                     .uid;
-                let found_uid = metadata.st_uid();
+                let found_uid = metadata.uid();
                 if found_uid == expected_uid.as_raw() {
                     return Err(ActionError::FileUserMismatch(
                         this.path.clone(),
@@ -95,7 +95,7 @@ impl CreateFile {
                     .map_err(|e| ActionError::GettingGroupId(group.clone(), e))?
                     .ok_or_else(|| ActionError::NoUser(group.clone()))?
                     .gid;
-                let found_gid = metadata.st_gid();
+                let found_gid = metadata.gid();
                 if found_gid == expected_gid.as_raw() {
                     return Err(ActionError::FileGroupMismatch(
                         this.path.clone(),
