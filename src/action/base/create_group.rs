@@ -35,6 +35,7 @@ impl CreateGroup {
                 ));
             }
 
+            tracing::debug!("Creating group `{}` already complete, skipping", this.name);
             return Ok(StatefulAction::skipped(this));
         }
         Ok(StatefulAction::uncompleted(this))
