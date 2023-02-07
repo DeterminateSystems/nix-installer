@@ -267,11 +267,11 @@ pub enum ActionError {
     )]
     Exists(std::path::PathBuf),
     #[error("`{0}` exists with a different uid ({1}) than planned ({2}), consider removing it with `rm {0}`")]
-    FileUserMismatch(std::path::PathBuf, u32, u32),
+    PathUserMismatch(std::path::PathBuf, u32, u32),
     #[error("`{0}` exists with a different gid ({1}) than planned ({2}), consider removing it with `rm {0}`")]
-    FileGroupMismatch(std::path::PathBuf, u32, u32),
+    PathGroupMismatch(std::path::PathBuf, u32, u32),
     #[error("`{0}` exists with a different mode ({1:o}) than planned ({2:o}), consider removing it with `rm {0}`")]
-    FileModeMismatch(std::path::PathBuf, u32, u32),
+    PathModeMismatch(std::path::PathBuf, u32, u32),
     #[error("Getting metadata for {0}`")]
     GettingMetadata(std::path::PathBuf, #[source] std::io::Error),
     #[error("Creating directory `{0}`")]
@@ -343,9 +343,9 @@ pub enum ActionError {
 impl HasExpectedErrors for ActionError {
     fn expected<'a>(&'a self) -> Option<Box<dyn std::error::Error + 'a>> {
         match self {
-            Self::FileUserMismatch(_, _, _)
-            | Self::FileGroupMismatch(_, _, _)
-            | Self::FileModeMismatch(_, _, _) => Some(Box::new(self)),
+            Self::PathUserMismatch(_, _, _)
+            | Self::PathGroupMismatch(_, _, _)
+            | Self::PathModeMismatch(_, _, _) => Some(Box::new(self)),
             _ => None,
         }
     }

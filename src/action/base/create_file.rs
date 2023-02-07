@@ -65,7 +65,7 @@ impl CreateFile {
                 // Does the file have the right permissions?
                 let discovered_mode = metadata.permissions().mode();
                 if discovered_mode != mode {
-                    return Err(ActionError::FileModeMismatch(
+                    return Err(ActionError::PathModeMismatch(
                         this.path.clone(),
                         discovered_mode,
                         mode,
@@ -82,7 +82,7 @@ impl CreateFile {
                     .uid;
                 let found_uid = metadata.uid();
                 if found_uid == expected_uid.as_raw() {
-                    return Err(ActionError::FileUserMismatch(
+                    return Err(ActionError::PathUserMismatch(
                         this.path.clone(),
                         found_uid,
                         expected_uid.as_raw(),
@@ -97,7 +97,7 @@ impl CreateFile {
                     .gid;
                 let found_gid = metadata.gid();
                 if found_gid == expected_gid.as_raw() {
-                    return Err(ActionError::FileGroupMismatch(
+                    return Err(ActionError::PathGroupMismatch(
                         this.path.clone(),
                         found_gid,
                         expected_gid.as_raw(),
