@@ -17,11 +17,30 @@ pub struct StartSystemdUnit {
 impl StartSystemdUnit {
     #[tracing::instrument(level = "debug", skip_all)]
     pub async fn plan(unit: impl AsRef<str>) -> Result<StatefulAction<Self>, ActionError> {
+        let unit = unit.as_ref();
+        // If `systemctl is-active $UNIT` has exit status 3, it doesn't exist
+        let output = Command::new("systemctl")
+            .arg("is-active")
+            .arg(unit)
+            .output()
+            .await
+            .map_err(ActionError::Command)?;
+
+        let state = if output.status.success() {
+            tracing::debug!(
+                "Starting systemd unit `{}` already complete, skipping",
+                unit,
+            );
+            ActionState::Skipped
+        } else {
+            ActionState::Uncompleted
+        };
+
         Ok(StatefulAction {
             action: Self {
-                unit: unit.as_ref().to_string(),
+                unit: unit.to_string(),
             },
-            state: ActionState::Uncompleted,
+            state,
         })
     }
 }
