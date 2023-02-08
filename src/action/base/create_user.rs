@@ -52,8 +52,8 @@ impl CreateUser {
                 ));
             }
 
-            tracing::debug!("Creating user `{}` already complete, skipping", this.name);
-            return Ok(StatefulAction::skipped(this));
+            tracing::debug!("Creating user `{}` already complete", this.name);
+            return Ok(StatefulAction::completed(this));
         }
 
         Ok(StatefulAction::uncompleted(this))

@@ -35,8 +35,8 @@ impl CreateGroup {
                 ));
             }
 
-            tracing::debug!("Creating group `{}` already complete, skipping", this.name);
-            return Ok(StatefulAction::skipped(this));
+            tracing::debug!("Creating group `{}` already complete", this.name);
+            return Ok(StatefulAction::completed(this));
         }
         Ok(StatefulAction::uncompleted(this))
     }
