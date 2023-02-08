@@ -115,7 +115,7 @@ impl CreateFile {
                 return Err(ActionError::Exists(this.path.clone()));
             }
 
-            return Ok(StatefulAction::skipped(this));
+            return Ok(StatefulAction::completed(this));
         }
 
         Ok(StatefulAction::uncompleted(this))
@@ -247,6 +247,8 @@ impl Action for CreateFile {
 #[cfg(test)]
 mod test {
     use super::*;
+    use eyre::eyre;
+    use tokio::fs::write;
 
     #[tokio::test]
     async fn creates_and_deletes_file() -> eyre::Result<()> {
@@ -275,11 +277,68 @@ mod test {
 
         action.try_execute().await?;
 
-        tokio::fs::write(test_file.as_path(), "More content").await?;
+        write(test_file.as_path(), "More content").await?;
 
         action.try_revert().await?;
 
         assert!(!test_file.exists(), "File should have been deleted");
+
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn recognizes_existing_exact_files_and_reverts_them() -> eyre::Result<()> {
+        let temp_dir = tempdir::TempDir::new("nix_installer_tests_create_file")?;
+        let test_file = temp_dir
+            .path()
+            .join("recognizes_existing_exact_files_and_reverts_them");
+
+        let test_content = "Some content";
+        write(test_file.as_path(), test_content).await?;
+
+        let mut action = CreateFile::plan(
+            test_file.clone(),
+            None,
+            None,
+            None,
+            test_content.into(),
+            false,
+        )
+        .await?;
+
+        action.try_execute().await?;
+
+        action.try_revert().await?;
+
+        assert!(!test_file.exists(), "File should have been deleted");
+
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn recognizes_existing_different_files_and_errors() -> eyre::Result<()> {
+        let temp_dir = tempdir::TempDir::new("nix_installer_tests_create_file")?;
+        let test_file = temp_dir
+            .path()
+            .join("recognizes_existing_different_files_and_errors");
+
+        write(test_file.as_path(), "Some content").await?;
+
+        match CreateFile::plan(
+            test_file.clone(),
+            None,
+            None,
+            None,
+            "Some different content".into(),
+            false,
+        )
+        .await
+        {
+            Err(ActionError::Exists(path)) => assert_eq!(path, test_file.as_path()),
+            _ => return Err(eyre!("Should have returned an ActionError::Exists error")),
+        }
+
+        assert!(test_file.exists(), "File should have not been deleted");
 
         Ok(())
     }

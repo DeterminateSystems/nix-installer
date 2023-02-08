@@ -122,13 +122,13 @@ impl CreateOrInsertIntoFile {
                     "Inserting into `{}` already complete, skipping",
                     this.path.display(),
                 );
-                return Ok(StatefulAction::skipped(this));
+                return Ok(StatefulAction::completed(this));
             }
 
             // If not, we can't skip this, so we still do it
         }
 
-        Ok(this.into())
+        Ok(StatefulAction::uncompleted(this))
     }
 }
 
@@ -351,6 +351,7 @@ impl Action for CreateOrInsertIntoFile {
 #[cfg(test)]
 mod test {
     use super::*;
+    use tokio::fs::{read_to_string, write};
 
     #[tokio::test]
     async fn creates_and_deletes_file() -> eyre::Result<()> {
@@ -406,6 +407,44 @@ mod test {
             .expect("Could not read test temp file");
 
         assert_eq!(test_content, read_content);
+
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn recognizes_existing_containing_exact_contents_and_reverts_it() -> eyre::Result<()> {
+        let temp_dir = tempdir::TempDir::new("nix_installer_create_or_insert_into_file")?;
+        let test_file = temp_dir
+            .path()
+            .join("recognizes_existing_containing_exact_contents_and_reverts_it");
+
+        let expected_content = "Some expected content";
+        write(test_file.as_path(), expected_content).await?;
+
+        let added_content = "\nSome more expected content";
+        write(test_file.as_path(), added_content).await?;
+
+        // We test all `Position` options
+        let positions = [Position::Beginning, Position::End];
+        for position in positions {
+            let mut action = CreateOrInsertIntoFile::plan(
+                test_file.clone(),
+                None,
+                None,
+                None,
+                expected_content.into(),
+                position,
+            )
+            .await?;
+
+            action.try_execute().await?;
+
+            action.try_revert().await?;
+
+            assert!(test_file.exists(), "File should have not been deleted");
+            let after_revert_content = read_to_string(&test_file).await?;
+            assert_eq!(after_revert_content, added_content);
+        }
 
         Ok(())
     }
