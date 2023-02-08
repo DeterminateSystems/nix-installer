@@ -15,8 +15,8 @@
     };
 
     nix = {
-      url = "github:nixos/nix/2.12.0";
-      inputs.nixpkgs.follows = "nixpkgs";
+      url = "github:nixos/nix/2.13.2";
+      # Omitting `inputs.nixpkgs.follows = "nixpkgs";` on purpose
     };
 
   };
