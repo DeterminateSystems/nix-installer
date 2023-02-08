@@ -27,10 +27,7 @@ impl StartSystemdUnit {
             .map_err(ActionError::Command)?;
 
         let state = if output.status.success() {
-            tracing::debug!(
-                "Starting systemd unit `{}` already complete, skipping",
-                unit,
-            );
+            tracing::debug!("Starting systemd unit `{}` already complete", unit,);
             ActionState::Skipped
         } else {
             ActionState::Uncompleted
