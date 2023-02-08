@@ -12,14 +12,19 @@ Start a given systemd unit
 #[derive(Debug, serde::Deserialize, serde::Serialize, Clone)]
 pub struct StartSystemdUnit {
     unit: String,
+    enable: bool,
 }
 
 impl StartSystemdUnit {
     #[tracing::instrument(level = "debug", skip_all)]
-    pub async fn plan(unit: impl AsRef<str>) -> Result<StatefulAction<Self>, ActionError> {
+    pub async fn plan(
+        unit: impl AsRef<str>,
+        enable: bool,
+    ) -> Result<StatefulAction<Self>, ActionError> {
         Ok(StatefulAction {
             action: Self {
                 unit: unit.as_ref().to_string(),
+                enable,
             },
             state: ActionState::Uncompleted,
         })
@@ -47,19 +52,35 @@ impl Action for StartSystemdUnit {
 
     #[tracing::instrument(level = "debug", skip_all)]
     async fn execute(&mut self) -> Result<(), ActionError> {
-        let Self { unit, .. } = self;
+        let Self { unit, enable } = self;
 
-        // TODO(@Hoverbear): Handle proxy vars
-        execute_command(
-            Command::new("systemctl")
-                .process_group(0)
-                .arg("enable")
-                .arg("--now")
-                .arg(format!("{unit}"))
-                .stdin(std::process::Stdio::null()),
-        )
-        .await
-        .map_err(|e| ActionError::Custom(Box::new(StartSystemdUnitError::Command(e))))?;
+        match enable {
+            true => {
+                // TODO(@Hoverbear): Handle proxy vars
+                execute_command(
+                    Command::new("systemctl")
+                        .process_group(0)
+                        .arg("enable")
+                        .arg("--now")
+                        .arg(format!("{unit}"))
+                        .stdin(std::process::Stdio::null()),
+                )
+                .await
+                .map_err(|e| ActionError::Custom(Box::new(StartSystemdUnitError::Command(e))))?;
+            },
+            false => {
+                // TODO(@Hoverbear): Handle proxy vars
+                execute_command(
+                    Command::new("systemctl")
+                        .process_group(0)
+                        .arg("start")
+                        .arg(format!("{unit}"))
+                        .stdin(std::process::Stdio::null()),
+                )
+                .await
+                .map_err(|e| ActionError::Custom(Box::new(StartSystemdUnitError::Command(e))))?;
+            },
+        }
 
         Ok(())
     }
@@ -73,17 +94,19 @@ impl Action for StartSystemdUnit {
 
     #[tracing::instrument(level = "debug", skip_all)]
     async fn revert(&mut self) -> Result<(), ActionError> {
-        let Self { unit, .. } = self;
+        let Self { unit, enable } = self;
 
-        execute_command(
-            Command::new("systemctl")
-                .process_group(0)
-                .arg("disable")
-                .arg(format!("{unit}"))
-                .stdin(std::process::Stdio::null()),
-        )
-        .await
-        .map_err(|e| ActionError::Custom(Box::new(StartSystemdUnitError::Command(e))))?;
+        if *enable {
+            execute_command(
+                Command::new("systemctl")
+                    .process_group(0)
+                    .arg("disable")
+                    .arg(format!("{unit}"))
+                    .stdin(std::process::Stdio::null()),
+            )
+            .await
+            .map_err(|e| ActionError::Custom(Box::new(StartSystemdUnitError::Command(e))))?;
+        };
 
         // We do both to avoid an error doing `disable --now` if the user did stop it already somehow.
         execute_command(
