@@ -118,10 +118,7 @@ impl CreateOrInsertIntoFile {
                 .map_err(|e| ActionError::Read(this.path.clone(), e))?;
 
             if discovered_buf.contains(&this.buf) {
-                tracing::debug!(
-                    "Inserting into `{}` already complete, skipping",
-                    this.path.display(),
-                );
+                tracing::debug!("Inserting into `{}` already complete", this.path.display(),);
                 return Ok(StatefulAction::completed(this));
             }
 

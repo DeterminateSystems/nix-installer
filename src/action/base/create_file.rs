@@ -115,6 +115,7 @@ impl CreateFile {
                 return Err(ActionError::Exists(this.path.clone()));
             }
 
+            tracing::debug!("Creating file `{}` already complete", this.path.display());
             return Ok(StatefulAction::completed(this));
         }
 
