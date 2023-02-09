@@ -1,3 +1,4 @@
+use nix::unistd::User;
 use tokio::process::Command;
 use tracing::{span, Span};
 
@@ -12,21 +13,50 @@ Create an operating system level user in the given group
 #[derive(Debug, serde::Deserialize, serde::Serialize, Clone)]
 pub struct CreateUser {
     name: String,
-    uid: usize,
+    uid: u32,
     groupname: String,
-    gid: usize,
+    gid: u32,
 }
 
 impl CreateUser {
     #[tracing::instrument(level = "debug", skip_all)]
-    pub fn plan(name: String, uid: usize, groupname: String, gid: usize) -> StatefulAction<Self> {
-        Self {
-            name,
+    pub fn plan(
+        name: String,
+        uid: u32,
+        groupname: String,
+        gid: u32,
+    ) -> Result<StatefulAction<Self>, ActionError> {
+        let this = Self {
+            name: name.clone(),
             uid,
             groupname,
             gid,
+        };
+        // Ensure user does not exists
+        if let Some(user) = User::from_name(name.as_str())
+            .map_err(|e| ActionError::GettingUserId(name.clone(), e))?
+        {
+            if user.uid.as_raw() != uid {
+                return Err(ActionError::UserUidMismatch(
+                    name.clone(),
+                    user.uid.as_raw(),
+                    uid,
+                ));
+            }
+
+            if user.gid.as_raw() != gid {
+                return Err(ActionError::UserGidMismatch(
+                    name.clone(),
+                    user.gid.as_raw(),
+                    gid,
+                ));
+            }
+
+            tracing::debug!("Creating user `{}` already complete", this.name);
+            return Ok(StatefulAction::completed(this));
         }
-        .into()
+
+        Ok(StatefulAction::uncompleted(this))
     }
 }
 
@@ -77,122 +107,105 @@ impl Action for CreateUser {
                 patch: _,
             }
             | OperatingSystem::Darwin => {
-                // TODO(@hoverbear): Make this actually work...
-                // Right now, our test machines do not have a secure token and cannot delete users.
-
-                if Command::new("/usr/bin/dscl")
-                    .process_group(0)
-                    .args([".", "-read", &format!("/Users/{name}")])
-                    .stdin(std::process::Stdio::null())
-                    .stdout(std::process::Stdio::null())
-                    .stderr(std::process::Stdio::piped())
-                    .status()
-                    .await
-                    .map_err(ActionError::Command)?
-                    .success()
-                {
-                    ()
-                } else {
-                    execute_command(
-                        Command::new("/usr/bin/dscl")
-                            .process_group(0)
-                            .args([".", "-create", &format!("/Users/{name}")])
-                            .stdin(std::process::Stdio::null()),
-                    )
-                    .await
-                    .map_err(|e| ActionError::Command(e))?;
-                    execute_command(
-                        Command::new("/usr/bin/dscl")
-                            .process_group(0)
-                            .args([
-                                ".",
-                                "-create",
-                                &format!("/Users/{name}"),
-                                "UniqueID",
-                                &format!("{uid}"),
-                            ])
-                            .stdin(std::process::Stdio::null()),
-                    )
-                    .await
-                    .map_err(|e| ActionError::Command(e))?;
-                    execute_command(
-                        Command::new("/usr/bin/dscl")
-                            .process_group(0)
-                            .args([
-                                ".",
-                                "-create",
-                                &format!("/Users/{name}"),
-                                "PrimaryGroupID",
-                                &format!("{gid}"),
-                            ])
-                            .stdin(std::process::Stdio::null()),
-                    )
-                    .await
-                    .map_err(|e| ActionError::Command(e))?;
-                    execute_command(
-                        Command::new("/usr/bin/dscl")
-                            .process_group(0)
-                            .args([
-                                ".",
-                                "-create",
-                                &format!("/Users/{name}"),
-                                "NFSHomeDirectory",
-                                "/var/empty",
-                            ])
-                            .stdin(std::process::Stdio::null()),
-                    )
-                    .await
-                    .map_err(|e| ActionError::Command(e))?;
-                    execute_command(
-                        Command::new("/usr/bin/dscl")
-                            .process_group(0)
-                            .args([
-                                ".",
-                                "-create",
-                                &format!("/Users/{name}"),
-                                "UserShell",
-                                "/sbin/nologin",
-                            ])
-                            .stdin(std::process::Stdio::null()),
-                    )
-                    .await
-                    .map_err(|e| ActionError::Command(e))?;
-                    execute_command(
-                        Command::new("/usr/bin/dscl")
-                            .process_group(0)
-                            .args([
-                                ".",
-                                "-append",
-                                &format!("/Groups/{groupname}"),
-                                "GroupMembership",
-                            ])
-                            .arg(&name)
-                            .stdin(std::process::Stdio::null()),
-                    )
-                    .await
-                    .map_err(|e| ActionError::Command(e))?;
-                    execute_command(
-                        Command::new("/usr/bin/dscl")
-                            .process_group(0)
-                            .args([".", "-create", &format!("/Users/{name}"), "IsHidden", "1"])
-                            .stdin(std::process::Stdio::null()),
-                    )
-                    .await
-                    .map_err(|e| ActionError::Command(e))?;
-                    execute_command(
-                        Command::new("/usr/sbin/dseditgroup")
-                            .process_group(0)
-                            .args(["-o", "edit"])
-                            .arg("-a")
-                            .arg(&name)
-                            .arg("-t")
-                            .arg(&name)
-                            .arg(groupname)
-                            .stdin(std::process::Stdio::null()),
-                    )
-                    .await
-                    .map_err(|e| ActionError::Command(e))?;
-                }
+                execute_command(
+                    Command::new("/usr/bin/dscl")
+                        .process_group(0)
+                        .args([".", "-create", &format!("/Users/{name}")])
+                        .stdin(std::process::Stdio::null()),
+                )
+                .await
+                .map_err(|e| ActionError::Command(e))?;
+                execute_command(
+                    Command::new("/usr/bin/dscl")
+                        .process_group(0)
+                        .args([
+                            ".",
+                            "-create",
+                            &format!("/Users/{name}"),
+                            "UniqueID",
+                            &format!("{uid}"),
+                        ])
+                        .stdin(std::process::Stdio::null()),
+                )
+                .await
+                .map_err(|e| ActionError::Command(e))?;
+                execute_command(
+                    Command::new("/usr/bin/dscl")
+                        .process_group(0)
+                        .args([
+                            ".",
+                            "-create",
+                            &format!("/Users/{name}"),
+                            "PrimaryGroupID",
+                            &format!("{gid}"),
+                        ])
+                        .stdin(std::process::Stdio::null()),
+                )
+                .await
+                .map_err(|e| ActionError::Command(e))?;
+                execute_command(
+                    Command::new("/usr/bin/dscl")
+                        .process_group(0)
+                        .args([
+                            ".",
+                            "-create",
+                            &format!("/Users/{name}"),
+                            "NFSHomeDirectory",
+                            "/var/empty",
+                        ])
+                        .stdin(std::process::Stdio::null()),
+                )
+                .await
+                .map_err(|e| ActionError::Command(e))?;
+                execute_command(
+                    Command::new("/usr/bin/dscl")
+                        .process_group(0)
+                        .args([
+                            ".",
+                            "-create",
+                            &format!("/Users/{name}"),
+                            "UserShell",
+                            "/sbin/nologin",
+                        ])
+                        .stdin(std::process::Stdio::null()),
+                )
+                .await
+                .map_err(|e| ActionError::Command(e))?;
+                execute_command(
+                    Command::new("/usr/bin/dscl")
+                        .process_group(0)
+                        .args([
+                            ".",
+                            "-append",
+                            &format!("/Groups/{groupname}"),
+                            "GroupMembership",
+                        ])
+                        .arg(&name)
+                        .stdin(std::process::Stdio::null()),
+                )
+                .await
+                .map_err(|e| ActionError::Command(e))?;
+                execute_command(
+                    Command::new("/usr/bin/dscl")
+                        .process_group(0)
+                        .args([".", "-create", &format!("/Users/{name}"), "IsHidden", "1"])
+                        .stdin(std::process::Stdio::null()),
+                )
+                .await
+                .map_err(|e| ActionError::Command(e))?;
+                execute_command(
+                    Command::new("/usr/sbin/dseditgroup")
+                        .process_group(0)
+                        .args(["-o", "edit"])
+                        .arg("-a")
+                        .arg(&name)
+                        .arg("-t")
+                        .arg(&name)
+                        .arg(groupname)
+                        .stdin(std::process::Stdio::null()),
+                )
+                .await
+                .map_err(|e| ActionError::Command(e))?;
             },
             _ => {
                 execute_command(
