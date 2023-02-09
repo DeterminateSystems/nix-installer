@@ -51,7 +51,8 @@
       {
         "action": {
           "action": "start_systemd_unit",
-          "unit": "ensure-symlinked-units-resolve.service"
+          "unit": "ensure-symlinked-units-resolve.service",
+          "enable": true
         },
         "state": "Uncompleted"
       },

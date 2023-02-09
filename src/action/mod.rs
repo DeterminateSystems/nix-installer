@@ -312,10 +312,16 @@ pub enum ActionError {
     Truncate(std::path::PathBuf, #[source] std::io::Error),
     #[error("Getting uid for user `{0}`")]
     GettingUserId(String, #[source] nix::errno::Errno),
+    #[error("User `{0}` existed but had a different uid ({1}) than planned ({2})")]
+    UserUidMismatch(String, u32, u32),
+    #[error("User `{0}` existed but had a different gid ({1}) than planned ({2})")]
+    UserGidMismatch(String, u32, u32),
     #[error("Getting user `{0}`")]
     NoUser(String),
     #[error("Getting gid for group `{0}`")]
     GettingGroupId(String, #[source] nix::errno::Errno),
+    #[error("Group `{0}` existed but had a different gid ({1}) than planned ({2})")]
+    GroupGidMismatch(String, u32, u32),
     #[error("Getting group `{0}`")]
     NoGroup(String),
     #[error("Chowning path `{0}`")]
