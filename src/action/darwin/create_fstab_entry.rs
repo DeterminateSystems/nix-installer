@@ -37,6 +37,21 @@ impl CreateFstabEntry {
                 .await
                 .map_err(|e| ActionError::Read(fstab_path.to_path_buf(), e))?;
             let prelude_comment = fstab_prelude_comment(&apfs_volume_label);
+
+            // See if the user already has a `/nix` related entry, if so, invite them to remove it.
+            if fstab_buf
+                .split(|tok| match tok {
+                    ' ' | '\t' => true,
+                    _ => false,
+                })
+                .any(|chunk| chunk == "/nix")
+            {
+                return Err(ActionError::Custom(Box::new(
+                    CreateFstabEntryError::EntryExists(apfs_volume_label.clone()),
+                )));
+            }
+
+            // See if a previous install from this crate exists, if so, invite the user to remove it (we may need to change it)
             if fstab_buf.contains(&prelude_comment) {
                 return Err(ActionError::Custom(Box::new(
                     CreateFstabEntryError::EntryExists(apfs_volume_label.clone()),
@@ -193,7 +208,7 @@ fn fstab_entry(uuid: &Uuid, apfs_volume_label: &str) -> String {
 
 #[derive(thiserror::Error, Debug)]
 pub enum CreateFstabEntryError {
-    #[error("An `/etc/fstab` entry for the volume labelled `{0}` already exists. If a Nix Store already exists it may need to be deleted with `diskutil apfs deleteVolume \"{0}\") and should be removed from `/etc/fstab`")]
+    #[error("An `/etc/fstab` entry for the `/nix` path already exists, install will create a volume named `{0}` to mount there. If a volume named `{0}` already exists it may need to be deleted with `diskutil apfs deleteVolume \"{0}\") and the entry for `/nix` should be removed from `/etc/fstab`")]
     EntryExists(String),
 }
 
