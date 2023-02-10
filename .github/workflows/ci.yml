@@ -12,7 +12,7 @@ jobs:
     steps:
       - uses: actions/checkout@v3
       - name: Install Nix
-        uses: DeterminateSystems/nix-installer-action@main
+        uses: DeterminateSystems/nix-installer-action@start-daemon-and-init
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
       - name: Cache lint store (x86_64-linux)
@@ -38,7 +38,7 @@ jobs:
     steps:
       - uses: actions/checkout@v3
       - name: Install Nix
-        uses: DeterminateSystems/nix-installer-action@main
+        uses: DeterminateSystems/nix-installer-action@start-daemon-and-init
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
       - name: Cache build store (x86_64-linux)
@@ -69,7 +69,7 @@ jobs:
     steps:
       - uses: actions/checkout@v3
       - name: Install Nix
-        uses: DeterminateSystems/nix-installer-action@main
+        uses: DeterminateSystems/nix-installer-action@start-daemon-and-init
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
       - name: Cache build store (x86_64-linux)
@@ -102,7 +102,7 @@ jobs:
           cp nix-installer.sh install-root/nix-installer.sh
           mv nix-installer install-root/nix-installer-x86_64-linux
       - name: Initial install
-        uses: DeterminateSystems/nix-installer-action@main
+        uses: DeterminateSystems/nix-installer-action@start-daemon-and-init
         with:
           local-root: install-root/
           logger: pretty
@@ -131,7 +131,7 @@ jobs:
             exit 1
           fi
       - name: Repeated install
-        uses: DeterminateSystems/nix-installer-action@main
+        uses: DeterminateSystems/nix-installer-action@start-daemon-and-init
         with:
           local-root: install-root/
           logger: pretty
@@ -186,6 +186,113 @@ jobs:
             exit 1
           fi
 
+  run-x86_64-linux-no-init:
+    name: Run x86_64 Linux (No init)
+    runs-on: ubuntu-22.04
+    needs: [build-x86_64-linux, lints]
+    steps:
+      - uses: actions/checkout@v3
+      - run: sudo apt install fish zsh
+      - uses: actions/download-artifact@v3
+        with:
+          name: nix-installer-x86_64-linux
+      - name: Move & set executable
+        run: |
+          chmod +x ./nix-installer
+          mkdir install-root
+          cp nix-installer.sh install-root/nix-installer.sh
+          mv nix-installer install-root/nix-installer-x86_64-linux
+      - name: Initial install
+        uses: DeterminateSystems/nix-installer-action@start-daemon-and-init
+        with:
+          init: none
+          planner: linux-multi
+          local-root: install-root/
+          logger: pretty
+          log-directives: nix_installer=trace
+          backtrace: full
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+      - name: Ensure daemon was not configured with init
+        run: |
+          if systemctl is-active nix-daemon.socket; then
+            echo "nix-daemon.socket was running"
+            exit 1
+          fi
+          if systemctl is-active nix-daemon.service; then
+            echo "nix-daemon.service was running"
+            exit 1
+          fi
+      - name: Initial uninstall (without a `nix run` first)
+        run: sudo -E /nix/nix-installer uninstall
+        env:
+          NIX_INSTALLER_NO_CONFIRM: true
+          NIX_INSTALLER_LOGGER: pretty
+          NIX_INSTALLER_LOG_DIRECTIVES: nix_installer=trace
+          RUST_BACKTRACE: full
+      - name: Ensure `nix` is removed
+        run: |
+          if [ -e /nix ]; then
+            echo "/nix exists"
+            exit 1
+          fi
+      - name: Repeated install
+        uses: DeterminateSystems/nix-installer-action@start-daemon-and-init
+        with:
+          init: none
+          planner: linux-multi
+          local-root: install-root/
+          logger: pretty
+          log-directives: nix_installer=trace
+          backtrace: full
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+      - name: echo $PATH
+        run: echo $PATH
+      - name: Test `nix` with `$GITHUB_PATH`
+        if: success() || failure()
+        run: |
+          sudo -i nix run nixpkgs#fortune
+          sudo -i nix profile install nixpkgs#fortune
+          fortune
+          sudo -i nix store gc
+          sudo -i nix run nixpkgs#fortune
+      - name: Test bash
+        run: sudo -i nix-instantiate -E 'builtins.currentTime' --eval
+        if: success() || failure()
+        shell: bash --login {0}
+      - name: Test sh
+        run: sudo -i nix-instantiate -E 'builtins.currentTime' --eval
+        if: success() || failure()
+        shell: sh -l {0}
+      - name: Test zsh
+        run: sudo -i nix-instantiate -E 'builtins.currentTime' --eval
+        if: success() || failure()
+        shell: zsh --login --interactive {0}
+      - name: Test fish
+        run: sudo -i nix-instantiate -E 'builtins.currentTime' --eval
+        if: success() || failure()
+        shell: fish --login {0}
+      - name: Repeated uninstall
+        run: sudo -E /nix/nix-installer uninstall
+        env:
+          NIX_INSTALLER_NO_CONFIRM: true
+          NIX_INSTALLER_LOGGER: pretty
+          NIX_INSTALLER_LOG_DIRECTIVES: nix_installer=trace
+          RUST_BACKTRACE: full
+      - name: Ensure `nix` is removed
+        run: |
+          if systemctl is-active nix-daemon.socket; then
+            echo "nix-daemon.socket was running"
+            exit 1
+          fi
+          if systemctl is-active nix-daemon.service; then
+            echo "nix-daemon.service was running"
+            exit 1
+          fi
+          if [ -e /nix ]; then
+            echo "/nix exists"
+            exit 1
+          fi
+
   run-steam-deck:
     name: Run Steam Deck (mock)
     runs-on: ubuntu-22.04
@@ -209,7 +316,7 @@ jobs:
           sudo chmod +x /bin/steamos-readonly
           sudo useradd -m deck
       - name: Initial install
-        uses: DeterminateSystems/nix-installer-action@main
+        uses: DeterminateSystems/nix-installer-action@start-daemon-and-init
         with:
           local-root: install-root/
           logger: pretty
@@ -244,7 +351,7 @@ jobs:
             exit 1
           fi
       - name: Repeated install
-        uses: DeterminateSystems/nix-installer-action@main
+        uses: DeterminateSystems/nix-installer-action@start-daemon-and-init
         with:
           local-root: install-root/
           logger: pretty
@@ -311,7 +418,7 @@ jobs:
     steps:
       - uses: actions/checkout@v3
       - name: Install Nix
-        uses: DeterminateSystems/nix-installer-action@main
+        uses: DeterminateSystems/nix-installer-action@start-daemon-and-init
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
       # Runs clippy as part of the preBuild.
@@ -341,7 +448,7 @@ jobs:
           cp nix-installer.sh install-root/nix-installer.sh
           mv nix-installer install-root/nix-installer-x86_64-darwin
       - name: Initial install
-        uses: DeterminateSystems/nix-installer-action@main
+        uses: DeterminateSystems/nix-installer-action@start-daemon-and-init
         with:
           local-root: install-root/
           logger: pretty
@@ -358,7 +465,7 @@ jobs:
           NIX_INSTALLER_LOG_DIRECTIVES: nix_installer=trace
           RUST_BACKTRACE: full
       - name: Repeated install
-        uses: DeterminateSystems/nix-installer-action@main
+        uses: DeterminateSystems/nix-installer-action@start-daemon-and-init
         with:
           local-root: install-root/
           logger: pretty
@@ -399,4 +506,3 @@ jobs:
           NIX_INSTALLER_LOGGER: pretty
           NIX_INSTALLER_LOG_DIRECTIVES: nix_installer=trace
           RUST_BACKTRACE: full
-        

@@ -64,12 +64,12 @@ use std::{collections::HashMap, path::PathBuf};
 use crate::{
     action::{
         base::{CreateDirectory, CreateFile},
-        common::{ConfigureNix, ProvisionNix},
+        common::{ConfigureInitService, ConfigureNix, ProvisionNix},
         linux::StartSystemdUnit,
         Action, StatefulAction,
     },
     planner::{Planner, PlannerError},
-    settings::{CommonSettings, InstallSettingsError},
+    settings::{CommonSettings, InitSystem, InstallSettingsError},
     BuiltinPlanner,
 };
 
@@ -95,7 +95,7 @@ impl Planner for SteamDeck {
     async fn default() -> Result<Self, PlannerError> {
         Ok(Self {
             persistence: PathBuf::from("/home/nix"),
-            settings: CommonSettings::default()?,
+            settings: CommonSettings::default().await?,
         })
     }
 
@@ -152,6 +152,8 @@ impl Planner for SteamDeck {
             Requires=nix-directory.service\n\
             ConditionPathIsDirectory=/nix\n\
             DefaultDependencies=no\n\
+            RequiredBy=nix-daemon.service\n\
+            RequiredBy=nix-daemon.socket\n\
             \n\
             [Mount]\n\
             What={persistence}\n\
@@ -180,15 +182,13 @@ impl Planner for SteamDeck {
             After=nix.mount\n\
             Requires=nix-directory.service\n\
             Requires=nix.mount\n\
-            PropagatesStopTo=nix-directory.service\n\
-            PropagatesStopTo=nix.mount\n\
             DefaultDependencies=no\n\
             \n\
             [Service]\n\
             Type=oneshot\n\
             RemainAfterExit=yes\n\
             ExecStart=/usr/bin/systemctl daemon-reload\n\
-            ExecStart=/usr/bin/systemctl restart --no-block sockets.target timers.target multi-user.target\n\
+            ExecStart=/usr/bin/systemctl restart --no-block nix-daemon.socket\n\
             \n\
             [Install]\n\
             WantedBy=sysinit.target\n\
@@ -213,7 +213,7 @@ impl Planner for SteamDeck {
             nix_directory_unit.boxed(),
             create_bind_mount_unit.boxed(),
             ensure_symlinked_units_resolve_unit.boxed(),
-            StartSystemdUnit::plan("ensure-symlinked-units-resolve.service".to_string())
+            StartSystemdUnit::plan("nix.mount".to_string(), false)
                 .await
                 .map_err(PlannerError::Action)?
                 .boxed(),
@@ -222,6 +222,15 @@ impl Planner for SteamDeck {
                 .map_err(PlannerError::Action)?
                 .boxed(),
             ConfigureNix::plan(&self.settings)
+                .await
+                .map_err(PlannerError::Action)?
+                .boxed(),
+            // Init is required for the steam-deck archetype to make the `/nix` mount
+            ConfigureInitService::plan(InitSystem::Systemd, true)
+                .await
+                .map_err(PlannerError::Action)?
+                .boxed(),
+            StartSystemdUnit::plan("ensure-symlinked-units-resolve.service".to_string(), true)
                 .await
                 .map_err(PlannerError::Action)?
                 .boxed(),

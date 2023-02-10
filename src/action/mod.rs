@@ -32,7 +32,7 @@ action.try_revert().await.unwrap();
 ```
 
 A general guidance for what determines how fine-grained an [`Action`] should be is the unit of
-reversion. The [`ConfigureNixDaemonService`](common::ConfigureNixDaemonService) action is a good
+reversion. The [`ConfigureInitService`](common::ConfigureInitService) action is a good
 example of this, it takes several steps, such as running `systemd-tmpfiles`, and calling
 `systemctl link` on some systemd units.
 
@@ -49,7 +49,7 @@ use tracing::{Span, span};
 use nix_installer::{
     InstallPlan,
     settings::{CommonSettings, InstallSettingsError},
-    planner::{Planner, PlannerError, linux::SteamDeck},
+    planner::{Planner, PlannerError},
     action::{Action, ActionError, StatefulAction, ActionDescription},
 };
 
@@ -112,7 +112,7 @@ pub struct MyPlanner {
 impl Planner for MyPlanner {
     async fn default() -> Result<Self, PlannerError> {
         Ok(Self {
-            common: CommonSettings::default()?,
+            common: CommonSettings::default().await?,
         })
     }
 
@@ -303,11 +303,17 @@ pub enum ActionError {
     #[error("Truncating `{0}`")]
     Truncate(std::path::PathBuf, #[source] std::io::Error),
     #[error("Getting uid for user `{0}`")]
-    UserId(String, #[source] nix::errno::Errno),
+    GettingUserId(String, #[source] nix::errno::Errno),
+    #[error("User `{0}` existed but had a different uid ({1}) than planned ({2})")]
+    UserUidMismatch(String, u32, u32),
+    #[error("User `{0}` existed but had a different gid ({1}) than planned ({2})")]
+    UserGidMismatch(String, u32, u32),
     #[error("Getting user `{0}`")]
     NoUser(String),
     #[error("Getting gid for group `{0}`")]
-    GroupId(String, #[source] nix::errno::Errno),
+    GettingGroupId(String, #[source] nix::errno::Errno),
+    #[error("Group `{0}` existed but had a different gid ({1}) than planned ({2})")]
+    GroupGidMismatch(String, u32, u32),
     #[error("Getting group `{0}`")]
     NoGroup(String),
     #[error("Chowning path `{0}`")]
@@ -327,6 +333,9 @@ pub enum ActionError {
         #[from]
         std::string::FromUtf8Error,
     ),
+    /// A MacOS (Darwin) plist related error
+    #[error(transparent)]
+    Plist(#[from] plist::Error),
 }
 
 impl HasExpectedErrors for ActionError {

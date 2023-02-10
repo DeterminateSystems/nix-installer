@@ -10,11 +10,11 @@ use tracing::{span, Instrument, Span};
 
 #[derive(Debug, serde::Deserialize, serde::Serialize, Clone)]
 pub struct CreateUsersAndGroups {
-    nix_build_user_count: usize,
+    nix_build_user_count: u32,
     nix_build_group_name: String,
-    nix_build_group_id: usize,
+    nix_build_group_id: u32,
     nix_build_user_prefix: String,
-    nix_build_user_id_base: usize,
+    nix_build_user_id_base: u32,
     create_group: StatefulAction<CreateGroup>,
     create_users: Vec<StatefulAction<CreateUser>>,
 }
@@ -22,12 +22,10 @@ pub struct CreateUsersAndGroups {
 impl CreateUsersAndGroups {
     #[tracing::instrument(level = "debug", skip_all)]
     pub async fn plan(settings: CommonSettings) -> Result<StatefulAction<Self>, ActionError> {
-        // TODO(@hoverbear): CHeck if it exist, error if so
         let create_group = CreateGroup::plan(
             settings.nix_build_group_name.clone(),
             settings.nix_build_group_id,
-        );
-        // TODO(@hoverbear): CHeck if they exist, error if so
+        )?;
         let create_users = (0..settings.nix_build_user_count)
             .map(|count| {
                 CreateUser::plan(
@@ -37,7 +35,7 @@ impl CreateUsersAndGroups {
                     settings.nix_build_group_id,
                 )
             })
-            .collect();
+            .collect::<Result<_, _>>()?;
         Ok(Self {
             nix_build_user_count: settings.nix_build_user_count,
             nix_build_group_name: settings.nix_build_group_name,

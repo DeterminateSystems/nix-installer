@@ -1,7 +1,7 @@
 [package]
 name = "nix-installer"
 description = "A `nix` installer"
-version = "0.0.2-unreleased"
+version = "0.2.1-unreleased"
 edition = "2021"
 resolver = "2"
 license = "LGPL-2.1"
@@ -52,6 +52,7 @@ dyn-clone = { version = "1.0.9", default-features = false }
 rand = { version = "0.8.5", default-features = false, features = [ "std", "std_rng" ] }
 semver = { version = "1.0.14", default-features = false, features = ["serde", "std"] }
 term = { version = "0.7.0", default-features = false }
+uuid = { version = "1.2.2", features = ["serde"] }
 
 [dev-dependencies]
 eyre = { version = "0.6.8", default-features = false, features = [ "track-caller" ] }

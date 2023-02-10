@@ -62,7 +62,7 @@ impl Action for EnableOwnership {
             .await
             .map_err(ActionError::Command)?
             .stdout;
-            let the_plist: DiskUtilOutput = plist::from_reader(Cursor::new(buf)).unwrap();
+            let the_plist: DiskUtilOutput = plist::from_reader(Cursor::new(buf))?;
 
             the_plist.global_permissions_enabled
         };

@@ -105,6 +105,8 @@ pub fn ensure_root() -> eyre::Result<()> {
                 "RUST_LOG" | "RUST_BACKTRACE" => true,
                 // CI
                 "GITHUB_PATH" => true,
+                // Used for detecting what command to suggest for sourcing Nix
+                "SHELL" => true,
                 // Our own environments
                 key if key.starts_with("NIX_INSTALLER") => true,
                 _ => false,

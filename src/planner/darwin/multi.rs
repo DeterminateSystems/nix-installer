@@ -6,15 +6,15 @@ use tokio::process::Command;
 
 use crate::{
     action::{
-        common::{ConfigureNix, ProvisionNix},
-        darwin::{CreateNixVolume, KickstartLaunchctlService},
+        common::{ConfigureInitService, ConfigureNix, ProvisionNix},
+        darwin::CreateNixVolume,
         StatefulAction,
     },
     execute_command,
     os::darwin::DiskUtilOutput,
     planner::{Planner, PlannerError},
-    settings::CommonSettings,
     settings::InstallSettingsError,
+    settings::{CommonSettings, InitSystem},
     Action, BuiltinPlanner,
 };
 
@@ -24,6 +24,7 @@ use crate::{
 pub struct DarwinMulti {
     #[cfg_attr(feature = "cli", clap(flatten))]
     pub settings: CommonSettings,
+
     /// Force encryption on the volume
     #[cfg_attr(
         feature = "cli",
@@ -76,7 +77,7 @@ async fn default_root_disk() -> Result<String, PlannerError> {
 impl Planner for DarwinMulti {
     async fn default() -> Result<Self, PlannerError> {
         Ok(Self {
-            settings: CommonSettings::default()?,
+            settings: CommonSettings::default().await?,
             root_disk: Some(default_root_disk().await?),
             case_sensitive: false,
             encrypt: None,
@@ -140,7 +141,7 @@ impl Planner for DarwinMulti {
                 .await
                 .map_err(PlannerError::Action)?
                 .boxed(),
-            KickstartLaunchctlService::plan("system/org.nixos.nix-daemon".into())
+            ConfigureInitService::plan(InitSystem::Launchd, true)
                 .await
                 .map_err(PlannerError::Action)?
                 .boxed(),

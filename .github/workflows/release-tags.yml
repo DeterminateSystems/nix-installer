@@ -7,9 +7,11 @@ on:
 
 jobs:
   release:
+    concurrency: release
     runs-on: ubuntu-latest
     permissions:
       contents: write # In order to upload artifacts to GitHub releases
+      id-token: write # In order to request a JWT for AWS auth
     steps:
       - name: Checkout
         uses: actions/checkout@v3
@@ -18,10 +20,17 @@ jobs:
         with:
           buildkite_token: ${{ secrets.BUILDKITE_TOKEN }}
           output_path: artifacts
-      - name: Fixup URL in nix-installer.sh
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v1
+        with:
+          role-to-assume: ${{ secrets.AWS_S3_UPLOAD_ROLE }}
+          aws-region: us-east-2
+      - name: Publish Release to S3 (Tag)
+        env:
+          AWS_BUCKET: ${{ secrets.AWS_S3_UPLOAD_BUCKET }}
         run: |
-          sed -i "s@https://install.determinate.systems/nix@https://install.determinate.systems/nix/tag/$GITHUB_REF_NAME@" nix-installer.sh
-      - name: Publish Release (Tag)
+          ./upload_s3.sh "$GITHUB_REF_NAME" "$GITHUB_SHA" "https://install.determinate.systems/nix/tag/$GITHUB_REF_NAME"
+      - name: Publish Release to GitHub (Tag)
         uses: softprops/action-gh-release@v1
         with:
           fail_on_unmatched_files: true
@@ -29,3 +38,10 @@ jobs:
           files: |
             artifacts/**
             nix-installer.sh
+      - name: Install Instructions (Tag)
+        run: |
+          cat <<EOF
+          This tag can be installed by running the following command:
+
+          curl --proto '=https' --tlsv1.2 -sSf -L https://install.determinate.systems/nix/tag/$GITHUB_REF_NAME | sh -s -- install
+          EOF

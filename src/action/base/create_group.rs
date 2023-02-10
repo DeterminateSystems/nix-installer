@@ -1,3 +1,4 @@
+use nix::unistd::Group;
 use tokio::process::Command;
 use tracing::{span, Span};
 
@@ -12,13 +13,32 @@ Create an operating system level user group
 #[derive(Debug, serde::Deserialize, serde::Serialize, Clone)]
 pub struct CreateGroup {
     name: String,
-    gid: usize,
+    gid: u32,
 }
 
 impl CreateGroup {
     #[tracing::instrument(level = "debug", skip_all)]
-    pub fn plan(name: String, gid: usize) -> StatefulAction<Self> {
-        Self { name, gid }.into()
+    pub fn plan(name: String, gid: u32) -> Result<StatefulAction<Self>, ActionError> {
+        let this = Self {
+            name: name.clone(),
+            gid,
+        };
+        // Ensure group does not exists
+        if let Some(group) = Group::from_name(name.as_str())
+            .map_err(|e| ActionError::GettingGroupId(name.clone(), e))?
+        {
+            if group.gid.as_raw() != gid {
+                return Err(ActionError::GroupGidMismatch(
+                    name.clone(),
+                    group.gid.as_raw(),
+                    gid,
+                ));
+            }
+
+            tracing::debug!("Creating group `{}` already complete", this.name);
+            return Ok(StatefulAction::completed(this));
+        }
+        Ok(StatefulAction::uncompleted(this))
     }
 }
 
@@ -59,36 +79,22 @@ impl Action for CreateGroup {
                 patch: _,
             }
             | OperatingSystem::Darwin => {
-                if Command::new("/usr/bin/dscl")
-                    .process_group(0)
-                    .args([".", "-read", &format!("/Groups/{name}")])
-                    .stdin(std::process::Stdio::null())
-                    .stdout(std::process::Stdio::null())
-                    .stderr(std::process::Stdio::piped())
-                    .status()
-                    .await
-                    .map_err(ActionError::Command)?
-                    .success()
-                {
-                    ()
-                } else {
-                    execute_command(
-                        Command::new("/usr/sbin/dseditgroup")
-                            .process_group(0)
-                            .args([
-                                "-o",
-                                "create",
-                                "-r",
-                                "Nix build group for nix-daemon",
-                                "-i",
-                                &format!("{gid}"),
-                                name.as_str(),
-                            ])
-                            .stdin(std::process::Stdio::null()),
-                    )
-                    .await
-                    .map_err(|e| ActionError::Command(e))?;
-                }
+                execute_command(
+                    Command::new("/usr/sbin/dseditgroup")
+                        .process_group(0)
+                        .args([
+                            "-o",
+                            "create",
+                            "-r",
+                            "Nix build group for nix-daemon",
+                            "-i",
+                            &format!("{gid}"),
+                            name.as_str(),
+                        ])
+                        .stdin(std::process::Stdio::null()),
+                )
+                .await
+                .map_err(|e| ActionError::Command(e))?;
             },
             _ => {
                 execute_command(

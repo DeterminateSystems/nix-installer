@@ -2,7 +2,7 @@ use std::path::{Path, PathBuf};
 
 use crate::{
     action::{ActionError, StatefulAction},
-    execute_command, set_env,
+    execute_command, set_env, ChannelValue,
 };
 
 use glob::glob;
@@ -17,12 +17,12 @@ Setup the default Nix profile with `nss-cacert` and `nix` itself.
  */
 #[derive(Debug, serde::Deserialize, serde::Serialize, Clone)]
 pub struct SetupDefaultProfile {
-    channels: Vec<String>,
+    channels: Vec<ChannelValue>,
 }
 
 impl SetupDefaultProfile {
     #[tracing::instrument(level = "debug", skip_all)]
-    pub async fn plan(channels: Vec<String>) -> Result<StatefulAction<Self>, ActionError> {
+    pub async fn plan(channels: Vec<ChannelValue>) -> Result<StatefulAction<Self>, ActionError> {
         Ok(Self { channels }.into())
     }
 }
@@ -38,7 +38,12 @@ impl Action for SetupDefaultProfile {
         span!(
             tracing::Level::DEBUG,
             "setup_default_profile",
-            channels = self.channels.join(","),
+            channels = self
+                .channels
+                .iter()
+                .map(|ChannelValue(channel, url)| format!("{channel}={url}"))
+                .collect::<Vec<_>>()
+                .join(","),
         )
     }
 
@@ -206,7 +211,7 @@ impl Action for SetupDefaultProfile {
             command.process_group(0);
             command.arg("--update");
             for channel in channels {
-                command.arg(channel);
+                command.arg(channel.0.clone());
             }
             command.env(
                 "NIX_SSL_CERT_FILE",

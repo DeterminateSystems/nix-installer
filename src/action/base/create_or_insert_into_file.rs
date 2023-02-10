@@ -158,7 +158,7 @@ impl Action for CreateOrInsertIntoFile {
         let gid = if let Some(group) = group {
             Some(
                 Group::from_name(group.as_str())
-                    .map_err(|e| ActionError::GroupId(group.clone(), e))?
+                    .map_err(|e| ActionError::GettingGroupId(group.clone(), e))?
                     .ok_or(ActionError::NoGroup(group.clone()))?
                     .gid,
             )
@@ -168,7 +168,7 @@ impl Action for CreateOrInsertIntoFile {
         let uid = if let Some(user) = user {
             Some(
                 User::from_name(user.as_str())
-                    .map_err(|e| ActionError::UserId(user.clone(), e))?
+                    .map_err(|e| ActionError::GettingUserId(user.clone(), e))?
                     .ok_or(ActionError::NoUser(user.clone()))?
                     .uid,
             )
@@ -185,10 +185,19 @@ impl Action for CreateOrInsertIntoFile {
             tokio::fs::set_permissions(&temp_file_path, PermissionsExt::from_mode(*mode))
                 .await
                 .map_err(|e| ActionError::SetPermissions(*mode, path.to_owned(), e))?;
-        } else if orig_file.is_some() {
-            tokio::fs::set_permissions(&temp_file_path, PermissionsExt::from_mode(0o644))
+        } else if let Some(original_file) = orig_file {
+            let original_file_mode = original_file
+                .metadata()
                 .await
-                .map_err(|e| ActionError::SetPermissions(0o644, path.to_owned(), e))?;
+                .map_err(|e| ActionError::GettingMetadata(path.to_path_buf(), e))?
+                .permissions()
+                .mode();
+            tokio::fs::set_permissions(
+                &temp_file_path,
+                PermissionsExt::from_mode(original_file_mode),
+            )
+            .await
+            .map_err(|e| ActionError::SetPermissions(original_file_mode, path.to_owned(), e))?;
         }
 
         tokio::fs::rename(&temp_file_path, &path)
