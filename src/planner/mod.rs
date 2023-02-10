@@ -73,10 +73,12 @@ match plan.install(None).await {
 ```
 
 */
-#[cfg(target_os = "macos")]
-pub mod darwin;
 #[cfg(target_os = "linux")]
 pub mod linux;
+#[cfg(target_os = "macos")]
+pub mod macos;
+#[cfg(target_os = "linux")]
+pub mod steam_deck;
 
 use std::{collections::HashMap, string::FromUtf8Error};
 
@@ -115,14 +117,14 @@ dyn_clone::clone_trait_object!(Planner);
 #[cfg_attr(feature = "cli", derive(clap::Subcommand))]
 pub enum BuiltinPlanner {
     #[cfg(target_os = "linux")]
-    /// A standard Linux multi-user install
-    LinuxMulti(linux::LinuxMulti),
-    /// A standard MacOS (Darwin) multi-user install
+    /// A planner for Linux installs
+    Linux(linux::Linux),
+    /// A planner MacOS (Darwin) for installs
     #[cfg(target_os = "macos")]
-    DarwinMulti(darwin::DarwinMulti),
-    /// A specialized install suitable for the Valve Steam Deck console
+    Macos(macos::Macos),
+    /// A planner suitable for the Valve Steam Deck running SteamOS
     #[cfg(target_os = "linux")]
-    SteamDeck(linux::SteamDeck),
+    SteamDeck(steam_deck::SteamDeck),
 }
 
 impl BuiltinPlanner {
@@ -132,25 +134,25 @@ impl BuiltinPlanner {
         match (Architecture::host(), OperatingSystem::host()) {
             #[cfg(target_os = "linux")]
             (Architecture::X86_64, OperatingSystem::Linux) => {
-                Ok(Self::LinuxMulti(linux::LinuxMulti::default().await?))
+                Ok(Self::Linux(linux::Linux::default().await?))
             },
             #[cfg(target_os = "linux")]
             (Architecture::X86_32(_), OperatingSystem::Linux) => {
-                Ok(Self::LinuxMulti(linux::LinuxMulti::default().await?))
+                Ok(Self::Linux(linux::Linux::default().await?))
             },
             #[cfg(target_os = "linux")]
             (Architecture::Aarch64(_), OperatingSystem::Linux) => {
-                Ok(Self::LinuxMulti(linux::LinuxMulti::default().await?))
+                Ok(Self::Linux(linux::Linux::default().await?))
             },
             #[cfg(target_os = "macos")]
             (Architecture::X86_64, OperatingSystem::MacOSX { .. })
             | (Architecture::X86_64, OperatingSystem::Darwin) => {
-                Ok(Self::DarwinMulti(darwin::DarwinMulti::default().await?))
+                Ok(Self::Macos(macos::Macos::default().await?))
             },
             #[cfg(target_os = "macos")]
             (Architecture::Aarch64(_), OperatingSystem::MacOSX { .. })
             | (Architecture::Aarch64(_), OperatingSystem::Darwin) => {
-                Ok(Self::DarwinMulti(darwin::DarwinMulti::default().await?))
+                Ok(Self::Macos(macos::Macos::default().await?))
             },
             _ => Err(PlannerError::UnsupportedArchitecture(target_lexicon::HOST)),
         }
@@ -160,11 +162,11 @@ impl BuiltinPlanner {
         let mut built = Self::default().await?;
         match &mut built {
             #[cfg(target_os = "linux")]
-            BuiltinPlanner::LinuxMulti(inner) => inner.settings = settings,
+            BuiltinPlanner::Linux(inner) => inner.settings = settings,
             #[cfg(target_os = "linux")]
             BuiltinPlanner::SteamDeck(inner) => inner.settings = settings,
             #[cfg(target_os = "macos")]
-            BuiltinPlanner::DarwinMulti(inner) => inner.settings = settings,
+            BuiltinPlanner::Macos(inner) => inner.settings = settings,
         }
         Ok(built)
     }
@@ -172,43 +174,43 @@ impl BuiltinPlanner {
     pub async fn plan(self) -> Result<InstallPlan, NixInstallerError> {
         match self {
             #[cfg(target_os = "linux")]
-            BuiltinPlanner::LinuxMulti(planner) => InstallPlan::plan(planner).await,
+            BuiltinPlanner::Linux(planner) => InstallPlan::plan(planner).await,
             #[cfg(target_os = "linux")]
             BuiltinPlanner::SteamDeck(planner) => InstallPlan::plan(planner).await,
             #[cfg(target_os = "macos")]
-            BuiltinPlanner::DarwinMulti(planner) => InstallPlan::plan(planner).await,
+            BuiltinPlanner::Macos(planner) => InstallPlan::plan(planner).await,
         }
     }
     pub fn boxed(self) -> Box<dyn Planner> {
         match self {
             #[cfg(target_os = "linux")]
-            BuiltinPlanner::LinuxMulti(i) => i.boxed(),
+            BuiltinPlanner::Linux(i) => i.boxed(),
             #[cfg(target_os = "linux")]
             BuiltinPlanner::SteamDeck(i) => i.boxed(),
             #[cfg(target_os = "macos")]
-            BuiltinPlanner::DarwinMulti(i) => i.boxed(),
+            BuiltinPlanner::Macos(i) => i.boxed(),
         }
     }
 
     pub fn typetag_name(&self) -> &'static str {
         match self {
             #[cfg(target_os = "linux")]
-            BuiltinPlanner::LinuxMulti(i) => i.typetag_name(),
+            BuiltinPlanner::Linux(i) => i.typetag_name(),
             #[cfg(target_os = "linux")]
             BuiltinPlanner::SteamDeck(i) => i.typetag_name(),
             #[cfg(target_os = "macos")]
-            BuiltinPlanner::DarwinMulti(i) => i.typetag_name(),
+            BuiltinPlanner::Macos(i) => i.typetag_name(),
         }
     }
 
     pub fn settings(&self) -> Result<HashMap<String, serde_json::Value>, InstallSettingsError> {
         match self {
             #[cfg(target_os = "linux")]
-            BuiltinPlanner::LinuxMulti(i) => i.settings(),
+            BuiltinPlanner::Linux(i) => i.settings(),
             #[cfg(target_os = "linux")]
             BuiltinPlanner::SteamDeck(i) => i.settings(),
             #[cfg(target_os = "macos")]
-            BuiltinPlanner::DarwinMulti(i) => i.settings(),
+            BuiltinPlanner::Macos(i) => i.settings(),
         }
     }
 }
