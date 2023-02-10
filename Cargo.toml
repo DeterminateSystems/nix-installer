@@ -1,6 +1,6 @@
 [package]
 name = "nix-installer"
-description = "A `nix` installer"
+description = "The Determinate Nix Installer"
 version = "0.2.1-unreleased"
 edition = "2021"
 resolver = "2"

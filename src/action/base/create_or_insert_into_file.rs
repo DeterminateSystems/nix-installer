@@ -4,11 +4,11 @@ use crate::action::{Action, ActionDescription, ActionError, StatefulAction};
 use rand::Rng;
 use std::{
     io::SeekFrom,
-    os::unix::prelude::PermissionsExt,
+    os::{unix::fs::MetadataExt, unix::prelude::PermissionsExt},
     path::{Path, PathBuf},
 };
 use tokio::{
-    fs::{remove_file, OpenOptions},
+    fs::{remove_file, File, OpenOptions},
     io::{AsyncReadExt, AsyncSeekExt, AsyncWriteExt},
 };
 use tracing::{span, Span};
@@ -46,16 +46,86 @@ impl CreateOrInsertIntoFile {
         position: Position,
     ) -> Result<StatefulAction<Self>, ActionError> {
         let path = path.as_ref().to_path_buf();
-
-        Ok(Self {
+        let mode = mode.into();
+        let user = user.into();
+        let group = group.into();
+        let this = Self {
             path,
-            user: user.into(),
-            group: group.into(),
-            mode: mode.into(),
+            user,
+            group,
+            mode,
             buf,
             position,
+        };
+        if this.path.exists() {
+            // If the path exists, perhaps we can just skip this
+            let mut file = File::open(&this.path)
+                .await
+                .map_err(|e| ActionError::Open(this.path.clone(), e))?;
+
+            let metadata = file
+                .metadata()
+                .await
+                .map_err(|e| ActionError::GettingMetadata(this.path.clone(), e))?;
+            if let Some(mode) = mode {
+                // Does the file have the right permissions?
+                let discovered_mode = metadata.permissions().mode();
+                if discovered_mode != mode {
+                    return Err(ActionError::PathModeMismatch(
+                        this.path.clone(),
+                        discovered_mode,
+                        mode,
+                    ));
+                }
+            }
+
+            // Does it have the right user/group?
+            if let Some(user) = &this.user {
+                // If the file exists, the user must also exist to be correct.
+                let expected_uid = User::from_name(user.as_str())
+                    .map_err(|e| ActionError::GettingUserId(user.clone(), e))?
+                    .ok_or_else(|| ActionError::NoUser(user.clone()))?
+                    .uid;
+                let found_uid = metadata.uid();
+                if found_uid != expected_uid.as_raw() {
+                    return Err(ActionError::PathUserMismatch(
+                        this.path.clone(),
+                        found_uid,
+                        expected_uid.as_raw(),
+                    ));
+                }
+            }
+            if let Some(group) = &this.group {
+                // If the file exists, the group must also exist to be correct.
+                let expected_gid = Group::from_name(group.as_str())
+                    .map_err(|e| ActionError::GettingGroupId(group.clone(), e))?
+                    .ok_or_else(|| ActionError::NoUser(group.clone()))?
+                    .gid;
+                let found_gid = metadata.gid();
+                if found_gid != expected_gid.as_raw() {
+                    return Err(ActionError::PathGroupMismatch(
+                        this.path.clone(),
+                        found_gid,
+                        expected_gid.as_raw(),
+                    ));
+                }
+            }
+
+            // Does it have the right content?
+            let mut discovered_buf = String::new();
+            file.read_to_string(&mut discovered_buf)
+                .await
+                .map_err(|e| ActionError::Read(this.path.clone(), e))?;
+
+            if discovered_buf.contains(&this.buf) {
+                tracing::debug!("Inserting into `{}` already complete", this.path.display(),);
+                return Ok(StatefulAction::completed(this));
+            }
+
+            // If not, we can't skip this, so we still do it
         }
-        .into())
+
+        Ok(StatefulAction::uncompleted(this))
     }
 }
 
@@ -278,6 +348,7 @@ impl Action for CreateOrInsertIntoFile {
 #[cfg(test)]
 mod test {
     use super::*;
+    use tokio::fs::{read_to_string, write};
 
     #[tokio::test]
     async fn creates_and_deletes_file() -> eyre::Result<()> {
@@ -333,6 +404,44 @@ mod test {
             .expect("Could not read test temp file");
 
         assert_eq!(test_content, read_content);
+
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn recognizes_existing_containing_exact_contents_and_reverts_it() -> eyre::Result<()> {
+        let temp_dir = tempdir::TempDir::new("nix_installer_create_or_insert_into_file")?;
+        let test_file = temp_dir
+            .path()
+            .join("recognizes_existing_containing_exact_contents_and_reverts_it");
+
+        let expected_content = "Some expected content";
+        write(test_file.as_path(), expected_content).await?;
+
+        let added_content = "\nSome more expected content";
+        write(test_file.as_path(), added_content).await?;
+
+        // We test all `Position` options
+        let positions = [Position::Beginning, Position::End];
+        for position in positions {
+            let mut action = CreateOrInsertIntoFile::plan(
+                test_file.clone(),
+                None,
+                None,
+                None,
+                expected_content.into(),
+                position,
+            )
+            .await?;
+
+            action.try_execute().await?;
+
+            action.try_revert().await?;
+
+            assert!(test_file.exists(), "File should have not been deleted");
+            let after_revert_content = read_to_string(&test_file).await?;
+            assert_eq!(after_revert_content, added_content);
+        }
 
         Ok(())
     }

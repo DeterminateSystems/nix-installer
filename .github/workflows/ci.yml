@@ -204,7 +204,7 @@ jobs:
         uses: DeterminateSystems/nix-installer-action@start-daemon-and-init
         with:
           init: none
-          planner: linux-multi
+          planner: linux
           local-root: install-root/
           logger: pretty
           log-directives: nix_installer=trace
@@ -237,7 +237,7 @@ jobs:
         uses: DeterminateSystems/nix-installer-action@start-daemon-and-init
         with:
           init: none
-          planner: linux-multi
+          planner: linux
           local-root: install-root/
           logger: pretty
           log-directives: nix_installer=trace

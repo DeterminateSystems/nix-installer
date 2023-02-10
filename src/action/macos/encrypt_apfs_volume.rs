@@ -1,6 +1,6 @@
 use crate::{
     action::{
-        darwin::NIX_VOLUME_MOUNTD_DEST, Action, ActionDescription, ActionError, StatefulAction,
+        macos::NIX_VOLUME_MOUNTD_DEST, Action, ActionDescription, ActionError, StatefulAction,
     },
     execute_command,
 };

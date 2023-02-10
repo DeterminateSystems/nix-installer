@@ -1,4 +1,4 @@
-# Nix Installer
+# The Determinate Nix Installer
 
 [![Crates.io](https://img.shields.io/crates/v/nix-installer)](https://crates.io/crates/nix-installer)
 [![Docs.rs](https://img.shields.io/docsrs/nix-installer)](https://docs.rs/nix-installer/latest/nix_installer/)
@@ -73,12 +73,10 @@ Usage: nix-installer install [OPTIONS] [PLAN]
        nix-installer install <COMMAND>
 
 Commands:
-  linux-multi
-          A standard Linux multi-user install
-  darwin-multi
-          A standard MacOS (Darwin) multi-user install
+  linux
+          A planner for Linux installs
   steam-deck
-          A specialized install suitable for the Valve Steam Deck console
+          A planner suitable for the Valve Steam Deck running SteamOS
   help
           Print this message or the help of the given subcommand(s)
 # ...
@@ -87,10 +85,10 @@ Commands:
 Planners have their own options and defaults, sharing most of them in common:
 
 ```bash
-$ ./nix-installer install linux-multi --help
-A standard Linux multi-user install
+$ ./nix-installer install linux --help
+A planner for Linux installs
 
-Usage: nix-installer install linux-multi [OPTIONS]
+Usage: nix-installer install linux [OPTIONS]
 
 Options:
 # ...
@@ -166,7 +164,7 @@ FROM ubuntu:latest
 RUN apt update -y
 RUN apt install curl -y
 COPY nix-installer /nix-installer
-RUN /nix-installer install linux-multi --init none --no-confirm
+RUN /nix-installer install linux --init none --no-confirm
 ENV PATH="${PATH}:/nix/var/nix/profiles/default/bin"
 RUN nix run nixpkgs#hello
 ```
@@ -181,7 +179,7 @@ FROM ubuntu:latest
 RUN apt update -y
 RUN apt install curl -y
 COPY nix-installer /nix-installer
-RUN /nix-installer install linux-multi --extra-conf "sandbox = false" --init none --no-confirm
+RUN /nix-installer install linux --extra-conf "sandbox = false" --init none --no-confirm
 ENV PATH="${PATH}:/nix/var/nix/profiles/default/bin"
 RUN nix run nixpkgs#hello
 ```
@@ -194,7 +192,7 @@ FROM ubuntu:latest
 RUN apt update -y
 RUN apt install curl systemd -y
 COPY nix-installer /nix-installer
-RUN /nix-installer install linux-multi --extra-conf "sandbox = false" --no-start-daemon --no-confirm
+RUN /nix-installer install linux --extra-conf "sandbox = false" --no-start-daemon --no-confirm
 ENV PATH="${PATH}:/nix/var/nix/profiles/default/bin"
 RUN nix run nixpkgs#hello
 CMD [ "/usr/sbin/init" ]
@@ -218,7 +216,7 @@ If systemd is not enabled, pass `--init none` at the end of the command:
 
 
 ```bash
-curl --proto '=https' --tlsv1.2 -sSf -L https://install.determinate.systems/nix | sh -s -- install --init none
+curl --proto '=https' --tlsv1.2 -sSf -L https://install.determinate.systems/nix | sh -s -- install linux --init none
 ```
 
 ## Building a binary
