@@ -145,9 +145,6 @@ jobs:
           buildkite_token: ${{ secrets.BUILDKITE_TOKEN }}
           output_path: artifacts
       - run: sudo apt install fish zsh
-      - uses: actions/download-artifact@v3
-        with:
-          name: nix-installer-x86_64-linux
       - name: Move & set executable
         run: |
           chmod +x ./nix-installer
@@ -376,9 +373,6 @@ jobs:
           buildkite_token: ${{ secrets.BUILDKITE_TOKEN }}
           output_path: artifacts
       - run: brew install fish coreutils
-      - uses: actions/download-artifact@v3
-        with:
-          name: nix-installer-x86_64-darwin
       - name: Move & set executable
         run: |
           chmod +x ./nix-installer
