@@ -1,5 +1,5 @@
 {
-  description = "A Nix Installer";
+  description = "The Determinate Nix Installer";
 
   inputs = {
     nixpkgs.url = "github:nixos/nixpkgs/nixos-22.05";
