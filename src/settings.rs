@@ -95,7 +95,7 @@ pub struct CommonSettings {
             global = true
         )
     )]
-    pub(crate) nix_build_user_count: usize,
+    pub(crate) nix_build_user_count: u32,
 
     /// The Nix build group name
     #[cfg_attr(
@@ -119,7 +119,7 @@ pub struct CommonSettings {
             global = true
         )
     )]
-    pub(crate) nix_build_group_id: usize,
+    pub(crate) nix_build_group_id: u32,
 
     /// The Nix build user prefix (user numbers will be postfixed)
     #[cfg_attr(
@@ -147,7 +147,7 @@ pub struct CommonSettings {
         all(target_os = "linux", feature = "cli"),
         clap(default_value_t = 30_000)
     )]
-    pub(crate) nix_build_user_id_base: usize,
+    pub(crate) nix_build_user_id_base: u32,
 
     /// The Nix package URL
     #[cfg_attr(
@@ -361,7 +361,7 @@ async fn linux_detect_init() -> (InitSystem, bool) {
 // Builder Pattern
 impl CommonSettings {
     /// Number of build users to create
-    pub fn nix_build_user_count(&mut self, count: usize) -> &mut Self {
+    pub fn nix_build_user_count(&mut self, count: u32) -> &mut Self {
         self.nix_build_user_count = count;
         self
     }
@@ -385,7 +385,7 @@ impl CommonSettings {
     }
 
     /// The Nix build group GID
-    pub fn nix_build_group_id(&mut self, count: usize) -> &mut Self {
+    pub fn nix_build_group_id(&mut self, count: u32) -> &mut Self {
         self.nix_build_group_id = count;
         self
     }
@@ -397,7 +397,7 @@ impl CommonSettings {
     }
 
     /// The Nix build user base UID (ascending)
-    pub fn nix_build_user_id_base(&mut self, count: usize) -> &mut Self {
+    pub fn nix_build_user_id_base(&mut self, count: u32) -> &mut Self {
         self.nix_build_user_id_base = count;
         self
     }
