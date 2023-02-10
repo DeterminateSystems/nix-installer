@@ -136,7 +136,7 @@ jobs:
   run-x86_64-linux-no-init:
     name: Run x86_64 Linux (No init)
     runs-on: ubuntu-22.04
-    needs: [build-x86_64-linux, lints]
+    needs: [lints]
     steps:
       - uses: actions/checkout@v3
       - name: Download Buildkite Artifacts
@@ -248,7 +248,7 @@ jobs:
   run-steam-deck:
     name: Run Steam Deck (mock)
     runs-on: ubuntu-22.04
-    needs: [build-x86_64-linux, lints]
+    needs: [lints]
     steps:
       - uses: actions/checkout@v3
       - run: sudo apt install fish zsh
