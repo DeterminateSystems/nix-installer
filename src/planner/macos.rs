@@ -7,7 +7,7 @@ use tokio::process::Command;
 use crate::{
     action::{
         common::{ConfigureInitService, ConfigureNix, ProvisionNix},
-        darwin::CreateNixVolume,
+        macos::CreateNixVolume,
         StatefulAction,
     },
     execute_command,
