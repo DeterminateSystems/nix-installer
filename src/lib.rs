@@ -1,4 +1,4 @@
-/*! A [Nix](https://github.com/NixOS/nix) installer and uninstaller.
+/*! The Determinate [Nix](https://github.com/NixOS/nix) Installer
 
 `nix-installer` breaks down into three main concepts:
 
