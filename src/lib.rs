@@ -44,7 +44,7 @@ use nix_installer::{InstallPlan, planner::Planner};
 #[cfg(target_os = "linux")]
 let planner = nix_installer::planner::steam_deck::SteamDeck::default().await?;
 #[cfg(target_os = "macos")]
-let planner = nix_installer::planner::darwin::DarwinMulti::default().await?;
+let planner = nix_installer::planner::macos::Macos::default().await?;
 
 // Or call `crate::planner::BuiltinPlanner::default()`
 // Match on the result to customize.
