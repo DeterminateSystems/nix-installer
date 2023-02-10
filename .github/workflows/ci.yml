@@ -44,7 +44,7 @@ jobs:
       - run: sudo apt install fish zsh
       - name: Move & set executable
         run: |
-          chmod +x ./nix-installer
+          chmod +x ./artifacts/nix-installer
           mkdir install-root
           cp nix-installer.sh install-root/nix-installer.sh
           mv artifacts/nix-installer-x86_64-linux install-root/nix-installer-x86_64-linux
@@ -147,7 +147,7 @@ jobs:
       - run: sudo apt install fish zsh
       - name: Move & set executable
         run: |
-          chmod +x ./nix-installer
+          chmod +x ./artifacts/nix-installer
           mkdir install-root
           cp nix-installer.sh install-root/nix-installer.sh
           mv artifacts/nix-installer-x86_64-linux install-root/nix-installer-x86_64-linux
@@ -251,7 +251,7 @@ jobs:
       - run: sudo apt install fish zsh
       - name: Move & set executable
         run: |
-          chmod +x ./nix-installer
+          chmod +x ./artifacts/nix-installer
           mkdir install-root
           cp nix-installer.sh install-root/nix-installer.sh
           mv nix-installer install-root/nix-installer-x86_64-linux
@@ -372,7 +372,7 @@ jobs:
       - run: brew install fish coreutils
       - name: Move & set executable
         run: |
-          chmod +x ./nix-installer
+          chmod +x ./artifacts/nix-installer
           mkdir install-root
           cp nix-installer.sh install-root/nix-installer.sh
           mv artifacts/nix-installer-x86_64-darwin install-root/nix-installer-x86_64-darwin
