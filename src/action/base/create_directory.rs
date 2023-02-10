@@ -53,7 +53,7 @@ impl CreateDirectory {
                     .ok_or_else(|| ActionError::NoUser(user.clone()))?
                     .uid;
                 let found_uid = metadata.uid();
-                if found_uid == expected_uid.as_raw() {
+                if found_uid != expected_uid.as_raw() {
                     return Err(ActionError::PathUserMismatch(
                         path.clone(),
                         found_uid,
@@ -68,7 +68,7 @@ impl CreateDirectory {
                     .ok_or_else(|| ActionError::NoUser(group.clone()))?
                     .gid;
                 let found_gid = metadata.gid();
-                if found_gid == expected_gid.as_raw() {
+                if found_gid != expected_gid.as_raw() {
                     return Err(ActionError::PathGroupMismatch(
                         path.clone(),
                         found_gid,
