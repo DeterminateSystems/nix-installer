@@ -202,9 +202,9 @@ fn fstab_entry(uuid: &Uuid, apfs_volume_label: &str) -> String {
 
 #[derive(thiserror::Error, Debug)]
 pub enum CreateFstabEntryError {
-    #[error("An `/etc/fstab` entry for the `/nix` path already exists, consider removing the entry for `/nix` should be removed from `/etc/fstab`")]
+    #[error("An `/etc/fstab` entry for the `/nix` path already exists, consider removing the entry for `/nix`d from `/etc/fstab`")]
     NixEntryExists,
-    #[error("An `/etc/fstab` entry created by `nix-installer` already exists, if a volume named `{0}` already exists it may need to be deleted with `diskutil apfs deleteVolume \"{0}\" and the entry for `/nix` should be removed from `/etc/fstab`")]
+    #[error("An `/etc/fstab` entry created by `nix-installer` already exists. If a volume named `{0}` already exists, it may need to be deleted with `diskutil apfs deleteVolume \"{0}\" and the entry for `/nix` should be removed from `/etc/fstab`")]
     VolumeEntryExists(String),
 }
 
