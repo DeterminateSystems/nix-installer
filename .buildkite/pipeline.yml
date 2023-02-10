@@ -22,6 +22,9 @@ steps:
       system: x86_64-linux
       nix: 1
     command:
+      - nix develop --store ~/.ci-store --print-build-logs .# --command "cargo" build --no-default-features
+      - nix develop --store ~/.ci-store --print-build-logs .# --command "cargo" build --all-features
+      - nix build --store ~/.ci-store --print-build-logs .#packages.x86_64-linux.nix-installer
       - nix --extra-experimental-features "nix-command flakes" build .#packages.x86_64-linux.nix-installer-static -L
       - cp result/bin/nix-installer ./nix-installer-x86_64-linux
       - buildkite-agent artifact upload nix-installer-x86_64-linux

@@ -30,75 +30,24 @@ jobs:
       - name: Check EditorConfig conformance
         run: nix develop --store ~/.ci-store --command check-editorconfig
 
-  build-x86_64-linux:
-    name: Build x86_64 Linux
-    runs-on: ubuntu-22.04
-    steps:
-      - uses: actions/checkout@v3
-      - name: Install Nix
-        uses: DeterminateSystems/nix-installer-action@start-daemon-and-init
-        with:
-          github-token: ${{ secrets.GITHUB_TOKEN }}
-      - name: Cache build store (x86_64-linux)
-        id: build-store-x86_64-linux
-        uses: actions/cache@v3
-        with:
-          path: ~/.ci-store
-          key: build-store-x86_64-linux-${{ hashFiles('**/Cargo.lock', '**/flake.lock') }}-v1
-      - name: Build `nix-installer-static`
-        run: nix build --store ~/.ci-store --print-build-logs .#packages.x86_64-linux.nix-installer-static
-      - name: Copy artifact
-        run: |
-          RESULT=$(nix eval --raw --store ~/.ci-store --print-build-logs .#packages.x86_64-linux.nix-installer-static --apply "x: \"$HOME/.ci-store\${x}\"")
-          cp $RESULT/bin/nix-installer nix-installer
-      - name: Create artifact for x86_64-linux nix-installer
-        uses: actions/upload-artifact@v3
-        with:
-          name: nix-installer-x86_64-linux
-          path: |
-            nix-installer
-
-  # Various feature variations or versions of the build which we expect to always work
-  # Since it uses the `build-store-x86_64-linux-*` cache it should be quite fast
-  build-variants-x86_64-linux:
-    name: Build x86_64 Linux (Variants)
-    runs-on: ubuntu-22.04
-    needs: build-x86_64-linux # Only run this if the normal checks work, to avoid clogging builders
-    steps:
-      - uses: actions/checkout@v3
-      - name: Install Nix
-        uses: DeterminateSystems/nix-installer-action@start-daemon-and-init
-        with:
-          github-token: ${{ secrets.GITHUB_TOKEN }}
-      - name: Cache build store (x86_64-linux)
-        id: build-store-x86_64-linux
-        uses: actions/cache@v3
-        with:
-          path: ~/.ci-store
-          key: build-store-x86_64-linux-${{ hashFiles('**/Cargo.lock', '**/flake.lock') }}-v1
-      - name: Build `nix-installer`
-        run: nix build --store ~/.ci-store --print-build-logs .#packages.x86_64-linux.nix-installer
-      - name: Test `nix develop` build without default features
-        run: nix develop --store ~/.ci-store --print-build-logs .# --command "cargo" build --no-default-features
-      - name: Test `nix develop` build all features
-        run: nix develop --store ~/.ci-store --print-build-logs .# --command "cargo" build --all-features
-
   run-x86_64-linux:
     name: Run x86_64 Linux
     runs-on: ubuntu-22.04
-    needs: [build-x86_64-linux, lints]
+    needs: [lints]
     steps:
       - uses: actions/checkout@v3
-      - run: sudo apt install fish zsh
-      - uses: actions/download-artifact@v3
+      - name: Download Buildkite Artifacts
+        uses: EnricoMi/download-buildkite-artifact-action@v1.14
         with:
-          name: nix-installer-x86_64-linux
+          buildkite_token: ${{ secrets.BUILDKITE_TOKEN }}
+          output_path: artifacts
+      - run: sudo apt install fish zsh
       - name: Move & set executable
         run: |
           chmod +x ./nix-installer
           mkdir install-root
           cp nix-installer.sh install-root/nix-installer.sh
-          mv nix-installer install-root/nix-installer-x86_64-linux
+          mv artifacts/nix-installer-x86_64-linux install-root/nix-installer-x86_64-linux
       - name: Initial install
         uses: DeterminateSystems/nix-installer-action@start-daemon-and-init
         with:
@@ -190,6 +139,11 @@ jobs:
     needs: [build-x86_64-linux, lints]
     steps:
       - uses: actions/checkout@v3
+      - name: Download Buildkite Artifacts
+        uses: EnricoMi/download-buildkite-artifact-action@v1.14
+        with:
+          buildkite_token: ${{ secrets.BUILDKITE_TOKEN }}
+          output_path: artifacts
       - run: sudo apt install fish zsh
       - uses: actions/download-artifact@v3
         with:
@@ -199,7 +153,7 @@ jobs:
           chmod +x ./nix-installer
           mkdir install-root
           cp nix-installer.sh install-root/nix-installer.sh
-          mv nix-installer install-root/nix-installer-x86_64-linux
+          mv artifacts/nix-installer-x86_64-linux install-root/nix-installer-x86_64-linux
       - name: Initial install
         uses: DeterminateSystems/nix-installer-action@start-daemon-and-init
         with:
@@ -410,31 +364,17 @@ jobs:
             exit 1
           fi
 
-  build-x86_64-darwin:
-    name: Build x86_64 Darwin
-    runs-on: macos-12
-    steps:
-      - uses: actions/checkout@v3
-      - name: Install Nix
-        uses: DeterminateSystems/nix-installer-action@start-daemon-and-init
-        with:
-          github-token: ${{ secrets.GITHUB_TOKEN }}
-      # Runs clippy as part of the preBuild.
-      - name: Build nix-installer
-        run: nix build .#packages.x86_64-darwin.nix-installer -L
-      - name: Create artifact for x86_64-darwin nix-installer
-        uses: actions/upload-artifact@v3
-        with:
-          name: nix-installer-x86_64-darwin
-          path: |
-            result/bin/nix-installer
-
   run-x86_64-darwin:
     name: Run x86_64 Darwin
     runs-on: macos-12
-    needs: [build-x86_64-darwin, lints]
+    needs: [lints]
     steps:
       - uses: actions/checkout@v3
+      - name: Download Buildkite Artifacts
+        uses: EnricoMi/download-buildkite-artifact-action@v1.14
+        with:
+          buildkite_token: ${{ secrets.BUILDKITE_TOKEN }}
+          output_path: artifacts
       - run: brew install fish coreutils
       - uses: actions/download-artifact@v3
         with:
@@ -444,7 +384,7 @@ jobs:
           chmod +x ./nix-installer
           mkdir install-root
           cp nix-installer.sh install-root/nix-installer.sh
-          mv nix-installer install-root/nix-installer-x86_64-darwin
+          mv artifacts/nix-installer-x86_64-darwin install-root/nix-installer-x86_64-darwin
       - name: Initial install
         uses: DeterminateSystems/nix-installer-action@start-daemon-and-init
         with:
