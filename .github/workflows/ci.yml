@@ -248,6 +248,11 @@ jobs:
     needs: [lints]
     steps:
       - uses: actions/checkout@v3
+      - name: Download Buildkite Artifacts
+        uses: EnricoMi/download-buildkite-artifact-action@v1.14
+        with:
+          buildkite_token: ${{ secrets.BUILDKITE_TOKEN }}
+          output_path: artifacts
       - run: sudo apt install fish zsh
       - name: Move & set executable
         run: |
