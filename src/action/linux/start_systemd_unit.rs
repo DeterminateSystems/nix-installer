@@ -18,7 +18,6 @@ impl StartSystemdUnit {
     #[tracing::instrument(level = "debug", skip_all)]
     pub async fn plan(unit: impl AsRef<str>) -> Result<StatefulAction<Self>, ActionError> {
         let unit = unit.as_ref();
-        // If `systemctl is-active $UNIT` has exit status 3, it doesn't exist
         let output = Command::new("systemctl")
             .arg("is-active")
             .arg(unit)
@@ -27,7 +26,7 @@ impl StartSystemdUnit {
             .map_err(ActionError::Command)?;
 
         let state = if output.status.success() {
-            tracing::debug!("Starting systemd unit `{}` already complete", unit,);
+            tracing::debug!("Starting systemd unit `{}` already complete", unit);
             ActionState::Skipped
         } else {
             ActionState::Uncompleted
