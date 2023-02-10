@@ -1,4 +1,4 @@
-use std::os::unix::prelude::PermissionsExt;
+use std::os::unix::fs::{MetadataExt, PermissionsExt};
 use std::path::{Path, PathBuf};
 
 use nix::unistd::{chown, Group, User};
@@ -32,25 +32,53 @@ impl CreateDirectory {
         mode: impl Into<Option<u32>>,
         force_prune_on_revert: bool,
     ) -> Result<StatefulAction<Self>, ActionError> {
-        let path = path.as_ref();
+        let path = path.as_ref().to_path_buf();
         let user = user.into();
         let group = group.into();
         let mode = mode.into();
 
         let action_state = if path.exists() {
-            let metadata = tokio::fs::metadata(path)
+            let metadata = tokio::fs::metadata(&path)
                 .await
-                .map_err(|e| ActionError::GettingMetadata(path.to_path_buf(), e))?;
-            if metadata.is_dir() {
-                tracing::debug!(
-                    "Creating directory `{}` already complete, skipping",
-                    path.display(),
-                );
-                // TODO: Validate owner/group...
-                ActionState::Skipped
-            } else {
+                .map_err(|e| ActionError::GettingMetadata(path.clone(), e))?;
+            if !metadata.is_dir() {
                 return Err(ActionError::Exists(path.to_owned()));
             }
+
+            // Does it have the right user/group?
+            if let Some(user) = &user {
+                // If the file exists, the user must also exist to be correct.
+                let expected_uid = User::from_name(user.as_str())
+                    .map_err(|e| ActionError::GettingUserId(user.clone(), e))?
+                    .ok_or_else(|| ActionError::NoUser(user.clone()))?
+                    .uid;
+                let found_uid = metadata.uid();
+                if found_uid != expected_uid.as_raw() {
+                    return Err(ActionError::PathUserMismatch(
+                        path.clone(),
+                        found_uid,
+                        expected_uid.as_raw(),
+                    ));
+                }
+            }
+            if let Some(group) = &group {
+                // If the file exists, the group must also exist to be correct.
+                let expected_gid = Group::from_name(group.as_str())
+                    .map_err(|e| ActionError::GettingGroupId(group.clone(), e))?
+                    .ok_or_else(|| ActionError::NoUser(group.clone()))?
+                    .gid;
+                let found_gid = metadata.gid();
+                if found_gid != expected_gid.as_raw() {
+                    return Err(ActionError::PathGroupMismatch(
+                        path.clone(),
+                        found_gid,
+                        expected_gid.as_raw(),
+                    ));
+                }
+            }
+
+            tracing::debug!("Creating directory `{}` already complete", path.display(),);
+            ActionState::Skipped
         } else {
             ActionState::Uncompleted
         };

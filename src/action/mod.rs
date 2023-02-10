@@ -262,8 +262,16 @@ pub enum ActionError {
     }).collect::<Vec<_>>().join(" & "))]
     Children(Vec<Box<ActionError>>),
     /// The path already exists
-    #[error("Path exists `{0}`")]
+    #[error(
+        "`{0}` exists with different content than planned, consider removing it with `rm {0}`"
+    )]
     Exists(std::path::PathBuf),
+    #[error("`{0}` exists with a different uid ({1}) than planned ({2}), consider removing it with `rm {0}`")]
+    PathUserMismatch(std::path::PathBuf, u32, u32),
+    #[error("`{0}` exists with a different gid ({1}) than planned ({2}), consider removing it with `rm {0}`")]
+    PathGroupMismatch(std::path::PathBuf, u32, u32),
+    #[error("`{0}` exists with a different mode ({1:o}) than planned ({2:o}), consider removing it with `rm {0}`")]
+    PathModeMismatch(std::path::PathBuf, u32, u32),
     #[error("Getting metadata for {0}`")]
     GettingMetadata(std::path::PathBuf, #[source] std::io::Error),
     #[error("Creating directory `{0}`")]
@@ -339,7 +347,12 @@ pub enum ActionError {
 }
 
 impl HasExpectedErrors for ActionError {
-    fn expected(&self) -> Option<Box<dyn std::error::Error>> {
-        None
+    fn expected<'a>(&'a self) -> Option<Box<dyn std::error::Error + 'a>> {
+        match self {
+            Self::PathUserMismatch(_, _, _)
+            | Self::PathGroupMismatch(_, _, _)
+            | Self::PathModeMismatch(_, _, _) => Some(Box::new(self)),
+            _ => None,
+        }
     }
 }
