@@ -42,7 +42,7 @@ use nix_installer::{InstallPlan, planner::Planner};
 
 # async fn chosen_planner_install() -> color_eyre::Result<()> {
 #[cfg(target_os = "linux")]
-let planner = nix_installer::planner::linux::SteamDeck::default().await?;
+let planner = nix_installer::planner::steam_deck::SteamDeck::default().await?;
 #[cfg(target_os = "macos")]
 let planner = nix_installer::planner::darwin::DarwinMulti::default().await?;
 

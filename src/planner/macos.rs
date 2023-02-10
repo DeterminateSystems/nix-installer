@@ -18,10 +18,10 @@ use crate::{
     Action, BuiltinPlanner,
 };
 
-/// A planner for MacOS (Darwin) multi-user installs
+/// A planner for MacOS (Darwin) installs
 #[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
 #[cfg_attr(feature = "cli", derive(clap::Parser))]
-pub struct DarwinMulti {
+pub struct Macos {
     #[cfg_attr(feature = "cli", clap(flatten))]
     pub settings: CommonSettings,
 
@@ -73,8 +73,8 @@ async fn default_root_disk() -> Result<String, PlannerError> {
 }
 
 #[async_trait::async_trait]
-#[typetag::serde(name = "darwin-multi")]
-impl Planner for DarwinMulti {
+#[typetag::serde(name = "macos")]
+impl Planner for Macos {
     async fn default() -> Result<Self, PlannerError> {
         Ok(Self {
             settings: CommonSettings::default().await?,
@@ -171,8 +171,8 @@ impl Planner for DarwinMulti {
     }
 }
 
-impl Into<BuiltinPlanner> for DarwinMulti {
+impl Into<BuiltinPlanner> for Macos {
     fn into(self) -> BuiltinPlanner {
-        BuiltinPlanner::DarwinMulti(self)
+        BuiltinPlanner::Macos(self)
     }
 }
