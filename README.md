@@ -3,14 +3,14 @@
 [![Crates.io](https://img.shields.io/crates/v/nix-installer)](https://crates.io/crates/nix-installer)
 [![Docs.rs](https://img.shields.io/docsrs/nix-installer)](https://docs.rs/nix-installer/latest/nix_installer/)
 
-`nix-installer` is an opinionated alternative to the [Nix install scripts](https://nixos.org/download.html).
+`nix-installer` is an opinionated alternative to the [official Nix install scripts](https://nixos.org/download.html).
 
 
 ```bash
 curl --proto '=https' --tlsv1.2 -sSf -L https://install.determinate.systems/nix | sh -s -- install
 ```
 
-`nix-installer` ready to use in a number of environments:
+The `nix-installer` tool is ready to use in a number of environments:
 
 | Platform                     | Multi User         | `root` only | Maturity |
 |------------------------------|:------------------:|:-----------:|:--------:|
