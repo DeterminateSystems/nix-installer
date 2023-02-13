@@ -360,8 +360,6 @@ If you are working on the `action.yml` There is an integration test for `action.
 
 # Releases
 
-> `nix-installer` is still experimental, so this process may change.
-
 To cut a release:
 
 * Create a release branch from `main` (`git checkout -b release-v0.0.1`)
