@@ -29,6 +29,18 @@ jobs:
         run: nix develop --store ~/.ci-store --command check-nixpkgs-fmt
       - name: Check EditorConfig conformance
         run: nix develop --store ~/.ci-store --command check-editorconfig
+      - name: Download Buildkite Artifacts
+        uses: EnricoMi/download-buildkite-artifact-action@v1.14
+        with:
+          buildkite_token: ${{ secrets.BUILDKITE_TOKEN }}
+          output_path: artifacts        
+      # Mac's can't run this action, so we're forced to do this.
+      - name: Create Github cache from Buildkite artifacts
+        id: cache-buildkite-artifacts
+        uses: actions/cache/save@v3
+        with:
+          path: artifacts
+          key: buildkite-artifacts-${{ github.sha }}
 
   run-x86_64-linux:
     name: Run x86_64 Linux
@@ -36,11 +48,12 @@ jobs:
     needs: [lints]
     steps:
       - uses: actions/checkout@v3
-      - name: Download Buildkite Artifacts
-        uses: EnricoMi/download-buildkite-artifact-action@v1.14
+      - name: Restore Github cache of Buildkite artifacts
+        id: cache-buildkite-artifacts
+        uses: actions/cache/restore@v3
         with:
-          buildkite_token: ${{ secrets.BUILDKITE_TOKEN }}
-          output_path: artifacts
+          path: artifacts
+          key: buildkite-artifacts-${{ github.sha }}
       - run: sudo apt install fish zsh
       - name: Move & set executable
         run: |
@@ -139,11 +152,12 @@ jobs:
     needs: [lints]
     steps:
       - uses: actions/checkout@v3
-      - name: Download Buildkite Artifacts
-        uses: EnricoMi/download-buildkite-artifact-action@v1.14
+      - name: Restore Github cache of Buildkite artifacts
+        id: cache-buildkite-artifacts
+        uses: actions/cache/restore@v3
         with:
-          buildkite_token: ${{ secrets.BUILDKITE_TOKEN }}
-          output_path: artifacts
+          path: artifacts
+          key: buildkite-artifacts-${{ github.sha }}
       - run: sudo apt install fish zsh
       - name: Move & set executable
         run: |
@@ -248,11 +262,12 @@ jobs:
     needs: [lints]
     steps:
       - uses: actions/checkout@v3
-      - name: Download Buildkite Artifacts
-        uses: EnricoMi/download-buildkite-artifact-action@v1.14
+      - name: Restore Github cache of Buildkite artifacts
+        id: cache-buildkite-artifacts
+        uses: actions/cache/restore@v3
         with:
-          buildkite_token: ${{ secrets.BUILDKITE_TOKEN }}
-          output_path: artifacts
+          path: artifacts
+          key: buildkite-artifacts-${{ github.sha }}
       - run: sudo apt install fish zsh
       - name: Move & set executable
         run: |
@@ -369,11 +384,12 @@ jobs:
     needs: [lints]
     steps:
       - uses: actions/checkout@v3
-      - name: Download Buildkite Artifacts
-        uses: EnricoMi/download-buildkite-artifact-action@v1.14
+      - name: Restore Github cache of Buildkite artifacts
+        id: cache-buildkite-artifacts
+        uses: actions/cache/restore@v3
         with:
-          buildkite_token: ${{ secrets.BUILDKITE_TOKEN }}
-          output_path: artifacts
+          path: artifacts
+          key: buildkite-artifacts-${{ github.sha }}
       - run: brew install fish coreutils
       - name: Move & set executable
         run: |
