@@ -1,5 +1,6 @@
 use uuid::Uuid;
 
+use super::CreateApfsVolume;
 use crate::{
     action::{Action, ActionDescription, ActionError, StatefulAction},
     execute_command,
@@ -15,8 +16,14 @@ use tracing::{span, Span};
 
 const FSTAB_PATH: &str = "/etc/fstab";
 
-/** Create an `/etc/fstab` entry for the given volume
+#[derive(Debug, serde::Deserialize, serde::Serialize, Clone, Copy)]
+enum ExistingFstabEntry {
+    NixInstallerCreated,
+    Foreign,
+    None,
+}
 
+/** Create an `/etc/fstab` entry for the given volume
 
 This action queries `diskutil info` on the volume to fetch it's UUID and
 add the relevant information to `/etc/fstab`.
@@ -26,12 +33,17 @@ add the relevant information to `/etc/fstab`.
 #[derive(Debug, serde::Deserialize, serde::Serialize, Clone)]
 pub struct CreateFstabEntry {
     apfs_volume_label: String,
+    existing_entry: ExistingFstabEntry,
 }
 
 impl CreateFstabEntry {
     #[tracing::instrument(level = "debug", skip_all)]
-    pub async fn plan(apfs_volume_label: String) -> Result<StatefulAction<Self>, ActionError> {
+    pub async fn plan(
+        apfs_volume_label: String,
+        planned_create_apfs_volume: &StatefulAction<CreateApfsVolume>,
+    ) -> Result<StatefulAction<Self>, ActionError> {
         let fstab_path = Path::new(FSTAB_PATH);
+        let mut existing_entry = ExistingFstabEntry::None;
         if fstab_path.exists() {
             let fstab_buf = tokio::fs::read_to_string(&fstab_path)
                 .await
@@ -40,20 +52,20 @@ impl CreateFstabEntry {
 
             // See if the user already has a `/nix` related entry, if so, invite them to remove it.
             if fstab_buf.split(&[' ', '\t']).any(|chunk| chunk == "/nix") {
-                return Err(ActionError::Custom(Box::new(
-                    CreateFstabEntryError::NixEntryExists,
-                )));
+                existing_entry = ExistingFstabEntry::Foreign;
             }
 
             // See if a previous install from this crate exists, if so, invite the user to remove it (we may need to change it)
             if fstab_buf.contains(&prelude_comment) {
-                return Err(ActionError::Custom(Box::new(
-                    CreateFstabEntryError::VolumeEntryExists(apfs_volume_label.clone()),
-                )));
+                existing_entry = ExistingFstabEntry::NixInstallerCreated;
             }
         }
 
-        Ok(Self { apfs_volume_label }.into())
+        Ok(Self {
+            apfs_volume_label,
+            existing_entry,
+        }
+        .into())
     }
 }
 
@@ -72,6 +84,7 @@ impl Action for CreateFstabEntry {
             tracing::Level::DEBUG,
             "create_fstab_entry",
             apfs_volume_label = self.apfs_volume_label,
+            existing_entry = ?self.existing_entry,
         );
 
         span
@@ -83,7 +96,10 @@ impl Action for CreateFstabEntry {
 
     #[tracing::instrument(level = "debug", skip_all)]
     async fn execute(&mut self) -> Result<(), ActionError> {
-        let Self { apfs_volume_label } = self;
+        let Self {
+            apfs_volume_label,
+            existing_entry,
+        } = self;
         let fstab_path = Path::new(FSTAB_PATH);
         let uuid = get_uuid_for_label(&apfs_volume_label).await?;
         let fstab_entry = fstab_entry(&uuid, apfs_volume_label);
@@ -116,7 +132,10 @@ impl Action for CreateFstabEntry {
     }
 
     fn revert_description(&self) -> Vec<ActionDescription> {
-        let Self { apfs_volume_label } = &self;
+        let Self {
+            apfs_volume_label,
+            existing_entry,
+        } = &self;
         vec![ActionDescription::new(
             format!(
                 "Remove the UUID based entry for the APFS volume `{}` in `/etc/fstab`",

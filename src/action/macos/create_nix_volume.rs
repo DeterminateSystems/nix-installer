@@ -61,7 +61,7 @@ impl CreateNixVolume {
 
         let create_volume = CreateApfsVolume::plan(disk, name.clone(), case_sensitive).await?;
 
-        let create_fstab_entry = CreateFstabEntry::plan(name.clone())
+        let create_fstab_entry = CreateFstabEntry::plan(name.clone(), &create_volume)
             .await
             .map_err(|e| ActionError::Child(Box::new(e)))?;
 
