@@ -3,6 +3,6 @@ COPY nix-installer /nix-installer
 RUN chmod +x /nix-installer
 COPY binary-tarball /binary-tarball
 RUN mv /binary-tarball/nix-*.tar.xz nix.tar.xz
-RUN /nix-installer/bin/nix-installer install linux-multi --nix-package-url file:///nix.tar.xz --init none --extra-conf "sandbox = false" --channel --no-confirm -vvv
+RUN /nix-installer/bin/nix-installer install linux --nix-package-url file:///nix.tar.xz --init none --extra-conf "sandbox = false" --channel --no-confirm -vvv
 ENV PATH="${PATH}:/nix/var/nix/profiles/default/bin"
 RUN nix-build --no-substitute -E 'derivation { name = "foo"; system = "x86_64-linux"; builder = "/bin/sh"; args = ["-c" "echo foobar > $out"]; }'

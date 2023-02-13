@@ -36,7 +36,7 @@
 
       forSystem = system: f: f rec {
         inherit system;
-        pkgs = import nixpkgs { inherit system; overlays = [ self.overlays.default nix.overlays.default ]; };
+        pkgs = import nixpkgs { inherit system; overlays = [ self.overlays.default ]; };
         lib = pkgs.lib;
       };
 
