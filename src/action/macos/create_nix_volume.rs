@@ -48,7 +48,7 @@ impl CreateNixVolume {
             "/etc/synthetic.conf",
             None,
             None,
-            0o0655,
+            0o100644,
             "nix\n".into(), /* The newline is required otherwise it segfaults */
             create_or_insert_into_file::Position::End,
         )
@@ -135,7 +135,7 @@ impl CreateNixVolume {
 impl Action for CreateNixVolume {
     fn tracing_synopsis(&self) -> String {
         format!(
-            "Create an APFS volume `{}` for Nix on `{}`",
+            "Create an APFS volume `{}` for Nix on `{}` and add it to `/etc/fstab` mounting on `/nix`",
             self.name,
             self.disk.display()
         )

@@ -40,7 +40,8 @@
         },
         "create_fstab_entry": {
           "action": {
-            "apfs_volume_label": "Nix Store"
+            "apfs_volume_label": "Nix Store",
+            "existing_entry": "None"
           },
           "state": "Uncompleted"
         },

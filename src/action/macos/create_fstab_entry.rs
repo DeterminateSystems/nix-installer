@@ -88,10 +88,16 @@ impl CreateFstabEntry {
 #[typetag::serde(name = "create_fstab_entry")]
 impl Action for CreateFstabEntry {
     fn tracing_synopsis(&self) -> String {
-        format!(
-            "Add a UUID based entry for the APFS volume `{}` to `/etc/fstab`",
-            self.apfs_volume_label
-        )
+        match self.existing_entry {
+            ExistingFstabEntry::NixInstallerEntry | ExistingFstabEntry::Foreign => format!(
+                "Update existing entry for the APFS volume `{}` to `/etc/fstab`",
+                self.apfs_volume_label
+            ),
+            ExistingFstabEntry::None => format!(
+                "Add a UUID based entry for the APFS volume `{}` to `/etc/fstab`",
+                self.apfs_volume_label
+            ),
+        }
     }
 
     fn tracing_span(&self) -> Span {
@@ -117,7 +123,6 @@ impl Action for CreateFstabEntry {
         } = self;
         let fstab_path = Path::new(FSTAB_PATH);
         let uuid = get_uuid_for_label(&apfs_volume_label).await?;
-        let pending_fstab_lines = fstab_lines(&uuid, apfs_volume_label);
 
         let mut fstab = tokio::fs::OpenOptions::new()
             .create(true)
@@ -150,13 +155,15 @@ impl Action for CreateFstabEntry {
                         continue;
                     }
                     if saw_prelude && line.split(&[' ', '\t']).nth(2) == Some("/nix") {
-                        *line = fstab_entry(&uuid, apfs_volume_label);
+                        *line = fstab_entry(&uuid);
                         updated_line = true;
                         break;
                     }
                 }
                 if !(updated_line && updated_line) {
-                    return Err(todo!());
+                    return Err(ActionError::Custom(Box::new(
+                        CreateFstabEntryError::ExistingNixInstallerEntryDisappeared,
+                    )));
                 }
                 current_fstab_lines.join("\n")
             },
@@ -175,7 +182,9 @@ impl Action for CreateFstabEntry {
                     }
                 }
                 if !updated_line {
-                    return Err(todo!());
+                    return Err(ActionError::Custom(Box::new(
+                        CreateFstabEntryError::ExistingForeignEntryDisappeared,
+                    )));
                 }
                 current_fstab_lines.join("\n")
             },
@@ -193,7 +202,7 @@ impl Action for CreateFstabEntry {
     fn revert_description(&self) -> Vec<ActionDescription> {
         let Self {
             apfs_volume_label,
-            existing_entry,
+            existing_entry: _,
         } = &self;
         vec![ActionDescription::new(
             format!(
@@ -212,7 +221,7 @@ impl Action for CreateFstabEntry {
         } = self;
         let fstab_path = Path::new(FSTAB_PATH);
         let uuid = get_uuid_for_label(&apfs_volume_label).await?;
-        let fstab_entry = fstab_entry(&uuid, apfs_volume_label);
+        let fstab_entry = fstab_lines(&uuid, apfs_volume_label);
 
         let mut file = OpenOptions::new()
             .create(false)
@@ -269,7 +278,7 @@ async fn get_uuid_for_label(apfs_volume_label: &str) -> Result<Uuid, ActionError
 
 fn fstab_lines(uuid: &Uuid, apfs_volume_label: &str) -> String {
     let prelude_comment = fstab_prelude_comment(apfs_volume_label);
-    let fstab_entry = fstab_entry(uuid, apfs_volume_label);
+    let fstab_entry = fstab_entry(uuid);
     prelude_comment + &fstab_entry
 }
 
@@ -277,16 +286,16 @@ fn fstab_prelude_comment(apfs_volume_label: &str) -> String {
     format!("# nix-installer created volume labelled `{apfs_volume_label}`")
 }
 
-fn fstab_entry(uuid: &Uuid, apfs_volume_label: &str) -> String {
+fn fstab_entry(uuid: &Uuid) -> String {
     format!("UUID={uuid} /nix apfs rw,noauto,nobrowse,suid,owners")
 }
 
 #[derive(thiserror::Error, Debug)]
 pub enum CreateFstabEntryError {
-    #[error("An `/etc/fstab` entry for the `/nix` path already exists, consider removing the entry for `/nix`d from `/etc/fstab`")]
-    NixEntryExists,
-    #[error("An `/etc/fstab` entry created by `nix-installer` already exists. If a volume named `{0}` already exists, it may need to be deleted with `diskutil apfs deleteVolume \"{0}\" and the entry for `/nix` should be removed from `/etc/fstab`")]
-    VolumeEntryExists(String),
+    #[error("The `/etc/fstab` entry (previously created by a previous `nix-installer` install) detected during planning disappeared between planning and executing. Cannot update `/etc/fstab` as planned")]
+    ExistingNixInstallerEntryDisappeared,
+    #[error("The `/etc/fstab` entry (previously created by the official install scripts) detected during planning disappeared between planning and executing. Cannot update `/etc/fstab` as planned")]
+    ExistingForeignEntryDisappeared,
 }
 
 #[derive(Deserialize, Clone, Debug)]
