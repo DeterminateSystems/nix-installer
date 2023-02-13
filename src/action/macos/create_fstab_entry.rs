@@ -2,7 +2,7 @@ use uuid::Uuid;
 
 use super::CreateApfsVolume;
 use crate::{
-    action::{Action, ActionDescription, ActionError, StatefulAction},
+    action::{Action, ActionDescription, ActionError, ActionState, StatefulAction},
     execute_command,
 };
 use serde::Deserialize;
@@ -18,7 +18,9 @@ const FSTAB_PATH: &str = "/etc/fstab";
 
 #[derive(Debug, serde::Deserialize, serde::Serialize, Clone, Copy)]
 enum ExistingFstabEntry {
-    NixInstallerCreated,
+    /// Need to update the existing `nix-installer` made entry
+    NixInstallerEntry,
+    /// Need to remove old entry and add new entry
     Foreign,
     None,
 }
@@ -43,29 +45,42 @@ impl CreateFstabEntry {
         planned_create_apfs_volume: &StatefulAction<CreateApfsVolume>,
     ) -> Result<StatefulAction<Self>, ActionError> {
         let fstab_path = Path::new(FSTAB_PATH);
-        let mut existing_entry = ExistingFstabEntry::None;
+
         if fstab_path.exists() {
             let fstab_buf = tokio::fs::read_to_string(&fstab_path)
                 .await
                 .map_err(|e| ActionError::Read(fstab_path.to_path_buf(), e))?;
             let prelude_comment = fstab_prelude_comment(&apfs_volume_label);
 
-            // See if the user already has a `/nix` related entry, if so, invite them to remove it.
-            if fstab_buf.split(&[' ', '\t']).any(|chunk| chunk == "/nix") {
-                existing_entry = ExistingFstabEntry::Foreign;
-            }
-
             // See if a previous install from this crate exists, if so, invite the user to remove it (we may need to change it)
             if fstab_buf.contains(&prelude_comment) {
-                existing_entry = ExistingFstabEntry::NixInstallerCreated;
+                if planned_create_apfs_volume.state != ActionState::Completed {
+                    return Ok(StatefulAction::completed(Self {
+                        apfs_volume_label,
+                        existing_entry: ExistingFstabEntry::NixInstallerEntry,
+                    }));
+                }
+
+                return Ok(StatefulAction::uncompleted(Self {
+                    apfs_volume_label,
+                    existing_entry: ExistingFstabEntry::NixInstallerEntry,
+                }));
+            } else if fstab_buf
+                .lines()
+                .any(|line| line.split(&[' ', '\t']).nth(2) == Some("/nix"))
+            {
+                // See if the user already has a `/nix` related entry, if so, invite them to remove it.
+                return Ok(StatefulAction::uncompleted(Self {
+                    apfs_volume_label,
+                    existing_entry: ExistingFstabEntry::Foreign,
+                }));
             }
         }
 
-        Ok(Self {
+        Ok(StatefulAction::uncompleted(Self {
             apfs_volume_label,
-            existing_entry,
-        }
-        .into())
+            existing_entry: ExistingFstabEntry::None,
+        }))
     }
 }
 
@@ -102,7 +117,7 @@ impl Action for CreateFstabEntry {
         } = self;
         let fstab_path = Path::new(FSTAB_PATH);
         let uuid = get_uuid_for_label(&apfs_volume_label).await?;
-        let fstab_entry = fstab_entry(&uuid, apfs_volume_label);
+        let pending_fstab_lines = fstab_lines(&uuid, apfs_volume_label);
 
         let mut fstab = tokio::fs::OpenOptions::new()
             .create(true)
@@ -119,14 +134,58 @@ impl Action for CreateFstabEntry {
             .await
             .map_err(|e| ActionError::Read(fstab_path.to_owned(), e))?;
 
-        if fstab_buf.contains(&fstab_entry) {
-            tracing::debug!("Skipped writing to `/etc/fstab` as the content already existed")
-        } else {
-            fstab
-                .write_all(fstab_entry.as_bytes())
-                .await
-                .map_err(|e| ActionError::Write(fstab_path.to_owned(), e))?;
-        }
+        let updated_buf = match existing_entry {
+            ExistingFstabEntry::NixInstallerEntry => {
+                // Update the entry
+                let mut current_fstab_lines = fstab_buf
+                    .lines()
+                    .map(|v| v.to_owned())
+                    .collect::<Vec<String>>();
+                let mut updated_line = false;
+                let mut saw_prelude = false;
+                let prelude = fstab_prelude_comment(&apfs_volume_label);
+                for line in current_fstab_lines.iter_mut() {
+                    if line == &prelude {
+                        saw_prelude = true;
+                        continue;
+                    }
+                    if saw_prelude && line.split(&[' ', '\t']).nth(2) == Some("/nix") {
+                        *line = fstab_entry(&uuid, apfs_volume_label);
+                        updated_line = true;
+                        break;
+                    }
+                }
+                if !(updated_line && updated_line) {
+                    return Err(todo!());
+                }
+                current_fstab_lines.join("\n")
+            },
+            ExistingFstabEntry::Foreign => {
+                // Overwrite the existing entry with our own
+                let mut current_fstab_lines = fstab_buf
+                    .lines()
+                    .map(|v| v.to_owned())
+                    .collect::<Vec<String>>();
+                let mut updated_line = false;
+                for line in current_fstab_lines.iter_mut() {
+                    if line.split(&[' ', '\t']).nth(2) == Some("/nix") {
+                        *line = fstab_lines(&uuid, apfs_volume_label);
+                        updated_line = true;
+                        break;
+                    }
+                }
+                if !updated_line {
+                    return Err(todo!());
+                }
+                current_fstab_lines.join("\n")
+            },
+            ExistingFstabEntry::None => fstab_buf + "\n" + &fstab_lines(&uuid, apfs_volume_label),
+        };
+
+        fstab
+            .write_all(updated_buf.as_bytes())
+            .await
+            .map_err(|e| ActionError::Write(fstab_path.to_owned(), e))?;
 
         Ok(())
     }
@@ -147,7 +206,10 @@ impl Action for CreateFstabEntry {
 
     #[tracing::instrument(level = "debug", skip_all)]
     async fn revert(&mut self) -> Result<(), ActionError> {
-        let Self { apfs_volume_label } = self;
+        let Self {
+            apfs_volume_label,
+            existing_entry: _,
+        } = self;
         let fstab_path = Path::new(FSTAB_PATH);
         let uuid = get_uuid_for_label(&apfs_volume_label).await?;
         let fstab_entry = fstab_entry(&uuid, apfs_volume_label);
@@ -205,18 +267,18 @@ async fn get_uuid_for_label(apfs_volume_label: &str) -> Result<Uuid, ActionError
     Ok(parsed.volume_uuid)
 }
 
+fn fstab_lines(uuid: &Uuid, apfs_volume_label: &str) -> String {
+    let prelude_comment = fstab_prelude_comment(apfs_volume_label);
+    let fstab_entry = fstab_entry(uuid, apfs_volume_label);
+    prelude_comment + &fstab_entry
+}
+
 fn fstab_prelude_comment(apfs_volume_label: &str) -> String {
     format!("# nix-installer created volume labelled `{apfs_volume_label}`")
 }
 
 fn fstab_entry(uuid: &Uuid, apfs_volume_label: &str) -> String {
-    let prelude_comment = fstab_prelude_comment(apfs_volume_label);
-    format!(
-        "\
-        {prelude_comment}\n\
-        UUID={uuid} /nix apfs rw,noauto,nobrowse,suid,owners\n\
-        "
-    )
+    format!("UUID={uuid} /nix apfs rw,noauto,nobrowse,suid,owners")
 }
 
 #[derive(thiserror::Error, Debug)]
