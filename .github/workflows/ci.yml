@@ -35,7 +35,9 @@ jobs:
           buildkite_token: ${{ secrets.BUILDKITE_TOKEN }}
           output_path: artifacts
       - name: Output list of Buildkite artifacts
-        run: ls -lah artifacts/
+        run: |
+          ls -lah artifacts/
+          ls -lah artifacts/**/*
       # Mac's can't run this action, so we're forced to do this.
       - name: Create Github cache from Buildkite artifacts
         id: cache-buildkite-artifacts
