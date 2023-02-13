@@ -12,7 +12,7 @@ jobs:
     steps:
       - uses: actions/checkout@v3
       - name: Install Nix
-        uses: DeterminateSystems/nix-installer-action@start-daemon-and-init
+        uses: DeterminateSystems/nix-installer-action
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
       - name: Cache lint store (x86_64-linux)
@@ -64,7 +64,7 @@ jobs:
           cp nix-installer.sh install-root/nix-installer.sh
           mv ./artifacts/nix-installer-x86_64-linux install-root/nix-installer-x86_64-linux
       - name: Initial install
-        uses: DeterminateSystems/nix-installer-action@start-daemon-and-init
+        uses: DeterminateSystems/nix-installer-action
         with:
           local-root: install-root/
           logger: pretty
@@ -93,7 +93,7 @@ jobs:
             exit 1
           fi
       - name: Repeated install
-        uses: DeterminateSystems/nix-installer-action@start-daemon-and-init
+        uses: DeterminateSystems/nix-installer-action
         with:
           local-root: install-root/
           logger: pretty
@@ -168,7 +168,7 @@ jobs:
           cp nix-installer.sh install-root/nix-installer.sh
           mv ./artifacts/nix-installer-x86_64-linux install-root/nix-installer-x86_64-linux
       - name: Initial install
-        uses: DeterminateSystems/nix-installer-action@start-daemon-and-init
+        uses: DeterminateSystems/nix-installer-action
         with:
           init: none
           planner: linux-multi
@@ -201,7 +201,7 @@ jobs:
             exit 1
           fi
       - name: Repeated install
-        uses: DeterminateSystems/nix-installer-action@start-daemon-and-init
+        uses: DeterminateSystems/nix-installer-action
         with:
           init: none
           planner: linux-multi
@@ -284,7 +284,7 @@ jobs:
           sudo chmod +x /bin/steamos-readonly
           sudo useradd -m deck
       - name: Initial install
-        uses: DeterminateSystems/nix-installer-action@start-daemon-and-init
+        uses: DeterminateSystems/nix-installer-action
         with:
           local-root: install-root/
           logger: pretty
@@ -319,7 +319,7 @@ jobs:
             exit 1
           fi
       - name: Repeated install
-        uses: DeterminateSystems/nix-installer-action@start-daemon-and-init
+        uses: DeterminateSystems/nix-installer-action
         with:
           local-root: install-root/
           logger: pretty
@@ -400,7 +400,7 @@ jobs:
           cp nix-installer.sh install-root/nix-installer.sh
           mv artifacts/nix-installer-x86_64-darwin install-root/nix-installer-x86_64-darwin
       - name: Initial install
-        uses: DeterminateSystems/nix-installer-action@start-daemon-and-init
+        uses: DeterminateSystems/nix-installer-action
         with:
           local-root: install-root/
           logger: pretty
@@ -417,7 +417,7 @@ jobs:
           NIX_INSTALLER_LOG_DIRECTIVES: nix_installer=trace
           RUST_BACKTRACE: full
       - name: Repeated install
-        uses: DeterminateSystems/nix-installer-action@start-daemon-and-init
+        uses: DeterminateSystems/nix-installer-action
         with:
           local-root: install-root/
           logger: pretty
@@ -427,14 +427,15 @@ jobs:
           extra-conf: trusted-users = root runner
       - name: echo $PATH
         run: echo $PATH
-      - name: Test `nix` with `$GITHUB_PATH`
-        if: success() || failure()
-        run: |
-          nix run nixpkgs#fortune
-          nix profile install nixpkgs#fortune
-          fortune
-          nix store gc
-          nix run nixpkgs#fortune
+      # This constantly fails with API limit restrictions, so skip it
+      # - name: Test `nix` with `$GITHUB_PATH`
+      #   if: success() || failure()
+      #   run: |
+      #     nix run nixpkgs#fortune
+      #     nix profile install nixpkgs#fortune
+      #     fortune
+      #     nix store gc
+      #     nix run nixpkgs#fortune
       - name: Test bash
         run: nix-instantiate -E 'builtins.currentTime' --eval
         if: success() || failure()
