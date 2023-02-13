@@ -59,10 +59,10 @@ jobs:
       - run: sudo apt install fish zsh
       - name: Move & set executable
         run: |
-          chmod +x ./artifacts/nix-installer-x86_64-linux
           mkdir install-root
           cp nix-installer.sh install-root/nix-installer.sh
-          mv ./artifacts/nix-installer-x86_64-linux install-root/nix-installer-x86_64-linux
+          mv ./artifacts/nix-installer-x86_64-linux-* install-root/nix-installer-x86_64-linux
+          chmod +x install-root/nix-installer-x86_64-linux install-root/nix-installer.sh
       - name: Initial install
         uses: DeterminateSystems/nix-installer-action@main
         with:
@@ -163,10 +163,10 @@ jobs:
       - run: sudo apt install fish zsh
       - name: Move & set executable
         run: |
-          chmod +x ./artifacts/nix-installer-x86_64-linux
           mkdir install-root
           cp nix-installer.sh install-root/nix-installer.sh
-          mv ./artifacts/nix-installer-x86_64-linux install-root/nix-installer-x86_64-linux
+          mv ./artifacts/nix-installer-x86_64-linux-* install-root/nix-installer-x86_64-linux
+          chmod +x install-root/nix-installer-x86_64-linux install-root/nix-installer.sh
       - name: Initial install
         uses: DeterminateSystems/nix-installer-action@main
         with:
@@ -273,10 +273,10 @@ jobs:
       - run: sudo apt install fish zsh
       - name: Move & set executable
         run: |
-          chmod +x ./artifacts/nix-installer-x86_64-linux
           mkdir install-root
           cp nix-installer.sh install-root/nix-installer.sh
-          mv ./artifacts/nix-installer-x86_64-linux install-root/nix-installer-x86_64-linux
+          mv ./artifacts/nix-installer-x86_64-linux-* install-root/nix-installer-x86_64-linux
+          chmod +x install-root/nix-installer-x86_64-linux install-root/nix-installer.sh
       - name: Make the CI look like a steam deck
         run: |
           mkdir -p ~/bin
@@ -395,10 +395,10 @@ jobs:
       - run: brew install fish coreutils
       - name: Move & set executable
         run: |
-          chmod +x ./artifacts/nix-installer-x86_64-darwin
           mkdir install-root
           cp nix-installer.sh install-root/nix-installer.sh
-          mv artifacts/nix-installer-x86_64-darwin install-root/nix-installer-x86_64-darwin
+          mv ./artifacts/nix-installer-x86_64-darwin-* install-root/nix-installer-x86_64-darwin
+          chmod +x install-root/nix-installer-x86_64-darwin install-root/nix-installer.sh
       - name: Initial install
         uses: DeterminateSystems/nix-installer-action@main
         with:

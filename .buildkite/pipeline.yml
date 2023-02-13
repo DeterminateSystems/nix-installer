@@ -22,12 +22,17 @@ steps:
       system: x86_64-linux
       nix: 1
     command:
-      - nix --extra-experimental-features "nix-command flakes" develop --store ~/.ci-store --print-build-logs .# --command "cargo" build --no-default-features
-      - nix --extra-experimental-features "nix-command flakes" develop --store ~/.ci-store --print-build-logs .# --command "cargo" build --all-features
-      - nix --extra-experimental-features "nix-command flakes" build --store ~/.ci-store --print-build-logs .#packages.x86_64-linux.nix-installer
       - nix --extra-experimental-features "nix-command flakes" build .#packages.x86_64-linux.nix-installer-static -L
       - cp result/bin/nix-installer ./nix-installer-x86_64-linux
       - buildkite-agent artifact upload nix-installer-x86_64-linux
+  - label: nix-installer-x86_64-linux-variants
+    agents:
+      system: x86_64-linux
+      nix: 1
+    command:
+      - nix --extra-experimental-features "nix-command flakes" develop --store ~/.ci-store --print-build-logs .# --command "cargo" build --no-default-features
+      - nix --extra-experimental-features "nix-command flakes" develop --store ~/.ci-store --print-build-logs .# --command "cargo" build --all-features
+      - nix --extra-experimental-features "nix-command flakes" build --store ~/.ci-store --print-build-logs .#packages.x86_64-linux.nix-installer
   - label: nix-installer-i686-linux
     agents:
       system: x86_64-linux
