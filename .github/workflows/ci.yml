@@ -173,7 +173,7 @@ jobs:
         uses: DeterminateSystems/nix-installer-action@main
         with:
           init: none
-          planner: linux-multi
+          planner: linux
           local-root: install-root/
           logger: pretty
           log-directives: nix_installer=trace
@@ -206,7 +206,7 @@ jobs:
         uses: DeterminateSystems/nix-installer-action@main
         with:
           init: none
-          planner: linux-multi
+          planner: linux
           local-root: install-root/
           logger: pretty
           log-directives: nix_installer=trace
@@ -429,7 +429,7 @@ jobs:
           extra-conf: trusted-users = root runner
       - name: echo $PATH
         run: echo $PATH
-      # This constantly fails with API limit restrictions, so skip it
+      # The Mac CI constantly fails here despite us setting the token....
       # - name: Test `nix` with `$GITHUB_PATH`
       #   if: success() || failure()
       #   run: |

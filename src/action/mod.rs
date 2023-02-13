@@ -157,8 +157,8 @@ match plan.install(None).await {
 
 pub mod base;
 pub mod common;
-pub mod darwin;
 pub mod linux;
+pub mod macos;
 mod stateful;
 
 pub use stateful::{ActionState, StatefulAction};

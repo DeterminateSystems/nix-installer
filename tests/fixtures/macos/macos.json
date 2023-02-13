@@ -656,7 +656,7 @@
     }
   ],
   "planner": {
-    "planner": "darwin-multi",
+    "planner": "macos",
     "settings": {
       "channels": [
         [

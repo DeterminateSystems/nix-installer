@@ -21,12 +21,27 @@ impl StartSystemdUnit {
         unit: impl AsRef<str>,
         enable: bool,
     ) -> Result<StatefulAction<Self>, ActionError> {
+        let unit = unit.as_ref();
+        let output = Command::new("systemctl")
+            .arg("is-active")
+            .arg(unit)
+            .output()
+            .await
+            .map_err(ActionError::Command)?;
+
+        let state = if output.status.success() {
+            tracing::debug!("Starting systemd unit `{}` already complete", unit);
+            ActionState::Skipped
+        } else {
+            ActionState::Uncompleted
+        };
+
         Ok(StatefulAction {
             action: Self {
-                unit: unit.as_ref().to_string(),
+                unit: unit.to_string(),
                 enable,
             },
-            state: ActionState::Uncompleted,
+            state,
         })
     }
 }
