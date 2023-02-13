@@ -192,6 +192,14 @@ impl Action for CreateFstabEntry {
         };
 
         fstab
+            .seek(SeekFrom::Start(0))
+            .await
+            .map_err(|e| ActionError::Seek(fstab_path.to_owned(), e))?;
+        fstab
+            .set_len(0)
+            .await
+            .map_err(|e| ActionError::Truncate(fstab_path.to_owned(), e))?;
+        fstab
             .write_all(updated_buf.as_bytes())
             .await
             .map_err(|e| ActionError::Write(fstab_path.to_owned(), e))?;
