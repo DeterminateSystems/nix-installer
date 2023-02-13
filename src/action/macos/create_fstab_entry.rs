@@ -287,7 +287,7 @@ async fn get_uuid_for_label(apfs_volume_label: &str) -> Result<Uuid, ActionError
 fn fstab_lines(uuid: &Uuid, apfs_volume_label: &str) -> String {
     let prelude_comment = fstab_prelude_comment(apfs_volume_label);
     let fstab_entry = fstab_entry(uuid);
-    prelude_comment + &fstab_entry
+    prelude_comment + "\n" + &fstab_entry
 }
 
 fn fstab_prelude_comment(apfs_volume_label: &str) -> String {
