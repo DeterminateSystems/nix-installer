@@ -135,9 +135,10 @@ impl CreateNixVolume {
 impl Action for CreateNixVolume {
     fn tracing_synopsis(&self) -> String {
         format!(
-            "Create an APFS volume `{}` for Nix on `{}` and add it to `/etc/fstab` mounting on `/nix`",
-            self.name,
-            self.disk.display()
+            "Create an{maybe_encrypted} APFS volume `{name}` for Nix on `{disk}` and add it to `/etc/fstab` mounting on `/nix`",
+            maybe_encrypted = if self.encrypt { " encrypted" } else { "" }, 
+            name = self.name,
+            disk = self.disk.display(),
         )
     }
 
@@ -151,10 +152,23 @@ impl Action for CreateNixVolume {
     }
 
     fn execute_description(&self) -> Vec<ActionDescription> {
-        let Self {
-            disk: _, name: _, ..
-        } = &self;
-        vec![ActionDescription::new(self.tracing_synopsis(), vec![])]
+        let mut explanation = vec![
+            self.create_or_append_synthetic_conf.tracing_synopsis(),
+            self.create_synthetic_objects.tracing_synopsis(),
+            self.unmount_volume.tracing_synopsis(),
+            self.create_volume.tracing_synopsis(),
+            self.create_fstab_entry.tracing_synopsis(),
+        ];
+        if let Some(encrypt_volume) = &self.encrypt_volume {
+            explanation.push(encrypt_volume.tracing_synopsis());
+        }
+        explanation.append(&mut vec![
+            self.setup_volume_daemon.tracing_synopsis(),
+            self.bootstrap_volume.tracing_synopsis(),
+            self.enable_ownership.tracing_synopsis(),
+        ]);
+
+        vec![ActionDescription::new(self.tracing_synopsis(), explanation)]
     }
 
     #[tracing::instrument(level = "debug", skip_all)]
