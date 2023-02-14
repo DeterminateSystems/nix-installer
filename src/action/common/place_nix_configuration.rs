@@ -41,7 +41,7 @@ impl PlaceNixConfiguration {
         );
         let create_directory =
             CreateDirectory::plan(NIX_CONF_FOLDER, None, None, 0o0755, force).await?;
-        let create_file = CreateFile::plan(NIX_CONF, None, None, 0o100664, buf, force).await?;
+        let create_file = CreateFile::plan(NIX_CONF, None, None, 0o100644, buf, force).await?;
         Ok(Self {
             create_directory,
             create_file,
