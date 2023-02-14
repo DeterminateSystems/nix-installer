@@ -226,6 +226,7 @@ impl Action for CreateNixVolume {
 
     fn revert_description(&self) -> Vec<ActionDescription> {
         let Self { disk, name, .. } = &self;
+        // TODO(@hoverbear): Do a better description here.
         vec![ActionDescription::new(
             format!("Remove the APFS volume `{name}` on `{}`", disk.display()),
             vec![format!(

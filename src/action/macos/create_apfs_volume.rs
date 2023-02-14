@@ -138,7 +138,7 @@ impl Action for CreateApfsVolume {
 
 #[derive(Debug, thiserror::Error)]
 pub enum CreateApfsVolumeError {
-    #[error("Existing volume called `{0}` found in `diskutil apfs list`, delete it with `diskutil apfs deleteVolume \"{0}\"`")]
+    #[error("Existing volume called `{0}` found in `diskutil apfs list`, delete it with `diskutil apfs deleteVolume \"{0}\"` (if you recieve error -69888, you may need to run `launchctl bootout system/org.nixos.darwin-store` and `launchctl bootout system/org.nixos.nix-daemon` first)")]
     ExistingVolume(String),
 }
 
