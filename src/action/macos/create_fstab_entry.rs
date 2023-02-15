@@ -154,13 +154,13 @@ impl Action for CreateFstabEntry {
                         saw_prelude = true;
                         continue;
                     }
-                    if saw_prelude && line.split(&[' ', '\t']).nth(2) == Some("/nix") {
+                    if saw_prelude && line.split(&[' ', '\t']).nth(1) == Some("/nix") {
                         *line = fstab_entry(&uuid);
                         updated_line = true;
                         break;
                     }
                 }
-                if !(updated_line && updated_line) {
+                if !(saw_prelude && updated_line) {
                     return Err(ActionError::Custom(Box::new(
                         CreateFstabEntryError::ExistingNixInstallerEntryDisappeared,
                     )));
@@ -300,7 +300,7 @@ fn fstab_entry(uuid: &Uuid) -> String {
 
 #[derive(thiserror::Error, Debug)]
 pub enum CreateFstabEntryError {
-    #[error("The `/etc/fstab` entry (previously created by a previous `nix-installer` install) detected during planning disappeared between planning and executing. Cannot update `/etc/fstab` as planned")]
+    #[error("The `/etc/fstab` entry (previously created by a `nix-installer` install) detected during planning disappeared between planning and executing. Cannot update `/etc/fstab` as planned")]
     ExistingNixInstallerEntryDisappeared,
     #[error("The `/etc/fstab` entry (previously created by the official install scripts) detected during planning disappeared between planning and executing. Cannot update `/etc/fstab` as planned")]
     ExistingForeignEntryDisappeared,

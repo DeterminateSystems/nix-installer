@@ -4,6 +4,7 @@ use crate::{
         StatefulAction,
     },
     execute_command,
+    os::darwin::DiskUtilApfsListOutput,
 };
 use rand::Rng;
 use std::{
@@ -68,6 +69,30 @@ impl EncryptApfsVolume {
                 return Err(ActionError::Custom(Box::new(
                     EncryptApfsVolumeError::MissingPasswordForExistingVolume(name, disk),
                 )));
+            }
+        }
+
+        // Ensure if the disk already exists, that it's encrypted
+        let output =
+            execute_command(Command::new("/usr/sbin/diskutil").args(["apfs", "list", "-plist"]))
+                .await
+                .map_err(ActionError::Command)?;
+
+        let parsed: DiskUtilApfsListOutput = plist::from_bytes(&output.stdout)?;
+        for container in parsed.containers {
+            for volume in container.volumes {
+                if volume.name == name {
+                    match volume.encryption == false {
+                        true => {
+                            return Ok(StatefulAction::completed(Self { disk, name }));
+                        },
+                        false => {
+                            return Err(ActionError::Custom(Box::new(
+                                EncryptApfsVolumeError::ExistingVolumeNotEncrypted(name, disk),
+                            )));
+                        },
+                    }
+                }
             }
         }
 
@@ -233,4 +258,6 @@ pub enum EncryptApfsVolumeError {
     ExistingPasswordFound(String, PathBuf),
     #[error("The keychain lacks a password for the already existing \"{0}\" volume on disk `{1}`, consider removing the volume with `diskutil apfs deleteVolume \"{0}\"` (if you recieve error -69888, you may need to run `launchctl bootout system/org.nixos.darwin-store` and `launchctl bootout system/org.nixos.nix-daemon` first)")]
     MissingPasswordForExistingVolume(String, PathBuf),
+    #[error("The existing APFS volume \"{0}\" on disk `{1}` is not encrypted but it should be, consider removing the volume with `diskutil apfs deleteVolume \"{0}\"` (if you recieve error -69888, you may need to run `launchctl bootout system/org.nixos.darwin-store` and `launchctl bootout system/org.nixos.nix-daemon` first)")]
+    ExistingVolumeNotEncrypted(String, PathBuf),
 }
