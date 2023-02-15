@@ -269,16 +269,15 @@ impl Action for CreateUser {
                 patch: _,
             }
             | OperatingSystem::Darwin => {
-                // TODO(@hoverbear): Make this actually work...
-                // Right now, our test machines do not have a secure token and cannot delete users.
-                tracing::warn!("`nix-installer` currently cannot delete groups on Mac due to https://github.com/DeterminateSystems/nix-installer/issues/33. This is a no-op, installing with `nix-installer` again will use the existing user.");
-                // execute_command(Command::new("/usr/bin/dscl").args([
-                //     ".",
-                //     "-delete",
-                //     &format!("/Users/{name}"),
-                // ]).stdin(std::process::Stdio::null()))
-                // .await
-                // .map_err(|e| CreateUserError::Command(e).boxed())?;
+                // TODO: Some automated test machines do not have a secure token and cannot delete users.
+                // tracing::warn!("`nix-installer` currently cannot delete groups on Mac due to https://github.com/DeterminateSystems/nix-installer/issues/33. This is a no-op, installing with `nix-installer` again will use the existing user.");
+                execute_command(
+                    Command::new("/usr/bin/dscl")
+                        .args([".", "-delete", &format!("/Users/{name}")])
+                        .stdin(std::process::Stdio::null()),
+                )
+                .await
+                .map_err(|e| ActionError::Command(e))?;
             },
             _ => {
                 execute_command(
