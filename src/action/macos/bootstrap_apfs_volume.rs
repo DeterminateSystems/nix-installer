@@ -58,6 +58,7 @@ impl Action for BootstrapApfsVolume {
         )
         .await
         .map_err(|e| ActionError::Command(e))?;
+
         execute_command(
             Command::new("launchctl")
                 .process_group(0)

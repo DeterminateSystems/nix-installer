@@ -8,7 +8,7 @@ use crate::action::{ActionError, StatefulAction};
 use crate::execute_command;
 
 use crate::action::{Action, ActionDescription};
-use crate::os::darwin::DiskUtilOutput;
+use crate::os::darwin::DiskUtilInfoOutput;
 
 /**
 Enable ownership on a volume
@@ -62,7 +62,7 @@ impl Action for EnableOwnership {
             .await
             .map_err(ActionError::Command)?
             .stdout;
-            let the_plist: DiskUtilOutput = plist::from_reader(Cursor::new(buf))?;
+            let the_plist: DiskUtilInfoOutput = plist::from_reader(Cursor::new(buf))?;
 
             the_plist.global_permissions_enabled
         };

@@ -11,7 +11,7 @@ use crate::{
         StatefulAction,
     },
     execute_command,
-    os::darwin::DiskUtilOutput,
+    os::darwin::DiskUtilInfoOutput,
     planner::{Planner, PlannerError},
     settings::InstallSettingsError,
     settings::{CommonSettings, InitSystem},
@@ -67,7 +67,7 @@ async fn default_root_disk() -> Result<String, PlannerError> {
     .await
     .unwrap()
     .stdout;
-    let the_plist: DiskUtilOutput = plist::from_reader(Cursor::new(buf))?;
+    let the_plist: DiskUtilInfoOutput = plist::from_reader(Cursor::new(buf))?;
 
     Ok(the_plist.parent_whole_disk)
 }
@@ -97,7 +97,7 @@ impl Planner for Macos {
                 .await
                 .unwrap()
                 .stdout;
-                let the_plist: DiskUtilOutput = plist::from_reader(Cursor::new(buf)).unwrap();
+                let the_plist: DiskUtilInfoOutput = plist::from_reader(Cursor::new(buf)).unwrap();
 
                 Some(the_plist.parent_whole_disk)
             },

@@ -1,8 +1,11 @@
+use std::path::PathBuf;
+
 #[derive(serde::Deserialize)]
 #[serde(rename_all = "PascalCase")]
-pub struct DiskUtilOutput {
+pub struct DiskUtilInfoOutput {
     pub parent_whole_disk: String,
     pub global_permissions_enabled: bool,
+    pub mount_point: Option<PathBuf>,
 }
 
 #[derive(serde::Deserialize, Clone, Debug)]
