@@ -66,7 +66,7 @@ impl CreateNixVolume {
             .map_err(|e| ActionError::Child(Box::new(e)))?;
 
         let encrypt_volume = if encrypt {
-            Some(EncryptApfsVolume::plan(disk, &name).await?)
+            Some(EncryptApfsVolume::plan(disk, &name, &create_volume).await?)
         } else {
             None
         };
