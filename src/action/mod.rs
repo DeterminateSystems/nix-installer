@@ -266,11 +266,11 @@ pub enum ActionError {
         "`{0}` exists with different content than planned, consider removing it with `rm {0}`"
     )]
     Exists(std::path::PathBuf),
-    #[error("`{0}` exists with a different uid ({1}) than planned ({2}), consider removing it with `rm {0}`")]
+    #[error("`{0}` exists with a different uid ({1}) than planned ({2}), consider updating it with `chown {2} {0}`")]
     PathUserMismatch(std::path::PathBuf, u32, u32),
-    #[error("`{0}` exists with a different gid ({1}) than planned ({2}), consider removing it with `rm {0}`")]
+    #[error("`{0}` exists with a different gid ({1}) than planned ({2}), consider updating it with `chgrp {2} {0}`")]
     PathGroupMismatch(std::path::PathBuf, u32, u32),
-    #[error("`{0}` exists with a different mode ({1:o}) than planned ({2:o}), consider removing it with `rm {0}`")]
+    #[error("`{0}` exists with a different mode ({1:o}) than planned ({2:o}), consider updating it with `chmod {2:o} {0}`")]
     PathModeMismatch(std::path::PathBuf, u32, u32),
     #[error("Getting metadata for {0}`")]
     GettingMetadata(std::path::PathBuf, #[source] std::io::Error),
