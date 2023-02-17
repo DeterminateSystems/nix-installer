@@ -12,15 +12,17 @@ curl --proto '=https' --tlsv1.2 -sSf -L https://install.determinate.systems/nix 
 
 The `nix-installer` tool is ready to use in a number of environments:
 
-| Platform                     | Multi User         | `root` only | Maturity |
-|------------------------------|:------------------:|:-----------:|:--------:|
-| Linux (x86_64 & aarch64)     | ✓ (via [systemd])  | ✓           | Stable   |
-| MacOS (x86_64 & aarch64)     | ✓                  |             | Stable   |
-| Valve Steam Deck (SteamOS)   | ✓                  |             | Stable   |
-| WSL2 (x86_64 & aarch64)      | ✓ (via [systemd])  | ✓           | Stable   |
-| Podman Linux Containers      | ✓ (via [systemd])  | ✓           | Stable   |
-| Docker Containers            |                    | ✓           | Stable   |
-| Linux (i686)                 | ✓ (via [systemd])  | ✓           | Unstable |
+| Platform                     | Multi User         | `root` only | Maturity                 |
+|------------------------------|:------------------:|:-----------:|:------------------------:|
+| Linux (x86_64 & aarch64)     | ✓ (via [systemd])  | ✓           | Stable                   |
+| MacOS (x86_64 & aarch64)     | ✓                  |             | Mostly Stable (See note) |
+| Valve Steam Deck (SteamOS)   | ✓                  |             | Stable                   |
+| WSL2 (x86_64 & aarch64)      | ✓ (via [systemd])  | ✓           | Stable                   |
+| Podman Linux Containers      | ✓ (via [systemd])  | ✓           | Stable                   |
+| Docker Containers            |                    | ✓           | Stable                   |
+| Linux (i686)                 | ✓ (via [systemd])  | ✓           | Unstable                 |
+
+> **MacOS note:** `nix-installer` currently does not support uninstalling users or groups on Macs. See [#33](https://github.com/DeterminateSystems/nix-installer/issues/33) for details, to track the issue, or help out!
 
 ## Installation Differences
 
