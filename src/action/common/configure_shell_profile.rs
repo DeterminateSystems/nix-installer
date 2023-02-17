@@ -70,7 +70,7 @@ impl ConfigureShellProfile {
                         profile_target_path,
                         None,
                         None,
-                        0o0644,
+                        0o100644,
                         shell_buf.to_string(),
                         create_or_insert_into_file::Position::Beginning,
                     )
@@ -112,7 +112,7 @@ impl ConfigureShellProfile {
                     profile_target,
                     None,
                     None,
-                    0o0644,
+                    0o100644,
                     fish_buf.to_string(),
                     create_or_insert_into_file::Position::Beginning,
                 )
