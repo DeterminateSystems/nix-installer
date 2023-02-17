@@ -270,14 +270,25 @@ impl Action for CreateUser {
             }
             | OperatingSystem::Darwin => {
                 // TODO: Some automated test machines do not have a secure token and cannot delete users.
+                let mut command = Command::new("/usr/bin/dscl");
+                command.args([".", "-delete", &format!("/Users/{name}")]);
+                command.process_group(0);
+                command.stdin(std::process::Stdio::null());
+
+                let output = command
+                    .output()
+                    .await
+                    .map_err(|e| ActionError::Command(e))?;
+                match output.status.code() {
+                    Some(0) => (),
+                    Some(40) => {
+                        // The user is on an ephemeral Mac, like detsys uses
+                    },
+                    _ => {
+                        // Something went wrong
+                    },
+                }
                 // tracing::warn!("`nix-installer` currently cannot delete groups on Mac due to https://github.com/DeterminateSystems/nix-installer/issues/33. This is a no-op, installing with `nix-installer` again will use the existing user.");
-                execute_command(
-                    Command::new("/usr/bin/dscl")
-                        .args([".", "-delete", &format!("/Users/{name}")])
-                        .stdin(std::process::Stdio::null()),
-                )
-                .await
-                .map_err(|e| ActionError::Command(e))?;
             },
             _ => {
                 execute_command(
