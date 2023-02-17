@@ -269,7 +269,10 @@ impl Action for CreateUser {
                 patch: _,
             }
             | OperatingSystem::Darwin => {
-                // TODO: Some automated test machines do not have a secure token and cannot delete users.
+                // MacOS is a "Special" case
+                // It's only possible to delete users under certain conditions.
+                // Documentation on https://it.megocollector.com/macos/cant-delete-a-macos-user-with-dscl-resolution/ and http://www.aixperts.co.uk/?p=214 suggested it was a secure token
+                // That is correct, however it's a bit more nuanced. It appears to be that a user must be graphically logged in for some other user on the system to be deleted.
                 let mut command = Command::new("/usr/bin/dscl");
                 command.args([".", "-delete", &format!("/Users/{name}")]);
                 command.process_group(0);
@@ -279,16 +282,31 @@ impl Action for CreateUser {
                     .output()
                     .await
                     .map_err(|e| ActionError::Command(e))?;
+                let stderr = String::from_utf8(output.stderr)?;
                 match output.status.code() {
                     Some(0) => (),
-                    Some(40) => {
+                    Some(40) if stderr.contains("-14120") => {
                         // The user is on an ephemeral Mac, like detsys uses
+                        // These Macs cannot always delete users, as sometimes there is no graphical login
+                        tracing::warn!("Encountered an exit code 40 with -1420 error while removing user, this is likely because the initial executing user did not have a secure token, or that there was no graphical login session. To delete the user, log in graphically, then in a shell (which may be over ssh) run `/usr/bin/dscl . -delete /Users/{name}");
                     },
-                    _ => {
+                    status => {
+                        let command_str = format!("{:?}", command.as_std());
                         // Something went wrong
+                        return Err(ActionError::Command(std::io::Error::new(
+                            std::io::ErrorKind::Other,
+                            format!(
+                                "Command `{command_str}` failed{}, stderr:\n{}\n",
+                                if let Some(status) = status {
+                                    format!(" {status}")
+                                } else {
+                                    "".to_string()
+                                },
+                                stderr
+                            ),
+                        )));
                     },
                 }
-                // tracing::warn!("`nix-installer` currently cannot delete groups on Mac due to https://github.com/DeterminateSystems/nix-installer/issues/33. This is a no-op, installing with `nix-installer` again will use the existing user.");
             },
             _ => {
                 execute_command(
