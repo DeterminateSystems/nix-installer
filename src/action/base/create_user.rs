@@ -1,4 +1,7 @@
+use std::process::Stdio;
+
 use nix::unistd::User;
+use target_lexicon::OperatingSystem;
 use tokio::process::Command;
 use tracing::{span, Span};
 
@@ -16,21 +19,23 @@ pub struct CreateUser {
     uid: u32,
     groupname: String,
     gid: u32,
+    user_exists: bool,
 }
 
 impl CreateUser {
     #[tracing::instrument(level = "debug", skip_all)]
-    pub fn plan(
+    pub async fn plan(
         name: String,
         uid: u32,
         groupname: String,
         gid: u32,
     ) -> Result<StatefulAction<Self>, ActionError> {
-        let this = Self {
+        let mut this = Self {
             name: name.clone(),
             uid,
             groupname,
             gid,
+            user_exists: false,
         };
         // Ensure user does not exists
         if let Some(user) = User::from_name(name.as_str())
@@ -52,8 +57,55 @@ impl CreateUser {
                 ));
             }
 
-            tracing::debug!("Creating user `{}` already complete", this.name);
-            return Ok(StatefulAction::completed(this));
+            // See if group membership needs to be done
+            match target_lexicon::OperatingSystem::host() {
+                OperatingSystem::MacOSX {
+                    major: _,
+                    minor: _,
+                    patch: _,
+                }
+                | OperatingSystem::Darwin => {
+                    let mut command = Command::new("/usr/bin/dseditgroup");
+                    command.process_group(0);
+                    command.args(["-o", "checkmember", "-m"]);
+                    command.arg(&this.name);
+                    command.arg(&this.groupname);
+                    command.stdout(Stdio::piped());
+                    command.stderr(Stdio::piped());
+                    let command_str = format!("{:?}", command.as_std());
+                    tracing::trace!("Executing `{command_str}`");
+                    let output = command.output().await.map_err(ActionError::Command)?;
+                    match output.status.code() {
+                        Some(0) => {
+                            // yes {user} is a member of {groupname}
+                            // Since the user exists, and is already a member of the group, we have truly nothing to do here
+                            tracing::debug!("Creating user `{}` already complete", this.name);
+                            return Ok(StatefulAction::completed(this));
+                        },
+                        Some(64) => {
+                            // Group not found
+                            // The group will be created by the installer, so we *only* need to do that
+                            this.user_exists = true;
+                        },
+                        _ => {
+                            // Some other issue
+                            return Err(ActionError::Command(std::io::Error::new(
+                                std::io::ErrorKind::Other,
+                                format!(
+                                    "Command `{command_str}` failed status, stderr:\n{}\n",
+                                    String::from_utf8(output.stderr)
+                                        .unwrap_or_else(|_e| String::from("<Non-UTF-8>"))
+                                ),
+                            )));
+                        },
+                    };
+                },
+                _ => {
+                    // TODO: Check group membership
+                    tracing::debug!("Creating user `{}` already complete", this.name);
+                    return Ok(StatefulAction::completed(this));
+                },
+            }
         }
 
         Ok(StatefulAction::uncompleted(this))
@@ -64,10 +116,16 @@ impl CreateUser {
 #[typetag::serde(name = "create_user")]
 impl Action for CreateUser {
     fn tracing_synopsis(&self) -> String {
-        format!(
-            "Create user `{}` (UID {}) in group `{}` (GID {})",
-            self.name, self.uid, self.groupname, self.gid
-        )
+        match self.user_exists {
+            false => format!(
+                "Create user `{}` (UID {}) in group `{}` (GID {})",
+                self.name, self.uid, self.groupname, self.gid
+            ),
+            true => format!(
+                "Add user `{}` (UID {}) to group `{}` (GID {})",
+                self.name, self.uid, self.groupname, self.gid
+            ),
+        }
     }
 
     fn tracing_span(&self) -> Span {
@@ -78,6 +136,7 @@ impl Action for CreateUser {
             uid = self.uid,
             groupname = self.groupname,
             gid = self.gid,
+            user_exists = self.user_exists
         )
     }
 
@@ -97,6 +156,7 @@ impl Action for CreateUser {
             uid,
             groupname,
             gid,
+            user_exists,
         } = self;
 
         use target_lexicon::OperatingSystem;
@@ -288,7 +348,7 @@ impl Action for CreateUser {
                     Some(40) if stderr.contains("-14120") => {
                         // The user is on an ephemeral Mac, like detsys uses
                         // These Macs cannot always delete users, as sometimes there is no graphical login
-                        tracing::warn!("Encountered an exit code 40 with -1420 error while removing user, this is likely because the initial executing user did not have a secure token, or that there was no graphical login session. To delete the user, log in graphically, then in a shell (which may be over ssh) run `/usr/bin/dscl . -delete /Users/{name}");
+                        tracing::warn!("Encountered an exit code 40 with -14120 error while removing user, this is likely because the initial executing user did not have a secure token, or that there was no graphical login session. To delete the user, log in graphically, then in a shell (which may be over ssh) run `/usr/bin/dscl . -delete /Users/{name}");
                     },
                     status => {
                         let command_str = format!("{:?}", command.as_std());
