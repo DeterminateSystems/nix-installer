@@ -1,7 +1,7 @@
 use crate::action::{
     base::{create_or_insert_into_file, CreateFile, CreateOrInsertIntoFile},
     macos::{
-        BootstrapApfsVolume, CreateApfsVolume, CreateSyntheticObjects, EnableOwnership,
+        BootstrapLaunchctlService, CreateApfsVolume, CreateSyntheticObjects, EnableOwnership,
         EncryptApfsVolume, UnmountApfsVolume,
     },
     Action, ActionDescription, ActionError, StatefulAction,
@@ -13,7 +13,7 @@ use std::{
 use tokio::process::Command;
 use tracing::{span, Span};
 
-use super::create_fstab_entry::CreateFstabEntry;
+use super::{create_fstab_entry::CreateFstabEntry, KickstartLaunchctlService};
 
 pub const NIX_VOLUME_MOUNTD_DEST: &str = "/Library/LaunchDaemons/org.nixos.darwin-store.plist";
 
@@ -31,7 +31,8 @@ pub struct CreateNixVolume {
     create_fstab_entry: StatefulAction<CreateFstabEntry>,
     encrypt_volume: Option<StatefulAction<EncryptApfsVolume>>,
     setup_volume_daemon: StatefulAction<CreateFile>,
-    bootstrap_volume: StatefulAction<BootstrapApfsVolume>,
+    bootstrap_volume: StatefulAction<BootstrapLaunchctlService>,
+    kickstart_launchctl_service: StatefulAction<KickstartLaunchctlService>,
     enable_ownership: StatefulAction<EnableOwnership>,
 }
 
@@ -108,7 +109,14 @@ impl CreateNixVolume {
         let setup_volume_daemon =
             CreateFile::plan(NIX_VOLUME_MOUNTD_DEST, None, None, None, mount_plist, false).await?;
 
-        let bootstrap_volume = BootstrapApfsVolume::plan(NIX_VOLUME_MOUNTD_DEST).await?;
+        let bootstrap_volume = BootstrapLaunchctlService::plan(
+            "system",
+            "org.nixos.darwin-store",
+            NIX_VOLUME_MOUNTD_DEST,
+        )
+        .await?;
+        let kickstart_launchctl_service =
+            KickstartLaunchctlService::plan("system/org.nixos.darwin-store").await?;
         let enable_ownership = EnableOwnership::plan("/nix").await?;
 
         Ok(Self {
@@ -124,6 +132,7 @@ impl CreateNixVolume {
             encrypt_volume,
             setup_volume_daemon,
             bootstrap_volume,
+            kickstart_launchctl_service,
             enable_ownership,
         }
         .into())
@@ -186,6 +195,7 @@ impl Action for CreateNixVolume {
             encrypt_volume,
             setup_volume_daemon,
             bootstrap_volume,
+            kickstart_launchctl_service,
             enable_ownership,
         } = self;
 
@@ -200,6 +210,7 @@ impl Action for CreateNixVolume {
         setup_volume_daemon.try_execute().await?;
 
         bootstrap_volume.try_execute().await?;
+        kickstart_launchctl_service.try_execute().await?;
 
         let mut retry_tokens: usize = 50;
         loop {
@@ -250,10 +261,12 @@ impl Action for CreateNixVolume {
             encrypt_volume,
             setup_volume_daemon,
             bootstrap_volume,
+            kickstart_launchctl_service,
             enable_ownership,
         } = self;
 
         enable_ownership.try_revert().await?;
+        kickstart_launchctl_service.try_revert().await?;
         bootstrap_volume.try_revert().await?;
         setup_volume_daemon.try_revert().await?;
         if let Some(encrypt_volume) = encrypt_volume {

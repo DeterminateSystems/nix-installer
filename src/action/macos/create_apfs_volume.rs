@@ -24,10 +24,15 @@ impl CreateApfsVolume {
         case_sensitive: bool,
     ) -> Result<StatefulAction<Self>, ActionError> {
         // Mac lacks an `diskutil apfs info` command or analog, so we have to list
-        let output =
-            execute_command(Command::new("/usr/sbin/diskutil").args(["apfs", "list", "-plist"]))
-                .await
-                .map_err(ActionError::Command)?;
+        let output = execute_command(
+            Command::new("/usr/sbin/diskutil")
+                .args(["apfs", "list", "-plist"])
+                .stdin(std::process::Stdio::null())
+                .stdout(std::process::Stdio::piped())
+                .stderr(std::process::Stdio::piped()),
+        )
+        .await
+        .map_err(ActionError::Command)?;
 
         let parsed: DiskUtilApfsListOutput = plist::from_bytes(&output.stdout)?;
         for container in parsed.containers {

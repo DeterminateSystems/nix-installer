@@ -59,7 +59,7 @@ impl EncryptApfsVolume {
                 return Ok(StatefulAction::completed(Self { name, disk }));
             }
 
-            // Aske the user to remove it
+            // Ask the user to remove it
             return Err(ActionError::Custom(Box::new(
                 EncryptApfsVolumeError::ExistingPasswordFound(name, disk),
             )));

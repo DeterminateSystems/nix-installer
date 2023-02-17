@@ -32,7 +32,7 @@ impl EnableOwnership {
 #[typetag::serde(name = "enable_ownership")]
 impl Action for EnableOwnership {
     fn tracing_synopsis(&self) -> String {
-        format!("Enable ownership on {}", self.path.display())
+        format!("Enable ownership on `{}`", self.path.display())
     }
 
     fn tracing_span(&self) -> Span {

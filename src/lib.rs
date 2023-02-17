@@ -100,7 +100,12 @@ async fn execute_command(command: &mut Command) -> Result<Output, std::io::Error
         false => Err(std::io::Error::new(
             std::io::ErrorKind::Other,
             format!(
-                "Command `{command_str}` failed status, stderr:\n{}\n",
+                "Command `{command_str}` failed{}, stderr:\n{}\n",
+                if let Some(code) = output.status.code() {
+                    format!(" status {code}")
+                } else {
+                    "".into()
+                },
                 String::from_utf8(output.stderr).unwrap_or_else(|_e| String::from("<Non-UTF-8>"))
             ),
         )),

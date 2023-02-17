@@ -1,0 +1,142 @@
+use std::process::Output;
+
+use tokio::process::Command;
+use tracing::{span, Span};
+
+use crate::action::{ActionError, StatefulAction};
+use crate::execute_command;
+
+use crate::action::{Action, ActionDescription};
+
+/**
+Bootstrap and kickstart an APFS volume
+*/
+#[derive(Debug, serde::Deserialize, serde::Serialize, Clone)]
+pub struct KickstartLaunchctlService {
+    service: String,
+}
+
+impl KickstartLaunchctlService {
+    #[tracing::instrument(level = "debug", skip_all)]
+    pub async fn plan(service: impl AsRef<str>) -> Result<StatefulAction<Self>, ActionError> {
+        let service = service.as_ref().to_string();
+
+        let mut service_exists = false;
+        let mut service_started = false;
+        let output = Command::new("launchctl")
+            .process_group(0)
+            .arg("print")
+            .arg(&service)
+            .arg("-plist")
+            .stdin(std::process::Stdio::null())
+            .stdout(std::process::Stdio::piped())
+            .stderr(std::process::Stdio::piped())
+            .output()
+            .await
+            .map_err(|e| ActionError::Command(e))?;
+        if output.status.success() {
+            service_exists = true;
+
+            let output_string = String::from_utf8(output.stdout)?;
+            // We are looking for a line containing "state = " with some trailing content
+            // The output is not a JSON or a plist
+            // MacOS's man pages explicitly tell us not to try to parse this output
+            // MacOS's man pages explicitly tell us this output is not stable
+            // Yet, here we are, doing exactly that.
+            for output_line in output_string.lines() {
+                let output_line_trimmed = output_line.trim();
+                if output_line_trimmed.starts_with("state") {
+                    if output_line_trimmed.contains("running") {
+                        service_started = true;
+                    }
+                    break;
+                }
+            }
+        }
+
+        if service_exists && service_started {
+            return Ok(StatefulAction::completed(Self { service }));
+        }
+
+        // It's safe to assume the user does not have the service started
+        Ok(StatefulAction::uncompleted(Self { service }))
+    }
+}
+
+#[async_trait::async_trait]
+#[typetag::serde(name = "kickstart_launchctl_service")]
+impl Action for KickstartLaunchctlService {
+    fn tracing_synopsis(&self) -> String {
+        format!("Run `launchctl kickstart {}`", self.service)
+    }
+
+    fn tracing_span(&self) -> Span {
+        span!(
+            tracing::Level::DEBUG,
+            "kickstart_launchctl_service",
+            path = %self.service,
+        )
+    }
+
+    fn execute_description(&self) -> Vec<ActionDescription> {
+        vec![ActionDescription::new(self.tracing_synopsis(), vec![])]
+    }
+
+    #[tracing::instrument(level = "debug", skip_all)]
+    async fn execute(&mut self) -> Result<(), ActionError> {
+        let Self { service } = self;
+
+        execute_command(
+            Command::new("launchctl")
+                .process_group(0)
+                .args(["kickstart", "-k"])
+                .arg(service)
+                .stdin(std::process::Stdio::null()),
+        )
+        .await
+        .map_err(|e| ActionError::Command(e))?;
+
+        Ok(())
+    }
+
+    fn revert_description(&self) -> Vec<ActionDescription> {
+        vec![ActionDescription::new(
+            format!("Run `launchctl stop {}`", self.service),
+            vec![],
+        )]
+    }
+
+    #[tracing::instrument(level = "debug", skip_all)]
+    async fn revert(&mut self) -> Result<(), ActionError> {
+        let Self { service } = self;
+
+        // MacOs doesn't offer an "ensure-stopped" like they do with Kickstart
+        let mut command = Command::new("launchctl");
+        command.process_group(0);
+        command.arg("stop");
+        command.arg(service);
+        command.stdin(std::process::Stdio::null());
+        let command_str = format!("{:?}", command.as_std());
+        let output = command
+            .output()
+            .await
+            .map_err(|e| ActionError::Command(e))?;
+        // On our test Macs, a status code of `3` was reported if the service was stopped while not running.
+        match output.status.code() {
+            Some(3) | Some(0) | None => (),
+            _ => {
+                return Err(ActionError::Custom(Box::new(
+                    KickstartLaunchctlServiceError::CannotStopService(command_str, output),
+                )))
+            },
+        }
+
+        Ok(())
+    }
+}
+
+#[derive(Debug, thiserror::Error)]
+pub enum KickstartLaunchctlServiceError {
+    #[error("Command `{0}` failed, stderr: {}", String::from_utf8(.1.stderr.clone()).unwrap_or_else(|_e| String::from("<Non-UTF-8>")))]
+    CannotStopService(String, Output),
+}
