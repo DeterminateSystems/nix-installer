@@ -220,6 +220,16 @@ If systemd is not enabled, pass `--init none` at the end of the command:
 curl --proto '=https' --tlsv1.2 -sSf -L https://install.determinate.systems/nix | sh -s -- install linux --init none
 ```
 
+## Skip confirmation
+
+If you'd like to bypass the confirmation step, you can apply the `--no-confirm` flag:
+
+```bash
+curl --proto '=https' --tlsv1.2 -sSf -L https://install.determinate.systems/nix | sh -s -- install --no-confirm
+```
+
+This is especially useful when using the installer in non-interactive scripts.
+
 ## Building a binary
 
 Since you'll be using `nix-installer` to install Nix on systems without Nix, the default build is a static binary.
