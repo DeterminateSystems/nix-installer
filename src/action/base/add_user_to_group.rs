@@ -63,7 +63,7 @@ impl AddUserToGroup {
                     patch: _,
                 }
                 | OperatingSystem::Darwin => {
-                    let mut command = Command::new("/usr/bin/dseditgroup");
+                    let mut command = Command::new("/usr/sbin/dseditgroup");
                     command.process_group(0);
                     command.args(["-o", "checkmember", "-m"]);
                     command.arg(&this.name);
