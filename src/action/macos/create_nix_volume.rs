@@ -49,7 +49,7 @@ impl CreateNixVolume {
             "/etc/synthetic.conf",
             None,
             None,
-            0o100644,
+            None,
             "nix\n".into(), /* The newline is required otherwise it segfaults */
             create_or_insert_into_file::Position::End,
         )

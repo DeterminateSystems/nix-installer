@@ -12,7 +12,7 @@ jobs:
     steps:
       - uses: actions/checkout@v3
       - name: Install Nix
-        uses: DeterminateSystems/nix-installer-action@start-daemon-and-init
+        uses: DeterminateSystems/nix-installer-action@main
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
       - name: Cache lint store (x86_64-linux)
@@ -29,78 +29,44 @@ jobs:
         run: nix develop --store ~/.ci-store --command check-nixpkgs-fmt
       - name: Check EditorConfig conformance
         run: nix develop --store ~/.ci-store --command check-editorconfig
-
-  build-x86_64-linux:
-    name: Build x86_64 Linux
-    runs-on: ubuntu-22.04
-    steps:
-      - uses: actions/checkout@v3
-      - name: Install Nix
-        uses: DeterminateSystems/nix-installer-action@start-daemon-and-init
+      - name: Download Buildkite Artifacts
+        uses: EnricoMi/download-buildkite-artifact-action@v1.14
         with:
-          github-token: ${{ secrets.GITHUB_TOKEN }}
-      - name: Cache build store (x86_64-linux)
-        id: build-store-x86_64-linux
-        uses: actions/cache@v3
-        with:
-          path: ~/.ci-store
-          key: build-store-x86_64-linux-${{ hashFiles('**/Cargo.lock', '**/flake.lock') }}-v1
-      - name: Build `nix-installer-static`
-        run: nix build --store ~/.ci-store --print-build-logs .#packages.x86_64-linux.nix-installer-static
-      - name: Copy artifact
+          buildkite_token: ${{ secrets.BUILDKITE_TOKEN }}
+          output_path: artifacts
+      - name: Output list of Buildkite artifacts
         run: |
-          RESULT=$(nix eval --raw --store ~/.ci-store --print-build-logs .#packages.x86_64-linux.nix-installer-static --apply "x: \"$HOME/.ci-store\${x}\"")
-          cp $RESULT/bin/nix-installer nix-installer
-      - name: Create artifact for x86_64-linux nix-installer
-        uses: actions/upload-artifact@v3
+          ls -lah artifacts/
+          ls -lah artifacts/**/*
+      # Mac's can't run this action, so we're forced to do this.
+      - name: Create Github cache from Buildkite artifacts
+        id: cache-buildkite-artifacts
+        uses: actions/cache/save@v3
         with:
-          name: nix-installer-x86_64-linux
-          path: |
-            nix-installer
-
-  # Various feature variations or versions of the build which we expect to always work
-  # Since it uses the `build-store-x86_64-linux-*` cache it should be quite fast
-  build-variants-x86_64-linux:
-    name: Build x86_64 Linux (Variants)
-    runs-on: ubuntu-22.04
-    needs: build-x86_64-linux # Only run this if the normal checks work, to avoid clogging builders
-    steps:
-      - uses: actions/checkout@v3
-      - name: Install Nix
-        uses: DeterminateSystems/nix-installer-action@start-daemon-and-init
-        with:
-          github-token: ${{ secrets.GITHUB_TOKEN }}
-      - name: Cache build store (x86_64-linux)
-        id: build-store-x86_64-linux
-        uses: actions/cache@v3
-        with:
-          path: ~/.ci-store
-          key: build-store-x86_64-linux-${{ hashFiles('**/Cargo.lock', '**/flake.lock') }}-v1
-      - name: Build `nix-installer`
-        run: nix build --store ~/.ci-store --print-build-logs .#packages.x86_64-linux.nix-installer
-      - name: Test `nix develop` build without default features
-        run: nix develop --store ~/.ci-store --print-build-logs .# --command "cargo" build --no-default-features
-      - name: Test `nix develop` build all features
-        run: nix develop --store ~/.ci-store --print-build-logs .# --command "cargo" build --all-features
+          path: artifacts
+          key: buildkite-artifacts-${{ github.sha }}
 
   run-x86_64-linux:
     name: Run x86_64 Linux
     runs-on: ubuntu-22.04
-    needs: [build-x86_64-linux, lints]
+    needs: [lints]
     steps:
       - uses: actions/checkout@v3
-      - run: sudo apt install fish zsh
-      - uses: actions/download-artifact@v3
+      - name: Restore Github cache of Buildkite artifacts
+        id: cache-buildkite-artifacts
+        uses: actions/cache/restore@v3
         with:
-          name: nix-installer-x86_64-linux
+          path: artifacts
+          key: buildkite-artifacts-${{ github.sha }}
+      - run: sudo apt install fish zsh
       - name: Move & set executable
         run: |
-          chmod +x ./nix-installer
           mkdir install-root
           cp nix-installer.sh install-root/nix-installer.sh
-          mv nix-installer install-root/nix-installer-x86_64-linux
+          mv ./artifacts/nix-installer-x86_64-linux-*/* install-root/nix-installer-x86_64-linux
+          chmod +x install-root/nix-installer-x86_64-linux install-root/nix-installer.sh
       - name: Initial install
-        uses: DeterminateSystems/nix-installer-action@start-daemon-and-init
+        uses: DeterminateSystems/nix-installer-action@main
         with:
           local-root: install-root/
           logger: pretty
@@ -129,7 +95,7 @@ jobs:
             exit 1
           fi
       - name: Repeated install
-        uses: DeterminateSystems/nix-installer-action@start-daemon-and-init
+        uses: DeterminateSystems/nix-installer-action@main
         with:
           local-root: install-root/
           logger: pretty
@@ -187,21 +153,24 @@ jobs:
   run-x86_64-linux-no-init:
     name: Run x86_64 Linux (No init)
     runs-on: ubuntu-22.04
-    needs: [build-x86_64-linux, lints]
+    needs: [lints]
     steps:
       - uses: actions/checkout@v3
-      - run: sudo apt install fish zsh
-      - uses: actions/download-artifact@v3
+      - name: Restore Github cache of Buildkite artifacts
+        id: cache-buildkite-artifacts
+        uses: actions/cache/restore@v3
         with:
-          name: nix-installer-x86_64-linux
+          path: artifacts
+          key: buildkite-artifacts-${{ github.sha }}
+      - run: sudo apt install fish zsh
       - name: Move & set executable
         run: |
-          chmod +x ./nix-installer
           mkdir install-root
           cp nix-installer.sh install-root/nix-installer.sh
-          mv nix-installer install-root/nix-installer-x86_64-linux
+          mv ./artifacts/nix-installer-x86_64-linux-*/* install-root/nix-installer-x86_64-linux
+          chmod +x install-root/nix-installer-x86_64-linux install-root/nix-installer.sh
       - name: Initial install
-        uses: DeterminateSystems/nix-installer-action@start-daemon-and-init
+        uses: DeterminateSystems/nix-installer-action@main
         with:
           init: none
           planner: linux
@@ -234,7 +203,7 @@ jobs:
             exit 1
           fi
       - name: Repeated install
-        uses: DeterminateSystems/nix-installer-action@start-daemon-and-init
+        uses: DeterminateSystems/nix-installer-action@main
         with:
           init: none
           planner: linux
@@ -294,19 +263,22 @@ jobs:
   run-steam-deck:
     name: Run Steam Deck (mock)
     runs-on: ubuntu-22.04
-    needs: [build-x86_64-linux, lints]
+    needs: [lints]
     steps:
       - uses: actions/checkout@v3
-      - run: sudo apt install fish zsh
-      - uses: actions/download-artifact@v3
+      - name: Restore Github cache of Buildkite artifacts
+        id: cache-buildkite-artifacts
+        uses: actions/cache/restore@v3
         with:
-          name: nix-installer-x86_64-linux
+          path: artifacts
+          key: buildkite-artifacts-${{ github.sha }}
+      - run: sudo apt install fish zsh
       - name: Move & set executable
         run: |
-          chmod +x ./nix-installer
           mkdir install-root
           cp nix-installer.sh install-root/nix-installer.sh
-          mv nix-installer install-root/nix-installer-x86_64-linux
+          mv ./artifacts/nix-installer-x86_64-linux-*/* install-root/nix-installer-x86_64-linux
+          chmod +x install-root/nix-installer-x86_64-linux install-root/nix-installer.sh
       - name: Make the CI look like a steam deck
         run: |
           mkdir -p ~/bin
@@ -314,7 +286,7 @@ jobs:
           sudo chmod +x /bin/steamos-readonly
           sudo useradd -m deck
       - name: Initial install
-        uses: DeterminateSystems/nix-installer-action@start-daemon-and-init
+        uses: DeterminateSystems/nix-installer-action@main
         with:
           local-root: install-root/
           logger: pretty
@@ -349,7 +321,7 @@ jobs:
             exit 1
           fi
       - name: Repeated install
-        uses: DeterminateSystems/nix-installer-action@start-daemon-and-init
+        uses: DeterminateSystems/nix-installer-action@main
         with:
           local-root: install-root/
           logger: pretty
@@ -410,43 +382,27 @@ jobs:
             exit 1
           fi
 
-  build-x86_64-darwin:
-    name: Build x86_64 Darwin
-    runs-on: macos-12
-    steps:
-      - uses: actions/checkout@v3
-      - name: Install Nix
-        uses: DeterminateSystems/nix-installer-action@start-daemon-and-init
-        with:
-          github-token: ${{ secrets.GITHUB_TOKEN }}
-      # Runs clippy as part of the preBuild.
-      - name: Build nix-installer
-        run: nix build .#packages.x86_64-darwin.nix-installer -L
-      - name: Create artifact for x86_64-darwin nix-installer
-        uses: actions/upload-artifact@v3
-        with:
-          name: nix-installer-x86_64-darwin
-          path: |
-            result/bin/nix-installer
-
   run-x86_64-darwin:
     name: Run x86_64 Darwin
     runs-on: macos-12
-    needs: [build-x86_64-darwin, lints]
+    needs: [lints]
     steps:
       - uses: actions/checkout@v3
-      - run: brew install fish coreutils
-      - uses: actions/download-artifact@v3
+      - name: Restore Github cache of Buildkite artifacts
+        id: cache-buildkite-artifacts
+        uses: actions/cache/restore@v3
         with:
-          name: nix-installer-x86_64-darwin
+          path: artifacts
+          key: buildkite-artifacts-${{ github.sha }}
+      - run: brew install fish coreutils
       - name: Move & set executable
         run: |
-          chmod +x ./nix-installer
           mkdir install-root
           cp nix-installer.sh install-root/nix-installer.sh
-          mv nix-installer install-root/nix-installer-x86_64-darwin
+          mv ./artifacts/nix-installer-x86_64-darwin-*/* install-root/nix-installer-x86_64-darwin
+          chmod +x install-root/nix-installer-x86_64-darwin install-root/nix-installer.sh
       - name: Initial install
-        uses: DeterminateSystems/nix-installer-action@start-daemon-and-init
+        uses: DeterminateSystems/nix-installer-action@main
         with:
           local-root: install-root/
           logger: pretty
@@ -463,7 +419,7 @@ jobs:
           NIX_INSTALLER_LOG_DIRECTIVES: nix_installer=trace
           RUST_BACKTRACE: full
       - name: Repeated install
-        uses: DeterminateSystems/nix-installer-action@start-daemon-and-init
+        uses: DeterminateSystems/nix-installer-action@main
         with:
           local-root: install-root/
           logger: pretty
@@ -473,14 +429,15 @@ jobs:
           extra-conf: trusted-users = root runner
       - name: echo $PATH
         run: echo $PATH
-      - name: Test `nix` with `$GITHUB_PATH`
-        if: success() || failure()
-        run: |
-          nix run nixpkgs#fortune
-          nix profile install nixpkgs#fortune
-          fortune
-          nix store gc
-          nix run nixpkgs#fortune
+      # The Mac CI constantly fails here despite us setting the token....
+      # - name: Test `nix` with `$GITHUB_PATH`
+      #   if: success() || failure()
+      #   run: |
+      #     nix run nixpkgs#fortune
+      #     nix profile install nixpkgs#fortune
+      #     fortune
+      #     nix store gc
+      #     nix run nixpkgs#fortune
       - name: Test bash
         run: nix-instantiate -E 'builtins.currentTime' --eval
         if: success() || failure()

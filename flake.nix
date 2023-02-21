@@ -36,7 +36,7 @@
 
       forSystem = system: f: f rec {
         inherit system;
-        pkgs = import nixpkgs { inherit system; overlays = [ self.overlays.default nix.overlays.default ]; };
+        pkgs = import nixpkgs { inherit system; overlays = [ self.overlays.default ]; };
         lib = pkgs.lib;
       };
 
@@ -65,7 +65,7 @@
           };
           sharedAttrs = {
             pname = "nix-installer";
-            version = "0.2.1-unreleased";
+            version = "0.3.0";
             src = builtins.path {
               name = "nix-installer-source";
               path = self;

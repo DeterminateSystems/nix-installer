@@ -3,25 +3,26 @@
 [![Crates.io](https://img.shields.io/crates/v/nix-installer)](https://crates.io/crates/nix-installer)
 [![Docs.rs](https://img.shields.io/docsrs/nix-installer)](https://docs.rs/nix-installer/latest/nix_installer/)
 
-`nix-installer` is an opinionated, **experimental** Nix installer.
+`nix-installer` is an opinionated alternative to the [official Nix install scripts](https://nixos.org/download.html).
 
 
 ```bash
 curl --proto '=https' --tlsv1.2 -sSf -L https://install.determinate.systems/nix | sh -s -- install
 ```
 
-## Status
+The `nix-installer` tool is ready to use in a number of environments:
 
-`nix-installer` is **pre-release and experimental**. It is not ready for high reliability use! *Please* don't use it on a business critical machine!
+| Platform                     | Multi User         | `root` only | Maturity                 |
+|------------------------------|:------------------:|:-----------:|:------------------------:|
+| Linux (x86_64 & aarch64)     | ✓ (via [systemd])  | ✓           | Stable                   |
+| MacOS (x86_64 & aarch64)     | ✓                  |             | Mostly Stable (See note) |
+| Valve Steam Deck (SteamOS)   | ✓                  |             | Stable                   |
+| WSL2 (x86_64 & aarch64)      | ✓ (via [systemd])  | ✓           | Stable                   |
+| Podman Linux Containers      | ✓ (via [systemd])  | ✓           | Stable                   |
+| Docker Containers            |                    | ✓           | Stable                   |
+| Linux (i686)                 | ✓ (via [systemd])  | ✓           | Unstable                 |
 
-Current and planned support:
-
-* [x] Multi-user Linux (aarch64 and x86_64) with systemd integration, no SELinux
-* [x] Root-only Linux (aarch64 and x86_64) with no init integration, no SELinux
-* [x] Multi-user MacOS (aarch64 and x86_64) with launchd integration
-* [x] SteamOS on the Valve Steam Deck
-* [ ] Multi-user Linux (aarch64 and x86_64) with systemd integration & SELinux
-* [ ] Others...
+> **MacOS note:** `nix-installer` currently does not support uninstalling users or groups on Macs. See [#33](https://github.com/DeterminateSystems/nix-installer/issues/33) for details, to track the issue, or help out!
 
 ## Installation Differences
 
@@ -32,7 +33,7 @@ Differing from the current official [Nix](https://github.com/NixOS/nix) installe
 
 ## Motivations
 
-The current Nix installer scripts do an excellent job, however they are difficult to maintain. Subtle differences in the shell implementations, and certain characteristics of bash scripts make it difficult to make meaningful changes to the installer.
+The current Nix install scripts do an excellent job, however they are difficult to maintain. Subtle differences in the shell implementations and certain characteristics of bash scripts make it difficult to make meaningful changes to the installer.
 
 Our team wishes to experiment with the idea of an installer in a more structured language and see if this is a worthwhile alternative. Along the way, we are also exploring a few other ideas, such as:
 
@@ -219,6 +220,16 @@ If systemd is not enabled, pass `--init none` at the end of the command:
 curl --proto '=https' --tlsv1.2 -sSf -L https://install.determinate.systems/nix | sh -s -- install linux --init none
 ```
 
+## Skip confirmation
+
+If you'd like to bypass the confirmation step, you can apply the `--no-confirm` flag:
+
+```bash
+curl --proto '=https' --tlsv1.2 -sSf -L https://install.determinate.systems/nix | sh -s -- install --no-confirm
+```
+
+This is especially useful when using the installer in non-interactive scripts.
+
 ## Building a binary
 
 Since you'll be using `nix-installer` to install Nix on systems without Nix, the default build is a static binary.
@@ -251,6 +262,8 @@ To make this build portable, pass ` --target x86_64-unknown-linux-musl`.
 
 ## As a library
 
+> Use as a library is still experimental, if you're using this, please let us know and we can make a path to stablization.
+
 Add `nix-installer` to your dependencies:
 
 ```bash
@@ -280,4 +293,4 @@ nix build github:DeterminateSystems/nix-installer#nix-installer.doc
 firefox result-doc/nix-installer/index.html
 ```
 
-
+[systemd]: https://systemd.io

@@ -7,9 +7,9 @@ let
     # Found via https://hub.docker.com/_/ubuntu/ under "How is the rootfs build?"
     # Jammy
     "ubuntu-v22_04" = {
-      tarball = import <nix/fetchurl.nix> {
-        url = "https://launchpad.net/~cloud-images-release-managers/+livefs/ubuntu/jammy/ubuntu-oci/+build/408115/+files/livecd.ubuntu-oci.rootfs.tar.gz";
-        hash = "sha256-BirwSM4c+ZV1upU0yV3qa+BW9AvpBUxvZuPTeI9mA8M=";
+      tarball = builtins.fetchurl {
+        url = "http://cdimage.ubuntu.com/ubuntu-base/releases/22.04/release/ubuntu-base-22.04-base-amd64.tar.gz";
+        sha256 = "01sbpjb32x1z1yr9q78zrk0a6kfw5c4fxw1jqmm23g8ixryffvyz";
       };
       tester = ./default/Dockerfile;
       system = "x86_64-linux";
@@ -17,9 +17,9 @@ let
 
     # focal
     "ubuntu-v20_04" = {
-      tarball = import <nix/fetchurl.nix> {
-        url = "https://launchpad.net/~cloud-images-release-managers/+livefs/ubuntu/focal/ubuntu-oci/+build/408120/+files/livecd.ubuntu-oci.rootfs.tar.gz";
-        hash = "sha256-iTJR+DeC5lT4PMqT/xFAFwmlC/qvslDFccDrVFLt/a8=";
+      tarball = builtins.fetchurl {
+        url = "http://cdimage.ubuntu.com/ubuntu-base/releases/20.04/release/ubuntu-base-20.04.1-base-amd64.tar.gz";
+        sha256 = "0ryn38csmx41a415g9b3wk30csaxxlkgkdij9v4754pk877wpxlp";
       };
       tester = ./default/Dockerfile;
       system = "x86_64-linux";
@@ -27,9 +27,9 @@ let
 
     # bionic
     "ubuntu-v18_04" = {
-      tarball = import <nix/fetchurl.nix> {
-        url = "https://launchpad.net/~cloud-images-release-managers/+livefs/ubuntu/bionic/ubuntu-oci/+build/408103/+files/livecd.ubuntu-oci.rootfs.tar.gz";
-        hash = "sha256-gi48yl5laoKLoVCDIORsseOM6DI58FNpAjSVe7OOs7I=";
+      tarball = builtins.fetchurl {
+        url = "http://cdimage.ubuntu.com/ubuntu-base/releases/18.04/release/ubuntu-base-18.04.5-base-amd64.tar.gz";
+        sha256 = "1sh73pqwgyzkyssv3ngpxa2ynnkbdvjpxdw1v9ql4ghjpd3hpwlg";
       };
       tester = ./default/Dockerfile;
       system = "x86_64-linux";

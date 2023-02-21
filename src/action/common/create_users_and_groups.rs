@@ -131,32 +131,41 @@ impl Action for CreateUsersAndGroups {
                 }
             },
             _ => {
-                let mut set = JoinSet::new();
-                let mut errors: Vec<Box<ActionError>> = Vec::new();
-                for (idx, create_user) in create_users.iter_mut().enumerate() {
-                    let span = tracing::Span::current().clone();
-                    let mut create_user_clone = create_user.clone();
-                    let _abort_handle = set.spawn(async move {
-                        create_user_clone.try_execute().instrument(span).await?;
-                        Result::<_, _>::Ok((idx, create_user_clone))
-                    });
+                for create_user in create_users.iter_mut() {
+                    create_user.try_execute().await?;
                 }
+                // While we may be tempted to do something like this, it can break on many older OSes like Ubuntu 18.04:
+                // ```
+                // useradd: cannot lock /etc/passwd; try again later.
+                // ```
+                // So, instead, we keep this here in hopes one day we can enable it for some detected OS:
+                //
+                // let mut set = JoinSet::new();
+                // let mut errors: Vec<Box<ActionError>> = Vec::new();
+                // for (idx, create_user) in create_users.iter_mut().enumerate() {
+                //     let span = tracing::Span::current().clone();
+                //     let mut create_user_clone = create_user.clone();
+                //     let _abort_handle = set.spawn(async move {
+                //         create_user_clone.try_execute().instrument(span).await?;
+                //         Result::<_, _>::Ok((idx, create_user_clone))
+                //     });
+                // }
 
-                while let Some(result) = set.join_next().await {
-                    match result {
-                        Ok(Ok((idx, success))) => create_users[idx] = success,
-                        Ok(Err(e)) => errors.push(Box::new(e)),
-                        Err(e) => return Err(ActionError::Join(e))?,
-                    };
-                }
+                // while let Some(result) = set.join_next().await {
+                //     match result {
+                //         Ok(Ok((idx, success))) => create_users[idx] = success,
+                //         Ok(Err(e)) => errors.push(Box::new(e)),
+                //         Err(e) => return Err(ActionError::Join(e))?,
+                //     };
+                // }
 
-                if !errors.is_empty() {
-                    if errors.len() == 1 {
-                        return Err(errors.into_iter().next().unwrap().into());
-                    } else {
-                        return Err(ActionError::Children(errors));
-                    }
-                }
+                // if !errors.is_empty() {
+                //     if errors.len() == 1 {
+                //         return Err(errors.into_iter().next().unwrap().into());
+                //     } else {
+                //         return Err(ActionError::Children(errors));
+                //     }
+                // }
             },
         };
 

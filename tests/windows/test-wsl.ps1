@@ -56,7 +56,7 @@ $MaybeInitChoice = switch ($Systemd) {
     $true { "" }
     $false { "--init none" }
 }
-wsl --distribution $DistroName bash --login -c "/root/.cargo/bin/cargo run --quiet --manifest-path /nix-installer/Cargo.toml -- install linux-multi --no-confirm $MaybeInitChoice"
+wsl --distribution $DistroName bash --login -c "/root/.cargo/bin/cargo run --quiet --manifest-path /nix-installer/Cargo.toml -- install linux --no-confirm $MaybeInitChoice"
 if ($LastExitCode -ne 0) {
     exit $LastExitCode 
 }
