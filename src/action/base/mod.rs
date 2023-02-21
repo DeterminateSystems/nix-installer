@@ -1,5 +1,6 @@
 //! Base [`Action`](crate::action::Action)s that themselves have no other actions as dependencies
 
+pub(crate) mod add_user_to_group;
 pub(crate) mod create_directory;
 pub(crate) mod create_file;
 pub(crate) mod create_group;
@@ -9,6 +10,7 @@ pub(crate) mod fetch_and_unpack_nix;
 pub(crate) mod move_unpacked_nix;
 pub(crate) mod setup_default_profile;
 
+pub use add_user_to_group::AddUserToGroup;
 pub use create_directory::CreateDirectory;
 pub use create_file::CreateFile;
 pub use create_group::CreateGroup;

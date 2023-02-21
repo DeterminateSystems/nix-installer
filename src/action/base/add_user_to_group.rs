@@ -14,14 +14,14 @@ use crate::action::{Action, ActionDescription, StatefulAction};
 Create an operating system level user in the given group
 */
 #[derive(Debug, serde::Deserialize, serde::Serialize, Clone)]
-pub struct CreateUser {
+pub struct AddUserToGroup {
     name: String,
     uid: u32,
     groupname: String,
     gid: u32,
 }
 
-impl CreateUser {
+impl AddUserToGroup {
     #[tracing::instrument(level = "debug", skip_all)]
     pub async fn plan(
         name: String,
@@ -80,6 +80,11 @@ impl CreateUser {
                             tracing::debug!("Creating user `{}` already complete", this.name);
                             return Ok(StatefulAction::completed(this));
                         },
+                        Some(64) => {
+                            // Group not found
+                            // The group will be created by the installer
+                            ()
+                        },
                         _ => {
                             // Some other issue
                             return Err(ActionError::Command(std::io::Error::new(
@@ -94,9 +99,21 @@ impl CreateUser {
                     };
                 },
                 _ => {
-                    // TODO: Check group membership
-                    tracing::debug!("Creating user `{}` already complete", this.name);
-                    return Ok(StatefulAction::completed(this));
+                    let output = execute_command(
+                        Command::new("groups")
+                            .process_group(0)
+                            .arg(&this.name)
+                            .stdin(std::process::Stdio::null()),
+                    )
+                    .await
+                    .map_err(|e| ActionError::Command(e))?;
+                    let output_str = String::from_utf8(output.stdout)?;
+                    let user_in_group = output_str.split(" ").any(|v| v == &this.groupname);
+
+                    if user_in_group {
+                        tracing::debug!("Creating user `{}` already complete", this.name);
+                        return Ok(StatefulAction::completed(this));
+                    }
                 },
             }
         }
@@ -106,11 +123,11 @@ impl CreateUser {
 }
 
 #[async_trait::async_trait]
-#[typetag::serde(name = "create_user")]
-impl Action for CreateUser {
+#[typetag::serde(name = "add_user_to_group")]
+impl Action for AddUserToGroup {
     fn tracing_synopsis(&self) -> String {
         format!(
-            "Create user `{}` (UID {}) in group `{}` (GID {})",
+            "Add user `{}` (UID {}) to group `{}` (GID {})",
             self.name, self.uid, self.groupname, self.gid
         )
     }
@@ -118,7 +135,7 @@ impl Action for CreateUser {
     fn tracing_span(&self) -> Span {
         span!(
             tracing::Level::DEBUG,
-            "create_user",
+            "add_user_to_group",
             user = self.name,
             uid = self.uid,
             groupname = self.groupname,
@@ -130,7 +147,7 @@ impl Action for CreateUser {
         vec![ActionDescription::new(
             self.tracing_synopsis(),
             vec![format!(
-                "The Nix daemon requires system users it can act as in order to build"
+                "The Nix daemon requires the build users to be in a defined group"
             )],
         )]
     }
@@ -139,9 +156,9 @@ impl Action for CreateUser {
     async fn execute(&mut self) -> Result<(), ActionError> {
         let Self {
             name,
-            uid,
-            groupname: _,
-            gid,
+            uid: _,
+            groupname,
+            gid: _,
         } = self;
 
         use target_lexicon::OperatingSystem;
@@ -155,71 +172,26 @@ impl Action for CreateUser {
                 execute_command(
                     Command::new("/usr/bin/dscl")
                         .process_group(0)
-                        .args([".", "-create", &format!("/Users/{name}")])
-                        .stdin(std::process::Stdio::null()),
-                )
-                .await
-                .map_err(|e| ActionError::Command(e))?;
-                execute_command(
-                    Command::new("/usr/bin/dscl")
-                        .process_group(0)
                         .args([
                             ".",
-                            "-create",
-                            &format!("/Users/{name}"),
-                            "UniqueID",
-                            &format!("{uid}"),
+                            "-append",
+                            &format!("/Groups/{groupname}"),
+                            "GroupMembership",
                         ])
+                        .arg(&name)
                         .stdin(std::process::Stdio::null()),
                 )
                 .await
                 .map_err(|e| ActionError::Command(e))?;
                 execute_command(
-                    Command::new("/usr/bin/dscl")
+                    Command::new("/usr/sbin/dseditgroup")
                         .process_group(0)
-                        .args([
-                            ".",
-                            "-create",
-                            &format!("/Users/{name}"),
-                            "PrimaryGroupID",
-                            &format!("{gid}"),
-                        ])
-                        .stdin(std::process::Stdio::null()),
-                )
-                .await
-                .map_err(|e| ActionError::Command(e))?;
-                execute_command(
-                    Command::new("/usr/bin/dscl")
-                        .process_group(0)
-                        .args([
-                            ".",
-                            "-create",
-                            &format!("/Users/{name}"),
-                            "NFSHomeDirectory",
-                            "/var/empty",
-                        ])
-                        .stdin(std::process::Stdio::null()),
-                )
-                .await
-                .map_err(|e| ActionError::Command(e))?;
-                execute_command(
-                    Command::new("/usr/bin/dscl")
-                        .process_group(0)
-                        .args([
-                            ".",
-                            "-create",
-                            &format!("/Users/{name}"),
-                            "UserShell",
-                            "/sbin/nologin",
-                        ])
-                        .stdin(std::process::Stdio::null()),
-                )
-                .await
-                .map_err(|e| ActionError::Command(e))?;
-                execute_command(
-                    Command::new("/usr/bin/dscl")
-                        .process_group(0)
-                        .args([".", "-create", &format!("/Users/{name}"), "IsHidden", "1"])
+                        .args(["-o", "edit"])
+                        .arg("-a")
+                        .arg(&name)
+                        .arg("-t")
+                        .arg(&name)
+                        .arg(groupname)
                         .stdin(std::process::Stdio::null()),
                 )
                 .await
@@ -227,27 +199,10 @@ impl Action for CreateUser {
             },
             _ => {
                 execute_command(
-                    Command::new("useradd")
+                    Command::new("gpasswd")
                         .process_group(0)
-                        .args([
-                            "--home-dir",
-                            "/var/empty",
-                            "--comment",
-                            &format!("\"Nix build user\""),
-                            "--gid",
-                            &gid.to_string(),
-                            "--groups",
-                            &gid.to_string(),
-                            "--no-user-group",
-                            "--system",
-                            "--shell",
-                            "/sbin/nologin",
-                            "--uid",
-                            &uid.to_string(),
-                            "--password",
-                            "\"!\"",
-                            &name.to_string(),
-                        ])
+                        .args(["-a"])
+                        .args([&name.to_string(), &groupname.to_string()])
                         .stdin(std::process::Stdio::null()),
                 )
                 .await
@@ -261,7 +216,7 @@ impl Action for CreateUser {
     fn revert_description(&self) -> Vec<ActionDescription> {
         vec![ActionDescription::new(
             format!(
-                "Delete user `{}` (UID {}) in group {} (GID {})",
+                "Remove user `{}` (UID {}) from group {} (GID {})",
                 self.name, self.uid, self.groupname, self.gid
             ),
             vec![format!(
@@ -275,7 +230,7 @@ impl Action for CreateUser {
         let Self {
             name,
             uid: _,
-            groupname: _,
+            groupname,
             gid: _,
         } = self;
 
@@ -287,50 +242,22 @@ impl Action for CreateUser {
                 patch: _,
             }
             | OperatingSystem::Darwin => {
-                // MacOS is a "Special" case
-                // It's only possible to delete users under certain conditions.
-                // Documentation on https://it.megocollector.com/macos/cant-delete-a-macos-user-with-dscl-resolution/ and http://www.aixperts.co.uk/?p=214 suggested it was a secure token
-                // That is correct, however it's a bit more nuanced. It appears to be that a user must be graphically logged in for some other user on the system to be deleted.
-                let mut command = Command::new("/usr/bin/dscl");
-                command.args([".", "-delete", &format!("/Users/{name}")]);
-                command.process_group(0);
-                command.stdin(std::process::Stdio::null());
-
-                let output = command
-                    .output()
-                    .await
-                    .map_err(|e| ActionError::Command(e))?;
-                let stderr = String::from_utf8(output.stderr)?;
-                match output.status.code() {
-                    Some(0) => (),
-                    Some(40) if stderr.contains("-14120") => {
-                        // The user is on an ephemeral Mac, like detsys uses
-                        // These Macs cannot always delete users, as sometimes there is no graphical login
-                        tracing::warn!("Encountered an exit code 40 with -14120 error while removing user, this is likely because the initial executing user did not have a secure token, or that there was no graphical login session. To delete the user, log in graphically, then in a shell (which may be over ssh) run `/usr/bin/dscl . -delete /Users/{name}");
-                    },
-                    status => {
-                        let command_str = format!("{:?}", command.as_std());
-                        // Something went wrong
-                        return Err(ActionError::Command(std::io::Error::new(
-                            std::io::ErrorKind::Other,
-                            format!(
-                                "Command `{command_str}` failed{}, stderr:\n{}\n",
-                                if let Some(status) = status {
-                                    format!(" {status}")
-                                } else {
-                                    "".to_string()
-                                },
-                                stderr
-                            ),
-                        )));
-                    },
-                }
+                execute_command(
+                    Command::new("/usr/bin/dscl")
+                        .process_group(0)
+                        .args([".", "-delete", &format!("/Groups/{groupname}"), "users"])
+                        .arg(&name)
+                        .stdin(std::process::Stdio::null()),
+                )
+                .await
+                .map_err(|e| ActionError::Command(e))?;
             },
             _ => {
                 execute_command(
-                    Command::new("userdel")
+                    Command::new("gpasswd")
                         .process_group(0)
-                        .args([&name.to_string()])
+                        .args(["-d"])
+                        .args([&name.to_string(), &groupname.to_string()])
                         .stdin(std::process::Stdio::null()),
                 )
                 .await
