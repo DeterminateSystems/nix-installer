@@ -77,11 +77,20 @@ impl AddUserToGroup {
                         Some(0) => {
                             // yes {user} is a member of {groupname}
                             // Since the user exists, and is already a member of the group, we have truly nothing to do here
-                            tracing::debug!("Creating user `{}` already complete", this.name);
+                            tracing::debug!(
+                                "Adding user `{}` to group `{}` already complete",
+                                this.name,
+                                this.groupname
+                            );
                             return Ok(StatefulAction::completed(this));
                         },
                         Some(64) => {
                             // Group not found
+                            tracing::trace!(
+                                "Will add user `{}` to newly created group `{}`",
+                                this.name,
+                                this.groupname
+                            );
                             // The group will be created by the installer
                             ()
                         },
@@ -90,7 +99,12 @@ impl AddUserToGroup {
                             return Err(ActionError::Command(std::io::Error::new(
                                 std::io::ErrorKind::Other,
                                 format!(
-                                    "Command `{command_str}` failed status, stderr:\n{}\n",
+                                    "Command `{command_str}` failed{}, stderr:\n{}\n",
+                                    if let Some(code) = output.status.code() {
+                                        format!(" status {code}")
+                                    } else {
+                                        "".to_string()
+                                    },
                                     String::from_utf8(output.stderr)
                                         .unwrap_or_else(|_e| String::from("<Non-UTF-8>"))
                                 ),

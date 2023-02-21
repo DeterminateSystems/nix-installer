@@ -1,7 +1,4 @@
-use std::process::Stdio;
-
 use nix::unistd::User;
-use target_lexicon::OperatingSystem;
 use tokio::process::Command;
 use tracing::{span, Span};
 
@@ -53,51 +50,6 @@ impl CreateUser {
                     user.gid.as_raw(),
                     gid,
                 ));
-            }
-
-            // See if group membership needs to be done
-            match target_lexicon::OperatingSystem::host() {
-                OperatingSystem::MacOSX {
-                    major: _,
-                    minor: _,
-                    patch: _,
-                }
-                | OperatingSystem::Darwin => {
-                    let mut command = Command::new("/usr/sbin/dseditgroup");
-                    command.process_group(0);
-                    command.args(["-o", "checkmember", "-m"]);
-                    command.arg(&this.name);
-                    command.arg(&this.groupname);
-                    command.stdout(Stdio::piped());
-                    command.stderr(Stdio::piped());
-                    let command_str = format!("{:?}", command.as_std());
-                    tracing::trace!("Executing `{command_str}`");
-                    let output = command.output().await.map_err(ActionError::Command)?;
-                    match output.status.code() {
-                        Some(0) => {
-                            // yes {user} is a member of {groupname}
-                            // Since the user exists, and is already a member of the group, we have truly nothing to do here
-                            tracing::debug!("Creating user `{}` already complete", this.name);
-                            return Ok(StatefulAction::completed(this));
-                        },
-                        _ => {
-                            // Some other issue
-                            return Err(ActionError::Command(std::io::Error::new(
-                                std::io::ErrorKind::Other,
-                                format!(
-                                    "Command `{command_str}` failed status, stderr:\n{}\n",
-                                    String::from_utf8(output.stderr)
-                                        .unwrap_or_else(|_e| String::from("<Non-UTF-8>"))
-                                ),
-                            )));
-                        },
-                    };
-                },
-                _ => {
-                    // TODO: Check group membership
-                    tracing::debug!("Creating user `{}` already complete", this.name);
-                    return Ok(StatefulAction::completed(this));
-                },
             }
         }
 
