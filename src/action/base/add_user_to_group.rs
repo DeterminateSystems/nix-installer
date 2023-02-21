@@ -85,7 +85,7 @@ impl AddUserToGroup {
                             return Ok(StatefulAction::completed(this));
                         },
                         Some(64) => {
-                            // Group not found
+                            // 64 is the exit code for "Group not found"
                             tracing::trace!(
                                 "Will add user `{}` to newly created group `{}`",
                                 this.name,
@@ -105,8 +105,7 @@ impl AddUserToGroup {
                                     } else {
                                         "".to_string()
                                     },
-                                    String::from_utf8(output.stderr)
-                                        .unwrap_or_else(|_e| String::from("<Non-UTF-8>"))
+                                    String::from_utf8_lossy(&output.stderr),
                                 ),
                             )));
                         },

@@ -252,7 +252,7 @@ impl Action for CreateUser {
                     .output()
                     .await
                     .map_err(|e| ActionError::Command(e))?;
-                let stderr = String::from_utf8(output.stderr)?;
+                let stderr = String::from_utf8_lossy(&output.stderr);
                 match output.status.code() {
                     Some(0) => (),
                     Some(40) if stderr.contains("-14120") => {

@@ -106,7 +106,7 @@ async fn execute_command(command: &mut Command) -> Result<Output, std::io::Error
                 } else {
                     "".to_string()
                 },
-                String::from_utf8(output.stderr).unwrap_or_else(|_e| String::from("<Non-UTF-8>"))
+                String::from_utf8_lossy(&output.stderr)
             ),
         )),
     }
