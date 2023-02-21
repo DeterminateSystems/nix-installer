@@ -914,6 +914,13 @@ dependencies = [
 ]
 
 [[package]]
+name = "nix-config-parser"
+version = "0.1.0"
+dependencies = [
+ "thiserror",
+]
+
+[[package]]
 name = "nix-installer"
 version = "0.3.0"
 dependencies = [
@@ -927,6 +934,7 @@ dependencies = [
  "eyre",
  "glob",
  "nix",
+ "nix-config-parser",
  "owo-colors",
  "plist",
  "rand 0.8.5",

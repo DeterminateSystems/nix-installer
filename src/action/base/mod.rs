@@ -5,6 +5,7 @@ pub(crate) mod create_directory;
 pub(crate) mod create_file;
 pub(crate) mod create_group;
 pub(crate) mod create_or_insert_into_file;
+pub(crate) mod create_or_merge_nix_config;
 pub(crate) mod create_user;
 pub(crate) mod fetch_and_unpack_nix;
 pub(crate) mod move_unpacked_nix;

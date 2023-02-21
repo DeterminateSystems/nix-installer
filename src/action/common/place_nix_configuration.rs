@@ -41,6 +41,8 @@ impl PlaceNixConfiguration {
         );
         let create_directory =
             CreateDirectory::plan(NIX_CONF_FOLDER, None, None, 0o0755, force).await?;
+        // TODO: CreateOrMergeNixConf -- based off of CreateFile; uses nix-conf-parser to see if all settings in `buf` are already set, and if so just skip? if they don't use hashmap funsies to merge the values that can; error if there are values that differ that can't be merged
+        // TODO: if option is set and not mergeable (i.e. not experimental-features, really), error and guide user on how to resolve (`rm` or remove specific config)
         let create_file = CreateFile::plan(NIX_CONF, None, None, 0o0664, buf, force).await?;
         Ok(Self {
             create_directory,
