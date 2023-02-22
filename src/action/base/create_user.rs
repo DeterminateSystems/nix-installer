@@ -20,7 +20,7 @@ pub struct CreateUser {
 
 impl CreateUser {
     #[tracing::instrument(level = "debug", skip_all)]
-    pub fn plan(
+    pub async fn plan(
         name: String,
         uid: u32,
         groupname: String,
@@ -51,9 +51,6 @@ impl CreateUser {
                     gid,
                 ));
             }
-
-            tracing::debug!("Creating user `{}` already complete", this.name);
-            return Ok(StatefulAction::completed(this));
         }
 
         Ok(StatefulAction::uncompleted(this))
@@ -95,7 +92,7 @@ impl Action for CreateUser {
         let Self {
             name,
             uid,
-            groupname,
+            groupname: _,
             gid,
         } = self;
 
@@ -174,34 +171,7 @@ impl Action for CreateUser {
                 execute_command(
                     Command::new("/usr/bin/dscl")
                         .process_group(0)
-                        .args([
-                            ".",
-                            "-append",
-                            &format!("/Groups/{groupname}"),
-                            "GroupMembership",
-                        ])
-                        .arg(&name)
-                        .stdin(std::process::Stdio::null()),
-                )
-                .await
-                .map_err(|e| ActionError::Command(e))?;
-                execute_command(
-                    Command::new("/usr/bin/dscl")
-                        .process_group(0)
                         .args([".", "-create", &format!("/Users/{name}"), "IsHidden", "1"])
-                        .stdin(std::process::Stdio::null()),
-                )
-                .await
-                .map_err(|e| ActionError::Command(e))?;
-                execute_command(
-                    Command::new("/usr/sbin/dseditgroup")
-                        .process_group(0)
-                        .args(["-o", "edit"])
-                        .arg("-a")
-                        .arg(&name)
-                        .arg("-t")
-                        .arg(&name)
-                        .arg(groupname)
                         .stdin(std::process::Stdio::null()),
                 )
                 .await
@@ -269,16 +239,44 @@ impl Action for CreateUser {
                 patch: _,
             }
             | OperatingSystem::Darwin => {
-                // TODO(@hoverbear): Make this actually work...
-                // Right now, our test machines do not have a secure token and cannot delete users.
-                tracing::warn!("`nix-installer` currently cannot delete groups on Mac due to https://github.com/DeterminateSystems/nix-installer/issues/33. This is a no-op, installing with `nix-installer` again will use the existing user.");
-                // execute_command(Command::new("/usr/bin/dscl").args([
-                //     ".",
-                //     "-delete",
-                //     &format!("/Users/{name}"),
-                // ]).stdin(std::process::Stdio::null()))
-                // .await
-                // .map_err(|e| CreateUserError::Command(e).boxed())?;
+                // MacOS is a "Special" case
+                // It's only possible to delete users under certain conditions.
+                // Documentation on https://it.megocollector.com/macos/cant-delete-a-macos-user-with-dscl-resolution/ and http://www.aixperts.co.uk/?p=214 suggested it was a secure token
+                // That is correct, however it's a bit more nuanced. It appears to be that a user must be graphically logged in for some other user on the system to be deleted.
+                let mut command = Command::new("/usr/bin/dscl");
+                command.args([".", "-delete", &format!("/Users/{name}")]);
+                command.process_group(0);
+                command.stdin(std::process::Stdio::null());
+
+                let output = command
+                    .output()
+                    .await
+                    .map_err(|e| ActionError::Command(e))?;
+                let stderr = String::from_utf8_lossy(&output.stderr);
+                match output.status.code() {
+                    Some(0) => (),
+                    Some(40) if stderr.contains("-14120") => {
+                        // The user is on an ephemeral Mac, like detsys uses
+                        // These Macs cannot always delete users, as sometimes there is no graphical login
+                        tracing::warn!("Encountered an exit code 40 with -14120 error while removing user, this is likely because the initial executing user did not have a secure token, or that there was no graphical login session. To delete the user, log in graphically, then run `/usr/bin/dscl . -delete /Users/{name}");
+                    },
+                    status => {
+                        let command_str = format!("{:?}", command.as_std());
+                        // Something went wrong
+                        return Err(ActionError::Command(std::io::Error::new(
+                            std::io::ErrorKind::Other,
+                            format!(
+                                "Command `{command_str}` failed{}, stderr:\n{}\n",
+                                if let Some(status) = status {
+                                    format!(" {status}")
+                                } else {
+                                    "".to_string()
+                                },
+                                stderr
+                            ),
+                        )));
+                    },
+                }
             },
             _ => {
                 execute_command(

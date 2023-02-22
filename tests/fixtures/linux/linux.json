@@ -325,6 +325,296 @@
                 },
                 "state": "Uncompleted"
               }
+            ],
+            "add_users_to_groups": [
+              {
+                "action": {
+                  "name": "nixbld0",
+                  "uid": 3000,
+                  "groupname": "nixbld",
+                  "gid": 3000
+                },
+                "state": "Uncompleted"
+              },
+              {
+                "action": {
+                  "name": "nixbld1",
+                  "uid": 3001,
+                  "groupname": "nixbld",
+                  "gid": 3000
+                },
+                "state": "Uncompleted"
+              },
+              {
+                "action": {
+                  "name": "nixbld2",
+                  "uid": 3002,
+                  "groupname": "nixbld",
+                  "gid": 3000
+                },
+                "state": "Uncompleted"
+              },
+              {
+                "action": {
+                  "name": "nixbld3",
+                  "uid": 3003,
+                  "groupname": "nixbld",
+                  "gid": 3000
+                },
+                "state": "Uncompleted"
+              },
+              {
+                "action": {
+                  "name": "nixbld4",
+                  "uid": 3004,
+                  "groupname": "nixbld",
+                  "gid": 3000
+                },
+                "state": "Uncompleted"
+              },
+              {
+                "action": {
+                  "name": "nixbld5",
+                  "uid": 3005,
+                  "groupname": "nixbld",
+                  "gid": 3000
+                },
+                "state": "Uncompleted"
+              },
+              {
+                "action": {
+                  "name": "nixbld6",
+                  "uid": 3006,
+                  "groupname": "nixbld",
+                  "gid": 3000
+                },
+                "state": "Uncompleted"
+              },
+              {
+                "action": {
+                  "name": "nixbld7",
+                  "uid": 3007,
+                  "groupname": "nixbld",
+                  "gid": 3000
+                },
+                "state": "Uncompleted"
+              },
+              {
+                "action": {
+                  "name": "nixbld8",
+                  "uid": 3008,
+                  "groupname": "nixbld",
+                  "gid": 3000
+                },
+                "state": "Uncompleted"
+              },
+              {
+                "action": {
+                  "name": "nixbld9",
+                  "uid": 3009,
+                  "groupname": "nixbld",
+                  "gid": 3000
+                },
+                "state": "Uncompleted"
+              },
+              {
+                "action": {
+                  "name": "nixbld10",
+                  "uid": 3010,
+                  "groupname": "nixbld",
+                  "gid": 3000
+                },
+                "state": "Uncompleted"
+              },
+              {
+                "action": {
+                  "name": "nixbld11",
+                  "uid": 3011,
+                  "groupname": "nixbld",
+                  "gid": 3000
+                },
+                "state": "Uncompleted"
+              },
+              {
+                "action": {
+                  "name": "nixbld12",
+                  "uid": 3012,
+                  "groupname": "nixbld",
+                  "gid": 3000
+                },
+                "state": "Uncompleted"
+              },
+              {
+                "action": {
+                  "name": "nixbld13",
+                  "uid": 3013,
+                  "groupname": "nixbld",
+                  "gid": 3000
+                },
+                "state": "Uncompleted"
+              },
+              {
+                "action": {
+                  "name": "nixbld14",
+                  "uid": 3014,
+                  "groupname": "nixbld",
+                  "gid": 3000
+                },
+                "state": "Uncompleted"
+              },
+              {
+                "action": {
+                  "name": "nixbld15",
+                  "uid": 3015,
+                  "groupname": "nixbld",
+                  "gid": 3000
+                },
+                "state": "Uncompleted"
+              },
+              {
+                "action": {
+                  "name": "nixbld16",
+                  "uid": 3016,
+                  "groupname": "nixbld",
+                  "gid": 3000
+                },
+                "state": "Uncompleted"
+              },
+              {
+                "action": {
+                  "name": "nixbld17",
+                  "uid": 3017,
+                  "groupname": "nixbld",
+                  "gid": 3000
+                },
+                "state": "Uncompleted"
+              },
+              {
+                "action": {
+                  "name": "nixbld18",
+                  "uid": 3018,
+                  "groupname": "nixbld",
+                  "gid": 3000
+                },
+                "state": "Uncompleted"
+              },
+              {
+                "action": {
+                  "name": "nixbld19",
+                  "uid": 3019,
+                  "groupname": "nixbld",
+                  "gid": 3000
+                },
+                "state": "Uncompleted"
+              },
+              {
+                "action": {
+                  "name": "nixbld20",
+                  "uid": 3020,
+                  "groupname": "nixbld",
+                  "gid": 3000
+                },
+                "state": "Uncompleted"
+              },
+              {
+                "action": {
+                  "name": "nixbld21",
+                  "uid": 3021,
+                  "groupname": "nixbld",
+                  "gid": 3000
+                },
+                "state": "Uncompleted"
+              },
+              {
+                "action": {
+                  "name": "nixbld22",
+                  "uid": 3022,
+                  "groupname": "nixbld",
+                  "gid": 3000
+                },
+                "state": "Uncompleted"
+              },
+              {
+                "action": {
+                  "name": "nixbld23",
+                  "uid": 3023,
+                  "groupname": "nixbld",
+                  "gid": 3000
+                },
+                "state": "Uncompleted"
+              },
+              {
+                "action": {
+                  "name": "nixbld24",
+                  "uid": 3024,
+                  "groupname": "nixbld",
+                  "gid": 3000
+                },
+                "state": "Uncompleted"
+              },
+              {
+                "action": {
+                  "name": "nixbld25",
+                  "uid": 3025,
+                  "groupname": "nixbld",
+                  "gid": 3000
+                },
+                "state": "Uncompleted"
+              },
+              {
+                "action": {
+                  "name": "nixbld26",
+                  "uid": 3026,
+                  "groupname": "nixbld",
+                  "gid": 3000
+                },
+                "state": "Uncompleted"
+              },
+              {
+                "action": {
+                  "name": "nixbld27",
+                  "uid": 3027,
+                  "groupname": "nixbld",
+                  "gid": 3000
+                },
+                "state": "Uncompleted"
+              },
+              {
+                "action": {
+                  "name": "nixbld28",
+                  "uid": 3028,
+                  "groupname": "nixbld",
+                  "gid": 3000
+                },
+                "state": "Uncompleted"
+              },
+              {
+                "action": {
+                  "name": "nixbld29",
+                  "uid": 3029,
+                  "groupname": "nixbld",
+                  "gid": 3000
+                },
+                "state": "Uncompleted"
+              },
+              {
+                "action": {
+                  "name": "nixbld30",
+                  "uid": 3030,
+                  "groupname": "nixbld",
+                  "gid": 3000
+                },
+                "state": "Uncompleted"
+              },
+              {
+                "action": {
+                  "name": "nixbld31",
+                  "uid": 3031,
+                  "groupname": "nixbld",
+                  "gid": 3000
+                },
+                "state": "Uncompleted"
+              }
             ]
           },
           "state": "Uncompleted"

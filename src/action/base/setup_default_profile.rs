@@ -151,9 +151,13 @@ impl Action for SetupDefaultProfile {
                 return Err(ActionError::Command(std::io::Error::new(
                     std::io::ErrorKind::Other,
                     format!(
-                        "Command `{load_db_command_str}` failed status, stderr:\n{}\n",
-                        String::from_utf8(output.stderr)
-                            .unwrap_or_else(|_e| String::from("<Non-UTF-8>"))
+                        "Command `{load_db_command_str}` failed{}, stderr:\n{}\n",
+                        if let Some(code) = output.status.code() {
+                            format!(" status {code}")
+                        } else {
+                            "".to_string()
+                        },
+                        String::from_utf8_lossy(&output.stderr)
                     ),
                 )));
             };
