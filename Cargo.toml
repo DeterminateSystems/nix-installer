@@ -54,7 +54,7 @@ semver = { version = "1.0.14", default-features = false, features = ["serde", "s
 term = { version = "0.7.0", default-features = false }
 uuid = { version = "1.2.2", features = ["serde"] }
 
-nix-config-parser = { path = "../nix-config-parser" }
+nix-config-parser = { git = "https://github.com/DeterminateSystems/nix-config-parser" }
 
 [dev-dependencies]
 eyre = { version = "0.6.8", default-features = false, features = [ "track-caller" ] }

@@ -1,6 +1,6 @@
 use tracing::{span, Span};
 
-use crate::action::base::{CreateDirectory, CreateFile};
+use crate::action::base::{CreateDirectory, CreateOrMergeNixConfig};
 use crate::action::{Action, ActionDescription, ActionError, StatefulAction};
 
 const NIX_CONF_FOLDER: &str = "/etc/nix";
@@ -12,7 +12,7 @@ Place the `/etc/nix.conf` file
 #[derive(Debug, serde::Deserialize, serde::Serialize, Clone)]
 pub struct PlaceNixConfiguration {
     create_directory: StatefulAction<CreateDirectory>,
-    create_file: StatefulAction<CreateFile>,
+    create_or_merge_nix_config: StatefulAction<CreateOrMergeNixConfig>,
 }
 
 impl PlaceNixConfiguration {
@@ -41,12 +41,11 @@ impl PlaceNixConfiguration {
         );
         let create_directory =
             CreateDirectory::plan(NIX_CONF_FOLDER, None, None, 0o0755, force).await?;
-        // TODO: CreateOrMergeNixConf -- based off of CreateFile; uses nix-conf-parser to see if all settings in `buf` are already set, and if so just skip? if they don't use hashmap funsies to merge the values that can; error if there are values that differ that can't be merged
-        // TODO: if option is set and not mergeable (i.e. not experimental-features, really), error and guide user on how to resolve (`rm` or remove specific config)
-        let create_file = CreateFile::plan(NIX_CONF, None, None, 0o0664, buf, force).await?;
+        let create_or_merge_nix_config =
+            CreateOrMergeNixConfig::plan(NIX_CONF, None, None, 0o0664, buf).await?;
         Ok(Self {
             create_directory,
-            create_file,
+            create_or_merge_nix_config,
         }
         .into())
     }
@@ -76,12 +75,12 @@ impl Action for PlaceNixConfiguration {
     #[tracing::instrument(level = "debug", skip_all)]
     async fn execute(&mut self) -> Result<(), ActionError> {
         let Self {
-            create_file,
+            create_or_merge_nix_config,
             create_directory,
         } = self;
 
         create_directory.try_execute().await?;
-        create_file.try_execute().await?;
+        create_or_merge_nix_config.try_execute().await?;
 
         Ok(())
     }
@@ -99,11 +98,11 @@ impl Action for PlaceNixConfiguration {
     #[tracing::instrument(level = "debug", skip_all)]
     async fn revert(&mut self) -> Result<(), ActionError> {
         let Self {
-            create_file,
+            create_or_merge_nix_config,
             create_directory,
         } = self;
 
-        create_file.try_revert().await?;
+        create_or_merge_nix_config.try_revert().await?;
         create_directory.try_revert().await?;
 
         Ok(())

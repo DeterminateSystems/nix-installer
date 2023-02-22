@@ -7,13 +7,13 @@ use std::{
     path::{Path, PathBuf},
 };
 use tokio::{
-    fs::{remove_file, File, OpenOptions},
-    io::{AsyncReadExt, AsyncWriteExt},
+    fs::{remove_file, OpenOptions},
+    io::{AsyncSeekExt, AsyncWriteExt},
 };
 
 use crate::action::{Action, ActionDescription, ActionError, StatefulAction};
 
-const MERGABLE_CONF_NAMES: &'static [&str] = &["experimental-features"];
+const MERGEABLE_CONF_NAMES: &[&str] = &["experimental-features"];
 
 /** Create a file at the given location with the provided `buf`,
 optionally with an owning user, group, and mode.
@@ -22,7 +22,7 @@ If `force` is set, the file will always be overwritten (and deleted)
 regardless of its presence prior to install.
  */
 #[derive(Debug, serde::Deserialize, serde::Serialize, Clone)]
-pub struct CreateOrMergeNixConf {
+pub struct CreateOrMergeNixConfig {
     pub(crate) path: PathBuf,
     user: Option<String>,
     group: Option<String>,
@@ -38,7 +38,7 @@ struct NixConfigs {
     merged_nix_config: Option<NixConfig>,
 }
 
-impl CreateOrMergeNixConf {
+impl CreateOrMergeNixConfig {
     #[tracing::instrument(level = "debug", skip_all)]
     pub async fn plan(
         path: impl AsRef<Path>,
@@ -53,7 +53,7 @@ impl CreateOrMergeNixConf {
         let group = group.into();
         let pending_nix_config =
             nix_config_parser::parse_nix_config_string(buf.clone(), &Path::new("/"))
-                .expect("TODO: convert to ActionError");
+                .map_err(ActionError::ParseNixConfig)?;
         let nix_configs = NixConfigs {
             pending_nix_config,
             existing_nix_config: None,
@@ -120,8 +120,9 @@ impl CreateOrMergeNixConf {
             }
 
             let existing_nix_config = nix_config_parser::parse_nix_config_file(&this.path)
-                .expect("TODO: convert to ActionError");
+                .map_err(ActionError::ParseNixConfig)?;
             let mut merged_nix_config: NixConfig = NixConfig::new();
+            let mut unmergeable_config_names = Vec::new();
             this.nix_configs.existing_nix_config = Some(existing_nix_config.clone());
 
             for (pending_conf_name, pending_conf_value) in &this.nix_configs.pending_nix_config {
@@ -129,31 +130,36 @@ impl CreateOrMergeNixConf {
                     let pending_conf_value = pending_conf_value.split(' ').collect::<Vec<_>>();
                     let existing_conf_value = existing_conf_value.split(' ').collect::<Vec<_>>();
 
-                    if !existing_conf_value
+                    if pending_conf_value
                         .iter()
-                        .all(|e| pending_conf_value.contains(e))
+                        .all(|e| existing_conf_value.contains(e))
                     {
-                        if MERGABLE_CONF_NAMES.contains(&pending_conf_name.as_str()) {
-                            merged_nix_config.insert(
-                                pending_conf_name.to_owned(),
-                                format!(
-                                    "{} {}",
-                                    pending_conf_value.join(" "),
-                                    existing_conf_value.join(" ")
-                                ),
-                            );
-                        } else {
-                            // FIXME: will be an error
-                            todo!("don't know how to merge {pending_conf_name}");
-                        }
+                        // If _all_ the values we want are present in the existing config,
+                        // merged_nix_config will be empty and this will be marked as completed. We
+                        // don't return early here because there may be more config options to
+                        // check.
+                    } else if MERGEABLE_CONF_NAMES.contains(&pending_conf_name.as_str()) {
+                        let pending_conf_value = pending_conf_value.join(" ");
+                        let existing_conf_value = existing_conf_value.join(" ");
+
+                        merged_nix_config.insert(
+                            pending_conf_name.to_owned(),
+                            format!("{pending_conf_value} {existing_conf_value}"),
+                        );
                     } else {
-                        // all the values we want are in the existing conf, and merged_nix_config
-                        // will be empty
+                        unmergeable_config_names.push(pending_conf_name.to_owned());
                     }
                 } else {
                     merged_nix_config
                         .insert(pending_conf_name.to_owned(), pending_conf_value.to_owned());
                 }
+            }
+
+            if !unmergeable_config_names.is_empty() {
+                return Err(ActionError::UnmergeableConfig(
+                    unmergeable_config_names,
+                    this.path.clone(),
+                ));
             }
 
             if !merged_nix_config.is_empty() {
@@ -174,7 +180,7 @@ impl CreateOrMergeNixConf {
 
 #[async_trait::async_trait]
 #[typetag::serde(name = "create_file")]
-impl Action for CreateOrMergeNixConf {
+impl Action for CreateOrMergeNixConfig {
     fn tracing_synopsis(&self) -> String {
         format!("Create or overwrite file `{}`", self.path.display())
     }
@@ -229,10 +235,6 @@ impl Action for CreateOrMergeNixConf {
             .open(&path)
             .await
             .map_err(|e| ActionError::Open(path.to_owned(), e))?;
-
-        // file.write_all(buf.as_bytes())
-        //     .await
-        //     .map_err(|e| ActionError::Write(path.to_owned(), e))?;
 
         if let Some(merged_nix_config) = &nix_configs.merged_nix_config {
             // #[cfg(all())] // always true
@@ -305,10 +307,18 @@ impl Action for CreateOrMergeNixConf {
                     new_config.push_str("\n");
                 }
 
+                file.rewind()
+                    .await
+                    .map_err(|e| ActionError::Seek(path.to_owned(), e))?;
+                file.set_len(0)
+                    .await
+                    .map_err(|e| ActionError::Truncate(path.to_owned(), e))?;
                 file.write_all(new_config.as_bytes())
                     .await
-                    .expect("TODO: handle error writing");
-                file.flush().await.expect("TODO");
+                    .map_err(|e| ActionError::Write(path.to_owned(), e))?;
+                file.flush()
+                    .await
+                    .map_err(|e| ActionError::Flush(path.to_owned(), e))?;
             }
         }
 
@@ -382,7 +392,7 @@ mod test {
     async fn creates_and_deletes_file() -> eyre::Result<()> {
         let temp_dir = tempdir::TempDir::new("nix_installer_tests_create_file")?;
         let test_file = temp_dir.path().join("creates_and_deletes_file");
-        let mut action = CreateOrMergeNixConf::plan(
+        let mut action = CreateOrMergeNixConfig::plan(
             test_file.clone(),
             None,
             None,
@@ -406,7 +416,7 @@ mod test {
         let test_file = temp_dir
             .path()
             .join("creates_and_deletes_file_even_if_edited");
-        let mut action = CreateOrMergeNixConf::plan(
+        let mut action = CreateOrMergeNixConfig::plan(
             test_file.clone(),
             None,
             None,
@@ -433,11 +443,11 @@ mod test {
             .path()
             .join("recognizes_existing_exact_files_and_reverts_them");
 
-        let test_content = "experimental-features = ca-references";
+        let test_content = "experimental-features = flakes";
         write(test_file.as_path(), test_content).await?;
 
         let mut action =
-            CreateOrMergeNixConf::plan(test_file.clone(), None, None, None, test_content.into())
+            CreateOrMergeNixConfig::plan(test_file.clone(), None, None, None, test_content.into())
                 .await?;
 
         action.try_execute().await?;
@@ -458,16 +468,16 @@ mod test {
 
         write(
             test_file.as_path(),
-            "experimental-features = ca-references\nwarn-on-trace = true\n",
+            "experimental-features = flakes\nwarn-dirty = true\n",
         )
         .await?;
 
-        let mut action = CreateOrMergeNixConf::plan(
+        let mut action = CreateOrMergeNixConfig::plan(
             test_file.clone(),
             None,
             None,
             None,
-            "experimental-features = test-feature\nwarn-on-error = false\n".into(),
+            "experimental-features = nix-command flakes\nallow-dirty = false\n".into(),
         )
         .await?;
 
@@ -475,15 +485,46 @@ mod test {
 
         let s = std::fs::read_to_string(&test_file)?;
         assert!(s.contains("# Generated by"));
-        assert!(s.contains("test-feature"));
-        assert!(s.contains("ca-references"));
-        assert!(s.contains("warn-on-error = false"));
-        assert!(s.contains("warn-on-trace = true"));
+        assert!(s.contains("flakes"));
+        assert!(s.contains("nix-command"));
+        assert!(s.contains("allow-dirty = false"));
+        assert!(s.contains("warn-dirty = true"));
         assert!(nix_config_parser::parse_nix_config_file(&test_file).is_ok());
 
         action.try_revert().await?;
 
         assert!(!test_file.exists(), "File should have been deleted");
+
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn recognizes_existing_different_files_and_fails_to_merge() -> eyre::Result<()> {
+        let temp_dir = tempdir::TempDir::new("nix_installer_tests_create_file")?;
+        let test_file = temp_dir
+            .path()
+            .join("recognizes_existing_different_files_and_fails_to_merge");
+
+        write(
+            test_file.as_path(),
+            "experimental-features = flakes\nwarn-dirty = true\n",
+        )
+        .await?;
+
+        match CreateOrMergeNixConfig::plan(
+            test_file.clone(),
+            None,
+            None,
+            None,
+            "experimental-features = nix-command flakes\nwarn-dirty = false\n".into(),
+        )
+        .await
+        {
+            Err(ActionError::UnmergeableConfig(_, path)) => assert_eq!(path, test_file.as_path()),
+            _ => return Err(eyre!("Should have returned ActionError::UnmergeableConfig")),
+        }
+
+        assert!(test_file.exists(), "File should not have been deleted");
 
         Ok(())
     }

@@ -16,6 +16,7 @@ pub use create_directory::CreateDirectory;
 pub use create_file::CreateFile;
 pub use create_group::CreateGroup;
 pub use create_or_insert_into_file::CreateOrInsertIntoFile;
+pub use create_or_merge_nix_config::CreateOrMergeNixConfig;
 pub use create_user::CreateUser;
 pub use fetch_and_unpack_nix::{FetchAndUnpackNix, FetchUrlError};
 pub use move_unpacked_nix::{MoveUnpackedNix, MoveUnpackedNixError};
