@@ -19,7 +19,7 @@ pub trait CommandExecute {
     async fn execute(self) -> eyre::Result<ExitCode>;
 }
 
-/// An opinionated, experimental Nix installer
+/// The Determinate Nix installer
 ///
 /// Plans a Nix install, prompts for confirmation, then executes it
 #[derive(Debug, Parser)]

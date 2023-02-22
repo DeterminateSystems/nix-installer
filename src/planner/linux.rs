@@ -12,10 +12,10 @@ use crate::{
 use std::{collections::HashMap, path::Path};
 use tokio::process::Command;
 
-/// A planner for Linux multi-user installs
+/// A planner for Linux installs
 #[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
 #[cfg_attr(feature = "cli", derive(clap::Parser))]
-pub struct LinuxMulti {
+pub struct Linux {
     #[cfg_attr(feature = "cli", clap(flatten))]
     pub settings: CommonSettings,
     #[cfg_attr(feature = "cli", clap(flatten))]
@@ -23,8 +23,8 @@ pub struct LinuxMulti {
 }
 
 #[async_trait::async_trait]
-#[typetag::serde(name = "linux-multi")]
-impl Planner for LinuxMulti {
+#[typetag::serde(name = "linux")]
+impl Planner for Linux {
     async fn default() -> Result<Self, PlannerError> {
         Ok(Self {
             settings: CommonSettings::default().await?,
@@ -98,8 +98,8 @@ impl Planner for LinuxMulti {
     }
 }
 
-impl Into<BuiltinPlanner> for LinuxMulti {
+impl Into<BuiltinPlanner> for Linux {
     fn into(self) -> BuiltinPlanner {
-        BuiltinPlanner::LinuxMulti(self)
+        BuiltinPlanner::Linux(self)
     }
 }

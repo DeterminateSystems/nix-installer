@@ -1,4 +1,4 @@
-/*! A [Nix](https://github.com/NixOS/nix) installer and uninstaller.
+/*! The Determinate [Nix](https://github.com/NixOS/nix) Installer
 
 `nix-installer` breaks down into three main concepts:
 
@@ -42,9 +42,9 @@ use nix_installer::{InstallPlan, planner::Planner};
 
 # async fn chosen_planner_install() -> color_eyre::Result<()> {
 #[cfg(target_os = "linux")]
-let planner = nix_installer::planner::linux::SteamDeck::default().await?;
+let planner = nix_installer::planner::steam_deck::SteamDeck::default().await?;
 #[cfg(target_os = "macos")]
-let planner = nix_installer::planner::darwin::DarwinMulti::default().await?;
+let planner = nix_installer::planner::macos::Macos::default().await?;
 
 // Or call `crate::planner::BuiltinPlanner::default()`
 // Match on the result to customize.
@@ -100,8 +100,13 @@ async fn execute_command(command: &mut Command) -> Result<Output, std::io::Error
         false => Err(std::io::Error::new(
             std::io::ErrorKind::Other,
             format!(
-                "Command `{command_str}` failed status, stderr:\n{}\n",
-                String::from_utf8(output.stderr).unwrap_or_else(|_e| String::from("<Non-UTF-8>"))
+                "Command `{command_str}` failed{}, stderr:\n{}\n",
+                if let Some(code) = output.status.code() {
+                    format!(" status {code}")
+                } else {
+                    "".to_string()
+                },
+                String::from_utf8_lossy(&output.stderr)
             ),
         )),
     }

@@ -360,7 +360,6 @@ If you are working on the `action.yml` There is an integration test for `action.
 
 # Releases
 
-> `nix-installer` is still experimental, so this process may change.
 
 This package uses [Semantic Versioning](https://semver.org/). When determining the version number for a new release refer to Semantic Versioning for guidance. You can use the `check-semver` command alias from within the development environment to validate your changes don't break semver.
 

@@ -1,10 +1,13 @@
 use nix::unistd::{chown, Group, User};
 use tracing::{span, Span};
 
-use std::path::{Path, PathBuf};
+use std::{
+    os::{unix::fs::MetadataExt, unix::fs::PermissionsExt},
+    path::{Path, PathBuf},
+};
 use tokio::{
-    fs::{remove_file, OpenOptions},
-    io::AsyncWriteExt,
+    fs::{remove_file, File, OpenOptions},
+    io::{AsyncReadExt, AsyncWriteExt},
 };
 
 use crate::action::{Action, ActionDescription, ActionError, StatefulAction};
@@ -36,20 +39,87 @@ impl CreateFile {
         force: bool,
     ) -> Result<StatefulAction<Self>, ActionError> {
         let path = path.as_ref().to_path_buf();
-
-        if path.exists() && !force {
-            return Err(ActionError::Exists(path.to_path_buf()));
-        }
-
-        Ok(Self {
+        let mode = mode.into();
+        let user = user.into();
+        let group = group.into();
+        let this = Self {
             path,
-            user: user.into(),
-            group: group.into(),
-            mode: mode.into(),
+            user,
+            group,
+            mode,
             buf,
             force,
+        };
+
+        if this.path.exists() {
+            // If the path exists, perhaps we can just skip this
+            let mut file = File::open(&this.path)
+                .await
+                .map_err(|e| ActionError::Open(this.path.clone(), e))?;
+
+            let metadata = file
+                .metadata()
+                .await
+                .map_err(|e| ActionError::GettingMetadata(this.path.clone(), e))?;
+            if let Some(mode) = mode {
+                // Does the file have the right permissions?
+                let discovered_mode = metadata.permissions().mode();
+                if discovered_mode != mode {
+                    return Err(ActionError::PathModeMismatch(
+                        this.path.clone(),
+                        discovered_mode,
+                        mode,
+                    ));
+                }
+            }
+
+            // Does it have the right user/group?
+            if let Some(user) = &this.user {
+                // If the file exists, the user must also exist to be correct.
+                let expected_uid = User::from_name(user.as_str())
+                    .map_err(|e| ActionError::GettingUserId(user.clone(), e))?
+                    .ok_or_else(|| ActionError::NoUser(user.clone()))?
+                    .uid;
+                let found_uid = metadata.uid();
+                if found_uid != expected_uid.as_raw() {
+                    return Err(ActionError::PathUserMismatch(
+                        this.path.clone(),
+                        found_uid,
+                        expected_uid.as_raw(),
+                    ));
+                }
+            }
+            if let Some(group) = &this.group {
+                // If the file exists, the group must also exist to be correct.
+                let expected_gid = Group::from_name(group.as_str())
+                    .map_err(|e| ActionError::GettingGroupId(group.clone(), e))?
+                    .ok_or_else(|| ActionError::NoUser(group.clone()))?
+                    .gid;
+                let found_gid = metadata.gid();
+                if found_gid != expected_gid.as_raw() {
+                    return Err(ActionError::PathGroupMismatch(
+                        this.path.clone(),
+                        found_gid,
+                        expected_gid.as_raw(),
+                    ));
+                }
+            }
+
+            // Does it have the right content?
+            let mut discovered_buf = String::new();
+            file.read_to_string(&mut discovered_buf)
+                .await
+                .map_err(|e| ActionError::Read(this.path.clone(), e))?;
+
+            if discovered_buf != this.buf {
+                return Err(ActionError::Exists(this.path.clone()));
+            }
+
+            tracing::debug!("Creating file `{}` already complete", this.path.display());
+            return Ok(StatefulAction::completed(this));
         }
-        .into())
+
+        Ok(StatefulAction::uncompleted(this))
     }
 }
 
@@ -178,6 +248,8 @@ impl Action for CreateFile {
 #[cfg(test)]
 mod test {
     use super::*;
+    use eyre::eyre;
+    use tokio::fs::write;
 
     #[tokio::test]
     async fn creates_and_deletes_file() -> eyre::Result<()> {
@@ -206,11 +278,68 @@ mod test {
 
         action.try_execute().await?;
 
-        tokio::fs::write(test_file.as_path(), "More content").await?;
+        write(test_file.as_path(), "More content").await?;
 
         action.try_revert().await?;
 
         assert!(!test_file.exists(), "File should have been deleted");
+
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn recognizes_existing_exact_files_and_reverts_them() -> eyre::Result<()> {
+        let temp_dir = tempdir::TempDir::new("nix_installer_tests_create_file")?;
+        let test_file = temp_dir
+            .path()
+            .join("recognizes_existing_exact_files_and_reverts_them");
+
+        let test_content = "Some content";
+        write(test_file.as_path(), test_content).await?;
+
+        let mut action = CreateFile::plan(
+            test_file.clone(),
+            None,
+            None,
+            None,
+            test_content.into(),
+            false,
+        )
+        .await?;
+
+        action.try_execute().await?;
+
+        action.try_revert().await?;
+
+        assert!(!test_file.exists(), "File should have been deleted");
+
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn recognizes_existing_different_files_and_errors() -> eyre::Result<()> {
+        let temp_dir = tempdir::TempDir::new("nix_installer_tests_create_file")?;
+        let test_file = temp_dir
+            .path()
+            .join("recognizes_existing_different_files_and_errors");
+
+        write(test_file.as_path(), "Some content").await?;
+
+        match CreateFile::plan(
+            test_file.clone(),
+            None,
+            None,
+            None,
+            "Some different content".into(),
+            false,
+        )
+        .await
+        {
+            Err(ActionError::Exists(path)) => assert_eq!(path, test_file.as_path()),
+            _ => return Err(eyre!("Should have returned an ActionError::Exists error")),
+        }
+
+        assert!(test_file.exists(), "File should have not been deleted");
 
         Ok(())
     }
