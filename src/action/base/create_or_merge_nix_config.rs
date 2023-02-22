@@ -51,8 +51,9 @@ impl CreateOrMergeNixConfig {
         let mode = mode.into();
         let user = user.into();
         let group = group.into();
+        // TODO: make path optional in nix_config_parser
         let pending_nix_config =
-            nix_config_parser::parse_nix_config_string(buf.clone(), &Path::new("/"))
+            nix_config_parser::parse_nix_config_string(buf.clone(), Path::new("/"))
                 .map_err(ActionError::ParseNixConfig)?;
         let nix_configs = NixConfigs {
             pending_nix_config,
@@ -80,7 +81,7 @@ impl CreateOrMergeNixConfig {
                 let discovered_mode = metadata.permissions().mode();
                 if discovered_mode != mode {
                     return Err(ActionError::PathModeMismatch(
-                        this.path.clone(),
+                        this.path,
                         discovered_mode,
                         mode,
                     ));
@@ -97,7 +98,7 @@ impl CreateOrMergeNixConfig {
                 let found_uid = metadata.uid();
                 if found_uid != expected_uid.as_raw() {
                     return Err(ActionError::PathUserMismatch(
-                        this.path.clone(),
+                        this.path,
                         found_uid,
                         expected_uid.as_raw(),
                     ));
@@ -112,7 +113,7 @@ impl CreateOrMergeNixConfig {
                 let found_gid = metadata.gid();
                 if found_gid != expected_gid.as_raw() {
                     return Err(ActionError::PathGroupMismatch(
-                        this.path.clone(),
+                        this.path,
                         found_gid,
                         expected_gid.as_raw(),
                     ));
@@ -158,7 +159,7 @@ impl CreateOrMergeNixConfig {
             if !unmergeable_config_names.is_empty() {
                 return Err(ActionError::UnmergeableConfig(
                     unmergeable_config_names,
-                    this.path.clone(),
+                    this.path,
                 ));
             }
 
@@ -181,7 +182,6 @@ impl CreateOrMergeNixConfig {
 
             if !merged_nix_config.is_empty() {
                 this.nix_configs.merged_nix_config = Some(merged_nix_config);
-                return Ok(StatefulAction::uncompleted(this));
             }
         }
 
@@ -259,10 +259,10 @@ impl Action for CreateOrMergeNixConfig {
                     new_config.push_str(name);
                     new_config.push_str(" = ");
                     new_config.push_str(value);
-                    new_config.push_str("\n");
+                    new_config.push('\n');
                 }
 
-                new_config.push_str("\n");
+                new_config.push('\n');
             }
 
             new_config.push_str(&format!(
@@ -274,7 +274,7 @@ impl Action for CreateOrMergeNixConfig {
                 new_config.push_str(name);
                 new_config.push_str(" = ");
                 new_config.push_str(value);
-                new_config.push_str("\n");
+                new_config.push('\n');
             }
 
             file.rewind()
