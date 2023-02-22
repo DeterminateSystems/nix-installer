@@ -179,7 +179,7 @@ impl CreateOrMergeNixConfig {
 }
 
 #[async_trait::async_trait]
-#[typetag::serde(name = "create_file")]
+#[typetag::serde(name = "create_or_merge_nix_config")]
 impl Action for CreateOrMergeNixConfig {
     fn tracing_synopsis(&self) -> String {
         format!("Create or overwrite file `{}`", self.path.display())
