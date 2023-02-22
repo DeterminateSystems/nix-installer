@@ -47,6 +47,7 @@ pub struct Install {
         global = true
     )]
     pub explain: bool,
+
     #[clap(env = "NIX_INSTALLER_PLAN")]
     pub plan: Option<PathBuf>,
 

@@ -101,6 +101,23 @@ pub trait Planner: std::fmt::Debug + Send + Sync + dyn_clone::DynClone {
     async fn plan(&self) -> Result<Vec<StatefulAction<Box<dyn Action>>>, PlannerError>;
     /// The settings being used by the planner
     fn settings(&self) -> Result<HashMap<String, serde_json::Value>, InstallSettingsError>;
+
+    async fn configured_settings(&self) -> Result<Vec<String>, PlannerError>
+    where
+        Self: Sized,
+    {
+        let default = Self::default().await?.settings()?;
+        let configured = self.settings()?;
+
+        let mut keys: Vec<String> = Vec::new();
+        for (key, value) in configured.iter() {
+            if default.get(key) != Some(value) {
+                keys.push(key.clone())
+            }
+        }
+        Ok(keys)
+    }
+
     /// A boxed, type erased planner
     fn boxed(self) -> Box<dyn Planner>
     where
@@ -108,6 +125,9 @@ pub trait Planner: std::fmt::Debug + Send + Sync + dyn_clone::DynClone {
     {
         Box::new(self)
     }
+
+    #[cfg(feature = "diagnostics")]
+    async fn diagnostic_data(&self) -> Result<crate::diagnostics::DiagnosticData, PlannerError>;
 }
 
 dyn_clone::clone_trait_object!(Planner);
@@ -171,6 +191,17 @@ impl BuiltinPlanner {
         Ok(built)
     }
 
+    pub async fn configured_settings(&self) -> Result<Vec<String>, PlannerError> {
+        match self {
+            #[cfg(target_os = "linux")]
+            BuiltinPlanner::Linux(inner) => inner.configured_settings().await,
+            #[cfg(target_os = "linux")]
+            BuiltinPlanner::SteamDeck(inner) => inner.configured_settings().await,
+            #[cfg(target_os = "macos")]
+            BuiltinPlanner::Macos(inner) => inner.configured_settings().await,
+        }
+    }
+
     pub async fn plan(self) -> Result<InstallPlan, NixInstallerError> {
         match self {
             #[cfg(target_os = "linux")]
@@ -211,6 +242,20 @@ impl BuiltinPlanner {
             BuiltinPlanner::SteamDeck(i) => i.settings(),
             #[cfg(target_os = "macos")]
             BuiltinPlanner::Macos(i) => i.settings(),
+        }
+    }
+
+    #[cfg(feature = "diagnostics")]
+    pub async fn diagnostic_data(
+        &self,
+    ) -> Result<crate::diagnostics::DiagnosticData, PlannerError> {
+        match self {
+            #[cfg(target_os = "linux")]
+            BuiltinPlanner::Linux(i) => i.diagnostic_data().await,
+            #[cfg(target_os = "linux")]
+            BuiltinPlanner::SteamDeck(i) => i.diagnostic_data().await,
+            #[cfg(target_os = "macos")]
+            BuiltinPlanner::Macos(i) => i.diagnostic_data().await,
         }
     }
 }

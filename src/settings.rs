@@ -202,6 +202,30 @@ pub struct CommonSettings {
         )
     )]
     pub(crate) force: bool,
+
+    #[cfg(feature = "diagnostics")]
+    /// The URL or file path for an installation diagnostic to be sent
+    ///
+    /// Sample of the data sent:
+    ///
+    /// {
+    ///     "planner": "linux",
+    ///     "configured-settings": [ "modify_profile" ],
+    ///     "os-name": "Ubuntu",
+    ///     "os-version": "22.10",
+    ///     "architecture": "x86_64",
+    ///     "action": "install",
+    ///     "status": "success"
+    /// }
+    ///
+    /// To disable diagnostic reporting, unset the default with `--diagnostic-endpoint=`
+    #[clap(
+        long,
+        env = "NIX_INSTALLER_DIAGNOSTIC_ENDPOINT",
+        global = true,
+        default_value = "https://install.determinate.systems/diagnostics"
+    )]
+    pub diagnostic_endpoint: Option<Url>,
 }
 
 impl CommonSettings {
@@ -267,6 +291,10 @@ impl CommonSettings {
             nix_package_url: url.parse()?,
             extra_conf: Default::default(),
             force: false,
+            #[cfg(feature = "diagnostics")]
+            diagnostic_endpoint: Some(
+                "https://install.determinate.systems/diagnostics".try_into()?,
+            ),
         })
     }
 
@@ -283,6 +311,8 @@ impl CommonSettings {
             nix_package_url,
             extra_conf,
             force,
+            #[cfg(feature = "diagnostics")]
+            diagnostic_endpoint,
         } = self;
         let mut map = HashMap::default();
 
@@ -325,6 +355,12 @@ impl CommonSettings {
         );
         map.insert("extra_conf".into(), serde_json::to_value(extra_conf)?);
         map.insert("force".into(), serde_json::to_value(force)?);
+
+        #[cfg(feature = "diagnostics")]
+        map.insert(
+            "diagnostic_endpoint".into(),
+            serde_json::to_value(diagnostic_endpoint)?,
+        );
 
         Ok(map)
     }
@@ -416,6 +452,13 @@ impl CommonSettings {
     /// If `nix-installer` should forcibly recreate files it finds existing
     pub fn force(&mut self, force: bool) -> &mut Self {
         self.force = force;
+        self
+    }
+
+    #[cfg(feature = "diagnostics")]
+    /// The URL or file path for an [`DiagnosticReport`][crate::diagnostics::DiagnosticReport] to be sent
+    pub fn diagnostic_endpoint(&mut self, diagnostic_endpoint: Option<Url>) -> &mut Self {
+        self.diagnostic_endpoint = diagnostic_endpoint;
         self
     }
 }

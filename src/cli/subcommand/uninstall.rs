@@ -28,6 +28,7 @@ pub struct Uninstall {
         global = true
     )]
     pub no_confirm: bool,
+
     #[clap(
         long,
         env = "NIX_INSTALLER_EXPLAIN",
@@ -36,6 +37,7 @@ pub struct Uninstall {
         global = true
     )]
     pub explain: bool,
+
     #[clap(default_value = RECEIPT_LOCATION)]
     pub receipt: PathBuf,
 }

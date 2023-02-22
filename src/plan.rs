@@ -24,17 +24,27 @@ pub struct InstallPlan {
     pub(crate) actions: Vec<StatefulAction<Box<dyn Action>>>,
 
     pub(crate) planner: Box<dyn Planner>,
+
+    #[cfg(feature = "diagnostics")]
+    pub(crate) diagnostic_data: crate::diagnostics::DiagnosticData,
 }
 
 impl InstallPlan {
     pub async fn default() -> Result<Self, NixInstallerError> {
-        let planner = BuiltinPlanner::default().await?.boxed();
+        let planner = BuiltinPlanner::default().await?;
+
+        #[cfg(feature = "diagnostics")]
+        let diagnostic_data = planner.diagnostic_data().await?;
+
+        let planner = planner.boxed();
         let actions = planner.plan().await?;
 
         Ok(Self {
             planner,
             actions,
             version: current_version()?,
+            #[cfg(feature = "diagnostics")]
+            diagnostic_data,
         })
     }
 
@@ -42,11 +52,16 @@ impl InstallPlan {
     where
         P: Planner + 'static,
     {
+        #[cfg(feature = "diagnostics")]
+        let diagnostic_data = planner.diagnostic_data().await?;
+
         let actions = planner.plan().await?;
         Ok(Self {
             planner: planner.boxed(),
             actions,
             version: current_version()?,
+            #[cfg(feature = "diagnostics")]
+            diagnostic_data,
         })
     }
     #[tracing::instrument(level = "debug", skip_all)]
@@ -55,6 +70,7 @@ impl InstallPlan {
             planner,
             actions,
             version,
+            ..
         } = self;
         let buf = format!(
             "\
@@ -107,11 +123,7 @@ impl InstallPlan {
         &mut self,
         cancel_channel: impl Into<Option<Receiver<()>>>,
     ) -> Result<(), NixInstallerError> {
-        let Self {
-            version: _,
-            actions,
-            planner: _,
-        } = self;
+        let Self { actions, .. } = self;
         let mut cancel_channel = cancel_channel.into();
 
         // This is **deliberately sequential**.
@@ -125,6 +137,16 @@ impl InstallPlan {
                     if let Err(err) = write_receipt(self.clone()).await {
                         tracing::error!("Error saving receipt: {:?}", err);
                     }
+
+                    #[cfg(feature = "diagnostics")]
+                    self.diagnostic_data
+                        .clone()
+                        .send(
+                            crate::diagnostics::DiagnosticAction::Install,
+                            crate::diagnostics::DiagnosticStatus::Cancelled,
+                        )
+                        .await?;
+
                     return Err(NixInstallerError::Cancelled);
                 }
             }
@@ -134,11 +156,28 @@ impl InstallPlan {
                 if let Err(err) = write_receipt(self.clone()).await {
                     tracing::error!("Error saving receipt: {:?}", err);
                 }
+                #[cfg(feature = "diagnostics")]
+                self.diagnostic_data
+                    .clone()
+                    .send(
+                        crate::diagnostics::DiagnosticAction::Install,
+                        crate::diagnostics::DiagnosticStatus::Failure,
+                    )
+                    .await?;
+
                 return Err(NixInstallerError::Action(err));
             }
         }
 
         write_receipt(self.clone()).await?;
+        #[cfg(feature = "diagnostics")]
+        self.diagnostic_data
+            .clone()
+            .send(
+                crate::diagnostics::DiagnosticAction::Install,
+                crate::diagnostics::DiagnosticStatus::Success,
+            )
+            .await?;
 
         Ok(())
     }
@@ -149,6 +188,7 @@ impl InstallPlan {
             version: _,
             planner,
             actions,
+            ..
         } = self;
         let buf = format!(
             "\
@@ -207,11 +247,7 @@ impl InstallPlan {
         &mut self,
         cancel_channel: impl Into<Option<Receiver<()>>>,
     ) -> Result<(), NixInstallerError> {
-        let Self {
-            version: _,
-            actions,
-            planner: _,
-        } = self;
+        let Self { actions, .. } = self;
         let mut cancel_channel = cancel_channel.into();
 
         // This is **deliberately sequential**.
@@ -225,6 +261,15 @@ impl InstallPlan {
                     if let Err(err) = write_receipt(self.clone()).await {
                         tracing::error!("Error saving receipt: {:?}", err);
                     }
+
+                    #[cfg(feature = "diagnostics")]
+                    self.diagnostic_data
+                        .clone()
+                        .send(
+                            crate::diagnostics::DiagnosticAction::Uninstall,
+                            crate::diagnostics::DiagnosticStatus::Cancelled,
+                        )
+                        .await?;
                     return Err(NixInstallerError::Cancelled);
                 }
             }
@@ -234,9 +279,26 @@ impl InstallPlan {
                 if let Err(err) = write_receipt(self.clone()).await {
                     tracing::error!("Error saving receipt: {:?}", err);
                 }
+                #[cfg(feature = "diagnostics")]
+                self.diagnostic_data
+                    .clone()
+                    .send(
+                        crate::diagnostics::DiagnosticAction::Uninstall,
+                        crate::diagnostics::DiagnosticStatus::Failure,
+                    )
+                    .await?;
                 return Err(NixInstallerError::Action(err));
             }
         }
+
+        #[cfg(feature = "diagnostics")]
+        self.diagnostic_data
+            .clone()
+            .send(
+                crate::diagnostics::DiagnosticAction::Uninstall,
+                crate::diagnostics::DiagnosticStatus::Success,
+            )
+            .await?;
 
         Ok(())
     }

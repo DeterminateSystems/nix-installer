@@ -53,6 +53,15 @@ pub enum NixInstallerError {
         #[source]
         InstallSettingsError,
     ),
+
+    #[cfg(feature = "diagnostics")]
+    /// Diagnostics
+    #[error("Diagnostic error")]
+    Diagnostic(
+        #[from]
+        #[source]
+        crate::diagnostics::DiagnosticError,
+    ),
 }
 
 pub(crate) trait HasExpectedErrors: std::error::Error + Sized + Send + Sync {
@@ -70,6 +79,8 @@ impl HasExpectedErrors for NixInstallerError {
             NixInstallerError::SemVer(_) => None,
             NixInstallerError::Planner(planner_error) => planner_error.expected(),
             NixInstallerError::InstallSettings(_) => None,
+            #[cfg(feature = "diagnostics")]
+            NixInstallerError::Diagnostic(_) => None,
         }
     }
 }
