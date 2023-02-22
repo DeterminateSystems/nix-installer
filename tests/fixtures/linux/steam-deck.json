@@ -369,6 +369,296 @@
                 },
                 "state": "Uncompleted"
               }
+            ],
+            "add_users_to_groups": [
+              {
+                "action": {
+                  "name": "nixbld0",
+                  "uid": 30000,
+                  "groupname": "nixbld",
+                  "gid": 30000
+                },
+                "state": "Uncompleted"
+              },
+              {
+                "action": {
+                  "name": "nixbld1",
+                  "uid": 30001,
+                  "groupname": "nixbld",
+                  "gid": 30000
+                },
+                "state": "Uncompleted"
+              },
+              {
+                "action": {
+                  "name": "nixbld2",
+                  "uid": 30002,
+                  "groupname": "nixbld",
+                  "gid": 30000
+                },
+                "state": "Uncompleted"
+              },
+              {
+                "action": {
+                  "name": "nixbld3",
+                  "uid": 30003,
+                  "groupname": "nixbld",
+                  "gid": 30000
+                },
+                "state": "Uncompleted"
+              },
+              {
+                "action": {
+                  "name": "nixbld4",
+                  "uid": 30004,
+                  "groupname": "nixbld",
+                  "gid": 30000
+                },
+                "state": "Uncompleted"
+              },
+              {
+                "action": {
+                  "name": "nixbld5",
+                  "uid": 30005,
+                  "groupname": "nixbld",
+                  "gid": 30000
+                },
+                "state": "Uncompleted"
+              },
+              {
+                "action": {
+                  "name": "nixbld6",
+                  "uid": 30006,
+                  "groupname": "nixbld",
+                  "gid": 30000
+                },
+                "state": "Uncompleted"
+              },
+              {
+                "action": {
+                  "name": "nixbld7",
+                  "uid": 30007,
+                  "groupname": "nixbld",
+                  "gid": 30000
+                },
+                "state": "Uncompleted"
+              },
+              {
+                "action": {
+                  "name": "nixbld8",
+                  "uid": 30008,
+                  "groupname": "nixbld",
+                  "gid": 30000
+                },
+                "state": "Uncompleted"
+              },
+              {
+                "action": {
+                  "name": "nixbld9",
+                  "uid": 30009,
+                  "groupname": "nixbld",
+                  "gid": 30000
+                },
+                "state": "Uncompleted"
+              },
+              {
+                "action": {
+                  "name": "nixbld10",
+                  "uid": 30010,
+                  "groupname": "nixbld",
+                  "gid": 30000
+                },
+                "state": "Uncompleted"
+              },
+              {
+                "action": {
+                  "name": "nixbld11",
+                  "uid": 30011,
+                  "groupname": "nixbld",
+                  "gid": 30000
+                },
+                "state": "Uncompleted"
+              },
+              {
+                "action": {
+                  "name": "nixbld12",
+                  "uid": 30012,
+                  "groupname": "nixbld",
+                  "gid": 30000
+                },
+                "state": "Uncompleted"
+              },
+              {
+                "action": {
+                  "name": "nixbld13",
+                  "uid": 30013,
+                  "groupname": "nixbld",
+                  "gid": 30000
+                },
+                "state": "Uncompleted"
+              },
+              {
+                "action": {
+                  "name": "nixbld14",
+                  "uid": 30014,
+                  "groupname": "nixbld",
+                  "gid": 30000
+                },
+                "state": "Uncompleted"
+              },
+              {
+                "action": {
+                  "name": "nixbld15",
+                  "uid": 30015,
+                  "groupname": "nixbld",
+                  "gid": 30000
+                },
+                "state": "Uncompleted"
+              },
+              {
+                "action": {
+                  "name": "nixbld16",
+                  "uid": 30016,
+                  "groupname": "nixbld",
+                  "gid": 30000
+                },
+                "state": "Uncompleted"
+              },
+              {
+                "action": {
+                  "name": "nixbld17",
+                  "uid": 30017,
+                  "groupname": "nixbld",
+                  "gid": 30000
+                },
+                "state": "Uncompleted"
+              },
+              {
+                "action": {
+                  "name": "nixbld18",
+                  "uid": 30018,
+                  "groupname": "nixbld",
+                  "gid": 30000
+                },
+                "state": "Uncompleted"
+              },
+              {
+                "action": {
+                  "name": "nixbld19",
+                  "uid": 30019,
+                  "groupname": "nixbld",
+                  "gid": 30000
+                },
+                "state": "Uncompleted"
+              },
+              {
+                "action": {
+                  "name": "nixbld20",
+                  "uid": 30020,
+                  "groupname": "nixbld",
+                  "gid": 30000
+                },
+                "state": "Uncompleted"
+              },
+              {
+                "action": {
+                  "name": "nixbld21",
+                  "uid": 30021,
+                  "groupname": "nixbld",
+                  "gid": 30000
+                },
+                "state": "Uncompleted"
+              },
+              {
+                "action": {
+                  "name": "nixbld22",
+                  "uid": 30022,
+                  "groupname": "nixbld",
+                  "gid": 30000
+                },
+                "state": "Uncompleted"
+              },
+              {
+                "action": {
+                  "name": "nixbld23",
+                  "uid": 30023,
+                  "groupname": "nixbld",
+                  "gid": 30000
+                },
+                "state": "Uncompleted"
+              },
+              {
+                "action": {
+                  "name": "nixbld24",
+                  "uid": 30024,
+                  "groupname": "nixbld",
+                  "gid": 30000
+                },
+                "state": "Uncompleted"
+              },
+              {
+                "action": {
+                  "name": "nixbld25",
+                  "uid": 30025,
+                  "groupname": "nixbld",
+                  "gid": 30000
+                },
+                "state": "Uncompleted"
+              },
+              {
+                "action": {
+                  "name": "nixbld26",
+                  "uid": 30026,
+                  "groupname": "nixbld",
+                  "gid": 30000
+                },
+                "state": "Uncompleted"
+              },
+              {
+                "action": {
+                  "name": "nixbld27",
+                  "uid": 30027,
+                  "groupname": "nixbld",
+                  "gid": 30000
+                },
+                "state": "Uncompleted"
+              },
+              {
+                "action": {
+                  "name": "nixbld28",
+                  "uid": 30028,
+                  "groupname": "nixbld",
+                  "gid": 30000
+                },
+                "state": "Uncompleted"
+              },
+              {
+                "action": {
+                  "name": "nixbld29",
+                  "uid": 30029,
+                  "groupname": "nixbld",
+                  "gid": 30000
+                },
+                "state": "Uncompleted"
+              },
+              {
+                "action": {
+                  "name": "nixbld30",
+                  "uid": 30030,
+                  "groupname": "nixbld",
+                  "gid": 30000
+                },
+                "state": "Uncompleted"
+              },
+              {
+                "action": {
+                  "name": "nixbld31",
+                  "uid": 30031,
+                  "groupname": "nixbld",
+                  "gid": 30000
+                },
+                "state": "Uncompleted"
+              }
             ]
           },
           "state": "Uncompleted"
@@ -595,7 +885,7 @@
             ],
             "create_file": {
               "action": {
-                "path": "/root/.nix-channels",
+                "path": "/home/ubuntu/.nix-channels",
                 "user": null,
                 "group": null,
                 "mode": 436,
@@ -628,10 +918,10 @@
                 "buf": "# Generated by https://github.com/DeterminateSystems/nix-installer, version 0.3.0.\n\n\n\nbuild-users-group = nixbld\n\nexperimental-features = nix-command flakes\n\nauto-optimise-store = true\n\nbash-prompt-prefix = (nix:$name)\\040\n",
                 "nix_configs": {
                   "pending_nix_config": {
+                    "bash-prompt-prefix": "(nix:$name)\\040",
                     "build-users-group": "nixbld",
-                    "experimental-features": "nix-command flakes",
                     "auto-optimise-store": "true",
-                    "bash-prompt-prefix": "(nix:$name)\\040"
+                    "experimental-features": "nix-command flakes"
                   },
                   "existing_nix_config": null,
                   "merged_nix_config": null
