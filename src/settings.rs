@@ -224,7 +224,7 @@ pub struct CommonSettings {
         long,
         env = "NIX_INSTALLER_DIAGNOSTIC_ENDPOINT",
         global = true,
-        default_value = "https://install.determinate.systems/nix/diagnostics"
+        default_value = "https://install.determinate.systems/nix/diagnostic"
     )]
     pub diagnostic_endpoint: Option<Url>,
 }

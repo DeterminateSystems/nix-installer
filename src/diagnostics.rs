@@ -2,7 +2,7 @@
 
 When enabled with the `diagnostics` feature (default) this module provides automated install success/failure reporting to an endpoint.
 
-That endpoint can be a URL such as `https://our.project.org/nix-installer/diagnostics` or `file:///home/$USER/diagnostic.json` which recieves a [`DiagnosticReport`] in JSON format.
+That endpoint can be a URL such as `https://our.project.org/nix-installer/diagnostics` or `file:///home/$USER/diagnostic.json` which receives a [`DiagnosticReport`] in JSON format.
 */
 
 use std::time::Duration;
