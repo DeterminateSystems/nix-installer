@@ -18,6 +18,19 @@ use crate::action::{Action, ActionDescription, ActionError, StatefulAction};
 const MERGEABLE_CONF_NAMES: &[&str] = &["experimental-features"];
 const NIX_CONF_MODE: u32 = 0o644;
 
+#[derive(Debug, thiserror::Error)]
+pub enum CreateOrMergeNixConfigError {
+    #[error(transparent)]
+    ParseNixConfig(#[from] nix_config_parser::ParseError),
+    #[error("Could not merge Nix configuration for keys {}; consider removing them from {1} in your editor, or removing your existing configuration with `rm {1}`",
+        .0
+        .iter()
+        .map(|v| format!("`{v}`"))
+        .collect::<Vec<_>>()
+        .join(", "))]
+    UnmergeableConfig(Vec<String>, std::path::PathBuf),
+}
+
 /// Create or merge an existing `nix.conf` at the specified path.
 #[derive(Debug, serde::Deserialize, serde::Serialize, Clone)]
 pub struct CreateOrMergeNixConfig {
@@ -40,7 +53,8 @@ impl CreateOrMergeNixConfig {
         let path = path.as_ref().to_path_buf();
 
         let pending_nix_config = nix_config_parser::parse_nix_config_string(buf.clone(), None)
-            .map_err(ActionError::ParseNixConfig)?;
+            .map_err(CreateOrMergeNixConfigError::ParseNixConfig)
+            .map_err(|e| ActionError::Custom(Box::new(e)))?;
         let nix_configs = NixConfigs {
             existing_nix_config: None,
             merged_nix_config: NixConfig::new(),
@@ -72,7 +86,8 @@ impl CreateOrMergeNixConfig {
             }
 
             let existing_nix_config = nix_config_parser::parse_nix_config_file(&this.path)
-                .map_err(ActionError::ParseNixConfig)?;
+                .map_err(CreateOrMergeNixConfigError::ParseNixConfig)
+                .map_err(|e| ActionError::Custom(Box::new(e)))?;
             this.nix_configs.existing_nix_config = Some(existing_nix_config.clone());
             let mut merged_nix_config = NixConfig::new();
             let mut unmergeable_config_names = Vec::new();
@@ -108,10 +123,12 @@ impl CreateOrMergeNixConfig {
             }
 
             if !unmergeable_config_names.is_empty() {
-                return Err(ActionError::UnmergeableConfig(
-                    unmergeable_config_names,
-                    this.path,
-                ));
+                return Err(ActionError::Custom(Box::new(
+                    CreateOrMergeNixConfigError::UnmergeableConfig(
+                        unmergeable_config_names,
+                        this.path,
+                    ),
+                )));
             }
 
             if !merged_nix_config.is_empty() {
@@ -428,8 +445,21 @@ mod test {
         )
         .await
         {
-            Err(ActionError::UnmergeableConfig(_, path)) => assert_eq!(path, test_file.as_path()),
-            _ => return Err(eyre!("Should have returned ActionError::UnmergeableConfig")),
+            Err(ActionError::Custom(e)) => match e.downcast_ref::<CreateOrMergeNixConfigError>() {
+                Some(CreateOrMergeNixConfigError::UnmergeableConfig(_, path)) => {
+                    assert_eq!(path, test_file.as_path())
+                },
+                _ => {
+                    return Err(eyre!(
+                        "Should have returned CreateOrMergeNixConfigError::UnmergeableConfig"
+                    ))
+                },
+            },
+            _ => {
+                return Err(eyre!(
+                    "Should have returned CreateOrMergeNixConfigError::UnmergeableConfig"
+                ))
+            },
         }
 
         assert!(test_file.exists(), "File should not have been deleted");

@@ -348,14 +348,6 @@ pub enum ActionError {
     /// A MacOS (Darwin) plist related error
     #[error(transparent)]
     Plist(#[from] plist::Error),
-    #[error(transparent)]
-    ParseNixConfig(#[from] nix_config_parser::ParseError),
-    #[error("Could not merge Nix configuration for keys {}; consider removing them from {1} or removing your existing configuration with `rm {1}`", .0
-        .iter()
-        .map(|v| format!("`{v}`"))
-        .collect::<Vec<_>>()
-        .join(", "))]
-    UnmergeableConfig(Vec<String>, std::path::PathBuf),
 }
 
 impl HasExpectedErrors for ActionError {
