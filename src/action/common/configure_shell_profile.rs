@@ -73,8 +73,8 @@ impl ConfigureShellProfile {
                         minor: _,
                         patch: _,
                     }
-                    | OperatingSystem::Darwin => 0o100444,
-                    _ => 0o100644,
+                    | OperatingSystem::Darwin => 0o444,
+                    _ => 0o644,
                 };
                 create_or_insert_files.push(
                     CreateOrInsertIntoFile::plan(
@@ -123,7 +123,7 @@ impl ConfigureShellProfile {
                     profile_target,
                     None,
                     None,
-                    0o100644,
+                    0o644,
                     fish_buf.to_string(),
                     create_or_insert_into_file::Position::Beginning,
                 )
