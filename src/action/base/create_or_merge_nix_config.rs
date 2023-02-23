@@ -1,15 +1,15 @@
-use nix_config_parser::NixConfig;
-use rand::Rng;
-use tracing::{span, Span};
-
 use std::{
     os::unix::fs::PermissionsExt,
     path::{Path, PathBuf},
 };
+
+use nix_config_parser::NixConfig;
+use rand::Rng;
 use tokio::{
     fs::{remove_file, OpenOptions},
     io::AsyncWriteExt,
 };
+use tracing::{span, Span};
 
 use crate::action::{Action, ActionDescription, ActionError, StatefulAction};
 
