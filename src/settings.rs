@@ -214,7 +214,7 @@ pub struct CommonSettings {
     ///     "configured-settings": [ "modify_profile" ],
     ///     "os-name": "Ubuntu",
     ///     "os-version": "22.04.1 LTS (Jammy Jellyfish)",
-    ///     "architecture": "x86_64",
+    ///     "triple": "x86_64-unknown-linux-gnu",
     ///     "action": "Install",
     ///     "status": "Success"
     /// }

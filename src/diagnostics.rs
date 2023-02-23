@@ -35,7 +35,7 @@ pub struct DiagnosticReport {
     pub configured_settings: Vec<String>,
     pub os_name: String,
     pub os_version: String,
-    pub architecture: String,
+    pub triple: String,
     pub action: DiagnosticAction,
     pub status: DiagnosticStatus,
 }
@@ -48,7 +48,7 @@ pub struct DiagnosticData {
     configured_settings: Vec<String>,
     os_name: String,
     os_version: String,
-    architecture: String,
+    triple: String,
     endpoint: Option<Url>,
 }
 
@@ -65,7 +65,7 @@ impl DiagnosticData {
             configured_settings,
             os_name,
             os_version,
-            architecture: std::env::consts::ARCH.to_string(),
+            triple: target_lexicon::HOST.to_string(),
         }
     }
 
@@ -76,7 +76,7 @@ impl DiagnosticData {
             configured_settings,
             os_name,
             os_version,
-            architecture,
+            triple,
             endpoint: _,
         } = self;
         DiagnosticReport {
@@ -85,7 +85,7 @@ impl DiagnosticData {
             configured_settings: configured_settings.clone(),
             os_name: os_name.clone(),
             os_version: os_version.clone(),
-            architecture: architecture.clone(),
+            triple: triple.clone(),
             action,
             status,
         }
