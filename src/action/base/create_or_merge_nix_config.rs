@@ -150,7 +150,7 @@ impl Action for CreateOrMergeNixConfig {
     fn tracing_span(&self) -> Span {
         let span = span!(
             tracing::Level::DEBUG,
-            "create_file",
+            "create_or_merge_nix_config",
             path = tracing::field::display(self.path.display()),
             mode = tracing::field::display(format!("{:#o}", NIX_CONF_MODE)),
             merged_nix_config = tracing::field::Empty,
@@ -303,7 +303,7 @@ mod test {
 
     #[tokio::test]
     async fn creates_and_deletes_file() -> eyre::Result<()> {
-        let temp_dir = tempdir::TempDir::new("nix_installer_tests_create_file")?;
+        let temp_dir = tempdir::TempDir::new("nix_installer_tests_create_or_merge_nix_config")?;
         let test_file = temp_dir.path().join("creates_and_deletes_file");
         let mut action = CreateOrMergeNixConfig::plan(
             &test_file,
@@ -327,7 +327,7 @@ mod test {
 
     #[tokio::test]
     async fn creates_and_deletes_file_even_if_edited() -> eyre::Result<()> {
-        let temp_dir = tempdir::TempDir::new("nix_installer_tests_create_file")?;
+        let temp_dir = tempdir::TempDir::new("nix_installer_tests_create_or_merge_nix_config")?;
         let test_file = temp_dir
             .path()
             .join("creates_and_deletes_file_even_if_edited");
@@ -350,7 +350,7 @@ mod test {
 
     #[tokio::test]
     async fn recognizes_existing_exact_files_and_reverts_them() -> eyre::Result<()> {
-        let temp_dir = tempdir::TempDir::new("nix_installer_tests_create_file")?;
+        let temp_dir = tempdir::TempDir::new("nix_installer_tests_create_or_merge_nix_config")?;
         let test_file = temp_dir
             .path()
             .join("recognizes_existing_exact_files_and_reverts_them");
@@ -372,7 +372,7 @@ mod test {
 
     #[tokio::test]
     async fn recognizes_existing_different_files_and_merges() -> eyre::Result<()> {
-        let temp_dir = tempdir::TempDir::new("nix_installer_tests_create_file")?;
+        let temp_dir = tempdir::TempDir::new("nix_installer_tests_create_or_merge_nix_config")?;
         let test_file = temp_dir
             .path()
             .join("recognizes_existing_different_files_and_merges");
@@ -409,7 +409,7 @@ mod test {
 
     #[tokio::test]
     async fn recognizes_existing_different_files_and_fails_to_merge() -> eyre::Result<()> {
-        let temp_dir = tempdir::TempDir::new("nix_installer_tests_create_file")?;
+        let temp_dir = tempdir::TempDir::new("nix_installer_tests_create_or_merge_nix_config")?;
         let test_file = temp_dir
             .path()
             .join("recognizes_existing_different_files_and_fails_to_merge");
