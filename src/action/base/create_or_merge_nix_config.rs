@@ -260,10 +260,12 @@ impl Action for CreateOrMergeNixConfig {
             .write_all(new_config.as_bytes())
             .await
             .map_err(|e| ActionError::Write(temp_file_path.clone(), e))?;
-
+        tokio::fs::set_permissions(&temp_file_path, PermissionsExt::from_mode(NIX_CONF_MODE))
+            .await
+            .map_err(|e| ActionError::SetPermissions(NIX_CONF_MODE, path.to_owned(), e))?;
         tokio::fs::rename(&temp_file_path, &path)
             .await
-            .map_err(|e| ActionError::Rename(path.to_owned(), temp_file_path.to_owned(), e))?;
+            .map_err(|e| ActionError::Rename(temp_file_path.to_owned(), path.to_owned(), e))?;
 
         Ok(())
     }
