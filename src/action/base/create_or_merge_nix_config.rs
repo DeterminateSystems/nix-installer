@@ -52,9 +52,8 @@ impl CreateOrMergeNixConfig {
         let user = user.into();
         let group = group.into();
         // TODO: make path optional in nix_config_parser
-        let pending_nix_config =
-            nix_config_parser::parse_nix_config_string(buf.clone(), Path::new("/"))
-                .map_err(ActionError::ParseNixConfig)?;
+        let pending_nix_config = nix_config_parser::parse_nix_config_string(buf.clone(), None)
+            .map_err(ActionError::ParseNixConfig)?;
         let nix_configs = NixConfigs {
             pending_nix_config,
             existing_nix_config: None,

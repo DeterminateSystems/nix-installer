@@ -916,7 +916,7 @@ dependencies = [
 [[package]]
 name = "nix-config-parser"
 version = "0.1.0"
-source = "git+https://github.com/DeterminateSystems/nix-config-parser#d362694c80efdb074ed5013594bcf0174c176cd8"
+source = "git+https://github.com/DeterminateSystems/nix-config-parser?branch=from-string-optional-path#200366bf2f81a19bc3df1a7c43ee7ba596adee6c"
 dependencies = [
  "thiserror",
 ]
