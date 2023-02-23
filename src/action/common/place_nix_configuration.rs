@@ -41,8 +41,7 @@ impl PlaceNixConfiguration {
         );
         let create_directory =
             CreateDirectory::plan(NIX_CONF_FOLDER, None, None, 0o0755, force).await?;
-        let create_or_merge_nix_config =
-            CreateOrMergeNixConfig::plan(NIX_CONF, None, None, 0o0664, buf).await?;
+        let create_or_merge_nix_config = CreateOrMergeNixConfig::plan(NIX_CONF, buf).await?;
         Ok(Self {
             create_directory,
             create_or_merge_nix_config,
