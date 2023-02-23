@@ -3,7 +3,7 @@ use std::path::PathBuf;
 use crate::{action::ActionError, planner::PlannerError, settings::InstallSettingsError};
 
 /// An error occurring during a call defined in this crate
-#[derive(thiserror::Error, Debug)]
+#[derive(thiserror::Error, Debug, strum::IntoStaticStr)]
 pub enum NixInstallerError {
     /// An error originating from an [`Action`](crate::action::Action)
     #[error("Error executing action")]
@@ -55,7 +55,7 @@ pub enum NixInstallerError {
     ),
 
     #[cfg(feature = "diagnostics")]
-    /// Diagnostics
+    /// Diagnostic error
     #[error("Diagnostic error")]
     Diagnostic(
         #[from]
@@ -84,3 +84,20 @@ impl HasExpectedErrors for NixInstallerError {
         }
     }
 }
+
+// #[cfg(feature = "diagnostics")]
+// impl NixInstallerError {
+//     pub fn diagnostic_synopsis(&self) -> &'static str {
+//         match self {
+//             NixInstallerError::Action(inner) => inner.into(),
+//             NixInstallerError::Planner(inner) => inner.into(),
+//             NixInstallerError::RecordingReceipt(_, _)
+//             | NixInstallerError::CopyingSelf(_)
+//             | NixInstallerError::SerializingReceipt(_)
+//             | NixInstallerError::Cancelled
+//             | NixInstallerError::SemVer(_)
+//             | NixInstallerError::Diagnostic(_)
+//             | NixInstallerError::InstallSettings(_) => self.into(),
+//         }
+//     }
+// }

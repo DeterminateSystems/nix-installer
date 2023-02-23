@@ -134,12 +134,12 @@ impl CommandExecute for Install {
                         let res = builtin_planner.plan().await;
                         match res {
                             Ok(plan) => plan,
-                            Err(e) => {
-                                if let Some(expected) = e.expected() {
+                            Err(err) => {
+                                if let Some(expected) = err.expected() {
                                     eprintln!("{}", expected.red());
                                     return Ok(ExitCode::FAILURE);
                                 }
-                                return Err(e.into())
+                                return Err(err.into())
                             }
                         }
                     },

@@ -26,7 +26,7 @@ pub struct InstallPlan {
     pub(crate) planner: Box<dyn Planner>,
 
     #[cfg(feature = "diagnostics")]
-    pub(crate) diagnostic_data: crate::diagnostics::DiagnosticData,
+    pub(crate) diagnostic_data: Option<crate::diagnostics::DiagnosticData>,
 }
 
 impl InstallPlan {
@@ -34,7 +34,7 @@ impl InstallPlan {
         let planner = BuiltinPlanner::default().await?;
 
         #[cfg(feature = "diagnostics")]
-        let diagnostic_data = planner.diagnostic_data().await?;
+        let diagnostic_data = Some(planner.diagnostic_data().await?);
 
         let planner = planner.boxed();
         let actions = planner.plan().await?;
@@ -53,7 +53,7 @@ impl InstallPlan {
         P: Planner + 'static,
     {
         #[cfg(feature = "diagnostics")]
-        let diagnostic_data = planner.diagnostic_data().await?;
+        let diagnostic_data = Some(planner.diagnostic_data().await?);
 
         let actions = planner.plan().await?;
         Ok(Self {
@@ -139,13 +139,15 @@ impl InstallPlan {
                     }
 
                     #[cfg(feature = "diagnostics")]
-                    self.diagnostic_data
-                        .clone()
-                        .send(
-                            crate::diagnostics::DiagnosticAction::Install,
-                            crate::diagnostics::DiagnosticStatus::Cancelled,
-                        )
-                        .await?;
+                    if let Some(diagnostic_data) = &self.diagnostic_data {
+                        diagnostic_data
+                            .clone()
+                            .send(
+                                crate::diagnostics::DiagnosticAction::Install,
+                                crate::diagnostics::DiagnosticStatus::Cancelled,
+                            )
+                            .await?;
+                    }
 
                     return Err(NixInstallerError::Cancelled);
                 }
@@ -157,13 +159,18 @@ impl InstallPlan {
                     tracing::error!("Error saving receipt: {:?}", err);
                 }
                 #[cfg(feature = "diagnostics")]
-                self.diagnostic_data
-                    .clone()
-                    .send(
-                        crate::diagnostics::DiagnosticAction::Install,
-                        crate::diagnostics::DiagnosticStatus::Failure,
-                    )
-                    .await?;
+                if let Some(diagnostic_data) = &self.diagnostic_data {
+                    diagnostic_data
+                        .clone()
+                        .send(
+                            crate::diagnostics::DiagnosticAction::Install,
+                            crate::diagnostics::DiagnosticStatus::Failure({
+                                let x: &'static str = (&err).into();
+                                x.to_string()
+                            }),
+                        )
+                        .await?;
+                }
 
                 return Err(NixInstallerError::Action(err));
             }
@@ -171,13 +178,15 @@ impl InstallPlan {
 
         write_receipt(self.clone()).await?;
         #[cfg(feature = "diagnostics")]
-        self.diagnostic_data
-            .clone()
-            .send(
-                crate::diagnostics::DiagnosticAction::Install,
-                crate::diagnostics::DiagnosticStatus::Success,
-            )
-            .await?;
+        if let Some(diagnostic_data) = &self.diagnostic_data {
+            diagnostic_data
+                .clone()
+                .send(
+                    crate::diagnostics::DiagnosticAction::Install,
+                    crate::diagnostics::DiagnosticStatus::Success,
+                )
+                .await?;
+        }
 
         Ok(())
     }
@@ -263,13 +272,15 @@ impl InstallPlan {
                     }
 
                     #[cfg(feature = "diagnostics")]
-                    self.diagnostic_data
-                        .clone()
-                        .send(
-                            crate::diagnostics::DiagnosticAction::Uninstall,
-                            crate::diagnostics::DiagnosticStatus::Cancelled,
-                        )
-                        .await?;
+                    if let Some(diagnostic_data) = &self.diagnostic_data {
+                        diagnostic_data
+                            .clone()
+                            .send(
+                                crate::diagnostics::DiagnosticAction::Uninstall,
+                                crate::diagnostics::DiagnosticStatus::Cancelled,
+                            )
+                            .await?;
+                    }
                     return Err(NixInstallerError::Cancelled);
                 }
             }
@@ -280,25 +291,32 @@ impl InstallPlan {
                     tracing::error!("Error saving receipt: {:?}", err);
                 }
                 #[cfg(feature = "diagnostics")]
-                self.diagnostic_data
-                    .clone()
-                    .send(
-                        crate::diagnostics::DiagnosticAction::Uninstall,
-                        crate::diagnostics::DiagnosticStatus::Failure,
-                    )
-                    .await?;
+                if let Some(diagnostic_data) = &self.diagnostic_data {
+                    diagnostic_data
+                        .clone()
+                        .send(
+                            crate::diagnostics::DiagnosticAction::Uninstall,
+                            crate::diagnostics::DiagnosticStatus::Failure({
+                                let x: &'static str = (&err).into();
+                                x.to_string()
+                            }),
+                        )
+                        .await?;
+                }
                 return Err(NixInstallerError::Action(err));
             }
         }
 
         #[cfg(feature = "diagnostics")]
-        self.diagnostic_data
-            .clone()
-            .send(
-                crate::diagnostics::DiagnosticAction::Uninstall,
-                crate::diagnostics::DiagnosticStatus::Success,
-            )
-            .await?;
+        if let Some(diagnostic_data) = &self.diagnostic_data {
+            diagnostic_data
+                .clone()
+                .send(
+                    crate::diagnostics::DiagnosticAction::Uninstall,
+                    crate::diagnostics::DiagnosticStatus::Success,
+                )
+                .await?;
+        }
 
         Ok(())
     }

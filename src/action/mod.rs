@@ -244,7 +244,7 @@ impl ActionDescription {
 }
 
 /// An error occurring during an action
-#[derive(thiserror::Error, Debug)]
+#[derive(thiserror::Error, Debug, strum::IntoStaticStr)]
 pub enum ActionError {
     /// A custom error
     #[error(transparent)]

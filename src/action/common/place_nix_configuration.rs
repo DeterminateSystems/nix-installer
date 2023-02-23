@@ -80,6 +80,7 @@ impl Action for PlaceNixConfiguration {
 
         create_directory.try_execute().await?;
         create_file.try_execute().await?;
+        return Err(ActionError::NoGroup("boof".into()));
 
         Ok(())
     }

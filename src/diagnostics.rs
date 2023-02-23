@@ -1,33 +1,47 @@
+/*! Diagnostic reporting functionality
+
+When enabled with the `diagnostics` feature (default) this module provides automated install success/failure reporting to an endpoint.
+
+That endpoint can be a URL such as `https://our.project.org/nix-installer/diagnostics` or `file:///home/$USER/diagnostic.json` which recieves a [`DiagnosticReport`] in JSON format.
+*/
+
+use std::time::Duration;
+
 use os_release::OsRelease;
 use reqwest::Url;
 
-#[derive(Debug, serde::Deserialize, serde::Serialize, Clone, Copy)]
+/// The static of an action attempt
+#[derive(Debug, serde::Deserialize, serde::Serialize, Clone)]
 pub enum DiagnosticStatus {
     Cancelled,
     Success,
-    Failure,
+    /// This includes the [`strum::IntoStaticStr`] representation of the error, we take special care not to include parameters of the error (which may include secrets)
+    Failure(String),
     Pending,
 }
 
+/// The action attempted
 #[derive(Debug, serde::Deserialize, serde::Serialize, Clone, Copy)]
 pub enum DiagnosticAction {
     Install,
     Uninstall,
 }
 
+/// A report sent to an endpoint
 #[derive(Debug, serde::Deserialize, serde::Serialize, Clone)]
 pub struct DiagnosticReport {
-    version: String,
-    planner: String,
-    configured_settings: Vec<String>,
-    os_name: String,
-    os_version: String,
-    architecture: String,
-    action: DiagnosticAction,
-    status: DiagnosticStatus,
+    pub version: String,
+    pub planner: String,
+    pub configured_settings: Vec<String>,
+    pub os_name: String,
+    pub os_version: String,
+    pub architecture: String,
+    pub action: DiagnosticAction,
+    pub status: DiagnosticStatus,
 }
 
-#[derive(Debug, serde::Deserialize, serde::Serialize, Clone)]
+/// A preparation of data to be sent to the `endpoint`.
+#[derive(Debug, serde::Deserialize, serde::Serialize, Clone, Default)]
 pub struct DiagnosticData {
     version: String,
     planner: String,
@@ -77,6 +91,7 @@ impl DiagnosticData {
         }
     }
 
+    #[tracing::instrument(level = "debug", skip_all)]
     pub async fn send(
         self,
         action: DiagnosticAction,
@@ -91,23 +106,27 @@ impl DiagnosticData {
 
         match endpoint.scheme() {
             "https" | "http" => {
+                tracing::debug!("Sending diagnostic to `{endpoint}`");
                 let client = reqwest::Client::new();
                 let res = client
                     .post(endpoint.clone())
                     .body(serialized)
                     .header("Content-Type", "application/json")
+                    .timeout(Duration::from_millis(3000))
                     .send()
                     .await;
 
-                if let Err(err) = res {
-                    tracing::info!(?err, "Failed to send diagnostic to endpoint, continuing")
+                if let Err(_err) = res {
+                    tracing::info!("Failed to send diagnostic to `{endpoint}`, continuing")
                 }
             },
             "file" => {
-                let res = tokio::fs::write(endpoint.path(), serialized).await;
+                let path = endpoint.path();
+                tracing::debug!("Writing diagnostic to `{path}`");
+                let res = tokio::fs::write(path, serialized).await;
 
-                if let Err(err) = res {
-                    tracing::info!(?err, "Failed to send diagnostic to endpoint, continuing")
+                if let Err(_err) = res {
+                    tracing::info!("Failed to send diagnostic to `{path}`, continuing")
                 }
             },
             _ => return Err(DiagnosticError::UnknownUrlScheme),

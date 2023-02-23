@@ -209,13 +209,14 @@ pub struct CommonSettings {
     /// Sample of the data sent:
     ///
     /// {
+    ///     "version": "0.3.0",
     ///     "planner": "linux",
     ///     "configured-settings": [ "modify_profile" ],
     ///     "os-name": "Ubuntu",
-    ///     "os-version": "22.10",
+    ///     "os-version": "22.04.1 LTS (Jammy Jellyfish)",
     ///     "architecture": "x86_64",
-    ///     "action": "install",
-    ///     "status": "success"
+    ///     "action": "Install",
+    ///     "status": "Success"
     /// }
     ///
     /// To disable diagnostic reporting, unset the default with `--diagnostic-endpoint=`
@@ -241,19 +242,19 @@ impl CommonSettings {
             (Architecture::X86_64, OperatingSystem::Linux) => {
                 url = NIX_X64_64_LINUX_URL;
                 nix_build_user_prefix = "nixbld";
-                nix_build_user_id_base = 3000;
+                nix_build_user_id_base = 30000;
             },
             #[cfg(target_os = "linux")]
             (Architecture::X86_32(_), OperatingSystem::Linux) => {
                 url = NIX_I686_LINUX_URL;
                 nix_build_user_prefix = "nixbld";
-                nix_build_user_id_base = 3000;
+                nix_build_user_id_base = 30000;
             },
             #[cfg(target_os = "linux")]
             (Architecture::Aarch64(_), OperatingSystem::Linux) => {
                 url = NIX_AARCH64_LINUX_URL;
                 nix_build_user_prefix = "nixbld";
-                nix_build_user_id_base = 3000;
+                nix_build_user_id_base = 30000;
             },
             #[cfg(target_os = "macos")]
             (Architecture::X86_64, OperatingSystem::MacOSX { .. })
