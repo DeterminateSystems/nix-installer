@@ -114,7 +114,7 @@ impl ConfigureShellProfile {
 
             if let Some(conf_d) = profile_target.parent() {
                 create_directories.push(
-                    CreateDirectory::plan(conf_d.to_path_buf(), None, None, 0o0644, false).await?,
+                    CreateDirectory::plan(conf_d.to_path_buf(), None, None, 0o755, false).await?,
                 );
             }
 
