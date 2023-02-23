@@ -272,6 +272,8 @@ pub enum ActionError {
     PathGroupMismatch(std::path::PathBuf, u32, u32),
     #[error("`{0}` exists with a different mode ({1:o}) than planned ({2:o}), consider updating it with `chmod {2:o} {0}`")]
     PathModeMismatch(std::path::PathBuf, u32, u32),
+    #[error("`{0}` was not a file")]
+    PathWasNotFile(std::path::PathBuf),
     #[error("Getting metadata for {0}`")]
     GettingMetadata(std::path::PathBuf, #[source] std::io::Error),
     #[error("Creating directory `{0}`")]

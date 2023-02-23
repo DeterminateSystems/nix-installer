@@ -61,9 +61,17 @@ impl CreateFile {
                 .metadata()
                 .await
                 .map_err(|e| ActionError::GettingMetadata(this.path.clone(), e))?;
+
+            if !metadata.is_file() {
+                return Err(ActionError::PathWasNotFile(this.path));
+            }
+
             if let Some(mode) = mode {
                 // Does the file have the right permissions?
                 let discovered_mode = metadata.permissions().mode();
+                // We only care about user-group-other permissions
+                let discovered_mode = discovered_mode & 0o777;
+
                 if discovered_mode != mode {
                     return Err(ActionError::PathModeMismatch(
                         this.path.clone(),
@@ -340,6 +348,98 @@ mod test {
         }
 
         assert!(test_file.exists(), "File should have not been deleted");
+
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn recognizes_wrong_mode_and_errors() -> eyre::Result<()> {
+        let temp_dir = tempdir::TempDir::new("nix_installer_tests_create_file")?;
+        let test_file = temp_dir.path().join("recognizes_wrong_mode_and_errors");
+        let initial_mode = 0o777;
+        let expected_mode = 0o000;
+
+        write(test_file.as_path(), "Some content").await?;
+        tokio::fs::set_permissions(test_file.as_path(), PermissionsExt::from_mode(initial_mode))
+            .await?;
+
+        match CreateFile::plan(
+            test_file.clone(),
+            None,
+            None,
+            Some(expected_mode),
+            "Some different content".into(),
+            false,
+        )
+        .await
+        {
+            Err(ActionError::PathModeMismatch(path, got, expected)) => {
+                assert_eq!(path, test_file.as_path());
+                assert_eq!(expected, expected_mode);
+                assert_eq!(got, initial_mode);
+            },
+            _ => {
+                return Err(eyre!(
+                    "Should have returned an ActionError::PathModeMismatch error"
+                ))
+            },
+        }
+
+        assert!(test_file.exists(), "File should have not been deleted");
+
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn recognizes_correct_mode() -> eyre::Result<()> {
+        let temp_dir = tempdir::TempDir::new("nix_installer_tests_create_file")?;
+        let test_file = temp_dir.path().join("recognizes_correct_mode");
+        let initial_mode = 0o777;
+
+        write(test_file.as_path(), "Some content").await?;
+        tokio::fs::set_permissions(test_file.as_path(), PermissionsExt::from_mode(initial_mode))
+            .await?;
+
+        let mut action = CreateFile::plan(
+            test_file.clone(),
+            None,
+            None,
+            Some(initial_mode),
+            "Some content".into(),
+            false,
+        )
+        .await?;
+
+        action.try_execute().await?;
+
+        action.try_revert().await?;
+
+        assert!(!test_file.exists(), "File should have been deleted");
+
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn errors_on_dir() -> eyre::Result<()> {
+        let temp_dir = tempdir::TempDir::new("nix_installer_tests_create_file")?;
+
+        match CreateFile::plan(
+            temp_dir.path(),
+            None,
+            None,
+            None,
+            "Some different content".into(),
+            false,
+        )
+        .await
+        {
+            Err(ActionError::PathWasNotFile(path)) => assert_eq!(path, temp_dir.path()),
+            _ => {
+                return Err(eyre!(
+                    "Should have returned an ActionError::PathWasNotFile error"
+                ))
+            },
+        }
 
         Ok(())
     }
