@@ -21,7 +21,6 @@ const NIX_CONF_MODE: u32 = 0o644;
 #[derive(Debug, serde::Deserialize, serde::Serialize, Clone)]
 pub struct CreateOrMergeNixConfig {
     pub(crate) path: PathBuf,
-    buf: String, // TODO: remove
     nix_configs: NixConfigs,
 }
 
@@ -46,11 +45,7 @@ impl CreateOrMergeNixConfig {
             merged_nix_config: NixConfig::new(),
         };
 
-        let mut this = Self {
-            path,
-            buf,
-            nix_configs,
-        };
+        let mut this = Self { path, nix_configs };
 
         if this.path.exists() {
             let metadata = this
@@ -167,7 +162,7 @@ impl Action for CreateOrMergeNixConfig {
                     .nix_configs
                     .merged_nix_config
                     .iter()
-                    .map(|(k, v)| format!("{k}={v}"))
+                    .map(|(k, v)| format!("{k}='{v}'"))
                     .collect::<Vec<_>>()
                     .join(" "),
             );
@@ -188,15 +183,19 @@ impl Action for CreateOrMergeNixConfig {
 
     #[tracing::instrument(level = "debug", skip_all)]
     async fn execute(&mut self) -> Result<(), ActionError> {
-        let Self {
-            path,
-            buf,
-            nix_configs,
-        } = self;
+        let Self { path, nix_configs } = self;
 
         if tracing::enabled!(tracing::Level::TRACE) {
             let span = tracing::Span::current();
-            span.record("buf", &buf);
+            span.record(
+                "merged_nix_config",
+                nix_configs
+                    .merged_nix_config
+                    .iter()
+                    .map(|(k, v)| format!("{k}='{v}'"))
+                    .collect::<Vec<_>>()
+                    .join(" "),
+            );
         }
 
         let mut options = OpenOptions::new();
@@ -256,7 +255,6 @@ impl Action for CreateOrMergeNixConfig {
     fn revert_description(&self) -> Vec<ActionDescription> {
         let Self {
             path,
-            buf: _,
             nix_configs: _,
         } = &self;
 
@@ -270,7 +268,6 @@ impl Action for CreateOrMergeNixConfig {
     async fn revert(&mut self) -> Result<(), ActionError> {
         let Self {
             path,
-            buf: _,
             nix_configs: _,
         } = self;
 
