@@ -13,13 +13,12 @@ use tokio::{
 
 use crate::action::{Action, ActionDescription, ActionError, StatefulAction};
 
+/// The nix.conf configuration names that are safe to merge.
+// TODO: make configurable by downstream users? or maybe parse `nix show-config --json` and any values where the `defaultValue` is a list are safe?
 const MERGEABLE_CONF_NAMES: &[&str] = &["experimental-features"];
 
-/** Create a file at the given location with the provided `buf`,
+/** Create or merge an existing `/etc/nix/nix.conf`,
 optionally with an owning user, group, and mode.
-
-If `force` is set, the file will always be overwritten (and deleted)
-regardless of its presence prior to install.
  */
 #[derive(Debug, serde::Deserialize, serde::Serialize, Clone)]
 pub struct CreateOrMergeNixConfig {
@@ -27,7 +26,7 @@ pub struct CreateOrMergeNixConfig {
     user: Option<String>,
     group: Option<String>,
     mode: Option<u32>,
-    buf: String,
+    buf: String, // TODO: remove
     nix_configs: NixConfigs,
 }
 
@@ -77,7 +76,7 @@ impl CreateOrMergeNixConfig {
 
             if let Some(mode) = mode {
                 // Does the file have the right permissions?
-                let discovered_mode = metadata.permissions().mode();
+                let discovered_mode = metadata.permissions().mode() & ((1 << 12) - 1);
                 if discovered_mode != mode {
                     return Err(ActionError::PathModeMismatch(
                         this.path,
@@ -192,7 +191,7 @@ impl CreateOrMergeNixConfig {
 #[typetag::serde(name = "create_or_merge_nix_config")]
 impl Action for CreateOrMergeNixConfig {
     fn tracing_synopsis(&self) -> String {
-        format!("Create or overwrite file `{}`", self.path.display())
+        format!("Create or merge nix.conf file `{}`", self.path.display())
     }
 
     fn tracing_span(&self) -> Span {
@@ -205,17 +204,35 @@ impl Action for CreateOrMergeNixConfig {
             mode = self
                 .mode
                 .map(|v| tracing::field::display(format!("{:#o}", v))),
-            buf = tracing::field::Empty,
+            merged_nix_config = tracing::field::Empty,
         );
 
         if tracing::enabled!(tracing::Level::TRACE) {
-            span.record("buf", &self.buf);
+            span.record(
+                "merged_nix_config",
+                &self
+                    .nix_configs
+                    .merged_nix_config
+                    .as_ref()
+                    .unwrap() // TODO: make non-optional; if it's empty, that's fine
+                    .iter()
+                    .map(|(k, v)| format!("{k}={v}"))
+                    .collect::<Vec<_>>()
+                    .join(" "),
+            );
         }
         span
     }
 
     fn execute_description(&self) -> Vec<ActionDescription> {
-        vec![ActionDescription::new(self.tracing_synopsis(), vec![])]
+        vec![ActionDescription::new(
+            self.tracing_synopsis(),
+            vec![format!(
+                "If there was an existing nix.conf file at {}, we will attempt to merge the current settings with our settings; \
+                otherwise, it will be created with only our settings",
+                self.path.display()
+            )],
+        )]
     }
 
     #[tracing::instrument(level = "debug", skip_all)]
