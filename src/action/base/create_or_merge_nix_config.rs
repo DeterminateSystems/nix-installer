@@ -12,12 +12,12 @@ use tokio::{
 
 use crate::action::{Action, ActionDescription, ActionError, StatefulAction};
 
-/// The nix.conf configuration names that are safe to merge.
-// TODO: make configurable by downstream users? or maybe parse `nix show-config --json` and any values where the `defaultValue` is a list are safe?
+/// The `nix.conf` configuration names that are safe to merge.
+// FIXME(@cole-h): make configurable by downstream users?
 const MERGEABLE_CONF_NAMES: &[&str] = &["experimental-features"];
 const NIX_CONF_MODE: u32 = 0o644;
 
-/// Create or merge an existing `/etc/nix/nix.conf`.
+/// Create or merge an existing `nix.conf` at the specified path.
 #[derive(Debug, serde::Deserialize, serde::Serialize, Clone)]
 pub struct CreateOrMergeNixConfig {
     pub(crate) path: PathBuf,
