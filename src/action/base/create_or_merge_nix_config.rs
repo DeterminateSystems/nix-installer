@@ -125,7 +125,7 @@ impl CreateOrMergeNixConfig {
             );
             return Ok(StatefulAction::completed(this));
         } else {
-            let mut merged_nix_config: NixConfig = NixConfig::new();
+            let mut merged_nix_config = NixConfig::new();
             for (pending_conf_name, pending_conf_value) in &pending_nix_config {
                 merged_nix_config
                     .insert(pending_conf_name.to_owned(), pending_conf_value.to_owned());
