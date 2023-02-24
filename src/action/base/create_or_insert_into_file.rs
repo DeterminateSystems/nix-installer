@@ -361,7 +361,7 @@ mod test {
 
     #[tokio::test]
     async fn creates_and_deletes_file() -> eyre::Result<()> {
-        let temp_dir = tempdir::TempDir::new("nix_installer_create_or_insert_into_file")?;
+        let temp_dir = tempfile::tempdir()?;
         let test_file = temp_dir.path().join("creates_and_deletes_file");
         let mut action = CreateOrInsertIntoFile::plan(
             test_file.clone(),
@@ -384,7 +384,7 @@ mod test {
 
     #[tokio::test]
     async fn edits_and_reverts_file() -> eyre::Result<()> {
-        let temp_dir = tempdir::TempDir::new("nix_installer_create_or_insert_into_file")?;
+        let temp_dir = tempfile::tempdir()?;
         let test_file = temp_dir.path().join("edits_and_reverts_file");
 
         let test_content = "Some other content";
@@ -419,7 +419,7 @@ mod test {
 
     #[tokio::test]
     async fn recognizes_existing_containing_exact_contents_and_reverts_it() -> eyre::Result<()> {
-        let temp_dir = tempdir::TempDir::new("nix_installer_create_or_insert_into_file")?;
+        let temp_dir = tempfile::tempdir()?;
         let test_file = temp_dir
             .path()
             .join("recognizes_existing_containing_exact_contents_and_reverts_it");
@@ -457,7 +457,7 @@ mod test {
 
     #[tokio::test]
     async fn recognizes_wrong_mode_and_errors() -> eyre::Result<()> {
-        let temp_dir = tempdir::TempDir::new("nix_installer_tests_create_or_insert_into_file")?;
+        let temp_dir = tempfile::tempdir()?;
         let test_file = temp_dir.path().join("recognizes_wrong_mode_and_errors");
         let initial_mode = 0o777;
         let expected_mode = 0o000;
@@ -495,7 +495,7 @@ mod test {
 
     #[tokio::test]
     async fn recognizes_correct_mode() -> eyre::Result<()> {
-        let temp_dir = tempdir::TempDir::new("nix_installer_tests_create_or_insert_into_file")?;
+        let temp_dir = tempfile::tempdir()?;
         let test_file = temp_dir.path().join("recognizes_correct_mode");
         let initial_mode = 0o777;
 
@@ -524,7 +524,7 @@ mod test {
 
     #[tokio::test]
     async fn errors_on_dir() -> eyre::Result<()> {
-        let temp_dir = tempdir::TempDir::new("nix_installer_tests_create_or_insert_into_file")?;
+        let temp_dir = tempfile::tempdir()?;
 
         match CreateOrInsertIntoFile::plan(
             temp_dir.path(),

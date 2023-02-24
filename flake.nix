@@ -133,6 +133,7 @@
               toolchain
               rust-analyzer
               cargo-outdated
+              cargo-audit
               nixpkgs-fmt
               check.check-rustfmt
               check.check-spelling

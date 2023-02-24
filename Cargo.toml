@@ -60,7 +60,7 @@ strum = { version = "0.24.1", features = ["derive"] }
 
 [dev-dependencies]
 eyre = { version = "0.6.8", default-features = false, features = [ "track-caller" ] }
-tempdir = "0.3.7"
+tempfile = "3.3.0"
 
 [profile.release]
 strip = true  # Automatically strip symbols from the binary.
