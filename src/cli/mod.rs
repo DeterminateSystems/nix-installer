@@ -98,7 +98,7 @@ pub fn ensure_root() -> eyre::Result<()> {
         let mut arg_vec_cstring = vec![];
         arg_vec_cstring.push(sudo_cstring.clone());
 
-        let mut preserve_env_list = vec![];
+        let mut env_list = vec![];
         for (key, value) in std::env::vars() {
             let preserve = match key.as_str() {
                 // Rust logging/backtrace bits we use
@@ -112,14 +112,21 @@ pub fn ensure_root() -> eyre::Result<()> {
                 _ => false,
             };
             if preserve {
-                preserve_env_list.push(format!("{key}={value}"));
+                env_list.push(format!("{key}={value}"));
             }
         }
 
-        if !preserve_env_list.is_empty() {
+        #[cfg(feature = "diagnostics")]
+        if is_ci::cached() {
+            // Normally `sudo` would erase those envs, so we detect and pass that along specifically to avoid having to pass around
+            // a bunch of environment variables
+            env_list.push(format!("NIX_INSTALLER_CI=1"));
+        }
+
+        if !env_list.is_empty() {
             arg_vec_cstring
                 .push(CString::new("env").wrap_err("Building a `env` argument for `sudo`")?);
-            for env in preserve_env_list {
+            for env in env_list {
                 arg_vec_cstring.push(
                     CString::new(env.clone())
                         .wrap_err_with(|| format!("Building a `{}` argument for `sudo`", env))?,

@@ -209,7 +209,7 @@ pub struct CommonSettings {
     /// Sample of the data sent:
     ///
     /// {
-    ///     "version": "0.3.0",
+    ///     "version": "0.4.0",
     ///     "planner": "linux",
     ///     "configured-settings": [ "modify_profile" ],
     ///     "os-name": "Ubuntu",
