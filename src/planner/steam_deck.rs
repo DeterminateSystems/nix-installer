@@ -252,6 +252,15 @@ impl Planner for SteamDeck {
 
         Ok(map)
     }
+
+    #[cfg(feature = "diagnostics")]
+    async fn diagnostic_data(&self) -> Result<crate::diagnostics::DiagnosticData, PlannerError> {
+        Ok(crate::diagnostics::DiagnosticData::new(
+            self.settings.diagnostic_endpoint.clone(),
+            self.typetag_name().into(),
+            self.configured_settings().await?,
+        ))
+    }
 }
 
 impl Into<BuiltinPlanner> for SteamDeck {

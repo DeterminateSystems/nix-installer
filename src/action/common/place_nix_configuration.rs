@@ -38,6 +38,10 @@ impl PlaceNixConfiguration {
             "bash-prompt-prefix".to_string(),
             "(nix:$name)\\040".to_string(),
         );
+        nix_config.insert(
+            "extra-nix-path".to_string(),
+            "nixpkgs=flake:nixpkgs".to_string(),
+        );
 
         let create_directory =
             CreateDirectory::plan(NIX_CONF_FOLDER, None, None, 0o0755, force).await?;

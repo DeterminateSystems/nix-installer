@@ -73,6 +73,8 @@ pub mod action;
 mod channel_value;
 #[cfg(feature = "cli")]
 pub mod cli;
+#[cfg(feature = "diagnostics")]
+pub mod diagnostics;
 mod error;
 mod os;
 mod plan;

@@ -3,7 +3,7 @@ use std::path::PathBuf;
 use crate::{action::ActionError, planner::PlannerError, settings::InstallSettingsError};
 
 /// An error occurring during a call defined in this crate
-#[derive(thiserror::Error, Debug)]
+#[derive(thiserror::Error, Debug, strum::IntoStaticStr)]
 pub enum NixInstallerError {
     /// An error originating from an [`Action`](crate::action::Action)
     #[error("Error executing action")]
@@ -53,6 +53,15 @@ pub enum NixInstallerError {
         #[source]
         InstallSettingsError,
     ),
+
+    #[cfg(feature = "diagnostics")]
+    /// Diagnostic error
+    #[error("Diagnostic error")]
+    Diagnostic(
+        #[from]
+        #[source]
+        crate::diagnostics::DiagnosticError,
+    ),
 }
 
 pub(crate) trait HasExpectedErrors: std::error::Error + Sized + Send + Sync {
@@ -70,6 +79,8 @@ impl HasExpectedErrors for NixInstallerError {
             NixInstallerError::SemVer(_) => None,
             NixInstallerError::Planner(planner_error) => planner_error.expected(),
             NixInstallerError::InstallSettings(_) => None,
+            #[cfg(feature = "diagnostics")]
+            NixInstallerError::Diagnostic(_) => None,
         }
     }
 }

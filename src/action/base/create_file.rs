@@ -261,7 +261,7 @@ mod test {
 
     #[tokio::test]
     async fn creates_and_deletes_file() -> eyre::Result<()> {
-        let temp_dir = tempdir::TempDir::new("nix_installer_tests_create_file")?;
+        let temp_dir = tempfile::tempdir()?;
         let test_file = temp_dir.path().join("creates_and_deletes_file");
         let mut action =
             CreateFile::plan(test_file.clone(), None, None, None, "Test".into(), false).await?;
@@ -277,7 +277,7 @@ mod test {
 
     #[tokio::test]
     async fn creates_and_deletes_file_even_if_edited() -> eyre::Result<()> {
-        let temp_dir = tempdir::TempDir::new("nix_installer_tests_create_file")?;
+        let temp_dir = tempfile::tempdir()?;
         let test_file = temp_dir
             .path()
             .join("creates_and_deletes_file_even_if_edited");
@@ -297,7 +297,7 @@ mod test {
 
     #[tokio::test]
     async fn recognizes_existing_exact_files_and_reverts_them() -> eyre::Result<()> {
-        let temp_dir = tempdir::TempDir::new("nix_installer_tests_create_file")?;
+        let temp_dir = tempfile::tempdir()?;
         let test_file = temp_dir
             .path()
             .join("recognizes_existing_exact_files_and_reverts_them");
@@ -326,7 +326,7 @@ mod test {
 
     #[tokio::test]
     async fn recognizes_existing_different_files_and_errors() -> eyre::Result<()> {
-        let temp_dir = tempdir::TempDir::new("nix_installer_tests_create_file")?;
+        let temp_dir = tempfile::tempdir()?;
         let test_file = temp_dir
             .path()
             .join("recognizes_existing_different_files_and_errors");
@@ -354,7 +354,7 @@ mod test {
 
     #[tokio::test]
     async fn recognizes_wrong_mode_and_errors() -> eyre::Result<()> {
-        let temp_dir = tempdir::TempDir::new("nix_installer_tests_create_file")?;
+        let temp_dir = tempfile::tempdir()?;
         let test_file = temp_dir.path().join("recognizes_wrong_mode_and_errors");
         let initial_mode = 0o777;
         let expected_mode = 0o000;
@@ -392,7 +392,7 @@ mod test {
 
     #[tokio::test]
     async fn recognizes_correct_mode() -> eyre::Result<()> {
-        let temp_dir = tempdir::TempDir::new("nix_installer_tests_create_file")?;
+        let temp_dir = tempfile::tempdir()?;
         let test_file = temp_dir.path().join("recognizes_correct_mode");
         let initial_mode = 0o777;
 
@@ -421,7 +421,7 @@ mod test {
 
     #[tokio::test]
     async fn errors_on_dir() -> eyre::Result<()> {
-        let temp_dir = tempdir::TempDir::new("nix_installer_tests_create_file")?;
+        let temp_dir = tempfile::tempdir()?;
 
         match CreateFile::plan(
             temp_dir.path(),

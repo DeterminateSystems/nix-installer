@@ -133,6 +133,15 @@ impl Planner for MyPlanner {
 
         Ok(map)
     }
+
+    #[cfg(feature = "diagnostics")]
+    async fn diagnostic_data(&self) -> Result<nix_installer::diagnostics::DiagnosticData, PlannerError> {
+        Ok(nix_installer::diagnostics::DiagnosticData::new(
+            self.common.diagnostic_endpoint.clone(),
+            self.typetag_name().into(),
+            self.configured_settings().await?,
+        ))
+    }
 }
 
 # async fn custom_planner_install() -> color_eyre::Result<()> {
@@ -244,7 +253,7 @@ impl ActionDescription {
 }
 
 /// An error occurring during an action
-#[derive(thiserror::Error, Debug)]
+#[derive(thiserror::Error, Debug, strum::IntoStaticStr)]
 pub enum ActionError {
     /// A custom error
     #[error(transparent)]
