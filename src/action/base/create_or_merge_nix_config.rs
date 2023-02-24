@@ -3,7 +3,7 @@ use std::{
     path::{Path, PathBuf},
 };
 
-use nix_config_parser::NixConfig;
+use nix_config_parser::{NixConfig, NixConfigValue};
 use rand::Rng;
 use tokio::{
     fs::{remove_file, OpenOptions},
@@ -28,7 +28,7 @@ pub enum CreateOrMergeNixConfigError {
         .map(|v| format!("`{v}`"))
         .collect::<Vec<_>>()
         .join(", "))]
-    UnmergeableConfig(Vec<String>, std::path::PathBuf),
+    UnmergeableConfig(Vec<nix_config_parser::NixConfigKey>, std::path::PathBuf),
 }
 
 /// Create or merge an existing `nix.conf` at the specified path.
@@ -89,10 +89,12 @@ impl CreateOrMergeNixConfig {
             let mut merged_nix_config = NixConfig::new();
             let mut unmergeable_config_names = Vec::new();
 
-            for (pending_conf_name, pending_conf_value) in &pending_nix_config {
-                if let Some(existing_conf_value) = existing_nix_config.get(pending_conf_name) {
-                    let pending_conf_value = pending_conf_value.split(' ').collect::<Vec<_>>();
-                    let existing_conf_value = existing_conf_value.split(' ').collect::<Vec<_>>();
+            for (pending_conf_name, pending_conf_value) in pending_nix_config.settings() {
+                if let Some(existing_conf_value) =
+                    existing_nix_config.settings().get(pending_conf_name)
+                {
+                    let pending_conf_value = pending_conf_value.0.split(' ').collect::<Vec<_>>();
+                    let existing_conf_value = existing_conf_value.0.split(' ').collect::<Vec<_>>();
 
                     if pending_conf_value
                         .iter()
@@ -102,7 +104,7 @@ impl CreateOrMergeNixConfig {
                         // merged_nix_config will be empty and this will be marked as completed. We
                         // don't return early here because there may be more config options to
                         // check.
-                    } else if MERGEABLE_CONF_NAMES.contains(&pending_conf_name.as_str()) {
+                    } else if MERGEABLE_CONF_NAMES.contains(&pending_conf_name.0.as_str()) {
                         let mut merged_conf_value = Vec::with_capacity(
                             pending_conf_value.len() + existing_conf_value.len(),
                         );
@@ -111,13 +113,16 @@ impl CreateOrMergeNixConfig {
                         merged_conf_value.dedup();
                         let merged_conf_value = merged_conf_value.join(" ");
 
-                        merged_nix_config
-                            .insert(pending_conf_name.to_owned(), format!("{merged_conf_value}"));
+                        merged_nix_config.settings_mut().insert(
+                            pending_conf_name.to_owned(),
+                            NixConfigValue(format!("{merged_conf_value}")),
+                        );
                     } else {
                         unmergeable_config_names.push(pending_conf_name.to_owned());
                     }
                 } else {
                     merged_nix_config
+                        .settings_mut()
                         .insert(pending_conf_name.to_owned(), pending_conf_value.to_owned());
                 }
             }
@@ -131,7 +136,7 @@ impl CreateOrMergeNixConfig {
                 )));
             }
 
-            if !merged_nix_config.is_empty() {
+            if !merged_nix_config.settings().is_empty() {
                 this.nix_configs.merged_nix_config = merged_nix_config;
                 return Ok(StatefulAction::uncompleted(this));
             }
@@ -143,12 +148,13 @@ impl CreateOrMergeNixConfig {
             return Ok(StatefulAction::completed(this));
         } else {
             let mut merged_nix_config = NixConfig::new();
-            for (pending_conf_name, pending_conf_value) in &pending_nix_config {
+            for (pending_conf_name, pending_conf_value) in pending_nix_config.settings() {
                 merged_nix_config
+                    .settings_mut()
                     .insert(pending_conf_name.to_owned(), pending_conf_value.to_owned());
             }
 
-            if !merged_nix_config.is_empty() {
+            if !merged_nix_config.settings().is_empty() {
                 this.nix_configs.merged_nix_config = merged_nix_config;
             }
         }
@@ -179,6 +185,7 @@ impl Action for CreateOrMergeNixConfig {
                 &self
                     .nix_configs
                     .merged_nix_config
+                    .settings()
                     .iter()
                     .map(|(k, v)| format!("{k}='{v}'"))
                     .collect::<Vec<_>>()
@@ -209,6 +216,7 @@ impl Action for CreateOrMergeNixConfig {
                 "merged_nix_config",
                 nix_configs
                     .merged_nix_config
+                    .settings()
                     .iter()
                     .map(|(k, v)| format!("{k}='{v}'"))
                     .collect::<Vec<_>>()
@@ -247,14 +255,14 @@ impl Action for CreateOrMergeNixConfig {
         // FIXME(@cole-h): for now we replace the entire file, but in the future we could potentially "replace" the contents
         let mut new_config = String::new();
         if let Some(existing_nix_config) = &nix_configs.existing_nix_config {
-            for (name, value) in existing_nix_config {
-                if nix_configs.merged_nix_config.get(name).is_some() {
+            for (name, value) in existing_nix_config.settings() {
+                if nix_configs.merged_nix_config.settings().get(name).is_some() {
                     continue;
                 }
 
-                new_config.push_str(name);
+                new_config.push_str(&name.0);
                 new_config.push_str(" = ");
-                new_config.push_str(value);
+                new_config.push_str(&value.0);
                 new_config.push('\n');
             }
 
@@ -266,10 +274,10 @@ impl Action for CreateOrMergeNixConfig {
             version = env!("CARGO_PKG_VERSION"),
         ));
 
-        for (name, value) in &nix_configs.merged_nix_config {
-            new_config.push_str(name);
+        for (name, value) in nix_configs.merged_nix_config.settings() {
+            new_config.push_str(&name.0);
             new_config.push_str(" = ");
-            new_config.push_str(value);
+            new_config.push_str(&value.0);
             new_config.push('\n');
         }
 
@@ -318,18 +326,18 @@ impl Action for CreateOrMergeNixConfig {
 mod test {
     use super::*;
     use eyre::eyre;
+    use nix_config_parser::NixConfigKey;
     use tokio::fs::write;
 
     #[tokio::test]
     async fn creates_and_deletes_file() -> eyre::Result<()> {
         let temp_dir = tempfile::TempDir::new()?;
         let test_file = temp_dir.path().join("creates_and_deletes_file");
-        let nix_config: NixConfig = [(
-            "experimental-features".to_string(),
-            "ca-references".to_string(),
-        )]
-        .into_iter()
-        .collect();
+        let mut nix_config = NixConfig::new();
+        nix_config.settings_mut().insert(
+            NixConfigKey("experimental-features".to_string()),
+            NixConfigValue("ca-references".to_string()),
+        );
         let mut action = CreateOrMergeNixConfig::plan(&test_file, nix_config).await?;
 
         action.try_execute().await?;
@@ -352,12 +360,11 @@ mod test {
         let test_file = temp_dir
             .path()
             .join("creates_and_deletes_file_even_if_edited");
-        let nix_config: NixConfig = [(
-            "experimental-features".to_string(),
-            "ca-references".to_string(),
-        )]
-        .into_iter()
-        .collect();
+        let mut nix_config = NixConfig::new();
+        nix_config.settings_mut().insert(
+            NixConfigKey("experimental-features".to_string()),
+            NixConfigValue("ca-references".to_string()),
+        );
         let mut action = CreateOrMergeNixConfig::plan(&test_file, nix_config).await?;
 
         action.try_execute().await?;
@@ -382,9 +389,11 @@ mod test {
         write(test_file.as_path(), test_content).await?;
         tokio::fs::set_permissions(&test_file, PermissionsExt::from_mode(NIX_CONF_MODE)).await?;
 
-        let nix_config: NixConfig = [("experimental-features".to_string(), "flakes".to_string())]
-            .into_iter()
-            .collect();
+        let mut nix_config = NixConfig::new();
+        nix_config.settings_mut().insert(
+            NixConfigKey("experimental-features".to_string()),
+            NixConfigValue("flakes".to_string()),
+        );
         let mut action = CreateOrMergeNixConfig::plan(&test_file, nix_config).await?;
 
         action.try_execute().await?;
@@ -410,15 +419,15 @@ mod test {
         .await?;
         tokio::fs::set_permissions(&test_file, PermissionsExt::from_mode(NIX_CONF_MODE)).await?;
 
-        let nix_config: NixConfig = [
-            (
-                "experimental-features".to_string(),
-                "nix-command flakes".to_string(),
-            ),
-            ("allow-dirty".to_string(), "false".to_string()),
-        ]
-        .into_iter()
-        .collect();
+        let mut nix_config = NixConfig::new();
+        nix_config.settings_mut().insert(
+            NixConfigKey("experimental-features".to_string()),
+            NixConfigValue("nix-command flakes".to_string()),
+        );
+        nix_config.settings_mut().insert(
+            NixConfigKey("allow-dirty".to_string()),
+            NixConfigValue("false".to_string()),
+        );
         let mut action = CreateOrMergeNixConfig::plan(&test_file, nix_config).await?;
 
         action.try_execute().await?;
@@ -456,15 +465,15 @@ mod test {
         )
         .await?;
 
-        let nix_config: NixConfig = [
-            (
-                "experimental-features".to_string(),
-                "nix-command flakes".to_string(),
-            ),
-            ("warn-dirty".to_string(), "false".to_string()),
-        ]
-        .into_iter()
-        .collect();
+        let mut nix_config = NixConfig::new();
+        nix_config.settings_mut().insert(
+            NixConfigKey("experimental-features".to_string()),
+            NixConfigValue("nix-command flakes".to_string()),
+        );
+        nix_config.settings_mut().insert(
+            NixConfigKey("warn-dirty".to_string()),
+            NixConfigValue("false".to_string()),
+        );
         match CreateOrMergeNixConfig::plan(&test_file, nix_config).await {
             Err(ActionError::Custom(e)) => match e.downcast_ref::<CreateOrMergeNixConfigError>() {
                 Some(CreateOrMergeNixConfigError::UnmergeableConfig(_, path)) => {

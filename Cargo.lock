@@ -934,8 +934,9 @@ dependencies = [
 [[package]]
 name = "nix-config-parser"
 version = "0.1.0"
-source = "git+https://github.com/DeterminateSystems/nix-config-parser#8d78bcd8e9de1f14a100f0bee8459a8fcdeec8f5"
+source = "git+https://github.com/DeterminateSystems/nix-config-parser?branch=api-guidelines-stuff#2583e4be832a60611aa6c58d71bf090408b78b47"
 dependencies = [
+ "serde",
  "thiserror",
 ]
 
