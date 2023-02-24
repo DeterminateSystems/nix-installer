@@ -48,13 +48,10 @@ impl CreateOrMergeNixConfig {
     #[tracing::instrument(level = "debug", skip_all)]
     pub async fn plan(
         path: impl AsRef<Path>,
-        buf: String,
+        pending_nix_config: NixConfig,
     ) -> Result<StatefulAction<Self>, ActionError> {
         let path = path.as_ref().to_path_buf();
 
-        let pending_nix_config = nix_config_parser::parse_nix_config_string(buf.clone(), None)
-            .map_err(CreateOrMergeNixConfigError::ParseNixConfig)
-            .map_err(|e| ActionError::Custom(Box::new(e)))?;
         let nix_configs = NixConfigs {
             existing_nix_config: None,
             merged_nix_config: NixConfig::new(),
@@ -324,11 +321,13 @@ mod test {
     async fn creates_and_deletes_file() -> eyre::Result<()> {
         let temp_dir = tempdir::TempDir::new("nix_installer_tests_create_or_merge_nix_config")?;
         let test_file = temp_dir.path().join("creates_and_deletes_file");
-        let mut action = CreateOrMergeNixConfig::plan(
-            &test_file,
-            "experimental-features = ca-references".into(),
-        )
-        .await?;
+        let nix_config: NixConfig = [(
+            "experimental-features".to_string(),
+            "ca-references".to_string(),
+        )]
+        .into_iter()
+        .collect();
+        let mut action = CreateOrMergeNixConfig::plan(&test_file, nix_config).await?;
 
         action.try_execute().await?;
 
@@ -350,11 +349,13 @@ mod test {
         let test_file = temp_dir
             .path()
             .join("creates_and_deletes_file_even_if_edited");
-        let mut action = CreateOrMergeNixConfig::plan(
-            &test_file,
-            "experimental-features = ca-references".into(),
-        )
-        .await?;
+        let nix_config: NixConfig = [(
+            "experimental-features".to_string(),
+            "ca-references".to_string(),
+        )]
+        .into_iter()
+        .collect();
+        let mut action = CreateOrMergeNixConfig::plan(&test_file, nix_config).await?;
 
         action.try_execute().await?;
 
@@ -378,7 +379,10 @@ mod test {
         write(test_file.as_path(), test_content).await?;
         tokio::fs::set_permissions(&test_file, PermissionsExt::from_mode(NIX_CONF_MODE)).await?;
 
-        let mut action = CreateOrMergeNixConfig::plan(&test_file, test_content.into()).await?;
+        let nix_config: NixConfig = [("experimental-features".to_string(), "flakes".to_string())]
+            .into_iter()
+            .collect();
+        let mut action = CreateOrMergeNixConfig::plan(&test_file, nix_config).await?;
 
         action.try_execute().await?;
 
@@ -403,11 +407,16 @@ mod test {
         .await?;
         tokio::fs::set_permissions(&test_file, PermissionsExt::from_mode(NIX_CONF_MODE)).await?;
 
-        let mut action = CreateOrMergeNixConfig::plan(
-            &test_file,
-            "experimental-features = nix-command flakes\nallow-dirty = false\n".into(),
-        )
-        .await?;
+        let nix_config: NixConfig = [
+            (
+                "experimental-features".to_string(),
+                "nix-command flakes".to_string(),
+            ),
+            ("allow-dirty".to_string(), "false".to_string()),
+        ]
+        .into_iter()
+        .collect();
+        let mut action = CreateOrMergeNixConfig::plan(&test_file, nix_config).await?;
 
         action.try_execute().await?;
 
@@ -439,12 +448,16 @@ mod test {
         )
         .await?;
 
-        match CreateOrMergeNixConfig::plan(
-            &test_file,
-            "experimental-features = nix-command flakes\nwarn-dirty = false\n".into(),
-        )
-        .await
-        {
+        let nix_config: NixConfig = [
+            (
+                "experimental-features".to_string(),
+                "nix-command flakes".to_string(),
+            ),
+            ("warn-dirty".to_string(), "false".to_string()),
+        ]
+        .into_iter()
+        .collect();
+        match CreateOrMergeNixConfig::plan(&test_file, nix_config).await {
             Err(ActionError::Custom(e)) => match e.downcast_ref::<CreateOrMergeNixConfigError>() {
                 Some(CreateOrMergeNixConfigError::UnmergeableConfig(_, path)) => {
                     assert_eq!(path, test_file.as_path())

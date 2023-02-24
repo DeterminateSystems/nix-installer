@@ -1,5 +1,6 @@
 use tracing::{span, Span};
 
+use crate::action::base::create_or_merge_nix_config::CreateOrMergeNixConfigError;
 use crate::action::base::{CreateDirectory, CreateOrMergeNixConfig};
 use crate::action::{Action, ActionDescription, ActionError, StatefulAction};
 
@@ -22,23 +23,25 @@ impl PlaceNixConfiguration {
         extra_conf: Vec<String>,
         force: bool,
     ) -> Result<StatefulAction<Self>, ActionError> {
-        let buf = format!(
-            "\
-            {extra_conf}\n\
-            \n\
-            build-users-group = {nix_build_group_name}\n\
-            \n\
-            experimental-features = nix-command flakes\n\
-            \n\
-            auto-optimise-store = true\n\
-            \n\
-            bash-prompt-prefix = (nix:$name)\\040\n\
-        ",
-            extra_conf = extra_conf.join("\n"),
+        let extra_conf = extra_conf.join("\n");
+        let mut nix_config = nix_config_parser::parse_nix_config_string(extra_conf, None)
+            .map_err(CreateOrMergeNixConfigError::ParseNixConfig)
+            .map_err(|e| ActionError::Custom(Box::new(e)))?;
+
+        nix_config.insert("build-users-group".to_string(), nix_build_group_name);
+        nix_config.insert(
+            "experimental-features".to_string(),
+            "nix-command flakes".to_string(),
         );
+        nix_config.insert("auto-optimise-store".to_string(), "true".to_string());
+        nix_config.insert(
+            "bash-prompt-prefix".to_string(),
+            "(nix:$name)\\040".to_string(),
+        );
+
         let create_directory =
             CreateDirectory::plan(NIX_CONF_FOLDER, None, None, 0o0755, force).await?;
-        let create_or_merge_nix_config = CreateOrMergeNixConfig::plan(NIX_CONF, buf).await?;
+        let create_or_merge_nix_config = CreateOrMergeNixConfig::plan(NIX_CONF, nix_config).await?;
         Ok(Self {
             create_directory,
             create_or_merge_nix_config,
