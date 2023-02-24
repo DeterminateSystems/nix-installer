@@ -216,7 +216,7 @@ pub struct CommonSettings {
     ///     "os-version": "22.04.1 LTS (Jammy Jellyfish)",
     ///     "triple": "x86_64-unknown-linux-gnu",
     ///     "action": "Install",
-    ///     "status": "Success"
+    ///     "status": "Success"I
     /// }
     ///
     /// To disable diagnostic reporting, unset the default with `--diagnostic-endpoint=`
@@ -286,7 +286,7 @@ impl CommonSettings {
             )],
             modify_profile: true,
             nix_build_group_name: String::from("nixbld"),
-            nix_build_group_id: 3000,
+            nix_build_group_id: 30_000,
             nix_build_user_prefix: nix_build_user_prefix.to_string(),
             nix_build_user_id_base,
             nix_package_url: url.parse()?,
@@ -294,7 +294,7 @@ impl CommonSettings {
             force: false,
             #[cfg(feature = "diagnostics")]
             diagnostic_endpoint: Some(
-                "https://install.determinate.systems/diagnostics".try_into()?,
+                "https://install.determinate.systems/nix/diagnostic".try_into()?,
             ),
         })
     }

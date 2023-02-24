@@ -84,20 +84,3 @@ impl HasExpectedErrors for NixInstallerError {
         }
     }
 }
-
-// #[cfg(feature = "diagnostics")]
-// impl NixInstallerError {
-//     pub fn diagnostic_synopsis(&self) -> &'static str {
-//         match self {
-//             NixInstallerError::Action(inner) => inner.into(),
-//             NixInstallerError::Planner(inner) => inner.into(),
-//             NixInstallerError::RecordingReceipt(_, _)
-//             | NixInstallerError::CopyingSelf(_)
-//             | NixInstallerError::SerializingReceipt(_)
-//             | NixInstallerError::Cancelled
-//             | NixInstallerError::SemVer(_)
-//             | NixInstallerError::Diagnostic(_)
-//             | NixInstallerError::InstallSettings(_) => self.into(),
-//         }
-//     }
-// }

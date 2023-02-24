@@ -926,6 +926,7 @@ dependencies = [
  "dyn-clone",
  "eyre",
  "glob",
+ "is_ci",
  "nix",
  "os-release",
  "owo-colors",
