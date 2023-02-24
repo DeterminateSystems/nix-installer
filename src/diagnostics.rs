@@ -39,7 +39,7 @@ pub struct DiagnosticReport {
     pub action: DiagnosticAction,
     pub status: DiagnosticStatus,
     /// Generally this includes the [`strum::IntoStaticStr`] representation of the error, we take special care not to include parameters of the error (which may include secrets)
-    pub variant: Option<String>,
+    pub error_variant: Option<String>,
 }
 
 /// A preparation of data to be sent to the `endpoint`.
@@ -53,7 +53,7 @@ pub struct DiagnosticData {
     triple: String,
     is_ci: bool,
     endpoint: Option<Url>,
-    variant: Option<String>,
+    error_variant: Option<String>,
 }
 
 impl DiagnosticData {
@@ -72,12 +72,12 @@ impl DiagnosticData {
             os_version,
             triple: target_lexicon::HOST.to_string(),
             is_ci,
-            variant: None,
+            error_variant: None,
         }
     }
 
     pub fn variant(mut self, variant: String) -> Self {
-        self.variant = Some(variant);
+        self.error_variant = Some(variant);
         self
     }
 
@@ -91,7 +91,7 @@ impl DiagnosticData {
             triple,
             is_ci,
             endpoint: _,
-            variant,
+            error_variant: variant,
         } = self;
         DiagnosticReport {
             version: version.clone(),
@@ -103,7 +103,7 @@ impl DiagnosticData {
             is_ci: *is_ci,
             action,
             status,
-            variant: variant.clone(),
+            error_variant: variant.clone(),
         }
     }
 
