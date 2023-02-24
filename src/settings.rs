@@ -202,6 +202,31 @@ pub struct CommonSettings {
         )
     )]
     pub(crate) force: bool,
+
+    #[cfg(feature = "diagnostics")]
+    /// The URL or file path for an installation diagnostic to be sent
+    ///
+    /// Sample of the data sent:
+    ///
+    /// {
+    ///     "version": "0.3.0",
+    ///     "planner": "linux",
+    ///     "configured-settings": [ "modify_profile" ],
+    ///     "os-name": "Ubuntu",
+    ///     "os-version": "22.04.1 LTS (Jammy Jellyfish)",
+    ///     "triple": "x86_64-unknown-linux-gnu",
+    ///     "action": "Install",
+    ///     "status": "Success"
+    /// }
+    ///
+    /// To disable diagnostic reporting, unset the default with `--diagnostic-endpoint=`
+    #[clap(
+        long,
+        env = "NIX_INSTALLER_DIAGNOSTIC_ENDPOINT",
+        global = true,
+        default_value = "https://install.determinate.systems/nix/diagnostic"
+    )]
+    pub diagnostic_endpoint: Option<Url>,
 }
 
 impl CommonSettings {
@@ -217,19 +242,19 @@ impl CommonSettings {
             (Architecture::X86_64, OperatingSystem::Linux) => {
                 url = NIX_X64_64_LINUX_URL;
                 nix_build_user_prefix = "nixbld";
-                nix_build_user_id_base = 3000;
+                nix_build_user_id_base = 30000;
             },
             #[cfg(target_os = "linux")]
             (Architecture::X86_32(_), OperatingSystem::Linux) => {
                 url = NIX_I686_LINUX_URL;
                 nix_build_user_prefix = "nixbld";
-                nix_build_user_id_base = 3000;
+                nix_build_user_id_base = 30000;
             },
             #[cfg(target_os = "linux")]
             (Architecture::Aarch64(_), OperatingSystem::Linux) => {
                 url = NIX_AARCH64_LINUX_URL;
                 nix_build_user_prefix = "nixbld";
-                nix_build_user_id_base = 3000;
+                nix_build_user_id_base = 30000;
             },
             #[cfg(target_os = "macos")]
             (Architecture::X86_64, OperatingSystem::MacOSX { .. })
@@ -267,6 +292,10 @@ impl CommonSettings {
             nix_package_url: url.parse()?,
             extra_conf: Default::default(),
             force: false,
+            #[cfg(feature = "diagnostics")]
+            diagnostic_endpoint: Some(
+                "https://install.determinate.systems/diagnostics".try_into()?,
+            ),
         })
     }
 
@@ -283,6 +312,8 @@ impl CommonSettings {
             nix_package_url,
             extra_conf,
             force,
+            #[cfg(feature = "diagnostics")]
+            diagnostic_endpoint,
         } = self;
         let mut map = HashMap::default();
 
@@ -325,6 +356,12 @@ impl CommonSettings {
         );
         map.insert("extra_conf".into(), serde_json::to_value(extra_conf)?);
         map.insert("force".into(), serde_json::to_value(force)?);
+
+        #[cfg(feature = "diagnostics")]
+        map.insert(
+            "diagnostic_endpoint".into(),
+            serde_json::to_value(diagnostic_endpoint)?,
+        );
 
         Ok(map)
     }
@@ -416,6 +453,13 @@ impl CommonSettings {
     /// If `nix-installer` should forcibly recreate files it finds existing
     pub fn force(&mut self, force: bool) -> &mut Self {
         self.force = force;
+        self
+    }
+
+    #[cfg(feature = "diagnostics")]
+    /// The URL or file path for an [`DiagnosticReport`][crate::diagnostics::DiagnosticReport] to be sent
+    pub fn diagnostic_endpoint(&mut self, diagnostic_endpoint: Option<Url>) -> &mut Self {
+        self.diagnostic_endpoint = diagnostic_endpoint;
         self
     }
 }
