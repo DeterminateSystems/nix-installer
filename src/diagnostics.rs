@@ -15,9 +15,8 @@ use reqwest::Url;
 pub enum DiagnosticStatus {
     Cancelled,
     Success,
-    /// This includes the [`strum::IntoStaticStr`] representation of the error, we take special care not to include parameters of the error (which may include secrets)
-    Failure(String),
     Pending,
+    Failure,
 }
 
 /// The action attempted
@@ -36,8 +35,11 @@ pub struct DiagnosticReport {
     pub os_name: String,
     pub os_version: String,
     pub triple: String,
+    pub is_ci: bool,
     pub action: DiagnosticAction,
     pub status: DiagnosticStatus,
+    /// Generally this includes the [`strum::IntoStaticStr`] representation of the error, we take special care not to include parameters of the error (which may include secrets)
+    pub failure_variant: Option<String>,
 }
 
 /// A preparation of data to be sent to the `endpoint`.
@@ -49,7 +51,9 @@ pub struct DiagnosticData {
     os_name: String,
     os_version: String,
     triple: String,
+    is_ci: bool,
     endpoint: Option<Url>,
+    failure_variant: Option<String>,
 }
 
 impl DiagnosticData {
@@ -58,6 +62,7 @@ impl DiagnosticData {
             Ok(os_release) => (os_release.name, os_release.version),
             Err(_) => ("unknown".into(), "unknown".into()),
         };
+        let is_ci = is_ci::cached();
         Self {
             endpoint,
             version: env!("CARGO_PKG_VERSION").into(),
@@ -66,7 +71,14 @@ impl DiagnosticData {
             os_name,
             os_version,
             triple: target_lexicon::HOST.to_string(),
+            is_ci,
+            failure_variant: None,
         }
+    }
+
+    pub fn variant(mut self, variant: String) -> Self {
+        self.failure_variant = Some(variant);
+        self
     }
 
     pub fn report(&self, action: DiagnosticAction, status: DiagnosticStatus) -> DiagnosticReport {
@@ -77,7 +89,9 @@ impl DiagnosticData {
             os_name,
             os_version,
             triple,
+            is_ci,
             endpoint: _,
+            failure_variant: variant,
         } = self;
         DiagnosticReport {
             version: version.clone(),
@@ -86,8 +100,10 @@ impl DiagnosticData {
             os_name: os_name.clone(),
             os_version: os_version.clone(),
             triple: triple.clone(),
+            is_ci: *is_ci,
             action,
             status,
+            failure_variant: variant.clone(),
         }
     }
 

@@ -162,12 +162,13 @@ impl InstallPlan {
                 if let Some(diagnostic_data) = &self.diagnostic_data {
                     diagnostic_data
                         .clone()
+                        .variant({
+                            let x: &'static str = (&err).into();
+                            x.to_string()
+                        })
                         .send(
                             crate::diagnostics::DiagnosticAction::Install,
-                            crate::diagnostics::DiagnosticStatus::Failure({
-                                let x: &'static str = (&err).into();
-                                x.to_string()
-                            }),
+                            crate::diagnostics::DiagnosticStatus::Failure,
                         )
                         .await?;
                 }
@@ -294,12 +295,13 @@ impl InstallPlan {
                 if let Some(diagnostic_data) = &self.diagnostic_data {
                     diagnostic_data
                         .clone()
+                        .variant({
+                            let x: &'static str = (&err).into();
+                            x.to_string()
+                        })
                         .send(
                             crate::diagnostics::DiagnosticAction::Uninstall,
-                            crate::diagnostics::DiagnosticStatus::Failure({
-                                let x: &'static str = (&err).into();
-                                x.to_string()
-                            }),
+                            crate::diagnostics::DiagnosticStatus::Failure,
                         )
                         .await?;
                 }
