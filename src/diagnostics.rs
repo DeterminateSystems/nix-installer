@@ -62,7 +62,8 @@ impl DiagnosticData {
             Ok(os_release) => (os_release.name, os_release.version),
             Err(_) => ("unknown".into(), "unknown".into()),
         };
-        let is_ci = is_ci::cached();
+        let is_ci = is_ci::cached()
+            || std::env::var("NIX_INSTALLER_CI").unwrap_or_else(|_| "0".into()) == "1";
         Self {
             endpoint,
             version: env!("CARGO_PKG_VERSION").into(),
