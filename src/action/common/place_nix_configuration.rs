@@ -24,7 +24,7 @@ impl PlaceNixConfiguration {
         force: bool,
     ) -> Result<StatefulAction<Self>, ActionError> {
         let extra_conf = extra_conf.join("\n");
-        let mut nix_config = nix_config_parser::parse_nix_config_string(extra_conf, None)
+        let mut nix_config = nix_config_parser::NixConfig::parse_string(extra_conf, None)
             .map_err(CreateOrMergeNixConfigError::ParseNixConfig)
             .map_err(|e| ActionError::Custom(Box::new(e)))?;
         let settings = nix_config.settings_mut();
