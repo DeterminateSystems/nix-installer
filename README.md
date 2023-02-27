@@ -303,17 +303,17 @@ Here is a table of the [diagnostic data we collect][diagnosticdata]:
 | Field                 | Use                                                                                                   |
 | --------------------- | ----------------------------------------------------------------------------------------------------- |
 | `version`             | The version of the Determinate Nix Installer.                                                         |
-| `planner`             | The method of installing Nix ("linux", "macos", "steam-deck")                                         |
-| `configured-settings` | The names of planner settings which were changed from their default. Does not include the values.     |
-| `os-name`             | The running operating system.                                                                         |
-| `os-version`          | The version of the operating system.                                                                  |
+| `planner`             | The method of installing Nix (`linux`, `macos`, `steam-deck`)                                         |
+| `configured_settings` | The names of planner settings which were changed from their default. Does not include the values.     |
+| `os_name`             | The running operating system.                                                                         |
+| `os_version`          | The version of the operating system.                                                                  |
 | `triple`              | The architecture/os/binary format of your system.                                                     |
-| `is-ci`               | Whether the installer is being used in CI (e.g. GitHub Actions).                                      |
-| `action`              | Either "install" or "uninstall".                                                                      |
-| `status`              | "Success", "Failure", etc.                                                                            |
-| `failure_variant`     | A high level description of what the failure was, if any. For example: "Command" if a command failed. |
+| `is_ci`               | Whether the installer is being used in CI (e.g. GitHub Actions).                                      |
+| `action`              | Either `Install` or `Uninstall`.                                                                      |
+| `status`              | `Success`, `Failure`, etc.                                                                            |
+| `failure_variant`     | A high level description of what the failure was, if any. For example: `Command` if a command failed. |
 
-To disable diagnostic reporting, set the diagnostics URL to an empty string by passing `--diagnostic-endpoint=""`
+To disable diagnostic reporting, set the diagnostics URL to an empty string by passing `--diagnostic-endpoint=""` or setting `NIX_INSTALLER_DIAGNOSTIC_ENDPOINT=""`.
 
 You can read the full privacy policy for [Determinate Systems][detsys], the creators of the Determinate Nix Installer, [here][privacy].
 
