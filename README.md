@@ -293,4 +293,30 @@ nix build github:DeterminateSystems/nix-installer#nix-installer.doc
 firefox result-doc/nix-installer/index.html
 ```
 
+## Diagnostics
+
+The goal of the Determinate Nix Installer is to successfully and correctly install Nix.
+The `curl | sh` pipeline and the installer collects a little bit of diagnostic information to help us make that true.
+
+Here is a table of the [diagnostic data we collect][diagnosticdata]:
+
+| Field                 | Use                                                                                                   |
+| --------------------- | ----------------------------------------------------------------------------------------------------- |
+| `version`             | The version of the Determinate Nix Installer.                                                         |
+| `planner`             | The method of installing Nix ("linux", "macos", "steam-deck")                                         |
+| `configured-settings` | The names of planner settings which were changed from their default. Does not include the values.     |
+| `os-name`             | The running operating system.                                                                         |
+| `os-version`          | The version of the operating system.                                                                  |
+| `triple`              | The architecture/os/binary format of your system.                                                     |
+| `is-ci`               | Whether the installer is being used in CI (e.g. GitHub Actions).                                      |
+| `action`              | Either "install" or "uninstall".                                                                      |
+| `status`              | "Success", "Failure", etc.                                                                            |
+| `failure_variant`     | A high level description of what the failure was, if any. For example: "Command" if a command failed. |
+
+To disable diagnostic reporting, set the diagnostics URL to an empty string by passing `--diagnostic-endpoint=""`
+
+You can read the full privacy policy for [Determinate Systems], the creators of the Determinate Nix Installer, [here][privacy].
+
+[privacy]: https://determinate.systems/privacy
+[diagnosticdata]: https://github.com/DeterminateSystems/nix-installer/blob/f9f927840d532b71f41670382a30cfcbea2d8a35/src/diagnostics.rs#L29-L43
 [systemd]: https://systemd.io
