@@ -139,7 +139,7 @@ impl CommandExecute for Install {
                                     eprintln!("{}", expected.red());
                                     return Ok(ExitCode::FAILURE);
                                 }
-                                return Err(err.into())
+                                return Err(err)?;
                             }
                         }
                     },
@@ -212,12 +212,12 @@ impl CommandExecute for Install {
                     let rx2 = tx.subscribe();
                     let res = install_plan.uninstall(rx2).await;
 
-                    if let Err(e) = res {
-                        if let Some(expected) = e.expected() {
+                    if let Err(err) = res {
+                        if let Some(expected) = err.expected() {
                             eprintln!("{}", expected.red());
                             return Ok(ExitCode::FAILURE);
                         }
-                        return Err(e.into());
+                        return Err(err)?;
                     } else {
                         println!(
                             "\
@@ -233,7 +233,7 @@ impl CommandExecute for Install {
                     }
 
                     let error = eyre!(err).wrap_err("Install failure");
-                    return Err(error);
+                    return Err(error)?;
                 }
             },
             Ok(_) => {

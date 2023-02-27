@@ -126,7 +126,7 @@ impl Action for SetupDefaultProfile {
             );
             let mut handle = load_db_command
                 .spawn()
-                .map_err(|e| ActionError::Command(e))?;
+                .map_err(|e| ActionError::Command(load_db_command_str.clone(), e))?;
 
             let mut stdin = handle.stdin.take().unwrap();
             stdin
@@ -146,20 +146,9 @@ impl Action for SetupDefaultProfile {
             let output = handle
                 .wait_with_output()
                 .await
-                .map_err(ActionError::Command)?;
+                .map_err(|e| ActionError::Command(load_db_command_str.clone(), e))?;
             if !output.status.success() {
-                return Err(ActionError::Command(std::io::Error::new(
-                    std::io::ErrorKind::Other,
-                    format!(
-                        "Command `{load_db_command_str}` failed{}, stderr:\n{}\n",
-                        if let Some(code) = output.status.code() {
-                            format!(" status {code}")
-                        } else {
-                            "".to_string()
-                        },
-                        String::from_utf8_lossy(&output.stderr)
-                    ),
-                )));
+                return Err(ActionError::CommandOutput(load_db_command_str, output));
             };
         }
 
@@ -181,8 +170,7 @@ impl Action for SetupDefaultProfile {
                     nss_ca_cert_pkg.join("etc/ssl/certs/ca-bundle.crt"),
                 ), /* This is apparently load bearing... */
         )
-        .await
-        .map_err(|e| ActionError::Command(e))?;
+        .await?;
 
         // Install `nix` itself into the store
         execute_command(
@@ -202,8 +190,7 @@ impl Action for SetupDefaultProfile {
                     nss_ca_cert_pkg.join("etc/ssl/certs/ca-bundle.crt"),
                 ), /* This is apparently load bearing... */
         )
-        .await
-        .map_err(|e| ActionError::Command(e))?;
+        .await?;
 
         set_env(
             "NIX_SSL_CERT_FILE",
@@ -223,9 +210,7 @@ impl Action for SetupDefaultProfile {
             );
             command.stdin(std::process::Stdio::null());
 
-            execute_command(&mut command)
-                .await
-                .map_err(|e| ActionError::Command(e))?;
+            execute_command(&mut command).await?;
         }
 
         Ok(())

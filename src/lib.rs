@@ -83,7 +83,7 @@ pub mod settings;
 
 use std::{ffi::OsStr, process::Output};
 
-use action::Action;
+use action::{Action, ActionError};
 
 pub use channel_value::ChannelValue;
 pub use error::NixInstallerError;
@@ -93,24 +93,16 @@ use planner::BuiltinPlanner;
 use tokio::process::Command;
 
 #[tracing::instrument(level = "debug", skip_all, fields(command = %format!("{:?}", command.as_std())))]
-async fn execute_command(command: &mut Command) -> Result<Output, std::io::Error> {
+async fn execute_command(command: &mut Command) -> Result<Output, ActionError> {
     let command_str = format!("{:?}", command.as_std());
     tracing::trace!("Executing `{command_str}`");
-    let output = command.output().await?;
+    let output = command
+        .output()
+        .await
+        .map_err(|e| ActionError::Command(command_str.clone(), e))?;
     match output.status.success() {
         true => Ok(output),
-        false => Err(std::io::Error::new(
-            std::io::ErrorKind::Other,
-            format!(
-                "Command `{command_str}` failed{}, stderr:\n{}\n",
-                if let Some(code) = output.status.code() {
-                    format!(" status {code}")
-                } else {
-                    "".to_string()
-                },
-                String::from_utf8_lossy(&output.stderr)
-            ),
-        )),
+        false => Err(ActionError::CommandOutput(command_str, output)),
     }
 }
 

@@ -56,16 +56,14 @@ impl Action for BootstrapApfsVolume {
                 .arg(path)
                 .stdin(std::process::Stdio::null()),
         )
-        .await
-        .map_err(|e| ActionError::Command(e))?;
+        .await?;
         execute_command(
             Command::new("launchctl")
                 .process_group(0)
                 .args(["kickstart", "-k", "system/org.nixos.darwin-store"])
                 .stdin(std::process::Stdio::null()),
         )
-        .await
-        .map_err(|e| ActionError::Command(e))?;
+        .await?;
 
         Ok(())
     }
@@ -88,8 +86,7 @@ impl Action for BootstrapApfsVolume {
                 .arg(path)
                 .stdin(std::process::Stdio::null()),
         )
-        .await
-        .map_err(|e| ActionError::Command(e))?;
+        .await?;
 
         Ok(())
     }

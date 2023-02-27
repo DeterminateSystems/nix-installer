@@ -93,8 +93,7 @@ impl Action for CreateGroup {
                         ])
                         .stdin(std::process::Stdio::null()),
                 )
-                .await
-                .map_err(|e| ActionError::Command(e))?;
+                .await?;
             },
             _ => {
                 execute_command(
@@ -103,8 +102,7 @@ impl Action for CreateGroup {
                         .args(["-g", &gid.to_string(), "--system", &name])
                         .stdin(std::process::Stdio::null()),
                 )
-                .await
-                .map_err(|e| ActionError::Command(e))?;
+                .await?;
             },
         };
 
@@ -138,8 +136,7 @@ impl Action for CreateGroup {
                         .args([".", "-delete", &format!("/Groups/{name}")])
                         .stdin(std::process::Stdio::null()),
                 )
-                .await
-                .map_err(|e| ActionError::Command(e))?;
+                .await?;
                 if !output.status.success() {}
             },
             _ => {
@@ -149,8 +146,7 @@ impl Action for CreateGroup {
                         .arg(&name)
                         .stdin(std::process::Stdio::null()),
                 )
-                .await
-                .map_err(ActionError::Command)?;
+                .await?;
             },
         };
 

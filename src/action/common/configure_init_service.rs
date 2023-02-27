@@ -97,6 +97,11 @@ impl Action for ConfigureInitService {
     async fn execute(&mut self) -> Result<(), ActionError> {
         let Self { init, start_daemon } = self;
 
+        return Err(ActionError::Command(
+            "Boop".into(),
+            std::io::Error::new(std::io::ErrorKind::Other, "Boop"),
+        ));
+
         match init {
             #[cfg(target_os = "macos")]
             InitSystem::Launchd => {
@@ -154,8 +159,7 @@ impl Action for ConfigureInitService {
                         .arg("--prefix=/nix/var/nix")
                         .stdin(std::process::Stdio::null()),
                 )
-                .await
-                .map_err(ActionError::Command)?;
+                .await?;
 
                 execute_command(
                     Command::new("systemctl")
@@ -164,8 +168,7 @@ impl Action for ConfigureInitService {
                         .arg(SERVICE_SRC)
                         .stdin(std::process::Stdio::null()),
                 )
-                .await
-                .map_err(ActionError::Command)?;
+                .await?;
 
                 execute_command(
                     Command::new("systemctl")
@@ -174,8 +177,7 @@ impl Action for ConfigureInitService {
                         .arg(SOCKET_SRC)
                         .stdin(std::process::Stdio::null()),
                 )
-                .await
-                .map_err(ActionError::Command)?;
+                .await?;
 
                 if *start_daemon {
                     execute_command(
@@ -184,8 +186,7 @@ impl Action for ConfigureInitService {
                             .arg("daemon-reload")
                             .stdin(std::process::Stdio::null()),
                     )
-                    .await
-                    .map_err(ActionError::Command)?;
+                    .await?;
 
                     execute_command(
                         Command::new("systemctl")
@@ -194,8 +195,7 @@ impl Action for ConfigureInitService {
                             .arg("--now")
                             .arg(SOCKET_SRC),
                     )
-                    .await
-                    .map_err(ActionError::Command)?;
+                    .await?;
                 }
             },
             #[cfg(not(target_os = "macos"))]
@@ -263,8 +263,7 @@ impl Action for ConfigureInitService {
                             .args(["stop", "nix-daemon.socket"])
                             .stdin(std::process::Stdio::null()),
                     )
-                    .await
-                    .map_err(ActionError::Command)?;
+                    .await?;
                 }
 
                 if socket_is_enabled {
@@ -274,8 +273,7 @@ impl Action for ConfigureInitService {
                             .args(["disable", "nix-daemon.socket"])
                             .stdin(std::process::Stdio::null()),
                     )
-                    .await
-                    .map_err(ActionError::Command)?;
+                    .await?;
                 }
 
                 if service_is_active {
@@ -285,8 +283,7 @@ impl Action for ConfigureInitService {
                             .args(["stop", "nix-daemon.service"])
                             .stdin(std::process::Stdio::null()),
                     )
-                    .await
-                    .map_err(ActionError::Command)?;
+                    .await?;
                 }
 
                 if service_is_enabled {
@@ -296,8 +293,7 @@ impl Action for ConfigureInitService {
                             .args(["disable", "nix-daemon.service"])
                             .stdin(std::process::Stdio::null()),
                     )
-                    .await
-                    .map_err(ActionError::Command)?;
+                    .await?;
                 }
 
                 execute_command(
@@ -307,8 +303,7 @@ impl Action for ConfigureInitService {
                         .arg("--prefix=/nix/var/nix")
                         .stdin(std::process::Stdio::null()),
                 )
-                .await
-                .map_err(ActionError::Command)?;
+                .await?;
 
                 tokio::fs::remove_file(TMPFILES_DEST)
                     .await
@@ -320,8 +315,7 @@ impl Action for ConfigureInitService {
                         .arg("daemon-reload")
                         .stdin(std::process::Stdio::null()),
                 )
-                .await
-                .map_err(ActionError::Command)?;
+                .await?;
             },
             #[cfg(not(target_os = "macos"))]
             InitSystem::None => {
@@ -341,12 +335,14 @@ pub enum ConfigureNixDaemonServiceError {
 
 #[cfg(target_os = "linux")]
 async fn is_active(unit: &str) -> Result<bool, ActionError> {
-    let output = Command::new("systemctl")
-        .arg("is-active")
-        .arg(unit)
+    let mut command = Command::new("systemctl");
+    command.arg("is-active");
+    command.arg(unit);
+    let command_str = format!("{:?}", command.as_std());
+    let output = command
         .output()
         .await
-        .map_err(ActionError::Command)?;
+        .map_err(|e| ActionError::Command(command_str, e))?;
     if String::from_utf8(output.stdout)?.starts_with("active") {
         tracing::trace!(%unit, "Is active");
         Ok(true)
@@ -358,12 +354,14 @@ async fn is_active(unit: &str) -> Result<bool, ActionError> {
 
 #[cfg(target_os = "linux")]
 async fn is_enabled(unit: &str) -> Result<bool, ActionError> {
-    let output = Command::new("systemctl")
-        .arg("is-enabled")
-        .arg(unit)
+    let mut command = Command::new("systemctl");
+    command.arg("is-enabled");
+    command.arg(unit);
+    let command_str = format!("{:?}", command.as_std());
+    let output = command
         .output()
         .await
-        .map_err(ActionError::Command)?;
+        .map_err(|e| ActionError::Command(command_str, e))?;
     let stdout = String::from_utf8(output.stdout)?;
     if stdout.starts_with("enabled") || stdout.starts_with("linked") {
         tracing::trace!(%unit, "Is enabled");

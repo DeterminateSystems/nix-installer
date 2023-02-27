@@ -559,7 +559,7 @@ impl InitSettings {
 }
 
 /// An error originating from a [`Planner::settings`](crate::planner::Planner::settings)
-#[derive(thiserror::Error, Debug)]
+#[derive(thiserror::Error, Debug, strum::IntoStaticStr)]
 pub enum InstallSettingsError {
     /// `nix-installer` does not support the architecture right now
     #[error("`nix-installer` does not support the `{0}` architecture right now")]
@@ -580,4 +580,12 @@ pub enum InstallSettingsError {
     ),
     #[error("No supported init system found")]
     InitNotSupported,
+}
+
+#[cfg(feature = "diagnostics")]
+impl crate::diagnostics::ErrorDiagnostic for InstallSettingsError {
+    fn diagnostic(&self) -> (String, Vec<String>) {
+        let static_str: &'static str = (self).into();
+        return (static_str.to_string(), vec![]);
+    }
 }

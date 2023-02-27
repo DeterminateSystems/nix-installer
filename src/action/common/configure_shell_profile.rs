@@ -213,7 +213,7 @@ impl Action for ConfigureShellProfile {
                     create_or_insert_into_files[idx] = create_or_insert_into_file
                 },
                 Ok(Err(e)) => errors.push(Box::new(e)),
-                Err(e) => return Err(e.into()),
+                Err(e) => return Err(e)?,
             };
         }
 
@@ -259,7 +259,7 @@ impl Action for ConfigureShellProfile {
                     create_or_insert_into_files[idx] = create_or_insert_into_file
                 },
                 Ok(Err(e)) => errors.push(Box::new(e)),
-                Err(e) => return Err(e.into()),
+                Err(e) => return Err(e)?,
             };
         }
 
@@ -269,7 +269,7 @@ impl Action for ConfigureShellProfile {
 
         if !errors.is_empty() {
             if errors.len() == 1 {
-                return Err(errors.into_iter().next().unwrap().into());
+                return Err(errors.into_iter().next().unwrap())?;
             } else {
                 return Err(ActionError::Children(errors));
             }

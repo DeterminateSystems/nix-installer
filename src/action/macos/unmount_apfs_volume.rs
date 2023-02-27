@@ -59,8 +59,7 @@ impl Action for UnmountApfsVolume {
                 .arg(name)
                 .stdin(std::process::Stdio::null()),
         )
-        .await
-        .map_err(|e| ActionError::Command(e))?;
+        .await?;
 
         Ok(())
     }
@@ -80,8 +79,7 @@ impl Action for UnmountApfsVolume {
                 .arg(name)
                 .stdin(std::process::Stdio::null()),
         )
-        .await
-        .map_err(|e| ActionError::Command(e))?;
+        .await?;
 
         Ok(())
     }

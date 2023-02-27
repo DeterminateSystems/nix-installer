@@ -178,8 +178,7 @@ async fn get_uuid_for_label(apfs_volume_label: &str) -> Result<Uuid, ActionError
             .stdin(std::process::Stdio::null())
             .stdout(std::process::Stdio::piped()),
     )
-    .await
-    .map_err(|e| ActionError::Command(e))?;
+    .await?;
 
     let parsed: DiskUtilApfsInfoOutput = plist::from_bytes(&output.stdout)?;
 

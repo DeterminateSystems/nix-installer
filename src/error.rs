@@ -6,12 +6,8 @@ use crate::{action::ActionError, planner::PlannerError, settings::InstallSetting
 #[derive(thiserror::Error, Debug, strum::IntoStaticStr)]
 pub enum NixInstallerError {
     /// An error originating from an [`Action`](crate::action::Action)
-    #[error("Error executing action")]
-    Action(
-        #[source]
-        #[from]
-        ActionError,
-    ),
+    #[error("Error executing action `{0}`")]
+    Action(&'static str, #[source] ActionError),
     /// An error while writing the [`InstallPlan`](crate::InstallPlan)
     #[error("Recording install receipt")]
     RecordingReceipt(PathBuf, #[source] std::io::Error),
@@ -71,7 +67,7 @@ pub(crate) trait HasExpectedErrors: std::error::Error + Sized + Send + Sync {
 impl HasExpectedErrors for NixInstallerError {
     fn expected<'a>(&'a self) -> Option<Box<dyn std::error::Error + 'a>> {
         match self {
-            NixInstallerError::Action(action_error) => action_error.expected(),
+            NixInstallerError::Action(typetag, action_error) => action_error.expected(),
             NixInstallerError::RecordingReceipt(_, _) => None,
             NixInstallerError::CopyingSelf(_) => None,
             NixInstallerError::SerializingReceipt(_) => None,
@@ -82,5 +78,17 @@ impl HasExpectedErrors for NixInstallerError {
             #[cfg(feature = "diagnostics")]
             NixInstallerError::Diagnostic(_) => None,
         }
+    }
+}
+
+#[cfg(feature = "diagnostics")]
+impl crate::diagnostics::ErrorDiagnostic for NixInstallerError {
+    fn diagnostic(&self) -> (String, Vec<String>) {
+        let static_str: &'static str = (self).into();
+        let context = match self {
+            Self::Action(action, _) => vec![action.to_string()],
+            _ => vec![],
+        };
+        return (static_str.to_string(), context);
     }
 }

@@ -59,8 +59,7 @@ impl Action for EnableOwnership {
                     .arg(&path)
                     .stdin(std::process::Stdio::null()),
             )
-            .await
-            .map_err(ActionError::Command)?
+            .await?
             .stdout;
             let the_plist: DiskUtilOutput = plist::from_reader(Cursor::new(buf))?;
 
@@ -75,8 +74,7 @@ impl Action for EnableOwnership {
                     .arg(path)
                     .stdin(std::process::Stdio::null()),
             )
-            .await
-            .map_err(ActionError::Command)?;
+            .await?;
         }
 
         Ok(())

@@ -22,12 +22,14 @@ impl StartSystemdUnit {
         enable: bool,
     ) -> Result<StatefulAction<Self>, ActionError> {
         let unit = unit.as_ref();
-        let output = Command::new("systemctl")
-            .arg("is-active")
-            .arg(unit)
+        let mut command = Command::new("systemctl");
+        command.arg("is-active");
+        command.arg(unit);
+        let command_str = format!("{:?}", command.as_std());
+        let output = command
             .output()
             .await
-            .map_err(ActionError::Command)?;
+            .map_err(|e| ActionError::Command(command_str, e))?;
 
         let state = if output.status.success() {
             tracing::debug!("Starting systemd unit `{}` already complete", unit);
@@ -80,8 +82,7 @@ impl Action for StartSystemdUnit {
                         .arg(format!("{unit}"))
                         .stdin(std::process::Stdio::null()),
                 )
-                .await
-                .map_err(|e| ActionError::Custom(Box::new(StartSystemdUnitError::Command(e))))?;
+                .await?;
             },
             false => {
                 // TODO(@Hoverbear): Handle proxy vars
@@ -92,8 +93,7 @@ impl Action for StartSystemdUnit {
                         .arg(format!("{unit}"))
                         .stdin(std::process::Stdio::null()),
                 )
-                .await
-                .map_err(|e| ActionError::Custom(Box::new(StartSystemdUnitError::Command(e))))?;
+                .await?;
             },
         }
 
@@ -119,8 +119,7 @@ impl Action for StartSystemdUnit {
                     .arg(format!("{unit}"))
                     .stdin(std::process::Stdio::null()),
             )
-            .await
-            .map_err(|e| ActionError::Custom(Box::new(StartSystemdUnitError::Command(e))))?;
+            .await?;
         };
 
         // We do both to avoid an error doing `disable --now` if the user did stop it already somehow.
@@ -131,8 +130,7 @@ impl Action for StartSystemdUnit {
                 .arg(format!("{unit}"))
                 .stdin(std::process::Stdio::null()),
         )
-        .await
-        .map_err(|e| ActionError::Custom(Box::new(StartSystemdUnitError::Command(e))))?;
+        .await?;
 
         Ok(())
     }

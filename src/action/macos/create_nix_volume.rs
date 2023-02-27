@@ -53,7 +53,7 @@ impl CreateNixVolume {
             create_or_insert_into_file::Position::End,
         )
         .await
-        .map_err(|e| ActionError::Child(Box::new(e)))?;
+        .map_err(|e| ActionError::Child((), Box::new(e)))?;
 
         let create_synthetic_objects = CreateSyntheticObjects::plan().await?;
 
@@ -190,13 +190,15 @@ impl Action for CreateNixVolume {
         let mut retry_tokens: usize = 50;
         loop {
             tracing::trace!(%retry_tokens, "Checking for Nix Store existence");
-            let status = Command::new("/usr/sbin/diskutil")
-                .args(["info", "/nix"])
-                .stderr(std::process::Stdio::null())
-                .stdout(std::process::Stdio::null())
+            let mut command = Command::new("/usr/sbin/diskutil");
+            command.args(["info", "/nix"]);
+            command.stderr(std::process::Stdio::null());
+            command.stdout(std::process::Stdio::null());
+            let command_str = format!("{:?}", command);
+            let status = command
                 .status()
                 .await
-                .map_err(|e| ActionError::Command(e))?;
+                .map_err(|e| ActionError::Command(command_str, e))?;
             if status.success() || retry_tokens == 0 {
                 break;
             } else {

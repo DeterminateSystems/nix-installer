@@ -80,9 +80,7 @@ impl Action for EncryptApfsVolume {
 
         let disk_str = disk.to_str().expect("Could not turn disk into string"); /* Should not reasonably ever fail */
 
-        execute_command(Command::new("/usr/sbin/diskutil").arg("mount").arg(&name))
-            .await
-            .map_err(ActionError::Command)?;
+        execute_command(Command::new("/usr/sbin/diskutil").arg("mount").arg(&name)).await?;
 
         // Add the password to the user keychain so they can unlock it later.
         execute_command(
@@ -112,8 +110,7 @@ impl Action for EncryptApfsVolume {
                 "/Library/Keychains/System.keychain",
             ]),
         )
-        .await
-        .map_err(ActionError::Command)?;
+        .await?;
 
         // Encrypt the mounted volume
         execute_command(Command::new("/usr/sbin/diskutil").process_group(0).args([
@@ -125,8 +122,7 @@ impl Action for EncryptApfsVolume {
             "-passphrase",
             password.as_str(),
         ]))
-        .await
-        .map_err(ActionError::Command)?;
+        .await?;
 
         execute_command(
             Command::new("/usr/sbin/diskutil")
@@ -135,8 +131,7 @@ impl Action for EncryptApfsVolume {
                 .arg("force")
                 .arg(&name),
         )
-        .await
-        .map_err(ActionError::Command)?;
+        .await?;
 
         Ok(())
     }
@@ -178,8 +173,7 @@ impl Action for EncryptApfsVolume {
                 .as_str(),
             ]),
         )
-        .await
-        .map_err(ActionError::Command)?;
+        .await?;
 
         Ok(())
     }

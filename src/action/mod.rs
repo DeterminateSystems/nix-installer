@@ -171,7 +171,7 @@ pub mod macos;
 mod stateful;
 
 pub use stateful::{ActionState, StatefulAction};
-use std::error::Error;
+use std::{error::Error, process::Output};
 use tokio::task::JoinError;
 use tracing::Span;
 
@@ -259,8 +259,8 @@ pub enum ActionError {
     #[error(transparent)]
     Custom(Box<dyn std::error::Error + Send + Sync>),
     /// A child error
-    #[error(transparent)]
-    Child(#[from] Box<ActionError>),
+    #[error("Child action `{0}`")]
+    Child(&'static str, Box<ActionError>),
     /// Several child errors
     #[error("Multiple errors: {}", .0.iter().map(|v| {
         if let Some(source) = v.source() {
@@ -340,8 +340,20 @@ pub enum ActionError {
     #[error("Chowning path `{0}`")]
     Chown(std::path::PathBuf, #[source] nix::errno::Errno),
     /// Failed to execute command
-    #[error("Failed to execute command")]
-    Command(#[source] std::io::Error),
+    #[error("Failed to execute command `{0}`")]
+    Command(String, #[source] std::io::Error),
+    #[error(
+        "Failed to execute command{maybe_status} `{command}`, stdout: {stdout}\nstderr: {stderr}\n",
+        command = .0,
+        stdout = String::from_utf8_lossy(&.1.stdout),
+        stderr = String::from_utf8_lossy(&.1.stderr),
+        maybe_status = if let Some(status) = .1.status.code() {
+            format!(" with status {status}")
+        } else {
+            "".to_string()
+        }
+    )]
+    CommandOutput(String, Output),
     #[error("Joining spawned async task")]
     Join(
         #[source]
@@ -367,5 +379,34 @@ impl HasExpectedErrors for ActionError {
             | Self::PathModeMismatch(_, _, _) => Some(Box::new(self)),
             _ => None,
         }
+    }
+}
+
+#[cfg(feature = "diagnostics")]
+impl crate::diagnostics::ErrorDiagnostic for ActionError {
+    fn diagnostic(&self) -> (String, Vec<String>) {
+        let static_str: &'static str = (self).into();
+        let context = match self {
+            Self::Read(path, _)
+            | Self::Open(path, _)
+            | Self::Write(path, _)
+            | Self::Flush(path, _)
+            | Self::SetPermissions(_, path, _)
+            | Self::GettingMetadata(path, _)
+            | Self::CreateDirectory(path, _)
+            | Self::PathWasNotFile(path) => {
+                vec![path.to_str().unwrap_or("<not UTF-8>").to_string()]
+            },
+            Self::Rename(first_path, second_path, _)
+            | Self::Copy(first_path, second_path, _)
+            | Self::Symlink(first_path, second_path, _) => {
+                vec![
+                    first_path.to_str().unwrap_or("<not UTF-8>").to_string(),
+                    second_path.to_str().unwrap_or("<not UTF-8>").to_string(),
+                ]
+            },
+            _ => vec![],
+        };
+        return (static_str.to_string(), context);
     }
 }
