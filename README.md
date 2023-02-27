@@ -315,8 +315,9 @@ Here is a table of the [diagnostic data we collect][diagnosticdata]:
 
 To disable diagnostic reporting, set the diagnostics URL to an empty string by passing `--diagnostic-endpoint=""`
 
-You can read the full privacy policy for [Determinate Systems], the creators of the Determinate Nix Installer, [here][privacy].
+You can read the full privacy policy for [Determinate Systems][detsys], the creators of the Determinate Nix Installer, [here][privacy].
 
-[privacy]: https://determinate.systems/privacy
+[detsys]: https://determinate.systems/
 [diagnosticdata]: https://github.com/DeterminateSystems/nix-installer/blob/f9f927840d532b71f41670382a30cfcbea2d8a35/src/diagnostics.rs#L29-L43
+[privacy]: https://determinate.systems/privacy
 [systemd]: https://systemd.io
