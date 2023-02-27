@@ -32,7 +32,7 @@ impl PlaceChannelConfiguration {
                 .join(".nix-channels"),
             None,
             None,
-            0o0664,
+            0o0644,
             buf,
             force,
         )
