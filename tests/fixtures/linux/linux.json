@@ -870,10 +870,12 @@
                 "path": "/etc/nix/nix.conf",
                 "nix_configs": {
                   "merged_nix_config": {
-                    "bash-prompt-prefix": "(nix:$name)\\040",
-                    "build-users-group": "nixbld",
-                    "auto-optimise-store": "true",
-                    "experimental-features": "nix-command flakes"
+                    "settings": {
+                      "bash-prompt-prefix": "(nix:$name)\\040",
+                      "build-users-group": "nixbld",
+                      "auto-optimise-store": "true",
+                      "experimental-features": "nix-command flakes"
+                    }
                   },
                   "existing_nix_config": null
                 }

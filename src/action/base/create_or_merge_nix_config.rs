@@ -3,7 +3,7 @@ use std::{
     path::{Path, PathBuf},
 };
 
-use nix_config_parser::{NixConfig, NixConfigValue};
+use nix_config_parser::NixConfig;
 use rand::Rng;
 use tokio::{
     fs::{remove_file, OpenOptions},
@@ -28,7 +28,7 @@ pub enum CreateOrMergeNixConfigError {
         .map(|v| format!("`{v}`"))
         .collect::<Vec<_>>()
         .join(", "))]
-    UnmergeableConfig(Vec<nix_config_parser::NixConfigKey>, std::path::PathBuf),
+    UnmergeableConfig(Vec<String>, std::path::PathBuf),
 }
 
 /// Create or merge an existing `nix.conf` at the specified path.
@@ -93,8 +93,8 @@ impl CreateOrMergeNixConfig {
                 if let Some(existing_conf_value) =
                     existing_nix_config.settings().get(pending_conf_name)
                 {
-                    let pending_conf_value = pending_conf_value.0.split(' ').collect::<Vec<_>>();
-                    let existing_conf_value = existing_conf_value.0.split(' ').collect::<Vec<_>>();
+                    let pending_conf_value = pending_conf_value.split(' ').collect::<Vec<_>>();
+                    let existing_conf_value = existing_conf_value.split(' ').collect::<Vec<_>>();
 
                     if pending_conf_value
                         .iter()
@@ -104,7 +104,7 @@ impl CreateOrMergeNixConfig {
                         // merged_nix_config will be empty and this will be marked as completed. We
                         // don't return early here because there may be more config options to
                         // check.
-                    } else if MERGEABLE_CONF_NAMES.contains(&pending_conf_name.0.as_str()) {
+                    } else if MERGEABLE_CONF_NAMES.contains(&pending_conf_name.as_str()) {
                         let mut merged_conf_value = Vec::with_capacity(
                             pending_conf_value.len() + existing_conf_value.len(),
                         );
@@ -113,10 +113,9 @@ impl CreateOrMergeNixConfig {
                         merged_conf_value.dedup();
                         let merged_conf_value = merged_conf_value.join(" ");
 
-                        merged_nix_config.settings_mut().insert(
-                            pending_conf_name.to_owned(),
-                            NixConfigValue(format!("{merged_conf_value}")),
-                        );
+                        merged_nix_config
+                            .settings_mut()
+                            .insert(pending_conf_name.to_owned(), merged_conf_value.to_owned());
                     } else {
                         unmergeable_config_names.push(pending_conf_name.to_owned());
                     }
@@ -260,9 +259,9 @@ impl Action for CreateOrMergeNixConfig {
                     continue;
                 }
 
-                new_config.push_str(&name.0);
+                new_config.push_str(name);
                 new_config.push_str(" = ");
-                new_config.push_str(&value.0);
+                new_config.push_str(value);
                 new_config.push('\n');
             }
 
@@ -275,9 +274,9 @@ impl Action for CreateOrMergeNixConfig {
         ));
 
         for (name, value) in nix_configs.merged_nix_config.settings() {
-            new_config.push_str(&name.0);
+            new_config.push_str(name);
             new_config.push_str(" = ");
-            new_config.push_str(&value.0);
+            new_config.push_str(value);
             new_config.push('\n');
         }
 

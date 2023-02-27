@@ -924,10 +924,12 @@
                 "path": "/etc/nix/nix.conf",
                 "nix_configs": {
                   "merged_nix_config": {
-                    "bash-prompt-prefix": "(nix:$name)\\040",
-                    "auto-optimise-store": "true",
-                    "build-users-group": "nixbld",
-                    "experimental-features": "nix-command flakes"
+                    "settings": {
+                      "bash-prompt-prefix": "(nix:$name)\\040",
+                      "auto-optimise-store": "true",
+                      "build-users-group": "nixbld",
+                      "experimental-features": "nix-command flakes"
+                    }
                   },
                   "existing_nix_config": null
                 }
