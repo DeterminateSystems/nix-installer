@@ -215,8 +215,10 @@ pub struct CommonSettings {
     ///     "os-name": "Ubuntu",
     ///     "os-version": "22.04.1 LTS (Jammy Jellyfish)",
     ///     "triple": "x86_64-unknown-linux-gnu",
+    ///     "is-ci": false,
     ///     "action": "Install",
-    ///     "status": "Success"
+    ///     "status": "Failure",
+    ///     "failure-variant": "Symlink"
     /// }
     ///
     /// To disable diagnostic reporting, unset the default with `--diagnostic-endpoint=`
