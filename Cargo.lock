@@ -933,8 +933,9 @@ dependencies = [
 
 [[package]]
 name = "nix-config-parser"
-version = "0.1.0"
-source = "git+https://github.com/DeterminateSystems/nix-config-parser?branch=api-guidelines-stuff#52354d4bbf570a3a5885b351676210527dd48d47"
+version = "0.1.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "95f0cf7a728afccf26ea273aec915fad2741ee326a155e6a34acca7a7ca05c9f"
 dependencies = [
  "serde",
  "thiserror",
