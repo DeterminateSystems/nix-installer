@@ -211,14 +211,14 @@ pub struct CommonSettings {
     /// {
     ///     "version": "0.4.0",
     ///     "planner": "linux",
-    ///     "configured-settings": [ "modify_profile" ],
-    ///     "os-name": "Ubuntu",
-    ///     "os-version": "22.04.1 LTS (Jammy Jellyfish)",
+    ///     "configured_settings": [ "modify_profile" ],
+    ///     "os_name": "Ubuntu",
+    ///     "os_version": "22.04.1 LTS (Jammy Jellyfish)",
     ///     "triple": "x86_64-unknown-linux-gnu",
-    ///     "is-ci": false,
+    ///     "is_ci": false,
     ///     "action": "Install",
     ///     "status": "Failure",
-    ///     "failure-variant": "Symlink"
+    ///     "failure_variant": "Symlink"
     /// }
     ///
     /// To disable diagnostic reporting, unset the default with `--diagnostic-endpoint=`
