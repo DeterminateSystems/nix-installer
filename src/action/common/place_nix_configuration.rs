@@ -29,11 +29,20 @@ impl PlaceNixConfiguration {
             .map_err(|e| ActionError::Custom(Box::new(e)))?;
         let settings = nix_config.settings_mut();
 
-        settings.insert("build-users-group".into(), nix_build_group_name.into());
-        settings.insert("experimental-features".into(), "nix-command flakes".into());
-        settings.insert("auto-optimise-store".into(), "true".into());
-        settings.insert("bash-prompt-prefix".into(), "(nix:$name)\\040".into());
-        settings.insert("extra-nix-path".into(), "nixpkgs=flake:nixpkgs".into());
+        settings.insert("build-users-group".to_string(), nix_build_group_name);
+        settings.insert(
+            "experimental-features".to_string(),
+            "nix-command flakes".to_string(),
+        );
+        settings.insert("auto-optimise-store".to_string(), "true".to_string());
+        settings.insert(
+            "bash-prompt-prefix".to_string(),
+            "(nix:$name)\\040".to_string(),
+        );
+        settings.insert(
+            "extra-nix-path".to_string(),
+            "nixpkgs=flake:nixpkgs".to_string(),
+        );
 
         let create_directory =
             CreateDirectory::plan(NIX_CONF_FOLDER, None, None, 0o0755, force).await?;
