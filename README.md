@@ -304,13 +304,13 @@ Here is a table of the [diagnostic data we collect][diagnosticdata]:
 | --------------------- | ----------------------------------------------------------------------------------------------------- |
 | `version`             | The version of the Determinate Nix Installer.                                                         |
 | `planner`             | The method of installing Nix (`linux`, `macos`, `steam-deck`)                                         |
-| `configured_settings` | The names of planner settings which were changed from their default. Does not include the values.     |
+| `configured_settings` | The names of planner settings which were changed from their default. Does _not_ include the values.   |
 | `os_name`             | The running operating system.                                                                         |
 | `os_version`          | The version of the operating system.                                                                  |
-| `triple`              | The architecture/os/binary format of your system.                                                     |
+| `triple`              | The architecture/operating system/binary format of your system.                                       |
 | `is_ci`               | Whether the installer is being used in CI (e.g. GitHub Actions).                                      |
 | `action`              | Either `Install` or `Uninstall`.                                                                      |
-| `status`              | `Success`, `Failure`, etc.                                                                            |
+| `status`              | One of `Success`, `Failure`, `Pending`, or `Cancelled`.                                               |
 | `failure_variant`     | A high level description of what the failure was, if any. For example: `Command` if a command failed. |
 
 To disable diagnostic reporting, set the diagnostics URL to an empty string by passing `--diagnostic-endpoint=""` or setting `NIX_INSTALLER_DIAGNOSTIC_ENDPOINT=""`.
