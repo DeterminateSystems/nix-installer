@@ -262,14 +262,14 @@ pub enum ActionError {
     #[error("Child action `{0}`")]
     Child(&'static str, Box<ActionError>),
     /// Several child errors
-    #[error("Multiple errors: {}", .0.iter().map(|v| {
+    #[error("Child action `{0}` errors: {}", .1.iter().map(|v| {
         if let Some(source) = v.source() {
             format!("{v} ({source})")
         } else {
             format!("{v}") 
         }
     }).collect::<Vec<_>>().join(" & "))]
-    Children(Vec<Box<ActionError>>),
+    Children(&'static str, Vec<Box<ActionError>>),
     /// The path already exists
     #[error(
         "`{0}` exists with different content than planned, consider removing it with `rm {0}`"

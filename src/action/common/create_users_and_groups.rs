@@ -23,6 +23,7 @@ pub struct CreateUsersAndGroups {
 impl CreateUsersAndGroups {
     #[tracing::instrument(level = "debug", skip_all)]
     pub async fn plan(settings: CommonSettings) -> Result<StatefulAction<Self>, ActionError> {
+        const TYPETAG_NAME: &str = "create-users-and-groups";
         let create_group = CreateGroup::plan(
             settings.nix_build_group_name.clone(),
             settings.nix_build_group_id,
@@ -37,7 +38,8 @@ impl CreateUsersAndGroups {
                     settings.nix_build_group_name.clone(),
                     settings.nix_build_group_id,
                 )
-                .await?,
+                .await
+                .map_err(|e| ActionError::Child(TYPETAG_NAME, Box::new(e)))?,
             );
             add_users_to_groups.push(
                 AddUserToGroup::plan(
@@ -46,7 +48,8 @@ impl CreateUsersAndGroups {
                     settings.nix_build_group_name.clone(),
                     settings.nix_build_group_id,
                 )
-                .await?,
+                .await
+                .map_err(|e| ActionError::Child(TYPETAG_NAME, Box::new(e)))?,
             );
         }
         Ok(Self {
@@ -127,6 +130,7 @@ impl Action for CreateUsersAndGroups {
 
     #[tracing::instrument(level = "debug", skip_all)]
     async fn execute(&mut self) -> Result<(), ActionError> {
+        let typetag_name = self.typetag_name();
         let Self {
             create_users,
             create_group,
@@ -151,12 +155,18 @@ impl Action for CreateUsersAndGroups {
             }
             | OperatingSystem::Darwin => {
                 for create_user in create_users.iter_mut() {
-                    create_user.try_execute().await?;
+                    create_user
+                        .try_execute()
+                        .await
+                        .map_err(|e| ActionError::Child(typetag_name, Box::new(e)))?;
                 }
             },
             _ => {
                 for create_user in create_users.iter_mut() {
-                    create_user.try_execute().await?;
+                    create_user
+                        .try_execute()
+                        .await
+                        .map_err(|e| ActionError::Child(typetag_name, Box::new(e)))?;
                 }
                 // While we may be tempted to do something like this, it can break on many older OSes like Ubuntu 18.04:
                 // ```
@@ -242,6 +252,7 @@ impl Action for CreateUsersAndGroups {
 
     #[tracing::instrument(level = "debug", skip_all)]
     async fn revert(&mut self) -> Result<(), ActionError> {
+        let typetag_name = self.typetag_name();
         let Self {
             create_users,
             create_group,
@@ -260,7 +271,11 @@ impl Action for CreateUsersAndGroups {
             let span = tracing::Span::current().clone();
             let mut create_user_clone = create_user.clone();
             let _abort_handle = set.spawn(async move {
-                create_user_clone.try_revert().instrument(span).await?;
+                create_user_clone
+                    .try_revert()
+                    .instrument(span)
+                    .await
+                    .map_err(|e| ActionError::Child(typetag_name, Box::new(e)))?;
                 Result::<_, ActionError>::Ok((idx, create_user_clone))
             });
         }
@@ -275,9 +290,12 @@ impl Action for CreateUsersAndGroups {
 
         if !errors.is_empty() {
             if errors.len() == 1 {
-                return Err(errors.into_iter().next().unwrap().into());
+                return Err(ActionError::Child(
+                    self.typetag_name(),
+                    errors.into_iter().next().unwrap(),
+                ));
             } else {
-                return Err(ActionError::Children(errors));
+                return Err(ActionError::Children(self.typetag_name(), errors));
             }
         }
 

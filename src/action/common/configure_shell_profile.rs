@@ -219,9 +219,12 @@ impl Action for ConfigureShellProfile {
 
         if !errors.is_empty() {
             if errors.len() == 1 {
-                return Err(errors.into_iter().next().unwrap().into());
+                return Err(ActionError::Child(
+                    self.typetag_name(),
+                    errors.into_iter().next().unwrap(),
+                ));
             } else {
-                return Err(ActionError::Children(errors));
+                return Err(ActionError::Children(self.typetag_name(), errors));
             }
         }
 
@@ -269,9 +272,12 @@ impl Action for ConfigureShellProfile {
 
         if !errors.is_empty() {
             if errors.len() == 1 {
-                return Err(errors.into_iter().next().unwrap())?;
+                return Err(ActionError::Child(
+                    self.typetag_name(),
+                    errors.into_iter().next().unwrap(),
+                ))?;
             } else {
-                return Err(ActionError::Children(errors));
+                return Err(ActionError::Children(self.typetag_name(), errors));
             }
         }
 

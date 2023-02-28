@@ -19,6 +19,7 @@ impl PlaceChannelConfiguration {
         channels: Vec<ChannelValue>,
         force: bool,
     ) -> Result<StatefulAction<Self>, ActionError> {
+        const TYPETAG_NAME: &str = "place-channel-configure";
         let buf = channels
             .iter()
             .map(|ChannelValue(name, url)| format!("{} {}", url, name))
@@ -36,7 +37,8 @@ impl PlaceChannelConfiguration {
             buf,
             force,
         )
-        .await?;
+        .await
+        .map_err(|e| ActionError::Child(TYPETAG_NAME, Box::new(e)))?;
         Ok(Self {
             create_file,
             channels,
@@ -74,12 +76,10 @@ impl Action for PlaceChannelConfiguration {
 
     #[tracing::instrument(level = "debug", skip_all)]
     async fn execute(&mut self) -> Result<(), ActionError> {
-        let Self {
-            create_file,
-            channels: _,
-        } = self;
-
-        create_file.try_execute().await?;
+        self.create_file
+            .try_execute()
+            .await
+            .map_err(|e| ActionError::Child(self.typetag_name(), Box::new(e)))?;
 
         Ok(())
     }
@@ -96,12 +96,16 @@ impl Action for PlaceChannelConfiguration {
 
     #[tracing::instrument(level = "debug", skip_all)]
     async fn revert(&mut self) -> Result<(), ActionError> {
+        let typetag_name = self.typetag_name();
         let Self {
             create_file,
             channels: _,
         } = self;
 
-        create_file.try_revert().await?;
+        create_file
+            .try_revert()
+            .await
+            .map_err(|e| ActionError::Child(typetag_name, Box::new(e)))?;
 
         Ok(())
     }

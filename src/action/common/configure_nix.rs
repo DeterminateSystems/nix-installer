@@ -23,6 +23,8 @@ pub struct ConfigureNix {
 impl ConfigureNix {
     #[tracing::instrument(level = "debug", skip_all)]
     pub async fn plan(settings: &CommonSettings) -> Result<StatefulAction<Self>, ActionError> {
+        const TYPETAG_NAME: &str = "configure-nix";
+
         let setup_default_profile = SetupDefaultProfile::plan(settings.channels.clone()).await?;
 
         let configure_shell_profile = if settings.modify_profile {
