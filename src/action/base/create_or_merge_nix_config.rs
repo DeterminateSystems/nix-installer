@@ -141,7 +141,7 @@ impl CreateOrMergeNixConfig {
             }
 
             tracing::debug!(
-                "File `{}` already contains what we want",
+                "Setting Nix configurations in `{}` already complete",
                 this.path.display()
             );
             return Ok(StatefulAction::completed(this));
