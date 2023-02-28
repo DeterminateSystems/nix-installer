@@ -22,7 +22,7 @@ const NIX_CONF_MODE: u32 = 0o644;
 pub enum CreateOrMergeNixConfigError {
     #[error(transparent)]
     ParseNixConfig(#[from] nix_config_parser::ParseError),
-    #[error("Could not merge Nix configuration for key(s) {}; consider removing them from {1} in your editor, or removing your existing configuration with `rm {1}`",
+    #[error("Could not merge Nix configuration for key(s) {}; consider removing them from `{1}` in your editor, or removing your existing configuration with `rm {1}`",
         .0
         .iter()
         .map(|v| format!("`{v}`"))
