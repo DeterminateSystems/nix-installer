@@ -260,7 +260,7 @@ pub enum ActionError {
     Custom(Box<dyn std::error::Error + Send + Sync>),
     /// A child error
     #[error("Child action `{0}`")]
-    Child(&'static str, Box<ActionError>),
+    Child(&'static str, #[source] Box<ActionError>),
     /// Several child errors
     #[error("Child action `{0}` errors: {}", .1.iter().map(|v| {
         if let Some(source) = v.source() {

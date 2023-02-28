@@ -97,11 +97,6 @@ impl Action for ConfigureInitService {
     async fn execute(&mut self) -> Result<(), ActionError> {
         let Self { init, start_daemon } = self;
 
-        return Err(ActionError::Command(
-            "Boop".into(),
-            std::io::Error::new(std::io::ErrorKind::Other, "Boop"),
-        ));
-
         match init {
             #[cfg(target_os = "macos")]
             InitSystem::Launchd => {

@@ -67,7 +67,7 @@ pub(crate) trait HasExpectedErrors: std::error::Error + Sized + Send + Sync {
 impl HasExpectedErrors for NixInstallerError {
     fn expected<'a>(&'a self) -> Option<Box<dyn std::error::Error + 'a>> {
         match self {
-            NixInstallerError::Action(typetag, action_error) => action_error.expected(),
+            NixInstallerError::Action(_, action_error) => action_error.expected(),
             NixInstallerError::RecordingReceipt(_, _) => None,
             NixInstallerError::CopyingSelf(_) => None,
             NixInstallerError::SerializingReceipt(_) => None,
