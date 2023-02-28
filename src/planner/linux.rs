@@ -39,6 +39,10 @@ impl Planner for Linux {
             return Err(PlannerError::NixOs);
         }
 
+        if std::env::var("WSL_DISTRO_NAME").is_ok() && !Path::new("/run/WSL").exists() {
+            return Err(PlannerError::Wsl1);
+        }
+
         // We currently do not support SELinux
         match Command::new("getenforce").output().await {
             Ok(output) => {

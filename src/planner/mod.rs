@@ -301,6 +301,8 @@ pub enum PlannerError {
     NixOs,
     #[error("`nix` is already a valid command, so it is installed")]
     NixExists,
+    #[error("WSL1 is not supported, please upgrade to WSL2")]
+    Wsl1,
 }
 
 impl HasExpectedErrors for PlannerError {
@@ -315,6 +317,7 @@ impl HasExpectedErrors for PlannerError {
             PlannerError::Custom(_) => None,
             this @ PlannerError::NixOs => Some(Box::new(this)),
             this @ PlannerError::NixExists => Some(Box::new(this)),
+            this @ PlannerError::Wsl1 => Some(Box::new(this)),
         }
     }
 }
