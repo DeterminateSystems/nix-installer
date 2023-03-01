@@ -112,6 +112,7 @@ impl CreateOrMergeNixConfig {
                         merged_conf_value.extend(existing_conf_value);
                         merged_conf_value.dedup();
                         let merged_conf_value = merged_conf_value.join(" ");
+                        let merged_conf_value = merged_conf_value.trim();
 
                         merged_nix_config
                             .settings_mut()
@@ -222,10 +223,6 @@ impl Action for CreateOrMergeNixConfig {
                     .join(" "),
             );
         }
-
-        let mut options = OpenOptions::new();
-        options.create(true).write(true).read(true);
-        options.mode(NIX_CONF_MODE);
 
         // Create a temporary file in the same directory as the one
         // that the final file goes in, so that we can rename it
