@@ -49,7 +49,7 @@ xz2 = { version = "0.1.7", default-features = false, features = ["static", "toki
 plist = { version = "1.3.1", default-features = false, features = [ "serde" ]}
 dirs = { version = "4.0.0", default-features = false }
 typetag = { version = "0.2.3", default-features = false }
-dyn-clone = { version = "1.0.9", default-features = false }
+dyn-clone = { version = "1.0.11", default-features = false }
 rand = { version = "0.8.5", default-features = false, features = [ "std", "std_rng" ] }
 semver = { version = "1.0.14", default-features = false, features = ["serde", "std"] }
 term = { version = "0.7.0", default-features = false }
