@@ -17,6 +17,7 @@ use crate::action::{Action, ActionDescription, ActionError, StatefulAction};
 // FIXME(@cole-h): make configurable by downstream users?
 const MERGEABLE_CONF_NAMES: &[&str] = &["experimental-features"];
 const NIX_CONF_MODE: u32 = 0o644;
+const NIX_COMMENT_CHAR: char = '#';
 
 #[derive(Debug, thiserror::Error)]
 pub enum CreateOrMergeNixConfigError {
@@ -264,9 +265,9 @@ impl Action for CreateOrMergeNixConfig {
                     bool,
                 ),
                  line| {
-                    if line.starts_with('#') {
+                    if line.starts_with(NIX_COMMENT_CHAR) {
                         associating = true;
-                    } else if line.is_empty() || !line.starts_with('#') {
+                    } else if line.is_empty() || !line.starts_with(NIX_COMMENT_CHAR) {
                         associating = false;
                     }
 
@@ -288,7 +289,7 @@ impl Action for CreateOrMergeNixConfig {
 
                 let line_idx = line_group
                     .iter()
-                    .position(|line| !line.starts_with('#'))
+                    .position(|line| !line.starts_with(NIX_COMMENT_CHAR))
                     .expect("TODO");
                 let line = &line_group[line_idx];
                 let rest = line_group[..line_idx].join("\n");
@@ -303,7 +304,7 @@ impl Action for CreateOrMergeNixConfig {
                     .iter()
                     .find(|(name, _value)| line.starts_with(*name))
                 {
-                    let found_comment = if let Some(idx) = line.find('#') {
+                    let found_comment = if let Some(idx) = line.find(NIX_COMMENT_CHAR) {
                         idx
                     } else {
                         continue;
