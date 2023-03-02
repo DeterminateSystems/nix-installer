@@ -38,13 +38,6 @@ impl CreateFile {
         buf: String,
         force: bool,
     ) -> Result<StatefulAction<Self>, ActionError> {
-        if let Ok(_) = std::env::var("BOOP") {
-            return Err(ActionError::Command(
-                "Boop".into(),
-                std::io::Error::new(std::io::ErrorKind::Other, "Boop"),
-            ));
-        }
-
         let path = path.as_ref().to_path_buf();
         let mode = mode.into();
         let user = user.into();

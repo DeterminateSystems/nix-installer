@@ -387,6 +387,7 @@ impl crate::diagnostics::ErrorDiagnostic for ActionError {
     fn diagnostic(&self) -> (String, Vec<String>) {
         let static_str: &'static str = (self).into();
         let context = match self {
+            Self::Child(action, _) | Self::Children(action, _) => vec![action.to_string()],
             Self::Read(path, _)
             | Self::Open(path, _)
             | Self::Write(path, _)
@@ -395,15 +396,18 @@ impl crate::diagnostics::ErrorDiagnostic for ActionError {
             | Self::GettingMetadata(path, _)
             | Self::CreateDirectory(path, _)
             | Self::PathWasNotFile(path) => {
-                vec![path.to_str().unwrap_or("<not UTF-8>").to_string()]
+                vec![path.to_string_lossy().to_string()]
             },
             Self::Rename(first_path, second_path, _)
             | Self::Copy(first_path, second_path, _)
             | Self::Symlink(first_path, second_path, _) => {
                 vec![
-                    first_path.to_str().unwrap_or("<not UTF-8>").to_string(),
-                    second_path.to_str().unwrap_or("<not UTF-8>").to_string(),
+                    first_path.to_string_lossy().to_string(),
+                    second_path.to_string_lossy().to_string(),
                 ]
+            },
+            Self::NoGroup(name) | Self::NoUser(name) => {
+                vec![name.clone()]
             },
             _ => vec![],
         };

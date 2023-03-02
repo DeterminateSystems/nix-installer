@@ -42,7 +42,7 @@ impl ConfigureInitService {
 }
 
 #[async_trait::async_trait]
-#[typetag::serde(name = "configure_nix_daemon")]
+#[typetag::serde(name = "configure_init_service")]
 impl Action for ConfigureInitService {
     fn tracing_synopsis(&self) -> String {
         match self.init {
@@ -58,7 +58,7 @@ impl Action for ConfigureInitService {
     }
 
     fn tracing_span(&self) -> Span {
-        span!(tracing::Level::DEBUG, "configure_nix_daemon",)
+        span!(tracing::Level::DEBUG, "configure_init_service",)
     }
 
     fn execute_description(&self) -> Vec<ActionDescription> {
