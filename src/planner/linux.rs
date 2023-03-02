@@ -39,7 +39,7 @@ impl Planner for Linux {
             return Err(PlannerError::NixOs);
         }
 
-        if std::env::var("WSL_DISTRO_NAME").is_ok() && !Path::new("/run/WSL").exists() {
+        if std::env::var("WSL_DISTRO_NAME").is_ok() && std::env::var("WSL_INTEROP").is_err() {
             return Err(PlannerError::Wsl1);
         }
 
