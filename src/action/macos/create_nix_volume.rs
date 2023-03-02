@@ -227,7 +227,10 @@ impl Action for CreateNixVolume {
             tokio::time::sleep(Duration::from_millis(100)).await;
         }
 
-        self.enable_ownership.try_execute().await?;
+        self.enable_ownership
+            .try_execute()
+            .await
+            .map_err(|e| ActionError::Child(self.typetag_name(), Box::new(e)))?;
 
         Ok(())
     }

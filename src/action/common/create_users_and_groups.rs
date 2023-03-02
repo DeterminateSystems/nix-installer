@@ -204,7 +204,10 @@ impl Action for CreateUsersAndGroups {
         };
 
         for add_user_to_group in add_users_to_groups.iter_mut() {
-            add_user_to_group.try_execute().await?;
+            add_user_to_group
+                .try_execute()
+                .await
+                .map_err(|e| ActionError::Child(typetag_name, Box::new(e)))?;
         }
 
         Ok(())
@@ -305,7 +308,10 @@ impl Action for CreateUsersAndGroups {
         // }
 
         // Create group
-        create_group.try_revert().await?;
+        create_group
+            .try_revert()
+            .await
+            .map_err(|e| ActionError::Child(typetag_name, Box::new(e)))?;
 
         Ok(())
     }
