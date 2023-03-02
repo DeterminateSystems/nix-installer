@@ -29,6 +29,9 @@ pub struct CreateFstabEntry {
 }
 
 impl CreateFstabEntry {
+    pub fn typetag() -> &'static str {
+        "create_fstab_entry"
+    }
     #[tracing::instrument(level = "debug", skip_all)]
     pub async fn plan(apfs_volume_label: String) -> Result<StatefulAction<Self>, ActionError> {
         let fstab_path = Path::new(FSTAB_PATH);

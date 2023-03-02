@@ -19,6 +19,9 @@ pub struct EncryptApfsVolume {
 }
 
 impl EncryptApfsVolume {
+    pub fn typetag() -> &'static str {
+        "encrypt_apfs_volume"
+    }
     #[tracing::instrument(level = "debug", skip_all)]
     pub async fn plan(
         disk: impl AsRef<Path>,

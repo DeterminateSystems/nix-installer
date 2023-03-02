@@ -36,6 +36,9 @@ pub struct CreateOrInsertIntoFile {
 }
 
 impl CreateOrInsertIntoFile {
+    pub fn typetag() -> &'static str {
+        "create_or_insert_into_file"
+    }
     #[tracing::instrument(level = "debug", skip_all)]
     pub async fn plan(
         path: impl AsRef<Path>,

@@ -41,6 +41,9 @@ pub struct ConfigureShellProfile {
 }
 
 impl ConfigureShellProfile {
+    pub fn typetag() -> &'static str {
+        "configure_shell_profile"
+    }
     #[tracing::instrument(level = "debug", skip_all)]
     pub async fn plan() -> Result<StatefulAction<Self>, ActionError> {
         let mut create_or_insert_files = Vec::default();
@@ -189,7 +192,6 @@ impl Action for ConfigureShellProfile {
 
         let mut set = JoinSet::new();
         let mut errors = Vec::default();
-        let typetag_name = self.typetag_name();
 
         for (idx, create_or_insert_into_file) in
             self.create_or_insert_into_files.iter_mut().enumerate()
@@ -201,7 +203,12 @@ impl Action for ConfigureShellProfile {
                     .try_execute()
                     .instrument(span)
                     .await
-                    .map_err(|e| ActionError::Child(typetag_name, Box::new(e)))?;
+                    .map_err(|e| {
+                        ActionError::Child(
+                            create_or_insert_into_file_clone.inner_typetag_name(),
+                            Box::new(e),
+                        )
+                    })?;
                 Result::<_, ActionError>::Ok((idx, create_or_insert_into_file_clone))
             });
         }
@@ -211,19 +218,18 @@ impl Action for ConfigureShellProfile {
                 Ok(Ok((idx, create_or_insert_into_file))) => {
                     self.create_or_insert_into_files[idx] = create_or_insert_into_file
                 },
-                Ok(Err(e)) => errors.push(Box::new(e)),
+                Ok(Err(e)) => errors.push(e),
                 Err(e) => return Err(e)?,
             };
         }
 
         if !errors.is_empty() {
             if errors.len() == 1 {
-                return Err(ActionError::Child(
-                    self.typetag_name(),
-                    errors.into_iter().next().unwrap(),
-                ));
+                return Err(errors.into_iter().next().unwrap())?;
             } else {
-                return Err(ActionError::Children(self.typetag_name(), errors));
+                return Err(ActionError::Children(
+                    errors.into_iter().map(|v| Box::new(v)).collect(),
+                ));
             }
         }
 
@@ -240,18 +246,14 @@ impl Action for ConfigureShellProfile {
     #[tracing::instrument(level = "debug", skip_all)]
     async fn revert(&mut self) -> Result<(), ActionError> {
         let mut set = JoinSet::new();
-        let mut errors: Vec<Box<ActionError>> = Vec::default();
-        let typetag_name = self.typetag_name();
+        let mut errors: Vec<ActionError> = Vec::default();
 
         for (idx, create_or_insert_into_file) in
             self.create_or_insert_into_files.iter_mut().enumerate()
         {
             let mut create_or_insert_file_clone = create_or_insert_into_file.clone();
             let _abort_handle = set.spawn(async move {
-                create_or_insert_file_clone
-                    .try_revert()
-                    .await
-                    .map_err(|e| ActionError::Child(typetag_name, Box::new(e)))?;
+                create_or_insert_file_clone.try_revert().await?;
                 Result::<_, _>::Ok((idx, create_or_insert_file_clone))
             });
         }
@@ -261,26 +263,24 @@ impl Action for ConfigureShellProfile {
                 Ok(Ok((idx, create_or_insert_into_file))) => {
                     self.create_or_insert_into_files[idx] = create_or_insert_into_file
                 },
-                Ok(Err(e)) => errors.push(Box::new(e)),
+                Ok(Err(e)) => errors.push(e),
                 Err(e) => return Err(e)?,
             };
         }
 
         for create_directory in self.create_directories.iter_mut() {
-            create_directory
-                .try_revert()
-                .await
-                .map_err(|e| ActionError::Child(typetag_name, Box::new(e)))?;
+            create_directory.try_revert().await.map_err(|e| {
+                ActionError::Child(create_directory.inner_typetag_name(), Box::new(e))
+            })?;
         }
 
         if !errors.is_empty() {
             if errors.len() == 1 {
-                return Err(ActionError::Child(
-                    self.typetag_name(),
-                    errors.into_iter().next().unwrap(),
-                ))?;
+                return Err(errors.into_iter().next().unwrap())?;
             } else {
-                return Err(ActionError::Children(self.typetag_name(), errors));
+                return Err(ActionError::Children(
+                    errors.into_iter().map(|v| Box::new(v)).collect(),
+                ));
             }
         }
 

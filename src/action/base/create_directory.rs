@@ -24,6 +24,9 @@ pub struct CreateDirectory {
 }
 
 impl CreateDirectory {
+    pub fn typetag() -> &'static str {
+        "create_directory"
+    }
     #[tracing::instrument(level = "debug", skip_all)]
     pub async fn plan(
         path: impl AsRef<Path>,

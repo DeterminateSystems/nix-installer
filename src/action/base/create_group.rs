@@ -17,6 +17,9 @@ pub struct CreateGroup {
 }
 
 impl CreateGroup {
+    pub fn typetag() -> &'static str {
+        "create_group"
+    }
     #[tracing::instrument(level = "debug", skip_all)]
     pub fn plan(name: String, gid: u32) -> Result<StatefulAction<Self>, ActionError> {
         let this = Self {

@@ -19,6 +19,9 @@ pub struct CreateUser {
 }
 
 impl CreateUser {
+    pub fn typetag() -> &'static str {
+        "create-user"
+    }
     #[tracing::instrument(level = "debug", skip_all)]
     pub async fn plan(
         name: String,

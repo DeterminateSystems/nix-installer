@@ -21,6 +21,9 @@ pub struct SetupDefaultProfile {
 }
 
 impl SetupDefaultProfile {
+    pub fn typetag() -> &'static str {
+        "setup_default_profile"
+    }
     #[tracing::instrument(level = "debug", skip_all)]
     pub async fn plan(channels: Vec<ChannelValue>) -> Result<StatefulAction<Self>, ActionError> {
         Ok(Self { channels }.into())

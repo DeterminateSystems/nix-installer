@@ -32,6 +32,9 @@ pub struct ConfigureInitService {
 }
 
 impl ConfigureInitService {
+    pub fn typetag() -> &'static str {
+        "configure_init_service"
+    }
     #[tracing::instrument(level = "debug", skip_all)]
     pub async fn plan(
         init: InitSystem,

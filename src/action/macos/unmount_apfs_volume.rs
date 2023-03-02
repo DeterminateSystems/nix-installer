@@ -18,6 +18,9 @@ pub struct UnmountApfsVolume {
 }
 
 impl UnmountApfsVolume {
+    pub fn typetag() -> &'static str {
+        "unmount_apfs_volume"
+    }
     #[tracing::instrument(level = "debug", skip_all)]
     pub async fn plan(
         disk: impl AsRef<Path>,

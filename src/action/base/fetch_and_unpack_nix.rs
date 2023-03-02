@@ -16,6 +16,9 @@ pub struct FetchAndUnpackNix {
 }
 
 impl FetchAndUnpackNix {
+    pub fn typetag() -> &'static str {
+        "fetch_and_unpack_nix"
+    }
     #[tracing::instrument(level = "debug", skip_all)]
     pub async fn plan(url: Url, dest: PathBuf) -> Result<StatefulAction<Self>, ActionError> {
         // TODO(@hoverbear): Check URL exists?

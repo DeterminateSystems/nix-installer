@@ -16,6 +16,9 @@ pub struct StartSystemdUnit {
 }
 
 impl StartSystemdUnit {
+    pub fn typetag() -> &'static str {
+        "start_systemd_unit"
+    }
     #[tracing::instrument(level = "debug", skip_all)]
     pub async fn plan(
         unit: impl AsRef<str>,

@@ -15,6 +15,9 @@ pub struct MoveUnpackedNix {
 }
 
 impl MoveUnpackedNix {
+    pub fn typetag() -> &'static str {
+        "move_unpacked_nix"
+    }
     #[tracing::instrument(level = "debug", skip_all)]
     pub async fn plan(src: PathBuf) -> Result<StatefulAction<Self>, ActionError> {
         // Note: Do NOT try to check for the src/dest since the installer creates those

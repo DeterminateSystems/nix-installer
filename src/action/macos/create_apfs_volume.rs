@@ -17,6 +17,9 @@ pub struct CreateApfsVolume {
 }
 
 impl CreateApfsVolume {
+    pub fn typetag() -> &'static str {
+        "create_apfs_volume"
+    }
     #[tracing::instrument(level = "debug", skip_all)]
     pub async fn plan(
         disk: impl AsRef<Path>,

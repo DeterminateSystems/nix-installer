@@ -262,14 +262,14 @@ pub enum ActionError {
     #[error("Child action `{0}`")]
     Child(&'static str, #[source] Box<ActionError>),
     /// Several child errors
-    #[error("Child action `{0}` errors: {}", .1.iter().map(|v| {
+    #[error("Child action errors: {}", .0.iter().map(|v| {
         if let Some(source) = v.source() {
             format!("{v} ({source})")
         } else {
             format!("{v}") 
         }
     }).collect::<Vec<_>>().join(" & "))]
-    Children(&'static str, Vec<Box<ActionError>>),
+    Children(Vec<Box<ActionError>>),
     /// The path already exists
     #[error(
         "`{0}` exists with different content than planned, consider removing it with `rm {0}`"
@@ -387,7 +387,7 @@ impl crate::diagnostics::ErrorDiagnostic for ActionError {
     fn diagnostic(&self) -> (String, Vec<String>) {
         let static_str: &'static str = (self).into();
         let context = match self {
-            Self::Child(action, _) | Self::Children(action, _) => vec![action.to_string()],
+            Self::Child(action, _) => vec![action.to_string()],
             Self::Read(path, _)
             | Self::Open(path, _)
             | Self::Write(path, _)

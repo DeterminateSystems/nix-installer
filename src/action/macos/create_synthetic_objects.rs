@@ -10,6 +10,9 @@ use crate::action::{Action, ActionDescription, ActionError, StatefulAction};
 pub struct CreateSyntheticObjects;
 
 impl CreateSyntheticObjects {
+    pub fn typetag() -> &'static str {
+        "create_synthetic_objects"
+    }
     #[tracing::instrument(level = "debug", skip_all)]
     pub async fn plan() -> Result<StatefulAction<Self>, ActionError> {
         Ok(Self.into())

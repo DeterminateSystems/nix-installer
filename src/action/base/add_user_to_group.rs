@@ -22,6 +22,9 @@ pub struct AddUserToGroup {
 }
 
 impl AddUserToGroup {
+    pub fn typetag() -> &'static str {
+        "add-user-to_group"
+    }
     #[tracing::instrument(level = "debug", skip_all)]
     pub async fn plan(
         name: String,
