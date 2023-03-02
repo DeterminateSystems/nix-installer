@@ -305,12 +305,12 @@ impl Action for CreateOrMergeNixConfig {
                     .position(|line| !line.starts_with(NIX_CONF_COMMENT_CHAR))
                     .expect("There should always be one line without a comment character");
 
-                let line = &line_group[line_idx];
-                let rest = line_group[..line_idx].join("\n");
+                let setting_line = &line_group[line_idx];
+                let comments = line_group[..line_idx].join("\n");
 
                 // If we're here, but the line without a comment char is empty, we have
                 // standalone comments to preserve, but no settings with inline comments.
-                if line.is_empty() {
+                if setting_line.is_empty() {
                     for line in &line_group {
                         new_config.push_str(&line);
                         new_config.push('\n');
@@ -323,17 +323,18 @@ impl Action for CreateOrMergeNixConfig {
                 let to_remove = if let Some((name, value)) = existing_nix_config
                     .settings()
                     .iter()
-                    .find(|(name, _value)| line.starts_with(*name))
+                    .find(|(name, _value)| setting_line.starts_with(*name))
                 {
-                    let found_comment = if let Some(idx) = line.find(NIX_CONF_COMMENT_CHAR) {
-                        idx
-                    } else {
-                        continue;
-                    };
+                    let inline_comment_idx =
+                        if let Some(idx) = setting_line.find(NIX_CONF_COMMENT_CHAR) {
+                            idx
+                        } else {
+                            continue;
+                        };
 
-                    let comment = &line[found_comment..];
+                    let inline_comment = &setting_line[inline_comment_idx..];
 
-                    new_config.push_str(&rest);
+                    new_config.push_str(&comments);
                     new_config.push('\n');
                     new_config.push_str(name);
                     new_config.push_str(" = ");
@@ -347,14 +348,14 @@ impl Action for CreateOrMergeNixConfig {
                         new_config.push_str(value);
                     }
 
-                    new_config.push_str(comment);
+                    new_config.push_str(inline_comment);
                     new_config.push('\n');
 
                     Some(name.clone())
                 } else {
-                    new_config.push_str(&rest);
+                    new_config.push_str(&comments);
                     new_config.push('\n');
-                    new_config.push_str(line);
+                    new_config.push_str(setting_line);
                     new_config.push('\n');
 
                     None
