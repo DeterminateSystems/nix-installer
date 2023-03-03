@@ -10,19 +10,19 @@ use crate::channel_value::ChannelValue;
 
 /// Default [`nix_package_url`](CommonSettings::nix_package_url) for Linux x86_64
 pub const NIX_X64_64_LINUX_URL: &str =
-    "https://releases.nixos.org/nix/nix-2.13.2/nix-2.13.2-x86_64-linux.tar.xz";
+    "https://releases.nixos.org/nix/nix-2.13.3/nix-2.13.3-x86_64-linux.tar.xz";
 /// Default [`nix_package_url`](CommonSettings::nix_package_url) for Linux x86 (32 bit)
 pub const NIX_I686_LINUX_URL: &str =
-    "https://releases.nixos.org/nix/nix-2.13.2/nix-2.13.2-i686-linux.tar.xz";
+    "https://releases.nixos.org/nix/nix-2.13.3/nix-2.13.3-i686-linux.tar.xz";
 /// Default [`nix_package_url`](CommonSettings::nix_package_url) for Linux aarch64
 pub const NIX_AARCH64_LINUX_URL: &str =
-    "https://releases.nixos.org/nix/nix-2.13.2/nix-2.13.2-aarch64-linux.tar.xz";
+    "https://releases.nixos.org/nix/nix-2.13.3/nix-2.13.3-aarch64-linux.tar.xz";
 /// Default [`nix_package_url`](CommonSettings::nix_package_url) for Darwin x86_64
 pub const NIX_X64_64_DARWIN_URL: &str =
-    "https://releases.nixos.org/nix/nix-2.13.2/nix-2.13.2-x86_64-darwin.tar.xz";
+    "https://releases.nixos.org/nix/nix-2.13.3/nix-2.13.3-x86_64-darwin.tar.xz";
 /// Default [`nix_package_url`](CommonSettings::nix_package_url) for Darwin aarch64
 pub const NIX_AARCH64_DARWIN_URL: &str =
-    "https://releases.nixos.org/nix/nix-2.13.2/nix-2.13.2-aarch64-darwin.tar.xz";
+    "https://releases.nixos.org/nix/nix-2.13.3/nix-2.13.3-aarch64-darwin.tar.xz";
 
 #[derive(Debug, serde::Deserialize, serde::Serialize, Clone, Copy)]
 #[cfg_attr(feature = "cli", derive(clap::ValueEnum))]
@@ -211,12 +211,14 @@ pub struct CommonSettings {
     /// {
     ///     "version": "0.4.0",
     ///     "planner": "linux",
-    ///     "configured-settings": [ "modify_profile" ],
-    ///     "os-name": "Ubuntu",
-    ///     "os-version": "22.04.1 LTS (Jammy Jellyfish)",
+    ///     "configured_settings": [ "modify_profile" ],
+    ///     "os_name": "Ubuntu",
+    ///     "os_version": "22.04.1 LTS (Jammy Jellyfish)",
     ///     "triple": "x86_64-unknown-linux-gnu",
+    ///     "is_ci": false,
     ///     "action": "Install",
-    ///     "status": "Success"
+    ///     "status": "Failure",
+    ///     "failure_variant": "Symlink"
     /// }
     ///
     /// To disable diagnostic reporting, unset the default with `--diagnostic-endpoint=`
@@ -559,6 +561,7 @@ impl InitSettings {
 }
 
 /// An error originating from a [`Planner::settings`](crate::planner::Planner::settings)
+#[non_exhaustive]
 #[derive(thiserror::Error, Debug)]
 pub enum InstallSettingsError {
     /// `nix-installer` does not support the architecture right now

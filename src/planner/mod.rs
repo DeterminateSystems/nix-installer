@@ -270,6 +270,7 @@ impl BuiltinPlanner {
 }
 
 /// An error originating from a [`Planner`]
+#[non_exhaustive]
 #[derive(thiserror::Error, Debug, strum::IntoStaticStr)]
 pub enum PlannerError {
     /// `nix-installer` does not have a default planner for the target architecture right now
@@ -301,6 +302,8 @@ pub enum PlannerError {
     NixOs,
     #[error("`nix` is already a valid command, so it is installed")]
     NixExists,
+    #[error("WSL1 is not supported, please upgrade to WSL2: https://learn.microsoft.com/en-us/windows/wsl/install#upgrade-version-from-wsl-1-to-wsl-2")]
+    Wsl1,
 }
 
 impl HasExpectedErrors for PlannerError {
@@ -315,6 +318,7 @@ impl HasExpectedErrors for PlannerError {
             PlannerError::Custom(_) => None,
             this @ PlannerError::NixOs => Some(Box::new(this)),
             this @ PlannerError::NixExists => Some(Box::new(this)),
+            this @ PlannerError::Wsl1 => Some(Box::new(this)),
         }
     }
 }
