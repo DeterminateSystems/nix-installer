@@ -16,9 +16,6 @@ pub struct StartSystemdUnit {
 }
 
 impl StartSystemdUnit {
-    pub fn typetag() -> &'static str {
-        "start_systemd_unit"
-    }
     #[tracing::instrument(level = "debug", skip_all)]
     pub async fn plan(
         unit: impl AsRef<str>,
@@ -53,6 +50,9 @@ impl StartSystemdUnit {
 #[async_trait::async_trait]
 #[typetag::serde(name = "start_systemd_unit")]
 impl Action for StartSystemdUnit {
+    fn typetag() -> &'static str {
+        "start_systemd_unit"
+    }
     fn tracing_synopsis(&self) -> String {
         format!("Enable (and start) the systemd unit {}", self.unit)
     }

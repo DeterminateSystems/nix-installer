@@ -19,9 +19,6 @@ pub struct CreateUser {
 }
 
 impl CreateUser {
-    pub fn typetag() -> &'static str {
-        "create_user"
-    }
     #[tracing::instrument(level = "debug", skip_all)]
     pub async fn plan(
         name: String,
@@ -63,6 +60,9 @@ impl CreateUser {
 #[async_trait::async_trait]
 #[typetag::serde(name = "create_user")]
 impl Action for CreateUser {
+    fn typetag() -> &'static str {
+        "create_user"
+    }
     fn tracing_synopsis(&self) -> String {
         format!(
             "Create user `{}` (UID {}) in group `{}` (GID {})",

@@ -21,9 +21,6 @@ pub struct ConfigureNix {
 }
 
 impl ConfigureNix {
-    pub fn typetag() -> &'static str {
-        "configure_nix"
-    }
     #[tracing::instrument(level = "debug", skip_all)]
     pub async fn plan(settings: &CommonSettings) -> Result<StatefulAction<Self>, ActionError> {
         let setup_default_profile = SetupDefaultProfile::plan(settings.channels.clone())
@@ -65,6 +62,9 @@ impl ConfigureNix {
 #[async_trait::async_trait]
 #[typetag::serde(name = "configure_nix")]
 impl Action for ConfigureNix {
+    fn typetag() -> &'static str {
+        "configure_nix"
+    }
     fn tracing_synopsis(&self) -> String {
         "Configure Nix".to_string()
     }

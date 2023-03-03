@@ -211,7 +211,6 @@ pub trait ErrorDiagnostic {
     fn diagnostic(&self) -> String;
 }
 
-#[cfg(feature = "diagnostics")]
 impl ErrorDiagnostic for DiagnosticError {
     fn diagnostic(&self) -> String {
         let static_str: &'static str = (self).into();

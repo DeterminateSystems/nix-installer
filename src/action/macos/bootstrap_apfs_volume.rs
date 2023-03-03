@@ -17,9 +17,6 @@ pub struct BootstrapApfsVolume {
 }
 
 impl BootstrapApfsVolume {
-    pub fn typetag() -> &'static str {
-        "bootstrap_apfs_volume"
-    }
     #[tracing::instrument(level = "debug", skip_all)]
     pub async fn plan(path: impl AsRef<Path>) -> Result<StatefulAction<Self>, ActionError> {
         Ok(Self {
@@ -32,6 +29,9 @@ impl BootstrapApfsVolume {
 #[async_trait::async_trait]
 #[typetag::serde(name = "bootstrap_apfs_volume")]
 impl Action for BootstrapApfsVolume {
+    fn typetag() -> &'static str {
+        "bootstrap_apfs_volume"
+    }
     fn tracing_synopsis(&self) -> String {
         format!("Bootstrap and kickstart `{}`", self.path.display())
     }

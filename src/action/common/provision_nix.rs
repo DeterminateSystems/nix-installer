@@ -22,9 +22,6 @@ pub struct ProvisionNix {
 }
 
 impl ProvisionNix {
-    pub fn typetag() -> &'static str {
-        "provision_nix"
-    }
     #[tracing::instrument(level = "debug", skip_all)]
     pub async fn plan(settings: &CommonSettings) -> Result<StatefulAction<Self>, ActionError> {
         let fetch_nix = FetchAndUnpackNix::plan(
@@ -54,6 +51,9 @@ impl ProvisionNix {
 #[async_trait::async_trait]
 #[typetag::serde(name = "provision_nix")]
 impl Action for ProvisionNix {
+    fn typetag() -> &'static str {
+        "provision_nix"
+    }
     fn tracing_synopsis(&self) -> String {
         "Provision Nix".to_string()
     }

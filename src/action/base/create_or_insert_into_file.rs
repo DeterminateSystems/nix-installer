@@ -36,9 +36,6 @@ pub struct CreateOrInsertIntoFile {
 }
 
 impl CreateOrInsertIntoFile {
-    pub fn typetag() -> &'static str {
-        "create_or_insert_into_file"
-    }
     #[tracing::instrument(level = "debug", skip_all)]
     pub async fn plan(
         path: impl AsRef<Path>,
@@ -143,6 +140,9 @@ impl CreateOrInsertIntoFile {
 #[async_trait::async_trait]
 #[typetag::serde(name = "create_or_insert_into_file")]
 impl Action for CreateOrInsertIntoFile {
+    fn typetag() -> &'static str {
+        "create_or_insert_into_file"
+    }
     fn tracing_synopsis(&self) -> String {
         format!("Create or insert file `{}`", self.path.display())
     }

@@ -28,9 +28,6 @@ pub struct CreateNixTree {
 }
 
 impl CreateNixTree {
-    pub fn typetag() -> &'static str {
-        "create_nix_tree"
-    }
     #[tracing::instrument(level = "debug", skip_all)]
     pub async fn plan() -> Result<StatefulAction<Self>, ActionError> {
         let mut create_directories = Vec::default();
@@ -50,6 +47,9 @@ impl CreateNixTree {
 #[async_trait::async_trait]
 #[typetag::serde(name = "create_nix_tree")]
 impl Action for CreateNixTree {
+    fn typetag() -> &'static str {
+        "create_nix_tree"
+    }
     fn tracing_synopsis(&self) -> String {
         "Create a directory tree in `/nix`".to_string()
     }

@@ -29,9 +29,6 @@ pub struct CreateFstabEntry {
 }
 
 impl CreateFstabEntry {
-    pub fn typetag() -> &'static str {
-        "create_fstab_entry"
-    }
     #[tracing::instrument(level = "debug", skip_all)]
     pub async fn plan(apfs_volume_label: String) -> Result<StatefulAction<Self>, ActionError> {
         let fstab_path = Path::new(FSTAB_PATH);
@@ -63,6 +60,9 @@ impl CreateFstabEntry {
 #[async_trait::async_trait]
 #[typetag::serde(name = "create_fstab_entry")]
 impl Action for CreateFstabEntry {
+    fn typetag() -> &'static str {
+        "create_fstab_entry"
+    }
     fn tracing_synopsis(&self) -> String {
         format!(
             "Add a UUID based entry for the APFS volume `{}` to `/etc/fstab`",

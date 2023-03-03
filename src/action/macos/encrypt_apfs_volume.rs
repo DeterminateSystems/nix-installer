@@ -19,9 +19,6 @@ pub struct EncryptApfsVolume {
 }
 
 impl EncryptApfsVolume {
-    pub fn typetag() -> &'static str {
-        "encrypt_apfs_volume"
-    }
     #[tracing::instrument(level = "debug", skip_all)]
     pub async fn plan(
         disk: impl AsRef<Path>,
@@ -39,6 +36,9 @@ impl EncryptApfsVolume {
 #[async_trait::async_trait]
 #[typetag::serde(name = "encrypt_volume")]
 impl Action for EncryptApfsVolume {
+    fn typetag() -> &'static str {
+        "encrypt_apfs_volume"
+    }
     fn tracing_synopsis(&self) -> String {
         format!(
             "Encrypt volume `{}` on disk `{}`",

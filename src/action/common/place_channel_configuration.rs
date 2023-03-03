@@ -14,9 +14,6 @@ pub struct PlaceChannelConfiguration {
 }
 
 impl PlaceChannelConfiguration {
-    pub fn typetag() -> &'static str {
-        "place_channel_configuration"
-    }
     #[tracing::instrument(level = "debug", skip_all)]
     pub async fn plan(
         channels: Vec<ChannelValue>,
@@ -52,6 +49,9 @@ impl PlaceChannelConfiguration {
 #[async_trait::async_trait]
 #[typetag::serde(name = "place_channel_configuration")]
 impl Action for PlaceChannelConfiguration {
+    fn typetag() -> &'static str {
+        "place_channel_configuration"
+    }
     fn tracing_synopsis(&self) -> String {
         format!(
             "Place channel configuration at `{}`",

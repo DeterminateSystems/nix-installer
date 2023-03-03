@@ -24,9 +24,6 @@ pub struct CreateDirectory {
 }
 
 impl CreateDirectory {
-    pub fn typetag() -> &'static str {
-        "create_directory"
-    }
     #[tracing::instrument(level = "debug", skip_all)]
     pub async fn plan(
         path: impl AsRef<Path>,
@@ -102,6 +99,9 @@ impl CreateDirectory {
 #[async_trait::async_trait]
 #[typetag::serde(name = "create_directory")]
 impl Action for CreateDirectory {
+    fn typetag() -> &'static str {
+        "create_directory"
+    }
     fn tracing_synopsis(&self) -> String {
         format!("Create directory `{}`", self.path.display())
     }

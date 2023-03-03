@@ -17,9 +17,6 @@ pub struct CreateApfsVolume {
 }
 
 impl CreateApfsVolume {
-    pub fn typetag() -> &'static str {
-        "create_apfs_volume"
-    }
     #[tracing::instrument(level = "debug", skip_all)]
     pub async fn plan(
         disk: impl AsRef<Path>,
@@ -53,6 +50,9 @@ impl CreateApfsVolume {
 #[async_trait::async_trait]
 #[typetag::serde(name = "create_volume")]
 impl Action for CreateApfsVolume {
+    fn typetag() -> &'static str {
+        "create_apfs_volume"
+    }
     fn tracing_synopsis(&self) -> String {
         format!(
             "Create an APFS volume on `{}` named `{}`",

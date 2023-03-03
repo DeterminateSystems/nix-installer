@@ -10,9 +10,6 @@ use crate::action::{Action, ActionDescription, ActionError, StatefulAction};
 pub struct CreateSyntheticObjects;
 
 impl CreateSyntheticObjects {
-    pub fn typetag() -> &'static str {
-        "create_synthetic_objects"
-    }
     #[tracing::instrument(level = "debug", skip_all)]
     pub async fn plan() -> Result<StatefulAction<Self>, ActionError> {
         Ok(Self.into())
@@ -22,6 +19,9 @@ impl CreateSyntheticObjects {
 #[async_trait::async_trait]
 #[typetag::serde(name = "create_synthetic_objects")]
 impl Action for CreateSyntheticObjects {
+    fn typetag() -> &'static str {
+        "create_synthetic_objects"
+    }
     fn tracing_synopsis(&self) -> String {
         "Create objects defined in `/etc/synthetic.conf`".to_string()
     }

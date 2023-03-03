@@ -32,9 +32,6 @@ pub struct ConfigureInitService {
 }
 
 impl ConfigureInitService {
-    pub fn typetag() -> &'static str {
-        "configure_init_service"
-    }
     #[tracing::instrument(level = "debug", skip_all)]
     pub async fn plan(
         init: InitSystem,
@@ -47,6 +44,9 @@ impl ConfigureInitService {
 #[async_trait::async_trait]
 #[typetag::serde(name = "configure_init_service")]
 impl Action for ConfigureInitService {
+    fn typetag() -> &'static str {
+        "configure_init_service"
+    }
     fn tracing_synopsis(&self) -> String {
         match self.init {
             #[cfg(target_os = "linux")]

@@ -19,9 +19,6 @@ pub struct EnableOwnership {
 }
 
 impl EnableOwnership {
-    pub fn typetag() -> &'static str {
-        "enable_ownership"
-    }
     #[tracing::instrument(level = "debug", skip_all)]
     pub async fn plan(path: impl AsRef<Path>) -> Result<StatefulAction<Self>, ActionError> {
         Ok(Self {
@@ -34,6 +31,9 @@ impl EnableOwnership {
 #[async_trait::async_trait]
 #[typetag::serde(name = "enable_ownership")]
 impl Action for EnableOwnership {
+    fn typetag() -> &'static str {
+        "enable_ownership"
+    }
     fn tracing_synopsis(&self) -> String {
         format!("Enable ownership on {}", self.path.display())
     }

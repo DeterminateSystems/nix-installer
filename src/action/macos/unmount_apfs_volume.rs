@@ -18,9 +18,6 @@ pub struct UnmountApfsVolume {
 }
 
 impl UnmountApfsVolume {
-    pub fn typetag() -> &'static str {
-        "unmount_apfs_volume"
-    }
     #[tracing::instrument(level = "debug", skip_all)]
     pub async fn plan(
         disk: impl AsRef<Path>,
@@ -34,6 +31,9 @@ impl UnmountApfsVolume {
 #[async_trait::async_trait]
 #[typetag::serde(name = "unmount_volume")]
 impl Action for UnmountApfsVolume {
+    fn typetag() -> &'static str {
+        "unmount_apfs_volume"
+    }
     fn tracing_synopsis(&self) -> String {
         format!("Unmount the `{}` APFS volume", self.name)
     }

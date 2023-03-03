@@ -29,9 +29,6 @@ pub struct CreateFile {
 }
 
 impl CreateFile {
-    pub fn typetag() -> &'static str {
-        "create_file"
-    }
     #[tracing::instrument(level = "debug", skip_all)]
     pub async fn plan(
         path: impl AsRef<Path>,
@@ -137,6 +134,9 @@ impl CreateFile {
 #[async_trait::async_trait]
 #[typetag::serde(name = "create_file")]
 impl Action for CreateFile {
+    fn typetag() -> &'static str {
+        "create_file"
+    }
     fn tracing_synopsis(&self) -> String {
         format!("Create or overwrite file `{}`", self.path.display())
     }

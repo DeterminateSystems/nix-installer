@@ -21,9 +21,6 @@ pub struct SetupDefaultProfile {
 }
 
 impl SetupDefaultProfile {
-    pub fn typetag() -> &'static str {
-        "setup_default_profile"
-    }
     #[tracing::instrument(level = "debug", skip_all)]
     pub async fn plan(channels: Vec<ChannelValue>) -> Result<StatefulAction<Self>, ActionError> {
         Ok(Self { channels }.into())
@@ -33,6 +30,9 @@ impl SetupDefaultProfile {
 #[async_trait::async_trait]
 #[typetag::serde(name = "setup_default_profile")]
 impl Action for SetupDefaultProfile {
+    fn typetag() -> &'static str {
+        "setup_default_profile"
+    }
     fn tracing_synopsis(&self) -> String {
         "Setup the default Nix profile".to_string()
     }

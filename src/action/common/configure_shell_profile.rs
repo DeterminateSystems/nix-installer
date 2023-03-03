@@ -41,9 +41,6 @@ pub struct ConfigureShellProfile {
 }
 
 impl ConfigureShellProfile {
-    pub fn typetag() -> &'static str {
-        "configure_shell_profile"
-    }
     #[tracing::instrument(level = "debug", skip_all)]
     pub async fn plan() -> Result<StatefulAction<Self>, ActionError> {
         let mut create_or_insert_files = Vec::default();
@@ -169,6 +166,9 @@ impl ConfigureShellProfile {
 #[async_trait::async_trait]
 #[typetag::serde(name = "configure_shell_profile")]
 impl Action for ConfigureShellProfile {
+    fn typetag() -> &'static str {
+        "configure_shell_profile"
+    }
     fn tracing_synopsis(&self) -> String {
         "Configure the shell profiles".to_string()
     }

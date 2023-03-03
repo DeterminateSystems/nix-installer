@@ -68,6 +68,9 @@ impl CreateUsersAndGroups {
 #[async_trait::async_trait]
 #[typetag::serde(name = "create_users_and_group")]
 impl Action for CreateUsersAndGroups {
+    fn typetag() -> &'static str {
+        "create_users_and_group"
+    }
     fn tracing_synopsis(&self) -> String {
         format!(
             "Create build users (UID {}-{}) and group (GID {})",

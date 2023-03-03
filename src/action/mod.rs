@@ -185,6 +185,9 @@ use crate::error::HasExpectedErrors;
 #[async_trait::async_trait]
 #[typetag::serde(tag = "action")]
 pub trait Action: Send + Sync + std::fmt::Debug + dyn_clone::DynClone {
+    fn typetag() -> &'static str
+    where
+        Self: Sized;
     /// A synopsis of the action for tracing purposes
     fn tracing_synopsis(&self) -> String;
     /// A tracing span suitable for the action

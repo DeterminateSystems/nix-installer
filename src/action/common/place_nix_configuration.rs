@@ -16,9 +16,6 @@ pub struct PlaceNixConfiguration {
 }
 
 impl PlaceNixConfiguration {
-    pub fn typetag() -> &'static str {
-        "place_nix_configuration"
-    }
     #[tracing::instrument(level = "debug", skip_all)]
     pub async fn plan(
         nix_build_group_name: String,
@@ -61,6 +58,9 @@ impl PlaceNixConfiguration {
 #[async_trait::async_trait]
 #[typetag::serde(name = "place_nix_configuration")]
 impl Action for PlaceNixConfiguration {
+    fn typetag() -> &'static str {
+        "place_nix_configuration"
+    }
     fn tracing_synopsis(&self) -> String {
         format!("Place the Nix configuration in `{NIX_CONF}`")
     }
