@@ -16,7 +16,7 @@ surprises.
 
 # What kinds of contributions are needed?
 
-Riff can benefit from all kinds of contributions:
+`nix-installer` can benefit from all kinds of contributions:
 
 * Bug reports
 * Code improvements
@@ -27,7 +27,7 @@ Riff can benefit from all kinds of contributions:
 * Graphical/visual asset improvement
 * Kind words or recommendation on your own site, repo, stream, or social media
   account
-* Onboarding others to using Riff
+* Onboarding others to using `nix-installer`
 
 
 # What are the expectations you can have of the maintainers?
