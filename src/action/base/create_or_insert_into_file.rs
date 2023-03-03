@@ -67,9 +67,17 @@ impl CreateOrInsertIntoFile {
                 .metadata()
                 .await
                 .map_err(|e| ActionError::GettingMetadata(this.path.clone(), e))?;
+
+            if !metadata.is_file() {
+                return Err(ActionError::PathWasNotFile(this.path));
+            }
+
             if let Some(mode) = mode {
                 // Does the file have the right permissions?
                 let discovered_mode = metadata.permissions().mode();
+                // We only care about user-group-other permissions
+                let discovered_mode = discovered_mode & 0o777;
+
                 if discovered_mode != mode {
                     return Err(ActionError::PathModeMismatch(
                         this.path.clone(),
@@ -348,11 +356,12 @@ impl Action for CreateOrInsertIntoFile {
 #[cfg(test)]
 mod test {
     use super::*;
+    use eyre::eyre;
     use tokio::fs::{read_to_string, write};
 
     #[tokio::test]
     async fn creates_and_deletes_file() -> eyre::Result<()> {
-        let temp_dir = tempdir::TempDir::new("nix_installer_create_or_insert_into_file")?;
+        let temp_dir = tempfile::tempdir()?;
         let test_file = temp_dir.path().join("creates_and_deletes_file");
         let mut action = CreateOrInsertIntoFile::plan(
             test_file.clone(),
@@ -375,7 +384,7 @@ mod test {
 
     #[tokio::test]
     async fn edits_and_reverts_file() -> eyre::Result<()> {
-        let temp_dir = tempdir::TempDir::new("nix_installer_create_or_insert_into_file")?;
+        let temp_dir = tempfile::tempdir()?;
         let test_file = temp_dir.path().join("edits_and_reverts_file");
 
         let test_content = "Some other content";
@@ -410,7 +419,7 @@ mod test {
 
     #[tokio::test]
     async fn recognizes_existing_containing_exact_contents_and_reverts_it() -> eyre::Result<()> {
-        let temp_dir = tempdir::TempDir::new("nix_installer_create_or_insert_into_file")?;
+        let temp_dir = tempfile::tempdir()?;
         let test_file = temp_dir
             .path()
             .join("recognizes_existing_containing_exact_contents_and_reverts_it");
@@ -441,6 +450,98 @@ mod test {
             assert!(test_file.exists(), "File should have not been deleted");
             let after_revert_content = read_to_string(&test_file).await?;
             assert_eq!(after_revert_content, added_content);
+        }
+
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn recognizes_wrong_mode_and_errors() -> eyre::Result<()> {
+        let temp_dir = tempfile::tempdir()?;
+        let test_file = temp_dir.path().join("recognizes_wrong_mode_and_errors");
+        let initial_mode = 0o777;
+        let expected_mode = 0o000;
+
+        write(test_file.as_path(), "Some content").await?;
+        tokio::fs::set_permissions(test_file.as_path(), PermissionsExt::from_mode(initial_mode))
+            .await?;
+
+        match CreateOrInsertIntoFile::plan(
+            test_file.clone(),
+            None,
+            None,
+            Some(expected_mode),
+            "Some different content".into(),
+            Position::End,
+        )
+        .await
+        {
+            Err(ActionError::PathModeMismatch(path, got, expected)) => {
+                assert_eq!(path, test_file.as_path());
+                assert_eq!(expected, expected_mode);
+                assert_eq!(got, initial_mode);
+            },
+            _ => {
+                return Err(eyre!(
+                    "Should have returned an ActionError::PathModeMismatch error"
+                ))
+            },
+        }
+
+        assert!(test_file.exists(), "File should have not been deleted");
+
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn recognizes_correct_mode() -> eyre::Result<()> {
+        let temp_dir = tempfile::tempdir()?;
+        let test_file = temp_dir.path().join("recognizes_correct_mode");
+        let initial_mode = 0o777;
+
+        write(test_file.as_path(), "Some content").await?;
+        tokio::fs::set_permissions(test_file.as_path(), PermissionsExt::from_mode(initial_mode))
+            .await?;
+
+        let mut action = CreateOrInsertIntoFile::plan(
+            test_file.clone(),
+            None,
+            None,
+            Some(initial_mode),
+            "Some content".into(),
+            Position::End,
+        )
+        .await?;
+
+        action.try_execute().await?;
+
+        action.try_revert().await?;
+
+        assert!(!test_file.exists(), "File should have been deleted");
+
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn errors_on_dir() -> eyre::Result<()> {
+        let temp_dir = tempfile::tempdir()?;
+
+        match CreateOrInsertIntoFile::plan(
+            temp_dir.path(),
+            None,
+            None,
+            None,
+            "Some different content".into(),
+            Position::End,
+        )
+        .await
+        {
+            Err(ActionError::PathWasNotFile(path)) => assert_eq!(path, temp_dir.path()),
+            _ => {
+                return Err(eyre!(
+                    "Should have returned an ActionError::PathWasNotFile error"
+                ))
+            },
         }
 
         Ok(())

@@ -1,3 +1,4 @@
 /target
 .ci-store
 .direnv
+result*

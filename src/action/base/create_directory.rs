@@ -222,7 +222,7 @@ mod test {
 
     #[tokio::test]
     async fn creates_and_deletes_empty_directory() -> eyre::Result<()> {
-        let temp_dir = tempdir::TempDir::new("nix_installer_tests_create_file")?;
+        let temp_dir = tempfile::tempdir()?;
         let test_dir = temp_dir.path().join("creates_and_deletes_empty_directory");
         let mut action = CreateDirectory::plan(test_dir.clone(), None, None, None, false).await?;
 
@@ -237,7 +237,7 @@ mod test {
 
     #[tokio::test]
     async fn creates_and_deletes_populated_directory_if_prune_true() -> eyre::Result<()> {
-        let temp_dir = tempdir::TempDir::new("nix_installer_tests_create_file")?;
+        let temp_dir = tempfile::tempdir()?;
         let test_dir = temp_dir
             .path()
             .join("creates_and_deletes_populated_directory_if_prune_true");
@@ -257,7 +257,7 @@ mod test {
 
     #[tokio::test]
     async fn creates_and_leaves_populated_directory_if_prune_false() -> eyre::Result<()> {
-        let temp_dir = tempdir::TempDir::new("nix_installer_tests_create_file")?;
+        let temp_dir = tempfile::tempdir()?;
         let test_dir = temp_dir
             .path()
             .join("creates_and_leaves_populated_directory_if_prune_false");

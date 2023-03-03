@@ -73,8 +73,8 @@ impl ConfigureShellProfile {
                         minor: _,
                         patch: _,
                     }
-                    | OperatingSystem::Darwin => 0o100444,
-                    _ => 0o100644,
+                    | OperatingSystem::Darwin => 0o444,
+                    _ => 0o644,
                 };
                 create_or_insert_files.push(
                     CreateOrInsertIntoFile::plan(
@@ -114,7 +114,7 @@ impl ConfigureShellProfile {
 
             if let Some(conf_d) = profile_target.parent() {
                 create_directories.push(
-                    CreateDirectory::plan(conf_d.to_path_buf(), None, None, 0o0644, false).await?,
+                    CreateDirectory::plan(conf_d.to_path_buf(), None, None, 0o755, false).await?,
                 );
             }
 
@@ -123,7 +123,7 @@ impl ConfigureShellProfile {
                     profile_target,
                     None,
                     None,
-                    0o100644,
+                    0o644,
                     fish_buf.to_string(),
                     create_or_insert_into_file::Position::Beginning,
                 )
