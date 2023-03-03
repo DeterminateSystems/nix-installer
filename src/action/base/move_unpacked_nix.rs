@@ -85,13 +85,6 @@ impl Action for MoveUnpackedNix {
             .await
             .map_err(|e| ActionError::Remove(src.clone(), e))?;
 
-        if let Ok(_) = std::env::var("BOOP") {
-            return Err(ActionError::command(
-                tokio::process::Command::new("Boop").arg("boop"),
-                std::io::Error::new(std::io::ErrorKind::Other, "Boop"),
-            ));
-        }
-
         Ok(())
     }
 

@@ -84,35 +84,28 @@ impl DiagnosticData {
 
     pub fn failure(mut self, err: &NixInstallerError) -> Self {
         let mut failure_chain = vec![];
-        tracing::info!("err: {err}");
         let diagnostic = err.diagnostic();
         failure_chain.push(diagnostic);
 
         let mut walker: &dyn std::error::Error = &err;
         while let Some(source) = walker.source() {
-            tracing::info!("walker: {walker}");
             if let Some(downcasted) = source.downcast_ref::<ActionError>() {
-                tracing::info!("downcasted(ActionError): {downcasted}");
                 let downcasted_diagnostic = downcasted.diagnostic();
                 failure_chain.push(downcasted_diagnostic);
             }
             if let Some(downcasted) = source.downcast_ref::<Box<ActionError>>() {
-                tracing::info!("downcasted(Box<ActionError>): {downcasted}");
                 let downcasted_diagnostic = downcasted.diagnostic();
                 failure_chain.push(downcasted_diagnostic);
             }
             if let Some(downcasted) = source.downcast_ref::<PlannerError>() {
-                tracing::info!("downcasted(PlannerError): {downcasted}");
                 let downcasted_diagnostic = downcasted.diagnostic();
                 failure_chain.push(downcasted_diagnostic);
             }
             if let Some(downcasted) = source.downcast_ref::<InstallSettingsError>() {
-                tracing::info!("downcasted(InstallSettingsError): {downcasted}");
                 let downcasted_diagnostic = downcasted.diagnostic();
                 failure_chain.push(downcasted_diagnostic);
             }
             if let Some(downcasted) = source.downcast_ref::<DiagnosticError>() {
-                tracing::info!("downcasted(DiagnosticError): {downcasted}");
                 let downcasted_diagnostic = downcasted.diagnostic();
                 failure_chain.push(downcasted_diagnostic);
             }

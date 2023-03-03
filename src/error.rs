@@ -91,7 +91,7 @@ impl crate::diagnostics::ErrorDiagnostic for NixInstallerError {
         };
         return format!(
             "{}({})",
-            static_str.to_string(),
+            static_str,
             context
                 .iter()
                 .map(|v| format!("\"{v}\""))
