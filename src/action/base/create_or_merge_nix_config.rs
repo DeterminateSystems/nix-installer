@@ -30,6 +30,8 @@ pub enum CreateOrMergeNixConfigError {
         .collect::<Vec<_>>()
         .join(", "))]
     UnmergeableConfig(Vec<String>, std::path::PathBuf),
+    #[error("{0} was modified before it could be merged")]
+    ModifiedConfig(std::path::PathBuf),
 }
 
 /// Create or merge an existing `nix.conf` at the specified path.
@@ -229,6 +231,23 @@ impl Action for CreateOrMergeNixConfig {
     #[tracing::instrument(level = "debug", skip_all)]
     async fn execute(&mut self) -> Result<(), ActionError> {
         let Self { path, nix_configs } = self;
+
+        // Validate that the config has not been modified since we parsed it
+        if let Some(existing_nix_config) = &nix_configs.existing_nix_config {
+            let potentially_edited_config = NixConfig::parse_file(&path)
+                .map_err(CreateOrMergeNixConfigError::ParseNixConfig)
+                .map_err(|e| ActionError::Custom(Box::new(e)))?;
+
+            if existing_nix_config != &potentially_edited_config {
+                return Err(ActionError::Custom(Box::new(
+                    CreateOrMergeNixConfigError::ModifiedConfig(path.clone()),
+                )));
+            }
+        } else if path.exists() {
+            return Err(ActionError::Custom(Box::new(
+                CreateOrMergeNixConfigError::ModifiedConfig(path.clone()),
+            )));
+        }
 
         if tracing::enabled!(tracing::Level::TRACE) {
             let span = tracing::Span::current();
