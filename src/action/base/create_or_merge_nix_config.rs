@@ -188,9 +188,9 @@ impl Action for CreateOrMergeNixConfig {
                     .merged_nix_config
                     .settings()
                     .iter()
-                    .map(|(k, v)| format!("{k}='{v}'"))
+                    .map(|(k, v)| format!("{k}=\"{v}\""))
                     .collect::<Vec<_>>()
-                    .join(" "),
+                    .join(","),
             );
         }
         span
