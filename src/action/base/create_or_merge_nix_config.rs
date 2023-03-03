@@ -19,6 +19,7 @@ const MERGEABLE_CONF_NAMES: &[&str] = &["experimental-features"];
 const NIX_CONF_MODE: u32 = 0o644;
 const NIX_CONF_COMMENT_CHAR: char = '#';
 
+#[non_exhaustive]
 #[derive(Debug, thiserror::Error)]
 pub enum CreateOrMergeNixConfigError {
     #[error(transparent)]
