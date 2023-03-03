@@ -67,13 +67,24 @@ impl Action for PlaceNixConfiguration {
     }
 
     fn execute_description(&self) -> Vec<ActionDescription> {
-        vec![ActionDescription::new(
-            self.tracing_synopsis(),
-            vec![
-                "This file is read by the Nix daemon to set its configuration options at runtime."
-                    .to_string(),
-            ],
-        )]
+        let Self {
+            create_or_merge_nix_config,
+            create_directory,
+        } = self;
+
+        let mut explanation = vec![
+            "This file is read by the Nix daemon to set its configuration options at runtime."
+                .to_string(),
+        ];
+
+        if let Some(val) = create_directory.describe_execute().iter().next() {
+            explanation.push(val.description.clone())
+        }
+        for val in create_or_merge_nix_config.describe_execute().iter() {
+            explanation.push(val.description.clone())
+        }
+
+        vec![ActionDescription::new(self.tracing_synopsis(), explanation)]
     }
 
     #[tracing::instrument(level = "debug", skip_all)]

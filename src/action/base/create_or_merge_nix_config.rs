@@ -168,7 +168,15 @@ impl CreateOrMergeNixConfig {
 #[typetag::serde(name = "create_or_merge_nix_config")]
 impl Action for CreateOrMergeNixConfig {
     fn tracing_synopsis(&self) -> String {
-        format!("Create or merge nix.conf file `{}`", self.path.display())
+        format!(
+            "{verb} nix.conf file `{path}`",
+            verb = if self.nix_configs.existing_nix_config.is_some() {
+                "Merge"
+            } else {
+                "Create"
+            },
+            path = self.path.display(),
+        )
     }
 
     fn tracing_span(&self) -> Span {
@@ -200,9 +208,20 @@ impl Action for CreateOrMergeNixConfig {
         vec![ActionDescription::new(
             self.tracing_synopsis(),
             vec![format!(
-                "If {} already exists, we will attempt to merge the current settings with our settings; \
-                otherwise, it will be created with only our settings",
-                self.path.display()
+                "{verb} settings: {settings}",
+                verb = if self.nix_configs.existing_nix_config.is_some() {
+                    "Modified"
+                } else {
+                    "Added"
+                },
+                settings = self
+                    .nix_configs
+                    .merged_nix_config
+                    .settings()
+                    .iter()
+                    .map(|(k, v)| format!("{k}=\"{v}\""))
+                    .collect::<Vec<_>>()
+                    .join(", "),
             )],
         )]
     }
