@@ -202,6 +202,7 @@ fn fstab_entry(uuid: &Uuid, apfs_volume_label: &str) -> String {
     )
 }
 
+#[non_exhaustive]
 #[derive(thiserror::Error, Debug)]
 pub enum CreateFstabEntryError {
     #[error("An `/etc/fstab` entry for the `/nix` path already exists, consider removing the entry for `/nix`d from `/etc/fstab`")]

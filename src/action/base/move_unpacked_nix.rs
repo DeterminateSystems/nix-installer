@@ -99,6 +99,7 @@ impl Action for MoveUnpackedNix {
     }
 }
 
+#[non_exhaustive]
 #[derive(Debug, thiserror::Error)]
 pub enum MoveUnpackedNixError {
     #[error("Glob pattern error")]

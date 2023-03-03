@@ -136,6 +136,7 @@ impl Action for CreateApfsVolume {
     }
 }
 
+#[non_exhaustive]
 #[derive(Debug, thiserror::Error)]
 pub enum CreateApfsVolumeError {
     #[error("Existing volume called `{0}` found in `diskutil apfs list`, delete it with `diskutil apfs deleteVolume \"{0}\"`")]

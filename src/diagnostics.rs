@@ -187,6 +187,7 @@ impl DiagnosticData {
     }
 }
 
+#[non_exhaustive]
 #[derive(thiserror::Error, Debug, strum::IntoStaticStr)]
 pub enum DiagnosticError {
     #[error("Unknown url scheme")]

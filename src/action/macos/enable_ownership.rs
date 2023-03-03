@@ -94,6 +94,7 @@ impl Action for EnableOwnership {
     }
 }
 
+#[non_exhaustive]
 #[derive(Debug, thiserror::Error)]
 pub enum EnableOwnershipError {
     #[error("Failed to execute command")]

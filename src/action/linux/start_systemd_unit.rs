@@ -138,6 +138,7 @@ impl Action for StartSystemdUnit {
     }
 }
 
+#[non_exhaustive]
 #[derive(Debug, thiserror::Error)]
 pub enum StartSystemdUnitError {
     #[error("Failed to execute command")]

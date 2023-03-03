@@ -329,7 +329,7 @@ async fn write_receipt(plan: InstallPlan) -> Result<(), NixInstallerError> {
     let install_receipt_path = PathBuf::from(RECEIPT_LOCATION);
     let self_json =
         serde_json::to_string_pretty(&plan).map_err(NixInstallerError::SerializingReceipt)?;
-    tokio::fs::write(&install_receipt_path, self_json)
+    tokio::fs::write(&install_receipt_path, format!("{self_json}\n"))
         .await
         .map_err(|e| NixInstallerError::RecordingReceipt(install_receipt_path, e))?;
     Result::<(), NixInstallerError>::Ok(())

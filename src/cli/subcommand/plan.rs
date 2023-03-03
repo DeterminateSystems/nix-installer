@@ -42,7 +42,7 @@ impl CommandExecute for Plan {
         };
 
         let json = serde_json::to_string_pretty(&install_plan)?;
-        tokio::fs::write(output, json)
+        tokio::fs::write(output, format!("{json}\n"))
             .await
             .wrap_err("Writing plan")?;
 

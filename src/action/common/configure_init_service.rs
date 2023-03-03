@@ -117,7 +117,7 @@ impl Action for ConfigureInitService {
                 execute_command(
                     Command::new("launchctl")
                         .process_group(0)
-                        .arg("load")
+                        .args(&["load", "-w"])
                         .arg(DARWIN_NIX_DAEMON_DEST)
                         .stdin(std::process::Stdio::null()),
                 )
@@ -322,6 +322,7 @@ impl Action for ConfigureInitService {
     }
 }
 
+#[non_exhaustive]
 #[derive(Debug, thiserror::Error)]
 pub enum ConfigureNixDaemonServiceError {
     #[error("No supported init system found")]
