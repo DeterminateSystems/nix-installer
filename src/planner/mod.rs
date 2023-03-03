@@ -270,6 +270,7 @@ impl BuiltinPlanner {
 }
 
 /// An error originating from a [`Planner`]
+#[non_exhaustive]
 #[derive(thiserror::Error, Debug, strum::IntoStaticStr)]
 pub enum PlannerError {
     /// `nix-installer` does not have a default planner for the target architecture right now

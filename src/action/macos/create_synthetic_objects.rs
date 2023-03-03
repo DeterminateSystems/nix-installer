@@ -88,6 +88,7 @@ impl Action for CreateSyntheticObjects {
     }
 }
 
+#[non_exhaustive]
 #[derive(Debug, thiserror::Error)]
 pub enum CreateSyntheticObjectsError {
     #[error("Failed to execute command")]

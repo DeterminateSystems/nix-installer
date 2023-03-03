@@ -246,6 +246,7 @@ impl Action for SetupDefaultProfile {
     }
 }
 
+#[non_exhaustive]
 #[derive(Debug, thiserror::Error)]
 pub enum SetupDefaultProfileError {
     #[error("Glob pattern error")]

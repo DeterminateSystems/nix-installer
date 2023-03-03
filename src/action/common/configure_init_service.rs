@@ -333,6 +333,7 @@ impl Action for ConfigureInitService {
     }
 }
 
+#[non_exhaustive]
 #[derive(Debug, thiserror::Error)]
 pub enum ConfigureNixDaemonServiceError {
     #[error("No supported init system found")]
