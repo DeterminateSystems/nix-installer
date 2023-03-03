@@ -68,6 +68,9 @@ impl MyAction {
 #[async_trait::async_trait]
 #[typetag::serde(name = "my_action")]
 impl Action for MyAction {
+    fn action_tag() -> nix_installer::action::ActionTag {
+        "my_action".into()
+    }
     fn tracing_synopsis(&self) -> String {
         "My action".to_string()
     }
