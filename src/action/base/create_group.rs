@@ -2,7 +2,7 @@ use nix::unistd::Group;
 use tokio::process::Command;
 use tracing::{span, Span};
 
-use crate::action::ActionError;
+use crate::action::{ActionError, ActionTag};
 use crate::execute_command;
 
 use crate::action::{Action, ActionDescription, StatefulAction};
@@ -45,8 +45,8 @@ impl CreateGroup {
 #[async_trait::async_trait]
 #[typetag::serde(name = "create_group")]
 impl Action for CreateGroup {
-    fn typetag() -> &'static str {
-        "create_group"
+    fn action_tag() -> ActionTag {
+        ActionTag("create_group")
     }
     fn tracing_synopsis(&self) -> String {
         format!("Create group `{}` (GID {})", self.name, self.gid)

@@ -1,13 +1,17 @@
 use std::path::PathBuf;
 
-use crate::{action::ActionError, planner::PlannerError, settings::InstallSettingsError};
+use crate::{
+    action::{ActionError, ActionTag},
+    planner::PlannerError,
+    settings::InstallSettingsError,
+};
 
 /// An error occurring during a call defined in this crate
 #[derive(thiserror::Error, Debug, strum::IntoStaticStr)]
 pub enum NixInstallerError {
     /// An error originating from an [`Action`](crate::action::Action)
     #[error("Error executing action `{0}`")]
-    Action(&'static str, #[source] ActionError),
+    Action(ActionTag, #[source] ActionError),
     /// An error while writing the [`InstallPlan`](crate::InstallPlan)
     #[error("Recording install receipt")]
     RecordingReceipt(PathBuf, #[source] std::io::Error),

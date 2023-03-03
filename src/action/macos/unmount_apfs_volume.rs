@@ -3,7 +3,7 @@ use std::path::{Path, PathBuf};
 use tokio::process::Command;
 use tracing::{span, Span};
 
-use crate::action::{ActionError, StatefulAction};
+use crate::action::{ActionError, ActionTag, StatefulAction};
 use crate::execute_command;
 
 use crate::action::{Action, ActionDescription};
@@ -31,8 +31,8 @@ impl UnmountApfsVolume {
 #[async_trait::async_trait]
 #[typetag::serde(name = "unmount_volume")]
 impl Action for UnmountApfsVolume {
-    fn typetag() -> &'static str {
-        "unmount_apfs_volume"
+    fn action_tag() -> ActionTag {
+        ActionTag("unmount_apfs_volume")
     }
     fn tracing_synopsis(&self) -> String {
         format!("Unmount the `{}` APFS volume", self.name)

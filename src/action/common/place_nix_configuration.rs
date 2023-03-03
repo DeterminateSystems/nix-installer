@@ -1,7 +1,7 @@
 use tracing::{span, Span};
 
 use crate::action::base::{CreateDirectory, CreateFile};
-use crate::action::{Action, ActionDescription, ActionError, StatefulAction};
+use crate::action::{Action, ActionDescription, ActionError, ActionTag, StatefulAction};
 
 const NIX_CONF_FOLDER: &str = "/etc/nix";
 const NIX_CONF: &str = "/etc/nix/nix.conf";
@@ -43,10 +43,10 @@ impl PlaceNixConfiguration {
         );
         let create_directory = CreateDirectory::plan(NIX_CONF_FOLDER, None, None, 0o0755, force)
             .await
-            .map_err(|e| ActionError::Child("create-directory", Box::new(e)))?;
+            .map_err(|e| ActionError::Child(CreateDirectory::action_tag(), Box::new(e)))?;
         let create_file = CreateFile::plan(NIX_CONF, None, None, 0o0664, buf, force)
             .await
-            .map_err(|e| ActionError::Child("create-file", Box::new(e)))?;
+            .map_err(|e| ActionError::Child(CreateFile::action_tag(), Box::new(e)))?;
         Ok(Self {
             create_directory,
             create_file,
@@ -58,8 +58,8 @@ impl PlaceNixConfiguration {
 #[async_trait::async_trait]
 #[typetag::serde(name = "place_nix_configuration")]
 impl Action for PlaceNixConfiguration {
-    fn typetag() -> &'static str {
-        "place_nix_configuration"
+    fn action_tag() -> ActionTag {
+        ActionTag("place_nix_configuration")
     }
     fn tracing_synopsis(&self) -> String {
         format!("Place the Nix configuration in `{NIX_CONF}`")
@@ -81,13 +81,14 @@ impl Action for PlaceNixConfiguration {
 
     #[tracing::instrument(level = "debug", skip_all)]
     async fn execute(&mut self) -> Result<(), ActionError> {
-        self.create_directory.try_execute().await.map_err(|e| {
-            ActionError::Child(self.create_directory.inner_typetag_name(), Box::new(e))
-        })?;
+        self.create_directory
+            .try_execute()
+            .await
+            .map_err(|e| ActionError::Child(self.create_directory.action_tag(), Box::new(e)))?;
         self.create_file
             .try_execute()
             .await
-            .map_err(|e| ActionError::Child(self.create_file.inner_typetag_name(), Box::new(e)))?;
+            .map_err(|e| ActionError::Child(self.create_file.action_tag(), Box::new(e)))?;
 
         Ok(())
     }
@@ -107,10 +108,11 @@ impl Action for PlaceNixConfiguration {
         self.create_file
             .try_revert()
             .await
-            .map_err(|e| ActionError::Child(self.create_file.inner_typetag_name(), Box::new(e)))?;
-        self.create_directory.try_revert().await.map_err(|e| {
-            ActionError::Child(self.create_directory.inner_typetag_name(), Box::new(e))
-        })?;
+            .map_err(|e| ActionError::Child(self.create_file.action_tag(), Box::new(e)))?;
+        self.create_directory
+            .try_revert()
+            .await
+            .map_err(|e| ActionError::Child(self.create_directory.action_tag(), Box::new(e)))?;
 
         Ok(())
     }

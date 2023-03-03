@@ -4,7 +4,7 @@ use std::path::{Path, PathBuf};
 use tokio::process::Command;
 use tracing::{span, Span};
 
-use crate::action::{ActionError, StatefulAction};
+use crate::action::{ActionError, ActionTag, StatefulAction};
 use crate::execute_command;
 
 use crate::action::{Action, ActionDescription};
@@ -31,8 +31,8 @@ impl EnableOwnership {
 #[async_trait::async_trait]
 #[typetag::serde(name = "enable_ownership")]
 impl Action for EnableOwnership {
-    fn typetag() -> &'static str {
-        "enable_ownership"
+    fn action_tag() -> ActionTag {
+        ActionTag("enable_ownership")
     }
     fn tracing_synopsis(&self) -> String {
         format!("Enable ownership on {}", self.path.display())

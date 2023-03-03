@@ -128,8 +128,8 @@ impl AddUserToGroup {
 #[async_trait::async_trait]
 #[typetag::serde(name = "add_user_to_group")]
 impl Action for AddUserToGroup {
-    fn typetag() -> &'static str {
-        "add_user_to_group"
+    fn action_tag() -> crate::action::ActionTag {
+        crate::action::ActionTag("add_user_to_group")
     }
     fn tracing_synopsis(&self) -> String {
         format!(

@@ -1,7 +1,7 @@
 use std::path::{Path, PathBuf};
 
 use crate::{
-    action::{ActionError, StatefulAction},
+    action::{ActionError, ActionTag, StatefulAction},
     execute_command, set_env, ChannelValue,
 };
 
@@ -30,8 +30,8 @@ impl SetupDefaultProfile {
 #[async_trait::async_trait]
 #[typetag::serde(name = "setup_default_profile")]
 impl Action for SetupDefaultProfile {
-    fn typetag() -> &'static str {
-        "setup_default_profile"
+    fn action_tag() -> ActionTag {
+        ActionTag("setup_default_profile")
     }
     fn tracing_synopsis(&self) -> String {
         "Setup the default Nix profile".to_string()

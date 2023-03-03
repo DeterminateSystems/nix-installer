@@ -1,6 +1,7 @@
 use crate::{
     action::{
-        macos::NIX_VOLUME_MOUNTD_DEST, Action, ActionDescription, ActionError, StatefulAction,
+        macos::NIX_VOLUME_MOUNTD_DEST, Action, ActionDescription, ActionError, ActionTag,
+        StatefulAction,
     },
     execute_command,
 };
@@ -36,8 +37,8 @@ impl EncryptApfsVolume {
 #[async_trait::async_trait]
 #[typetag::serde(name = "encrypt_volume")]
 impl Action for EncryptApfsVolume {
-    fn typetag() -> &'static str {
-        "encrypt_apfs_volume"
+    fn action_tag() -> ActionTag {
+        ActionTag("encrypt_apfs_volume")
     }
     fn tracing_synopsis(&self) -> String {
         format!(

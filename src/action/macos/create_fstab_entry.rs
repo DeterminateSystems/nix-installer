@@ -1,7 +1,7 @@
 use uuid::Uuid;
 
 use crate::{
-    action::{Action, ActionDescription, ActionError, StatefulAction},
+    action::{Action, ActionDescription, ActionError, ActionTag, StatefulAction},
     execute_command,
 };
 use serde::Deserialize;
@@ -60,8 +60,8 @@ impl CreateFstabEntry {
 #[async_trait::async_trait]
 #[typetag::serde(name = "create_fstab_entry")]
 impl Action for CreateFstabEntry {
-    fn typetag() -> &'static str {
-        "create_fstab_entry"
+    fn action_tag() -> ActionTag {
+        ActionTag("create_fstab_entry")
     }
     fn tracing_synopsis(&self) -> String {
         format!(

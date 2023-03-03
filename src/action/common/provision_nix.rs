@@ -4,7 +4,7 @@ use super::{CreateNixTree, CreateUsersAndGroups};
 use crate::{
     action::{
         base::{FetchAndUnpackNix, MoveUnpackedNix},
-        Action, ActionDescription, ActionError, StatefulAction,
+        Action, ActionDescription, ActionError, ActionTag, StatefulAction,
     },
     settings::CommonSettings,
 };
@@ -31,13 +31,13 @@ impl ProvisionNix {
         .await?;
         let create_users_and_group = CreateUsersAndGroups::plan(settings.clone())
             .await
-            .map_err(|e| ActionError::Child("create-users-and-group", Box::new(e)))?;
+            .map_err(|e| ActionError::Child(CreateUsersAndGroups::action_tag(), Box::new(e)))?;
         let create_nix_tree = CreateNixTree::plan()
             .await
-            .map_err(|e| ActionError::Child("create-nix-tree", Box::new(e)))?;
+            .map_err(|e| ActionError::Child(CreateNixTree::action_tag(), Box::new(e)))?;
         let move_unpacked_nix = MoveUnpackedNix::plan(PathBuf::from("/nix/temp-install-dir"))
             .await
-            .map_err(|e| ActionError::Child("move-unpacked-nix", Box::new(e)))?;
+            .map_err(|e| ActionError::Child(MoveUnpackedNix::action_tag(), Box::new(e)))?;
         Ok(Self {
             fetch_nix,
             create_users_and_group,
@@ -51,8 +51,8 @@ impl ProvisionNix {
 #[async_trait::async_trait]
 #[typetag::serde(name = "provision_nix")]
 impl Action for ProvisionNix {
-    fn typetag() -> &'static str {
-        "provision_nix"
+    fn action_tag() -> ActionTag {
+        ActionTag("provision_nix")
     }
     fn tracing_synopsis(&self) -> String {
         "Provision Nix".to_string()
@@ -84,9 +84,10 @@ impl Action for ProvisionNix {
         // We fetch nix while doing the rest, then move it over.
         let mut fetch_nix_clone = self.fetch_nix.clone();
         let fetch_nix_handle = tokio::task::spawn(async {
-            fetch_nix_clone.try_execute().await.map_err(|e| {
-                ActionError::Child(fetch_nix_clone.inner_typetag_name(), Box::new(e))
-            })?;
+            fetch_nix_clone
+                .try_execute()
+                .await
+                .map_err(|e| ActionError::Child(fetch_nix_clone.action_tag(), Box::new(e)))?;
             Result::<_, ActionError>::Ok(fetch_nix_clone)
         });
 
@@ -94,19 +95,18 @@ impl Action for ProvisionNix {
             .try_execute()
             .await
             .map_err(|e| {
-                ActionError::Child(
-                    self.create_users_and_group.inner_typetag_name(),
-                    Box::new(e),
-                )
+                ActionError::Child(self.create_users_and_group.action_tag(), Box::new(e))
             })?;
-        self.create_nix_tree.try_execute().await.map_err(|e| {
-            ActionError::Child(self.create_nix_tree.inner_typetag_name(), Box::new(e))
-        })?;
+        self.create_nix_tree
+            .try_execute()
+            .await
+            .map_err(|e| ActionError::Child(self.create_nix_tree.action_tag(), Box::new(e)))?;
 
         self.fetch_nix = fetch_nix_handle.await.map_err(ActionError::Join)??;
-        self.move_unpacked_nix.try_execute().await.map_err(|e| {
-            ActionError::Child(self.move_unpacked_nix.inner_typetag_name(), Box::new(e))
-        })?;
+        self.move_unpacked_nix
+            .try_execute()
+            .await
+            .map_err(|e| ActionError::Child(self.move_unpacked_nix.action_tag(), Box::new(e)))?;
 
         Ok(())
     }
@@ -132,9 +132,10 @@ impl Action for ProvisionNix {
         // We fetch nix while doing the rest, then move it over.
         let mut fetch_nix_clone = self.fetch_nix.clone();
         let fetch_nix_handle = tokio::task::spawn(async {
-            fetch_nix_clone.try_revert().await.map_err(|e| {
-                ActionError::Child(fetch_nix_clone.inner_typetag_name(), Box::new(e))
-            })?;
+            fetch_nix_clone
+                .try_revert()
+                .await
+                .map_err(|e| ActionError::Child(fetch_nix_clone.action_tag(), Box::new(e)))?;
             Result::<_, ActionError>::Ok(fetch_nix_clone)
         });
 
@@ -150,10 +151,11 @@ impl Action for ProvisionNix {
         self.fetch_nix = fetch_nix_handle
             .await
             .map_err(ActionError::Join)?
-            .map_err(|e| ActionError::Child(self.fetch_nix.inner_typetag_name(), Box::new(e)))?;
-        self.move_unpacked_nix.try_revert().await.map_err(|e| {
-            ActionError::Child(self.move_unpacked_nix.inner_typetag_name(), Box::new(e))
-        })?;
+            .map_err(|e| ActionError::Child(self.fetch_nix.action_tag(), Box::new(e)))?;
+        self.move_unpacked_nix
+            .try_revert()
+            .await
+            .map_err(|e| ActionError::Child(self.move_unpacked_nix.action_tag(), Box::new(e)))?;
 
         Ok(())
     }

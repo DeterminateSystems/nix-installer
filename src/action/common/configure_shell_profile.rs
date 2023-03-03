@@ -1,5 +1,5 @@
 use crate::action::base::{create_or_insert_into_file, CreateDirectory, CreateOrInsertIntoFile};
-use crate::action::{Action, ActionDescription, ActionError, StatefulAction};
+use crate::action::{Action, ActionDescription, ActionError, ActionTag, StatefulAction};
 
 use nix::unistd::User;
 use std::path::{Path, PathBuf};
@@ -166,8 +166,8 @@ impl ConfigureShellProfile {
 #[async_trait::async_trait]
 #[typetag::serde(name = "configure_shell_profile")]
 impl Action for ConfigureShellProfile {
-    fn typetag() -> &'static str {
-        "configure_shell_profile"
+    fn action_tag() -> ActionTag {
+        ActionTag("configure_shell_profile")
     }
     fn tracing_synopsis(&self) -> String {
         "Configure the shell profiles".to_string()
@@ -205,7 +205,7 @@ impl Action for ConfigureShellProfile {
                     .await
                     .map_err(|e| {
                         ActionError::Child(
-                            create_or_insert_into_file_clone.inner_typetag_name(),
+                            create_or_insert_into_file_clone.action_tag(),
                             Box::new(e),
                         )
                     })?;
@@ -269,9 +269,10 @@ impl Action for ConfigureShellProfile {
         }
 
         for create_directory in self.create_directories.iter_mut() {
-            create_directory.try_revert().await.map_err(|e| {
-                ActionError::Child(create_directory.inner_typetag_name(), Box::new(e))
-            })?;
+            create_directory
+                .try_revert()
+                .await
+                .map_err(|e| ActionError::Child(create_directory.action_tag(), Box::new(e)))?;
         }
 
         if !errors.is_empty() {

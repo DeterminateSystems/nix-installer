@@ -1,7 +1,7 @@
 use tracing::{span, Span};
 
 use crate::action::base::CreateDirectory;
-use crate::action::{Action, ActionDescription, ActionError, StatefulAction};
+use crate::action::{Action, ActionDescription, ActionError, ActionTag, StatefulAction};
 
 const PATHS: &[&str] = &[
     "/nix/var",
@@ -36,7 +36,7 @@ impl CreateNixTree {
             create_directories.push(
                 CreateDirectory::plan(path, None, None, 0o0755, false)
                     .await
-                    .map_err(|e| ActionError::Child(CreateDirectory::typetag(), Box::new(e)))?,
+                    .map_err(|e| ActionError::Child(CreateDirectory::action_tag(), Box::new(e)))?,
             )
         }
 
@@ -47,8 +47,8 @@ impl CreateNixTree {
 #[async_trait::async_trait]
 #[typetag::serde(name = "create_nix_tree")]
 impl Action for CreateNixTree {
-    fn typetag() -> &'static str {
-        "create_nix_tree"
+    fn action_tag() -> ActionTag {
+        ActionTag("create_nix_tree")
     }
     fn tracing_synopsis(&self) -> String {
         "Create a directory tree in `/nix`".to_string()
@@ -77,9 +77,10 @@ impl Action for CreateNixTree {
     async fn execute(&mut self) -> Result<(), ActionError> {
         // Just do sequential since parallelizing this will have little benefit
         for create_directory in self.create_directories.iter_mut() {
-            create_directory.try_execute().await.map_err(|e| {
-                ActionError::Child(create_directory.inner_typetag_name(), Box::new(e))
-            })?
+            create_directory
+                .try_execute()
+                .await
+                .map_err(|e| ActionError::Child(create_directory.action_tag(), Box::new(e)))?
         }
 
         Ok(())
@@ -109,9 +110,10 @@ impl Action for CreateNixTree {
     async fn revert(&mut self) -> Result<(), ActionError> {
         // Just do sequential since parallelizing this will have little benefit
         for create_directory in self.create_directories.iter_mut().rev() {
-            create_directory.try_revert().await.map_err(|e| {
-                ActionError::Child(create_directory.inner_typetag_name(), Box::new(e))
-            })?
+            create_directory
+                .try_revert()
+                .await
+                .map_err(|e| ActionError::Child(create_directory.action_tag(), Box::new(e)))?
         }
 
         Ok(())

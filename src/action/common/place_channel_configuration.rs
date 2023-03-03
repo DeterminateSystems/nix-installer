@@ -1,6 +1,6 @@
 use crate::action::base::CreateFile;
-use crate::action::ActionError;
 use crate::action::{Action, ActionDescription, StatefulAction};
+use crate::action::{ActionError, ActionTag};
 use crate::ChannelValue;
 use tracing::{span, Span};
 
@@ -37,7 +37,7 @@ impl PlaceChannelConfiguration {
             force,
         )
         .await
-        .map_err(|e| ActionError::Child(CreateFile::typetag(), Box::new(e)))?;
+        .map_err(|e| ActionError::Child(CreateFile::action_tag(), Box::new(e)))?;
         Ok(Self {
             create_file,
             channels,
@@ -49,8 +49,8 @@ impl PlaceChannelConfiguration {
 #[async_trait::async_trait]
 #[typetag::serde(name = "place_channel_configuration")]
 impl Action for PlaceChannelConfiguration {
-    fn typetag() -> &'static str {
-        "place_channel_configuration"
+    fn action_tag() -> ActionTag {
+        ActionTag("place_channel_configuration")
     }
     fn tracing_synopsis(&self) -> String {
         format!(
@@ -81,7 +81,7 @@ impl Action for PlaceChannelConfiguration {
         self.create_file
             .try_execute()
             .await
-            .map_err(|e| ActionError::Child(self.create_file.inner_typetag_name(), Box::new(e)))?;
+            .map_err(|e| ActionError::Child(self.create_file.action_tag(), Box::new(e)))?;
 
         Ok(())
     }
@@ -101,7 +101,7 @@ impl Action for PlaceChannelConfiguration {
         self.create_file
             .try_revert()
             .await
-            .map_err(|e| ActionError::Child(self.create_file.inner_typetag_name(), Box::new(e)))?;
+            .map_err(|e| ActionError::Child(self.create_file.action_tag(), Box::new(e)))?;
 
         Ok(())
     }

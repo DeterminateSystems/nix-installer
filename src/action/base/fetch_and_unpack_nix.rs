@@ -4,7 +4,7 @@ use bytes::{Buf, Bytes};
 use reqwest::Url;
 use tracing::{span, Span};
 
-use crate::action::{Action, ActionDescription, ActionError, StatefulAction};
+use crate::action::{Action, ActionDescription, ActionError, ActionTag, StatefulAction};
 
 /**
 Fetch a URL to the given path
@@ -37,8 +37,8 @@ impl FetchAndUnpackNix {
 #[async_trait::async_trait]
 #[typetag::serde(name = "fetch_and_unpack_nix")]
 impl Action for FetchAndUnpackNix {
-    fn typetag() -> &'static str {
-        "fetch_and_unpack_nix"
+    fn action_tag() -> ActionTag {
+        ActionTag("fetch_and_unpack_nix")
     }
     fn tracing_synopsis(&self) -> String {
         format!("Fetch `{}` to `{}`", self.url, self.dest.display())

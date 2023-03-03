@@ -3,7 +3,7 @@ use std::path::{Path, PathBuf};
 use tokio::process::Command;
 use tracing::{span, Span};
 
-use crate::action::{ActionError, StatefulAction};
+use crate::action::{ActionError, ActionTag, StatefulAction};
 use crate::execute_command;
 
 use crate::action::{Action, ActionDescription};
@@ -29,8 +29,8 @@ impl BootstrapApfsVolume {
 #[async_trait::async_trait]
 #[typetag::serde(name = "bootstrap_apfs_volume")]
 impl Action for BootstrapApfsVolume {
-    fn typetag() -> &'static str {
-        "bootstrap_apfs_volume"
+    fn action_tag() -> ActionTag {
+        ActionTag("bootstrap_apfs_volume")
     }
     fn tracing_synopsis(&self) -> String {
         format!("Bootstrap and kickstart `{}`", self.path.display())

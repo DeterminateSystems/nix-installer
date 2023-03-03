@@ -185,7 +185,7 @@ use crate::error::HasExpectedErrors;
 #[async_trait::async_trait]
 #[typetag::serde(tag = "action")]
 pub trait Action: Send + Sync + std::fmt::Debug + dyn_clone::DynClone {
-    fn typetag() -> &'static str
+    fn action_tag() -> ActionTag
     where
         Self: Sized;
     /// A synopsis of the action for tracing purposes
@@ -255,6 +255,27 @@ impl ActionDescription {
     }
 }
 
+/// A 'tag' name an action has that corresponds to the one we serialize in [`typetag]`
+pub struct ActionTag(&'static str);
+
+impl std::fmt::Display for ActionTag {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.write_str(self.0)
+    }
+}
+
+impl std::fmt::Debug for ActionTag {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.write_str(self.0)
+    }
+}
+
+impl From<&'static str> for ActionTag {
+    fn from(value: &'static str) -> Self {
+        Self(value)
+    }
+}
+
 /// An error occurring during an action
 #[derive(thiserror::Error, Debug, strum::IntoStaticStr)]
 pub enum ActionError {
@@ -263,7 +284,7 @@ pub enum ActionError {
     Custom(Box<dyn std::error::Error + Send + Sync>),
     /// A child error
     #[error("Child action `{0}`")]
-    Child(&'static str, #[source] Box<ActionError>),
+    Child(ActionTag, #[source] Box<ActionError>),
     /// Several child errors
     #[error("Child action errors: {}", .0.iter().map(|v| {
         if let Some(source) = v.source() {

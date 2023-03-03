@@ -3,7 +3,7 @@ use std::path::PathBuf;
 use tokio::process::Command;
 use tracing::{span, Span};
 
-use crate::action::{ActionError, StatefulAction};
+use crate::action::{ActionError, ActionTag, StatefulAction};
 use crate::execute_command;
 
 use crate::action::{Action, ActionDescription};
@@ -44,8 +44,8 @@ impl ConfigureInitService {
 #[async_trait::async_trait]
 #[typetag::serde(name = "configure_init_service")]
 impl Action for ConfigureInitService {
-    fn typetag() -> &'static str {
-        "configure_init_service"
+    fn action_tag() -> ActionTag {
+        ActionTag("configure_init_service")
     }
     fn tracing_synopsis(&self) -> String {
         match self.init {

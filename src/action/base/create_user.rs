@@ -2,7 +2,7 @@ use nix::unistd::User;
 use tokio::process::Command;
 use tracing::{span, Span};
 
-use crate::action::ActionError;
+use crate::action::{ActionError, ActionTag};
 use crate::execute_command;
 
 use crate::action::{Action, ActionDescription, StatefulAction};
@@ -60,8 +60,8 @@ impl CreateUser {
 #[async_trait::async_trait]
 #[typetag::serde(name = "create_user")]
 impl Action for CreateUser {
-    fn typetag() -> &'static str {
-        "create_user"
+    fn action_tag() -> ActionTag {
+        ActionTag("create_user")
     }
     fn tracing_synopsis(&self) -> String {
         format!(

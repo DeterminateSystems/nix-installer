@@ -10,7 +10,7 @@ use tokio::{
     io::{AsyncReadExt, AsyncWriteExt},
 };
 
-use crate::action::{Action, ActionDescription, ActionError, StatefulAction};
+use crate::action::{Action, ActionDescription, ActionError, ActionTag, StatefulAction};
 
 /** Create a file at the given location with the provided `buf`,
 optionally with an owning user, group, and mode.
@@ -134,8 +134,8 @@ impl CreateFile {
 #[async_trait::async_trait]
 #[typetag::serde(name = "create_file")]
 impl Action for CreateFile {
-    fn typetag() -> &'static str {
-        "create_file"
+    fn action_tag() -> ActionTag {
+        ActionTag("create_file")
     }
     fn tracing_synopsis(&self) -> String {
         format!("Create or overwrite file `{}`", self.path.display())
