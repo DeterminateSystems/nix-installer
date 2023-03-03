@@ -301,7 +301,7 @@ pub enum PlannerError {
     NixOs,
     #[error("`nix` is already a valid command, so it is installed")]
     NixExists,
-    #[error("WSL1 is not supported, please upgrade to WSL2")]
+    #[error("WSL1 is not supported, please upgrade to WSL2: https://learn.microsoft.com/en-us/windows/wsl/install#upgrade-version-from-wsl-1-to-wsl-2")]
     Wsl1,
 }
 
