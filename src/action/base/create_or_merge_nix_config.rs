@@ -11,7 +11,7 @@ use tokio::{
 };
 use tracing::{span, Span};
 
-use crate::action::{Action, ActionDescription, ActionError, StatefulAction};
+use crate::action::{Action, ActionDescription, ActionError, ActionTag, StatefulAction};
 
 /// The `nix.conf` configuration names that are safe to merge.
 // FIXME(@cole-h): make configurable by downstream users?
@@ -170,6 +170,9 @@ impl CreateOrMergeNixConfig {
 #[async_trait::async_trait]
 #[typetag::serde(name = "create_or_merge_nix_config")]
 impl Action for CreateOrMergeNixConfig {
+    fn action_tag() -> ActionTag {
+        ActionTag("create_or_merge_nix_config")
+    }
     fn tracing_synopsis(&self) -> String {
         format!(
             "{verb} nix.conf file `{path}`",

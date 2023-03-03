@@ -10,6 +10,10 @@ use std::time::Duration;
 use os_release::OsRelease;
 use reqwest::Url;
 
+use crate::{
+    action::ActionError, planner::PlannerError, settings::InstallSettingsError, NixInstallerError,
+};
+
 /// The static of an action attempt
 #[derive(Debug, serde::Deserialize, serde::Serialize, Clone)]
 pub enum DiagnosticStatus {
@@ -39,7 +43,7 @@ pub struct DiagnosticReport {
     pub action: DiagnosticAction,
     pub status: DiagnosticStatus,
     /// Generally this includes the [`strum::IntoStaticStr`] representation of the error, we take special care not to include parameters of the error (which may include secrets)
-    pub failure_variant: Option<String>,
+    pub failure_chain: Option<Vec<String>>,
 }
 
 /// A preparation of data to be sent to the `endpoint`.
@@ -53,7 +57,8 @@ pub struct DiagnosticData {
     triple: String,
     is_ci: bool,
     endpoint: Option<Url>,
-    failure_variant: Option<String>,
+    /// Generally this includes the [`strum::IntoStaticStr`] representation of the error, we take special care not to include parameters of the error (which may include secrets)
+    failure_chain: Option<Vec<String>>,
 }
 
 impl DiagnosticData {
@@ -73,12 +78,42 @@ impl DiagnosticData {
             os_version,
             triple: target_lexicon::HOST.to_string(),
             is_ci,
-            failure_variant: None,
+            failure_chain: None,
         }
     }
 
-    pub fn variant(mut self, variant: String) -> Self {
-        self.failure_variant = Some(variant);
+    pub fn failure(mut self, err: &NixInstallerError) -> Self {
+        let mut failure_chain = vec![];
+        let diagnostic = err.diagnostic();
+        failure_chain.push(diagnostic);
+
+        let mut walker: &dyn std::error::Error = &err;
+        while let Some(source) = walker.source() {
+            if let Some(downcasted) = source.downcast_ref::<ActionError>() {
+                let downcasted_diagnostic = downcasted.diagnostic();
+                failure_chain.push(downcasted_diagnostic);
+            }
+            if let Some(downcasted) = source.downcast_ref::<Box<ActionError>>() {
+                let downcasted_diagnostic = downcasted.diagnostic();
+                failure_chain.push(downcasted_diagnostic);
+            }
+            if let Some(downcasted) = source.downcast_ref::<PlannerError>() {
+                let downcasted_diagnostic = downcasted.diagnostic();
+                failure_chain.push(downcasted_diagnostic);
+            }
+            if let Some(downcasted) = source.downcast_ref::<InstallSettingsError>() {
+                let downcasted_diagnostic = downcasted.diagnostic();
+                failure_chain.push(downcasted_diagnostic);
+            }
+            if let Some(downcasted) = source.downcast_ref::<DiagnosticError>() {
+                let downcasted_diagnostic = downcasted.diagnostic();
+                failure_chain.push(downcasted_diagnostic);
+            }
+
+            walker = source;
+        }
+
+        self.failure_chain = Some(failure_chain);
         self
     }
 
@@ -92,7 +127,7 @@ impl DiagnosticData {
             triple,
             is_ci,
             endpoint: _,
-            failure_variant: variant,
+            failure_chain,
         } = self;
         DiagnosticReport {
             version: version.clone(),
@@ -104,7 +139,7 @@ impl DiagnosticData {
             is_ci: *is_ci,
             action,
             status,
-            failure_variant: variant.clone(),
+            failure_chain: failure_chain.clone(),
         }
     }
 
@@ -153,7 +188,7 @@ impl DiagnosticData {
 }
 
 #[non_exhaustive]
-#[derive(thiserror::Error, Debug)]
+#[derive(thiserror::Error, Debug, strum::IntoStaticStr)]
 pub enum DiagnosticError {
     #[error("Unknown url scheme")]
     UnknownUrlScheme,
@@ -171,4 +206,15 @@ pub enum DiagnosticError {
         #[source]
         serde_json::Error,
     ),
+}
+
+pub trait ErrorDiagnostic {
+    fn diagnostic(&self) -> String;
+}
+
+impl ErrorDiagnostic for DiagnosticError {
+    fn diagnostic(&self) -> String {
+        let static_str: &'static str = (self).into();
+        return static_str.to_string();
+    }
 }

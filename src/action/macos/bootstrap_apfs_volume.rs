@@ -3,7 +3,7 @@ use std::path::{Path, PathBuf};
 use tokio::process::Command;
 use tracing::{span, Span};
 
-use crate::action::{ActionError, StatefulAction};
+use crate::action::{ActionError, ActionTag, StatefulAction};
 use crate::execute_command;
 
 use crate::action::{Action, ActionDescription};
@@ -27,8 +27,11 @@ impl BootstrapApfsVolume {
 }
 
 #[async_trait::async_trait]
-#[typetag::serde(name = "bootstrap_volume")]
+#[typetag::serde(name = "bootstrap_apfs_volume")]
 impl Action for BootstrapApfsVolume {
+    fn action_tag() -> ActionTag {
+        ActionTag("bootstrap_apfs_volume")
+    }
     fn tracing_synopsis(&self) -> String {
         format!("Bootstrap and kickstart `{}`", self.path.display())
     }
@@ -36,7 +39,7 @@ impl Action for BootstrapApfsVolume {
     fn tracing_span(&self) -> Span {
         span!(
             tracing::Level::DEBUG,
-            "bootstrap_volume",
+            "bootstrap_apfs_volume",
             path = %self.path.display(),
         )
     }
@@ -56,16 +59,14 @@ impl Action for BootstrapApfsVolume {
                 .arg(path)
                 .stdin(std::process::Stdio::null()),
         )
-        .await
-        .map_err(|e| ActionError::Command(e))?;
+        .await?;
         execute_command(
             Command::new("launchctl")
                 .process_group(0)
                 .args(["kickstart", "-k", "system/org.nixos.darwin-store"])
                 .stdin(std::process::Stdio::null()),
         )
-        .await
-        .map_err(|e| ActionError::Command(e))?;
+        .await?;
 
         Ok(())
     }
@@ -88,8 +89,7 @@ impl Action for BootstrapApfsVolume {
                 .arg(path)
                 .stdin(std::process::Stdio::null()),
         )
-        .await
-        .map_err(|e| ActionError::Command(e))?;
+        .await?;
 
         Ok(())
     }

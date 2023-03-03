@@ -2,7 +2,7 @@ use std::path::{Path, PathBuf};
 
 use tracing::{span, Span};
 
-use crate::action::{Action, ActionDescription, ActionError, StatefulAction};
+use crate::action::{Action, ActionDescription, ActionError, ActionTag, StatefulAction};
 
 pub(crate) const DEST: &str = "/nix/";
 
@@ -25,6 +25,9 @@ impl MoveUnpackedNix {
 #[async_trait::async_trait]
 #[typetag::serde(name = "mount_unpacked_nix")]
 impl Action for MoveUnpackedNix {
+    fn action_tag() -> ActionTag {
+        ActionTag("move_unpacked_nix")
+    }
     fn tracing_synopsis(&self) -> String {
         "Move the downloaded Nix into `/nix`".to_string()
     }

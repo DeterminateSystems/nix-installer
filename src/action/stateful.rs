@@ -1,7 +1,7 @@
 use serde::{Deserialize, Serialize};
 use tracing::{Instrument, Span};
 
-use super::{Action, ActionDescription, ActionError};
+use super::{Action, ActionDescription, ActionError, ActionTag};
 
 /// A wrapper around an [`Action`](crate::action::Action) which tracks the [`ActionState`] and
 /// handles some tracing output
@@ -24,6 +24,9 @@ where
 }
 
 impl StatefulAction<Box<dyn Action>> {
+    pub fn inner_typetag_name(&self) -> &'static str {
+        self.action.typetag_name()
+    }
     pub fn tracing_synopsis(&self) -> String {
         self.action.tracing_synopsis()
     }
@@ -109,6 +112,12 @@ impl<A> StatefulAction<A>
 where
     A: Action,
 {
+    pub fn tag() -> ActionTag {
+        A::action_tag()
+    }
+    pub fn action_tag(&self) -> ActionTag {
+        A::action_tag()
+    }
     pub fn tracing_synopsis(&self) -> String {
         self.action.tracing_synopsis()
     }

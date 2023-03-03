@@ -68,6 +68,9 @@ impl MyAction {
 #[async_trait::async_trait]
 #[typetag::serde(name = "my_action")]
 impl Action for MyAction {
+    fn action_tag() -> nix_installer::action::ActionTag {
+        "my_action".into()
+    }
     fn tracing_synopsis(&self) -> String {
         "My action".to_string()
     }
@@ -171,7 +174,7 @@ pub mod macos;
 mod stateful;
 
 pub use stateful::{ActionState, StatefulAction};
-use std::error::Error;
+use std::{error::Error, process::Output};
 use tokio::task::JoinError;
 use tracing::Span;
 
@@ -185,6 +188,9 @@ use crate::error::HasExpectedErrors;
 #[async_trait::async_trait]
 #[typetag::serde(tag = "action")]
 pub trait Action: Send + Sync + std::fmt::Debug + dyn_clone::DynClone {
+    fn action_tag() -> ActionTag
+    where
+        Self: Sized;
     /// A synopsis of the action for tracing purposes
     fn tracing_synopsis(&self) -> String;
     /// A tracing span suitable for the action
@@ -252,6 +258,27 @@ impl ActionDescription {
     }
 }
 
+/// A 'tag' name an action has that corresponds to the one we serialize in [`typetag]`
+pub struct ActionTag(&'static str);
+
+impl std::fmt::Display for ActionTag {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.write_str(self.0)
+    }
+}
+
+impl std::fmt::Debug for ActionTag {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.write_str(self.0)
+    }
+}
+
+impl From<&'static str> for ActionTag {
+    fn from(value: &'static str) -> Self {
+        Self(value)
+    }
+}
+
 /// An error occurring during an action
 #[non_exhaustive]
 #[derive(thiserror::Error, Debug, strum::IntoStaticStr)]
@@ -260,10 +287,10 @@ pub enum ActionError {
     #[error(transparent)]
     Custom(Box<dyn std::error::Error + Send + Sync>),
     /// A child error
-    #[error(transparent)]
-    Child(#[from] Box<ActionError>),
+    #[error("Child action `{0}`")]
+    Child(ActionTag, #[source] Box<ActionError>),
     /// Several child errors
-    #[error("Multiple errors: {}", .0.iter().map(|v| {
+    #[error("Child action errors: {}", .0.iter().map(|v| {
         if let Some(source) = v.source() {
             format!("{v} ({source})")
         } else {
@@ -341,8 +368,33 @@ pub enum ActionError {
     #[error("Chowning path `{0}`")]
     Chown(std::path::PathBuf, #[source] nix::errno::Errno),
     /// Failed to execute command
-    #[error("Failed to execute command")]
-    Command(#[source] std::io::Error),
+    #[error("Failed to execute command `{command}`",
+        command = .command,
+    )]
+    Command {
+        #[cfg(feature = "diagnostics")]
+        program: String,
+        command: String,
+        #[source]
+        error: std::io::Error,
+    },
+    #[error(
+        "Failed to execute command{maybe_status} `{command}`, stdout: {stdout}\nstderr: {stderr}\n",
+        command = .command,
+        stdout = String::from_utf8_lossy(&.output.stdout),
+        stderr = String::from_utf8_lossy(&.output.stderr),
+        maybe_status = if let Some(status) = .output.status.code() {
+            format!(" with status {status}")
+        } else {
+            "".to_string()
+        }
+    )]
+    CommandOutput {
+        #[cfg(feature = "diagnostics")]
+        program: String,
+        command: String,
+        output: Output,
+    },
     #[error("Joining spawned async task")]
     Join(
         #[source]
@@ -360,6 +412,25 @@ pub enum ActionError {
     Plist(#[from] plist::Error),
 }
 
+impl ActionError {
+    pub fn command(command: &tokio::process::Command, error: std::io::Error) -> Self {
+        Self::Command {
+            #[cfg(feature = "diagnostics")]
+            program: command.as_std().get_program().to_string_lossy().into(),
+            command: format!("{:?}", command.as_std()),
+            error,
+        }
+    }
+    pub fn command_output(command: &tokio::process::Command, output: std::process::Output) -> Self {
+        Self::CommandOutput {
+            #[cfg(feature = "diagnostics")]
+            program: command.as_std().get_program().to_string_lossy().into(),
+            command: format!("{:?}", command.as_std()),
+            output,
+        }
+    }
+}
+
 impl HasExpectedErrors for ActionError {
     fn expected<'a>(&'a self) -> Option<Box<dyn std::error::Error + 'a>> {
         match self {
@@ -368,5 +439,58 @@ impl HasExpectedErrors for ActionError {
             | Self::PathModeMismatch(_, _, _) => Some(Box::new(self)),
             _ => None,
         }
+    }
+}
+
+#[cfg(feature = "diagnostics")]
+impl crate::diagnostics::ErrorDiagnostic for ActionError {
+    fn diagnostic(&self) -> String {
+        let static_str: &'static str = (self).into();
+        let context = match self {
+            Self::Child(action, _) => vec![action.to_string()],
+            Self::Read(path, _)
+            | Self::Open(path, _)
+            | Self::Write(path, _)
+            | Self::Flush(path, _)
+            | Self::SetPermissions(_, path, _)
+            | Self::GettingMetadata(path, _)
+            | Self::CreateDirectory(path, _)
+            | Self::PathWasNotFile(path) => {
+                vec![path.to_string_lossy().to_string()]
+            },
+            Self::Rename(first_path, second_path, _)
+            | Self::Copy(first_path, second_path, _)
+            | Self::Symlink(first_path, second_path, _) => {
+                vec![
+                    first_path.to_string_lossy().to_string(),
+                    second_path.to_string_lossy().to_string(),
+                ]
+            },
+            Self::NoGroup(name) | Self::NoUser(name) => {
+                vec![name.clone()]
+            },
+            Self::Command {
+                program,
+                command: _,
+                error: _,
+            }
+            | Self::CommandOutput {
+                program,
+                command: _,
+                output: _,
+            } => {
+                vec![program.clone()]
+            },
+            _ => vec![],
+        };
+        return format!(
+            "{}({})",
+            static_str,
+            context
+                .iter()
+                .map(|v| format!("\"{v}\""))
+                .collect::<Vec<_>>()
+                .join(", ")
+        );
     }
 }

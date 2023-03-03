@@ -1,5 +1,5 @@
 use crate::action::base::{create_or_insert_into_file, CreateDirectory, CreateOrInsertIntoFile};
-use crate::action::{Action, ActionDescription, ActionError, StatefulAction};
+use crate::action::{Action, ActionDescription, ActionError, ActionTag, StatefulAction};
 
 use nix::unistd::User;
 use std::path::{Path, PathBuf};
@@ -166,6 +166,9 @@ impl ConfigureShellProfile {
 #[async_trait::async_trait]
 #[typetag::serde(name = "configure_shell_profile")]
 impl Action for ConfigureShellProfile {
+    fn action_tag() -> ActionTag {
+        ActionTag("configure_shell_profile")
+    }
     fn tracing_synopsis(&self) -> String {
         "Configure the shell profiles".to_string()
     }
@@ -183,26 +186,29 @@ impl Action for ConfigureShellProfile {
 
     #[tracing::instrument(level = "debug", skip_all)]
     async fn execute(&mut self) -> Result<(), ActionError> {
-        let Self {
-            create_or_insert_into_files,
-            create_directories,
-        } = self;
-
-        for create_directory in create_directories {
+        for create_directory in &mut self.create_directories {
             create_directory.try_execute().await?;
         }
 
         let mut set = JoinSet::new();
         let mut errors = Vec::default();
 
-        for (idx, create_or_insert_into_file) in create_or_insert_into_files.iter().enumerate() {
+        for (idx, create_or_insert_into_file) in
+            self.create_or_insert_into_files.iter_mut().enumerate()
+        {
             let span = tracing::Span::current().clone();
             let mut create_or_insert_into_file_clone = create_or_insert_into_file.clone();
             let _abort_handle = set.spawn(async move {
                 create_or_insert_into_file_clone
                     .try_execute()
                     .instrument(span)
-                    .await?;
+                    .await
+                    .map_err(|e| {
+                        ActionError::Child(
+                            create_or_insert_into_file_clone.action_tag(),
+                            Box::new(e),
+                        )
+                    })?;
                 Result::<_, ActionError>::Ok((idx, create_or_insert_into_file_clone))
             });
         }
@@ -210,18 +216,20 @@ impl Action for ConfigureShellProfile {
         while let Some(result) = set.join_next().await {
             match result {
                 Ok(Ok((idx, create_or_insert_into_file))) => {
-                    create_or_insert_into_files[idx] = create_or_insert_into_file
+                    self.create_or_insert_into_files[idx] = create_or_insert_into_file
                 },
-                Ok(Err(e)) => errors.push(Box::new(e)),
-                Err(e) => return Err(e.into()),
+                Ok(Err(e)) => errors.push(e),
+                Err(e) => return Err(e)?,
             };
         }
 
         if !errors.is_empty() {
             if errors.len() == 1 {
-                return Err(errors.into_iter().next().unwrap().into());
+                return Err(errors.into_iter().next().unwrap())?;
             } else {
-                return Err(ActionError::Children(errors));
+                return Err(ActionError::Children(
+                    errors.into_iter().map(|v| Box::new(v)).collect(),
+                ));
             }
         }
 
@@ -237,15 +245,12 @@ impl Action for ConfigureShellProfile {
 
     #[tracing::instrument(level = "debug", skip_all)]
     async fn revert(&mut self) -> Result<(), ActionError> {
-        let Self {
-            create_directories,
-            create_or_insert_into_files,
-        } = self;
-
         let mut set = JoinSet::new();
-        let mut errors: Vec<Box<ActionError>> = Vec::default();
+        let mut errors: Vec<ActionError> = Vec::default();
 
-        for (idx, create_or_insert_into_file) in create_or_insert_into_files.iter().enumerate() {
+        for (idx, create_or_insert_into_file) in
+            self.create_or_insert_into_files.iter_mut().enumerate()
+        {
             let mut create_or_insert_file_clone = create_or_insert_into_file.clone();
             let _abort_handle = set.spawn(async move {
                 create_or_insert_file_clone.try_revert().await?;
@@ -256,22 +261,27 @@ impl Action for ConfigureShellProfile {
         while let Some(result) = set.join_next().await {
             match result {
                 Ok(Ok((idx, create_or_insert_into_file))) => {
-                    create_or_insert_into_files[idx] = create_or_insert_into_file
+                    self.create_or_insert_into_files[idx] = create_or_insert_into_file
                 },
-                Ok(Err(e)) => errors.push(Box::new(e)),
-                Err(e) => return Err(e.into()),
+                Ok(Err(e)) => errors.push(e),
+                Err(e) => return Err(e)?,
             };
         }
 
-        for create_directory in create_directories {
-            create_directory.try_revert().await?;
+        for create_directory in self.create_directories.iter_mut() {
+            create_directory
+                .try_revert()
+                .await
+                .map_err(|e| ActionError::Child(create_directory.action_tag(), Box::new(e)))?;
         }
 
         if !errors.is_empty() {
             if errors.len() == 1 {
-                return Err(errors.into_iter().next().unwrap().into());
+                return Err(errors.into_iter().next().unwrap())?;
             } else {
-                return Err(ActionError::Children(errors));
+                return Err(ActionError::Children(
+                    errors.into_iter().map(|v| Box::new(v)).collect(),
+                ));
             }
         }
 

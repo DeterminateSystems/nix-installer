@@ -1,7 +1,7 @@
 use std::path::{Path, PathBuf};
 
 use crate::{
-    action::{ActionError, StatefulAction},
+    action::{ActionError, ActionTag, StatefulAction},
     execute_command, set_env, ChannelValue,
 };
 
@@ -30,6 +30,9 @@ impl SetupDefaultProfile {
 #[async_trait::async_trait]
 #[typetag::serde(name = "setup_default_profile")]
 impl Action for SetupDefaultProfile {
+    fn action_tag() -> ActionTag {
+        ActionTag("setup_default_profile")
+    }
     fn tracing_synopsis(&self) -> String {
         "Setup the default Nix profile".to_string()
     }
@@ -119,14 +122,14 @@ impl Action for SetupDefaultProfile {
                     ActionError::Custom(Box::new(SetupDefaultProfileError::NoRootHome))
                 })?,
             );
-            let load_db_command_str = format!("{:?}", load_db_command.as_std());
             tracing::trace!(
-                "Executing `{load_db_command_str}` with stdin from `{}`",
+                "Executing `{:?}` with stdin from `{}`",
+                load_db_command.as_std(),
                 reginfo_path.display()
             );
             let mut handle = load_db_command
                 .spawn()
-                .map_err(|e| ActionError::Command(e))?;
+                .map_err(|e| ActionError::command(&load_db_command, e))?;
 
             let mut stdin = handle.stdin.take().unwrap();
             stdin
@@ -146,20 +149,9 @@ impl Action for SetupDefaultProfile {
             let output = handle
                 .wait_with_output()
                 .await
-                .map_err(ActionError::Command)?;
+                .map_err(|e| ActionError::command(&load_db_command, e))?;
             if !output.status.success() {
-                return Err(ActionError::Command(std::io::Error::new(
-                    std::io::ErrorKind::Other,
-                    format!(
-                        "Command `{load_db_command_str}` failed{}, stderr:\n{}\n",
-                        if let Some(code) = output.status.code() {
-                            format!(" status {code}")
-                        } else {
-                            "".to_string()
-                        },
-                        String::from_utf8_lossy(&output.stderr)
-                    ),
-                )));
+                return Err(ActionError::command_output(&load_db_command, output));
             };
         }
 
@@ -181,8 +173,7 @@ impl Action for SetupDefaultProfile {
                     nss_ca_cert_pkg.join("etc/ssl/certs/ca-bundle.crt"),
                 ), /* This is apparently load bearing... */
         )
-        .await
-        .map_err(|e| ActionError::Command(e))?;
+        .await?;
 
         // Install `nix` itself into the store
         execute_command(
@@ -202,8 +193,7 @@ impl Action for SetupDefaultProfile {
                     nss_ca_cert_pkg.join("etc/ssl/certs/ca-bundle.crt"),
                 ), /* This is apparently load bearing... */
         )
-        .await
-        .map_err(|e| ActionError::Command(e))?;
+        .await?;
 
         set_env(
             "NIX_SSL_CERT_FILE",
@@ -223,9 +213,7 @@ impl Action for SetupDefaultProfile {
             );
             command.stdin(std::process::Stdio::null());
 
-            execute_command(&mut command)
-                .await
-                .map_err(|e| ActionError::Command(e))?;
+            execute_command(&mut command).await?;
         }
 
         Ok(())

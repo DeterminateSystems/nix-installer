@@ -2,7 +2,7 @@ use tracing::{span, Span};
 
 use crate::action::base::create_or_merge_nix_config::CreateOrMergeNixConfigError;
 use crate::action::base::{CreateDirectory, CreateOrMergeNixConfig};
-use crate::action::{Action, ActionDescription, ActionError, StatefulAction};
+use crate::action::{Action, ActionDescription, ActionError, ActionTag, StatefulAction};
 
 const NIX_CONF_FOLDER: &str = "/etc/nix";
 const NIX_CONF: &str = "/etc/nix/nix.conf";
@@ -44,9 +44,14 @@ impl PlaceNixConfiguration {
             "nixpkgs=flake:nixpkgs".to_string(),
         );
 
-        let create_directory =
-            CreateDirectory::plan(NIX_CONF_FOLDER, None, None, 0o0755, force).await?;
-        let create_or_merge_nix_config = CreateOrMergeNixConfig::plan(NIX_CONF, nix_config).await?;
+        let create_directory = CreateDirectory::plan(NIX_CONF_FOLDER, None, None, 0o0755, force)
+            .await
+            .map_err(|e| ActionError::Child(CreateDirectory::action_tag(), Box::new(e)))?;
+        let create_or_merge_nix_config = CreateOrMergeNixConfig::plan(NIX_CONF, nix_config)
+            .await
+            .map_err(|e| {
+            ActionError::Child(CreateOrMergeNixConfig::action_tag(), Box::new(e))
+        })?;
         Ok(Self {
             create_directory,
             create_or_merge_nix_config,
@@ -58,6 +63,9 @@ impl PlaceNixConfiguration {
 #[async_trait::async_trait]
 #[typetag::serde(name = "place_nix_configuration")]
 impl Action for PlaceNixConfiguration {
+    fn action_tag() -> ActionTag {
+        ActionTag("place_nix_configuration")
+    }
     fn tracing_synopsis(&self) -> String {
         format!("Place the Nix configuration in `{NIX_CONF}`")
     }
@@ -89,13 +97,16 @@ impl Action for PlaceNixConfiguration {
 
     #[tracing::instrument(level = "debug", skip_all)]
     async fn execute(&mut self) -> Result<(), ActionError> {
-        let Self {
-            create_or_merge_nix_config,
-            create_directory,
-        } = self;
-
-        create_directory.try_execute().await?;
-        create_or_merge_nix_config.try_execute().await?;
+        self.create_directory
+            .try_execute()
+            .await
+            .map_err(|e| ActionError::Child(self.create_directory.action_tag(), Box::new(e)))?;
+        self.create_or_merge_nix_config
+            .try_execute()
+            .await
+            .map_err(|e| {
+                ActionError::Child(self.create_or_merge_nix_config.action_tag(), Box::new(e))
+            })?;
 
         Ok(())
     }
@@ -112,13 +123,16 @@ impl Action for PlaceNixConfiguration {
 
     #[tracing::instrument(level = "debug", skip_all)]
     async fn revert(&mut self) -> Result<(), ActionError> {
-        let Self {
-            create_or_merge_nix_config,
-            create_directory,
-        } = self;
-
-        create_or_merge_nix_config.try_revert().await?;
-        create_directory.try_revert().await?;
+        self.create_or_merge_nix_config
+            .try_revert()
+            .await
+            .map_err(|e| {
+                ActionError::Child(self.create_or_merge_nix_config.action_tag(), Box::new(e))
+            })?;
+        self.create_directory
+            .try_revert()
+            .await
+            .map_err(|e| ActionError::Child(self.create_directory.action_tag(), Box::new(e)))?;
 
         Ok(())
     }
