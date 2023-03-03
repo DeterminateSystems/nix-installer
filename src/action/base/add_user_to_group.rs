@@ -73,12 +73,11 @@ impl AddUserToGroup {
                     command.arg(&this.groupname);
                     command.stdout(Stdio::piped());
                     command.stderr(Stdio::piped());
-                    let command_str = format!("{:?}", command.as_std());
-                    tracing::trace!("Executing `{command_str}`");
+                    tracing::trace!("Executing `{:?}`", command.as_std());
                     let output = command
                         .output()
                         .await
-                        .map_err(|e| ActionError::Command(command_str.clone(), e))?;
+                        .map_err(|e| ActionError::command(&command, e))?;
                     match output.status.code() {
                         Some(0) => {
                             // yes {user} is a member of {groupname}
@@ -102,7 +101,7 @@ impl AddUserToGroup {
                         },
                         _ => {
                             // Some other issue
-                            return Err(ActionError::CommandOutput(command_str, output));
+                            return Err(ActionError::command_output(&command, output));
                         },
                     };
                 },

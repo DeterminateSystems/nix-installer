@@ -336,11 +336,10 @@ async fn is_active(unit: &str) -> Result<bool, ActionError> {
     let mut command = Command::new("systemctl");
     command.arg("is-active");
     command.arg(unit);
-    let command_str = format!("{:?}", command.as_std());
     let output = command
         .output()
         .await
-        .map_err(|e| ActionError::Command(command_str, e))?;
+        .map_err(|e| ActionError::command(&command, e))?;
     if String::from_utf8(output.stdout)?.starts_with("active") {
         tracing::trace!(%unit, "Is active");
         Ok(true)
@@ -355,11 +354,10 @@ async fn is_enabled(unit: &str) -> Result<bool, ActionError> {
     let mut command = Command::new("systemctl");
     command.arg("is-enabled");
     command.arg(unit);
-    let command_str = format!("{:?}", command.as_std());
     let output = command
         .output()
         .await
-        .map_err(|e| ActionError::Command(command_str, e))?;
+        .map_err(|e| ActionError::command(&command, e))?;
     let stdout = String::from_utf8(output.stdout)?;
     if stdout.starts_with("enabled") || stdout.starts_with("linked") {
         tracing::trace!(%unit, "Is enabled");

@@ -43,7 +43,7 @@ pub struct DiagnosticReport {
     pub action: DiagnosticAction,
     pub status: DiagnosticStatus,
     /// Generally this includes the [`strum::IntoStaticStr`] representation of the error, we take special care not to include parameters of the error (which may include secrets)
-    pub failure_chain: Option<Vec<(String, Vec<String>)>>,
+    pub failure_chain: Option<Vec<String>>,
 }
 
 /// A preparation of data to be sent to the `endpoint`.
@@ -58,7 +58,7 @@ pub struct DiagnosticData {
     is_ci: bool,
     endpoint: Option<Url>,
     /// Generally this includes the [`strum::IntoStaticStr`] representation of the error, we take special care not to include parameters of the error (which may include secrets)
-    failure_chain: Option<Vec<(String, Vec<String>)>>,
+    failure_chain: Option<Vec<String>>,
 }
 
 impl DiagnosticData {
@@ -84,24 +84,35 @@ impl DiagnosticData {
 
     pub fn failure(mut self, err: &NixInstallerError) -> Self {
         let mut failure_chain = vec![];
+        tracing::info!("err: {err}");
         let diagnostic = err.diagnostic();
         failure_chain.push(diagnostic);
 
         let mut walker: &dyn std::error::Error = &err;
         while let Some(source) = walker.source() {
+            tracing::info!("walker: {walker}");
             if let Some(downcasted) = source.downcast_ref::<ActionError>() {
+                tracing::info!("downcasted(ActionError): {downcasted}");
+                let downcasted_diagnostic = downcasted.diagnostic();
+                failure_chain.push(downcasted_diagnostic);
+            }
+            if let Some(downcasted) = source.downcast_ref::<Box<ActionError>>() {
+                tracing::info!("downcasted(Box<ActionError>): {downcasted}");
                 let downcasted_diagnostic = downcasted.diagnostic();
                 failure_chain.push(downcasted_diagnostic);
             }
             if let Some(downcasted) = source.downcast_ref::<PlannerError>() {
+                tracing::info!("downcasted(PlannerError): {downcasted}");
                 let downcasted_diagnostic = downcasted.diagnostic();
                 failure_chain.push(downcasted_diagnostic);
             }
             if let Some(downcasted) = source.downcast_ref::<InstallSettingsError>() {
+                tracing::info!("downcasted(InstallSettingsError): {downcasted}");
                 let downcasted_diagnostic = downcasted.diagnostic();
                 failure_chain.push(downcasted_diagnostic);
             }
             if let Some(downcasted) = source.downcast_ref::<DiagnosticError>() {
+                tracing::info!("downcasted(DiagnosticError): {downcasted}");
                 let downcasted_diagnostic = downcasted.diagnostic();
                 failure_chain.push(downcasted_diagnostic);
             }
@@ -204,13 +215,13 @@ pub enum DiagnosticError {
 }
 
 pub trait ErrorDiagnostic {
-    fn diagnostic(&self) -> (String, Vec<String>);
+    fn diagnostic(&self) -> String;
 }
 
 #[cfg(feature = "diagnostics")]
 impl ErrorDiagnostic for DiagnosticError {
-    fn diagnostic(&self) -> (String, Vec<String>) {
+    fn diagnostic(&self) -> String {
         let static_str: &'static str = (self).into();
-        return (static_str.to_string(), vec![]);
+        return static_str.to_string();
     }
 }

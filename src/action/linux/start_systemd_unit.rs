@@ -28,11 +28,10 @@ impl StartSystemdUnit {
         let mut command = Command::new("systemctl");
         command.arg("is-active");
         command.arg(unit);
-        let command_str = format!("{:?}", command.as_std());
         let output = command
             .output()
             .await
-            .map_err(|e| ActionError::Command(command_str, e))?;
+            .map_err(|e| ActionError::command(&command, e))?;
 
         let state = if output.status.success() {
             tracing::debug!("Starting systemd unit `{}` already complete", unit);

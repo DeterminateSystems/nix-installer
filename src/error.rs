@@ -83,12 +83,20 @@ impl HasExpectedErrors for NixInstallerError {
 
 #[cfg(feature = "diagnostics")]
 impl crate::diagnostics::ErrorDiagnostic for NixInstallerError {
-    fn diagnostic(&self) -> (String, Vec<String>) {
+    fn diagnostic(&self) -> String {
         let static_str: &'static str = (self).into();
         let context = match self {
             Self::Action(action, _) => vec![action.to_string()],
             _ => vec![],
         };
-        return (static_str.to_string(), context);
+        return format!(
+            "{}({})",
+            static_str.to_string(),
+            context
+                .iter()
+                .map(|v| format!("\"{v}\""))
+                .collect::<Vec<_>>()
+                .join(", ")
+        );
     }
 }

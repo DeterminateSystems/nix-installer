@@ -340,20 +340,33 @@ pub enum ActionError {
     #[error("Chowning path `{0}`")]
     Chown(std::path::PathBuf, #[source] nix::errno::Errno),
     /// Failed to execute command
-    #[error("Failed to execute command `{0}`")]
-    Command(String, #[source] std::io::Error),
+    #[error("Failed to execute command `{command}`",
+        command = .command,
+    )]
+    Command {
+        #[cfg(feature = "diagnostics")]
+        program: String,
+        command: String,
+        #[source]
+        error: std::io::Error,
+    },
     #[error(
         "Failed to execute command{maybe_status} `{command}`, stdout: {stdout}\nstderr: {stderr}\n",
-        command = .0,
-        stdout = String::from_utf8_lossy(&.1.stdout),
-        stderr = String::from_utf8_lossy(&.1.stderr),
-        maybe_status = if let Some(status) = .1.status.code() {
+        command = .command,
+        stdout = String::from_utf8_lossy(&.output.stdout),
+        stderr = String::from_utf8_lossy(&.output.stderr),
+        maybe_status = if let Some(status) = .output.status.code() {
             format!(" with status {status}")
         } else {
             "".to_string()
         }
     )]
-    CommandOutput(String, Output),
+    CommandOutput {
+        #[cfg(feature = "diagnostics")]
+        program: String,
+        command: String,
+        output: Output,
+    },
     #[error("Joining spawned async task")]
     Join(
         #[source]
@@ -371,6 +384,25 @@ pub enum ActionError {
     Plist(#[from] plist::Error),
 }
 
+impl ActionError {
+    pub fn command(command: &tokio::process::Command, error: std::io::Error) -> Self {
+        Self::Command {
+            #[cfg(feature = "diagnostics")]
+            program: command.as_std().get_program().to_string_lossy().into(),
+            command: format!("{:?}", command.as_std()),
+            error,
+        }
+    }
+    pub fn command_output(command: &tokio::process::Command, output: std::process::Output) -> Self {
+        Self::CommandOutput {
+            #[cfg(feature = "diagnostics")]
+            program: command.as_std().get_program().to_string_lossy().into(),
+            command: format!("{:?}", command.as_std()),
+            output,
+        }
+    }
+}
+
 impl HasExpectedErrors for ActionError {
     fn expected<'a>(&'a self) -> Option<Box<dyn std::error::Error + 'a>> {
         match self {
@@ -384,7 +416,7 @@ impl HasExpectedErrors for ActionError {
 
 #[cfg(feature = "diagnostics")]
 impl crate::diagnostics::ErrorDiagnostic for ActionError {
-    fn diagnostic(&self) -> (String, Vec<String>) {
+    fn diagnostic(&self) -> String {
         let static_str: &'static str = (self).into();
         let context = match self {
             Self::Child(action, _) => vec![action.to_string()],
@@ -409,8 +441,28 @@ impl crate::diagnostics::ErrorDiagnostic for ActionError {
             Self::NoGroup(name) | Self::NoUser(name) => {
                 vec![name.clone()]
             },
+            Self::Command {
+                program,
+                command: _,
+                error: _,
+            }
+            | Self::CommandOutput {
+                program,
+                command: _,
+                output: _,
+            } => {
+                vec![program.clone()]
+            },
             _ => vec![],
         };
-        return (static_str.to_string(), context);
+        return format!(
+            "{}({})",
+            static_str,
+            context
+                .iter()
+                .map(|v| format!("\"{v}\""))
+                .collect::<Vec<_>>()
+                .join(", ")
+        );
     }
 }

@@ -584,8 +584,8 @@ pub enum InstallSettingsError {
 
 #[cfg(feature = "diagnostics")]
 impl crate::diagnostics::ErrorDiagnostic for InstallSettingsError {
-    fn diagnostic(&self) -> (String, Vec<String>) {
+    fn diagnostic(&self) -> String {
         let static_str: &'static str = (self).into();
-        return (static_str.to_string(), vec![]);
+        return static_str.to_string();
     }
 }

@@ -219,11 +219,10 @@ impl Action for CreateNixVolume {
             command.args(["info", "/nix"]);
             command.stderr(std::process::Stdio::null());
             command.stdout(std::process::Stdio::null());
-            let command_str = format!("{:?}", command);
             let status = command
                 .status()
                 .await
-                .map_err(|e| ActionError::Command(command_str, e))?;
+                .map_err(|e| ActionError::command(&command, e))?;
             if status.success() || retry_tokens == 0 {
                 break;
             } else {

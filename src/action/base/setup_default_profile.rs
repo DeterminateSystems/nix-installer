@@ -122,14 +122,14 @@ impl Action for SetupDefaultProfile {
                     ActionError::Custom(Box::new(SetupDefaultProfileError::NoRootHome))
                 })?,
             );
-            let load_db_command_str = format!("{:?}", load_db_command.as_std());
             tracing::trace!(
-                "Executing `{load_db_command_str}` with stdin from `{}`",
+                "Executing `{:?}` with stdin from `{}`",
+                load_db_command.as_std(),
                 reginfo_path.display()
             );
             let mut handle = load_db_command
                 .spawn()
-                .map_err(|e| ActionError::Command(load_db_command_str.clone(), e))?;
+                .map_err(|e| ActionError::command(&load_db_command, e))?;
 
             let mut stdin = handle.stdin.take().unwrap();
             stdin
@@ -149,9 +149,9 @@ impl Action for SetupDefaultProfile {
             let output = handle
                 .wait_with_output()
                 .await
-                .map_err(|e| ActionError::Command(load_db_command_str.clone(), e))?;
+                .map_err(|e| ActionError::command(&load_db_command, e))?;
             if !output.status.success() {
-                return Err(ActionError::CommandOutput(load_db_command_str, output));
+                return Err(ActionError::command_output(&load_db_command, output));
             };
         }
 
