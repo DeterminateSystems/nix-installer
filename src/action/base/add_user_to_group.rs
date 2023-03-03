@@ -70,9 +70,11 @@ impl AddUserToGroup {
                     command.arg(&this.groupname);
                     command.stdout(Stdio::piped());
                     command.stderr(Stdio::piped());
-                    let command_str = format!("{:?}", command.as_std());
-                    tracing::trace!("Executing `{command_str}`");
-                    let output = command.output().await.map_err(ActionError::Command)?;
+                    tracing::trace!("Executing `{:?}`", command.as_std());
+                    let output = command
+                        .output()
+                        .await
+                        .map_err(|e| ActionError::command(&command, e))?;
                     match output.status.code() {
                         Some(0) => {
                             // yes {user} is a member of {groupname}
@@ -96,18 +98,7 @@ impl AddUserToGroup {
                         },
                         _ => {
                             // Some other issue
-                            return Err(ActionError::Command(std::io::Error::new(
-                                std::io::ErrorKind::Other,
-                                format!(
-                                    "Command `{command_str}` failed{}, stderr:\n{}\n",
-                                    if let Some(code) = output.status.code() {
-                                        format!(" status {code}")
-                                    } else {
-                                        "".to_string()
-                                    },
-                                    String::from_utf8_lossy(&output.stderr),
-                                ),
-                            )));
+                            return Err(ActionError::command_output(&command, output));
                         },
                     };
                 },
@@ -118,8 +109,7 @@ impl AddUserToGroup {
                             .arg(&this.name)
                             .stdin(std::process::Stdio::null()),
                     )
-                    .await
-                    .map_err(|e| ActionError::Command(e))?;
+                    .await?;
                     let output_str = String::from_utf8(output.stdout)?;
                     let user_in_group = output_str.split(" ").any(|v| v == &this.groupname);
 
@@ -138,6 +128,9 @@ impl AddUserToGroup {
 #[async_trait::async_trait]
 #[typetag::serde(name = "add_user_to_group")]
 impl Action for AddUserToGroup {
+    fn action_tag() -> crate::action::ActionTag {
+        crate::action::ActionTag("add_user_to_group")
+    }
     fn tracing_synopsis(&self) -> String {
         format!(
             "Add user `{}` (UID {}) to group `{}` (GID {})",
@@ -194,8 +187,7 @@ impl Action for AddUserToGroup {
                         .arg(&name)
                         .stdin(std::process::Stdio::null()),
                 )
-                .await
-                .map_err(|e| ActionError::Command(e))?;
+                .await?;
                 execute_command(
                     Command::new("/usr/sbin/dseditgroup")
                         .process_group(0)
@@ -207,8 +199,7 @@ impl Action for AddUserToGroup {
                         .arg(groupname)
                         .stdin(std::process::Stdio::null()),
                 )
-                .await
-                .map_err(|e| ActionError::Command(e))?;
+                .await?;
             },
             _ => {
                 execute_command(
@@ -218,8 +209,7 @@ impl Action for AddUserToGroup {
                         .args([&name.to_string(), &groupname.to_string()])
                         .stdin(std::process::Stdio::null()),
                 )
-                .await
-                .map_err(|e| ActionError::Command(e))?;
+                .await?;
             },
         }
 
@@ -262,8 +252,7 @@ impl Action for AddUserToGroup {
                         .arg(&name)
                         .stdin(std::process::Stdio::null()),
                 )
-                .await
-                .map_err(|e| ActionError::Command(e))?;
+                .await?;
             },
             _ => {
                 execute_command(
@@ -273,8 +262,7 @@ impl Action for AddUserToGroup {
                         .args([&name.to_string(), &groupname.to_string()])
                         .stdin(std::process::Stdio::null()),
                 )
-                .await
-                .map_err(|e| ActionError::Command(e))?;
+                .await?;
             },
         };
 

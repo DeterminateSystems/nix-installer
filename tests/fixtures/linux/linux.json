@@ -884,7 +884,7 @@
     },
     {
       "action": {
-        "action": "configure_nix_daemon",
+        "action": "configure_init_service",
         "init": "Systemd",
         "start_daemon": true
       },

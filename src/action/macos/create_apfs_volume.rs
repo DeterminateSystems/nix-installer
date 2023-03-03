@@ -3,7 +3,7 @@ use std::path::{Path, PathBuf};
 use tokio::process::Command;
 use tracing::{span, Span};
 
-use crate::action::{ActionError, StatefulAction};
+use crate::action::{ActionError, ActionTag, StatefulAction};
 use crate::execute_command;
 use serde::Deserialize;
 
@@ -25,8 +25,7 @@ impl CreateApfsVolume {
     ) -> Result<StatefulAction<Self>, ActionError> {
         let output =
             execute_command(Command::new("/usr/sbin/diskutil").args(["apfs", "list", "-plist"]))
-                .await
-                .map_err(ActionError::Command)?;
+                .await?;
 
         let parsed: DiskUtilApfsListOutput = plist::from_bytes(&output.stdout)?;
         for container in parsed.containers {
@@ -51,6 +50,9 @@ impl CreateApfsVolume {
 #[async_trait::async_trait]
 #[typetag::serde(name = "create_volume")]
 impl Action for CreateApfsVolume {
+    fn action_tag() -> ActionTag {
+        ActionTag("create_apfs_volume")
+    }
     fn tracing_synopsis(&self) -> String {
         format!(
             "Create an APFS volume on `{}` named `{}`",
@@ -98,8 +100,7 @@ impl Action for CreateApfsVolume {
                 ])
                 .stdin(std::process::Stdio::null()),
         )
-        .await
-        .map_err(|e| ActionError::Command(e))?;
+        .await?;
 
         Ok(())
     }
@@ -129,8 +130,7 @@ impl Action for CreateApfsVolume {
                 .args(["apfs", "deleteVolume", name])
                 .stdin(std::process::Stdio::null()),
         )
-        .await
-        .map_err(|e| ActionError::Command(e))?;
+        .await?;
 
         Ok(())
     }

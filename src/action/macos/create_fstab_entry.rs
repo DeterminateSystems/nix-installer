@@ -1,7 +1,7 @@
 use uuid::Uuid;
 
 use crate::{
-    action::{Action, ActionDescription, ActionError, StatefulAction},
+    action::{Action, ActionDescription, ActionError, ActionTag, StatefulAction},
     execute_command,
 };
 use serde::Deserialize;
@@ -60,6 +60,9 @@ impl CreateFstabEntry {
 #[async_trait::async_trait]
 #[typetag::serde(name = "create_fstab_entry")]
 impl Action for CreateFstabEntry {
+    fn action_tag() -> ActionTag {
+        ActionTag("create_fstab_entry")
+    }
     fn tracing_synopsis(&self) -> String {
         format!(
             "Add a UUID based entry for the APFS volume `{}` to `/etc/fstab`",
@@ -178,8 +181,7 @@ async fn get_uuid_for_label(apfs_volume_label: &str) -> Result<Uuid, ActionError
             .stdin(std::process::Stdio::null())
             .stdout(std::process::Stdio::piped()),
     )
-    .await
-    .map_err(|e| ActionError::Command(e))?;
+    .await?;
 
     let parsed: DiskUtilApfsInfoOutput = plist::from_bytes(&output.stdout)?;
 

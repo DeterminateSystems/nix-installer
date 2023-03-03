@@ -154,18 +154,17 @@ impl InstallPlan {
             }
 
             tracing::info!("Step: {}", action.tracing_synopsis());
+            let typetag_name = action.inner_typetag_name();
             if let Err(err) = action.try_execute().await {
                 if let Err(err) = write_receipt(self.clone()).await {
                     tracing::error!("Error saving receipt: {:?}", err);
                 }
+                let err = NixInstallerError::Action(typetag_name.into(), err);
                 #[cfg(feature = "diagnostics")]
                 if let Some(diagnostic_data) = &self.diagnostic_data {
                     diagnostic_data
                         .clone()
-                        .variant({
-                            let x: &'static str = (&err).into();
-                            x.to_string()
-                        })
+                        .failure(&err)
                         .send(
                             crate::diagnostics::DiagnosticAction::Install,
                             crate::diagnostics::DiagnosticStatus::Failure,
@@ -173,7 +172,7 @@ impl InstallPlan {
                         .await?;
                 }
 
-                return Err(NixInstallerError::Action(err));
+                return Err(err);
             }
         }
 
@@ -287,25 +286,24 @@ impl InstallPlan {
             }
 
             tracing::info!("Revert: {}", action.tracing_synopsis());
+            let typetag_name = action.inner_typetag_name();
             if let Err(err) = action.try_revert().await {
                 if let Err(err) = write_receipt(self.clone()).await {
                     tracing::error!("Error saving receipt: {:?}", err);
                 }
+                let err = NixInstallerError::Action(typetag_name.into(), err);
                 #[cfg(feature = "diagnostics")]
                 if let Some(diagnostic_data) = &self.diagnostic_data {
                     diagnostic_data
                         .clone()
-                        .variant({
-                            let x: &'static str = (&err).into();
-                            x.to_string()
-                        })
+                        .failure(&err)
                         .send(
                             crate::diagnostics::DiagnosticAction::Uninstall,
                             crate::diagnostics::DiagnosticStatus::Failure,
                         )
                         .await?;
                 }
-                return Err(NixInstallerError::Action(err));
+                return Err(err);
             }
         }
 

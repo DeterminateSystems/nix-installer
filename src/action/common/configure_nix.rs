@@ -2,7 +2,7 @@ use crate::{
     action::{
         base::SetupDefaultProfile,
         common::{ConfigureShellProfile, PlaceChannelConfiguration, PlaceNixConfiguration},
-        Action, ActionDescription, ActionError, StatefulAction,
+        Action, ActionDescription, ActionError, ActionTag, StatefulAction,
     },
     settings::CommonSettings,
 };
@@ -23,21 +23,30 @@ pub struct ConfigureNix {
 impl ConfigureNix {
     #[tracing::instrument(level = "debug", skip_all)]
     pub async fn plan(settings: &CommonSettings) -> Result<StatefulAction<Self>, ActionError> {
-        let setup_default_profile = SetupDefaultProfile::plan(settings.channels.clone()).await?;
+        let setup_default_profile = SetupDefaultProfile::plan(settings.channels.clone())
+            .await
+            .map_err(|e| ActionError::Child(SetupDefaultProfile::action_tag(), Box::new(e)))?;
 
         let configure_shell_profile = if settings.modify_profile {
-            Some(ConfigureShellProfile::plan().await?)
+            Some(ConfigureShellProfile::plan().await.map_err(|e| {
+                ActionError::Child(ConfigureShellProfile::action_tag(), Box::new(e))
+            })?)
         } else {
             None
         };
         let place_channel_configuration =
-            PlaceChannelConfiguration::plan(settings.channels.clone(), settings.force).await?;
+            PlaceChannelConfiguration::plan(settings.channels.clone(), settings.force)
+                .await
+                .map_err(|e| {
+                    ActionError::Child(PlaceChannelConfiguration::action_tag(), Box::new(e))
+                })?;
         let place_nix_configuration = PlaceNixConfiguration::plan(
             settings.nix_build_group_name.clone(),
             settings.extra_conf.clone(),
             settings.force,
         )
-        .await?;
+        .await
+        .map_err(|e| ActionError::Child(PlaceNixConfiguration::action_tag(), Box::new(e)))?;
 
         Ok(Self {
             place_channel_configuration,
@@ -52,6 +61,9 @@ impl ConfigureNix {
 #[async_trait::async_trait]
 #[typetag::serde(name = "configure_nix")]
 impl Action for ConfigureNix {
+    fn action_tag() -> ActionTag {
+        ActionTag("configure_nix")
+    }
     fn tracing_synopsis(&self) -> String {
         "Configure Nix".to_string()
     }
@@ -103,24 +115,39 @@ impl Action for ConfigureNix {
                         .try_execute()
                         .instrument(setup_default_profile_span)
                         .await
+                        .map_err(|e| {
+                            ActionError::Child(setup_default_profile.action_tag(), Box::new(e))
+                        })
                 },
                 async move {
                     place_nix_configuration
                         .try_execute()
                         .instrument(place_nix_configuration_span)
                         .await
+                        .map_err(|e| {
+                            ActionError::Child(place_nix_configuration.action_tag(), Box::new(e))
+                        })
                 },
                 async move {
                     place_channel_configuration
                         .try_execute()
                         .instrument(place_channel_configuration_span)
                         .await
+                        .map_err(|e| {
+                            ActionError::Child(
+                                place_channel_configuration.action_tag(),
+                                Box::new(e),
+                            )
+                        })
                 },
                 async move {
                     configure_shell_profile
                         .try_execute()
                         .instrument(configure_shell_profile_span)
                         .await
+                        .map_err(|e| {
+                            ActionError::Child(configure_shell_profile.action_tag(), Box::new(e))
+                        })
                 },
             )?;
         } else {
@@ -135,18 +162,30 @@ impl Action for ConfigureNix {
                         .try_execute()
                         .instrument(setup_default_profile_span)
                         .await
+                        .map_err(|e| {
+                            ActionError::Child(setup_default_profile.action_tag(), Box::new(e))
+                        })
                 },
                 async move {
                     place_nix_configuration
                         .try_execute()
                         .instrument(place_nix_configuration_span)
                         .await
+                        .map_err(|e| {
+                            ActionError::Child(place_nix_configuration.action_tag(), Box::new(e))
+                        })
                 },
                 async move {
                     place_channel_configuration
                         .try_execute()
                         .instrument(place_channel_configuration_span)
                         .await
+                        .map_err(|e| {
+                            ActionError::Child(
+                                place_channel_configuration.action_tag(),
+                                Box::new(e),
+                            )
+                        })
                 },
             )?;
         };
@@ -175,19 +214,26 @@ impl Action for ConfigureNix {
 
     #[tracing::instrument(level = "debug", skip_all)]
     async fn revert(&mut self) -> Result<(), ActionError> {
-        let Self {
-            setup_default_profile,
-            place_nix_configuration,
-            place_channel_configuration,
-            configure_shell_profile,
-        } = self;
-
-        if let Some(configure_shell_profile) = configure_shell_profile {
-            configure_shell_profile.try_revert().await?;
+        if let Some(configure_shell_profile) = &mut self.configure_shell_profile {
+            configure_shell_profile.try_revert().await.map_err(|e| {
+                ActionError::Child(configure_shell_profile.action_tag(), Box::new(e))
+            })?;
         }
-        place_channel_configuration.try_revert().await?;
-        place_nix_configuration.try_revert().await?;
-        setup_default_profile.try_revert().await?;
+        self.place_channel_configuration
+            .try_revert()
+            .await
+            .map_err(|e| {
+                ActionError::Child(self.place_channel_configuration.action_tag(), Box::new(e))
+            })?;
+        self.place_nix_configuration
+            .try_revert()
+            .await
+            .map_err(|e| {
+                ActionError::Child(self.place_nix_configuration.action_tag(), Box::new(e))
+            })?;
+        self.setup_default_profile.try_revert().await.map_err(|e| {
+            ActionError::Child(self.setup_default_profile.action_tag(), Box::new(e))
+        })?;
 
         Ok(())
     }

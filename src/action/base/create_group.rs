@@ -2,7 +2,7 @@ use nix::unistd::Group;
 use tokio::process::Command;
 use tracing::{span, Span};
 
-use crate::action::ActionError;
+use crate::action::{ActionError, ActionTag};
 use crate::execute_command;
 
 use crate::action::{Action, ActionDescription, StatefulAction};
@@ -45,6 +45,9 @@ impl CreateGroup {
 #[async_trait::async_trait]
 #[typetag::serde(name = "create_group")]
 impl Action for CreateGroup {
+    fn action_tag() -> ActionTag {
+        ActionTag("create_group")
+    }
     fn tracing_synopsis(&self) -> String {
         format!("Create group `{}` (GID {})", self.name, self.gid)
     }
@@ -93,8 +96,7 @@ impl Action for CreateGroup {
                         ])
                         .stdin(std::process::Stdio::null()),
                 )
-                .await
-                .map_err(|e| ActionError::Command(e))?;
+                .await?;
             },
             _ => {
                 execute_command(
@@ -103,8 +105,7 @@ impl Action for CreateGroup {
                         .args(["-g", &gid.to_string(), "--system", &name])
                         .stdin(std::process::Stdio::null()),
                 )
-                .await
-                .map_err(|e| ActionError::Command(e))?;
+                .await?;
             },
         };
 
@@ -138,8 +139,7 @@ impl Action for CreateGroup {
                         .args([".", "-delete", &format!("/Groups/{name}")])
                         .stdin(std::process::Stdio::null()),
                 )
-                .await
-                .map_err(|e| ActionError::Command(e))?;
+                .await?;
                 if !output.status.success() {}
             },
             _ => {
@@ -149,8 +149,7 @@ impl Action for CreateGroup {
                         .arg(&name)
                         .stdin(std::process::Stdio::null()),
                 )
-                .await
-                .map_err(ActionError::Command)?;
+                .await?;
             },
         };
 

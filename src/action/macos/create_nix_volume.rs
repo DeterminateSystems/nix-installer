@@ -4,7 +4,7 @@ use crate::action::{
         BootstrapApfsVolume, CreateApfsVolume, CreateSyntheticObjects, EnableOwnership,
         EncryptApfsVolume, UnmountApfsVolume,
     },
-    Action, ActionDescription, ActionError, StatefulAction,
+    Action, ActionDescription, ActionError, ActionTag, StatefulAction,
 };
 use std::{
     path::{Path, PathBuf},
@@ -53,17 +53,23 @@ impl CreateNixVolume {
             create_or_insert_into_file::Position::End,
         )
         .await
-        .map_err(|e| ActionError::Child(Box::new(e)))?;
+        .map_err(|e| ActionError::Child(CreateOrInsertIntoFile::action_tag(), Box::new(e)))?;
 
-        let create_synthetic_objects = CreateSyntheticObjects::plan().await?;
+        let create_synthetic_objects = CreateSyntheticObjects::plan()
+            .await
+            .map_err(|e| ActionError::Child(CreateSyntheticObjects::action_tag(), Box::new(e)))?;
 
-        let unmount_volume = UnmountApfsVolume::plan(disk, name.clone()).await?;
+        let unmount_volume = UnmountApfsVolume::plan(disk, name.clone())
+            .await
+            .map_err(|e| ActionError::Child(UnmountApfsVolume::action_tag(), Box::new(e)))?;
 
-        let create_volume = CreateApfsVolume::plan(disk, name.clone(), case_sensitive).await?;
+        let create_volume = CreateApfsVolume::plan(disk, name.clone(), case_sensitive)
+            .await
+            .map_err(|e| ActionError::Child(CreateApfsVolume::action_tag(), Box::new(e)))?;
 
         let create_fstab_entry = CreateFstabEntry::plan(name.clone())
             .await
-            .map_err(|e| ActionError::Child(Box::new(e)))?;
+            .map_err(|e| ActionError::Child(CreateFstabEntry::action_tag(), Box::new(e)))?;
 
         let encrypt_volume = if encrypt {
             Some(EncryptApfsVolume::plan(disk, &name).await?)
@@ -106,10 +112,16 @@ impl CreateNixVolume {
         ", mount_command.iter().map(|v| format!("<string>{v}</string>\n")).collect::<Vec<_>>().join("\n")
         );
         let setup_volume_daemon =
-            CreateFile::plan(NIX_VOLUME_MOUNTD_DEST, None, None, None, mount_plist, false).await?;
+            CreateFile::plan(NIX_VOLUME_MOUNTD_DEST, None, None, None, mount_plist, false)
+                .await
+                .map_err(|e| ActionError::Child(CreateFile::action_tag(), Box::new(e)))?;
 
-        let bootstrap_volume = BootstrapApfsVolume::plan(NIX_VOLUME_MOUNTD_DEST).await?;
-        let enable_ownership = EnableOwnership::plan("/nix").await?;
+        let bootstrap_volume = BootstrapApfsVolume::plan(NIX_VOLUME_MOUNTD_DEST)
+            .await
+            .map_err(|e| ActionError::Child(BootstrapApfsVolume::action_tag(), Box::new(e)))?;
+        let enable_ownership = EnableOwnership::plan("/nix")
+            .await
+            .map_err(|e| ActionError::Child(EnableOwnership::action_tag(), Box::new(e)))?;
 
         Ok(Self {
             disk: disk.to_path_buf(),
@@ -133,6 +145,9 @@ impl CreateNixVolume {
 #[async_trait::async_trait]
 #[typetag::serde(name = "create_apfs_volume")]
 impl Action for CreateNixVolume {
+    fn action_tag() -> ActionTag {
+        ActionTag("create_nix_volume")
+    }
     fn tracing_synopsis(&self) -> String {
         format!(
             "Create an APFS volume `{}` for Nix on `{}`",
@@ -159,44 +174,57 @@ impl Action for CreateNixVolume {
 
     #[tracing::instrument(level = "debug", skip_all)]
     async fn execute(&mut self) -> Result<(), ActionError> {
-        let Self {
-            disk: _,
-            name: _,
-            case_sensitive: _,
-            encrypt: _,
-            create_or_append_synthetic_conf,
-            create_synthetic_objects,
-            unmount_volume,
-            create_volume,
-            create_fstab_entry,
-            encrypt_volume,
-            setup_volume_daemon,
-            bootstrap_volume,
-            enable_ownership,
-        } = self;
-
-        create_or_append_synthetic_conf.try_execute().await?;
-        create_synthetic_objects.try_execute().await?;
-        unmount_volume.try_execute().await.ok(); // We actually expect this may fail.
-        create_volume.try_execute().await?;
-        create_fstab_entry.try_execute().await?;
-        if let Some(encrypt_volume) = encrypt_volume {
-            encrypt_volume.try_execute().await?;
+        self.create_or_append_synthetic_conf
+            .try_execute()
+            .await
+            .map_err(|e| {
+                ActionError::Child(
+                    self.create_or_append_synthetic_conf.action_tag(),
+                    Box::new(e),
+                )
+            })?;
+        self.create_synthetic_objects
+            .try_execute()
+            .await
+            .map_err(|e| {
+                ActionError::Child(self.create_synthetic_objects.action_tag(), Box::new(e))
+            })?;
+        self.unmount_volume.try_execute().await.ok(); // We actually expect this may fail.
+        self.create_volume
+            .try_execute()
+            .await
+            .map_err(|e| ActionError::Child(self.create_volume.action_tag(), Box::new(e)))?;
+        self.create_fstab_entry
+            .try_execute()
+            .await
+            .map_err(|e| ActionError::Child(self.create_fstab_entry.action_tag(), Box::new(e)))?;
+        if let Some(encrypt_volume) = &mut self.encrypt_volume {
+            encrypt_volume
+                .try_execute()
+                .await
+                .map_err(|e| ActionError::Child(encrypt_volume.action_tag(), Box::new(e)))?;
         }
-        setup_volume_daemon.try_execute().await?;
+        self.setup_volume_daemon
+            .try_execute()
+            .await
+            .map_err(|e| ActionError::Child(self.setup_volume_daemon.action_tag(), Box::new(e)))?;
 
-        bootstrap_volume.try_execute().await?;
+        self.bootstrap_volume
+            .try_execute()
+            .await
+            .map_err(|e| ActionError::Child(self.bootstrap_volume.action_tag(), Box::new(e)))?;
 
         let mut retry_tokens: usize = 50;
         loop {
             tracing::trace!(%retry_tokens, "Checking for Nix Store existence");
-            let status = Command::new("/usr/sbin/diskutil")
-                .args(["info", "/nix"])
-                .stderr(std::process::Stdio::null())
-                .stdout(std::process::Stdio::null())
+            let mut command = Command::new("/usr/sbin/diskutil");
+            command.args(["info", "/nix"]);
+            command.stderr(std::process::Stdio::null());
+            command.stdout(std::process::Stdio::null());
+            let status = command
                 .status()
                 .await
-                .map_err(|e| ActionError::Command(e))?;
+                .map_err(|e| ActionError::command(&command, e))?;
             if status.success() || retry_tokens == 0 {
                 break;
             } else {
@@ -205,7 +233,10 @@ impl Action for CreateNixVolume {
             tokio::time::sleep(Duration::from_millis(100)).await;
         }
 
-        enable_ownership.try_execute().await?;
+        self.enable_ownership
+            .try_execute()
+            .await
+            .map_err(|e| ActionError::Child(self.enable_ownership.action_tag(), Box::new(e)))?;
 
         Ok(())
     }
@@ -222,36 +253,54 @@ impl Action for CreateNixVolume {
 
     #[tracing::instrument(level = "debug", skip_all)]
     async fn revert(&mut self) -> Result<(), ActionError> {
-        let Self {
-            disk: _,
-            name: _,
-            case_sensitive: _,
-            encrypt: _,
-            create_or_append_synthetic_conf,
-            create_synthetic_objects,
-            unmount_volume,
-            create_volume,
-            create_fstab_entry,
-            encrypt_volume,
-            setup_volume_daemon,
-            bootstrap_volume,
-            enable_ownership,
-        } = self;
-
-        enable_ownership.try_revert().await?;
-        bootstrap_volume.try_revert().await?;
-        setup_volume_daemon.try_revert().await?;
-        if let Some(encrypt_volume) = encrypt_volume {
-            encrypt_volume.try_revert().await?;
+        self.enable_ownership
+            .try_revert()
+            .await
+            .map_err(|e| ActionError::Child(self.enable_ownership.action_tag(), Box::new(e)))?;
+        self.bootstrap_volume
+            .try_revert()
+            .await
+            .map_err(|e| ActionError::Child(self.bootstrap_volume.action_tag(), Box::new(e)))?;
+        self.setup_volume_daemon
+            .try_revert()
+            .await
+            .map_err(|e| ActionError::Child(self.setup_volume_daemon.action_tag(), Box::new(e)))?;
+        if let Some(encrypt_volume) = &mut self.encrypt_volume {
+            encrypt_volume
+                .try_revert()
+                .await
+                .map_err(|e| ActionError::Child(encrypt_volume.action_tag(), Box::new(e)))?;
         }
-        create_fstab_entry.try_revert().await?;
+        self.create_fstab_entry
+            .try_revert()
+            .await
+            .map_err(|e| ActionError::Child(self.create_fstab_entry.action_tag(), Box::new(e)))?;
 
-        unmount_volume.try_revert().await?;
-        create_volume.try_revert().await?;
+        self.unmount_volume
+            .try_revert()
+            .await
+            .map_err(|e| ActionError::Child(self.unmount_volume.action_tag(), Box::new(e)))?;
+        self.create_volume
+            .try_revert()
+            .await
+            .map_err(|e| ActionError::Child(self.create_volume.action_tag(), Box::new(e)))?;
 
         // Purposefully not reversed
-        create_or_append_synthetic_conf.try_revert().await?;
-        create_synthetic_objects.try_revert().await?;
+        self.create_or_append_synthetic_conf
+            .try_revert()
+            .await
+            .map_err(|e| {
+                ActionError::Child(
+                    self.create_or_append_synthetic_conf.action_tag(),
+                    Box::new(e),
+                )
+            })?;
+        self.create_synthetic_objects
+            .try_revert()
+            .await
+            .map_err(|e| {
+                ActionError::Child(self.create_synthetic_objects.action_tag(), Box::new(e))
+            })?;
 
         Ok(())
     }
