@@ -107,6 +107,7 @@ impl Action for PlaceChannelConfiguration {
     }
 }
 
+#[non_exhaustive]
 #[derive(Debug, thiserror::Error)]
 pub enum PlaceChannelConfigurationError {
     #[error("No root home found to place channel configuration in")]

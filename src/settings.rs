@@ -561,6 +561,7 @@ impl InitSettings {
 }
 
 /// An error originating from a [`Planner::settings`](crate::planner::Planner::settings)
+#[non_exhaustive]
 #[derive(thiserror::Error, Debug)]
 pub enum InstallSettingsError {
     /// `nix-installer` does not support the architecture right now

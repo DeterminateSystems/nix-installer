@@ -95,6 +95,7 @@ impl Action for BootstrapApfsVolume {
     }
 }
 
+#[non_exhaustive]
 #[derive(Debug, thiserror::Error)]
 pub enum BootstrapVolumeError {
     #[error("Failed to execute command")]
