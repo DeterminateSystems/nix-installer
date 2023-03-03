@@ -133,6 +133,15 @@ impl Planner for MyPlanner {
 
         Ok(map)
     }
+
+    #[cfg(feature = "diagnostics")]
+    async fn diagnostic_data(&self) -> Result<nix_installer::diagnostics::DiagnosticData, PlannerError> {
+        Ok(nix_installer::diagnostics::DiagnosticData::new(
+            self.common.diagnostic_endpoint.clone(),
+            self.typetag_name().into(),
+            self.configured_settings().await?,
+        ))
+    }
 }
 
 # async fn custom_planner_install() -> color_eyre::Result<()> {
@@ -244,7 +253,8 @@ impl ActionDescription {
 }
 
 /// An error occurring during an action
-#[derive(thiserror::Error, Debug)]
+#[non_exhaustive]
+#[derive(thiserror::Error, Debug, strum::IntoStaticStr)]
 pub enum ActionError {
     /// A custom error
     #[error(transparent)]
@@ -270,8 +280,12 @@ pub enum ActionError {
     PathUserMismatch(std::path::PathBuf, u32, u32),
     #[error("`{0}` exists with a different gid ({1}) than planned ({2}), consider updating it with `chgrp {2} {0}`")]
     PathGroupMismatch(std::path::PathBuf, u32, u32),
-    #[error("`{0}` exists with a different mode ({1:o}) than planned ({2:o}), consider updating it with `chmod {2:o} {0}`")]
+    #[error("`{0}` exists with a different mode ({existing_mode:o}) than planned ({planned_mode:o}), consider updating it with `chmod {planned_mode:o} {0}`",
+        existing_mode = .1 & 0o777,
+        planned_mode = .2 & 0o777)]
     PathModeMismatch(std::path::PathBuf, u32, u32),
+    #[error("`{0}` was not a file")]
+    PathWasNotFile(std::path::PathBuf),
     #[error("Getting metadata for {0}`")]
     GettingMetadata(std::path::PathBuf, #[source] std::io::Error),
     #[error("Creating directory `{0}`")]

@@ -52,6 +52,15 @@ impl Planner for MyPlanner {
 
         Ok(map)
     }
+
+    #[cfg(feature = "diagnostics")]
+    async fn diagnostic_data(&self) -> Result<nix_installer::diagnostics::DiagnosticData, PlannerError> {
+        Ok(nix_installer::diagnostics::DiagnosticData::new(
+            self.common.diagnostic_endpoint.clone(),
+            self.typetag_name().into(),
+            self.configured_settings().await?,
+        ))
+    }
 }
 
 # async fn custom_planner_install() -> color_eyre::Result<()> {
@@ -101,6 +110,23 @@ pub trait Planner: std::fmt::Debug + Send + Sync + dyn_clone::DynClone {
     async fn plan(&self) -> Result<Vec<StatefulAction<Box<dyn Action>>>, PlannerError>;
     /// The settings being used by the planner
     fn settings(&self) -> Result<HashMap<String, serde_json::Value>, InstallSettingsError>;
+
+    async fn configured_settings(&self) -> Result<Vec<String>, PlannerError>
+    where
+        Self: Sized,
+    {
+        let default = Self::default().await?.settings()?;
+        let configured = self.settings()?;
+
+        let mut keys: Vec<String> = Vec::new();
+        for (key, value) in configured.iter() {
+            if default.get(key) != Some(value) {
+                keys.push(key.clone())
+            }
+        }
+        Ok(keys)
+    }
+
     /// A boxed, type erased planner
     fn boxed(self) -> Box<dyn Planner>
     where
@@ -108,6 +134,9 @@ pub trait Planner: std::fmt::Debug + Send + Sync + dyn_clone::DynClone {
     {
         Box::new(self)
     }
+
+    #[cfg(feature = "diagnostics")]
+    async fn diagnostic_data(&self) -> Result<crate::diagnostics::DiagnosticData, PlannerError>;
 }
 
 dyn_clone::clone_trait_object!(Planner);
@@ -171,6 +200,17 @@ impl BuiltinPlanner {
         Ok(built)
     }
 
+    pub async fn configured_settings(&self) -> Result<Vec<String>, PlannerError> {
+        match self {
+            #[cfg(target_os = "linux")]
+            BuiltinPlanner::Linux(inner) => inner.configured_settings().await,
+            #[cfg(target_os = "linux")]
+            BuiltinPlanner::SteamDeck(inner) => inner.configured_settings().await,
+            #[cfg(target_os = "macos")]
+            BuiltinPlanner::Macos(inner) => inner.configured_settings().await,
+        }
+    }
+
     pub async fn plan(self) -> Result<InstallPlan, NixInstallerError> {
         match self {
             #[cfg(target_os = "linux")]
@@ -213,10 +253,25 @@ impl BuiltinPlanner {
             BuiltinPlanner::Macos(i) => i.settings(),
         }
     }
+
+    #[cfg(feature = "diagnostics")]
+    pub async fn diagnostic_data(
+        &self,
+    ) -> Result<crate::diagnostics::DiagnosticData, PlannerError> {
+        match self {
+            #[cfg(target_os = "linux")]
+            BuiltinPlanner::Linux(i) => i.diagnostic_data().await,
+            #[cfg(target_os = "linux")]
+            BuiltinPlanner::SteamDeck(i) => i.diagnostic_data().await,
+            #[cfg(target_os = "macos")]
+            BuiltinPlanner::Macos(i) => i.diagnostic_data().await,
+        }
+    }
 }
 
 /// An error originating from a [`Planner`]
-#[derive(thiserror::Error, Debug)]
+#[non_exhaustive]
+#[derive(thiserror::Error, Debug, strum::IntoStaticStr)]
 pub enum PlannerError {
     /// `nix-installer` does not have a default planner for the target architecture right now
     #[error("`nix-installer` does not have a default planner for the `{0}` architecture right now, pass a specific archetype")]
@@ -247,6 +302,8 @@ pub enum PlannerError {
     NixOs,
     #[error("`nix` is already a valid command, so it is installed")]
     NixExists,
+    #[error("WSL1 is not supported, please upgrade to WSL2: https://learn.microsoft.com/en-us/windows/wsl/install#upgrade-version-from-wsl-1-to-wsl-2")]
+    Wsl1,
 }
 
 impl HasExpectedErrors for PlannerError {
@@ -261,6 +318,7 @@ impl HasExpectedErrors for PlannerError {
             PlannerError::Custom(_) => None,
             this @ PlannerError::NixOs => Some(Box::new(this)),
             this @ PlannerError::NixExists => Some(Box::new(this)),
+            this @ PlannerError::Wsl1 => Some(Box::new(this)),
         }
     }
 }

@@ -24,17 +24,27 @@ pub struct InstallPlan {
     pub(crate) actions: Vec<StatefulAction<Box<dyn Action>>>,
 
     pub(crate) planner: Box<dyn Planner>,
+
+    #[cfg(feature = "diagnostics")]
+    pub(crate) diagnostic_data: Option<crate::diagnostics::DiagnosticData>,
 }
 
 impl InstallPlan {
     pub async fn default() -> Result<Self, NixInstallerError> {
-        let planner = BuiltinPlanner::default().await?.boxed();
+        let planner = BuiltinPlanner::default().await?;
+
+        #[cfg(feature = "diagnostics")]
+        let diagnostic_data = Some(planner.diagnostic_data().await?);
+
+        let planner = planner.boxed();
         let actions = planner.plan().await?;
 
         Ok(Self {
             planner,
             actions,
             version: current_version()?,
+            #[cfg(feature = "diagnostics")]
+            diagnostic_data,
         })
     }
 
@@ -42,11 +52,16 @@ impl InstallPlan {
     where
         P: Planner + 'static,
     {
+        #[cfg(feature = "diagnostics")]
+        let diagnostic_data = Some(planner.diagnostic_data().await?);
+
         let actions = planner.plan().await?;
         Ok(Self {
             planner: planner.boxed(),
             actions,
             version: current_version()?,
+            #[cfg(feature = "diagnostics")]
+            diagnostic_data,
         })
     }
     #[tracing::instrument(level = "debug", skip_all)]
@@ -55,6 +70,7 @@ impl InstallPlan {
             planner,
             actions,
             version,
+            ..
         } = self;
         let buf = format!(
             "\
@@ -107,11 +123,7 @@ impl InstallPlan {
         &mut self,
         cancel_channel: impl Into<Option<Receiver<()>>>,
     ) -> Result<(), NixInstallerError> {
-        let Self {
-            version: _,
-            actions,
-            planner: _,
-        } = self;
+        let Self { actions, .. } = self;
         let mut cancel_channel = cancel_channel.into();
 
         // This is **deliberately sequential**.
@@ -125,6 +137,18 @@ impl InstallPlan {
                     if let Err(err) = write_receipt(self.clone()).await {
                         tracing::error!("Error saving receipt: {:?}", err);
                     }
+
+                    #[cfg(feature = "diagnostics")]
+                    if let Some(diagnostic_data) = &self.diagnostic_data {
+                        diagnostic_data
+                            .clone()
+                            .send(
+                                crate::diagnostics::DiagnosticAction::Install,
+                                crate::diagnostics::DiagnosticStatus::Cancelled,
+                            )
+                            .await?;
+                    }
+
                     return Err(NixInstallerError::Cancelled);
                 }
             }
@@ -134,11 +158,36 @@ impl InstallPlan {
                 if let Err(err) = write_receipt(self.clone()).await {
                     tracing::error!("Error saving receipt: {:?}", err);
                 }
+                #[cfg(feature = "diagnostics")]
+                if let Some(diagnostic_data) = &self.diagnostic_data {
+                    diagnostic_data
+                        .clone()
+                        .variant({
+                            let x: &'static str = (&err).into();
+                            x.to_string()
+                        })
+                        .send(
+                            crate::diagnostics::DiagnosticAction::Install,
+                            crate::diagnostics::DiagnosticStatus::Failure,
+                        )
+                        .await?;
+                }
+
                 return Err(NixInstallerError::Action(err));
             }
         }
 
         write_receipt(self.clone()).await?;
+        #[cfg(feature = "diagnostics")]
+        if let Some(diagnostic_data) = &self.diagnostic_data {
+            diagnostic_data
+                .clone()
+                .send(
+                    crate::diagnostics::DiagnosticAction::Install,
+                    crate::diagnostics::DiagnosticStatus::Success,
+                )
+                .await?;
+        }
 
         Ok(())
     }
@@ -149,6 +198,7 @@ impl InstallPlan {
             version: _,
             planner,
             actions,
+            ..
         } = self;
         let buf = format!(
             "\
@@ -207,11 +257,7 @@ impl InstallPlan {
         &mut self,
         cancel_channel: impl Into<Option<Receiver<()>>>,
     ) -> Result<(), NixInstallerError> {
-        let Self {
-            version: _,
-            actions,
-            planner: _,
-        } = self;
+        let Self { actions, .. } = self;
         let mut cancel_channel = cancel_channel.into();
 
         // This is **deliberately sequential**.
@@ -225,6 +271,17 @@ impl InstallPlan {
                     if let Err(err) = write_receipt(self.clone()).await {
                         tracing::error!("Error saving receipt: {:?}", err);
                     }
+
+                    #[cfg(feature = "diagnostics")]
+                    if let Some(diagnostic_data) = &self.diagnostic_data {
+                        diagnostic_data
+                            .clone()
+                            .send(
+                                crate::diagnostics::DiagnosticAction::Uninstall,
+                                crate::diagnostics::DiagnosticStatus::Cancelled,
+                            )
+                            .await?;
+                    }
                     return Err(NixInstallerError::Cancelled);
                 }
             }
@@ -234,8 +291,33 @@ impl InstallPlan {
                 if let Err(err) = write_receipt(self.clone()).await {
                     tracing::error!("Error saving receipt: {:?}", err);
                 }
+                #[cfg(feature = "diagnostics")]
+                if let Some(diagnostic_data) = &self.diagnostic_data {
+                    diagnostic_data
+                        .clone()
+                        .variant({
+                            let x: &'static str = (&err).into();
+                            x.to_string()
+                        })
+                        .send(
+                            crate::diagnostics::DiagnosticAction::Uninstall,
+                            crate::diagnostics::DiagnosticStatus::Failure,
+                        )
+                        .await?;
+                }
                 return Err(NixInstallerError::Action(err));
             }
+        }
+
+        #[cfg(feature = "diagnostics")]
+        if let Some(diagnostic_data) = &self.diagnostic_data {
+            diagnostic_data
+                .clone()
+                .send(
+                    crate::diagnostics::DiagnosticAction::Uninstall,
+                    crate::diagnostics::DiagnosticStatus::Success,
+                )
+                .await?;
         }
 
         Ok(())
@@ -249,7 +331,7 @@ async fn write_receipt(plan: InstallPlan) -> Result<(), NixInstallerError> {
     let install_receipt_path = PathBuf::from(RECEIPT_LOCATION);
     let self_json =
         serde_json::to_string_pretty(&plan).map_err(NixInstallerError::SerializingReceipt)?;
-    tokio::fs::write(&install_receipt_path, self_json)
+    tokio::fs::write(&install_receipt_path, format!("{self_json}\n"))
         .await
         .map_err(|e| NixInstallerError::RecordingReceipt(install_receipt_path, e))?;
     Result::<(), NixInstallerError>::Ok(())

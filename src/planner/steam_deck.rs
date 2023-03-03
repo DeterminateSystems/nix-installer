@@ -252,6 +252,15 @@ impl Planner for SteamDeck {
 
         Ok(map)
     }
+
+    #[cfg(feature = "diagnostics")]
+    async fn diagnostic_data(&self) -> Result<crate::diagnostics::DiagnosticData, PlannerError> {
+        Ok(crate::diagnostics::DiagnosticData::new(
+            self.settings.diagnostic_endpoint.clone(),
+            self.typetag_name().into(),
+            self.configured_settings().await?,
+        ))
+    }
 }
 
 impl Into<BuiltinPlanner> for SteamDeck {
@@ -260,8 +269,9 @@ impl Into<BuiltinPlanner> for SteamDeck {
     }
 }
 
+#[non_exhaustive]
 #[derive(thiserror::Error, Debug)]
-enum SteamDeckError {
+pub enum SteamDeckError {
     #[error("`{0}` is not a path that can be canonicalized into an absolute path, bind mounts require an absolute path")]
     AbsolutePathRequired(PathBuf),
 }

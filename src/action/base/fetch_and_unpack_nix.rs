@@ -105,6 +105,7 @@ impl Action for FetchAndUnpackNix {
     }
 }
 
+#[non_exhaustive]
 #[derive(Debug, thiserror::Error)]
 pub enum FetchUrlError {
     #[error("Request error")]

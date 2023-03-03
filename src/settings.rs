@@ -10,19 +10,19 @@ use crate::channel_value::ChannelValue;
 
 /// Default [`nix_package_url`](CommonSettings::nix_package_url) for Linux x86_64
 pub const NIX_X64_64_LINUX_URL: &str =
-    "https://releases.nixos.org/nix/nix-2.13.2/nix-2.13.2-x86_64-linux.tar.xz";
+    "https://releases.nixos.org/nix/nix-2.13.3/nix-2.13.3-x86_64-linux.tar.xz";
 /// Default [`nix_package_url`](CommonSettings::nix_package_url) for Linux x86 (32 bit)
 pub const NIX_I686_LINUX_URL: &str =
-    "https://releases.nixos.org/nix/nix-2.13.2/nix-2.13.2-i686-linux.tar.xz";
+    "https://releases.nixos.org/nix/nix-2.13.3/nix-2.13.3-i686-linux.tar.xz";
 /// Default [`nix_package_url`](CommonSettings::nix_package_url) for Linux aarch64
 pub const NIX_AARCH64_LINUX_URL: &str =
-    "https://releases.nixos.org/nix/nix-2.13.2/nix-2.13.2-aarch64-linux.tar.xz";
+    "https://releases.nixos.org/nix/nix-2.13.3/nix-2.13.3-aarch64-linux.tar.xz";
 /// Default [`nix_package_url`](CommonSettings::nix_package_url) for Darwin x86_64
 pub const NIX_X64_64_DARWIN_URL: &str =
-    "https://releases.nixos.org/nix/nix-2.13.2/nix-2.13.2-x86_64-darwin.tar.xz";
+    "https://releases.nixos.org/nix/nix-2.13.3/nix-2.13.3-x86_64-darwin.tar.xz";
 /// Default [`nix_package_url`](CommonSettings::nix_package_url) for Darwin aarch64
 pub const NIX_AARCH64_DARWIN_URL: &str =
-    "https://releases.nixos.org/nix/nix-2.13.2/nix-2.13.2-aarch64-darwin.tar.xz";
+    "https://releases.nixos.org/nix/nix-2.13.3/nix-2.13.3-aarch64-darwin.tar.xz";
 
 #[derive(Debug, serde::Deserialize, serde::Serialize, Clone, Copy)]
 #[cfg_attr(feature = "cli", derive(clap::ValueEnum))]
@@ -202,6 +202,33 @@ pub struct CommonSettings {
         )
     )]
     pub(crate) force: bool,
+
+    #[cfg(feature = "diagnostics")]
+    /// The URL or file path for an installation diagnostic to be sent
+    ///
+    /// Sample of the data sent:
+    ///
+    /// {
+    ///     "version": "0.4.0",
+    ///     "planner": "linux",
+    ///     "configured_settings": [ "modify_profile" ],
+    ///     "os_name": "Ubuntu",
+    ///     "os_version": "22.04.1 LTS (Jammy Jellyfish)",
+    ///     "triple": "x86_64-unknown-linux-gnu",
+    ///     "is_ci": false,
+    ///     "action": "Install",
+    ///     "status": "Failure",
+    ///     "failure_variant": "Symlink"
+    /// }
+    ///
+    /// To disable diagnostic reporting, unset the default with `--diagnostic-endpoint=`
+    #[clap(
+        long,
+        env = "NIX_INSTALLER_DIAGNOSTIC_ENDPOINT",
+        global = true,
+        default_value = "https://install.determinate.systems/nix/diagnostic"
+    )]
+    pub diagnostic_endpoint: Option<Url>,
 }
 
 impl CommonSettings {
@@ -217,19 +244,19 @@ impl CommonSettings {
             (Architecture::X86_64, OperatingSystem::Linux) => {
                 url = NIX_X64_64_LINUX_URL;
                 nix_build_user_prefix = "nixbld";
-                nix_build_user_id_base = 3000;
+                nix_build_user_id_base = 30000;
             },
             #[cfg(target_os = "linux")]
             (Architecture::X86_32(_), OperatingSystem::Linux) => {
                 url = NIX_I686_LINUX_URL;
                 nix_build_user_prefix = "nixbld";
-                nix_build_user_id_base = 3000;
+                nix_build_user_id_base = 30000;
             },
             #[cfg(target_os = "linux")]
             (Architecture::Aarch64(_), OperatingSystem::Linux) => {
                 url = NIX_AARCH64_LINUX_URL;
                 nix_build_user_prefix = "nixbld";
-                nix_build_user_id_base = 3000;
+                nix_build_user_id_base = 30000;
             },
             #[cfg(target_os = "macos")]
             (Architecture::X86_64, OperatingSystem::MacOSX { .. })
@@ -261,12 +288,16 @@ impl CommonSettings {
             )],
             modify_profile: true,
             nix_build_group_name: String::from("nixbld"),
-            nix_build_group_id: 3000,
+            nix_build_group_id: 30_000,
             nix_build_user_prefix: nix_build_user_prefix.to_string(),
             nix_build_user_id_base,
             nix_package_url: url.parse()?,
             extra_conf: Default::default(),
             force: false,
+            #[cfg(feature = "diagnostics")]
+            diagnostic_endpoint: Some(
+                "https://install.determinate.systems/nix/diagnostic".try_into()?,
+            ),
         })
     }
 
@@ -283,6 +314,8 @@ impl CommonSettings {
             nix_package_url,
             extra_conf,
             force,
+            #[cfg(feature = "diagnostics")]
+            diagnostic_endpoint,
         } = self;
         let mut map = HashMap::default();
 
@@ -325,6 +358,12 @@ impl CommonSettings {
         );
         map.insert("extra_conf".into(), serde_json::to_value(extra_conf)?);
         map.insert("force".into(), serde_json::to_value(force)?);
+
+        #[cfg(feature = "diagnostics")]
+        map.insert(
+            "diagnostic_endpoint".into(),
+            serde_json::to_value(diagnostic_endpoint)?,
+        );
 
         Ok(map)
     }
@@ -416,6 +455,13 @@ impl CommonSettings {
     /// If `nix-installer` should forcibly recreate files it finds existing
     pub fn force(&mut self, force: bool) -> &mut Self {
         self.force = force;
+        self
+    }
+
+    #[cfg(feature = "diagnostics")]
+    /// The URL or file path for an [`DiagnosticReport`][crate::diagnostics::DiagnosticReport] to be sent
+    pub fn diagnostic_endpoint(&mut self, diagnostic_endpoint: Option<Url>) -> &mut Self {
+        self.diagnostic_endpoint = diagnostic_endpoint;
         self
     }
 }
@@ -515,6 +561,7 @@ impl InitSettings {
 }
 
 /// An error originating from a [`Planner::settings`](crate::planner::Planner::settings)
+#[non_exhaustive]
 #[derive(thiserror::Error, Debug)]
 pub enum InstallSettingsError {
     /// `nix-installer` does not support the architecture right now

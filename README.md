@@ -12,17 +12,17 @@ curl --proto '=https' --tlsv1.2 -sSf -L https://install.determinate.systems/nix 
 
 The `nix-installer` tool is ready to use in a number of environments:
 
-| Platform                     | Multi User         | `root` only | Maturity                 |
-|------------------------------|:------------------:|:-----------:|:------------------------:|
-| Linux (x86_64 & aarch64)     | ✓ (via [systemd])  | ✓           | Stable                   |
-| MacOS (x86_64 & aarch64)     | ✓                  |             | Mostly Stable (See note) |
-| Valve Steam Deck (SteamOS)   | ✓                  |             | Stable                   |
-| WSL2 (x86_64 & aarch64)      | ✓ (via [systemd])  | ✓           | Stable                   |
-| Podman Linux Containers      | ✓ (via [systemd])  | ✓           | Stable                   |
-| Docker Containers            |                    | ✓           | Stable                   |
-| Linux (i686)                 | ✓ (via [systemd])  | ✓           | Unstable                 |
+| Platform                     | Multi User         | `root` only | Maturity          |
+|------------------------------|:------------------:|:-----------:|:-----------------:|
+| Linux (x86_64 & aarch64)     | ✓ (via [systemd])  | ✓           | Stable            |
+| MacOS (x86_64 & aarch64)     | ✓                  |             | Stable (See note) |
+| Valve Steam Deck (SteamOS)   | ✓                  |             | Stable            |
+| WSL2 (x86_64 & aarch64)      | ✓ (via [systemd])  | ✓           | Stable            |
+| Podman Linux Containers      | ✓ (via [systemd])  | ✓           | Stable            |
+| Docker Containers            |                    | ✓           | Stable            |
+| Linux (i686)                 | ✓ (via [systemd])  | ✓           | Unstable          |
 
-> **MacOS note:** `nix-installer` currently does not support uninstalling users or groups on Macs. See [#33](https://github.com/DeterminateSystems/nix-installer/issues/33) for details, to track the issue, or help out!
+> **MacOS note:** Removing users and/or groups may fail if there are no users who are logged in graphically.
 
 ## Installation Differences
 
@@ -293,4 +293,31 @@ nix build github:DeterminateSystems/nix-installer#nix-installer.doc
 firefox result-doc/nix-installer/index.html
 ```
 
+## Diagnostics
+
+The goal of the Determinate Nix Installer is to successfully and correctly install Nix.
+The `curl | sh` pipeline and the installer collects a little bit of diagnostic information to help us make that true.
+
+Here is a table of the [diagnostic data we collect][diagnosticdata]:
+
+| Field                 | Use                                                                                                   |
+| --------------------- | ----------------------------------------------------------------------------------------------------- |
+| `version`             | The version of the Determinate Nix Installer.                                                         |
+| `planner`             | The method of installing Nix (`linux`, `macos`, `steam-deck`)                                         |
+| `configured_settings` | The names of planner settings which were changed from their default. Does _not_ include the values.   |
+| `os_name`             | The running operating system.                                                                         |
+| `os_version`          | The version of the operating system.                                                                  |
+| `triple`              | The architecture/operating system/binary format of your system.                                       |
+| `is_ci`               | Whether the installer is being used in CI (e.g. GitHub Actions).                                      |
+| `action`              | Either `Install` or `Uninstall`.                                                                      |
+| `status`              | One of `Success`, `Failure`, `Pending`, or `Cancelled`.                                               |
+| `failure_variant`     | A high level description of what the failure was, if any. For example: `Command` if a command failed. |
+
+To disable diagnostic reporting, set the diagnostics URL to an empty string by passing `--diagnostic-endpoint=""` or setting `NIX_INSTALLER_DIAGNOSTIC_ENDPOINT=""`.
+
+You can read the full privacy policy for [Determinate Systems][detsys], the creators of the Determinate Nix Installer, [here][privacy].
+
+[detsys]: https://determinate.systems/
+[diagnosticdata]: https://github.com/DeterminateSystems/nix-installer/blob/f9f927840d532b71f41670382a30cfcbea2d8a35/src/diagnostics.rs#L29-L43
+[privacy]: https://determinate.systems/privacy
 [systemd]: https://systemd.io

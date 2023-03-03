@@ -35,6 +35,8 @@ impl PlaceNixConfiguration {
             auto-optimise-store = true\n\
             \n\
             bash-prompt-prefix = (nix:$name)\\040\n\
+            \n\
+            extra-nix-path = nixpkgs=flake:nixpkgs\n\
         ",
             extra_conf = extra_conf.join("\n"),
             version = env!("CARGO_PKG_VERSION"),

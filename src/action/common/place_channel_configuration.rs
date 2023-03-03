@@ -32,7 +32,7 @@ impl PlaceChannelConfiguration {
                 .join(".nix-channels"),
             None,
             None,
-            0o100644,
+            0o0644,
             buf,
             force,
         )
@@ -107,6 +107,7 @@ impl Action for PlaceChannelConfiguration {
     }
 }
 
+#[non_exhaustive]
 #[derive(Debug, thiserror::Error)]
 pub enum PlaceChannelConfigurationError {
     #[error("No root home found to place channel configuration in")]

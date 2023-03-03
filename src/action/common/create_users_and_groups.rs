@@ -1,6 +1,6 @@
 use crate::{
     action::{
-        base::{CreateGroup, CreateUser},
+        base::{AddUserToGroup, CreateGroup, CreateUser},
         Action, ActionDescription, ActionError, StatefulAction,
     },
     settings::CommonSettings,
@@ -17,6 +17,7 @@ pub struct CreateUsersAndGroups {
     nix_build_user_id_base: u32,
     create_group: StatefulAction<CreateGroup>,
     create_users: Vec<StatefulAction<CreateUser>>,
+    add_users_to_groups: Vec<StatefulAction<AddUserToGroup>>,
 }
 
 impl CreateUsersAndGroups {
@@ -26,16 +27,28 @@ impl CreateUsersAndGroups {
             settings.nix_build_group_name.clone(),
             settings.nix_build_group_id,
         )?;
-        let create_users = (0..settings.nix_build_user_count)
-            .map(|count| {
+        let mut create_users = Vec::with_capacity(settings.nix_build_user_count as usize);
+        let mut add_users_to_groups = Vec::with_capacity(settings.nix_build_user_count as usize);
+        for index in 0..settings.nix_build_user_count {
+            create_users.push(
                 CreateUser::plan(
-                    format!("{}{count}", settings.nix_build_user_prefix),
-                    settings.nix_build_user_id_base + count,
+                    format!("{}{index}", settings.nix_build_user_prefix),
+                    settings.nix_build_user_id_base + index,
                     settings.nix_build_group_name.clone(),
                     settings.nix_build_group_id,
                 )
-            })
-            .collect::<Result<_, _>>()?;
+                .await?,
+            );
+            add_users_to_groups.push(
+                AddUserToGroup::plan(
+                    format!("{}{index}", settings.nix_build_user_prefix),
+                    settings.nix_build_user_id_base + index,
+                    settings.nix_build_group_name.clone(),
+                    settings.nix_build_group_id,
+                )
+                .await?,
+            );
+        }
         Ok(Self {
             nix_build_user_count: settings.nix_build_user_count,
             nix_build_group_name: settings.nix_build_group_name,
@@ -44,6 +57,7 @@ impl CreateUsersAndGroups {
             nix_build_user_id_base: settings.nix_build_user_id_base,
             create_group,
             create_users,
+            add_users_to_groups,
         }
         .into())
     }
@@ -82,12 +96,20 @@ impl Action for CreateUsersAndGroups {
             nix_build_user_id_base: _,
             create_group,
             create_users,
+            add_users_to_groups,
         } = &self;
 
         let mut create_users_descriptions = Vec::new();
         for create_user in create_users {
             if let Some(val) = create_user.describe_execute().iter().next() {
                 create_users_descriptions.push(val.description.clone())
+            }
+        }
+
+        let mut add_user_to_group_descriptions = Vec::new();
+        for add_user_to_group in add_users_to_groups {
+            if let Some(val) = add_user_to_group.describe_execute().iter().next() {
+                add_user_to_group_descriptions.push(val.description.clone())
             }
         }
 
@@ -98,6 +120,7 @@ impl Action for CreateUsersAndGroups {
             explanation.push(val.description.clone())
         }
         explanation.append(&mut create_users_descriptions);
+        explanation.append(&mut add_user_to_group_descriptions);
 
         vec![ActionDescription::new(self.tracing_synopsis(), explanation)]
     }
@@ -107,6 +130,7 @@ impl Action for CreateUsersAndGroups {
         let Self {
             create_users,
             create_group,
+            add_users_to_groups,
             nix_build_user_count: _,
             nix_build_group_name: _,
             nix_build_group_id: _,
@@ -169,6 +193,10 @@ impl Action for CreateUsersAndGroups {
             },
         };
 
+        for add_user_to_group in add_users_to_groups.iter_mut() {
+            add_user_to_group.try_execute().await?;
+        }
+
         Ok(())
     }
 
@@ -181,11 +209,19 @@ impl Action for CreateUsersAndGroups {
             nix_build_user_id_base: _,
             create_group,
             create_users,
+            add_users_to_groups,
         } = &self;
         let mut create_users_descriptions = Vec::new();
         for create_user in create_users {
             if let Some(val) = create_user.describe_revert().iter().next() {
                 create_users_descriptions.push(val.description.clone())
+            }
+        }
+
+        let mut add_user_to_group_descriptions = Vec::new();
+        for add_user_to_group in add_users_to_groups {
+            if let Some(val) = add_user_to_group.describe_revert().iter().next() {
+                add_user_to_group_descriptions.push(val.description.clone())
             }
         }
 
@@ -196,6 +232,7 @@ impl Action for CreateUsersAndGroups {
             explanation.push(val.description.clone())
         }
         explanation.append(&mut create_users_descriptions);
+        explanation.append(&mut add_user_to_group_descriptions);
 
         vec![ActionDescription::new(
             format!("Remove Nix users and group"),
@@ -208,6 +245,7 @@ impl Action for CreateUsersAndGroups {
         let Self {
             create_users,
             create_group,
+            add_users_to_groups: _,
             nix_build_user_count: _,
             nix_build_group_name: _,
             nix_build_group_id: _,
@@ -242,6 +280,11 @@ impl Action for CreateUsersAndGroups {
                 return Err(ActionError::Children(errors));
             }
         }
+
+        // We don't actually need to do this, when a user is deleted they are removed from groups
+        // for add_user_to_group in add_users_to_groups.iter_mut() {
+        //     add_user_to_group.try_revert().await?;
+        // }
 
         // Create group
         create_group.try_revert().await?;

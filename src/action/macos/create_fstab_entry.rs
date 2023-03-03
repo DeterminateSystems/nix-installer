@@ -298,6 +298,7 @@ fn fstab_entry(uuid: &Uuid) -> String {
     format!("UUID={uuid} /nix apfs rw,noauto,nobrowse,suid,owners")
 }
 
+#[non_exhaustive]
 #[derive(thiserror::Error, Debug)]
 pub enum CreateFstabEntryError {
     #[error("The `/etc/fstab` entry (previously created by a `nix-installer` install) detected during planning disappeared between planning and executing. Cannot update `/etc/fstab` as planned")]

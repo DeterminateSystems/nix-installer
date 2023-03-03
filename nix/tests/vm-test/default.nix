@@ -236,6 +236,9 @@ let
         echo "Testing Nix installation..."
         $ssh "set -eux; $checkScript"
 
+        echo "Testing Nix installation..."
+        $ssh "set -eux; /nix/nix-installer uninstall --no-confirm"
+
         echo "Done!"
         touch $out
       '';
