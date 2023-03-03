@@ -121,8 +121,7 @@ impl Action for ConfigureInitService {
                         .arg(DARWIN_NIX_DAEMON_DEST)
                         .stdin(std::process::Stdio::null()),
                 )
-                .await
-                .map_err(ActionError::Command)?;
+                .await?;
 
                 if *start_daemon {
                     execute_command(
@@ -133,8 +132,7 @@ impl Action for ConfigureInitService {
                             .arg("system/org.nixos.nix-daemon")
                             .stdin(std::process::Stdio::null()),
                     )
-                    .await
-                    .map_err(ActionError::Command)?;
+                    .await?;
                 }
             },
             #[cfg(target_os = "linux")]
@@ -242,8 +240,7 @@ impl Action for ConfigureInitService {
                         .arg("unload")
                         .arg(DARWIN_NIX_DAEMON_DEST),
                 )
-                .await
-                .map_err(ActionError::Command)?;
+                .await?;
             },
             #[cfg(target_os = "linux")]
             InitSystem::Systemd => {
