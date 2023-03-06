@@ -933,6 +933,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "nix-config-parser"
+version = "0.1.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "cfd0a73a9c5f1f960f435be5ade7dd728d5039e6e92dbd5764f8c3d701491fc1"
+dependencies = [
+ "serde",
+ "thiserror",
+]
+
+[[package]]
 name = "nix-installer"
 version = "0.4.0"
 dependencies = [
@@ -947,6 +957,7 @@ dependencies = [
  "glob",
  "is_ci",
  "nix",
+ "nix-config-parser",
  "os-release",
  "owo-colors",
  "plist",
