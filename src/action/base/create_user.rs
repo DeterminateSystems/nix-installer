@@ -51,6 +51,9 @@ impl CreateUser {
                     gid,
                 ));
             }
+
+            tracing::debug!("Creating user `{}` already complete", this.name);
+            return Ok(StatefulAction::completed(this));
         }
 
         Ok(StatefulAction::uncompleted(this))
