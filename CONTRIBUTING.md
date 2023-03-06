@@ -352,12 +352,6 @@ wsl --unregister nix-installer-test-ubuntu-jammy
 You can also remove your `$HOME/nix-installer-wsl-tests-temp` folder whenever you wish.
 
 
-## Testing the `action.yml`
-
-The `action.yml` is used directly in the CI process, so it is automatically tested for most changes.
-
-If you are working on the `action.yml` There is an integration test for `action.yml` at https://github.com/DeterminateSystems/nix-installer-example. You can create PRs there to prompt rebuilds, please refer to what you might be working on in the PR description so readers can easily find your work. (The commits don't have to be meaningful, `git commit --allow-empty -m "prod at ci"` is perfectly reasonable.)
-
 # Releases
 
 To cut a release:
@@ -367,7 +361,7 @@ To cut a release:
   + `cargo update` (and commit)
   + `cargo outdated`
 * Create a release branch from `main` (`git checkout -b release-v0.0.1`)
-* Remove the `-unreleased` from the `version` field in `Cargo.toml` and `flake.nix`
+* Remove the `-unreleased` from the `version` field in `Cargo.toml`, `flake.nix`, and the fixture JSON files
 * Ensure the VM / container tests still pass with the following:
   + `nix flake check -L`
   + `nix build .#hydraJobs.container-test.all.x86_64-linux.all -L`
