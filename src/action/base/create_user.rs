@@ -2,7 +2,7 @@ use nix::unistd::User;
 use tokio::process::Command;
 use tracing::{span, Span};
 
-use crate::action::ActionError;
+use crate::action::{ActionError, ActionTag};
 use crate::execute_command;
 
 use crate::action::{Action, ActionDescription, StatefulAction};
@@ -60,6 +60,9 @@ impl CreateUser {
 #[async_trait::async_trait]
 #[typetag::serde(name = "create_user")]
 impl Action for CreateUser {
+    fn action_tag() -> ActionTag {
+        ActionTag("create_user")
+    }
     fn tracing_synopsis(&self) -> String {
         format!(
             "Create user `{}` (UID {}) in group `{}` (GID {})",
@@ -110,8 +113,7 @@ impl Action for CreateUser {
                         .args([".", "-create", &format!("/Users/{name}")])
                         .stdin(std::process::Stdio::null()),
                 )
-                .await
-                .map_err(|e| ActionError::Command(e))?;
+                .await?;
                 execute_command(
                     Command::new("/usr/bin/dscl")
                         .process_group(0)
@@ -124,8 +126,7 @@ impl Action for CreateUser {
                         ])
                         .stdin(std::process::Stdio::null()),
                 )
-                .await
-                .map_err(|e| ActionError::Command(e))?;
+                .await?;
                 execute_command(
                     Command::new("/usr/bin/dscl")
                         .process_group(0)
@@ -138,8 +139,7 @@ impl Action for CreateUser {
                         ])
                         .stdin(std::process::Stdio::null()),
                 )
-                .await
-                .map_err(|e| ActionError::Command(e))?;
+                .await?;
                 execute_command(
                     Command::new("/usr/bin/dscl")
                         .process_group(0)
@@ -152,8 +152,7 @@ impl Action for CreateUser {
                         ])
                         .stdin(std::process::Stdio::null()),
                 )
-                .await
-                .map_err(|e| ActionError::Command(e))?;
+                .await?;
                 execute_command(
                     Command::new("/usr/bin/dscl")
                         .process_group(0)
@@ -166,16 +165,14 @@ impl Action for CreateUser {
                         ])
                         .stdin(std::process::Stdio::null()),
                 )
-                .await
-                .map_err(|e| ActionError::Command(e))?;
+                .await?;
                 execute_command(
                     Command::new("/usr/bin/dscl")
                         .process_group(0)
                         .args([".", "-create", &format!("/Users/{name}"), "IsHidden", "1"])
                         .stdin(std::process::Stdio::null()),
                 )
-                .await
-                .map_err(|e| ActionError::Command(e))?;
+                .await?;
             },
             _ => {
                 execute_command(
@@ -202,8 +199,7 @@ impl Action for CreateUser {
                         ])
                         .stdin(std::process::Stdio::null()),
                 )
-                .await
-                .map_err(|e| ActionError::Command(e))?;
+                .await?;
             },
         }
 
@@ -251,7 +247,7 @@ impl Action for CreateUser {
                 let output = command
                     .output()
                     .await
-                    .map_err(|e| ActionError::Command(e))?;
+                    .map_err(|e| ActionError::command(&command, e))?;
                 let stderr = String::from_utf8_lossy(&output.stderr);
                 match output.status.code() {
                     Some(0) => (),
@@ -260,21 +256,9 @@ impl Action for CreateUser {
                         // These Macs cannot always delete users, as sometimes there is no graphical login
                         tracing::warn!("Encountered an exit code 40 with -14120 error while removing user, this is likely because the initial executing user did not have a secure token, or that there was no graphical login session. To delete the user, log in graphically, then run `/usr/bin/dscl . -delete /Users/{name}");
                     },
-                    status => {
-                        let command_str = format!("{:?}", command.as_std());
+                    _ => {
                         // Something went wrong
-                        return Err(ActionError::Command(std::io::Error::new(
-                            std::io::ErrorKind::Other,
-                            format!(
-                                "Command `{command_str}` failed{}, stderr:\n{}\n",
-                                if let Some(status) = status {
-                                    format!(" {status}")
-                                } else {
-                                    "".to_string()
-                                },
-                                stderr
-                            ),
-                        )));
+                        return Err(ActionError::command_output(&command, output));
                     },
                 }
             },
@@ -285,8 +269,7 @@ impl Action for CreateUser {
                         .args([&name.to_string()])
                         .stdin(std::process::Stdio::null()),
                 )
-                .await
-                .map_err(|e| ActionError::Command(e))?;
+                .await?;
             },
         };
 

@@ -124,12 +124,12 @@ impl CommandExecute for Uninstall {
         let (_tx, rx) = signal_channel().await?;
 
         let res = plan.uninstall(rx).await;
-        if let Err(e) = res {
-            if let Some(expected) = e.expected() {
+        if let Err(err) = res {
+            if let Some(expected) = err.expected() {
                 println!("{}", expected.red());
                 return Ok(ExitCode::FAILURE);
             }
-            return Err(e.into());
+            return Err(err)?;
         }
 
         // TODO(@hoverbear): It would be so nice to catch errors and offer the user a way to keep going...

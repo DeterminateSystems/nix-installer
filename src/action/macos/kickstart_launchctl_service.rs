@@ -3,7 +3,7 @@ use std::process::Output;
 use tokio::process::Command;
 use tracing::{span, Span};
 
-use crate::action::{ActionError, StatefulAction};
+use crate::action::{ActionError, ActionTag, StatefulAction};
 use crate::execute_command;
 
 use crate::action::{Action, ActionDescription};
@@ -23,17 +23,18 @@ impl KickstartLaunchctlService {
 
         let mut service_exists = false;
         let mut service_started = false;
-        let output = Command::new("launchctl")
-            .process_group(0)
-            .arg("print")
-            .arg(&service)
-            .arg("-plist")
-            .stdin(std::process::Stdio::null())
-            .stdout(std::process::Stdio::piped())
-            .stderr(std::process::Stdio::piped())
+        let mut command = Command::new("launchctl");
+        command.process_group(0);
+        command.arg("print");
+        command.arg(&service);
+        command.arg("-plist");
+        command.stdin(std::process::Stdio::null());
+        command.stdout(std::process::Stdio::piped());
+        command.stderr(std::process::Stdio::piped());
+        let output = command
             .output()
             .await
-            .map_err(|e| ActionError::Command(e))?;
+            .map_err(|e| ActionError::command(&command, e))?;
         if output.status.success() {
             service_exists = true;
 
@@ -66,6 +67,9 @@ impl KickstartLaunchctlService {
 #[async_trait::async_trait]
 #[typetag::serde(name = "kickstart_launchctl_service")]
 impl Action for KickstartLaunchctlService {
+    fn action_tag() -> ActionTag {
+        ActionTag("kickstart_launchctl_service")
+    }
     fn tracing_synopsis(&self) -> String {
         format!("Run `launchctl kickstart {}`", self.service)
     }
@@ -93,8 +97,7 @@ impl Action for KickstartLaunchctlService {
                 .arg(service)
                 .stdin(std::process::Stdio::null()),
         )
-        .await
-        .map_err(|e| ActionError::Command(e))?;
+        .await?;
 
         Ok(())
     }
@@ -120,7 +123,7 @@ impl Action for KickstartLaunchctlService {
         let output = command
             .output()
             .await
-            .map_err(|e| ActionError::Command(e))?;
+            .map_err(|e| ActionError::command(&command, e))?;
         // On our test Macs, a status code of `3` was reported if the service was stopped while not running.
         match output.status.code() {
             Some(3) | Some(0) | None => (),

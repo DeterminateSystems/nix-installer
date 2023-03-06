@@ -1,7 +1,7 @@
 use crate::{
     action::{
         macos::NIX_VOLUME_MOUNTD_DEST, Action, ActionDescription, ActionError, ActionState,
-        StatefulAction,
+        ActionTag, StatefulAction,
     },
     execute_command,
     os::darwin::DiskUtilApfsListOutput,
@@ -35,22 +35,23 @@ impl EncryptApfsVolume {
         let name = name.as_ref().to_owned();
         let disk = disk.as_ref().to_path_buf();
 
-        if Command::new("/usr/bin/security")
-            .args(["find-generic-password", "-a"])
-            .arg(&name)
-            .arg("-s")
-            .arg("Nix Store")
-            .arg("-l")
-            .arg(&format!("{} encryption password", disk.display()))
-            .arg("-D")
-            .arg("Encrypted volume password")
-            .process_group(0)
-            .stdin(Stdio::null())
-            .stdout(Stdio::null())
-            .stderr(Stdio::null())
+        let mut command = Command::new("/usr/bin/security");
+        command.args(["find-generic-password", "-a"]);
+        command.arg(&name);
+        command.arg("-s");
+        command.arg("Nix Store");
+        command.arg("-l");
+        command.arg(&format!("{} encryption password", disk.display()));
+        command.arg("-D");
+        command.arg("Encrypted volume password");
+        command.process_group(0);
+        command.stdin(Stdio::null());
+        command.stdout(Stdio::null());
+        command.stderr(Stdio::null());
+        if command
             .status()
             .await
-            .map_err(ActionError::Command)?
+            .map_err(|e| ActionError::command(&command, e))?
             .success()
         {
             // The user has a password matching what we would create.
@@ -75,8 +76,7 @@ impl EncryptApfsVolume {
         // Ensure if the disk already exists, that it's encrypted
         let output =
             execute_command(Command::new("/usr/sbin/diskutil").args(["apfs", "list", "-plist"]))
-                .await
-                .map_err(ActionError::Command)?;
+                .await?;
 
         let parsed: DiskUtilApfsListOutput = plist::from_bytes(&output.stdout)?;
         for container in parsed.containers {
@@ -103,6 +103,9 @@ impl EncryptApfsVolume {
 #[async_trait::async_trait]
 #[typetag::serde(name = "encrypt_volume")]
 impl Action for EncryptApfsVolume {
+    fn action_tag() -> ActionTag {
+        ActionTag("encrypt_apfs_volume")
+    }
     fn tracing_synopsis(&self) -> String {
         format!(
             "Encrypt volume `{}` on disk `{}`",
@@ -147,9 +150,7 @@ impl Action for EncryptApfsVolume {
 
         let disk_str = disk.to_str().expect("Could not turn disk into string"); /* Should not reasonably ever fail */
 
-        execute_command(Command::new("/usr/sbin/diskutil").arg("mount").arg(&name))
-            .await
-            .map_err(ActionError::Command)?;
+        execute_command(Command::new("/usr/sbin/diskutil").arg("mount").arg(&name)).await?;
 
         // Add the password to the user keychain so they can unlock it later.
         execute_command(
@@ -179,8 +180,7 @@ impl Action for EncryptApfsVolume {
                 "/Library/Keychains/System.keychain",
             ]),
         )
-        .await
-        .map_err(ActionError::Command)?;
+        .await?;
 
         // Encrypt the mounted volume
         execute_command(Command::new("/usr/sbin/diskutil").process_group(0).args([
@@ -192,8 +192,7 @@ impl Action for EncryptApfsVolume {
             "-passphrase",
             password.as_str(),
         ]))
-        .await
-        .map_err(ActionError::Command)?;
+        .await?;
 
         execute_command(
             Command::new("/usr/sbin/diskutil")
@@ -202,8 +201,7 @@ impl Action for EncryptApfsVolume {
                 .arg("force")
                 .arg(&name),
         )
-        .await
-        .map_err(ActionError::Command)?;
+        .await?;
 
         Ok(())
     }
@@ -245,8 +243,7 @@ impl Action for EncryptApfsVolume {
                 .as_str(),
             ]),
         )
-        .await
-        .map_err(ActionError::Command)?;
+        .await?;
 
         Ok(())
     }

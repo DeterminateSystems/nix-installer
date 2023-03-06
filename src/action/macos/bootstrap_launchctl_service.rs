@@ -3,7 +3,7 @@ use std::path::{Path, PathBuf};
 use tokio::process::Command;
 use tracing::{span, Span};
 
-use crate::action::{ActionError, StatefulAction};
+use crate::action::{ActionError, ActionTag, StatefulAction};
 use crate::execute_command;
 
 use crate::action::{Action, ActionDescription};
@@ -29,17 +29,18 @@ impl BootstrapLaunchctlService {
         let service = service.as_ref().to_string();
         let path = path.as_ref().to_path_buf();
 
-        let output = Command::new("launchctl")
-            .process_group(0)
-            .arg("print")
-            .arg(format!("{domain}/{service}"))
-            .arg("-plist")
-            .stdin(std::process::Stdio::null())
-            .stdout(std::process::Stdio::piped())
-            .stderr(std::process::Stdio::piped())
+        let mut command = Command::new("launchctl");
+        command.process_group(0);
+        command.arg("print");
+        command.arg(format!("{domain}/{service}"));
+        command.arg("-plist");
+        command.stdin(std::process::Stdio::null());
+        command.stdout(std::process::Stdio::piped());
+        command.stderr(std::process::Stdio::piped());
+        let output = command
             .output()
             .await
-            .map_err(|e| ActionError::Command(e))?;
+            .map_err(|e| ActionError::command(&command, e))?;
         if output.status.success() || output.status.code() == Some(37) {
             // We presume that success means it's found
             return Ok(StatefulAction::completed(Self {
@@ -60,6 +61,9 @@ impl BootstrapLaunchctlService {
 #[async_trait::async_trait]
 #[typetag::serde(name = "bootstrap_launchctl_service")]
 impl Action for BootstrapLaunchctlService {
+    fn action_tag() -> ActionTag {
+        ActionTag("bootstrap_launchctl_service")
+    }
     fn tracing_synopsis(&self) -> String {
         format!(
             "Bootstrap the `{}` service via `launchctl bootstrap {} {}`",
@@ -98,8 +102,7 @@ impl Action for BootstrapLaunchctlService {
                 .arg(path)
                 .stdin(std::process::Stdio::null()),
         )
-        .await
-        .map_err(|e| ActionError::Command(e))?;
+        .await?;
 
         Ok(())
     }
@@ -131,8 +134,7 @@ impl Action for BootstrapLaunchctlService {
                 .arg(path)
                 .stdin(std::process::Stdio::null()),
         )
-        .await
-        .map_err(|e| ActionError::Command(e))?;
+        .await?;
 
         Ok(())
     }
