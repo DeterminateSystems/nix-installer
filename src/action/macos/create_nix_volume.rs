@@ -125,7 +125,7 @@ impl CreateNixVolume {
         .await
         .map_err(|e| ActionError::Child(BootstrapLaunchctlService::action_tag(), Box::new(e)))?;
         let kickstart_launchctl_service =
-            KickstartLaunchctlService::plan("system/org.nixos.darwin-store")
+            KickstartLaunchctlService::plan("system", "org.nixos.darwin-store")
                 .await
                 .map_err(|e| {
                     ActionError::Child(KickstartLaunchctlService::action_tag(), Box::new(e))

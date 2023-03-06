@@ -13,12 +13,17 @@ Bootstrap and kickstart an APFS volume
 */
 #[derive(Debug, serde::Deserialize, serde::Serialize, Clone)]
 pub struct KickstartLaunchctlService {
+    domain: String,
     service: String,
 }
 
 impl KickstartLaunchctlService {
     #[tracing::instrument(level = "debug", skip_all)]
-    pub async fn plan(service: impl AsRef<str>) -> Result<StatefulAction<Self>, ActionError> {
+    pub async fn plan(
+        domain: impl AsRef<str>,
+        service: impl AsRef<str>,
+    ) -> Result<StatefulAction<Self>, ActionError> {
+        let domain = domain.as_ref().to_string();
         let service = service.as_ref().to_string();
 
         let mut service_exists = false;
@@ -56,11 +61,11 @@ impl KickstartLaunchctlService {
         }
 
         if service_exists && service_started {
-            return Ok(StatefulAction::completed(Self { service }));
+            return Ok(StatefulAction::completed(Self { domain, service }));
         }
 
         // It's safe to assume the user does not have the service started
-        Ok(StatefulAction::uncompleted(Self { service }))
+        Ok(StatefulAction::uncompleted(Self { domain, service }))
     }
 }
 
@@ -88,13 +93,13 @@ impl Action for KickstartLaunchctlService {
 
     #[tracing::instrument(level = "debug", skip_all)]
     async fn execute(&mut self) -> Result<(), ActionError> {
-        let Self { service } = self;
+        let Self { domain, service } = self;
 
         execute_command(
             Command::new("launchctl")
                 .process_group(0)
                 .args(["kickstart", "-k"])
-                .arg(service)
+                .arg(format!("{domain}/{service}"))
                 .stdin(std::process::Stdio::null()),
         )
         .await?;
@@ -111,13 +116,13 @@ impl Action for KickstartLaunchctlService {
 
     #[tracing::instrument(level = "debug", skip_all)]
     async fn revert(&mut self) -> Result<(), ActionError> {
-        let Self { service } = self;
+        let Self { domain, service } = self;
 
         // MacOs doesn't offer an "ensure-stopped" like they do with Kickstart
         let mut command = Command::new("launchctl");
         command.process_group(0);
         command.arg("stop");
-        command.arg(service);
+        command.arg(format!("{domain}/{service}"));
         command.stdin(std::process::Stdio::null());
         let command_str = format!("{:?}", command.as_std());
         let output = command
