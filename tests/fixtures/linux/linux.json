@@ -868,16 +868,13 @@
             "create_or_merge_nix_config": {
               "action": {
                 "path": "/etc/nix/nix.conf",
-                "nix_configs": {
-                  "merged_nix_config": {
-                    "settings": {
-                      "bash-prompt-prefix": "(nix:$name)\\040",
-                      "build-users-group": "nixbld",
-                      "auto-optimise-store": "true",
-                      "experimental-features": "nix-command flakes"
-                    }
-                  },
-                  "existing_nix_config": null
+                "pending_nix_config": {
+                  "settings": {
+                    "bash-prompt-prefix": "(nix:$name)\\040",
+                    "build-users-group": "nixbld",
+                    "auto-optimise-store": "true",
+                    "experimental-features": "nix-command flakes"
+                  }
                 }
               },
               "state": "Uncompleted"

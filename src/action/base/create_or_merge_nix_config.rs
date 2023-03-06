@@ -31,21 +31,13 @@ pub enum CreateOrMergeNixConfigError {
         .collect::<Vec<_>>()
         .join(", "))]
     UnmergeableConfig(Vec<String>, std::path::PathBuf),
-    #[error("{0} was modified before it could be merged")]
-    ModifiedConfig(std::path::PathBuf),
 }
 
 /// Create or merge an existing `nix.conf` at the specified path.
 #[derive(Debug, serde::Deserialize, serde::Serialize, Clone)]
 pub struct CreateOrMergeNixConfig {
     pub(crate) path: PathBuf,
-    nix_configs: NixConfigs,
-}
-
-#[derive(Debug, serde::Deserialize, serde::Serialize, Clone)]
-struct NixConfigs {
-    existing_nix_config: Option<NixConfig>,
-    merged_nix_config: NixConfig,
+    pending_nix_config: NixConfig,
 }
 
 impl CreateOrMergeNixConfig {
@@ -56,114 +48,121 @@ impl CreateOrMergeNixConfig {
     ) -> Result<StatefulAction<Self>, ActionError> {
         let path = path.as_ref().to_path_buf();
 
-        let nix_configs = NixConfigs {
-            existing_nix_config: None,
-            merged_nix_config: NixConfig::new(),
+        let this = Self {
+            path,
+            pending_nix_config,
         };
 
-        let mut this = Self { path, nix_configs };
-
         if this.path.exists() {
-            let metadata = this
-                .path
-                .metadata()
-                .map_err(|e| ActionError::GettingMetadata(this.path.clone(), e))?;
-
-            if !metadata.is_file() {
-                return Err(ActionError::PathWasNotFile(this.path));
-            }
-
-            // Does the file have the right permissions?
-            let discovered_mode = metadata.permissions().mode();
-            // We only care about user-group-other permissions
-            let discovered_mode = discovered_mode & 0o777;
-
-            if discovered_mode != NIX_CONF_MODE {
-                return Err(ActionError::PathModeMismatch(
-                    this.path,
-                    discovered_mode,
-                    NIX_CONF_MODE,
-                ));
-            }
-
-            let existing_nix_config = NixConfig::parse_file(&this.path)
-                .map_err(CreateOrMergeNixConfigError::ParseNixConfig)
-                .map_err(|e| ActionError::Custom(Box::new(e)))?;
-            this.nix_configs.existing_nix_config = Some(existing_nix_config.clone());
-            let mut merged_nix_config = NixConfig::new();
-            let mut unmergeable_config_names = Vec::new();
-
-            for (pending_conf_name, pending_conf_value) in pending_nix_config.settings() {
-                if let Some(existing_conf_value) =
-                    existing_nix_config.settings().get(pending_conf_name)
-                {
-                    let pending_conf_value = pending_conf_value.split(' ').collect::<Vec<_>>();
-                    let existing_conf_value = existing_conf_value.split(' ').collect::<Vec<_>>();
-
-                    if pending_conf_value
-                        .iter()
-                        .all(|e| existing_conf_value.contains(e))
-                    {
-                        // If _all_ the values we want are present in the existing config,
-                        // merged_nix_config will be empty and this will be marked as completed. We
-                        // don't return early here because there may be more config options to
-                        // check.
-                    } else if MERGEABLE_CONF_NAMES.contains(&pending_conf_name.as_str()) {
-                        let mut merged_conf_value = Vec::with_capacity(
-                            pending_conf_value.len() + existing_conf_value.len(),
-                        );
-                        merged_conf_value.extend(pending_conf_value);
-                        merged_conf_value.extend(existing_conf_value);
-                        merged_conf_value.dedup();
-                        let merged_conf_value = merged_conf_value.join(" ");
-                        let merged_conf_value = merged_conf_value.trim();
-
-                        merged_nix_config
-                            .settings_mut()
-                            .insert(pending_conf_name.to_owned(), merged_conf_value.to_owned());
-                    } else {
-                        unmergeable_config_names.push(pending_conf_name.to_owned());
-                    }
-                } else {
-                    merged_nix_config
-                        .settings_mut()
-                        .insert(pending_conf_name.to_owned(), pending_conf_value.to_owned());
-                }
-            }
-
-            if !unmergeable_config_names.is_empty() {
-                return Err(ActionError::Custom(Box::new(
-                    CreateOrMergeNixConfigError::UnmergeableConfig(
-                        unmergeable_config_names,
-                        this.path,
-                    ),
-                )));
-            }
+            let (merged_nix_config, _) =
+                Self::validate_existing_nix_config(&this.pending_nix_config, &this.path)?;
 
             if !merged_nix_config.settings().is_empty() {
-                this.nix_configs.merged_nix_config = merged_nix_config;
                 return Ok(StatefulAction::uncompleted(this));
-            }
-
-            tracing::debug!(
-                "Setting Nix configurations in `{}` already complete",
-                this.path.display()
-            );
-            return Ok(StatefulAction::completed(this));
-        } else {
-            let mut merged_nix_config = NixConfig::new();
-            for (pending_conf_name, pending_conf_value) in pending_nix_config.settings() {
-                merged_nix_config
-                    .settings_mut()
-                    .insert(pending_conf_name.to_owned(), pending_conf_value.to_owned());
-            }
-
-            if !merged_nix_config.settings().is_empty() {
-                this.nix_configs.merged_nix_config = merged_nix_config;
+            } else {
+                tracing::debug!(
+                    "Setting Nix configurations in `{}` already complete",
+                    this.path.display()
+                );
+                return Ok(StatefulAction::completed(this));
             }
         }
 
         Ok(StatefulAction::uncompleted(this))
+    }
+
+    fn merge_pending_and_existing_nix_config(
+        pending_nix_config: &NixConfig,
+        existing_nix_config: &NixConfig,
+        path: &Path,
+    ) -> Result<(NixConfig, NixConfig), CreateOrMergeNixConfigError> {
+        let mut merged_nix_config = NixConfig::new();
+        let mut unmergeable_config_names = Vec::new();
+
+        for (pending_conf_name, pending_conf_value) in pending_nix_config.settings() {
+            if let Some(existing_conf_value) = existing_nix_config.settings().get(pending_conf_name)
+            {
+                let pending_conf_value = pending_conf_value.split(' ').collect::<Vec<_>>();
+                let existing_conf_value = existing_conf_value.split(' ').collect::<Vec<_>>();
+
+                if pending_conf_value
+                    .iter()
+                    .all(|e| existing_conf_value.contains(e))
+                {
+                    // If _all_ the values we want are present in the existing config,
+                    // merged_nix_config will be empty and this will be marked as completed. We
+                    // don't return early here because there may be more config options to
+                    // check.
+                } else if MERGEABLE_CONF_NAMES.contains(&pending_conf_name.as_str()) {
+                    let mut merged_conf_value =
+                        Vec::with_capacity(pending_conf_value.len() + existing_conf_value.len());
+                    merged_conf_value.extend(pending_conf_value);
+                    merged_conf_value.extend(existing_conf_value);
+                    merged_conf_value.dedup();
+                    let merged_conf_value = merged_conf_value.join(" ");
+                    let merged_conf_value = merged_conf_value.trim();
+
+                    merged_nix_config
+                        .settings_mut()
+                        .insert(pending_conf_name.to_owned(), merged_conf_value.to_owned());
+                } else {
+                    unmergeable_config_names.push(pending_conf_name.to_owned());
+                }
+            } else {
+                merged_nix_config
+                    .settings_mut()
+                    .insert(pending_conf_name.to_owned(), pending_conf_value.to_owned());
+            }
+        }
+
+        if !unmergeable_config_names.is_empty() {
+            return Err(CreateOrMergeNixConfigError::UnmergeableConfig(
+                unmergeable_config_names,
+                path.to_path_buf(),
+            ));
+        }
+
+        Ok((merged_nix_config, existing_nix_config.clone()))
+    }
+
+    fn validate_existing_nix_config(
+        pending_nix_config: &NixConfig,
+        path: &Path,
+    ) -> Result<(NixConfig, NixConfig), ActionError> {
+        let path = path.to_path_buf();
+        let metadata = path
+            .metadata()
+            .map_err(|e| ActionError::GettingMetadata(path.clone(), e))?;
+
+        if !metadata.is_file() {
+            return Err(ActionError::PathWasNotFile(path));
+        }
+
+        // Does the file have the right permissions?
+        let discovered_mode = metadata.permissions().mode();
+        // We only care about user-group-other permissions
+        let discovered_mode = discovered_mode & 0o777;
+
+        if discovered_mode != NIX_CONF_MODE {
+            return Err(ActionError::PathModeMismatch(
+                path,
+                discovered_mode,
+                NIX_CONF_MODE,
+            ));
+        }
+
+        let existing_nix_config = NixConfig::parse_file(&path)
+            .map_err(CreateOrMergeNixConfigError::ParseNixConfig)
+            .map_err(|e| ActionError::Custom(Box::new(e)))?;
+
+        let (merged_nix_config, existing_nix_config) = Self::merge_pending_and_existing_nix_config(
+            &pending_nix_config,
+            &existing_nix_config,
+            &path,
+        )
+        .map_err(|e| ActionError::Custom(Box::new(e)))?;
+
+        Ok((merged_nix_config, existing_nix_config))
     }
 }
 
@@ -175,12 +174,7 @@ impl Action for CreateOrMergeNixConfig {
     }
     fn tracing_synopsis(&self) -> String {
         format!(
-            "{verb} nix.conf file `{path}`",
-            verb = if self.nix_configs.existing_nix_config.is_some() {
-                "Merge"
-            } else {
-                "Create"
-            },
+            "Merge or create nix.conf file `{path}`",
             path = self.path.display(),
         )
     }
@@ -191,15 +185,14 @@ impl Action for CreateOrMergeNixConfig {
             "create_or_merge_nix_config",
             path = tracing::field::display(self.path.display()),
             mode = tracing::field::display(format!("{:#o}", NIX_CONF_MODE)),
-            merged_nix_config = tracing::field::Empty,
+            pending_nix_config = tracing::field::Empty,
         );
 
         if tracing::enabled!(tracing::Level::TRACE) {
             span.record(
-                "merged_nix_config",
+                "pending_nix_config",
                 &self
-                    .nix_configs
-                    .merged_nix_config
+                    .pending_nix_config
                     .settings()
                     .iter()
                     .map(|(k, v)| format!("{k}=\"{v}\""))
@@ -214,15 +207,9 @@ impl Action for CreateOrMergeNixConfig {
         vec![ActionDescription::new(
             self.tracing_synopsis(),
             vec![format!(
-                "{verb} settings: {settings}",
-                verb = if self.nix_configs.existing_nix_config.is_some() {
-                    "Modified"
-                } else {
-                    "Added"
-                },
+                "Added settings: {settings}",
                 settings = self
-                    .nix_configs
-                    .merged_nix_config
+                    .pending_nix_config
                     .settings()
                     .iter()
                     .map(|(k, v)| format!("{k}=\"{v}\""))
@@ -234,31 +221,16 @@ impl Action for CreateOrMergeNixConfig {
 
     #[tracing::instrument(level = "debug", skip_all)]
     async fn execute(&mut self) -> Result<(), ActionError> {
-        let Self { path, nix_configs } = self;
-
-        // Validate that the config has not been modified since we parsed it
-        if let Some(existing_nix_config) = &nix_configs.existing_nix_config {
-            let potentially_edited_config = NixConfig::parse_file(&path)
-                .map_err(CreateOrMergeNixConfigError::ParseNixConfig)
-                .map_err(|e| ActionError::Custom(Box::new(e)))?;
-
-            if existing_nix_config != &potentially_edited_config {
-                return Err(ActionError::Custom(Box::new(
-                    CreateOrMergeNixConfigError::ModifiedConfig(path.clone()),
-                )));
-            }
-        } else if path.exists() {
-            return Err(ActionError::Custom(Box::new(
-                CreateOrMergeNixConfigError::ModifiedConfig(path.clone()),
-            )));
-        }
+        let Self {
+            path,
+            pending_nix_config,
+        } = self;
 
         if tracing::enabled!(tracing::Level::TRACE) {
             let span = tracing::Span::current();
             span.record(
-                "merged_nix_config",
-                nix_configs
-                    .merged_nix_config
+                "pending_nix_config",
+                pending_nix_config
                     .settings()
                     .iter()
                     .map(|(k, v)| format!("{k}='{v}'"))
@@ -291,9 +263,17 @@ impl Action for CreateOrMergeNixConfig {
                 ActionError::Open(temp_file_path.clone(), e)
             })?;
 
+        let (mut merged_nix_config, mut existing_nix_config) = if path.exists() {
+            let (merged_nix_config, existing_nix_config) =
+                Self::validate_existing_nix_config(&pending_nix_config, &path)?;
+            (merged_nix_config, Some(existing_nix_config))
+        } else {
+            (pending_nix_config.clone(), None)
+        };
+
         let mut new_config = String::new();
 
-        if let Some(existing_nix_config) = nix_configs.existing_nix_config.as_mut() {
+        if let Some(existing_nix_config) = existing_nix_config.as_mut() {
             let mut discovered_buf = tokio::fs::read_to_string(&path)
                 .await
                 .map_err(|e| ActionError::Read(path.to_path_buf(), e))?;
@@ -381,9 +361,7 @@ impl Action for CreateOrMergeNixConfig {
                     new_config.push_str(name);
                     new_config.push_str(" = ");
 
-                    if let Some(merged_value) =
-                        nix_configs.merged_nix_config.settings_mut().remove(name)
-                    {
+                    if let Some(merged_value) = merged_nix_config.settings_mut().remove(name) {
                         new_config.push_str(&merged_value);
                         new_config.push(' ');
                     } else {
@@ -410,7 +388,7 @@ impl Action for CreateOrMergeNixConfig {
 
             // Add the leftover existing nix config
             for (name, value) in existing_nix_config.settings() {
-                if nix_configs.merged_nix_config.settings().get(name).is_some() {
+                if merged_nix_config.settings().get(name).is_some() {
                     continue;
                 }
 
@@ -428,7 +406,7 @@ impl Action for CreateOrMergeNixConfig {
             version = env!("CARGO_PKG_VERSION"),
         ));
 
-        for (name, value) in nix_configs.merged_nix_config.settings() {
+        for (name, value) in merged_nix_config.settings() {
             new_config.push_str(name);
             new_config.push_str(" = ");
             new_config.push_str(value);
@@ -452,7 +430,7 @@ impl Action for CreateOrMergeNixConfig {
     fn revert_description(&self) -> Vec<ActionDescription> {
         let Self {
             path,
-            nix_configs: _,
+            pending_nix_config: _,
         } = &self;
 
         vec![ActionDescription::new(
@@ -465,7 +443,7 @@ impl Action for CreateOrMergeNixConfig {
     async fn revert(&mut self) -> Result<(), ActionError> {
         let Self {
             path,
-            nix_configs: _,
+            pending_nix_config: _,
         } = self;
 
         remove_file(&path)
