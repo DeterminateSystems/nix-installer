@@ -22,7 +22,7 @@ pub struct ConfigureNix {
 impl ConfigureNix {
     #[tracing::instrument(level = "debug", skip_all)]
     pub async fn plan(settings: &CommonSettings) -> Result<StatefulAction<Self>, ActionError> {
-        let setup_default_profile = SetupDefaultProfile::plan(settings.channels.clone())
+        let setup_default_profile = SetupDefaultProfile::plan()
             .await
             .map_err(|e| ActionError::Child(SetupDefaultProfile::action_tag(), Box::new(e)))?;
 

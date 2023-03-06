@@ -2,7 +2,7 @@ use std::path::{Path, PathBuf};
 
 use crate::{
     action::{ActionError, ActionTag, StatefulAction},
-    execute_command, set_env, ChannelValue,
+    execute_command, set_env,
 };
 
 use glob::glob;
@@ -16,14 +16,12 @@ use crate::action::{Action, ActionDescription};
 Setup the default Nix profile with `nss-cacert` and `nix` itself.
  */
 #[derive(Debug, serde::Deserialize, serde::Serialize, Clone)]
-pub struct SetupDefaultProfile {
-    channels: Vec<ChannelValue>,
-}
+pub struct SetupDefaultProfile {}
 
 impl SetupDefaultProfile {
     #[tracing::instrument(level = "debug", skip_all)]
-    pub async fn plan(channels: Vec<ChannelValue>) -> Result<StatefulAction<Self>, ActionError> {
-        Ok(Self { channels }.into())
+    pub async fn plan() -> Result<StatefulAction<Self>, ActionError> {
+        Ok(Self {}.into())
     }
 }
 
@@ -38,16 +36,7 @@ impl Action for SetupDefaultProfile {
     }
 
     fn tracing_span(&self) -> Span {
-        span!(
-            tracing::Level::DEBUG,
-            "setup_default_profile",
-            channels = self
-                .channels
-                .iter()
-                .map(|ChannelValue(channel, url)| format!("{channel}={url}"))
-                .collect::<Vec<_>>()
-                .join(","),
-        )
+        span!(tracing::Level::DEBUG, "setup_default_profile",)
     }
 
     fn execute_description(&self) -> Vec<ActionDescription> {
@@ -56,8 +45,6 @@ impl Action for SetupDefaultProfile {
 
     #[tracing::instrument(level = "debug", skip_all)]
     async fn execute(&mut self) -> Result<(), ActionError> {
-        let Self { channels } = self;
-
         // Find an `nix` package
         let nix_pkg_glob = "/nix/store/*-nix-*";
         let mut found_nix_pkg = None;
@@ -200,29 +187,13 @@ impl Action for SetupDefaultProfile {
             "/nix/var/nix/profiles/default/etc/ssl/certs/ca-bundle.crt",
         );
 
-        if !channels.is_empty() {
-            let mut command = Command::new(nix_pkg.join("bin/nix-channel"));
-            command.process_group(0);
-            command.arg("--update");
-            for channel in channels {
-                command.arg(channel.0.clone());
-            }
-            command.env(
-                "NIX_SSL_CERT_FILE",
-                "/nix/var/nix/profiles/default/etc/ssl/certs/ca-bundle.crt",
-            );
-            command.stdin(std::process::Stdio::null());
-
-            execute_command(&mut command).await?;
-        }
-
         Ok(())
     }
 
     fn revert_description(&self) -> Vec<ActionDescription> {
         vec![ActionDescription::new(
             "Unset the default Nix profile".to_string(),
-            vec!["TODO".to_string()],
+            vec![],
         )]
     }
 
