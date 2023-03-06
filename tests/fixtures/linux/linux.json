@@ -831,28 +831,6 @@
           },
           "state": "Uncompleted"
         },
-        "place_channel_configuration": {
-          "action": {
-            "channels": [
-              [
-                "nixpkgs",
-                "https://nixos.org/channels/nixpkgs-unstable"
-              ]
-            ],
-            "create_file": {
-              "action": {
-                "path": "/root/.nix-channels",
-                "user": null,
-                "group": null,
-                "mode": 436,
-                "buf": "https://nixos.org/channels/nixpkgs-unstable nixpkgs",
-                "force": false
-              },
-              "state": "Uncompleted"
-            }
-          },
-          "state": "Uncompleted"
-        },
         "place_nix_configuration": {
           "action": {
             "create_directory": {
