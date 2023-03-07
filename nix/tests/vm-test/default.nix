@@ -3,7 +3,7 @@
 
 let
 
-  installScripts = {
+  installScripts = rec {
     install-default = {
       install = ''
         NIX_PATH=$(readlink -f nix.tar.xz)
@@ -24,42 +24,56 @@ let
         NIX_PATH=$(readlink -f nix.tar.xz)
         RUST_BACKTRACE="full" ./nix-installer install linux --no-start-daemon --logger pretty --log-directive nix_installer=trace --channel --nix-package-url "file://$NIX_PATH" --no-confirm
       '';
-      check = ''
-        set -ex
-
-        if systemctl is-active nix-daemon.socket; then
-          echo "nix-daemon.socket was running, should not be"
-          exit 1
-        fi
-        if systemctl is-active nix-daemon.service; then
-          echo "nix-daemon.service was running, should not be"
-          exit 1
-        fi
-
-        sudo systemctl start nix-daemon.socket
-
-        nix-env --version
-        nix --extra-experimental-features nix-command store ping
-
-        out=$(nix-build --no-substitute -E 'derivation { name = "foo"; system = "x86_64-linux"; builder = "/bin/sh"; args = ["-c" "echo foobar > $out"]; }')
-        [[ $(cat $out) = foobar ]]
-      '';
+      check = install-default.check;
     };
     install-daemonless = {
       install = ''
         NIX_PATH=$(readlink -f nix.tar.xz)
         RUST_BACKTRACE="full" ./nix-installer install linux --init none --logger pretty --log-directive nix_installer=trace --channel --nix-package-url "file://$NIX_PATH" --no-confirm
       '';
-      check = ''
-        set -ex
-
-        sudo -i nix-env --version
-        sudo -i nix --extra-experimental-features nix-command store ping
-
-        echo 'derivation { name = "foo"; system = "x86_64-linux"; builder = "/bin/sh"; args = ["-c" "echo foobar > $out"]; }' | sudo tee -a /drv
-        out=$(sudo -i nix-build --no-substitute /drv)
-        [[ $(cat $out) = foobar ]]
+      check = install-default.check;
+    };
+    install-preexisting-self-working = {
+      preinstall = ''
+        NIX_PATH=$(readlink -f nix.tar.xz)
+        RUST_BACKTRACE="full" ./nix-installer install --logger pretty --log-directive nix_installer=trace --channel --nix-package-url "file://$NIX_PATH" --no-confirm
+        mv /nix/receipt.json /nix/old-receipt.json
       '';
+      install = ''
+        NIX_PATH=$(readlink -f nix.tar.xz)
+        RUST_BACKTRACE="full" ./nix-installer install --logger pretty --log-directive nix_installer=trace --channel --nix-package-url "file://$NIX_PATH" --no-confirm
+      '';
+      check = install-default.check;
+    };
+    install-preexisting-self-broken-no-path-nix = {
+      preinstall = ''
+        NIX_PATH=$(readlink -f nix.tar.xz)
+        RUST_BACKTRACE="full" ./nix-installer install --logger pretty --log-directive nix_installer=trace --channel --nix-package-url "file://$NIX_PATH" --no-confirm
+        rm -rf /nix/
+      '';
+      install = install-default.install;
+      check = install-default.check;
+    };
+    install-preexisting-self-broken-no-group-missing-users = {
+      preinstall = ''
+        NIX_PATH=$(readlink -f nix.tar.xz)
+        RUST_BACKTRACE="full" ./nix-installer install --logger pretty --log-directive nix_installer=trace --channel --nix-package-url "file://$NIX_PATH" --no-confirm
+        groupdel nixbld
+        userdel nixbld1
+        userdel nixbld3
+        userdel nixbld 16
+      '';
+      install = install-default.install;
+      check = install-default.check;
+    };
+    install-preexisting-self-broken-daemon-disabled = {
+      preinstall = ''
+        NIX_PATH=$(readlink -f nix.tar.xz)
+        RUST_BACKTRACE="full" ./nix-installer install --logger pretty --log-directive nix_installer=trace --channel --nix-package-url "file://$NIX_PATH" --no-confirm
+        systemctl disable --now nix-daemon.service
+      '';
+      install = install-default.install;
+      check = install-default.check;
     };
   };
 
@@ -230,13 +244,16 @@ let
         echo "Copying nix tarball..."
         scp -P 20022 $ssh_opts $binaryTarball/nix-*.tar.xz vagrant@localhost:nix.tar.xz
 
+        echo "Running preinstall..."
+        $ssh "set -eux; $preinstallScript"
+
         echo "Running installer..."
         $ssh "set -eux; $installScript"
 
         echo "Testing Nix installation..."
         $ssh "set -eux; $checkScript"
 
-        echo "Testing Nix installation..."
+        echo "Testing Nix uninstallation..."
         $ssh "set -eux; /nix/nix-installer uninstall --no-confirm"
 
         echo "Done!"
