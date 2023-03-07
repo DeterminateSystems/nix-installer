@@ -16,7 +16,7 @@ use crate::action::{Action, ActionDescription, ActionError, ActionTag, StatefulA
 /// The `nix.conf` configuration names that are safe to merge.
 // FIXME(@cole-h): make configurable by downstream users?
 const MERGEABLE_CONF_NAMES: &[&str] = &["experimental-features"];
-const NIX_CONF_MODE: u32 = 0o644;
+const NIX_CONF_MODE: u32 = 0o664;
 const NIX_CONF_COMMENT_CHAR: char = '#';
 
 #[non_exhaustive]
