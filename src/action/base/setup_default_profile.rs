@@ -1,4 +1,4 @@
-use std::path::{Path, PathBuf};
+use std::path::PathBuf;
 
 use crate::{
     action::{ActionError, ActionTag, StatefulAction},
@@ -17,13 +17,21 @@ Setup the default Nix profile with `nss-cacert` and `nix` itself.
  */
 #[derive(Debug, serde::Deserialize, serde::Serialize, Clone)]
 pub struct SetupDefaultProfile {
+    unpacked_path: PathBuf,
     channels: Vec<ChannelValue>,
 }
 
 impl SetupDefaultProfile {
     #[tracing::instrument(level = "debug", skip_all)]
-    pub async fn plan(channels: Vec<ChannelValue>) -> Result<StatefulAction<Self>, ActionError> {
-        Ok(Self { channels }.into())
+    pub async fn plan(
+        unpacked_path: PathBuf,
+        channels: Vec<ChannelValue>,
+    ) -> Result<StatefulAction<Self>, ActionError> {
+        Ok(Self {
+            unpacked_path,
+            channels,
+        }
+        .into())
     }
 }
 
@@ -56,7 +64,10 @@ impl Action for SetupDefaultProfile {
 
     #[tracing::instrument(level = "debug", skip_all)]
     async fn execute(&mut self) -> Result<(), ActionError> {
-        let Self { channels } = self;
+        let Self {
+            unpacked_path,
+            channels,
+        } = self;
 
         // Find an `nix` package
         let nix_pkg_glob = "/nix/store/*-nix-*";
@@ -104,9 +115,18 @@ impl Action for SetupDefaultProfile {
             )));
         };
 
-        {
-            let reginfo_path =
-                Path::new(crate::action::base::move_unpacked_nix::DEST).join(".reginfo");
+        let found_nix_paths = glob::glob(&format!("{}/nix-*", unpacked_path.display()))
+            .map_err(|e| ActionError::Custom(Box::new(e)))?
+            .collect::<Result<Vec<_>, _>>()
+            .map_err(|e| ActionError::Custom(Box::new(e)))?;
+        assert_eq!(
+            found_nix_paths.len(),
+            1,
+            "Did not expect to find multiple nix paths, please report this"
+        );
+        let found_nix_path = found_nix_paths.into_iter().next().unwrap();
+        let reginfo_path = PathBuf::from(found_nix_path).join(".reginfo");
+        if reginfo_path.exists() {
             let reginfo = tokio::fs::read(&reginfo_path)
                 .await
                 .map_err(|e| ActionError::Read(reginfo_path.to_path_buf(), e))?;

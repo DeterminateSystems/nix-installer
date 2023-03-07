@@ -1,4 +1,4 @@
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 
 use tokio::process::Command;
 use tracing::{span, Span};
@@ -138,15 +138,17 @@ impl Action for ConfigureInitService {
             #[cfg(target_os = "linux")]
             InitSystem::Systemd => {
                 tracing::trace!(src = TMPFILES_SRC, dest = TMPFILES_DEST, "Symlinking");
-                tokio::fs::symlink(TMPFILES_SRC, TMPFILES_DEST)
-                    .await
-                    .map_err(|e| {
-                        ActionError::Symlink(
-                            PathBuf::from(TMPFILES_SRC),
-                            PathBuf::from(TMPFILES_DEST),
-                            e,
-                        )
-                    })?;
+                if !Path::new(TMPFILES_DEST).exists() {
+                    tokio::fs::symlink(TMPFILES_SRC, TMPFILES_DEST)
+                        .await
+                        .map_err(|e| {
+                            ActionError::Symlink(
+                                PathBuf::from(TMPFILES_SRC),
+                                PathBuf::from(TMPFILES_DEST),
+                                e,
+                            )
+                        })?;
+                }
 
                 execute_command(
                     Command::new("systemd-tmpfiles")

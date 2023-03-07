@@ -311,8 +311,10 @@ pub enum ActionError {
         existing_mode = .1 & 0o777,
         planned_mode = .2 & 0o777)]
     PathModeMismatch(std::path::PathBuf, u32, u32),
-    #[error("`{0}` was not a file")]
+    #[error("Path `{0}` exists, but is not a file, consider removing it with `rm {0}`")]
     PathWasNotFile(std::path::PathBuf),
+    #[error("Path `{0}` exists, but is not a directory, consider removing it with `rm {0}`")]
+    PathWasNotDirectory(std::path::PathBuf),
     #[error("Getting metadata for {0}`")]
     GettingMetadata(std::path::PathBuf, #[source] std::io::Error),
     #[error("Creating directory `{0}`")]
@@ -341,6 +343,8 @@ pub enum ActionError {
     ),
     #[error("Read path `{0}`")]
     Read(std::path::PathBuf, #[source] std::io::Error),
+    #[error("Reading directory `{0}`")]
+    ReadDir(std::path::PathBuf, #[source] std::io::Error),
     #[error("Open path `{0}`")]
     Open(std::path::PathBuf, #[source] std::io::Error),
     #[error("Write path `{0}`")]

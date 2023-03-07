@@ -78,7 +78,7 @@ impl CreateDirectory {
             }
 
             tracing::debug!("Creating directory `{}` already complete", path.display(),);
-            ActionState::Skipped
+            ActionState::Completed
         } else {
             ActionState::Uncompleted
         };

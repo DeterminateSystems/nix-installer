@@ -11,14 +11,14 @@ Move an unpacked Nix at `src` to `/nix`
 */
 #[derive(Debug, serde::Deserialize, serde::Serialize, Clone)]
 pub struct MoveUnpackedNix {
-    src: PathBuf,
+    unpacked_path: PathBuf,
 }
 
 impl MoveUnpackedNix {
     #[tracing::instrument(level = "debug", skip_all)]
-    pub async fn plan(src: PathBuf) -> Result<StatefulAction<Self>, ActionError> {
+    pub async fn plan(unpacked_path: PathBuf) -> Result<StatefulAction<Self>, ActionError> {
         // Note: Do NOT try to check for the src/dest since the installer creates those
-        Ok(Self { src }.into())
+        Ok(Self { unpacked_path }.into())
     }
 }
 
@@ -36,7 +36,7 @@ impl Action for MoveUnpackedNix {
         span!(
             tracing::Level::DEBUG,
             "mount_unpacked_nix",
-            src = tracing::field::display(self.src.display()),
+            src = tracing::field::display(self.unpacked_path.display()),
             dest = DEST,
         )
     }
@@ -46,17 +46,17 @@ impl Action for MoveUnpackedNix {
             format!("Move the downloaded Nix into `/nix`"),
             vec![format!(
                 "Nix is being downloaded to `{}` and should be in `/nix`",
-                self.src.display(),
+                self.unpacked_path.display(),
             )],
         )]
     }
 
     #[tracing::instrument(level = "debug", skip_all)]
     async fn execute(&mut self) -> Result<(), ActionError> {
-        let Self { src } = self;
+        let Self { unpacked_path } = self;
 
-        // TODO(@Hoverbear): I would like to make this less awful
-        let found_nix_paths = glob::glob(&format!("{}/nix-*", src.display()))
+        // This is the `nix-$VERSION` folder which unpacks from the tarball, not a nix derivation
+        let found_nix_paths = glob::glob(&format!("{}/nix-*", unpacked_path.display()))
             .map_err(|e| ActionError::Custom(Box::new(e)))?
             .collect::<Result<Vec<_>, _>>()
             .map_err(|e| ActionError::Custom(Box::new(e)))?;
@@ -67,23 +67,37 @@ impl Action for MoveUnpackedNix {
         );
         let found_nix_path = found_nix_paths.into_iter().next().unwrap();
         let src_store = found_nix_path.join("store");
-        let dest = Path::new(DEST).join("store");
-        tracing::trace!(src = %src_store.display(), dest = %dest.display(), "Renaming");
-        tokio::fs::rename(&src_store, &dest)
+        let mut src_store_listing = tokio::fs::read_dir(src_store.clone())
             .await
-            .map_err(|e| ActionError::Rename(src_store.clone(), dest.to_owned(), e))?;
+            .map_err(|e| ActionError::ReadDir(src_store.clone(), e))?;
+        let dest_store = Path::new(DEST).join("store");
+        if dest_store.exists() {
+            if !dest_store.is_dir() {
+                return Err(ActionError::PathWasNotDirectory(dest_store.clone()))?;
+            }
+        } else {
+            tokio::fs::create_dir(&dest_store)
+                .await
+                .map_err(|e| ActionError::CreateDirectory(dest_store.clone(), e))?;
+        }
 
-        let src_reginfo = found_nix_path.join(".reginfo");
-
-        // Move_unpacked_nix expects it here
-        let dest_reginfo = Path::new(DEST).join(".reginfo");
-        tokio::fs::rename(&src_reginfo, &dest_reginfo)
+        while let Some(entry) = src_store_listing
+            .next_entry()
             .await
-            .map_err(|e| ActionError::Rename(src_reginfo.clone(), dest_reginfo.to_owned(), e))?;
-
-        tokio::fs::remove_dir_all(&src)
-            .await
-            .map_err(|e| ActionError::Remove(src.clone(), e))?;
+            .map_err(|e| ActionError::ReadDir(src_store.clone(), e))?
+        {
+            let entry_dest = dest_store.join(entry.file_name());
+            if entry_dest.exists() {
+                tracing::trace!(src = %entry.path().display(), dest = %entry_dest.display(), "Skipping, already exists");
+            } else {
+                tracing::trace!(src = %entry.path().display(), dest = %entry_dest.display(), "Renaming");
+                tokio::fs::rename(&entry.path(), &entry_dest)
+                    .await
+                    .map_err(|e| {
+                        ActionError::Rename(entry.path().clone(), entry_dest.to_owned(), e)
+                    })?;
+            }
+        }
 
         Ok(())
     }

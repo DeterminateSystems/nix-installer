@@ -802,7 +802,7 @@
         },
         "move_unpacked_nix": {
           "action": {
-            "src": "/nix/temp-install-dir"
+            "unpacked_path": "/nix/temp-install-dir"
           },
           "state": "Uncompleted"
         }
@@ -819,7 +819,8 @@
                 "nixpkgs",
                 "https://nixos.org/channels/nixpkgs-unstable"
               ]
-            ]
+            ],
+            "unpacked_path": "/nix/temp-install-dir"
           },
           "state": "Uncompleted"
         },

@@ -63,7 +63,7 @@ use std::{collections::HashMap, path::PathBuf};
 
 use crate::{
     action::{
-        base::{CreateDirectory, CreateFile},
+        base::{CreateDirectory, CreateFile, RemoveDirectory},
         common::{ConfigureInitService, ConfigureNix, ProvisionNix},
         linux::StartSystemdUnit,
         Action, StatefulAction,
@@ -231,6 +231,10 @@ impl Planner for SteamDeck {
                 .map_err(PlannerError::Action)?
                 .boxed(),
             StartSystemdUnit::plan("ensure-symlinked-units-resolve.service".to_string(), true)
+                .await
+                .map_err(PlannerError::Action)?
+                .boxed(),
+            RemoveDirectory::plan(crate::settings::SCRATCH_DIR)
                 .await
                 .map_err(PlannerError::Action)?
                 .boxed(),
