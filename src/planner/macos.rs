@@ -6,6 +6,7 @@ use tokio::process::Command;
 
 use crate::{
     action::{
+        base::RemoveDirectory,
         common::{ConfigureInitService, ConfigureNix, ProvisionNix},
         macos::CreateNixVolume,
         StatefulAction,
