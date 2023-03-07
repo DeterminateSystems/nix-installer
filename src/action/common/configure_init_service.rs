@@ -1,4 +1,4 @@
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 
 use tokio::process::Command;
 use tracing::{span, Span};
@@ -12,7 +12,11 @@ use crate::settings::InitSystem;
 #[cfg(target_os = "linux")]
 const SERVICE_SRC: &str = "/nix/var/nix/profiles/default/lib/systemd/system/nix-daemon.service";
 #[cfg(target_os = "linux")]
+const SERVICE_DEST: &str = "/etc/systemd/system/nix-daemon.service";
+#[cfg(target_os = "linux")]
 const SOCKET_SRC: &str = "/nix/var/nix/profiles/default/lib/systemd/system/nix-daemon.socket";
+#[cfg(target_os = "linux")]
+const SOCKET_DEST: &str = "/etc/systemd/system/nix-daemon.socket";
 #[cfg(target_os = "linux")]
 const TMPFILES_SRC: &str = "/nix/var/nix/profiles/default/lib/tmpfiles.d/nix-daemon.conf";
 #[cfg(target_os = "linux")]
@@ -71,8 +75,8 @@ impl Action for ConfigureInitService {
             InitSystem::Systemd => {
                 let mut explanation = vec![
                     "Run `systemd-tempfiles --create --prefix=/nix/var/nix`".to_string(),
-                    format!("Run `systemctl link {SERVICE_SRC}`"),
-                    format!("Run `systemctl link {SOCKET_SRC}`"),
+                    format!("Symlink `{SERVICE_SRC}` to `{SERVICE_DEST}`"),
+                    format!("Symlink `{SOCKET_SRC}` to `{SOCKET_DEST}`"),
                     "Run `systemctl daemon-reload`".to_string(),
                 ];
                 if self.start_daemon {
@@ -157,23 +161,38 @@ impl Action for ConfigureInitService {
                 )
                 .await?;
 
-                execute_command(
-                    Command::new("systemctl")
-                        .process_group(0)
-                        .arg("link")
-                        .arg(SERVICE_SRC)
-                        .stdin(std::process::Stdio::null()),
-                )
-                .await?;
+                if Path::new(SERVICE_DEST).exists() {
+                    // TODO: ask user if we can remove it...? do we have a way
+                    // to model interaction within the plan?
+                    // TODO: use a more appropriate error like RemoveExisting or something
+                    tokio::fs::remove_file(SERVICE_DEST)
+                        .await
+                        .map_err(|e| ActionError::Remove(PathBuf::from(SERVICE_DEST), e))?;
+                }
+                tokio::fs::symlink(SERVICE_SRC, SERVICE_DEST)
+                    .await
+                    .map_err(|e| {
+                        ActionError::Symlink(
+                            PathBuf::from(SERVICE_SRC),
+                            PathBuf::from(SERVICE_DEST),
+                            e,
+                        )
+                    })?;
 
-                execute_command(
-                    Command::new("systemctl")
-                        .process_group(0)
-                        .arg("link")
-                        .arg(SOCKET_SRC)
-                        .stdin(std::process::Stdio::null()),
-                )
-                .await?;
+                if Path::new(SOCKET_DEST).exists() {
+                    tokio::fs::remove_file(SOCKET_DEST)
+                        .await
+                        .map_err(|e| ActionError::Remove(PathBuf::from(SOCKET_DEST), e))?;
+                }
+                tokio::fs::symlink(SOCKET_SRC, SOCKET_DEST)
+                    .await
+                    .map_err(|e| {
+                        ActionError::Symlink(
+                            PathBuf::from(SOCKET_SRC),
+                            PathBuf::from(SOCKET_DEST),
+                            e,
+                        )
+                    })?;
 
                 if *start_daemon {
                     execute_command(
