@@ -41,30 +41,43 @@ impl ConfigureInitService {
         init: InitSystem,
         start_daemon: bool,
     ) -> Result<StatefulAction<Self>, ActionError> {
-        // TODO: once we have a way to communicate interaction between the library and the cli,
-        // interactively ask for permission to remove the file
+        match init {
+            #[cfg(target_os = "macos")]
+            InitSystem::Launchd => {
+                // No plan checks, yet
+            },
+            #[cfg(target_os = "linux")]
+            InitSystem::Systemd => {
+                // TODO: once we have a way to communicate interaction between the library and the
+                // cli, interactively ask for permission to remove the file
 
-        // NOTE: Check if the service file already exists...
-        if Path::new(SERVICE_DEST).exists() {
-            return Err(ActionError::FileExists(PathBuf::from(SERVICE_DEST)));
-        }
-        // NOTE: ...and if there are any overrides in the most well-known places for systemd
-        if Path::new(&format!("{SERVICE_DEST}.d")).exists() {
-            return Err(ActionError::DirExists(PathBuf::from(format!(
-                "{SERVICE_DEST}.d"
-            ))));
-        }
+                // NOTE: Check if the service file already exists...
+                if Path::new(SERVICE_DEST).exists() {
+                    return Err(ActionError::FileExists(PathBuf::from(SERVICE_DEST)));
+                }
+                // NOTE: ...and if there are any overrides in the most well-known places for systemd
+                if Path::new(&format!("{SERVICE_DEST}.d")).exists() {
+                    return Err(ActionError::DirExists(PathBuf::from(format!(
+                        "{SERVICE_DEST}.d"
+                    ))));
+                }
 
-        // NOTE: Check if the socket file already exists...
-        if Path::new(SOCKET_DEST).exists() {
-            return Err(ActionError::FileExists(PathBuf::from(SOCKET_DEST)));
-        }
-        // NOTE: ...and if there are any overrides in the most well-known places for systemd
-        if Path::new(&format!("{SOCKET_DEST}.d")).exists() {
-            return Err(ActionError::DirExists(PathBuf::from(format!(
-                "{SOCKET_DEST}.d"
-            ))));
-        }
+                // NOTE: Check if the socket file already exists...
+                if Path::new(SOCKET_DEST).exists() {
+                    return Err(ActionError::FileExists(PathBuf::from(SOCKET_DEST)));
+                }
+                // NOTE: ...and if there are any overrides in the most well-known places for systemd
+                if Path::new(&format!("{SOCKET_DEST}.d")).exists() {
+                    return Err(ActionError::DirExists(PathBuf::from(format!(
+                        "{SOCKET_DEST}.d"
+                    ))));
+                }
+            },
+            #[cfg(not(target_os = "macos"))]
+            InitSystem::None => {
+                // Nothing here, no init system
+            },
+        };
 
         Ok(Self { init, start_daemon }.into())
     }
