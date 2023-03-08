@@ -309,6 +309,9 @@ pub enum ActionError {
     /// The directory already exists
     #[error("`{0}` already exists, consider removing it with `rm -r {0}`")]
     DirExists(std::path::PathBuf),
+    /// The symlink already exists
+    #[error("`{0}` already exists, consider removing it with `rm {0}`")]
+    SymlinkExists(std::path::PathBuf),
     #[error("`{0}` exists with a different uid ({1}) than planned ({2}), consider updating it with `chown {2} {0}`")]
     PathUserMismatch(std::path::PathBuf, u32, u32),
     #[error("`{0}` exists with a different gid ({1}) than planned ({2}), consider updating it with `chgrp {2} {0}`")]
@@ -351,6 +354,8 @@ pub enum ActionError {
     Read(std::path::PathBuf, #[source] std::io::Error),
     #[error("Reading directory `{0}`")]
     ReadDir(std::path::PathBuf, #[source] std::io::Error),
+    #[error("Reading symbolic link `{0}`")]
+    ReadSymlink(std::path::PathBuf, #[source] std::io::Error),
     #[error("Open path `{0}`")]
     Open(std::path::PathBuf, #[source] std::io::Error),
     #[error("Write path `{0}`")]
