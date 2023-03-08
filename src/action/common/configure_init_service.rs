@@ -36,6 +36,33 @@ pub struct ConfigureInitService {
 }
 
 impl ConfigureInitService {
+    #[cfg(target_os = "linux")]
+    async fn check_if_systemd_unit_exists(src: &str, dest: &str) -> Result<(), ActionError> {
+        // TODO: once we have a way to communicate interaction between the library and the cli,
+        // interactively ask for permission to remove the file
+
+        let unit_src = PathBuf::from(src);
+        // NOTE: Check if the unit file already exists...
+        let unit_dest = PathBuf::from(dest);
+        if unit_dest.exists() {
+            if unit_dest.is_symlink() {
+                let link_dest = tokio::fs::read_link(&unit_dest)
+                    .await
+                    .map_err(|e| ActionError::ReadSymlink(unit_dest.clone(), e))?;
+                if link_dest != unit_src {
+                    return Err(ActionError::SymlinkExists(unit_dest));
+                }
+            }
+
+            return Err(ActionError::FileExists(unit_dest));
+        }
+        // NOTE: ...and if there are any overrides in the most well-known places for systemd
+        if Path::new(&format!("{dest}.d")).exists() {
+            return Err(ActionError::DirExists(PathBuf::from(format!("{dest}.d"))));
+        }
+
+        Ok(())
+    }
     #[tracing::instrument(level = "debug", skip_all)]
     pub async fn plan(
         init: InitSystem,
@@ -48,52 +75,8 @@ impl ConfigureInitService {
             },
             #[cfg(target_os = "linux")]
             InitSystem::Systemd => {
-                // TODO: once we have a way to communicate interaction between the library and the
-                // cli, interactively ask for permission to remove the file
-
-                let service_src = PathBuf::from(SERVICE_SRC);
-                // NOTE: Check if the service file already exists...
-                let service_dest = PathBuf::from(SERVICE_DEST);
-                if service_dest.exists() {
-                    if service_dest.is_symlink() {
-                        let link_dest = tokio::fs::read_link(&service_dest)
-                            .await
-                            .map_err(|e| ActionError::ReadSymlink(service_dest.clone(), e))?;
-                        if link_dest != service_src {
-                            return Err(ActionError::SymlinkExists(service_dest));
-                        }
-                    }
-
-                    return Err(ActionError::FileExists(service_dest));
-                }
-                // NOTE: ...and if there are any overrides in the most well-known places for systemd
-                if Path::new(&format!("{SERVICE_DEST}.d")).exists() {
-                    return Err(ActionError::DirExists(PathBuf::from(format!(
-                        "{SERVICE_DEST}.d"
-                    ))));
-                }
-
-                let socket_src = PathBuf::from(SOCKET_SRC);
-                // NOTE: Check if the socket file already exists...
-                let socket_dest = PathBuf::from(SOCKET_DEST);
-                if socket_dest.exists() {
-                    if socket_dest.is_symlink() {
-                        let link_dest = tokio::fs::read_link(&socket_dest)
-                            .await
-                            .map_err(|e| ActionError::ReadSymlink(socket_dest.clone(), e))?;
-                        if link_dest != socket_src {
-                            return Err(ActionError::SymlinkExists(socket_dest));
-                        }
-                    }
-
-                    return Err(ActionError::FileExists(socket_dest));
-                }
-                // NOTE: ...and if there are any overrides in the most well-known places for systemd
-                if Path::new(&format!("{SOCKET_DEST}.d")).exists() {
-                    return Err(ActionError::DirExists(PathBuf::from(format!(
-                        "{SOCKET_DEST}.d"
-                    ))));
-                }
+                Self::check_if_systemd_unit_exists(SERVICE_SRC, SERVICE_DEST).await?;
+                Self::check_if_systemd_unit_exists(SOCKET_SRC, SOCKET_DEST).await?;
             },
             #[cfg(not(target_os = "macos"))]
             InitSystem::None => {
@@ -226,27 +209,7 @@ impl Action for ConfigureInitService {
                 // TODO: once we have a way to communicate interaction between the library and the
                 // cli, interactively ask for permission to remove the file
 
-                let service_src = PathBuf::from(SERVICE_SRC);
-                // NOTE: Check if the service file already exists...
-                let service_dest = PathBuf::from(SERVICE_DEST);
-                if service_dest.exists() {
-                    if service_dest.is_symlink() {
-                        let link_dest = tokio::fs::read_link(&service_dest)
-                            .await
-                            .map_err(|e| ActionError::ReadSymlink(service_dest.clone(), e))?;
-                        if link_dest != service_src {
-                            return Err(ActionError::SymlinkExists(service_dest));
-                        }
-                    }
-
-                    return Err(ActionError::FileExists(service_dest));
-                }
-                // NOTE: ...and if there are any overrides in the most well-known places for systemd
-                if Path::new(&format!("{SERVICE_DEST}.d")).exists() {
-                    return Err(ActionError::DirExists(PathBuf::from(format!(
-                        "{SERVICE_DEST}.d"
-                    ))));
-                }
+                Self::check_if_systemd_unit_exists(SERVICE_SRC, SERVICE_DEST).await?;
                 tokio::fs::symlink(SERVICE_SRC, SERVICE_DEST)
                     .await
                     .map_err(|e| {
@@ -257,27 +220,7 @@ impl Action for ConfigureInitService {
                         )
                     })?;
 
-                let socket_src = PathBuf::from(SOCKET_SRC);
-                // NOTE: Check if the socket file already exists...
-                let socket_dest = PathBuf::from(SOCKET_DEST);
-                if socket_dest.exists() {
-                    if socket_dest.is_symlink() {
-                        let link_dest = tokio::fs::read_link(&socket_dest)
-                            .await
-                            .map_err(|e| ActionError::ReadSymlink(socket_dest.clone(), e))?;
-                        if link_dest != socket_src {
-                            return Err(ActionError::SymlinkExists(socket_dest));
-                        }
-                    }
-
-                    return Err(ActionError::FileExists(socket_dest));
-                }
-                // NOTE: ...and if there are any overrides in the most well-known places for systemd
-                if Path::new(&format!("{SOCKET_DEST}.d")).exists() {
-                    return Err(ActionError::DirExists(PathBuf::from(format!(
-                        "{SOCKET_DEST}.d"
-                    ))));
-                }
+                Self::check_if_systemd_unit_exists(SOCKET_SRC, SOCKET_DEST).await?;
                 tokio::fs::symlink(SOCKET_SRC, SOCKET_DEST)
                     .await
                     .map_err(|e| {
