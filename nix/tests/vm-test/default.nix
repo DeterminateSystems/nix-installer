@@ -7,7 +7,7 @@ let
     install-default = {
       install = ''
         NIX_PATH=$(readlink -f nix.tar.xz)
-        RUST_BACKTRACE="full" ./nix-installer install --logger pretty --log-directive nix_installer=trace --channel --nix-package-url "file://$NIX_PATH" --no-confirm
+        RUST_BACKTRACE="full" ./nix-installer install --logger pretty --log-directive nix_installer=trace --nix-package-url "file://$NIX_PATH" --no-confirm
       '';
       check = ''
         set -ex
@@ -22,7 +22,7 @@ let
     install-no-start-daemon = {
       install = ''
         NIX_PATH=$(readlink -f nix.tar.xz)
-        RUST_BACKTRACE="full" ./nix-installer install linux --no-start-daemon --logger pretty --log-directive nix_installer=trace --channel --nix-package-url "file://$NIX_PATH" --no-confirm
+        RUST_BACKTRACE="full" ./nix-installer install linux --no-start-daemon --logger pretty --log-directive nix_installer=trace --nix-package-url "file://$NIX_PATH" --no-confirm
       '';
       check = ''
         set -ex
@@ -48,7 +48,7 @@ let
     install-daemonless = {
       install = ''
         NIX_PATH=$(readlink -f nix.tar.xz)
-        RUST_BACKTRACE="full" ./nix-installer install linux --init none --logger pretty --log-directive nix_installer=trace --channel --nix-package-url "file://$NIX_PATH" --no-confirm
+        RUST_BACKTRACE="full" ./nix-installer install linux --init none --logger pretty --log-directive nix_installer=trace --nix-package-url "file://$NIX_PATH" --no-confirm
       '';
       check = ''
         set -ex
