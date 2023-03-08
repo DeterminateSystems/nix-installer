@@ -303,6 +303,12 @@ pub enum ActionError {
         "`{0}` exists with different content than planned, consider removing it with `rm {0}`"
     )]
     DifferentContent(std::path::PathBuf),
+    /// The file already exists
+    #[error("`{0}` already exists, consider removing it with `rm {0}`")]
+    FileExists(std::path::PathBuf),
+    /// The directory already exists
+    #[error("`{0}` already exists, consider removing it with `rm -r {0}`")]
+    DirExists(std::path::PathBuf),
     #[error("`{0}` exists with a different uid ({1}) than planned ({2}), consider updating it with `chown {2} {0}`")]
     PathUserMismatch(std::path::PathBuf, u32, u32),
     #[error("`{0}` exists with a different gid ({1}) than planned ({2}), consider updating it with `chgrp {2} {0}`")]

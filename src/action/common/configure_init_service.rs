@@ -41,6 +41,31 @@ impl ConfigureInitService {
         init: InitSystem,
         start_daemon: bool,
     ) -> Result<StatefulAction<Self>, ActionError> {
+        // TODO: once we have a way to communicate interaction between the library and the cli,
+        // interactively ask for permission to remove the file
+
+        // NOTE: Check if the service file already exists...
+        if Path::new(SERVICE_DEST).exists() {
+            return Err(ActionError::FileExists(PathBuf::from(SERVICE_DEST)));
+        }
+        // NOTE: ...and if there are any overrides in the most well-known places for systemd
+        if Path::new(&format!("{SERVICE_DEST}.d")).exists() {
+            return Err(ActionError::DirExists(PathBuf::from(format!(
+                "{SERVICE_DEST}.d"
+            ))));
+        }
+
+        // NOTE: Check if the socket file already exists...
+        if Path::new(SOCKET_DEST).exists() {
+            return Err(ActionError::FileExists(PathBuf::from(SOCKET_DEST)));
+        }
+        // NOTE: ...and if there are any overrides in the most well-known places for systemd
+        if Path::new(&format!("{SOCKET_DEST}.d")).exists() {
+            return Err(ActionError::DirExists(PathBuf::from(format!(
+                "{SOCKET_DEST}.d"
+            ))));
+        }
+
         Ok(Self { init, start_daemon }.into())
     }
 }
@@ -161,13 +186,18 @@ impl Action for ConfigureInitService {
                 )
                 .await?;
 
+                // TODO: once we have a way to communicate interaction between the library and the
+                // cli, interactively ask for permission to remove the file
+
+                // NOTE: Check if the service file already exists...
                 if Path::new(SERVICE_DEST).exists() {
-                    // TODO: ask user if we can remove it...? do we have a way
-                    // to model interaction within the plan?
-                    // TODO: use a more appropriate error like RemoveExisting or something
-                    tokio::fs::remove_file(SERVICE_DEST)
-                        .await
-                        .map_err(|e| ActionError::Remove(PathBuf::from(SERVICE_DEST), e))?;
+                    return Err(ActionError::FileExists(PathBuf::from(SERVICE_DEST)));
+                }
+                // NOTE: ...and if there are any overrides in the most well-known places for systemd
+                if Path::new(&format!("{SERVICE_DEST}.d")).exists() {
+                    return Err(ActionError::DirExists(PathBuf::from(format!(
+                        "{SERVICE_DEST}.d"
+                    ))));
                 }
                 tokio::fs::symlink(SERVICE_SRC, SERVICE_DEST)
                     .await
@@ -179,10 +209,15 @@ impl Action for ConfigureInitService {
                         )
                     })?;
 
+                // NOTE: Check if the socket file already exists...
                 if Path::new(SOCKET_DEST).exists() {
-                    tokio::fs::remove_file(SOCKET_DEST)
-                        .await
-                        .map_err(|e| ActionError::Remove(PathBuf::from(SOCKET_DEST), e))?;
+                    return Err(ActionError::FileExists(PathBuf::from(SOCKET_DEST)));
+                }
+                // NOTE: ...and if there are any overrides in the most well-known places for systemd
+                if Path::new(&format!("{SOCKET_DEST}.d")).exists() {
+                    return Err(ActionError::DirExists(PathBuf::from(format!(
+                        "{SOCKET_DEST}.d"
+                    ))));
                 }
                 tokio::fs::symlink(SOCKET_SRC, SOCKET_DEST)
                     .await
