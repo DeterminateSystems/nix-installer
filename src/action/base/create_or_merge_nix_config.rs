@@ -16,7 +16,7 @@ use crate::action::{Action, ActionDescription, ActionError, ActionTag, StatefulA
 /// The `nix.conf` configuration names that are safe to merge.
 // FIXME(@cole-h): make configurable by downstream users?
 const MERGEABLE_CONF_NAMES: &[&str] = &["experimental-features"];
-const NIX_CONF_MODE: u32 = 0o644;
+const NIX_CONF_MODE: u32 = 0o664;
 const NIX_CONF_COMMENT_CHAR: char = '#';
 
 #[non_exhaustive]
@@ -590,6 +590,7 @@ mod test {
             "experimental-features = flakes\nwarn-dirty = true\n",
         )
         .await?;
+        tokio::fs::set_permissions(&test_file, PermissionsExt::from_mode(NIX_CONF_MODE)).await?;
 
         let mut nix_config = NixConfig::new();
         nix_config
@@ -631,6 +632,7 @@ mod test {
             "# test 2\n# test\nexperimental-features = flakes # some inline comment about experimental-features\n# the following line should be warn-dirty = true\nwarn-dirty = true # this is an inline comment\n# this is an ungrouped comment\n# this too",
         )
         .await?;
+        tokio::fs::set_permissions(&test_file, PermissionsExt::from_mode(NIX_CONF_MODE)).await?;
         let mut nix_config = NixConfig::new();
         nix_config
             .settings_mut()
@@ -662,6 +664,7 @@ mod test {
         let test_file = temp_dir.path().join("preserves_comments");
 
         write(test_file.as_path(), " a = b\n c = d# lol\n# e = f").await?;
+        tokio::fs::set_permissions(&test_file, PermissionsExt::from_mode(NIX_CONF_MODE)).await?;
         let mut nix_config = NixConfig::new();
         nix_config
             .settings_mut()
