@@ -52,9 +52,9 @@ impl ConfigureInitService {
                 if link_dest != unit_src {
                     return Err(ActionError::SymlinkExists(unit_dest));
                 }
+            } else {
+                return Err(ActionError::FileExists(unit_dest));
             }
-
-            return Err(ActionError::FileExists(unit_dest));
         }
         // NOTE: ...and if there are any overrides in the most well-known places for systemd
         if Path::new(&format!("{dest}.d")).exists() {
