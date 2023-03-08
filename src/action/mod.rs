@@ -414,7 +414,7 @@ pub enum ActionError {
     /// A MacOS (Darwin) plist related error
     #[error(transparent)]
     Plist(#[from] plist::Error),
-    #[error("Unexpected binary tarball contents found, the build result of `nix build nix#hydraJobs.binaryTarball.$SYSTEM` is expected")]
+    #[error("Unexpected binary tarball contents found")]
     MalformedBinaryTarball,
 }
 
