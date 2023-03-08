@@ -97,61 +97,57 @@ impl Action for SetupDefaultProfile {
             .map_err(|e| ActionError::Custom(Box::new(e)))?
             .collect::<Result<Vec<_>, _>>()
             .map_err(|e| ActionError::Custom(Box::new(e)))?;
-        assert_eq!(
-            found_nix_paths.len(),
-            1,
-            "Did not expect to find multiple nix paths, please report this"
-        );
+        if found_nix_paths.len() != 1 {
+            return Err(ActionError::MalformedBinaryTarball);
+        }
         let found_nix_path = found_nix_paths.into_iter().next().unwrap();
         let reginfo_path = PathBuf::from(found_nix_path).join(".reginfo");
-        if reginfo_path.exists() {
-            let reginfo = tokio::fs::read(&reginfo_path)
-                .await
-                .map_err(|e| ActionError::Read(reginfo_path.to_path_buf(), e))?;
-            let mut load_db_command = Command::new(nix_pkg.join("bin/nix-store"));
-            load_db_command.process_group(0);
-            load_db_command.arg("--load-db");
-            load_db_command.stdin(std::process::Stdio::piped());
-            load_db_command.stdout(std::process::Stdio::piped());
-            load_db_command.stderr(std::process::Stdio::piped());
-            load_db_command.env(
-                "HOME",
-                dirs::home_dir().ok_or_else(|| {
-                    ActionError::Custom(Box::new(SetupDefaultProfileError::NoRootHome))
-                })?,
-            );
-            tracing::trace!(
-                "Executing `{:?}` with stdin from `{}`",
-                load_db_command.as_std(),
-                reginfo_path.display()
-            );
-            let mut handle = load_db_command
-                .spawn()
-                .map_err(|e| ActionError::command(&load_db_command, e))?;
+        let reginfo = tokio::fs::read(&reginfo_path)
+            .await
+            .map_err(|e| ActionError::Read(reginfo_path.to_path_buf(), e))?;
+        let mut load_db_command = Command::new(nix_pkg.join("bin/nix-store"));
+        load_db_command.process_group(0);
+        load_db_command.arg("--load-db");
+        load_db_command.stdin(std::process::Stdio::piped());
+        load_db_command.stdout(std::process::Stdio::piped());
+        load_db_command.stderr(std::process::Stdio::piped());
+        load_db_command.env(
+            "HOME",
+            dirs::home_dir().ok_or_else(|| {
+                ActionError::Custom(Box::new(SetupDefaultProfileError::NoRootHome))
+            })?,
+        );
+        tracing::trace!(
+            "Executing `{:?}` with stdin from `{}`",
+            load_db_command.as_std(),
+            reginfo_path.display()
+        );
+        let mut handle = load_db_command
+            .spawn()
+            .map_err(|e| ActionError::command(&load_db_command, e))?;
 
-            let mut stdin = handle.stdin.take().unwrap();
-            stdin
-                .write_all(&reginfo)
-                .await
-                .map_err(|e| ActionError::Write(PathBuf::from("/dev/stdin"), e))?;
-            stdin
-                .flush()
-                .await
-                .map_err(|e| ActionError::Write(PathBuf::from("/dev/stdin"), e))?;
-            drop(stdin);
-            tracing::trace!(
-                "Wrote `{}` to stdin of `nix-store --load-db`",
-                reginfo_path.display()
-            );
+        let mut stdin = handle.stdin.take().unwrap();
+        stdin
+            .write_all(&reginfo)
+            .await
+            .map_err(|e| ActionError::Write(PathBuf::from("/dev/stdin"), e))?;
+        stdin
+            .flush()
+            .await
+            .map_err(|e| ActionError::Write(PathBuf::from("/dev/stdin"), e))?;
+        drop(stdin);
+        tracing::trace!(
+            "Wrote `{}` to stdin of `nix-store --load-db`",
+            reginfo_path.display()
+        );
 
-            let output = handle
-                .wait_with_output()
-                .await
-                .map_err(|e| ActionError::command(&load_db_command, e))?;
-            if !output.status.success() {
-                return Err(ActionError::command_output(&load_db_command, output));
-            };
-        }
+        let output = handle
+            .wait_with_output()
+            .await
+            .map_err(|e| ActionError::command(&load_db_command, e))?;
+        if !output.status.success() {
+            return Err(ActionError::command_output(&load_db_command, output));
+        };
 
         // Install `nix` itself into the store
         execute_command(

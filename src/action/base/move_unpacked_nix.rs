@@ -60,11 +60,9 @@ impl Action for MoveUnpackedNix {
             .map_err(|e| ActionError::Custom(Box::new(e)))?
             .collect::<Result<Vec<_>, _>>()
             .map_err(|e| ActionError::Custom(Box::new(e)))?;
-        assert_eq!(
-            found_nix_paths.len(),
-            1,
-            "Did not expect to find multiple nix paths, please report this"
-        );
+        if found_nix_paths.len() != 1 {
+            return Err(ActionError::MalformedBinaryTarball);
+        }
         let found_nix_path = found_nix_paths.into_iter().next().unwrap();
         let src_store = found_nix_path.join("store");
         let mut src_store_listing = tokio::fs::read_dir(src_store.clone())
