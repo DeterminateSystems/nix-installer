@@ -40,7 +40,8 @@
         },
         "create_fstab_entry": {
           "action": {
-            "apfs_volume_label": "Nix Store"
+            "apfs_volume_label": "Nix Store",
+            "existing_entry": "None"
           },
           "state": "Uncompleted"
         },
@@ -64,7 +65,16 @@
         },
         "bootstrap_volume": {
           "action": {
+            "domain": "system",
+            "service": "org.nixos.darwin-store",
             "path": "/Library/LaunchDaemons/org.nixos.darwin-store.plist"
+          },
+          "state": "Uncompleted"
+        },
+        "kickstart_launchctl_service": {
+          "action": {
+            "domain": "system",
+            "service": "org.nixos.darwin-store"
           },
           "state": "Uncompleted"
         },
