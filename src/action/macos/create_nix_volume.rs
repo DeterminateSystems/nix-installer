@@ -1,7 +1,7 @@
 use crate::action::{
     base::{create_or_insert_into_file, CreateFile, CreateOrInsertIntoFile},
     macos::{
-        BootstrapApfsVolume, CreateApfsVolume, CreateSyntheticObjects, EnableOwnership,
+        BootstrapLaunchctlService, CreateApfsVolume, CreateSyntheticObjects, EnableOwnership,
         EncryptApfsVolume, UnmountApfsVolume,
     },
     Action, ActionDescription, ActionError, ActionTag, StatefulAction,
@@ -13,7 +13,7 @@ use std::{
 use tokio::process::Command;
 use tracing::{span, Span};
 
-use super::create_fstab_entry::CreateFstabEntry;
+use super::{create_fstab_entry::CreateFstabEntry, KickstartLaunchctlService};
 
 pub const NIX_VOLUME_MOUNTD_DEST: &str = "/Library/LaunchDaemons/org.nixos.darwin-store.plist";
 
@@ -31,7 +31,8 @@ pub struct CreateNixVolume {
     create_fstab_entry: StatefulAction<CreateFstabEntry>,
     encrypt_volume: Option<StatefulAction<EncryptApfsVolume>>,
     setup_volume_daemon: StatefulAction<CreateFile>,
-    bootstrap_volume: StatefulAction<BootstrapApfsVolume>,
+    bootstrap_volume: StatefulAction<BootstrapLaunchctlService>,
+    kickstart_launchctl_service: StatefulAction<KickstartLaunchctlService>,
     enable_ownership: StatefulAction<EnableOwnership>,
 }
 
@@ -67,12 +68,12 @@ impl CreateNixVolume {
             .await
             .map_err(|e| ActionError::Child(CreateApfsVolume::action_tag(), Box::new(e)))?;
 
-        let create_fstab_entry = CreateFstabEntry::plan(name.clone())
+        let create_fstab_entry = CreateFstabEntry::plan(name.clone(), &create_volume)
             .await
             .map_err(|e| ActionError::Child(CreateFstabEntry::action_tag(), Box::new(e)))?;
 
         let encrypt_volume = if encrypt {
-            Some(EncryptApfsVolume::plan(disk, &name).await?)
+            Some(EncryptApfsVolume::plan(disk, &name, &create_volume).await?)
         } else {
             None
         };
@@ -116,12 +117,20 @@ impl CreateNixVolume {
                 .await
                 .map_err(|e| ActionError::Child(CreateFile::action_tag(), Box::new(e)))?;
 
-        let bootstrap_volume = BootstrapApfsVolume::plan(NIX_VOLUME_MOUNTD_DEST)
-            .await
-            .map_err(|e| ActionError::Child(BootstrapApfsVolume::action_tag(), Box::new(e)))?;
-        let enable_ownership = EnableOwnership::plan("/nix")
-            .await
-            .map_err(|e| ActionError::Child(EnableOwnership::action_tag(), Box::new(e)))?;
+        let bootstrap_volume = BootstrapLaunchctlService::plan(
+            "system",
+            "org.nixos.darwin-store",
+            NIX_VOLUME_MOUNTD_DEST,
+        )
+        .await
+        .map_err(|e| ActionError::Child(BootstrapLaunchctlService::action_tag(), Box::new(e)))?;
+        let kickstart_launchctl_service =
+            KickstartLaunchctlService::plan("system", "org.nixos.darwin-store")
+                .await
+                .map_err(|e| {
+                    ActionError::Child(KickstartLaunchctlService::action_tag(), Box::new(e))
+                })?;
+        let enable_ownership = EnableOwnership::plan("/nix").await?;
 
         Ok(Self {
             disk: disk.to_path_buf(),
@@ -136,6 +145,7 @@ impl CreateNixVolume {
             encrypt_volume,
             setup_volume_daemon,
             bootstrap_volume,
+            kickstart_launchctl_service,
             enable_ownership,
         }
         .into())
@@ -150,9 +160,10 @@ impl Action for CreateNixVolume {
     }
     fn tracing_synopsis(&self) -> String {
         format!(
-            "Create an APFS volume `{}` for Nix on `{}`",
-            self.name,
-            self.disk.display()
+            "Create an{maybe_encrypted} APFS volume `{name}` for Nix on `{disk}` and add it to `/etc/fstab` mounting on `/nix`",
+            maybe_encrypted = if self.encrypt { " encrypted" } else { "" }, 
+            name = self.name,
+            disk = self.disk.display(),
         )
     }
 
@@ -166,10 +177,23 @@ impl Action for CreateNixVolume {
     }
 
     fn execute_description(&self) -> Vec<ActionDescription> {
-        let Self {
-            disk: _, name: _, ..
-        } = &self;
-        vec![ActionDescription::new(self.tracing_synopsis(), vec![])]
+        let mut explanation = vec![
+            self.create_or_append_synthetic_conf.tracing_synopsis(),
+            self.create_synthetic_objects.tracing_synopsis(),
+            self.unmount_volume.tracing_synopsis(),
+            self.create_volume.tracing_synopsis(),
+            self.create_fstab_entry.tracing_synopsis(),
+        ];
+        if let Some(encrypt_volume) = &self.encrypt_volume {
+            explanation.push(encrypt_volume.tracing_synopsis());
+        }
+        explanation.append(&mut vec![
+            self.setup_volume_daemon.tracing_synopsis(),
+            self.bootstrap_volume.tracing_synopsis(),
+            self.enable_ownership.tracing_synopsis(),
+        ]);
+
+        vec![ActionDescription::new(self.tracing_synopsis(), explanation)]
     }
 
     #[tracing::instrument(level = "debug", skip_all)]
@@ -202,7 +226,7 @@ impl Action for CreateNixVolume {
             encrypt_volume
                 .try_execute()
                 .await
-                .map_err(|e| ActionError::Child(encrypt_volume.action_tag(), Box::new(e)))?;
+                .map_err(|e| ActionError::Child(encrypt_volume.action_tag(), Box::new(e)))?
         }
         self.setup_volume_daemon
             .try_execute()
@@ -213,6 +237,12 @@ impl Action for CreateNixVolume {
             .try_execute()
             .await
             .map_err(|e| ActionError::Child(self.bootstrap_volume.action_tag(), Box::new(e)))?;
+        self.kickstart_launchctl_service
+            .try_execute()
+            .await
+            .map_err(|e| {
+                ActionError::Child(self.kickstart_launchctl_service.action_tag(), Box::new(e))
+            })?;
 
         let mut retry_tokens: usize = 50;
         loop {
@@ -242,34 +272,40 @@ impl Action for CreateNixVolume {
     }
 
     fn revert_description(&self) -> Vec<ActionDescription> {
-        let Self { disk, name, .. } = &self;
+        let mut explanation = vec![
+            self.create_or_append_synthetic_conf.tracing_synopsis(),
+            self.create_synthetic_objects.tracing_synopsis(),
+            self.unmount_volume.tracing_synopsis(),
+            self.create_volume.tracing_synopsis(),
+            self.create_fstab_entry.tracing_synopsis(),
+        ];
+        if let Some(encrypt_volume) = &self.encrypt_volume {
+            explanation.push(encrypt_volume.tracing_synopsis());
+        }
+        explanation.append(&mut vec![
+            self.setup_volume_daemon.tracing_synopsis(),
+            self.bootstrap_volume.tracing_synopsis(),
+            self.enable_ownership.tracing_synopsis(),
+        ]);
+
         vec![ActionDescription::new(
-            format!("Remove the APFS volume `{name}` on `{}`", disk.display()),
-            vec![format!(
-                "Create a writable, persistent systemd system extension.",
-            )],
+            format!(
+                "Remove the APFS volume `{}` on `{}`",
+                self.name,
+                self.disk.display()
+            ),
+            explanation,
         )]
     }
 
     #[tracing::instrument(level = "debug", skip_all)]
     async fn revert(&mut self) -> Result<(), ActionError> {
-        self.enable_ownership
-            .try_revert()
-            .await
-            .map_err(|e| ActionError::Child(self.enable_ownership.action_tag(), Box::new(e)))?;
-        self.bootstrap_volume
-            .try_revert()
-            .await
-            .map_err(|e| ActionError::Child(self.bootstrap_volume.action_tag(), Box::new(e)))?;
-        self.setup_volume_daemon
-            .try_revert()
-            .await
-            .map_err(|e| ActionError::Child(self.setup_volume_daemon.action_tag(), Box::new(e)))?;
+        self.enable_ownership.try_revert().await?;
+        self.kickstart_launchctl_service.try_revert().await?;
+        self.bootstrap_volume.try_revert().await?;
+        self.setup_volume_daemon.try_revert().await?;
         if let Some(encrypt_volume) = &mut self.encrypt_volume {
-            encrypt_volume
-                .try_revert()
-                .await
-                .map_err(|e| ActionError::Child(encrypt_volume.action_tag(), Box::new(e)))?;
+            encrypt_volume.try_revert().await?;
         }
         self.create_fstab_entry
             .try_revert()

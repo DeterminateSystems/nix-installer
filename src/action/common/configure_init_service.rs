@@ -277,7 +277,7 @@ impl Action for ConfigureInitService {
             InitSystem::Launchd => {
                 vec![ActionDescription::new(
                     "Unconfigure Nix daemon related settings with launchctl".to_string(),
-                    vec!["Run `launchctl unload {DARWIN_NIX_DAEMON_DEST}`".to_string()],
+                    vec![format!("Run `launchctl unload {DARWIN_NIX_DAEMON_DEST}`")],
                 )]
             },
             #[cfg(not(target_os = "macos"))]
