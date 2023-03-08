@@ -32,7 +32,7 @@ impl BootstrapLaunchctlService {
         let mut command = Command::new("launchctl");
         command.process_group(0);
         command.arg("print");
-        command.arg("{domain}/{service}");
+        command.arg(format!("{domain}/{service}"));
         command.arg("-plist");
         command.stdin(std::process::Stdio::null());
         command.stdout(std::process::Stdio::piped());
