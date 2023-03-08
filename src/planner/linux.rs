@@ -1,6 +1,6 @@
 use crate::{
     action::{
-        base::CreateDirectory,
+        base::{CreateDirectory, RemoveDirectory},
         common::{ConfigureInitService, ConfigureNix, ProvisionNix},
         StatefulAction,
     },
@@ -85,6 +85,10 @@ impl Planner for Linux {
                 .map_err(PlannerError::Action)?
                 .boxed(),
             ConfigureInitService::plan(self.init.init, self.init.start_daemon)
+                .await
+                .map_err(PlannerError::Action)?
+                .boxed(),
+            RemoveDirectory::plan(crate::settings::SCRATCH_DIR)
                 .await
                 .map_err(PlannerError::Action)?
                 .boxed(),

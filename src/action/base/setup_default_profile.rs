@@ -1,8 +1,8 @@
-use std::path::{Path, PathBuf};
+use std::path::PathBuf;
 
 use crate::{
     action::{ActionError, ActionTag, StatefulAction},
-    execute_command, set_env, ChannelValue,
+    execute_command, set_env,
 };
 
 use glob::glob;
@@ -17,13 +17,13 @@ Setup the default Nix profile with `nss-cacert` and `nix` itself.
  */
 #[derive(Debug, serde::Deserialize, serde::Serialize, Clone)]
 pub struct SetupDefaultProfile {
-    channels: Vec<ChannelValue>,
+    unpacked_path: PathBuf,
 }
 
 impl SetupDefaultProfile {
     #[tracing::instrument(level = "debug", skip_all)]
-    pub async fn plan(channels: Vec<ChannelValue>) -> Result<StatefulAction<Self>, ActionError> {
-        Ok(Self { channels }.into())
+    pub async fn plan(unpacked_path: PathBuf) -> Result<StatefulAction<Self>, ActionError> {
+        Ok(Self { unpacked_path }.into())
     }
 }
 
@@ -38,16 +38,7 @@ impl Action for SetupDefaultProfile {
     }
 
     fn tracing_span(&self) -> Span {
-        span!(
-            tracing::Level::DEBUG,
-            "setup_default_profile",
-            channels = self
-                .channels
-                .iter()
-                .map(|ChannelValue(channel, url)| format!("{channel}={url}"))
-                .collect::<Vec<_>>()
-                .join(","),
-        )
+        span!(tracing::Level::DEBUG, "setup_default_profile",)
     }
 
     fn execute_description(&self) -> Vec<ActionDescription> {
@@ -56,8 +47,6 @@ impl Action for SetupDefaultProfile {
 
     #[tracing::instrument(level = "debug", skip_all)]
     async fn execute(&mut self) -> Result<(), ActionError> {
-        let Self { channels } = self;
-
         // Find an `nix` package
         let nix_pkg_glob = "/nix/store/*-nix-*";
         let mut found_nix_pkg = None;
@@ -104,56 +93,61 @@ impl Action for SetupDefaultProfile {
             )));
         };
 
-        {
-            let reginfo_path =
-                Path::new(crate::action::base::move_unpacked_nix::DEST).join(".reginfo");
-            let reginfo = tokio::fs::read(&reginfo_path)
-                .await
-                .map_err(|e| ActionError::Read(reginfo_path.to_path_buf(), e))?;
-            let mut load_db_command = Command::new(nix_pkg.join("bin/nix-store"));
-            load_db_command.process_group(0);
-            load_db_command.arg("--load-db");
-            load_db_command.stdin(std::process::Stdio::piped());
-            load_db_command.stdout(std::process::Stdio::piped());
-            load_db_command.stderr(std::process::Stdio::piped());
-            load_db_command.env(
-                "HOME",
-                dirs::home_dir().ok_or_else(|| {
-                    ActionError::Custom(Box::new(SetupDefaultProfileError::NoRootHome))
-                })?,
-            );
-            tracing::trace!(
-                "Executing `{:?}` with stdin from `{}`",
-                load_db_command.as_std(),
-                reginfo_path.display()
-            );
-            let mut handle = load_db_command
-                .spawn()
-                .map_err(|e| ActionError::command(&load_db_command, e))?;
-
-            let mut stdin = handle.stdin.take().unwrap();
-            stdin
-                .write_all(&reginfo)
-                .await
-                .map_err(|e| ActionError::Write(PathBuf::from("/dev/stdin"), e))?;
-            stdin
-                .flush()
-                .await
-                .map_err(|e| ActionError::Write(PathBuf::from("/dev/stdin"), e))?;
-            drop(stdin);
-            tracing::trace!(
-                "Wrote `{}` to stdin of `nix-store --load-db`",
-                reginfo_path.display()
-            );
-
-            let output = handle
-                .wait_with_output()
-                .await
-                .map_err(|e| ActionError::command(&load_db_command, e))?;
-            if !output.status.success() {
-                return Err(ActionError::command_output(&load_db_command, output));
-            };
+        let found_nix_paths = glob::glob(&format!("{}/nix-*", self.unpacked_path.display()))
+            .map_err(|e| ActionError::Custom(Box::new(e)))?
+            .collect::<Result<Vec<_>, _>>()
+            .map_err(|e| ActionError::Custom(Box::new(e)))?;
+        if found_nix_paths.len() != 1 {
+            return Err(ActionError::MalformedBinaryTarball);
         }
+        let found_nix_path = found_nix_paths.into_iter().next().unwrap();
+        let reginfo_path = PathBuf::from(found_nix_path).join(".reginfo");
+        let reginfo = tokio::fs::read(&reginfo_path)
+            .await
+            .map_err(|e| ActionError::Read(reginfo_path.to_path_buf(), e))?;
+        let mut load_db_command = Command::new(nix_pkg.join("bin/nix-store"));
+        load_db_command.process_group(0);
+        load_db_command.arg("--load-db");
+        load_db_command.stdin(std::process::Stdio::piped());
+        load_db_command.stdout(std::process::Stdio::piped());
+        load_db_command.stderr(std::process::Stdio::piped());
+        load_db_command.env(
+            "HOME",
+            dirs::home_dir().ok_or_else(|| {
+                ActionError::Custom(Box::new(SetupDefaultProfileError::NoRootHome))
+            })?,
+        );
+        tracing::trace!(
+            "Executing `{:?}` with stdin from `{}`",
+            load_db_command.as_std(),
+            reginfo_path.display()
+        );
+        let mut handle = load_db_command
+            .spawn()
+            .map_err(|e| ActionError::command(&load_db_command, e))?;
+
+        let mut stdin = handle.stdin.take().unwrap();
+        stdin
+            .write_all(&reginfo)
+            .await
+            .map_err(|e| ActionError::Write(PathBuf::from("/dev/stdin"), e))?;
+        stdin
+            .flush()
+            .await
+            .map_err(|e| ActionError::Write(PathBuf::from("/dev/stdin"), e))?;
+        drop(stdin);
+        tracing::trace!(
+            "Wrote `{}` to stdin of `nix-store --load-db`",
+            reginfo_path.display()
+        );
+
+        let output = handle
+            .wait_with_output()
+            .await
+            .map_err(|e| ActionError::command(&load_db_command, e))?;
+        if !output.status.success() {
+            return Err(ActionError::command_output(&load_db_command, output));
+        };
 
         // Install `nix` itself into the store
         execute_command(
@@ -200,29 +194,13 @@ impl Action for SetupDefaultProfile {
             "/nix/var/nix/profiles/default/etc/ssl/certs/ca-bundle.crt",
         );
 
-        if !channels.is_empty() {
-            let mut command = Command::new(nix_pkg.join("bin/nix-channel"));
-            command.process_group(0);
-            command.arg("--update");
-            for channel in channels {
-                command.arg(channel.0.clone());
-            }
-            command.env(
-                "NIX_SSL_CERT_FILE",
-                "/nix/var/nix/profiles/default/etc/ssl/certs/ca-bundle.crt",
-            );
-            command.stdin(std::process::Stdio::null());
-
-            execute_command(&mut command).await?;
-        }
-
         Ok(())
     }
 
     fn revert_description(&self) -> Vec<ActionDescription> {
         vec![ActionDescription::new(
             "Unset the default Nix profile".to_string(),
-            vec!["TODO".to_string()],
+            vec![],
         )]
     }
 

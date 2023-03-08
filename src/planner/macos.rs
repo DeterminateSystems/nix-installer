@@ -6,6 +6,7 @@ use tokio::process::Command;
 
 use crate::{
     action::{
+        base::RemoveDirectory,
         common::{ConfigureInitService, ConfigureNix, ProvisionNix},
         macos::CreateNixVolume,
         StatefulAction,
@@ -142,6 +143,10 @@ impl Planner for Macos {
                 .map_err(PlannerError::Action)?
                 .boxed(),
             ConfigureInitService::plan(InitSystem::Launchd, true)
+                .await
+                .map_err(PlannerError::Action)?
+                .boxed(),
+            RemoveDirectory::plan(crate::settings::SCRATCH_DIR)
                 .await
                 .map_err(PlannerError::Action)?
                 .boxed(),

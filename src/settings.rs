@@ -6,7 +6,7 @@ use std::collections::HashMap;
 use clap::ArgAction;
 use url::Url;
 
-use crate::channel_value::ChannelValue;
+pub const SCRATCH_DIR: &str = "/nix/temp-install-dir";
 
 /// Default [`nix_package_url`](CommonSettings::nix_package_url) for Linux x86_64
 pub const NIX_X64_64_LINUX_URL: &str =
@@ -57,20 +57,6 @@ Settings which only apply to certain [`Planner`](crate::planner::Planner)s shoul
 #[derive(Debug, serde::Deserialize, serde::Serialize, Clone)]
 #[cfg_attr(feature = "cli", derive(clap::Parser))]
 pub struct CommonSettings {
-    /// Channel(s) to add, for no default channel, pass `--channel`
-    #[cfg_attr(
-        feature = "cli",
-        clap(
-            value_parser,
-            long = "channel",
-            num_args = 0..,
-            action = clap::ArgAction::Append,
-            env = "NIX_INSTALLER_CHANNELS",
-            default_value = "nixpkgs=https://nixos.org/channels/nixpkgs-unstable",
-        )
-    )]
-    pub(crate) channels: Vec<ChannelValue>,
-
     /// Modify the user profile to automatically load nix
     #[cfg_attr(
         feature = "cli",
@@ -281,11 +267,6 @@ impl CommonSettings {
 
         Ok(Self {
             nix_build_user_count: 32,
-            channels: vec![ChannelValue(
-                "nixpkgs".into(),
-                reqwest::Url::parse("https://nixos.org/channels/nixpkgs-unstable")
-                    .expect("Embedded default URL was not a URL, please report this"),
-            )],
             modify_profile: true,
             nix_build_group_name: String::from("nixbld"),
             nix_build_group_id: 30_000,
@@ -304,7 +285,6 @@ impl CommonSettings {
     /// A listing of the settings, suitable for [`Planner::settings`](crate::planner::Planner::settings)
     pub fn settings(&self) -> Result<HashMap<String, serde_json::Value>, InstallSettingsError> {
         let Self {
-            channels,
             modify_profile,
             nix_build_user_count,
             nix_build_group_name,
@@ -319,15 +299,6 @@ impl CommonSettings {
         } = self;
         let mut map = HashMap::default();
 
-        map.insert(
-            "channels".into(),
-            serde_json::to_value(
-                channels
-                    .iter()
-                    .map(|ChannelValue(k, v)| format!("{k}={v}"))
-                    .collect::<Vec<_>>(),
-            )?,
-        );
         map.insert(
             "modify_profile".into(),
             serde_json::to_value(modify_profile)?,
@@ -402,12 +373,6 @@ impl CommonSettings {
     /// Number of build users to create
     pub fn nix_build_user_count(&mut self, count: u32) -> &mut Self {
         self.nix_build_user_count = count;
-        self
-    }
-
-    /// Channel(s) to add
-    pub fn channels(&mut self, channels: impl IntoIterator<Item = (String, Url)>) -> &mut Self {
-        self.channels = channels.into_iter().map(Into::into).collect();
         self
     }
 

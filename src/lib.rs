@@ -70,7 +70,6 @@ match plan.install(None).await {
 */
 
 pub mod action;
-mod channel_value;
 #[cfg(feature = "cli")]
 pub mod cli;
 #[cfg(feature = "diagnostics")]
@@ -85,7 +84,6 @@ use std::{ffi::OsStr, process::Output};
 
 use action::{Action, ActionError};
 
-pub use channel_value::ChannelValue;
 pub use error::NixInstallerError;
 pub use plan::InstallPlan;
 use planner::BuiltinPlanner;

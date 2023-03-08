@@ -802,7 +802,7 @@
         },
         "move_unpacked_nix": {
           "action": {
-            "src": "/nix/temp-install-dir"
+            "unpacked_path": "/nix/temp-install-dir"
           },
           "state": "Uncompleted"
         }
@@ -819,7 +819,8 @@
                 "nixpkgs",
                 "https://nixos.org/channels/nixpkgs-unstable"
               ]
-            ]
+            ],
+            "unpacked_path": "/nix/temp-install-dir"
           },
           "state": "Uncompleted"
         },
@@ -872,28 +873,6 @@
                 "state": "Uncompleted"
               }
             ]
-          },
-          "state": "Uncompleted"
-        },
-        "place_channel_configuration": {
-          "action": {
-            "channels": [
-              [
-                "nixpkgs",
-                "https://nixos.org/channels/nixpkgs-unstable"
-              ]
-            ],
-            "create_file": {
-              "action": {
-                "path": "/home/ubuntu/.nix-channels",
-                "user": null,
-                "group": null,
-                "mode": 436,
-                "buf": "https://nixos.org/channels/nixpkgs-unstable nixpkgs",
-                "force": false
-              },
-              "state": "Uncompleted"
-            }
           },
           "state": "Uncompleted"
         },
