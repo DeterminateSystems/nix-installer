@@ -51,15 +51,14 @@ let
       install = install-default.install;
       check = install-default.check;
     };
-    install-preexisting-self-broken-no-group-missing-users = {
+    install-preexisting-self-broken-missing-users = {
       preinstall = ''
         NIX_PATH=$(readlink -f nix.tar.xz)
         RUST_BACKTRACE="full" ./nix-installer install --channel --nix-package-url "file://$NIX_PATH" --no-confirm
         sudo mv /nix/receipt.json /nix/old-receipt.json
-        sudo groupdel nixbld
         sudo userdel nixbld1
         sudo userdel nixbld3
-        sudo userdel nixbld 16
+        sudo userdel nixbld16
       '';
       install = install-default.install;
       check = install-default.check;
@@ -70,6 +69,15 @@ let
         RUST_BACKTRACE="full" ./nix-installer install --channel --nix-package-url "file://$NIX_PATH" --no-confirm
         sudo mv /nix/receipt.json /nix/old-receipt.json
         sudo systemctl disable --now nix-daemon.service
+      '';
+      install = install-default.install;
+      check = install-default.check;
+    };
+    install-preexisting-self-broken-no-etc-nix = {
+      preinstall = ''
+        NIX_PATH=$(readlink -f nix.tar.xz)
+        RUST_BACKTRACE="full" ./nix-installer install --channel --nix-package-url "file://$NIX_PATH" --no-confirm
+        sudo rm -rf /etc/nix
       '';
       install = install-default.install;
       check = install-default.check;
@@ -315,9 +323,10 @@ vm-tests // rec {
       all."x86_64-linux".install-daemonless
       all."x86_64-linux".install-preexisting-self-working
       all."x86_64-linux".install-preexisting-self-broken-no-path-nix
-      all."x86_64-linux".install-preexisting-self-broken-no-group-missing-users
+      all."x86_64-linux".install-preexisting-self-broken-missing-users
       all."x86_64-linux".install-preexisting-self-broken-daemon-disabled
       all."x86_64-linux".install-preexisting-self-broken-no-etc-nix
+      all."x86_64-linux".install-preexisting-self-broken-unmodified-bashrc
     ];
   });
 }
