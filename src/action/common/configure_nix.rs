@@ -1,10 +1,12 @@
+use std::path::PathBuf;
+
 use crate::{
     action::{
         base::SetupDefaultProfile,
         common::{ConfigureShellProfile, PlaceNixConfiguration},
         Action, ActionDescription, ActionError, ActionTag, StatefulAction,
     },
-    settings::CommonSettings,
+    settings::{CommonSettings, SCRATCH_DIR},
 };
 
 use tracing::{span, Instrument, Span};
@@ -22,7 +24,7 @@ pub struct ConfigureNix {
 impl ConfigureNix {
     #[tracing::instrument(level = "debug", skip_all)]
     pub async fn plan(settings: &CommonSettings) -> Result<StatefulAction<Self>, ActionError> {
-        let setup_default_profile = SetupDefaultProfile::plan()
+        let setup_default_profile = SetupDefaultProfile::plan(PathBuf::from(SCRATCH_DIR))
             .await
             .map_err(|e| ActionError::Child(SetupDefaultProfile::action_tag(), Box::new(e)))?;
 

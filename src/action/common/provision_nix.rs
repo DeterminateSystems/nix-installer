@@ -6,7 +6,7 @@ use crate::{
         base::{FetchAndUnpackNix, MoveUnpackedNix},
         Action, ActionDescription, ActionError, ActionTag, StatefulAction,
     },
-    settings::CommonSettings,
+    settings::{CommonSettings, SCRATCH_DIR},
 };
 use std::path::PathBuf;
 
@@ -24,18 +24,16 @@ pub struct ProvisionNix {
 impl ProvisionNix {
     #[tracing::instrument(level = "debug", skip_all)]
     pub async fn plan(settings: &CommonSettings) -> Result<StatefulAction<Self>, ActionError> {
-        let fetch_nix = FetchAndUnpackNix::plan(
-            settings.nix_package_url.clone(),
-            PathBuf::from("/nix/temp-install-dir"),
-        )
-        .await?;
+        let fetch_nix =
+            FetchAndUnpackNix::plan(settings.nix_package_url.clone(), PathBuf::from(SCRATCH_DIR))
+                .await?;
         let create_users_and_group = CreateUsersAndGroups::plan(settings.clone())
             .await
             .map_err(|e| ActionError::Child(CreateUsersAndGroups::action_tag(), Box::new(e)))?;
         let create_nix_tree = CreateNixTree::plan()
             .await
             .map_err(|e| ActionError::Child(CreateNixTree::action_tag(), Box::new(e)))?;
-        let move_unpacked_nix = MoveUnpackedNix::plan(PathBuf::from("/nix/temp-install-dir"))
+        let move_unpacked_nix = MoveUnpackedNix::plan(PathBuf::from(SCRATCH_DIR))
             .await
             .map_err(|e| ActionError::Child(MoveUnpackedNix::action_tag(), Box::new(e)))?;
         Ok(Self {

@@ -6,6 +6,8 @@ use std::collections::HashMap;
 use clap::ArgAction;
 use url::Url;
 
+pub const SCRATCH_DIR: &str = "/nix/temp-install-dir";
+
 /// Default [`nix_package_url`](CommonSettings::nix_package_url) for Linux x86_64
 pub const NIX_X64_64_LINUX_URL: &str =
     "https://releases.nixos.org/nix/nix-2.13.3/nix-2.13.3-x86_64-linux.tar.xz";
