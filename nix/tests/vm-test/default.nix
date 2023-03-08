@@ -11,6 +11,13 @@ let
       check = ''
         set -ex
 
+        if systemctl is-active nix-daemon.socket; then
+          echo "nix-daemon.socket was active"
+        else
+          echo "nix-daemon.socket was not active, should be"
+          exit 1
+        fi
+
         nix-env --version
         nix --extra-experimental-features nix-command store ping
 
