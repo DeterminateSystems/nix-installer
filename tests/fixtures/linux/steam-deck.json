@@ -1,5 +1,5 @@
 {
-  "version": "0.5.0",
+  "version": "0.5.1-unreleased",
   "actions": [
     {
       "action": {
@@ -873,28 +873,6 @@
                 "state": "Uncompleted"
               }
             ]
-          },
-          "state": "Uncompleted"
-        },
-        "place_channel_configuration": {
-          "action": {
-            "channels": [
-              [
-                "nixpkgs",
-                "https://nixos.org/channels/nixpkgs-unstable"
-              ]
-            ],
-            "create_file": {
-              "action": {
-                "path": "/home/ubuntu/.nix-channels",
-                "user": null,
-                "group": null,
-                "mode": 436,
-                "buf": "https://nixos.org/channels/nixpkgs-unstable nixpkgs",
-                "force": false
-              },
-              "state": "Uncompleted"
-            }
           },
           "state": "Uncompleted"
         },
