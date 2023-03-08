@@ -210,26 +210,30 @@ impl Action for ConfigureInitService {
                 // cli, interactively ask for permission to remove the file
 
                 Self::check_if_systemd_unit_exists(SERVICE_SRC, SERVICE_DEST).await?;
-                tokio::fs::symlink(SERVICE_SRC, SERVICE_DEST)
-                    .await
-                    .map_err(|e| {
-                        ActionError::Symlink(
-                            PathBuf::from(SERVICE_SRC),
-                            PathBuf::from(SERVICE_DEST),
-                            e,
-                        )
-                    })?;
+                if !Path::new(SERVICE_DEST).exists() {
+                    tokio::fs::symlink(SERVICE_SRC, SERVICE_DEST)
+                        .await
+                        .map_err(|e| {
+                            ActionError::Symlink(
+                                PathBuf::from(SERVICE_SRC),
+                                PathBuf::from(SERVICE_DEST),
+                                e,
+                            )
+                        })?;
+                }
 
                 Self::check_if_systemd_unit_exists(SOCKET_SRC, SOCKET_DEST).await?;
-                tokio::fs::symlink(SOCKET_SRC, SOCKET_DEST)
-                    .await
-                    .map_err(|e| {
-                        ActionError::Symlink(
-                            PathBuf::from(SOCKET_SRC),
-                            PathBuf::from(SOCKET_DEST),
-                            e,
-                        )
-                    })?;
+                if !Path::new(SOCKET_DEST).exists() {
+                    tokio::fs::symlink(SOCKET_SRC, SOCKET_DEST)
+                        .await
+                        .map_err(|e| {
+                            ActionError::Symlink(
+                                PathBuf::from(SOCKET_SRC),
+                                PathBuf::from(SOCKET_DEST),
+                                e,
+                            )
+                        })?;
+                }
 
                 if *start_daemon {
                     execute_command(
