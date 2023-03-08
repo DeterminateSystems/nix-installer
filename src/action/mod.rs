@@ -313,6 +313,8 @@ pub enum ActionError {
     PathModeMismatch(std::path::PathBuf, u32, u32),
     #[error("`{0}` was not a file")]
     PathWasNotFile(std::path::PathBuf),
+    #[error("`{0}` was not a directory")]
+    PathWasNotDir(std::path::PathBuf),
     #[error("Getting metadata for {0}`")]
     GettingMetadata(std::path::PathBuf, #[source] std::io::Error),
     #[error("Creating directory `{0}`")]
