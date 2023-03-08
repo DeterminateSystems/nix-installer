@@ -366,7 +366,7 @@ vm-tests // rec {
     name = "all";
     constituents = pkgs.lib.mapAttrsToList (name: value: value."x86_64-linux".install-preexisting-self-broken-daemon-disabled) vm-tests;
   });
-    all."x86_64-linux".install-preexisting-self-broken-no-etc-nix = (with (forSystem "x86_64-linux" ({ system, pkgs, ... }: pkgs)); pkgs.releaseTools.aggregate {
+  all."x86_64-linux".install-preexisting-self-broken-no-etc-nix = (with (forSystem "x86_64-linux" ({ system, pkgs, ... }: pkgs)); pkgs.releaseTools.aggregate {
     name = "all";
     constituents = pkgs.lib.mapAttrsToList (name: value: value."x86_64-linux".install-preexisting-self-broken-no-etc-nix) vm-tests;
   });
