@@ -69,7 +69,7 @@
             src = builtins.path {
               name = "nix-installer-source";
               path = self;
-              filter = (path: type: baseNameOf path != "nix" || baseNameOf path != ".github");
+              filter = (path: type: baseNameOf path != "nix" && baseNameOf path != ".github");
             };
 
             nativeBuildInputs = with final; [ ];
