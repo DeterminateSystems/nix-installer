@@ -42,7 +42,7 @@ impl CreateDirectory {
                 .await
                 .map_err(|e| ActionError::GettingMetadata(path.clone(), e))?;
             if !metadata.is_dir() {
-                return Err(ActionError::Exists(path.to_owned()));
+                return Err(ActionError::PathWasNotDirectory(path.to_owned()));
             }
 
             // Does it have the right user/group?

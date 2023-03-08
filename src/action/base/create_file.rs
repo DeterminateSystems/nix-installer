@@ -120,7 +120,7 @@ impl CreateFile {
                 .map_err(|e| ActionError::Read(this.path.clone(), e))?;
 
             if discovered_buf != this.buf {
-                return Err(ActionError::Exists(this.path.clone()));
+                return Err(ActionError::DifferentContent(this.path.clone()));
             }
 
             tracing::debug!("Creating file `{}` already complete", this.path.display());
@@ -346,7 +346,7 @@ mod test {
         )
         .await
         {
-            Err(ActionError::Exists(path)) => assert_eq!(path, test_file.as_path()),
+            Err(ActionError::DifferentContent(path)) => assert_eq!(path, test_file.as_path()),
             _ => return Err(eyre!("Should have returned an ActionError::Exists error")),
         }
 

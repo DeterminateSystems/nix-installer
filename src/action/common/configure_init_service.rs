@@ -12,7 +12,11 @@ use crate::settings::InitSystem;
 #[cfg(target_os = "linux")]
 const SERVICE_SRC: &str = "/nix/var/nix/profiles/default/lib/systemd/system/nix-daemon.service";
 #[cfg(target_os = "linux")]
+const SERVICE_DEST: &str = "/etc/systemd/system/nix-daemon.service";
+#[cfg(target_os = "linux")]
 const SOCKET_SRC: &str = "/nix/var/nix/profiles/default/lib/systemd/system/nix-daemon.socket";
+#[cfg(target_os = "linux")]
+const SOCKET_DEST: &str = "/etc/systemd/system/nix-daemon.socket";
 #[cfg(target_os = "linux")]
 const TMPFILES_SRC: &str = "/nix/var/nix/profiles/default/lib/tmpfiles.d/nix-daemon.conf";
 #[cfg(target_os = "linux")]
@@ -32,11 +36,54 @@ pub struct ConfigureInitService {
 }
 
 impl ConfigureInitService {
+    #[cfg(target_os = "linux")]
+    async fn check_if_systemd_unit_exists(src: &str, dest: &str) -> Result<(), ActionError> {
+        // TODO: once we have a way to communicate interaction between the library and the cli,
+        // interactively ask for permission to remove the file
+
+        let unit_src = PathBuf::from(src);
+        // NOTE: Check if the unit file already exists...
+        let unit_dest = PathBuf::from(dest);
+        if unit_dest.exists() {
+            if unit_dest.is_symlink() {
+                let link_dest = tokio::fs::read_link(&unit_dest)
+                    .await
+                    .map_err(|e| ActionError::ReadSymlink(unit_dest.clone(), e))?;
+                if link_dest != unit_src {
+                    return Err(ActionError::SymlinkExists(unit_dest));
+                }
+            } else {
+                return Err(ActionError::FileExists(unit_dest));
+            }
+        }
+        // NOTE: ...and if there are any overrides in the most well-known places for systemd
+        if Path::new(&format!("{dest}.d")).exists() {
+            return Err(ActionError::DirExists(PathBuf::from(format!("{dest}.d"))));
+        }
+
+        Ok(())
+    }
     #[tracing::instrument(level = "debug", skip_all)]
     pub async fn plan(
         init: InitSystem,
         start_daemon: bool,
     ) -> Result<StatefulAction<Self>, ActionError> {
+        match init {
+            #[cfg(target_os = "macos")]
+            InitSystem::Launchd => {
+                // No plan checks, yet
+            },
+            #[cfg(target_os = "linux")]
+            InitSystem::Systemd => {
+                Self::check_if_systemd_unit_exists(SERVICE_SRC, SERVICE_DEST).await?;
+                Self::check_if_systemd_unit_exists(SOCKET_SRC, SOCKET_DEST).await?;
+            },
+            #[cfg(not(target_os = "macos"))]
+            InitSystem::None => {
+                // Nothing here, no init system
+            },
+        };
+
         Ok(Self { init, start_daemon }.into())
     }
 }
@@ -71,8 +118,8 @@ impl Action for ConfigureInitService {
             InitSystem::Systemd => {
                 let mut explanation = vec![
                     "Run `systemd-tempfiles --create --prefix=/nix/var/nix`".to_string(),
-                    format!("Run `systemctl link {SERVICE_SRC}`"),
-                    format!("Run `systemctl link {SOCKET_SRC}`"),
+                    format!("Symlink `{SERVICE_SRC}` to `{SERVICE_DEST}`"),
+                    format!("Symlink `{SOCKET_SRC}` to `{SOCKET_DEST}`"),
                     "Run `systemctl daemon-reload`".to_string(),
                 ];
                 if self.start_daemon {
@@ -159,23 +206,30 @@ impl Action for ConfigureInitService {
                 )
                 .await?;
 
-                execute_command(
-                    Command::new("systemctl")
-                        .process_group(0)
-                        .arg("link")
-                        .arg(SERVICE_SRC)
-                        .stdin(std::process::Stdio::null()),
-                )
-                .await?;
+                // TODO: once we have a way to communicate interaction between the library and the
+                // cli, interactively ask for permission to remove the file
 
-                execute_command(
-                    Command::new("systemctl")
-                        .process_group(0)
-                        .arg("link")
-                        .arg(SOCKET_SRC)
-                        .stdin(std::process::Stdio::null()),
-                )
-                .await?;
+                Self::check_if_systemd_unit_exists(SERVICE_SRC, SERVICE_DEST).await?;
+                tokio::fs::symlink(SERVICE_SRC, SERVICE_DEST)
+                    .await
+                    .map_err(|e| {
+                        ActionError::Symlink(
+                            PathBuf::from(SERVICE_SRC),
+                            PathBuf::from(SERVICE_DEST),
+                            e,
+                        )
+                    })?;
+
+                Self::check_if_systemd_unit_exists(SOCKET_SRC, SOCKET_DEST).await?;
+                tokio::fs::symlink(SOCKET_SRC, SOCKET_DEST)
+                    .await
+                    .map_err(|e| {
+                        ActionError::Symlink(
+                            PathBuf::from(SOCKET_SRC),
+                            PathBuf::from(SOCKET_DEST),
+                            e,
+                        )
+                    })?;
 
                 if *start_daemon {
                     execute_command(
