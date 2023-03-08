@@ -149,7 +149,7 @@ jobs:
 
 ## In a container
 
-In Docker/Podman containers or WSL instances where an init (like `systemd`) is not present, pass `--init none`.
+In Docker/Podman containers or WSL2 instances where an init (like `systemd`) is not present, pass `--init none`.
 
 > When `--init none` is used, only `root` or sudoers can run Nix:
 >
@@ -199,7 +199,7 @@ RUN nix run nixpkgs#hello
 CMD [ "/usr/sbin/init" ]
 ```
 
-## In WSL
+## In WSL2
 
 If [systemd is enabled](https://ubuntu.com/blog/ubuntu-wsl-enable-systemd) it's possible to install Nix as normal using the command at the top of this document:
 
