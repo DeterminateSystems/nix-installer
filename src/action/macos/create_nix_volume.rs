@@ -272,13 +272,29 @@ impl Action for CreateNixVolume {
     }
 
     fn revert_description(&self) -> Vec<ActionDescription> {
-        let Self { disk, name, .. } = &self;
-        // TODO(@hoverbear): Do a better description here.
+        let mut explanation = vec![
+            self.create_or_append_synthetic_conf.tracing_synopsis(),
+            self.create_synthetic_objects.tracing_synopsis(),
+            self.unmount_volume.tracing_synopsis(),
+            self.create_volume.tracing_synopsis(),
+            self.create_fstab_entry.tracing_synopsis(),
+        ];
+        if let Some(encrypt_volume) = &self.encrypt_volume {
+            explanation.push(encrypt_volume.tracing_synopsis());
+        }
+        explanation.append(&mut vec![
+            self.setup_volume_daemon.tracing_synopsis(),
+            self.bootstrap_volume.tracing_synopsis(),
+            self.enable_ownership.tracing_synopsis(),
+        ]);
+
         vec![ActionDescription::new(
-            format!("Remove the APFS volume `{name}` on `{}`", disk.display()),
-            vec![format!(
-                "Create a writable, persistent systemd system extension.",
-            )],
+            format!(
+                "Remove the APFS volume `{}` on `{}`",
+                self.name,
+                self.disk.display()
+            ),
+            explanation,
         )]
     }
 
