@@ -298,11 +298,11 @@ pub enum ActionError {
         }
     }).collect::<Vec<_>>().join(" & "))]
     Children(Vec<Box<ActionError>>),
-    /// The path already exists
+    /// The path already exists with different content that expected
     #[error(
         "`{0}` exists with different content than planned, consider removing it with `rm {0}`"
     )]
-    Exists(std::path::PathBuf),
+    DifferentContent(std::path::PathBuf),
     #[error("`{0}` exists with a different uid ({1}) than planned ({2}), consider updating it with `chown {2} {0}`")]
     PathUserMismatch(std::path::PathBuf, u32, u32),
     #[error("`{0}` exists with a different gid ({1}) than planned ({2}), consider updating it with `chgrp {2} {0}`")]
