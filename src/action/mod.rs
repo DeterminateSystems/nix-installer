@@ -427,6 +427,14 @@ pub enum ActionError {
     Plist(#[from] plist::Error),
     #[error("Unexpected binary tarball contents found, the build result from `https://releases.nixos.org/?prefix=nix/` or `nix build nix#hydraJobs.binaryTarball.$SYSTEM` is expected")]
     MalformedBinaryTarball,
+    #[error(
+        "Could not find a supported command to create users in PATH; please install `useradd` or `adduser`"
+    )]
+    MissingUserCreationCommand,
+    #[error("Could not find a supported command to create groups in PATH; please install `groupadd` or `addgroup`")]
+    MissingGroupCreationCommand,
+    #[error("Could not find a supported command to add users to groups in PATH; please install `gpasswd` or `addgroup`")]
+    MissingAddUserToGroupCommand,
 }
 
 impl ActionError {

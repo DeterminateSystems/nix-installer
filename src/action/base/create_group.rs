@@ -99,13 +99,25 @@ impl Action for CreateGroup {
                 .await?;
             },
             _ => {
-                execute_command(
-                    Command::new("groupadd")
-                        .process_group(0)
-                        .args(["-g", &gid.to_string(), "--system", &name])
-                        .stdin(std::process::Stdio::null()),
-                )
-                .await?;
+                if which::which("groupadd").is_ok() {
+                    execute_command(
+                        Command::new("groupadd")
+                            .process_group(0)
+                            .args(["-g", &gid.to_string(), "--system", &name])
+                            .stdin(std::process::Stdio::null()),
+                    )
+                    .await?;
+                } else if which::which("addgroup").is_ok() {
+                    execute_command(
+                        Command::new("addgroup")
+                            .process_group(0)
+                            .args(["-g", &gid.to_string(), "--system", &name])
+                            .stdin(std::process::Stdio::null()),
+                    )
+                    .await?;
+                } else {
+                    return Err(ActionError::MissingGroupCreationCommand);
+                }
             },
         };
 
