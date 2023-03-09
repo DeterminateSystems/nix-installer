@@ -34,7 +34,7 @@ pub struct NixInstallerCli {
 
 #[async_trait::async_trait]
 impl CommandExecute for NixInstallerCli {
-    #[tracing::instrument(level = "debug", skip_all)]
+    #[tracing::instrument(level = "trace", skip_all)]
     async fn execute(self) -> eyre::Result<ExitCode> {
         let Self {
             instrumentation: _,

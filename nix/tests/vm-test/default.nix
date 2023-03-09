@@ -7,7 +7,7 @@ let
     install-default = {
       install = ''
         NIX_PATH=$(readlink -f nix.tar.xz)
-        RUST_BACKTRACE="full" ./nix-installer install --logger pretty --log-directive nix_installer=trace --nix-package-url "file://$NIX_PATH" --no-confirm
+        RUST_BACKTRACE="full" ./nix-installer install --logger pretty --log-directive nix_installer=debug --nix-package-url "file://$NIX_PATH" --no-confirm
       '';
       check = ''
         set -ex
