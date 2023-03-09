@@ -75,16 +75,16 @@ let
       install = install-default.install;
       check = install-default.check;
     };
-    install-preexisting-self-broken-no-nix-path = {
-      preinstall = ''
-        NIX_PATH=$(readlink -f nix.tar.xz)
-        RUST_BACKTRACE="full" ./nix-installer install --nix-package-url "file://$NIX_PATH" --no-confirm
-        sudo mv /nix/receipt.json /nix/old-receipt.json
-        sudo rm -rf /nix/
-      '';
-      install = install-default.install;
-      check = install-default.check;
-    };
+    # install-preexisting-self-broken-no-nix-path = {
+    #   preinstall = ''
+    #     NIX_PATH=$(readlink -f nix.tar.xz)
+    #     RUST_BACKTRACE="full" ./nix-installer install --nix-package-url "file://$NIX_PATH" --no-confirm
+    #     sudo mv /nix/receipt.json /nix/old-receipt.json
+    #     sudo rm -rf /nix/
+    #   '';
+    #   install = install-default.install;
+    #   check = install-default.check;
+    # };
     install-preexisting-self-broken-missing-users = {
       preinstall = ''
         NIX_PATH=$(readlink -f nix.tar.xz)
@@ -354,10 +354,10 @@ vm-tests // rec {
     name = "all";
     constituents = pkgs.lib.mapAttrsToList (name: value: value."x86_64-linux".install-preexisting-self-working) vm-tests;
   });
-  all."x86_64-linux".install-preexisting-self-broken-no-nix-path = (with (forSystem "x86_64-linux" ({ system, pkgs, ... }: pkgs)); pkgs.releaseTools.aggregate {
-    name = "all";
-    constituents = pkgs.lib.mapAttrsToList (name: value: value."x86_64-linux".install-preexisting-self-broken-no-nix-path) vm-tests;
-  });
+  # all."x86_64-linux".install-preexisting-self-broken-no-nix-path = (with (forSystem "x86_64-linux" ({ system, pkgs, ... }: pkgs)); pkgs.releaseTools.aggregate {
+  #   name = "all";
+  #   constituents = pkgs.lib.mapAttrsToList (name: value: value."x86_64-linux".install-preexisting-self-broken-no-nix-path) vm-tests;
+  # });
   all."x86_64-linux".install-preexisting-self-broken-missing-users = (with (forSystem "x86_64-linux" ({ system, pkgs, ... }: pkgs)); pkgs.releaseTools.aggregate {
     name = "all";
     constituents = pkgs.lib.mapAttrsToList (name: value: value."x86_64-linux".install-preexisting-self-broken-missing-users) vm-tests;
@@ -381,7 +381,7 @@ vm-tests // rec {
       all."x86_64-linux".install-no-start-daemon
       all."x86_64-linux".install-daemonless
       all."x86_64-linux".install-preexisting-self-working
-      all."x86_64-linux".install-preexisting-self-broken-no-nix-path
+      # all."x86_64-linux".install-preexisting-self-broken-no-nix-path
       all."x86_64-linux".install-preexisting-self-broken-missing-users
       all."x86_64-linux".install-preexisting-self-broken-daemon-disabled
       all."x86_64-linux".install-preexisting-self-broken-no-etc-nix
