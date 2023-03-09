@@ -92,7 +92,7 @@ impl Action for CreateGroup {
                             "Nix build group for nix-daemon",
                             "-i",
                             &format!("{gid}"),
-                            name.as_str(),
+                            name,
                         ])
                         .stdin(std::process::Stdio::null()),
                 )
@@ -103,7 +103,7 @@ impl Action for CreateGroup {
                     execute_command(
                         Command::new("groupadd")
                             .process_group(0)
-                            .args(["-g", &gid.to_string(), "--system", &name])
+                            .args(["-g", &gid.to_string(), "--system", name])
                             .stdin(std::process::Stdio::null()),
                     )
                     .await?;
@@ -111,7 +111,7 @@ impl Action for CreateGroup {
                     execute_command(
                         Command::new("addgroup")
                             .process_group(0)
-                            .args(["-g", &gid.to_string(), "--system", &name])
+                            .args(["-g", &gid.to_string(), "--system", name])
                             .stdin(std::process::Stdio::null()),
                     )
                     .await?;

@@ -186,7 +186,7 @@ impl Action for CreateUser {
                                 "--home-dir",
                                 "/var/empty",
                                 "--comment",
-                                &format!("\"Nix build user\""),
+                                "Nix build user",
                                 "--gid",
                                 &gid.to_string(),
                                 "--groups",
@@ -198,8 +198,8 @@ impl Action for CreateUser {
                                 "--uid",
                                 &uid.to_string(),
                                 "--password",
-                                "\"!\"",
-                                &name.to_string(),
+                                "!",
+                                name,
                             ])
                             .stdin(std::process::Stdio::null()),
                     )
@@ -221,7 +221,7 @@ impl Action for CreateUser {
                                 "--uid",
                                 &uid.to_string(),
                                 "--disabled-password",
-                                &name.to_string(),
+                                name,
                             ])
                             .stdin(std::process::Stdio::null()),
                     )
