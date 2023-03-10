@@ -192,9 +192,12 @@ impl Action for ConfigureInitService {
                 )
                 .await?;
                 // The goal state is the `socket` enabled and active, the service not enabled and stopped (it activates via socket activation)
-                let socket_was_active = if is_active("nix-daemon.socket").await? {
-                    stop("nix-daemon.socket").await?;
+                let socket_was_active = if is_enabled("nix-daemon.socket").await? {
+                    disable("nix-daemon.socket", true).await?;
                     true
+                } else if is_active("nix-daemon.socket").await? {
+                    stop("nix-daemon.socket").await?;
+                    false
                 } else {
                     false
                 };
@@ -229,30 +232,26 @@ impl Action for ConfigureInitService {
                 // cli, interactively ask for permission to remove the file
 
                 Self::check_if_systemd_unit_exists(SERVICE_SRC, SERVICE_DEST).await?;
-                if !Path::new(SERVICE_DEST).exists() {
-                    tokio::fs::symlink(SERVICE_SRC, SERVICE_DEST)
-                        .await
-                        .map_err(|e| {
-                            ActionError::Symlink(
-                                PathBuf::from(SERVICE_SRC),
-                                PathBuf::from(SERVICE_DEST),
-                                e,
-                            )
-                        })?;
-                }
+                tokio::fs::symlink(SERVICE_SRC, SERVICE_DEST)
+                    .await
+                    .map_err(|e| {
+                        ActionError::Symlink(
+                            PathBuf::from(SERVICE_SRC),
+                            PathBuf::from(SERVICE_DEST),
+                            e,
+                        )
+                    })?;
 
                 Self::check_if_systemd_unit_exists(SOCKET_SRC, SOCKET_DEST).await?;
-                if !Path::new(SOCKET_DEST).exists() {
-                    tokio::fs::symlink(SOCKET_SRC, SOCKET_DEST)
-                        .await
-                        .map_err(|e| {
-                            ActionError::Symlink(
-                                PathBuf::from(SOCKET_SRC),
-                                PathBuf::from(SOCKET_DEST),
-                                e,
-                            )
-                        })?;
-                }
+                tokio::fs::symlink(SOCKET_SRC, SOCKET_DEST)
+                    .await
+                    .map_err(|e| {
+                        ActionError::Symlink(
+                            PathBuf::from(SOCKET_SRC),
+                            PathBuf::from(SOCKET_DEST),
+                            e,
+                        )
+                    })?;
 
                 execute_command(
                     Command::new("systemctl")
@@ -263,9 +262,9 @@ impl Action for ConfigureInitService {
                 .await?;
 
                 if *start_daemon || socket_was_active {
-                    enable("nix-daemon.socket", true).await?;
+                    enable(SOCKET_SRC, true).await?;
                 } else {
-                    enable("nix-daemon.socket", false).await?;
+                    enable(SOCKET_SRC, false).await?;
                 }
             },
             #[cfg(not(target_os = "macos"))]
