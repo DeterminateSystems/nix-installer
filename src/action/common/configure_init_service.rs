@@ -191,12 +191,17 @@ impl Action for ConfigureInitService {
                         .stdin(std::process::Stdio::null()),
                 )
                 .await?;
-                if is_active("nix-daemon.socket").await? {
-                    stop("nix-daemon.socket").await?
-                }
-                if is_active("nix-daemon.service").await? {
-                    stop("nix-daemon.service").await?
-                }
+                // The goal state is the `socket` enabled and active, the service not enabled and stopped (it activates via socket activation)
+                let socket_was_active = if is_active("nix-daemon.socket").await? {
+                    stop("nix-daemon.socket").await?;
+                    true
+                } else {
+                    false
+                };
+                if is_enabled("nix-daemon.service").await? {
+                    let now = is_active("nix-daemon.socket").await?;
+                    disable("nix-daemon.service", now).await?;
+                };
 
                 tracing::trace!(src = TMPFILES_SRC, dest = TMPFILES_DEST, "Symlinking");
                 if !Path::new(TMPFILES_DEST).exists() {
@@ -257,15 +262,10 @@ impl Action for ConfigureInitService {
                 )
                 .await?;
 
-                if *start_daemon {
-                    execute_command(
-                        Command::new("systemctl")
-                            .process_group(0)
-                            .arg("enable")
-                            .arg("--now")
-                            .arg(SOCKET_SRC),
-                    )
-                    .await?;
+                if *start_daemon || socket_was_active {
+                    enable("nix-daemon.socket", true).await?;
+                } else {
+                    enable("nix-daemon.socket", false).await?;
                 }
             },
             #[cfg(not(target_os = "macos"))]
@@ -408,6 +408,42 @@ async fn stop(unit: &str) -> Result<(), ActionError> {
     let mut command = Command::new("systemctl");
     command.arg("stop");
     command.arg(unit);
+    let output = command
+        .output()
+        .await
+        .map_err(|e| ActionError::command(&command, e))?;
+    match output.status.success() {
+        true => Ok(()),
+        false => Err(ActionError::command_output(&command, output)),
+    }
+}
+
+#[cfg(target_os = "linux")]
+async fn enable(unit: &str, now: bool) -> Result<(), ActionError> {
+    let mut command = Command::new("systemctl");
+    command.arg("enable");
+    command.arg(unit);
+    if now {
+        command.arg("--now");
+    }
+    let output = command
+        .output()
+        .await
+        .map_err(|e| ActionError::command(&command, e))?;
+    match output.status.success() {
+        true => Ok(()),
+        false => Err(ActionError::command_output(&command, output)),
+    }
+}
+
+#[cfg(target_os = "linux")]
+async fn disable(unit: &str, now: bool) -> Result<(), ActionError> {
+    let mut command = Command::new("systemctl");
+    command.arg("disable");
+    command.arg(unit);
+    if now {
+        command.arg("--now");
+    }
     let output = command
         .output()
         .await
