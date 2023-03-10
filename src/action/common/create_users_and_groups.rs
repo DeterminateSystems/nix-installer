@@ -29,7 +29,7 @@ impl CreateUsersAndGroups {
         )?;
         let mut create_users = Vec::with_capacity(settings.nix_build_user_count as usize);
         let mut add_users_to_groups = Vec::with_capacity(settings.nix_build_user_count as usize);
-        for index in 0..settings.nix_build_user_count {
+        for index in 1..=settings.nix_build_user_count {
             create_users.push(
                 CreateUser::plan(
                     format!("{}{index}", settings.nix_build_user_prefix),
