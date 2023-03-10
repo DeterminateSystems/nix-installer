@@ -259,36 +259,23 @@ impl Action for CreateUsersAndGroups {
         let Self {
             create_users,
             create_group,
-            add_users_to_groups,
+            add_users_to_groups: _,
             nix_build_user_count: _,
             nix_build_group_name: _,
             nix_build_group_id: _,
             nix_build_user_prefix: _,
             nix_build_user_id_base: _,
         } = self;
-        let mut set = JoinSet::new();
-
         let mut errors = Vec::default();
 
-        for (idx, create_user) in create_users.iter().enumerate() {
-            let span = tracing::Span::current().clone();
-            let mut create_user_clone = create_user.clone();
-            let _abort_handle = set.spawn(async move {
-                create_user_clone
-                    .try_revert()
-                    .instrument(span)
-                    .await
-                    .map_err(|e| ActionError::Child(create_user_clone.action_tag(), Box::new(e)))?;
-                Result::<_, ActionError>::Ok((idx, create_user_clone))
-            });
-        }
-
-        while let Some(result) = set.join_next().await {
-            match result {
-                Ok(Ok((idx, success))) => create_users[idx] = success,
-                Ok(Err(e)) => errors.push(Box::new(e)),
-                Err(e) => return Err(ActionError::Join(e))?,
-            };
+        for create_user in create_users.iter_mut() {
+            if let Err(e) = create_user
+                .try_revert()
+                .await
+                .map_err(|e| ActionError::Child(create_user.action_tag(), Box::new(e)))
+            {
+                errors.push(Box::new(e));
+            }
         }
 
         if !errors.is_empty() {
@@ -299,9 +286,10 @@ impl Action for CreateUsersAndGroups {
             }
         }
 
-        for add_user_to_group in add_users_to_groups.iter_mut() {
-            add_user_to_group.try_revert().await?;
-        }
+        // We don't actually need to do this, when a user is deleted they are removed from groups
+        // for add_user_to_group in add_users_to_groups.iter_mut() {
+        //     add_user_to_group.try_revert().await?;
+        // }
 
         // Create group
         create_group
