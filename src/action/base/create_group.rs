@@ -155,13 +155,25 @@ impl Action for CreateGroup {
                 if !output.status.success() {}
             },
             _ => {
-                execute_command(
-                    Command::new("groupdel")
-                        .process_group(0)
-                        .arg(&name)
-                        .stdin(std::process::Stdio::null()),
-                )
-                .await?;
+                if which::which("groupdel").is_ok() {
+                    execute_command(
+                        Command::new("groupdel")
+                            .process_group(0)
+                            .arg(name)
+                            .stdin(std::process::Stdio::null()),
+                    )
+                    .await?;
+                } else if which::which("delgroup").is_ok() {
+                    execute_command(
+                        Command::new("delgroup")
+                            .process_group(0)
+                            .arg(name)
+                            .stdin(std::process::Stdio::null()),
+                    )
+                    .await?;
+                } else {
+                    return Err(ActionError::MissingGroupDeletionCommand);
+                }
             },
         };
 

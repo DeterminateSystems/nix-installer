@@ -292,13 +292,25 @@ impl Action for CreateUser {
                 }
             },
             _ => {
-                execute_command(
-                    Command::new("userdel")
-                        .process_group(0)
-                        .args([&name.to_string()])
-                        .stdin(std::process::Stdio::null()),
-                )
-                .await?;
+                if which::which("userdel").is_ok() {
+                    execute_command(
+                        Command::new("userdel")
+                            .process_group(0)
+                            .arg(name)
+                            .stdin(std::process::Stdio::null()),
+                    )
+                    .await?;
+                } else if which::which("deluser").is_ok() {
+                    execute_command(
+                        Command::new("deluser")
+                            .process_group(0)
+                            .arg(name)
+                            .stdin(std::process::Stdio::null()),
+                    )
+                    .await?;
+                } else {
+                    return Err(ActionError::MissingUserDeletionCommand);
+                }
             },
         };
 
