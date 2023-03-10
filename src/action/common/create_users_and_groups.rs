@@ -5,8 +5,7 @@ use crate::{
     },
     settings::CommonSettings,
 };
-use tokio::task::JoinSet;
-use tracing::{span, Instrument, Span};
+use tracing::{span, Span};
 
 #[derive(Debug, serde::Deserialize, serde::Serialize, Clone)]
 pub struct CreateUsersAndGroups {
