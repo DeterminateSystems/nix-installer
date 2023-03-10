@@ -184,6 +184,28 @@ impl Action for ConfigureInitService {
             },
             #[cfg(target_os = "linux")]
             InitSystem::Systemd => {
+                execute_command(
+                    Command::new("systemctl")
+                        .process_group(0)
+                        .arg("daemon-reload")
+                        .stdin(std::process::Stdio::null()),
+                )
+                .await?;
+                // The goal state is the `socket` enabled and active, the service not enabled and stopped (it activates via socket activation)
+                let socket_was_active = if is_enabled("nix-daemon.socket").await? {
+                    disable("nix-daemon.socket", true).await?;
+                    true
+                } else if is_active("nix-daemon.socket").await? {
+                    stop("nix-daemon.socket").await?;
+                    false
+                } else {
+                    false
+                };
+                if is_enabled("nix-daemon.service").await? {
+                    let now = is_active("nix-daemon.socket").await?;
+                    disable("nix-daemon.service", now).await?;
+                };
+
                 tracing::trace!(src = TMPFILES_SRC, dest = TMPFILES_DEST, "Symlinking");
                 if !Path::new(TMPFILES_DEST).exists() {
                     tokio::fs::symlink(TMPFILES_SRC, TMPFILES_DEST)
@@ -210,48 +232,39 @@ impl Action for ConfigureInitService {
                 // cli, interactively ask for permission to remove the file
 
                 Self::check_if_systemd_unit_exists(SERVICE_SRC, SERVICE_DEST).await?;
-                if !Path::new(SERVICE_DEST).exists() {
-                    tokio::fs::symlink(SERVICE_SRC, SERVICE_DEST)
-                        .await
-                        .map_err(|e| {
-                            ActionError::Symlink(
-                                PathBuf::from(SERVICE_SRC),
-                                PathBuf::from(SERVICE_DEST),
-                                e,
-                            )
-                        })?;
-                }
+                tokio::fs::symlink(SERVICE_SRC, SERVICE_DEST)
+                    .await
+                    .map_err(|e| {
+                        ActionError::Symlink(
+                            PathBuf::from(SERVICE_SRC),
+                            PathBuf::from(SERVICE_DEST),
+                            e,
+                        )
+                    })?;
 
                 Self::check_if_systemd_unit_exists(SOCKET_SRC, SOCKET_DEST).await?;
-                if !Path::new(SOCKET_DEST).exists() {
-                    tokio::fs::symlink(SOCKET_SRC, SOCKET_DEST)
-                        .await
-                        .map_err(|e| {
-                            ActionError::Symlink(
-                                PathBuf::from(SOCKET_SRC),
-                                PathBuf::from(SOCKET_DEST),
-                                e,
-                            )
-                        })?;
-                }
+                tokio::fs::symlink(SOCKET_SRC, SOCKET_DEST)
+                    .await
+                    .map_err(|e| {
+                        ActionError::Symlink(
+                            PathBuf::from(SOCKET_SRC),
+                            PathBuf::from(SOCKET_DEST),
+                            e,
+                        )
+                    })?;
 
-                if *start_daemon {
-                    execute_command(
-                        Command::new("systemctl")
-                            .process_group(0)
-                            .arg("daemon-reload")
-                            .stdin(std::process::Stdio::null()),
-                    )
-                    .await?;
+                execute_command(
+                    Command::new("systemctl")
+                        .process_group(0)
+                        .arg("daemon-reload")
+                        .stdin(std::process::Stdio::null()),
+                )
+                .await?;
 
-                    execute_command(
-                        Command::new("systemctl")
-                            .process_group(0)
-                            .arg("enable")
-                            .arg("--now")
-                            .arg(SOCKET_SRC),
-                    )
-                    .await?;
+                if *start_daemon || socket_was_active {
+                    enable(SOCKET_SRC, true).await?;
+                } else {
+                    enable(SOCKET_SRC, false).await?;
                 }
             },
             #[cfg(not(target_os = "macos"))]
@@ -387,6 +400,57 @@ impl Action for ConfigureInitService {
 pub enum ConfigureNixDaemonServiceError {
     #[error("No supported init system found")]
     InitNotSupported,
+}
+
+#[cfg(target_os = "linux")]
+async fn stop(unit: &str) -> Result<(), ActionError> {
+    let mut command = Command::new("systemctl");
+    command.arg("stop");
+    command.arg(unit);
+    let output = command
+        .output()
+        .await
+        .map_err(|e| ActionError::command(&command, e))?;
+    match output.status.success() {
+        true => Ok(()),
+        false => Err(ActionError::command_output(&command, output)),
+    }
+}
+
+#[cfg(target_os = "linux")]
+async fn enable(unit: &str, now: bool) -> Result<(), ActionError> {
+    let mut command = Command::new("systemctl");
+    command.arg("enable");
+    command.arg(unit);
+    if now {
+        command.arg("--now");
+    }
+    let output = command
+        .output()
+        .await
+        .map_err(|e| ActionError::command(&command, e))?;
+    match output.status.success() {
+        true => Ok(()),
+        false => Err(ActionError::command_output(&command, output)),
+    }
+}
+
+#[cfg(target_os = "linux")]
+async fn disable(unit: &str, now: bool) -> Result<(), ActionError> {
+    let mut command = Command::new("systemctl");
+    command.arg("disable");
+    command.arg(unit);
+    if now {
+        command.arg("--now");
+    }
+    let output = command
+        .output()
+        .await
+        .map_err(|e| ActionError::command(&command, e))?;
+    match output.status.success() {
+        true => Ok(()),
+        false => Err(ActionError::command_output(&command, output)),
+    }
 }
 
 #[cfg(target_os = "linux")]
