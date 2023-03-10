@@ -276,9 +276,9 @@ impl Action for AddUserToGroup {
                             .stdin(std::process::Stdio::null()),
                     )
                     .await?;
-                } else if which::which("deluser").is_ok() {
+                } else if which::which("delgroup").is_ok() {
                     execute_command(
-                        Command::new("deluser")
+                        Command::new("delgroup")
                             .process_group(0)
                             .args([name, groupname])
                             .stdin(std::process::Stdio::null()),
