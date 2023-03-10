@@ -57,7 +57,7 @@ pub struct Install {
 
 #[async_trait::async_trait]
 impl CommandExecute for Install {
-    #[tracing::instrument(level = "debug", skip_all)]
+    #[tracing::instrument(level = "trace", skip_all)]
     async fn execute(self) -> eyre::Result<ExitCode> {
         let Self {
             no_confirm,
