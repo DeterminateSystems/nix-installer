@@ -97,6 +97,19 @@ let
       install = install-default.install;
       check = install-default.check;
     };
+    install-preexisting-self-broken-missing-users-and-group = {
+      preinstall = ''
+        NIX_PATH=$(readlink -f nix.tar.xz)
+        RUST_BACKTRACE="full" ./nix-installer install --nix-package-url "file://$NIX_PATH" --no-confirm
+        sudo mv /nix/receipt.json /nix/old-receipt.json
+        for i in {0..31}; do
+          sudo userdel "nixbld''${i}"
+        done
+        sudo groupdel nixbld
+      '';
+      install = install-default.install;
+      check = install-default.check;
+    };
     install-preexisting-self-broken-daemon-disabled = {
       preinstall = ''
         NIX_PATH=$(readlink -f nix.tar.xz)
@@ -362,6 +375,10 @@ vm-tests // rec {
     name = "all";
     constituents = pkgs.lib.mapAttrsToList (name: value: value."x86_64-linux".install-preexisting-self-broken-missing-users) vm-tests;
   });
+  all."x86_64-linux".install-preexisting-self-broken-missing-users-and-group = (with (forSystem "x86_64-linux" ({ system, pkgs, ... }: pkgs)); pkgs.releaseTools.aggregate {
+    name = "all";
+    constituents = pkgs.lib.mapAttrsToList (name: value: value."x86_64-linux".install-preexisting-self-broken-missing-users) vm-tests;
+  });
   all."x86_64-linux".install-preexisting-self-broken-daemon-disabled = (with (forSystem "x86_64-linux" ({ system, pkgs, ... }: pkgs)); pkgs.releaseTools.aggregate {
     name = "all";
     constituents = pkgs.lib.mapAttrsToList (name: value: value."x86_64-linux".install-preexisting-self-broken-daemon-disabled) vm-tests;
@@ -383,6 +400,7 @@ vm-tests // rec {
       all."x86_64-linux".install-preexisting-self-working
       # all."x86_64-linux".install-preexisting-self-broken-no-nix-path
       all."x86_64-linux".install-preexisting-self-broken-missing-users
+      all."x86_64-linux".install-preexisting-self-broken-missing-users-and-group
       all."x86_64-linux".install-preexisting-self-broken-daemon-disabled
       all."x86_64-linux".install-preexisting-self-broken-no-etc-nix
       all."x86_64-linux".install-preexisting-self-broken-unmodified-bashrc
