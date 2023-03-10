@@ -259,7 +259,7 @@ impl Action for CreateUsersAndGroups {
         let Self {
             create_users,
             create_group,
-            add_users_to_groups: _,
+            add_users_to_groups,
             nix_build_user_count: _,
             nix_build_group_name: _,
             nix_build_group_id: _,
@@ -299,10 +299,9 @@ impl Action for CreateUsersAndGroups {
             }
         }
 
-        // We don't actually need to do this, when a user is deleted they are removed from groups
-        // for add_user_to_group in add_users_to_groups.iter_mut() {
-        //     add_user_to_group.try_revert().await?;
-        // }
+        for add_user_to_group in add_users_to_groups.iter_mut() {
+            add_user_to_group.try_revert().await?;
+        }
 
         // Create group
         create_group

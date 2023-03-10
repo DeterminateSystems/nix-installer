@@ -441,6 +441,8 @@ pub enum ActionError {
     MissingUserDeletionCommand,
     #[error("Could not find a supported command to delete groups in PATH; please install `groupdel` or `delgroup`")]
     MissingGroupDeletionCommand,
+    #[error("Could not find a supported command to remove users from groups in PATH; please install `gpasswd` or `deluser`")]
+    MissingRemoveUserFromGroupCommand,
 }
 
 impl ActionError {

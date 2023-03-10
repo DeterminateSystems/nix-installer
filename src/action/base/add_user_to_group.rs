@@ -267,14 +267,26 @@ impl Action for AddUserToGroup {
                 .await?;
             },
             _ => {
-                execute_command(
-                    Command::new("gpasswd")
-                        .process_group(0)
-                        .args(["-d"])
-                        .args([&name.to_string(), &groupname.to_string()])
-                        .stdin(std::process::Stdio::null()),
-                )
-                .await?;
+                if which::which("gpasswd").is_ok() {
+                    execute_command(
+                        Command::new("gpasswd")
+                            .process_group(0)
+                            .args(["-d"])
+                            .args([&name.to_string(), &groupname.to_string()])
+                            .stdin(std::process::Stdio::null()),
+                    )
+                    .await?;
+                } else if which::which("deluser").is_ok() {
+                    execute_command(
+                        Command::new("deluser")
+                            .process_group(0)
+                            .args([name, groupname])
+                            .stdin(std::process::Stdio::null()),
+                    )
+                    .await?;
+                } else {
+                    return Err(ActionError::MissingRemoveUserFromGroupCommand);
+                }
             },
         };
 
