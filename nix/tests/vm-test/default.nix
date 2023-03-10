@@ -377,7 +377,7 @@ vm-tests // rec {
   });
   all."x86_64-linux".install-preexisting-self-broken-missing-users-and-group = (with (forSystem "x86_64-linux" ({ system, pkgs, ... }: pkgs)); pkgs.releaseTools.aggregate {
     name = "all";
-    constituents = pkgs.lib.mapAttrsToList (name: value: value."x86_64-linux".install-preexisting-self-broken-missing-users) vm-tests;
+    constituents = pkgs.lib.mapAttrsToList (name: value: value."x86_64-linux".install-preexisting-self-broken-missing-users-and-group) vm-tests;
   });
   all."x86_64-linux".install-preexisting-self-broken-daemon-disabled = (with (forSystem "x86_64-linux" ({ system, pkgs, ... }: pkgs)); pkgs.releaseTools.aggregate {
     name = "all";
