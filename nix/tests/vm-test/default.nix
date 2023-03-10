@@ -6,10 +6,16 @@ let
     install-default = {
       install = ''
         NIX_PATH=$(readlink -f nix.tar.xz)
-        RUST_BACKTRACE="full" ./nix-installer install --logger pretty --log-directive nix_installer=trace --nix-package-url "file://$NIX_PATH" --no-confirm
+        RUST_BACKTRACE="full" ./nix-installer install --extra-conf 'sandbox = false' --logger pretty --log-directive nix_installer=trace --nix-package-url "file://$NIX_PATH" --no-confirm
       '';
       check = ''
         set -ex
+
+        dir /nix
+        dir /nix/store
+
+        ls -lah /nix/var/nix/profiles/per-user
+        ls -lah /nix/var/nix/daemon-socket
 
         if systemctl is-active nix-daemon.socket; then
           echo "nix-daemon.socket was active"
@@ -17,8 +23,30 @@ let
           echo "nix-daemon.socket was not active, should be"
           exit 1
         fi
+        if systemctl is-failed nix-daemon.socket; then
+          echo "nix-daemon.socket is failed"
+          exit 1
+        fi
+        if systemctl is-failed nix-daemon.service; then
+          echo "nix-daemon.service is failed"
+          exit 1
+        fi
+        if !(sudo systemctl start nix-daemon.service); then
+          echo "nix-daemon.service failed to start"
+          exit 1
+        fi
 
+        if !(sudo systemctl stop nix-daemon.service); then
+          echo "nix-daemon.service failed to stop"
+          exit 1
+        fi
+
+        sudo -i nix store ping --store daemon
+        nix store ping --store daemon
+
+        sudo -i nix-env --version
         nix-env --version
+        sudo -i nix --extra-experimental-features nix-command store ping
         nix --extra-experimental-features nix-command store ping
 
         out=$(nix-build --no-substitute -E 'derivation { name = "foo"; system = "x86_64-linux"; builder = "/bin/sh"; args = ["-c" "echo foobar > $out"]; }')
@@ -75,17 +103,17 @@ let
       install = install-default.install;
       check = install-default.check;
     };
-    # install-preexisting-self-broken-no-nix-path = {
-    #   preinstall = ''
-    #     NIX_PATH=$(readlink -f nix.tar.xz)
-    #     RUST_BACKTRACE="full" ./nix-installer install --nix-package-url "file://$NIX_PATH" --no-confirm
-    #     sudo mv /nix/receipt.json /nix/old-receipt.json
-    #     sudo rm -rf /nix/
-    #   '';
-    #   install = install-default.install;
-    #   check = install-default.check;
-    # };
-    install-preexisting-self-broken-missing-users = {
+    install-preexisting-self-broken-no-nix-path = {
+      preinstall = ''
+        NIX_PATH=$(readlink -f nix.tar.xz)
+        RUST_BACKTRACE="full" ./nix-installer install --nix-package-url "file://$NIX_PATH" --no-confirm
+        sudo mv /nix/receipt.json /nix/old-receipt.json
+        sudo rm -rf /nix/
+      '';
+      install = install-default.install;
+      check = install-default.check;
+    };
+    install-preexisting-self-broken-missing-group = {
       preinstall = ''
         NIX_PATH=$(readlink -f nix.tar.xz)
         RUST_BACKTRACE="full" ./nix-installer install --nix-package-url "file://$NIX_PATH" --no-confirm

@@ -184,6 +184,20 @@ impl Action for ConfigureInitService {
             },
             #[cfg(target_os = "linux")]
             InitSystem::Systemd => {
+                execute_command(
+                    Command::new("systemctl")
+                        .process_group(0)
+                        .arg("daemon-reload")
+                        .stdin(std::process::Stdio::null()),
+                )
+                .await?;
+                if is_active("nix-daemon.socket").await? {
+                    stop("nix-daemon.socket").await?
+                }
+                if is_active("nix-daemon.service").await? {
+                    stop("nix-daemon.service").await?
+                }
+
                 tracing::trace!(src = TMPFILES_SRC, dest = TMPFILES_DEST, "Symlinking");
                 if !Path::new(TMPFILES_DEST).exists() {
                     tokio::fs::symlink(TMPFILES_SRC, TMPFILES_DEST)
@@ -235,15 +249,15 @@ impl Action for ConfigureInitService {
                         })?;
                 }
 
-                if *start_daemon {
-                    execute_command(
-                        Command::new("systemctl")
-                            .process_group(0)
-                            .arg("daemon-reload")
-                            .stdin(std::process::Stdio::null()),
-                    )
-                    .await?;
+                execute_command(
+                    Command::new("systemctl")
+                        .process_group(0)
+                        .arg("daemon-reload")
+                        .stdin(std::process::Stdio::null()),
+                )
+                .await?;
 
+                if *start_daemon {
                     execute_command(
                         Command::new("systemctl")
                             .process_group(0)
@@ -387,6 +401,21 @@ impl Action for ConfigureInitService {
 pub enum ConfigureNixDaemonServiceError {
     #[error("No supported init system found")]
     InitNotSupported,
+}
+
+#[cfg(target_os = "linux")]
+async fn stop(unit: &str) -> Result<(), ActionError> {
+    let mut command = Command::new("systemctl");
+    command.arg("stop");
+    command.arg(unit);
+    let output = command
+        .output()
+        .await
+        .map_err(|e| ActionError::command(&command, e))?;
+    match output.status.success() {
+        true => Ok(()),
+        false => Err(ActionError::command_output(&command, output)),
+    }
 }
 
 #[cfg(target_os = "linux")]
