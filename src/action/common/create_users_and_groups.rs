@@ -265,24 +265,11 @@ impl Action for CreateUsersAndGroups {
             nix_build_user_prefix: _,
             nix_build_user_id_base: _,
         } = self;
-        let mut errors = Vec::default();
-
         for create_user in create_users.iter_mut() {
-            if let Err(e) = create_user
+            create_user
                 .try_revert()
                 .await
-                .map_err(|e| ActionError::Child(create_user.action_tag(), Box::new(e)))
-            {
-                errors.push(Box::new(e));
-            }
-        }
-
-        if !errors.is_empty() {
-            if errors.len() == 1 {
-                return Err(*errors.into_iter().next().unwrap());
-            } else {
-                return Err(ActionError::Children(errors));
-            }
+                .map_err(|e| ActionError::Child(create_user.action_tag(), Box::new(e)))?;
         }
 
         // We don't actually need to do this, when a user is deleted they are removed from groups
