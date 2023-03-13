@@ -37,7 +37,7 @@ impl FetchAndUnpackNix {
 
         if let Some(proxy) = &proxy {
             match proxy.scheme() {
-                "https" | "socks5" => (),
+                "https" | "http" | "socks5" => (),
                 _ => {
                     return Err(ActionError::Custom(Box::new(
                         FetchUrlError::UnknownProxyScheme,
