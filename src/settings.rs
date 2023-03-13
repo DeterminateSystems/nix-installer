@@ -203,8 +203,7 @@ pub struct CommonSettings {
     ///     "triple": "x86_64-unknown-linux-gnu",
     ///     "is_ci": false,
     ///     "action": "Install",
-    ///     "status": "Failure",
-    ///     "failure_variant": "Symlink"
+    ///     "status": "Success"
     /// }
     ///
     /// To disable diagnostic reporting, unset the default with `--diagnostic-endpoint=`
