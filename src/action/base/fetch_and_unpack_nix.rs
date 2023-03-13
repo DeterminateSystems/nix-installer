@@ -153,6 +153,6 @@ pub enum FetchUrlError {
     Unarchive(#[source] std::io::Error),
     #[error("Unknown url scheme, `file://`, `https://` and `http://` supported")]
     UnknownUrlScheme,
-    #[error("Unknown url scheme, `https://` and `socks5://` supported")]
+    #[error("Unknown url scheme, `https://`, `socks5://`, and `http://` supported")]
     UnknownProxyScheme,
 }
