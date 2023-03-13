@@ -24,9 +24,12 @@ pub struct ProvisionNix {
 impl ProvisionNix {
     #[tracing::instrument(level = "debug", skip_all)]
     pub async fn plan(settings: &CommonSettings) -> Result<StatefulAction<Self>, ActionError> {
-        let fetch_nix =
-            FetchAndUnpackNix::plan(settings.nix_package_url.clone(), PathBuf::from(SCRATCH_DIR))
-                .await?;
+        let fetch_nix = FetchAndUnpackNix::plan(
+            settings.nix_package_url.clone(),
+            PathBuf::from(SCRATCH_DIR),
+            settings.proxy.clone(),
+        )
+        .await?;
         let create_users_and_group = CreateUsersAndGroups::plan(settings.clone())
             .await
             .map_err(|e| ActionError::Child(CreateUsersAndGroups::action_tag(), Box::new(e)))?;

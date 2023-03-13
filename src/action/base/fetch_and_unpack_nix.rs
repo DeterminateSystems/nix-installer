@@ -13,11 +13,16 @@ Fetch a URL to the given path
 pub struct FetchAndUnpackNix {
     url: Url,
     dest: PathBuf,
+    proxy: Option<Url>,
 }
 
 impl FetchAndUnpackNix {
     #[tracing::instrument(level = "debug", skip_all)]
-    pub async fn plan(url: Url, dest: PathBuf) -> Result<StatefulAction<Self>, ActionError> {
+    pub async fn plan(
+        url: Url,
+        dest: PathBuf,
+        proxy: Option<Url>,
+    ) -> Result<StatefulAction<Self>, ActionError> {
         // TODO(@hoverbear): Check URL exists?
         // TODO(@hoverbear): Check tempdir exists
 
@@ -30,7 +35,18 @@ impl FetchAndUnpackNix {
             },
         };
 
-        Ok(Self { url, dest }.into())
+        if let Some(proxy) = &proxy {
+            match url.scheme() {
+                "https" | "socks5" => (),
+                _ => {
+                    return Err(ActionError::Custom(Box::new(
+                        FetchUrlError::UnknownProxyScheme,
+                    )))
+                },
+            };
+        }
+
+        Ok(Self { url, dest, proxy }.into())
     }
 }
 
@@ -45,12 +61,17 @@ impl Action for FetchAndUnpackNix {
     }
 
     fn tracing_span(&self) -> Span {
-        span!(
+        let span = span!(
             tracing::Level::DEBUG,
             "fetch_and_unpack_nix",
             url = tracing::field::display(&self.url),
+            proxy = tracing::field::Empty,
             dest = tracing::field::display(self.dest.display()),
-        )
+        );
+        if let Some(proxy) = &self.proxy {
+            span.record("proxy", tracing::field::display(&proxy));
+        }
+        span
     }
 
     fn execute_description(&self) -> Vec<ActionDescription> {
@@ -59,11 +80,24 @@ impl Action for FetchAndUnpackNix {
 
     #[tracing::instrument(level = "debug", skip_all)]
     async fn execute(&mut self) -> Result<(), ActionError> {
-        let Self { url, dest } = self;
-
-        let bytes = match url.scheme() {
+        let bytes = match self.url.scheme() {
             "https" | "http" => {
-                let res = reqwest::get(url.clone())
+                let mut buildable_client = reqwest::Client::builder();
+                if let Some(proxy) = &self.proxy {
+                    buildable_client =
+                        buildable_client.proxy(reqwest::Proxy::all(proxy.clone()).map_err(|e| {
+                            ActionError::Custom(Box::new(FetchUrlError::Reqwest(e)))
+                        })?)
+                }
+                let client = buildable_client
+                    .build()
+                    .map_err(|e| ActionError::Custom(Box::new(FetchUrlError::Reqwest(e))))?;
+                let req = client
+                    .get(self.url.clone())
+                    .build()
+                    .map_err(|e| ActionError::Custom(Box::new(FetchUrlError::Reqwest(e))))?;
+                let res = client
+                    .execute(req)
                     .await
                     .map_err(|e| ActionError::Custom(Box::new(FetchUrlError::Reqwest(e))))?;
                 res.bytes()
@@ -71,9 +105,9 @@ impl Action for FetchAndUnpackNix {
                     .map_err(|e| ActionError::Custom(Box::new(FetchUrlError::Reqwest(e))))?
             },
             "file" => {
-                let buf = tokio::fs::read(url.path())
+                let buf = tokio::fs::read(self.url.path())
                     .await
-                    .map_err(|e| ActionError::Read(PathBuf::from(url.path()), e))?;
+                    .map_err(|e| ActionError::Read(PathBuf::from(self.url.path()), e))?;
                 Bytes::from(buf)
             },
             _ => {
@@ -85,7 +119,7 @@ impl Action for FetchAndUnpackNix {
 
         // TODO(@Hoverbear): Pick directory
         tracing::trace!("Unpacking tar.xz");
-        let dest_clone = dest.clone();
+        let dest_clone = self.dest.clone();
 
         let decoder = xz2::read::XzDecoder::new(bytes.reader());
         let mut archive = tar::Archive::new(decoder);
@@ -102,8 +136,6 @@ impl Action for FetchAndUnpackNix {
 
     #[tracing::instrument(level = "debug", skip_all)]
     async fn revert(&mut self) -> Result<(), ActionError> {
-        let Self { url: _, dest: _ } = self;
-
         Ok(())
     }
 }
@@ -119,6 +151,8 @@ pub enum FetchUrlError {
     ),
     #[error("Unarchiving error")]
     Unarchive(#[source] std::io::Error),
-    #[error("Unknown url scheme")]
+    #[error("Unknown url scheme, `file://`, `https://` and `http://` supported")]
     UnknownUrlScheme,
+    #[error("Unknown url scheme, `https://` and `socks5://` supported")]
+    UnknownProxyScheme,
 }
