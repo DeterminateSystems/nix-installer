@@ -173,6 +173,7 @@ pub struct CommonSettings {
     pub(crate) nix_package_url: Url,
 
     /// The proxy to use (if any), valid proxy bases are `http://$URL` and `socks5://$URL`
+    #[cfg_attr(feature = "cli", clap(long, env = "NIX_INSTALLER_PROXY"))]
     pub(crate) proxy: Option<Url>,
 
     /// Extra configuration lines for `/etc/nix.conf`
