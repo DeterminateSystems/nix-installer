@@ -83,7 +83,7 @@
             "create_users": [
               {
                 "action": {
-                  "index": 1,
+                  "comment": "Nix build user 1",
                   "name": "nixbld1",
                   "uid": 30001,
                   "groupname": "nixbld",
@@ -93,7 +93,7 @@
               },
               {
                 "action": {
-                  "index": 2,
+                  "comment": "Nix build user 2",
                   "name": "nixbld2",
                   "uid": 30002,
                   "groupname": "nixbld",
@@ -103,7 +103,7 @@
               },
               {
                 "action": {
-                  "index": 3,
+                  "comment": "Nix build user 3",
                   "name": "nixbld3",
                   "uid": 30003,
                   "groupname": "nixbld",
@@ -113,7 +113,7 @@
               },
               {
                 "action": {
-                  "index": 4,
+                  "comment": "Nix build user 4",
                   "name": "nixbld4",
                   "uid": 30004,
                   "groupname": "nixbld",
@@ -123,7 +123,7 @@
               },
               {
                 "action": {
-                  "index": 5,
+                  "comment": "Nix build user 5",
                   "name": "nixbld5",
                   "uid": 30005,
                   "groupname": "nixbld",
@@ -133,7 +133,7 @@
               },
               {
                 "action": {
-                  "index": 6,
+                  "comment": "Nix build user 6",
                   "name": "nixbld6",
                   "uid": 30006,
                   "groupname": "nixbld",
@@ -143,7 +143,7 @@
               },
               {
                 "action": {
-                  "index": 7,
+                  "comment": "Nix build user 7",
                   "name": "nixbld7",
                   "uid": 30007,
                   "groupname": "nixbld",
@@ -153,7 +153,7 @@
               },
               {
                 "action": {
-                  "index": 8,
+                  "comment": "Nix build user 8",
                   "name": "nixbld8",
                   "uid": 30008,
                   "groupname": "nixbld",
@@ -163,7 +163,7 @@
               },
               {
                 "action": {
-                  "index": 9,
+                  "comment": "Nix build user 9",
                   "name": "nixbld9",
                   "uid": 30009,
                   "groupname": "nixbld",
@@ -173,7 +173,7 @@
               },
               {
                 "action": {
-                  "index": 10,
+                  "comment": "Nix build user 10",
                   "name": "nixbld10",
                   "uid": 30010,
                   "groupname": "nixbld",
@@ -183,7 +183,7 @@
               },
               {
                 "action": {
-                  "index": 11,
+                  "comment": "Nix build user 11",
                   "name": "nixbld11",
                   "uid": 30011,
                   "groupname": "nixbld",
@@ -193,7 +193,7 @@
               },
               {
                 "action": {
-                  "index": 12,
+                  "comment": "Nix build user 12",
                   "name": "nixbld12",
                   "uid": 30012,
                   "groupname": "nixbld",
@@ -203,7 +203,7 @@
               },
               {
                 "action": {
-                  "index": 13,
+                  "comment": "Nix build user 13",
                   "name": "nixbld13",
                   "uid": 30013,
                   "groupname": "nixbld",
@@ -213,7 +213,7 @@
               },
               {
                 "action": {
-                  "index": 14,
+                  "comment": "Nix build user 14",
                   "name": "nixbld14",
                   "uid": 30014,
                   "groupname": "nixbld",
@@ -223,7 +223,7 @@
               },
               {
                 "action": {
-                  "index": 15,
+                  "comment": "Nix build user 15",
                   "name": "nixbld15",
                   "uid": 30015,
                   "groupname": "nixbld",
@@ -233,7 +233,7 @@
               },
               {
                 "action": {
-                  "index": 16,
+                  "comment": "Nix build user 16",
                   "name": "nixbld16",
                   "uid": 30016,
                   "groupname": "nixbld",
@@ -243,7 +243,7 @@
               },
               {
                 "action": {
-                  "index": 17,
+                  "comment": "Nix build user 17",
                   "name": "nixbld17",
                   "uid": 30017,
                   "groupname": "nixbld",
@@ -253,7 +253,7 @@
               },
               {
                 "action": {
-                  "index": 18,
+                  "comment": "Nix build user 18",
                   "name": "nixbld18",
                   "uid": 30018,
                   "groupname": "nixbld",
@@ -263,7 +263,7 @@
               },
               {
                 "action": {
-                  "index": 19,
+                  "comment": "Nix build user 19",
                   "name": "nixbld19",
                   "uid": 30019,
                   "groupname": "nixbld",
@@ -273,7 +273,7 @@
               },
               {
                 "action": {
-                  "index": 20,
+                  "comment": "Nix build user 20",
                   "name": "nixbld20",
                   "uid": 30020,
                   "groupname": "nixbld",
@@ -283,7 +283,7 @@
               },
               {
                 "action": {
-                  "index": 21,
+                  "comment": "Nix build user 21",
                   "name": "nixbld21",
                   "uid": 30021,
                   "groupname": "nixbld",
@@ -293,7 +293,7 @@
               },
               {
                 "action": {
-                  "index": 22,
+                  "comment": "Nix build user 22",
                   "name": "nixbld22",
                   "uid": 30022,
                   "groupname": "nixbld",
@@ -303,7 +303,7 @@
               },
               {
                 "action": {
-                  "index": 23,
+                  "comment": "Nix build user 23",
                   "name": "nixbld23",
                   "uid": 30023,
                   "groupname": "nixbld",
@@ -313,7 +313,7 @@
               },
               {
                 "action": {
-                  "index": 24,
+                  "comment": "Nix build user 24",
                   "name": "nixbld24",
                   "uid": 30024,
                   "groupname": "nixbld",
@@ -323,7 +323,7 @@
               },
               {
                 "action": {
-                  "index": 25,
+                  "comment": "Nix build user 25",
                   "name": "nixbld25",
                   "uid": 30025,
                   "groupname": "nixbld",
@@ -333,7 +333,7 @@
               },
               {
                 "action": {
-                  "index": 26,
+                  "comment": "Nix build user 26",
                   "name": "nixbld26",
                   "uid": 30026,
                   "groupname": "nixbld",
@@ -343,7 +343,7 @@
               },
               {
                 "action": {
-                  "index": 27,
+                  "comment": "Nix build user 27",
                   "name": "nixbld27",
                   "uid": 30027,
                   "groupname": "nixbld",
@@ -353,7 +353,7 @@
               },
               {
                 "action": {
-                  "index": 28,
+                  "comment": "Nix build user 28",
                   "name": "nixbld28",
                   "uid": 30028,
                   "groupname": "nixbld",
@@ -363,7 +363,7 @@
               },
               {
                 "action": {
-                  "index": 29,
+                  "comment": "Nix build user 29",
                   "name": "nixbld29",
                   "uid": 30029,
                   "groupname": "nixbld",
@@ -373,7 +373,7 @@
               },
               {
                 "action": {
-                  "index": 30,
+                  "comment": "Nix build user 30",
                   "name": "nixbld30",
                   "uid": 30030,
                   "groupname": "nixbld",
@@ -383,7 +383,7 @@
               },
               {
                 "action": {
-                  "index": 31,
+                  "comment": "Nix build user 31",
                   "name": "nixbld31",
                   "uid": 30031,
                   "groupname": "nixbld",
@@ -393,7 +393,7 @@
               },
               {
                 "action": {
-                  "index": 32,
+                  "comment": "Nix build user 32",
                   "name": "nixbld32",
                   "uid": 30032,
                   "groupname": "nixbld",
