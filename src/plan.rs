@@ -73,9 +73,14 @@ impl InstallPlan {
             ..
         } = self;
 
-        let plan_settings = planner
-            .configured_settings()
-            .await?
+        let plan_settings = if explain {
+            // List all settings when explaining
+            planner.settings()?
+        } else {
+            // Otherwise, only list user-configured settings
+            planner.configured_settings().await?
+        };
+        let plan_settings = plan_settings
             .into_iter()
             .map(|(k, v)| format!("* {k}: {v}", k = k.bold()))
             .collect::<Vec<_>>();
