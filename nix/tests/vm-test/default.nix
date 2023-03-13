@@ -2,12 +2,25 @@
 { forSystem, binaryTarball }:
 
 let
+  nix-installer-install = ''
+    NIX_PATH=$(readlink -f nix.tar.xz)
+    RUST_BACKTRACE="full" ./nix-installer install --nix-package-url "file://$NIX_PATH" --no-confirm --logger pretty --log-directive nix_installer=trace
+  '';
+  nix-installer-install-quiet = ''
+    NIX_PATH=$(readlink -f nix.tar.xz)
+    RUST_BACKTRACE="full" ./nix-installer install --nix-package-url "file://$NIX_PATH" --no-confirm
+  '';
+  cure-script-multi-user = ''
+    tar xvf nix.tar.xz
+    ./nix-*/install --no-channel-add --yes --daemon
+  '';
+  cure-script-single-user = ''
+    tar xvf nix.tar.xz
+    ./nix-*/install --no-channel-add --yes --no-daemon
+  '';
   installScripts = rec {
     install-default = {
-      install = ''
-        NIX_PATH=$(readlink -f nix.tar.xz)
-        RUST_BACKTRACE="full" ./nix-installer install --logger pretty --log-directive nix_installer=debug --nix-package-url "file://$NIX_PATH" --no-confirm
-      '';
+      install = nix-installer-install;
       check = ''
         set -ex
 
@@ -56,7 +69,7 @@ let
     install-no-start-daemon = {
       install = ''
         NIX_PATH=$(readlink -f nix.tar.xz)
-        RUST_BACKTRACE="full" ./nix-installer install linux --no-start-daemon --logger pretty --log-directive nix_installer=trace --nix-package-url "file://$NIX_PATH" --no-confirm
+        RUST_BACKTRACE="full" ./nix-installer install --nix-package-url "file://$NIX_PATH" --no-confirm --logger pretty --log-directive nix_installer=trace --no-start-daemon
       '';
       check = ''
         set -ex
@@ -81,7 +94,7 @@ let
     install-daemonless = {
       install = ''
         NIX_PATH=$(readlink -f nix.tar.xz)
-        RUST_BACKTRACE="full" ./nix-installer install linux --init none --logger pretty --log-directive nix_installer=trace --nix-package-url "file://$NIX_PATH" --no-confirm
+        RUST_BACKTRACE="full" ./nix-installer install linux --nix-package-url "file://$NIX_PATH" --no-confirm --logger pretty --log-directive nix_installer=trace --init none
       '';
       check = ''
         set -ex
@@ -94,16 +107,15 @@ let
         [[ $(cat $out) = foobar ]]
       '';
     };
-    install-preexisting-self-working = {
+    cure-self-linux-working = {
       preinstall = ''
-        NIX_PATH=$(readlink -f nix.tar.xz)
-        RUST_BACKTRACE="full" ./nix-installer install --nix-package-url "file://$NIX_PATH" --no-confirm
+        ${nix-installer-install-quiet}
         sudo mv /nix/receipt.json /nix/old-receipt.json
       '';
       install = install-default.install;
       check = install-default.check;
     };
-    install-preexisting-self-broken-no-nix-path = {
+    cure-self-linux-broken-no-nix-path = {
       preinstall = ''
         NIX_PATH=$(readlink -f nix.tar.xz)
         RUST_BACKTRACE="full" ./nix-installer install --nix-package-url "file://$NIX_PATH" --no-confirm
@@ -113,10 +125,9 @@ let
       install = install-default.install;
       check = install-default.check;
     };
-    install-preexisting-self-broken-missing-users = {
+    cure-self-linux-broken-missing-users = {
       preinstall = ''
-        NIX_PATH=$(readlink -f nix.tar.xz)
-        RUST_BACKTRACE="full" ./nix-installer install --nix-package-url "file://$NIX_PATH" --no-confirm
+        ${nix-installer-install-quiet}
         sudo mv /nix/receipt.json /nix/old-receipt.json
         sudo userdel nixbld1
         sudo userdel nixbld3
@@ -125,12 +136,12 @@ let
       install = install-default.install;
       check = install-default.check;
     };
-    install-preexisting-self-broken-missing-users-and-group = {
+    cure-self-linux-broken-missing-users-and-group = {
       preinstall = ''
         NIX_PATH=$(readlink -f nix.tar.xz)
         RUST_BACKTRACE="full" ./nix-installer install --nix-package-url "file://$NIX_PATH" --no-confirm
         sudo mv /nix/receipt.json /nix/old-receipt.json
-        for i in {0..31}; do
+        for i in {1..32}; do
           sudo userdel "nixbld''${i}"
         done
         sudo groupdel nixbld
@@ -138,36 +149,85 @@ let
       install = install-default.install;
       check = install-default.check;
     };
-    install-preexisting-self-broken-daemon-disabled = {
+    cure-self-linux-broken-daemon-disabled = {
       preinstall = ''
-        NIX_PATH=$(readlink -f nix.tar.xz)
-        RUST_BACKTRACE="full" ./nix-installer install --nix-package-url "file://$NIX_PATH" --no-confirm
+        ${nix-installer-install-quiet}
         sudo mv /nix/receipt.json /nix/old-receipt.json
         sudo systemctl disable --now nix-daemon.socket
       '';
       install = install-default.install;
       check = install-default.check;
     };
-    install-preexisting-self-broken-no-etc-nix = {
+    cure-self-linux-broken-no-etc-nix = {
       preinstall = ''
-        NIX_PATH=$(readlink -f nix.tar.xz)
-        RUST_BACKTRACE="full" ./nix-installer install --nix-package-url "file://$NIX_PATH" --no-confirm
+        ${nix-installer-install-quiet}
         sudo mv /nix/receipt.json /nix/old-receipt.json
         sudo rm -rf /etc/nix
       '';
       install = install-default.install;
       check = install-default.check;
     };
-    install-preexisting-self-broken-unmodified-bashrc = {
+    cure-self-linux-broken-unmodified-bashrc = {
       preinstall = ''
-        NIX_PATH=$(readlink -f nix.tar.xz)
-        RUST_BACKTRACE="full" ./nix-installer install --nix-package-url "file://$NIX_PATH" --no-confirm
+        ${nix-installer-install-quiet}
         sudo mv /nix/receipt.json /nix/old-receipt.json
         sudo sed -i '/# Nix/,/# End Nix/d' /etc/bash.bashrc
       '';
       install = install-default.install;
       check = install-default.check;
     };
+    cure-script-multi-self-broken-no-nix-path = {
+      preinstall = ''
+        ${cure-script-multi-user}
+        sudo rm -rf /nix/
+      '';
+      install = install-default.install;
+      check = install-default.check;
+    };
+    cure-script-multi-broken-missing-users = {
+      preinstall = ''
+        ${cure-script-multi-user}
+        sudo userdel nixbld1
+        sudo userdel nixbld3
+        sudo userdel nixbld16
+      '';
+      install = install-default.install;
+      check = install-default.check;
+    };
+    cure-script-multi-broken-daemon-disabled = {
+      preinstall = ''
+        ${cure-script-multi-user}
+        sudo systemctl disable --now nix-daemon.socket
+      '';
+      install = install-default.install;
+      check = install-default.check;
+    };
+    cure-script-multi-broken-no-etc-nix = {
+      preinstall = ''
+        ${cure-script-multi-user}
+        sudo rm -rf /etc/nix
+      '';
+      install = install-default.install;
+      check = install-default.check;
+    };
+    cure-script-multi-broken-unmodified-bashrc = {
+      preinstall = ''
+        ${cure-script-multi-user}
+        sudo sed -i '/# Nix/,/# End Nix/d' /etc/bash.bashrc
+      '';
+      install = install-default.install;
+      check = install-default.check;
+    };
+    cure-script-multi-working = {
+      preinstall = cure-script-multi-user;
+      install = install-default.install;
+      check = install-default.check;
+    };
+    # cure-script-single-working = {
+    #   preinstall = cure-script-single-user;
+    #   install = install-default.install;
+    #   check = install-default.check;
+    # };
   };
 
   disableSELinux = "sudo setenforce 0";
@@ -391,47 +451,82 @@ vm-tests // rec {
     name = "all";
     constituents = pkgs.lib.mapAttrsToList (name: value: value."x86_64-linux".install-daemonless) vm-tests;
   });
-  all."x86_64-linux".install-preexisting-self-working = (with (forSystem "x86_64-linux" ({ system, pkgs, ... }: pkgs)); pkgs.releaseTools.aggregate {
+  all."x86_64-linux".cure-self-linux-working = (with (forSystem "x86_64-linux" ({ system, pkgs, ... }: pkgs)); pkgs.releaseTools.aggregate {
     name = "all";
-    constituents = pkgs.lib.mapAttrsToList (name: value: value."x86_64-linux".install-preexisting-self-working) vm-tests;
+    constituents = pkgs.lib.mapAttrsToList (name: value: value."x86_64-linux".cure-self-linux-working) vm-tests;
   });
-  all."x86_64-linux".install-preexisting-self-broken-no-nix-path = (with (forSystem "x86_64-linux" ({ system, pkgs, ... }: pkgs)); pkgs.releaseTools.aggregate {
+  all."x86_64-linux".cure-self-linux-broken-no-nix-path = (with (forSystem "x86_64-linux" ({ system, pkgs, ... }: pkgs)); pkgs.releaseTools.aggregate {
     name = "all";
-    constituents = pkgs.lib.mapAttrsToList (name: value: value."x86_64-linux".install-preexisting-self-broken-no-nix-path) vm-tests;
+    constituents = pkgs.lib.mapAttrsToList (name: value: value."x86_64-linux".cure-self-linux-broken-no-nix-path) vm-tests;
   });
-  all."x86_64-linux".install-preexisting-self-broken-missing-users = (with (forSystem "x86_64-linux" ({ system, pkgs, ... }: pkgs)); pkgs.releaseTools.aggregate {
+  all."x86_64-linux".cure-self-linux-broken-missing-users = (with (forSystem "x86_64-linux" ({ system, pkgs, ... }: pkgs)); pkgs.releaseTools.aggregate {
     name = "all";
-    constituents = pkgs.lib.mapAttrsToList (name: value: value."x86_64-linux".install-preexisting-self-broken-missing-users) vm-tests;
+    constituents = pkgs.lib.mapAttrsToList (name: value: value."x86_64-linux".cure-self-linux-broken-missing-users) vm-tests;
   });
-  all."x86_64-linux".install-preexisting-self-broken-missing-users-and-group = (with (forSystem "x86_64-linux" ({ system, pkgs, ... }: pkgs)); pkgs.releaseTools.aggregate {
+  all."x86_64-linux".cure-self-linux-broken-missing-users-and-group = (with (forSystem "x86_64-linux" ({ system, pkgs, ... }: pkgs)); pkgs.releaseTools.aggregate {
     name = "all";
-    constituents = pkgs.lib.mapAttrsToList (name: value: value."x86_64-linux".install-preexisting-self-broken-missing-users-and-group) vm-tests;
+    constituents = pkgs.lib.mapAttrsToList (name: value: value."x86_64-linux".cure-self-linux-broken-missing-users-and-group) vm-tests;
   });
-  all."x86_64-linux".install-preexisting-self-broken-daemon-disabled = (with (forSystem "x86_64-linux" ({ system, pkgs, ... }: pkgs)); pkgs.releaseTools.aggregate {
+  all."x86_64-linux".cure-self-linux-broken-daemon-disabled = (with (forSystem "x86_64-linux" ({ system, pkgs, ... }: pkgs)); pkgs.releaseTools.aggregate {
     name = "all";
-    constituents = pkgs.lib.mapAttrsToList (name: value: value."x86_64-linux".install-preexisting-self-broken-daemon-disabled) vm-tests;
+    constituents = pkgs.lib.mapAttrsToList (name: value: value."x86_64-linux".cure-self-linux-broken-daemon-disabled) vm-tests;
   });
-  all."x86_64-linux".install-preexisting-self-broken-no-etc-nix = (with (forSystem "x86_64-linux" ({ system, pkgs, ... }: pkgs)); pkgs.releaseTools.aggregate {
+  all."x86_64-linux".cure-self-linux-broken-no-etc-nix = (with (forSystem "x86_64-linux" ({ system, pkgs, ... }: pkgs)); pkgs.releaseTools.aggregate {
     name = "all";
-    constituents = pkgs.lib.mapAttrsToList (name: value: value."x86_64-linux".install-preexisting-self-broken-no-etc-nix) vm-tests;
+    constituents = pkgs.lib.mapAttrsToList (name: value: value."x86_64-linux".cure-self-linux-broken-no-etc-nix) vm-tests;
   });
-  all."x86_64-linux".install-preexisting-self-broken-unmodified-bashrc = (with (forSystem "x86_64-linux" ({ system, pkgs, ... }: pkgs)); pkgs.releaseTools.aggregate {
+  all."x86_64-linux".cure-self-linux-broken-unmodified-bashrc = (with (forSystem "x86_64-linux" ({ system, pkgs, ... }: pkgs)); pkgs.releaseTools.aggregate {
     name = "all";
-    constituents = pkgs.lib.mapAttrsToList (name: value: value."x86_64-linux".install-preexisting-self-broken-unmodified-bashrc) vm-tests;
+    constituents = pkgs.lib.mapAttrsToList (name: value: value."x86_64-linux".cure-self-linux-broken-unmodified-bashrc) vm-tests;
   });
+  all."x86_64-linux".cure-script-multi-working = (with (forSystem "x86_64-linux" ({ system, pkgs, ... }: pkgs)); pkgs.releaseTools.aggregate {
+    name = "all";
+    constituents = pkgs.lib.mapAttrsToList (name: value: value."x86_64-linux".cure-script-multi-working) vm-tests;
+  });
+  # all."x86_64-linux".cure-script-multi-broken-no-nix-path = (with (forSystem "x86_64-linux" ({ system, pkgs, ... }: pkgs)); pkgs.releaseTools.aggregate {
+  #   name = "all";
+  #   constituents = pkgs.lib.mapAttrsToList (name: value: value."x86_64-linux".cure-script-multi-broken-no-nix-path) vm-tests;
+  # });
+  all."x86_64-linux".cure-script-multi-broken-missing-users = (with (forSystem "x86_64-linux" ({ system, pkgs, ... }: pkgs)); pkgs.releaseTools.aggregate {
+    name = "all";
+    constituents = pkgs.lib.mapAttrsToList (name: value: value."x86_64-linux".cure-script-multi-broken-missing-users) vm-tests;
+  });
+  all."x86_64-linux".cure-script-multi-broken-daemon-disabled = (with (forSystem "x86_64-linux" ({ system, pkgs, ... }: pkgs)); pkgs.releaseTools.aggregate {
+    name = "all";
+    constituents = pkgs.lib.mapAttrsToList (name: value: value."x86_64-linux".cure-script-multi-broken-daemon-disabled) vm-tests;
+  });
+  all."x86_64-linux".cure-script-multi-broken-no-etc-nix = (with (forSystem "x86_64-linux" ({ system, pkgs, ... }: pkgs)); pkgs.releaseTools.aggregate {
+    name = "all";
+    constituents = pkgs.lib.mapAttrsToList (name: value: value."x86_64-linux".cure-script-multi-broken-no-etc-nix) vm-tests;
+  });
+  all."x86_64-linux".cure-script-multi-broken-unmodified-bashrc = (with (forSystem "x86_64-linux" ({ system, pkgs, ... }: pkgs)); pkgs.releaseTools.aggregate {
+    name = "all";
+    constituents = pkgs.lib.mapAttrsToList (name: value: value."x86_64-linux".cure-script-multi-broken-unmodified-bashrc) vm-tests;
+  });
+  # all."x86_64-linux".cure-script-single-working = (with (forSystem "x86_64-linux" ({ system, pkgs, ... }: pkgs)); pkgs.releaseTools.aggregate {
+  #   name = "all";
+  #   constituents = pkgs.lib.mapAttrsToList (name: value: value."x86_64-linux".cure-script-single-working) vm-tests;
+  # });
   all."x86_64-linux".all = (with (forSystem "x86_64-linux" ({ system, pkgs, ... }: pkgs)); pkgs.releaseTools.aggregate {
     name = "all";
     constituents = [
       all."x86_64-linux".install-default
       all."x86_64-linux".install-no-start-daemon
       all."x86_64-linux".install-daemonless
-      all."x86_64-linux".install-preexisting-self-working
-      all."x86_64-linux".install-preexisting-self-broken-no-nix-path
-      all."x86_64-linux".install-preexisting-self-broken-missing-users
-      all."x86_64-linux".install-preexisting-self-broken-missing-users-and-group
-      all."x86_64-linux".install-preexisting-self-broken-daemon-disabled
-      all."x86_64-linux".install-preexisting-self-broken-no-etc-nix
-      all."x86_64-linux".install-preexisting-self-broken-unmodified-bashrc
+      all."x86_64-linux".cure-self-linux-working
+      all."x86_64-linux".cure-self-linux-broken-no-nix-path
+      all."x86_64-linux".cure-self-linux-broken-missing-users
+      all."x86_64-linux".cure-self-linux-broken-missing-users-and-group
+      all."x86_64-linux".cure-self-linux-broken-daemon-disabled
+      all."x86_64-linux".cure-self-linux-broken-no-etc-nix
+      all."x86_64-linux".cure-self-linux-broken-unmodified-bashrc
+      all."x86_64-linux".cure-script-multi-working
+      # all."x86_64-linux".cure-script-multi-broken-no-nix-path
+      all."x86_64-linux".cure-script-multi-broken-missing-users
+      all."x86_64-linux".cure-script-multi-broken-daemon-disabled
+      all."x86_64-linux".cure-script-multi-broken-no-etc-nix
+      all."x86_64-linux".cure-script-multi-broken-unmodified-bashrc
+      # all."x86_64-linux".cure-script-single-working
     ];
   });
 }

@@ -34,7 +34,7 @@ impl CreateNixTree {
         for path in PATHS {
             // We use `create_dir` over `create_dir_all` to ensure we always set permissions right
             create_directories.push(
-                CreateDirectory::plan(path, None, None, 0o0755, false)
+                CreateDirectory::plan(path, String::from("root"), None, 0o0755, false)
                     .await
                     .map_err(|e| ActionError::Child(CreateDirectory::action_tag(), Box::new(e)))?,
             )
