@@ -61,7 +61,7 @@
         "action": "provision_nix",
         "fetch_nix": {
           "action": {
-            "url": "https://releases.nixos.org/nix/nix-2.13.2/nix-2.13.2-x86_64-linux.tar.xz",
+            "url": "https://releases.nixos.org/nix/nix-2.13.3/nix-2.13.3-x86_64-linux.tar.xz",
             "dest": "/nix/temp-install-dir"
           },
           "state": "Uncompleted"
@@ -83,15 +83,7 @@
             "create_users": [
               {
                 "action": {
-                  "name": "nixbld0",
-                  "uid": 30000,
-                  "groupname": "nixbld",
-                  "gid": 30000
-                },
-                "state": "Uncompleted"
-              },
-              {
-                "action": {
+                  "index": 1,
                   "name": "nixbld1",
                   "uid": 30001,
                   "groupname": "nixbld",
@@ -101,6 +93,7 @@
               },
               {
                 "action": {
+                  "index": 2,
                   "name": "nixbld2",
                   "uid": 30002,
                   "groupname": "nixbld",
@@ -110,6 +103,7 @@
               },
               {
                 "action": {
+                  "index": 3,
                   "name": "nixbld3",
                   "uid": 30003,
                   "groupname": "nixbld",
@@ -119,6 +113,7 @@
               },
               {
                 "action": {
+                  "index": 4,
                   "name": "nixbld4",
                   "uid": 30004,
                   "groupname": "nixbld",
@@ -128,6 +123,7 @@
               },
               {
                 "action": {
+                  "index": 5,
                   "name": "nixbld5",
                   "uid": 30005,
                   "groupname": "nixbld",
@@ -137,6 +133,7 @@
               },
               {
                 "action": {
+                  "index": 6,
                   "name": "nixbld6",
                   "uid": 30006,
                   "groupname": "nixbld",
@@ -146,6 +143,7 @@
               },
               {
                 "action": {
+                  "index": 7,
                   "name": "nixbld7",
                   "uid": 30007,
                   "groupname": "nixbld",
@@ -155,6 +153,7 @@
               },
               {
                 "action": {
+                  "index": 8,
                   "name": "nixbld8",
                   "uid": 30008,
                   "groupname": "nixbld",
@@ -164,6 +163,7 @@
               },
               {
                 "action": {
+                  "index": 9,
                   "name": "nixbld9",
                   "uid": 30009,
                   "groupname": "nixbld",
@@ -173,6 +173,7 @@
               },
               {
                 "action": {
+                  "index": 10,
                   "name": "nixbld10",
                   "uid": 30010,
                   "groupname": "nixbld",
@@ -182,6 +183,7 @@
               },
               {
                 "action": {
+                  "index": 11,
                   "name": "nixbld11",
                   "uid": 30011,
                   "groupname": "nixbld",
@@ -191,6 +193,7 @@
               },
               {
                 "action": {
+                  "index": 12,
                   "name": "nixbld12",
                   "uid": 30012,
                   "groupname": "nixbld",
@@ -200,6 +203,7 @@
               },
               {
                 "action": {
+                  "index": 13,
                   "name": "nixbld13",
                   "uid": 30013,
                   "groupname": "nixbld",
@@ -209,6 +213,7 @@
               },
               {
                 "action": {
+                  "index": 14,
                   "name": "nixbld14",
                   "uid": 30014,
                   "groupname": "nixbld",
@@ -218,6 +223,7 @@
               },
               {
                 "action": {
+                  "index": 15,
                   "name": "nixbld15",
                   "uid": 30015,
                   "groupname": "nixbld",
@@ -227,6 +233,7 @@
               },
               {
                 "action": {
+                  "index": 16,
                   "name": "nixbld16",
                   "uid": 30016,
                   "groupname": "nixbld",
@@ -236,6 +243,7 @@
               },
               {
                 "action": {
+                  "index": 17,
                   "name": "nixbld17",
                   "uid": 30017,
                   "groupname": "nixbld",
@@ -245,6 +253,7 @@
               },
               {
                 "action": {
+                  "index": 18,
                   "name": "nixbld18",
                   "uid": 30018,
                   "groupname": "nixbld",
@@ -254,6 +263,7 @@
               },
               {
                 "action": {
+                  "index": 19,
                   "name": "nixbld19",
                   "uid": 30019,
                   "groupname": "nixbld",
@@ -263,6 +273,7 @@
               },
               {
                 "action": {
+                  "index": 20,
                   "name": "nixbld20",
                   "uid": 30020,
                   "groupname": "nixbld",
@@ -272,6 +283,7 @@
               },
               {
                 "action": {
+                  "index": 21,
                   "name": "nixbld21",
                   "uid": 30021,
                   "groupname": "nixbld",
@@ -281,6 +293,7 @@
               },
               {
                 "action": {
+                  "index": 22,
                   "name": "nixbld22",
                   "uid": 30022,
                   "groupname": "nixbld",
@@ -290,6 +303,7 @@
               },
               {
                 "action": {
+                  "index": 23,
                   "name": "nixbld23",
                   "uid": 30023,
                   "groupname": "nixbld",
@@ -299,6 +313,7 @@
               },
               {
                 "action": {
+                  "index": 24,
                   "name": "nixbld24",
                   "uid": 30024,
                   "groupname": "nixbld",
@@ -308,6 +323,7 @@
               },
               {
                 "action": {
+                  "index": 25,
                   "name": "nixbld25",
                   "uid": 30025,
                   "groupname": "nixbld",
@@ -317,6 +333,7 @@
               },
               {
                 "action": {
+                  "index": 26,
                   "name": "nixbld26",
                   "uid": 30026,
                   "groupname": "nixbld",
@@ -326,6 +343,7 @@
               },
               {
                 "action": {
+                  "index": 27,
                   "name": "nixbld27",
                   "uid": 30027,
                   "groupname": "nixbld",
@@ -335,6 +353,7 @@
               },
               {
                 "action": {
+                  "index": 28,
                   "name": "nixbld28",
                   "uid": 30028,
                   "groupname": "nixbld",
@@ -344,6 +363,7 @@
               },
               {
                 "action": {
+                  "index": 29,
                   "name": "nixbld29",
                   "uid": 30029,
                   "groupname": "nixbld",
@@ -353,6 +373,7 @@
               },
               {
                 "action": {
+                  "index": 30,
                   "name": "nixbld30",
                   "uid": 30030,
                   "groupname": "nixbld",
@@ -362,8 +383,19 @@
               },
               {
                 "action": {
+                  "index": 31,
                   "name": "nixbld31",
                   "uid": 30031,
+                  "groupname": "nixbld",
+                  "gid": 30000
+                },
+                "state": "Uncompleted"
+              },
+              {
+                "action": {
+                  "index": 32,
+                  "name": "nixbld32",
+                  "uid": 30032,
                   "groupname": "nixbld",
                   "gid": 30000
                 },
@@ -373,15 +405,6 @@
             "add_users_to_groups": [
               {
                 "action": {
-                  "name": "nixbld0",
-                  "uid": 30000,
-                  "groupname": "nixbld",
-                  "gid": 30000
-                },
-                "state": "Uncompleted"
-              },
-              {
-                "action": {
                   "name": "nixbld1",
                   "uid": 30001,
                   "groupname": "nixbld",
@@ -654,6 +677,15 @@
                 "action": {
                   "name": "nixbld31",
                   "uid": 30031,
+                  "groupname": "nixbld",
+                  "gid": 30000
+                },
+                "state": "Uncompleted"
+              },
+              {
+                "action": {
+                  "name": "nixbld32",
+                  "uid": 30032,
                   "groupname": "nixbld",
                   "gid": 30000
                 },
@@ -814,12 +846,6 @@
         "action": "configure_nix",
         "setup_default_profile": {
           "action": {
-            "channels": [
-              [
-                "nixpkgs",
-                "https://nixos.org/channels/nixpkgs-unstable"
-              ]
-            ],
             "unpacked_path": "/nix/temp-install-dir"
           },
           "state": "Uncompleted"
@@ -833,7 +859,7 @@
                   "path": "/etc/bashrc",
                   "user": null,
                   "group": null,
-                  "mode": 33188,
+                  "mode": 420,
                   "buf": "\n# Nix\nif [ -e '/nix/var/nix/profiles/default/etc/profile.d/nix-daemon.sh' ]; then\n    . '/nix/var/nix/profiles/default/etc/profile.d/nix-daemon.sh'\nfi\n# End Nix\n\n        \n",
                   "position": "Beginning"
                 },
@@ -844,7 +870,7 @@
                   "path": "/etc/profile.d/nix.sh",
                   "user": null,
                   "group": null,
-                  "mode": 33188,
+                  "mode": 420,
                   "buf": "\n# Nix\nif [ -e '/nix/var/nix/profiles/default/etc/profile.d/nix-daemon.sh' ]; then\n    . '/nix/var/nix/profiles/default/etc/profile.d/nix-daemon.sh'\nfi\n# End Nix\n\n        \n",
                   "position": "Beginning"
                 },
@@ -855,7 +881,7 @@
                   "path": "/etc/zshenv",
                   "user": null,
                   "group": null,
-                  "mode": 33188,
+                  "mode": 420,
                   "buf": "\n# Nix\nif [ -e '/nix/var/nix/profiles/default/etc/profile.d/nix-daemon.sh' ]; then\n    . '/nix/var/nix/profiles/default/etc/profile.d/nix-daemon.sh'\nfi\n# End Nix\n\n        \n",
                   "position": "Beginning"
                 },
@@ -866,7 +892,7 @@
                   "path": "/etc/bash.bashrc",
                   "user": null,
                   "group": null,
-                  "mode": 33188,
+                  "mode": 420,
                   "buf": "\n# Nix\nif [ -e '/nix/var/nix/profiles/default/etc/profile.d/nix-daemon.sh' ]; then\n    . '/nix/var/nix/profiles/default/etc/profile.d/nix-daemon.sh'\nfi\n# End Nix\n\n        \n",
                   "position": "Beginning"
                 },
@@ -893,10 +919,11 @@
                 "path": "/etc/nix/nix.conf",
                 "pending_nix_config": {
                   "settings": {
-                    "bash-prompt-prefix": "(nix:$name)\\040",
-                    "build-users-group": "nixbld",
+                    "experimental-features": "nix-command flakes",
                     "auto-optimise-store": "true",
-                    "experimental-features": "nix-command flakes"
+                    "build-users-group": "nixbld",
+                    "extra-nix-path": "nixpkgs=flake:nixpkgs",
+                    "bash-prompt-prefix": "(nix:$name)\\040"
                   }
                 }
               },
@@ -923,27 +950,40 @@
         "enable": true
       },
       "state": "Uncompleted"
+    },
+    {
+      "action": {
+        "action": "remove_directory",
+        "path": "/nix/temp-install-dir"
+      },
+      "state": "Uncompleted"
     }
   ],
   "planner": {
     "planner": "steam-deck",
     "persistence": "/home/nix",
     "settings": {
-      "channels": [
-        [
-          "nixpkgs",
-          "https://nixos.org/channels/nixpkgs-unstable"
-        ]
-      ],
       "modify_profile": true,
       "nix_build_user_count": 32,
       "nix_build_group_name": "nixbld",
       "nix_build_group_id": 30000,
       "nix_build_user_prefix": "nixbld",
       "nix_build_user_id_base": 30000,
-      "nix_package_url": "https://releases.nixos.org/nix/nix-2.13.2/nix-2.13.2-x86_64-linux.tar.xz",
+      "nix_package_url": "https://releases.nixos.org/nix/nix-2.13.3/nix-2.13.3-x86_64-linux.tar.xz",
       "extra_conf": [],
-      "force": false
+      "force": false,
+      "diagnostic_endpoint": "https://install.determinate.systems/nix/diagnostic"
     }
+  },
+  "diagnostic_data": {
+    "version": "0.5.1-unreleased",
+    "planner": "steam-deck",
+    "configured_settings": [],
+    "os_name": "Ubuntu",
+    "os_version": "22.04.1 LTS (Jammy Jellyfish)",
+    "triple": "x86_64-unknown-linux-musl",
+    "is_ci": false,
+    "endpoint": "https://install.determinate.systems/nix/diagnostic",
+    "failure_chain": null
   }
 }

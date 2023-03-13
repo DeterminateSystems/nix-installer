@@ -114,15 +114,7 @@
             "create_users": [
               {
                 "action": {
-                  "name": "_nixbld0",
-                  "uid": 300,
-                  "groupname": "nixbld",
-                  "gid": 3000
-                },
-                "state": "Uncompleted"
-              },
-              {
-                "action": {
+                  "index": 1,
                   "name": "_nixbld1",
                   "uid": 301,
                   "groupname": "nixbld",
@@ -132,6 +124,7 @@
               },
               {
                 "action": {
+                  "index": 2,
                   "name": "_nixbld2",
                   "uid": 302,
                   "groupname": "nixbld",
@@ -141,6 +134,7 @@
               },
               {
                 "action": {
+                  "index": 3,
                   "name": "_nixbld3",
                   "uid": 303,
                   "groupname": "nixbld",
@@ -150,6 +144,7 @@
               },
               {
                 "action": {
+                  "index": 4,
                   "name": "_nixbld4",
                   "uid": 304,
                   "groupname": "nixbld",
@@ -159,6 +154,7 @@
               },
               {
                 "action": {
+                  "index": 5,
                   "name": "_nixbld5",
                   "uid": 305,
                   "groupname": "nixbld",
@@ -168,6 +164,7 @@
               },
               {
                 "action": {
+                  "index": 6,
                   "name": "_nixbld6",
                   "uid": 306,
                   "groupname": "nixbld",
@@ -177,6 +174,7 @@
               },
               {
                 "action": {
+                  "index": 7,
                   "name": "_nixbld7",
                   "uid": 307,
                   "groupname": "nixbld",
@@ -186,6 +184,7 @@
               },
               {
                 "action": {
+                  "index": 8,
                   "name": "_nixbld8",
                   "uid": 308,
                   "groupname": "nixbld",
@@ -195,6 +194,7 @@
               },
               {
                 "action": {
+                  "index": 9,
                   "name": "_nixbld9",
                   "uid": 309,
                   "groupname": "nixbld",
@@ -204,6 +204,7 @@
               },
               {
                 "action": {
+                  "index": 10,
                   "name": "_nixbld10",
                   "uid": 310,
                   "groupname": "nixbld",
@@ -213,6 +214,7 @@
               },
               {
                 "action": {
+                  "index": 11,
                   "name": "_nixbld11",
                   "uid": 311,
                   "groupname": "nixbld",
@@ -222,6 +224,7 @@
               },
               {
                 "action": {
+                  "index": 12,
                   "name": "_nixbld12",
                   "uid": 312,
                   "groupname": "nixbld",
@@ -231,6 +234,7 @@
               },
               {
                 "action": {
+                  "index": 13,
                   "name": "_nixbld13",
                   "uid": 313,
                   "groupname": "nixbld",
@@ -240,6 +244,7 @@
               },
               {
                 "action": {
+                  "index": 14,
                   "name": "_nixbld14",
                   "uid": 314,
                   "groupname": "nixbld",
@@ -249,6 +254,7 @@
               },
               {
                 "action": {
+                  "index": 15,
                   "name": "_nixbld15",
                   "uid": 315,
                   "groupname": "nixbld",
@@ -258,6 +264,7 @@
               },
               {
                 "action": {
+                  "index": 16,
                   "name": "_nixbld16",
                   "uid": 316,
                   "groupname": "nixbld",
@@ -267,6 +274,7 @@
               },
               {
                 "action": {
+                  "index": 17,
                   "name": "_nixbld17",
                   "uid": 317,
                   "groupname": "nixbld",
@@ -276,6 +284,7 @@
               },
               {
                 "action": {
+                  "index": 18,
                   "name": "_nixbld18",
                   "uid": 318,
                   "groupname": "nixbld",
@@ -285,6 +294,7 @@
               },
               {
                 "action": {
+                  "index": 19,
                   "name": "_nixbld19",
                   "uid": 319,
                   "groupname": "nixbld",
@@ -294,6 +304,7 @@
               },
               {
                 "action": {
+                  "index": 20,
                   "name": "_nixbld20",
                   "uid": 320,
                   "groupname": "nixbld",
@@ -303,6 +314,7 @@
               },
               {
                 "action": {
+                  "index": 21,
                   "name": "_nixbld21",
                   "uid": 321,
                   "groupname": "nixbld",
@@ -312,6 +324,7 @@
               },
               {
                 "action": {
+                  "index": 22,
                   "name": "_nixbld22",
                   "uid": 322,
                   "groupname": "nixbld",
@@ -321,6 +334,7 @@
               },
               {
                 "action": {
+                  "index": 23,
                   "name": "_nixbld23",
                   "uid": 323,
                   "groupname": "nixbld",
@@ -330,6 +344,7 @@
               },
               {
                 "action": {
+                  "index": 24,
                   "name": "_nixbld24",
                   "uid": 324,
                   "groupname": "nixbld",
@@ -339,6 +354,7 @@
               },
               {
                 "action": {
+                  "index": 25,
                   "name": "_nixbld25",
                   "uid": 325,
                   "groupname": "nixbld",
@@ -348,6 +364,7 @@
               },
               {
                 "action": {
+                  "index": 26,
                   "name": "_nixbld26",
                   "uid": 326,
                   "groupname": "nixbld",
@@ -357,6 +374,7 @@
               },
               {
                 "action": {
+                  "index": 27,
                   "name": "_nixbld27",
                   "uid": 327,
                   "groupname": "nixbld",
@@ -366,6 +384,7 @@
               },
               {
                 "action": {
+                  "index": 28,
                   "name": "_nixbld28",
                   "uid": 328,
                   "groupname": "nixbld",
@@ -375,6 +394,7 @@
               },
               {
                 "action": {
+                  "index": 29,
                   "name": "_nixbld29",
                   "uid": 329,
                   "groupname": "nixbld",
@@ -384,6 +404,7 @@
               },
               {
                 "action": {
+                  "index": 30,
                   "name": "_nixbld30",
                   "uid": 330,
                   "groupname": "nixbld",
@@ -393,8 +414,19 @@
               },
               {
                 "action": {
+                  "index": 31,
                   "name": "_nixbld31",
                   "uid": 331,
+                  "groupname": "nixbld",
+                  "gid": 3000
+                },
+                "state": "Uncompleted"
+              },
+              {
+                "action": {
+                  "index": 32,
+                  "name": "_nixbld32",
+                  "uid": 332,
                   "groupname": "nixbld",
                   "gid": 3000
                 },
@@ -404,15 +436,6 @@
             "add_users_to_groups": [
               {
                 "action": {
-                  "name": "_nixbld0",
-                  "uid": 300,
-                  "groupname": "nixbld",
-                  "gid": 3000
-                },
-                "state": "Uncompleted"
-              },
-              {
-                "action": {
                   "name": "_nixbld1",
                   "uid": 301,
                   "groupname": "nixbld",
@@ -685,6 +708,15 @@
                 "action": {
                   "name": "_nixbld31",
                   "uid": 331,
+                  "groupname": "nixbld",
+                  "gid": 3000
+                },
+                "state": "Uncompleted"
+              },
+              {
+                "action": {
+                  "name": "_nixbld32",
+                  "uid": 332,
                   "groupname": "nixbld",
                   "gid": 3000
                 },
