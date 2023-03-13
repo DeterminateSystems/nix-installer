@@ -15,8 +15,8 @@ pub struct Plan {
     pub planner: Option<BuiltinPlanner>,
     /// Where to write the generated plan (in JSON format)
     #[clap(
-        long = "plan-file",
-        env = "NIX_INSTALLER_PLAN",
+        long = "out-file",
+        env = "NIX_INSTALLER_PLAN_OUT_FILE",
         default_value = "/dev/stdout"
     )]
     pub output: PathBuf,
