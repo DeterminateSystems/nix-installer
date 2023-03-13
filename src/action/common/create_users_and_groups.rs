@@ -31,11 +31,11 @@ impl CreateUsersAndGroups {
         for index in 1..=settings.nix_build_user_count {
             create_users.push(
                 CreateUser::plan(
-                    index,
                     format!("{}{index}", settings.nix_build_user_prefix),
                     settings.nix_build_user_id_base + index,
                     settings.nix_build_group_name.clone(),
                     settings.nix_build_group_id,
+                    format!("Nix build user {index}"),
                 )
                 .await
                 .map_err(|e| ActionError::Child(CreateUser::action_tag(), Box::new(e)))?,

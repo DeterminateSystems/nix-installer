@@ -12,28 +12,28 @@ Create an operating system level user in the given group
 */
 #[derive(Debug, serde::Deserialize, serde::Serialize, Clone)]
 pub struct CreateUser {
-    index: u32,
     name: String,
     uid: u32,
     groupname: String,
     gid: u32,
+    comment: String,
 }
 
 impl CreateUser {
     #[tracing::instrument(level = "debug", skip_all)]
     pub async fn plan(
-        index: u32,
         name: String,
         uid: u32,
         groupname: String,
         gid: u32,
+        comment: String,
     ) -> Result<StatefulAction<Self>, ActionError> {
         let this = Self {
-            index,
             name: name.clone(),
             uid,
             groupname,
             gid,
+            comment,
         };
         // Ensure user does not exists
         if let Some(user) = User::from_name(name.as_str())
@@ -99,11 +99,11 @@ impl Action for CreateUser {
     #[tracing::instrument(level = "debug", skip_all)]
     async fn execute(&mut self) -> Result<(), ActionError> {
         let Self {
-            index,
             name,
             uid,
             groupname,
             gid,
+            comment,
         } = self;
 
         use target_lexicon::OperatingSystem;
@@ -182,8 +182,6 @@ impl Action for CreateUser {
                 .await?;
             },
             _ => {
-                let comment = format!("Nix build user {index}");
-
                 if which::which("useradd").is_ok() {
                     execute_command(
                         Command::new("useradd")
@@ -256,11 +254,11 @@ impl Action for CreateUser {
     #[tracing::instrument(level = "debug", skip_all)]
     async fn revert(&mut self) -> Result<(), ActionError> {
         let Self {
-            index: _,
             name,
             uid: _,
             groupname: _,
             gid: _,
+            comment: _,
         } = self;
 
         use target_lexicon::OperatingSystem;
