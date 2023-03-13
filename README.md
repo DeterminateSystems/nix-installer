@@ -147,6 +147,21 @@ jobs:
       run: nix build .
 ```
 
+## Without systemd (Linux only)
+
+> **Warning**
+> When installed this way, _only_ `root` or users who can elevate to `root` privileges can run Nix:
+>
+> ```bash
+> sudo -i nix run nixpkgs#hello
+> ```
+
+If you don't use [systemd], you can still install Nix by explicitly specifying the `linux` plan and `--init none`:
+
+```bash
+curl --proto '=https' --tlsv1.2 -sSf -L https://install.determinate.systems/nix | sh -s -- install linux --init none
+```
+
 ## In a container
 
 In Docker/Podman containers or WSL2 instances where an init (like `systemd`) is not present, pass `--init none`.
