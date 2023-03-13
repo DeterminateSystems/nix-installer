@@ -16,6 +16,7 @@ pub struct CreateUser {
     uid: u32,
     groupname: String,
     gid: u32,
+    comment: String,
 }
 
 impl CreateUser {
@@ -25,12 +26,14 @@ impl CreateUser {
         uid: u32,
         groupname: String,
         gid: u32,
+        comment: String,
     ) -> Result<StatefulAction<Self>, ActionError> {
         let this = Self {
             name: name.clone(),
             uid,
             groupname,
             gid,
+            comment,
         };
         // Ensure user does not exists
         if let Some(user) = User::from_name(name.as_str())
@@ -100,6 +103,7 @@ impl Action for CreateUser {
             uid,
             groupname,
             gid,
+            comment,
         } = self;
 
         use target_lexicon::OperatingSystem;
@@ -186,7 +190,7 @@ impl Action for CreateUser {
                                 "--home-dir",
                                 "/var/empty",
                                 "--comment",
-                                "Nix build user",
+                                &comment,
                                 "--gid",
                                 &gid.to_string(),
                                 "--groups",
@@ -212,7 +216,7 @@ impl Action for CreateUser {
                                 "--home",
                                 "/var/empty",
                                 "--gecos",
-                                "Nix build user",
+                                &comment,
                                 "--ingroup",
                                 groupname,
                                 "--system",
@@ -254,6 +258,7 @@ impl Action for CreateUser {
             uid: _,
             groupname: _,
             gid: _,
+            comment: _,
         } = self;
 
         use target_lexicon::OperatingSystem;
