@@ -8,19 +8,29 @@ use tokio::task::JoinSet;
 use tracing::{span, Instrument, Span};
 
 // Fish has different syntax than zsh/bash, treat it separate
-const PROFILE_FISH_SUFFIX: &str = "conf.d/nix.fish";
+const PROFILE_FISH_CONFD_SUFFIX: &str = "vendor_conf.d/nix.fish";
+/**
+ Each of these are common values of $__fish_vendor_confdir,
+under which Fish will look for a file named
+[`PROFILE_FISH_CONFD_SUFFIX`].
 
+More info: https://fishshell.com/docs/3.3/index.html#configuration-files
+*/
+const PROFILE_FISH_VENDOR_CONFD_PREFIXES: &[&str] = &["/usr/share/fish/", "/usr/local/share/fish/"];
+
+const PROFILE_FISH_VENDOR_CONFD_SUFFIX: &str = "conf.d/nix.fish";
 /**
  Each of these are common values of $__fish_sysconf_dir,
 under which Fish will look for a file named
-[`PROFILE_FISH_SUFFIX`].
+[`PROFILE_FISH_CONFD_PREFIXES`].
 */
-const PROFILE_FISH_PREFIXES: &[&str] = &[
+const PROFILE_FISH_CONFD_PREFIXES: &[&str] = &[
     "/etc/fish",              // standard
     "/usr/local/etc/fish",    // their installer .pkg for macOS
     "/opt/homebrew/etc/fish", // homebrew
     "/opt/local/etc/fish",    // macports
 ];
+
 const PROFILE_TARGETS: &[&str] = &[
     "/etc/bashrc",
     "/etc/profile.d/nix.sh",
@@ -101,7 +111,7 @@ impl ConfigureShellProfile {
             inde = "    ", // indent
         );
 
-        for fish_prefix in PROFILE_FISH_PREFIXES {
+        for fish_prefix in PROFILE_FISH_CONFD_PREFIXES {
             let fish_prefix_path = PathBuf::from(fish_prefix);
 
             if !fish_prefix_path.exists() {
@@ -110,7 +120,36 @@ impl ConfigureShellProfile {
             }
 
             let mut profile_target = fish_prefix_path;
-            profile_target.push(PROFILE_FISH_SUFFIX);
+            profile_target.push(PROFILE_FISH_CONFD_SUFFIX);
+
+            if let Some(conf_d) = profile_target.parent() {
+                create_directories.push(
+                    CreateDirectory::plan(conf_d.to_path_buf(), None, None, 0o755, false).await?,
+                );
+            }
+
+            create_or_insert_files.push(
+                CreateOrInsertIntoFile::plan(
+                    profile_target,
+                    None,
+                    None,
+                    0o644,
+                    fish_buf.to_string(),
+                    create_or_insert_into_file::Position::Beginning,
+                )
+                .await?,
+            );
+        }
+        for fish_prefix in PROFILE_FISH_VENDOR_CONFD_PREFIXES {
+            let fish_prefix_path = PathBuf::from(fish_prefix);
+
+            if !fish_prefix_path.exists() {
+                // If the prefix doesn't exist, don't create the `conf.d/nix.fish`
+                continue;
+            }
+
+            let mut profile_target = fish_prefix_path;
+            profile_target.push(PROFILE_FISH_VENDOR_CONFD_SUFFIX);
 
             if let Some(conf_d) = profile_target.parent() {
                 create_directories.push(
