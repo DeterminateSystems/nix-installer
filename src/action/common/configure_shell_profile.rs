@@ -8,7 +8,7 @@ use tokio::task::JoinSet;
 use tracing::{span, Instrument, Span};
 
 // Fish has different syntax than zsh/bash, treat it separate
-const PROFILE_FISH_CONFD_SUFFIX: &str = "vendor_conf.d/nix.fish";
+const PROFILE_FISH_VENDOR_CONFD_SUFFIX: &str = "vendor_conf.d/nix.fish";
 /**
  Each of these are common values of $__fish_vendor_confdir,
 under which Fish will look for a file named
@@ -18,7 +18,7 @@ More info: https://fishshell.com/docs/3.3/index.html#configuration-files
 */
 const PROFILE_FISH_VENDOR_CONFD_PREFIXES: &[&str] = &["/usr/share/fish/", "/usr/local/share/fish/"];
 
-const PROFILE_FISH_VENDOR_CONFD_SUFFIX: &str = "conf.d/nix.fish";
+const PROFILE_FISH_CONFD_SUFFIX: &str = "conf.d/nix.fish";
 /**
  Each of these are common values of $__fish_sysconf_dir,
 under which Fish will look for a file named
