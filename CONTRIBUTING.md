@@ -369,8 +369,8 @@ To cut a release:
 * Remove the `-unreleased` from the `version` field in `Cargo.toml`, `flake.nix`, and the fixture JSON files
 * Ensure the VM / container tests still pass with the following:
   + `nix flake check -L`
-  + `nix build .#hydraJobs.container-test.all.x86_64-linux.all -L`
-  + `nix build .#hydraJobs.vm-test.all.x86_64-linux.all -L`
+  + `nix build .#hydraJobs.container-test.all.x86_64-linux.all -L -j 6`
+  + `nix build .#hydraJobs.vm-test.all.x86_64-linux.all -L -j 6`
 * Push the branch, create a PR ("Release v0.0.1")
 * Once the PR tests pass and it has been reviewed, merge it
 * `git pull` on the `main` branch
