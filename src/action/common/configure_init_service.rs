@@ -197,13 +197,15 @@ impl Action for ConfigureInitService {
                     true
                 } else if is_active("nix-daemon.socket").await? {
                     stop("nix-daemon.socket").await?;
-                    false
+                    true
                 } else {
                     false
                 };
                 if is_enabled("nix-daemon.service").await? {
-                    let now = is_active("nix-daemon.socket").await?;
+                    let now = is_active("nix-daemon.service").await?;
                     disable("nix-daemon.service", now).await?;
+                } else if is_active("nix-daemon.service").await? {
+                    stop("nix-daemon.service").await?;
                 };
 
                 tracing::trace!(src = TMPFILES_SRC, dest = TMPFILES_DEST, "Symlinking");
@@ -412,7 +414,10 @@ async fn stop(unit: &str) -> Result<(), ActionError> {
         .await
         .map_err(|e| ActionError::command(&command, e))?;
     match output.status.success() {
-        true => Ok(()),
+        true => {
+            tracing::trace!(%unit, "Stopped");
+            Ok(())
+        },
         false => Err(ActionError::command_output(&command, output)),
     }
 }
@@ -430,7 +435,10 @@ async fn enable(unit: &str, now: bool) -> Result<(), ActionError> {
         .await
         .map_err(|e| ActionError::command(&command, e))?;
     match output.status.success() {
-        true => Ok(()),
+        true => {
+            tracing::trace!(%unit, %now, "Enabled unit");
+            Ok(())
+        },
         false => Err(ActionError::command_output(&command, output)),
     }
 }
@@ -448,7 +456,10 @@ async fn disable(unit: &str, now: bool) -> Result<(), ActionError> {
         .await
         .map_err(|e| ActionError::command(&command, e))?;
     match output.status.success() {
-        true => Ok(()),
+        true => {
+            tracing::trace!(%unit, %now, "Diabled unit");
+            Ok(())
+        },
         false => Err(ActionError::command_output(&command, output)),
     }
 }

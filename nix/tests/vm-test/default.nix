@@ -141,7 +141,7 @@ let
         NIX_PATH=$(readlink -f nix.tar.xz)
         RUST_BACKTRACE="full" ./nix-installer install --nix-package-url "file://$NIX_PATH" --no-confirm
         sudo mv /nix/receipt.json /nix/old-receipt.json
-        for i in {0..31}; do
+        for i in {1..32}; do
           sudo userdel "nixbld''${i}"
         done
         sudo groupdel nixbld
