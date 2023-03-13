@@ -65,34 +65,48 @@ impl InstallPlan {
         })
     }
     #[tracing::instrument(level = "debug", skip_all)]
-    pub fn describe_install(&self, explain: bool) -> Result<String, NixInstallerError> {
+    pub async fn describe_install(&self, explain: bool) -> Result<String, NixInstallerError> {
         let Self {
             planner,
             actions,
             version,
             ..
         } = self;
+
+        let plan_settings = planner
+            .configured_settings()
+            .await?
+            .into_iter()
+            .map(|(k, v)| format!("* {k}: {v}", k = k.bold()))
+            .collect::<Vec<_>>();
+
         let buf = format!(
             "\
             Nix install plan (v{version})\n\
             \n\
             Planner: {planner}\n\
             \n\
-            Planner settings:\n\
-            \n\
-            {plan_settings}\n\
-            \n\
+            {maybe_plan_settings}\
+            \
             The following actions will be taken:\n\
             \n\
             {actions}\n\
         ",
             planner = planner.typetag_name(),
-            plan_settings = planner
-                .settings()?
-                .into_iter()
-                .map(|(k, v)| format!("* {k}: {v}", k = k.bold()))
-                .collect::<Vec<_>>()
-                .join("\n"),
+            maybe_plan_settings = if plan_settings.is_empty() {
+                String::new()
+            } else {
+                // TODO: "Changed planner settings"?
+                format!(
+                    "\
+                    Planner settings:\n\
+                    \n\
+                    {plan_settings}\n\
+                    \n\
+                ",
+                    plan_settings = plan_settings.join("\n")
+                )
+            },
             actions = actions
                 .iter()
                 .map(|v| v.describe_execute())

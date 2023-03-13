@@ -137,12 +137,31 @@ impl Planner for MyPlanner {
         Ok(map)
     }
 
+    async fn configured_settings(
+        &self,
+    ) -> Result<HashMap<String, serde_json::Value>, PlannerError> {
+        let default = Self::default().await?.settings()?;
+        let configured = self.settings()?;
+
+        let mut settings: HashMap<String, serde_json::Value> = HashMap::new();
+        for (key, value) in configured.iter() {
+            if default.get(key) != Some(value) {
+                settings.insert(key.clone(), value.clone());
+            }
+        }
+
+        Ok(settings)
+    }
+
     #[cfg(feature = "diagnostics")]
     async fn diagnostic_data(&self) -> Result<nix_installer::diagnostics::DiagnosticData, PlannerError> {
         Ok(nix_installer::diagnostics::DiagnosticData::new(
             self.common.diagnostic_endpoint.clone(),
             self.typetag_name().into(),
-            self.configured_settings().await?,
+            self.configured_settings()
+                .await?
+                .into_keys()
+                .collect::<Vec<_>>(),
         ))
     }
 }
