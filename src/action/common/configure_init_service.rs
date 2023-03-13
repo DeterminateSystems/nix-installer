@@ -457,7 +457,7 @@ async fn disable(unit: &str, now: bool) -> Result<(), ActionError> {
         .map_err(|e| ActionError::command(&command, e))?;
     match output.status.success() {
         true => {
-            tracing::trace!(%unit, %now, "Diabled unit");
+            tracing::trace!(%unit, %now, "Disabled unit");
             Ok(())
         },
         false => Err(ActionError::command_output(&command, output)),
