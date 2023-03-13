@@ -207,8 +207,7 @@ pub struct CommonSettings {
     ///     "triple": "x86_64-unknown-linux-gnu",
     ///     "is_ci": false,
     ///     "action": "Install",
-    ///     "status": "Failure",
-    ///     "failure_variant": "Symlink"
+    ///     "status": "Success"
     /// }
     ///
     /// To disable diagnostic reporting, unset the default with `--diagnostic-endpoint=`
@@ -347,13 +346,11 @@ impl CommonSettings {
     }
 }
 #[cfg(target_os = "linux")]
-async fn linux_detect_init() -> (InitSystem, bool) {
+async fn linux_detect_systemd_started() -> bool {
     use std::process::Stdio;
 
-    let mut detected = InitSystem::None;
     let mut started = false;
     if std::path::Path::new("/run/systemd/system").exists() {
-        detected = InitSystem::Systemd;
         started = if tokio::process::Command::new("systemctl")
             .arg("status")
             .stdin(Stdio::null())
@@ -372,7 +369,7 @@ async fn linux_detect_init() -> (InitSystem, bool) {
     }
 
     // TODO: Other inits
-    (detected, started)
+    started
 }
 
 // Builder Pattern
@@ -472,33 +469,26 @@ pub struct InitSettings {
 impl InitSettings {
     /// The default settings for the given Architecture & Operating System
     pub async fn default() -> Result<Self, InstallSettingsError> {
-        let init;
-        let start_daemon;
-
         use target_lexicon::{Architecture, OperatingSystem};
-        match (Architecture::host(), OperatingSystem::host()) {
+        let (init, start_daemon) = match (Architecture::host(), OperatingSystem::host()) {
             #[cfg(target_os = "linux")]
             (Architecture::X86_64, OperatingSystem::Linux) => {
-                (init, start_daemon) = linux_detect_init().await;
+                (InitSystem::Systemd, linux_detect_systemd_started().await)
             },
             #[cfg(target_os = "linux")]
             (Architecture::X86_32(_), OperatingSystem::Linux) => {
-                (init, start_daemon) = linux_detect_init().await;
+                (InitSystem::Systemd, linux_detect_systemd_started().await)
             },
             #[cfg(target_os = "linux")]
             (Architecture::Aarch64(_), OperatingSystem::Linux) => {
-                (init, start_daemon) = linux_detect_init().await;
+                (InitSystem::Systemd, linux_detect_systemd_started().await)
             },
             #[cfg(target_os = "macos")]
             (Architecture::X86_64, OperatingSystem::MacOSX { .. })
-            | (Architecture::X86_64, OperatingSystem::Darwin) => {
-                (init, start_daemon) = (InitSystem::Launchd, true);
-            },
+            | (Architecture::X86_64, OperatingSystem::Darwin) => (InitSystem::Launchd, true),
             #[cfg(target_os = "macos")]
             (Architecture::Aarch64(_), OperatingSystem::MacOSX { .. })
-            | (Architecture::Aarch64(_), OperatingSystem::Darwin) => {
-                (init, start_daemon) = (InitSystem::Launchd, true);
-            },
+            | (Architecture::Aarch64(_), OperatingSystem::Darwin) => (InitSystem::Launchd, true),
             _ => {
                 return Err(InstallSettingsError::UnsupportedArchitecture(
                     target_lexicon::HOST,

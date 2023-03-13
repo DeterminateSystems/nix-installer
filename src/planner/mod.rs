@@ -53,12 +53,31 @@ impl Planner for MyPlanner {
         Ok(map)
     }
 
+    async fn configured_settings(
+        &self,
+    ) -> Result<HashMap<String, serde_json::Value>, PlannerError> {
+        let default = Self::default().await?.settings()?;
+        let configured = self.settings()?;
+
+        let mut settings: HashMap<String, serde_json::Value> = HashMap::new();
+        for (key, value) in configured.iter() {
+            if default.get(key) != Some(value) {
+                settings.insert(key.clone(), value.clone());
+            }
+        }
+
+        Ok(settings)
+    }
+
     #[cfg(feature = "diagnostics")]
     async fn diagnostic_data(&self) -> Result<nix_installer::diagnostics::DiagnosticData, PlannerError> {
         Ok(nix_installer::diagnostics::DiagnosticData::new(
             self.common.diagnostic_endpoint.clone(),
             self.typetag_name().into(),
-            self.configured_settings().await?,
+            self.configured_settings()
+                .await?
+                .into_keys()
+                .collect::<Vec<_>>(),
         ))
     }
 }
@@ -111,21 +130,8 @@ pub trait Planner: std::fmt::Debug + Send + Sync + dyn_clone::DynClone {
     /// The settings being used by the planner
     fn settings(&self) -> Result<HashMap<String, serde_json::Value>, InstallSettingsError>;
 
-    async fn configured_settings(&self) -> Result<Vec<String>, PlannerError>
-    where
-        Self: Sized,
-    {
-        let default = Self::default().await?.settings()?;
-        let configured = self.settings()?;
-
-        let mut keys: Vec<String> = Vec::new();
-        for (key, value) in configured.iter() {
-            if default.get(key) != Some(value) {
-                keys.push(key.clone())
-            }
-        }
-        Ok(keys)
-    }
+    async fn configured_settings(&self)
+        -> Result<HashMap<String, serde_json::Value>, PlannerError>;
 
     /// A boxed, type erased planner
     fn boxed(self) -> Box<dyn Planner>
@@ -200,7 +206,9 @@ impl BuiltinPlanner {
         Ok(built)
     }
 
-    pub async fn configured_settings(&self) -> Result<Vec<String>, PlannerError> {
+    pub async fn configured_settings(
+        &self,
+    ) -> Result<HashMap<String, serde_json::Value>, PlannerError> {
         match self {
             #[cfg(target_os = "linux")]
             BuiltinPlanner::Linux(inner) => inner.configured_settings().await,

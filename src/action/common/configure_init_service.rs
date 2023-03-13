@@ -75,6 +75,13 @@ impl ConfigureInitService {
             },
             #[cfg(target_os = "linux")]
             InitSystem::Systemd => {
+                // If /run/systemd/system exists, we can be reasonably sure the machine is booted
+                // with systemd: https://www.freedesktop.org/software/systemd/man/sd_booted.html
+                if !(Path::new("/run/systemd/system").exists() || which::which("systemctl").is_ok())
+                {
+                    return Err(ActionError::SystemdMissing);
+                }
+
                 Self::check_if_systemd_unit_exists(SERVICE_SRC, SERVICE_DEST).await?;
                 Self::check_if_systemd_unit_exists(SOCKET_SRC, SOCKET_DEST).await?;
             },
