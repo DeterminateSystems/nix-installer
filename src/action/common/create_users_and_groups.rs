@@ -31,6 +31,7 @@ impl CreateUsersAndGroups {
         for index in 0..settings.nix_build_user_count {
             create_users.push(
                 CreateUser::plan(
+                    index,
                     format!("{}{index}", settings.nix_build_user_prefix),
                     settings.nix_build_user_id_base + index,
                     settings.nix_build_group_name.clone(),

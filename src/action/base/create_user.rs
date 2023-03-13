@@ -12,6 +12,7 @@ Create an operating system level user in the given group
 */
 #[derive(Debug, serde::Deserialize, serde::Serialize, Clone)]
 pub struct CreateUser {
+    index: u32,
     name: String,
     uid: u32,
     groupname: String,
@@ -21,12 +22,14 @@ pub struct CreateUser {
 impl CreateUser {
     #[tracing::instrument(level = "debug", skip_all)]
     pub async fn plan(
+        index: u32,
         name: String,
         uid: u32,
         groupname: String,
         gid: u32,
     ) -> Result<StatefulAction<Self>, ActionError> {
         let this = Self {
+            index,
             name: name.clone(),
             uid,
             groupname,
@@ -96,6 +99,7 @@ impl Action for CreateUser {
     #[tracing::instrument(level = "debug", skip_all)]
     async fn execute(&mut self) -> Result<(), ActionError> {
         let Self {
+            index,
             name,
             uid,
             groupname,
@@ -178,6 +182,8 @@ impl Action for CreateUser {
                 .await?;
             },
             _ => {
+                let comment = format!("Nix build user {index}");
+
                 if which::which("useradd").is_ok() {
                     execute_command(
                         Command::new("useradd")
@@ -186,7 +192,7 @@ impl Action for CreateUser {
                                 "--home-dir",
                                 "/var/empty",
                                 "--comment",
-                                "Nix build user",
+                                &comment,
                                 "--gid",
                                 &gid.to_string(),
                                 "--groups",
@@ -212,7 +218,7 @@ impl Action for CreateUser {
                                 "--home",
                                 "/var/empty",
                                 "--gecos",
-                                "Nix build user",
+                                &comment,
                                 "--ingroup",
                                 groupname,
                                 "--system",
@@ -250,6 +256,7 @@ impl Action for CreateUser {
     #[tracing::instrument(level = "debug", skip_all)]
     async fn revert(&mut self) -> Result<(), ActionError> {
         let Self {
+            index: _,
             name,
             uid: _,
             groupname: _,
