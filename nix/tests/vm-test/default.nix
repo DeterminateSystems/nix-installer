@@ -24,14 +24,42 @@ let
       check = ''
         set -ex
 
+        dir /nix
+        dir /nix/store
+
+        ls -lah /nix/var/nix/profiles/per-user
+        ls -lah /nix/var/nix/daemon-socket
+
         if systemctl is-active nix-daemon.socket; then
           echo "nix-daemon.socket was active"
         else
           echo "nix-daemon.socket was not active, should be"
           exit 1
         fi
+        if systemctl is-failed nix-daemon.socket; then
+          echo "nix-daemon.socket is failed"
+          exit 1
+        fi
+        if systemctl is-failed nix-daemon.service; then
+          echo "nix-daemon.service is failed"
+          exit 1
+        fi
+        if !(sudo systemctl start nix-daemon.service); then
+          echo "nix-daemon.service failed to start"
+          exit 1
+        fi
 
+        if !(sudo systemctl stop nix-daemon.service); then
+          echo "nix-daemon.service failed to stop"
+          exit 1
+        fi
+
+        sudo -i nix store ping --store daemon
+        nix store ping --store daemon
+
+        sudo -i nix-env --version
         nix-env --version
+        sudo -i nix --extra-experimental-features nix-command store ping
         nix --extra-experimental-features nix-command store ping
 
         out=$(nix-build --no-substitute -E 'derivation { name = "foo"; system = "x86_64-linux"; builder = "/bin/sh"; args = ["-c" "echo foobar > $out"]; }')
@@ -87,6 +115,16 @@ let
       install = install-default.install;
       check = install-default.check;
     };
+    install-preexisting-self-broken-no-nix-path = {
+      preinstall = ''
+        NIX_PATH=$(readlink -f nix.tar.xz)
+        RUST_BACKTRACE="full" ./nix-installer install --nix-package-url "file://$NIX_PATH" --no-confirm
+        sudo mv /nix/receipt.json /nix/old-receipt.json
+        sudo rm -rf /nix/
+      '';
+      install = install-default.install;
+      check = install-default.check;
+    };
     install-preexisting-self-broken-missing-users = {
       preinstall = ''
         ${nix-installer-install-quiet}
@@ -94,6 +132,19 @@ let
         sudo userdel nixbld1
         sudo userdel nixbld3
         sudo userdel nixbld16
+      '';
+      install = install-default.install;
+      check = install-default.check;
+    };
+    install-preexisting-self-broken-missing-users-and-group = {
+      preinstall = ''
+        NIX_PATH=$(readlink -f nix.tar.xz)
+        RUST_BACKTRACE="full" ./nix-installer install --nix-package-url "file://$NIX_PATH" --no-confirm
+        sudo mv /nix/receipt.json /nix/old-receipt.json
+        for i in {0..31}; do
+          sudo userdel "nixbld''${i}"
+        done
+        sudo groupdel nixbld
       '';
       install = install-default.install;
       check = install-default.check;
@@ -396,13 +447,17 @@ vm-tests // rec {
     name = "all";
     constituents = pkgs.lib.mapAttrsToList (name: value: value."x86_64-linux".install-preexisting-self-working) vm-tests;
   });
-  # all."x86_64-linux".install-preexisting-self-broken-no-nix-path = (with (forSystem "x86_64-linux" ({ system, pkgs, ... }: pkgs)); pkgs.releaseTools.aggregate {
-  #   name = "all";
-  #   constituents = pkgs.lib.mapAttrsToList (name: value: value."x86_64-linux".install-preexisting-self-broken-no-nix-path) vm-tests;
-  # });
+  all."x86_64-linux".install-preexisting-self-broken-no-nix-path = (with (forSystem "x86_64-linux" ({ system, pkgs, ... }: pkgs)); pkgs.releaseTools.aggregate {
+    name = "all";
+    constituents = pkgs.lib.mapAttrsToList (name: value: value."x86_64-linux".install-preexisting-self-broken-no-nix-path) vm-tests;
+  });
   all."x86_64-linux".install-preexisting-self-broken-missing-users = (with (forSystem "x86_64-linux" ({ system, pkgs, ... }: pkgs)); pkgs.releaseTools.aggregate {
     name = "all";
     constituents = pkgs.lib.mapAttrsToList (name: value: value."x86_64-linux".install-preexisting-self-broken-missing-users) vm-tests;
+  });
+  all."x86_64-linux".install-preexisting-self-broken-missing-users-and-group = (with (forSystem "x86_64-linux" ({ system, pkgs, ... }: pkgs)); pkgs.releaseTools.aggregate {
+    name = "all";
+    constituents = pkgs.lib.mapAttrsToList (name: value: value."x86_64-linux".install-preexisting-self-broken-missing-users-and-group) vm-tests;
   });
   all."x86_64-linux".install-preexisting-self-broken-daemon-disabled = (with (forSystem "x86_64-linux" ({ system, pkgs, ... }: pkgs)); pkgs.releaseTools.aggregate {
     name = "all";
@@ -451,8 +506,9 @@ vm-tests // rec {
       all."x86_64-linux".install-no-start-daemon
       all."x86_64-linux".install-daemonless
       all."x86_64-linux".install-preexisting-self-working
-      # all."x86_64-linux".install-preexisting-self-broken-no-nix-path
+      all."x86_64-linux".install-preexisting-self-broken-no-nix-path
       all."x86_64-linux".install-preexisting-self-broken-missing-users
+      all."x86_64-linux".install-preexisting-self-broken-missing-users-and-group
       all."x86_64-linux".install-preexisting-self-broken-daemon-disabled
       all."x86_64-linux".install-preexisting-self-broken-no-etc-nix
       all."x86_64-linux".install-preexisting-self-broken-unmodified-bashrc

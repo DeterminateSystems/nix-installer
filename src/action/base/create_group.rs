@@ -92,20 +92,32 @@ impl Action for CreateGroup {
                             "Nix build group for nix-daemon",
                             "-i",
                             &format!("{gid}"),
-                            name.as_str(),
+                            name,
                         ])
                         .stdin(std::process::Stdio::null()),
                 )
                 .await?;
             },
             _ => {
-                execute_command(
-                    Command::new("groupadd")
-                        .process_group(0)
-                        .args(["-g", &gid.to_string(), "--system", &name])
-                        .stdin(std::process::Stdio::null()),
-                )
-                .await?;
+                if which::which("groupadd").is_ok() {
+                    execute_command(
+                        Command::new("groupadd")
+                            .process_group(0)
+                            .args(["-g", &gid.to_string(), "--system", name])
+                            .stdin(std::process::Stdio::null()),
+                    )
+                    .await?;
+                } else if which::which("addgroup").is_ok() {
+                    execute_command(
+                        Command::new("addgroup")
+                            .process_group(0)
+                            .args(["-g", &gid.to_string(), "--system", name])
+                            .stdin(std::process::Stdio::null()),
+                    )
+                    .await?;
+                } else {
+                    return Err(ActionError::MissingGroupCreationCommand);
+                }
             },
         };
 
@@ -143,13 +155,25 @@ impl Action for CreateGroup {
                 if !output.status.success() {}
             },
             _ => {
-                execute_command(
-                    Command::new("groupdel")
-                        .process_group(0)
-                        .arg(&name)
-                        .stdin(std::process::Stdio::null()),
-                )
-                .await?;
+                if which::which("groupdel").is_ok() {
+                    execute_command(
+                        Command::new("groupdel")
+                            .process_group(0)
+                            .arg(name)
+                            .stdin(std::process::Stdio::null()),
+                    )
+                    .await?;
+                } else if which::which("delgroup").is_ok() {
+                    execute_command(
+                        Command::new("delgroup")
+                            .process_group(0)
+                            .arg(name)
+                            .stdin(std::process::Stdio::null()),
+                    )
+                    .await?;
+                } else {
+                    return Err(ActionError::MissingGroupDeletionCommand);
+                }
             },
         };
 

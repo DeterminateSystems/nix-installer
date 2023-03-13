@@ -70,7 +70,7 @@ jobs:
         with:
           local-root: install-root/
           logger: pretty
-          log-directives: nix_installer=trace
+          log-directives: nix_installer=debug
           backtrace: full
           github-token: ${{ secrets.GITHUB_TOKEN }}
       - name: Initial uninstall (without a `nix run` first)
@@ -78,7 +78,7 @@ jobs:
         env:
           NIX_INSTALLER_NO_CONFIRM: true
           NIX_INSTALLER_LOGGER: pretty
-          NIX_INSTALLER_LOG_DIRECTIVES: nix_installer=trace
+          NIX_INSTALLER_LOG_DIRECTIVES: nix_installer=debug
           RUST_BACKTRACE: full
       - name: Ensure `nix` is removed
         run: |
@@ -99,7 +99,7 @@ jobs:
         with:
           local-root: install-root/
           logger: pretty
-          log-directives: nix_installer=trace
+          log-directives: nix_installer=debug
           backtrace: full
           github-token: ${{ secrets.GITHUB_TOKEN }}
       - name: echo $PATH
@@ -133,7 +133,7 @@ jobs:
         env:
           NIX_INSTALLER_NO_CONFIRM: true
           NIX_INSTALLER_LOGGER: pretty
-          NIX_INSTALLER_LOG_DIRECTIVES: nix_installer=trace
+          NIX_INSTALLER_LOG_DIRECTIVES: nix_installer=debug
           RUST_BACKTRACE: full
       - name: Ensure `nix` is removed
         run: |
@@ -176,7 +176,7 @@ jobs:
           planner: linux
           local-root: install-root/
           logger: pretty
-          log-directives: nix_installer=trace
+          log-directives: nix_installer=debug
           backtrace: full
           github-token: ${{ secrets.GITHUB_TOKEN }}
       - name: Ensure daemon was not configured with init
@@ -194,7 +194,7 @@ jobs:
         env:
           NIX_INSTALLER_NO_CONFIRM: true
           NIX_INSTALLER_LOGGER: pretty
-          NIX_INSTALLER_LOG_DIRECTIVES: nix_installer=trace
+          NIX_INSTALLER_LOG_DIRECTIVES: nix_installer=debug
           RUST_BACKTRACE: full
       - name: Ensure `nix` is removed
         run: |
@@ -209,7 +209,7 @@ jobs:
           planner: linux
           local-root: install-root/
           logger: pretty
-          log-directives: nix_installer=trace
+          log-directives: nix_installer=debug
           backtrace: full
           github-token: ${{ secrets.GITHUB_TOKEN }}
       - name: echo $PATH
@@ -243,7 +243,7 @@ jobs:
         env:
           NIX_INSTALLER_NO_CONFIRM: true
           NIX_INSTALLER_LOGGER: pretty
-          NIX_INSTALLER_LOG_DIRECTIVES: nix_installer=trace
+          NIX_INSTALLER_LOG_DIRECTIVES: nix_installer=debug
           RUST_BACKTRACE: full
       - name: Ensure `nix` is removed
         run: |
@@ -290,7 +290,7 @@ jobs:
         with:
           local-root: install-root/
           logger: pretty
-          log-directives: nix_installer=trace
+          log-directives: nix_installer=debug
           backtrace: full
           github-token: ${{ secrets.GITHUB_TOKEN }}
           planner: steam-deck
@@ -300,7 +300,7 @@ jobs:
         env:
           NIX_INSTALLER_NO_CONFIRM: true
           NIX_INSTALLER_LOGGER: pretty
-          NIX_INSTALLER_LOG_DIRECTIVES: nix_installer=trace
+          NIX_INSTALLER_LOG_DIRECTIVES: nix_installer=debug
           RUST_BACKTRACE: full
       - name: Ensure `nix` is removed
         run: |
@@ -325,7 +325,7 @@ jobs:
         with:
           local-root: install-root/
           logger: pretty
-          log-directives: nix_installer=trace
+          log-directives: nix_installer=debug
           backtrace: full
           github-token: ${{ secrets.GITHUB_TOKEN }}
           planner: steam-deck
@@ -361,7 +361,7 @@ jobs:
         env:
           NIX_INSTALLER_NO_CONFIRM: true
           NIX_INSTALLER_LOGGER: pretty
-          NIX_INSTALLER_LOG_DIRECTIVES: nix_installer=trace
+          NIX_INSTALLER_LOG_DIRECTIVES: nix_installer=debug
           RUST_BACKTRACE: full
       - name: Ensure `nix` is removed
         run: |
@@ -406,7 +406,7 @@ jobs:
         with:
           local-root: install-root/
           logger: pretty
-          log-directives: nix_installer=trace
+          log-directives: nix_installer=debug
           backtrace: full
           github-token: ${{ secrets.GITHUB_TOKEN }}
           extra-conf: |
@@ -416,14 +416,14 @@ jobs:
         env:
           NIX_INSTALLER_NO_CONFIRM: true
           NIX_INSTALLER_LOGGER: pretty
-          NIX_INSTALLER_LOG_DIRECTIVES: nix_installer=trace
+          NIX_INSTALLER_LOG_DIRECTIVES: nix_installer=debug
           RUST_BACKTRACE: full
       - name: Repeated install
         uses: DeterminateSystems/nix-installer-action@main
         with:
           local-root: install-root/
           logger: pretty
-          log-directives: nix_installer=trace
+          log-directives: nix_installer=debug
           backtrace: full
           github-token: ${{ secrets.GITHUB_TOKEN }}
           extra-conf: trusted-users = root runner
@@ -459,5 +459,5 @@ jobs:
         env:
           NIX_INSTALLER_NO_CONFIRM: true
           NIX_INSTALLER_LOGGER: pretty
-          NIX_INSTALLER_LOG_DIRECTIVES: nix_installer=trace
+          NIX_INSTALLER_LOG_DIRECTIVES: nix_installer=debug
           RUST_BACKTRACE: full

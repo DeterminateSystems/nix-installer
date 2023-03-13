@@ -98,7 +98,7 @@ impl Action for CreateUser {
         let Self {
             name,
             uid,
-            groupname: _,
+            groupname,
             gid,
         } = self;
 
@@ -178,31 +178,57 @@ impl Action for CreateUser {
                 .await?;
             },
             _ => {
-                execute_command(
-                    Command::new("useradd")
-                        .process_group(0)
-                        .args([
-                            "--home-dir",
-                            "/var/empty",
-                            "--comment",
-                            &format!("\"Nix build user\""),
-                            "--gid",
-                            &gid.to_string(),
-                            "--groups",
-                            &gid.to_string(),
-                            "--no-user-group",
-                            "--system",
-                            "--shell",
-                            "/sbin/nologin",
-                            "--uid",
-                            &uid.to_string(),
-                            "--password",
-                            "\"!\"",
-                            &name.to_string(),
-                        ])
-                        .stdin(std::process::Stdio::null()),
-                )
-                .await?;
+                if which::which("useradd").is_ok() {
+                    execute_command(
+                        Command::new("useradd")
+                            .process_group(0)
+                            .args([
+                                "--home-dir",
+                                "/var/empty",
+                                "--comment",
+                                "Nix build user",
+                                "--gid",
+                                &gid.to_string(),
+                                "--groups",
+                                &gid.to_string(),
+                                "--no-user-group",
+                                "--system",
+                                "--shell",
+                                "/sbin/nologin",
+                                "--uid",
+                                &uid.to_string(),
+                                "--password",
+                                "!",
+                                name,
+                            ])
+                            .stdin(std::process::Stdio::null()),
+                    )
+                    .await?;
+                } else if which::which("adduser").is_ok() {
+                    execute_command(
+                        Command::new("adduser")
+                            .process_group(0)
+                            .args([
+                                "--home",
+                                "/var/empty",
+                                "--gecos",
+                                "Nix build user",
+                                "--ingroup",
+                                groupname,
+                                "--system",
+                                "--shell",
+                                "/sbin/nologin",
+                                "--uid",
+                                &uid.to_string(),
+                                "--disabled-password",
+                                name,
+                            ])
+                            .stdin(std::process::Stdio::null()),
+                    )
+                    .await?;
+                } else {
+                    return Err(ActionError::MissingUserCreationCommand);
+                }
             },
         }
 
@@ -266,13 +292,25 @@ impl Action for CreateUser {
                 }
             },
             _ => {
-                execute_command(
-                    Command::new("userdel")
-                        .process_group(0)
-                        .args([&name.to_string()])
-                        .stdin(std::process::Stdio::null()),
-                )
-                .await?;
+                if which::which("userdel").is_ok() {
+                    execute_command(
+                        Command::new("userdel")
+                            .process_group(0)
+                            .arg(name)
+                            .stdin(std::process::Stdio::null()),
+                    )
+                    .await?;
+                } else if which::which("deluser").is_ok() {
+                    execute_command(
+                        Command::new("deluser")
+                            .process_group(0)
+                            .arg(name)
+                            .stdin(std::process::Stdio::null()),
+                    )
+                    .await?;
+                } else {
+                    return Err(ActionError::MissingUserDeletionCommand);
+                }
             },
         };
 

@@ -5,8 +5,7 @@ use crate::{
     },
     settings::CommonSettings,
 };
-use tokio::task::JoinSet;
-use tracing::{span, Instrument, Span};
+use tracing::{span, Span};
 
 #[derive(Debug, serde::Deserialize, serde::Serialize, Clone)]
 pub struct CreateUsersAndGroups {
@@ -266,37 +265,11 @@ impl Action for CreateUsersAndGroups {
             nix_build_user_prefix: _,
             nix_build_user_id_base: _,
         } = self;
-        let mut set = JoinSet::new();
-
-        let mut errors = Vec::default();
-
-        for (idx, create_user) in create_users.iter().enumerate() {
-            let span = tracing::Span::current().clone();
-            let mut create_user_clone = create_user.clone();
-            let _abort_handle = set.spawn(async move {
-                create_user_clone
-                    .try_revert()
-                    .instrument(span)
-                    .await
-                    .map_err(|e| ActionError::Child(create_user_clone.action_tag(), Box::new(e)))?;
-                Result::<_, ActionError>::Ok((idx, create_user_clone))
-            });
-        }
-
-        while let Some(result) = set.join_next().await {
-            match result {
-                Ok(Ok((idx, success))) => create_users[idx] = success,
-                Ok(Err(e)) => errors.push(Box::new(e)),
-                Err(e) => return Err(ActionError::Join(e))?,
-            };
-        }
-
-        if !errors.is_empty() {
-            if errors.len() == 1 {
-                return Err(*errors.into_iter().next().unwrap());
-            } else {
-                return Err(ActionError::Children(errors));
-            }
+        for create_user in create_users.iter_mut() {
+            create_user
+                .try_revert()
+                .await
+                .map_err(|e| ActionError::Child(create_user.action_tag(), Box::new(e)))?;
         }
 
         // We don't actually need to do this, when a user is deleted they are removed from groups
