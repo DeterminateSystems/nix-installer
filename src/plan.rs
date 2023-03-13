@@ -80,10 +80,12 @@ impl InstallPlan {
             // Otherwise, only list user-configured settings
             planner.configured_settings().await?
         };
-        let plan_settings = plan_settings
+        let mut plan_settings = plan_settings
             .into_iter()
             .map(|(k, v)| format!("* {k}: {v}", k = k.bold()))
             .collect::<Vec<_>>();
+        // Stabilize output order
+        plan_settings.sort();
 
         let buf = format!(
             "\
