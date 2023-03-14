@@ -172,6 +172,10 @@ pub struct CommonSettings {
     )]
     pub(crate) nix_package_url: Url,
 
+    /// The proxy to use (if any), valid proxy bases are `https://$URL`, `http://$URL` and `socks5://$URL`
+    #[cfg_attr(feature = "cli", clap(long, env = "NIX_INSTALLER_PROXY"))]
+    pub(crate) proxy: Option<Url>,
+
     /// Extra configuration lines for `/etc/nix.conf`
     #[cfg_attr(feature = "cli", clap(long, action = ArgAction::Set, num_args = 0.., value_delimiter = ',', env = "NIX_INSTALLER_EXTRA_CONF", global = true))]
     pub extra_conf: Vec<String>,
@@ -272,6 +276,7 @@ impl CommonSettings {
             nix_build_user_prefix: nix_build_user_prefix.to_string(),
             nix_build_user_id_base,
             nix_package_url: url.parse()?,
+            proxy: Default::default(),
             extra_conf: Default::default(),
             force: false,
             #[cfg(feature = "diagnostics")]
@@ -291,6 +296,7 @@ impl CommonSettings {
             nix_build_user_prefix,
             nix_build_user_id_base,
             nix_package_url,
+            proxy,
             extra_conf,
             force,
             #[cfg(feature = "diagnostics")]
@@ -326,6 +332,7 @@ impl CommonSettings {
             "nix_package_url".into(),
             serde_json::to_value(nix_package_url)?,
         );
+        map.insert("proxy".into(), serde_json::to_value(proxy)?);
         map.insert("extra_conf".into(), serde_json::to_value(extra_conf)?);
         map.insert("force".into(), serde_json::to_value(force)?);
 
