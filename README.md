@@ -308,6 +308,46 @@ nix build github:DeterminateSystems/nix-installer#nix-installer.doc
 firefox result-doc/nix-installer/index.html
 ```
 
+## Quirks
+
+While `nix-installer` tries to provide a complete and seamless experience, there are unfortunately some issues which may require manual intervention or operator choices.
+
+### Using MacOS remote SSH builders, Nix binaries are not on `$PATH`
+
+The way MacOS populates the `PATH` environment differs from other environments. ([Some background](https://gist.github.com/Linerre/f11ad4a6a934dcf01ee8415c9457e7b2)).
+
+When connecting to a Mac remote SSH builder users may sometimes see this error:
+
+```
+$ nix store ping --store "ssh://$USER@$HOST"
+Store URL: ssh://$USER@$HOST
+zsh:1: command not found: nix-store
+error: cannot connect to '$USER@$HOST'
+```
+
+There are two possible workarounds for this:
+
+* **(Preferred)** Update the remote builder URL to include the `remote-program` parameter pointing to `nix-store`. For example:
+  ```bash
+  nix store ping --store "ssh://$USER@$HOST?remote-program=/nix/var/nix/profiles/default/bin/nix-store"
+  ```
+* Update `/etc/zshenv` on the remote so that `zsh` populates the Nix path for every shell, even those that are neither *interactive* or *login*:
+  ```bash
+  # Nix
+  if [ -e '/nix/var/nix/profiles/default/etc/profile.d/nix-daemon.sh' ]; then
+      . '/nix/var/nix/profiles/default/etc/profile.d/nix-daemon.sh'
+  fi
+  # End Nix
+  ```
+  Note that this strategy has some behavioral caveats. For example:
+  ```bash
+  $ cat example.sh     
+  #! /bin/zsh
+  echo $PATH
+  $ PATH= ./example.sh 
+  /Users/ephemeraladmin/.nix-profile/bin:/nix/var/nix/profiles/default/bin:
+  ```
+
 ## Diagnostics
 
 The goal of the Determinate Nix Installer is to successfully and correctly install Nix.
