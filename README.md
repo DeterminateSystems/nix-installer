@@ -30,6 +30,7 @@ Differing from the current official [Nix](https://github.com/NixOS/nix) installe
 
 * Nix is installed with the `nix-command` and `flakes` features enabled in the `nix.conf`
 * `nix-installer` stores an installation receipt (for uninstalling) at `/nix/receipt.json` as well as a copy of the install binary at `/nix/nix-installer`
+* `NIX_SSL_CERT_FILE` is set in the various shell profiles if the `ssl-cert-file` argument is used.
 
 ## Motivations
 
