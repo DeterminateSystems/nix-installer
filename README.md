@@ -314,8 +314,6 @@ While `nix-installer` tries to provide a complete and seamless experience, there
 
 ### Using MacOS remote SSH builders, Nix binaries are not on `$PATH`
 
-The way MacOS populates the `PATH` environment differs from other environments. ([Some background](https://gist.github.com/Linerre/f11ad4a6a934dcf01ee8415c9457e7b2)).
-
 When connecting to a Mac remote SSH builder users may sometimes see this error:
 
 ```
@@ -325,12 +323,15 @@ zsh:1: command not found: nix-store
 error: cannot connect to '$USER@$HOST'
 ```
 
+The way MacOS populates the `PATH` environment differs from other environments. ([Some background](https://gist.github.com/Linerre/f11ad4a6a934dcf01ee8415c9457e7b2)).
+
 There are two possible workarounds for this:
 
 * **(Preferred)** Update the remote builder URL to include the `remote-program` parameter pointing to `nix-store`. For example:
   ```bash
   nix store ping --store "ssh://$USER@$HOST?remote-program=/nix/var/nix/profiles/default/bin/nix-store"
   ```
+  If you are unsure where the `nix-store` binary is located, run `which nix-store` on the remote.
 * Update `/etc/zshenv` on the remote so that `zsh` populates the Nix path for every shell, even those that are neither *interactive* or *login*:
   ```bash
   # Nix
@@ -339,7 +340,7 @@ There are two possible workarounds for this:
   fi
   # End Nix
   ```
-  Note that this strategy has some behavioral caveats. For example:
+  Note that this strategy has some behavioral caveats. For example, if `PATH` gets unset then a script invoked, `PATH` may not be as empty as expected:
   ```bash
   $ cat example.sh     
   #! /bin/zsh
@@ -366,7 +367,7 @@ Here is a table of the [diagnostic data we collect][diagnosticdata]:
 | `is_ci`               | Whether the installer is being used in CI (e.g. GitHub Actions).                                      |
 | `action`              | Either `Install` or `Uninstall`.                                                                      |
 | `status`              | One of `Success`, `Failure`, `Pending`, or `Cancelled`.                                               |
-| `failure_variant`     | A high level description of what the failure was, if any. For example: `Command` if a command failed. |
+| `failure_chain`     | A high level description of what the failure was, if any. For example: `Command("diskutil")` if the command `diskutil list` failed. |
 
 To disable diagnostic reporting, set the diagnostics URL to an empty string by passing `--diagnostic-endpoint=""` or setting `NIX_INSTALLER_DIAGNOSTIC_ENDPOINT=""`.
 
