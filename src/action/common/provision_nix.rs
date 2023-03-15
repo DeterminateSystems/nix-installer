@@ -28,6 +28,7 @@ impl ProvisionNix {
             settings.nix_package_url.clone(),
             PathBuf::from(SCRATCH_DIR),
             settings.proxy.clone(),
+            settings.ssl_cert_file.clone(),
         )
         .await?;
         let create_users_and_group = CreateUsersAndGroups::plan(settings.clone())
