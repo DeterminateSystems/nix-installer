@@ -323,7 +323,7 @@ zsh:1: command not found: nix-store
 error: cannot connect to '$USER@$HOST'
 ```
 
-The way MacOS populates the `PATH` environment differs from other environments. ([Some background](https://gist.github.com/Linerre/f11ad4a6a934dcf01ee8415c9457e7b2)).
+The way MacOS populates the `PATH` environment differs from other environments. ([Some background](https://gist.github.com/Linerre/f11ad4a6a934dcf01ee8415c9457e7b2).)
 
 There are two possible workarounds for this:
 
