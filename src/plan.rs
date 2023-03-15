@@ -90,7 +90,7 @@ impl InstallPlan {
         let buf = format!(
             "\
             Nix install plan (v{version})\n\
-            Planner: {planner} {maybe_default_setting_note}\n\
+            Planner: {planner}{maybe_default_setting_note}\n\
             \n\
             {maybe_plan_settings}\
             Planned actions:\n\
@@ -105,7 +105,6 @@ impl InstallPlan {
             maybe_plan_settings = if plan_settings.is_empty() {
                 String::new()
             } else {
-                // TODO: "Changed planner settings"?
                 format!(
                     "\
                     Configured settings:\n\
@@ -240,7 +239,7 @@ impl InstallPlan {
             "\
             Nix uninstall plan (v{version})\n\
             \n\
-            Planner: {planner} {maybe_default_setting_note}\n\
+            Planner: {planner}{maybe_default_setting_note}\n\
             \n\
             {maybe_plan_settings}\
             Planned actions:\n\
@@ -255,7 +254,6 @@ impl InstallPlan {
             maybe_plan_settings = if plan_settings.is_empty() {
                 String::new()
             } else {
-                // TODO: "Changed planner settings"?
                 format!(
                     "\
                 Configured settings:\n\
