@@ -266,7 +266,7 @@ Then copy the `result/bin/nix-installer` to the machine you wish to run it on.
 You can also add `nix-installer` to a system without Nix via `cargo`:
 
 ```bash
-RUSTFLAGS="--cfg tokio_unstable" cargo install nix-installer
+RUSTFLAGS="--cfg tokio_unstable" cargo install --git https://github.com/DeterminateSystems/nix-installer
 nix-installer --help
 ```
 
