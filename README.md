@@ -323,7 +323,7 @@ zsh:1: command not found: nix-store
 error: cannot connect to '$USER@$HOST'
 ```
 
-The way MacOS populates the `PATH` environment differs from other environments. ([Some background](https://gist.github.com/Linerre/f11ad4a6a934dcf01ee8415c9457e7b2).)
+The way MacOS populates the `PATH` environment differs from other environments. ([Some background](https://gist.github.com/Linerre/f11ad4a6a934dcf01ee8415c9457e7b2))
 
 There are two possible workarounds for this:
 
@@ -340,7 +340,7 @@ There are two possible workarounds for this:
   fi
   # End Nix
   ```
-  Note that this strategy has some behavioral caveats. For example, if `PATH` gets unset then a script invoked, `PATH` may not be as empty as expected:
+  This strategy has some behavioral caveats. For example, if `PATH` gets unset then a script invoked, `PATH` may not be as empty as expected:
   ```bash
   $ cat example.sh     
   #! /bin/zsh
@@ -348,6 +348,7 @@ There are two possible workarounds for this:
   $ PATH= ./example.sh 
   /Users/ephemeraladmin/.nix-profile/bin:/nix/var/nix/profiles/default/bin:
   ```
+  > Note: This strategy results in Nix's paths being present on `$PATH` and may have a minor impact on performance
 
 ## Diagnostics
 
