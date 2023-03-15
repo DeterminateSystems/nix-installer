@@ -52,13 +52,19 @@ pub struct ConfigureShellProfile {
 
 impl ConfigureShellProfile {
     #[tracing::instrument(level = "debug", skip_all)]
-    pub async fn plan() -> Result<StatefulAction<Self>, ActionError> {
+    pub async fn plan(ssl_cert_file: Option<PathBuf>) -> Result<StatefulAction<Self>, ActionError> {
         let mut create_or_insert_files = Vec::default();
         let mut create_directories = Vec::default();
 
+        let maybe_ssl_cert_file_setting = if let Some(ssl_cert_file) = ssl_cert_file {
+            format!("export NIX_SSL_CERT_FILE={}\n", ssl_cert_file.display())
+        } else {
+            "".to_string()
+        };
         let shell_buf = format!(
             "\n\
             # Nix\n\
+            {maybe_ssl_cert_file_setting}\
             if [ -e '{PROFILE_NIX_FILE_SHELL}' ]; then\n\
             {inde}. '{PROFILE_NIX_FILE_SHELL}'\n\
             fi\n\
@@ -103,6 +109,7 @@ impl ConfigureShellProfile {
         let fish_buf = format!(
             "\n\
             # Nix\n\
+            {maybe_ssl_cert_file_setting}\
             if test -e '{PROFILE_NIX_FILE_FISH}'\n\
             {inde}. '{PROFILE_NIX_FILE_FISH}'\n\
             end\n\

@@ -1,6 +1,6 @@
 /*! Configurable knobs and their related errors
 */
-use std::collections::HashMap;
+use std::{collections::HashMap, path::PathBuf};
 
 #[cfg(feature = "cli")]
 use clap::ArgAction;
@@ -176,6 +176,10 @@ pub struct CommonSettings {
     #[cfg_attr(feature = "cli", clap(long, env = "NIX_INSTALLER_PROXY"))]
     pub(crate) proxy: Option<Url>,
 
+    /// An SSL cert to use (if any), used for fetching Nix and sets `NIX_SSL_CERT_FILE` for Nix
+    #[cfg_attr(feature = "cli", clap(long, env = "NIX_INSTALLER_SSL_CERT_FILE"))]
+    pub(crate) ssl_cert_file: Option<PathBuf>,
+
     /// Extra configuration lines for `/etc/nix.conf`
     #[cfg_attr(feature = "cli", clap(long, action = ArgAction::Set, num_args = 0.., value_delimiter = ',', env = "NIX_INSTALLER_EXTRA_CONF", global = true))]
     pub extra_conf: Vec<String>,
@@ -279,6 +283,7 @@ impl CommonSettings {
             proxy: Default::default(),
             extra_conf: Default::default(),
             force: false,
+            ssl_cert_file: Default::default(),
             #[cfg(feature = "diagnostics")]
             diagnostic_endpoint: Some(
                 "https://install.determinate.systems/nix/diagnostic".try_into()?,
@@ -299,6 +304,7 @@ impl CommonSettings {
             proxy,
             extra_conf,
             force,
+            ssl_cert_file,
             #[cfg(feature = "diagnostics")]
             diagnostic_endpoint,
         } = self;
@@ -333,6 +339,7 @@ impl CommonSettings {
             serde_json::to_value(nix_package_url)?,
         );
         map.insert("proxy".into(), serde_json::to_value(proxy)?);
+        map.insert("ssl_cert_file".into(), serde_json::to_value(ssl_cert_file)?);
         map.insert("extra_conf".into(), serde_json::to_value(extra_conf)?);
         map.insert("force".into(), serde_json::to_value(force)?);
 
