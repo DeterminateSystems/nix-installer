@@ -38,8 +38,6 @@ const PROFILE_TARGETS: &[&str] = &[
     // https://zsh.sourceforge.io/Intro/intro_3.html
     "/etc/zshrc",
     "/etc/zsh/zshrc",
-    "/etc/zshenv",
-    "/etc/zsh/zshenv",
 ];
 const PROFILE_NIX_FILE_SHELL: &str = "/nix/var/nix/profiles/default/etc/profile.d/nix-daemon.sh";
 const PROFILE_NIX_FILE_FISH: &str = "/nix/var/nix/profiles/default/etc/profile.d/nix-daemon.fish";
