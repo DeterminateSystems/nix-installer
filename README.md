@@ -310,13 +310,13 @@ firefox result-doc/nix-installer/index.html
 
 ## Quirks
 
-While `nix-installer` tries to provide a complete and seamless experience, there are unfortunately some issues which may require manual intervention or operator choices.
+While `nix-installer` tries to provide a comprehensive and unquirky experience, there are unfortunately some issues which may require manual intervention or operator choices.
 
 ### Using MacOS remote SSH builders, Nix binaries are not on `$PATH`
 
 When connecting to a Mac remote SSH builder users may sometimes see this error:
 
-```
+```bash
 $ nix store ping --store "ssh://$USER@$HOST"
 Store URL: ssh://$USER@$HOST
 zsh:1: command not found: nix-store
