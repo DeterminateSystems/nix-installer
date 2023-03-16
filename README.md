@@ -340,15 +340,20 @@ There are two possible workarounds for this:
   fi
   # End Nix
   ```
-  This strategy has some behavioral caveats. For example, if `PATH` gets unset then a script invoked, `PATH` may not be as empty as expected:
-  ```bash
-  $ cat example.sh     
-  #! /bin/zsh
-  echo $PATH
-  $ PATH= ./example.sh 
-  /Users/ephemeraladmin/.nix-profile/bin:/nix/var/nix/profiles/default/bin:
-  ```
-  > Note: This strategy results in Nix's paths being present on `$PATH` and may have a minor impact on performance
+  <details>
+    <summary>This strategy has some behavioral caveats, namely, `$PATH` may have unexpected contents</summary>
+
+    For example, if `PATH` gets unset then a script invoked, `PATH` may not be as empty as expected:
+    ```bash
+    $ cat example.sh     
+    #! /bin/zsh
+    echo $PATH
+    $ PATH= ./example.sh 
+    /Users/ephemeraladmin/.nix-profile/bin:/nix/var/nix/profiles/default/bin:
+    ```
+    **Note:** This strategy results in Nix's paths being present on `$PATH` twice and may have a minor impact on performance
+
+  </details>
 
 ## Diagnostics
 
