@@ -106,6 +106,7 @@ impl CommandExecute for Uninstall {
             loop {
                 match interaction::prompt(
                     plan.describe_uninstall(currently_explaining)
+                        .await
                         .map_err(|e| eyre!(e))?,
                     PromptChoice::Yes,
                     currently_explaining,
