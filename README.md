@@ -252,13 +252,25 @@ Since you'll be using `nix-installer` to install Nix on systems without Nix, the
 Build a portable Linux binary on a system with Nix:
 
 ```bash
+# to build a local copy
+nix build -L .#nix-installer-static
+# to build the remote main development branch
 nix build -L github:determinatesystems/nix-installer#nix-installer-static
+# for a specific version of the installer:
+export NIX_INSTALLER_TAG="v0.5.0"
+nix build -L github:determinatesystems/nix-installer/$NIX_INSTALLER_TAG#nix-installer-static
 ```
 
 On Mac:
 
 ```bash
+# to build a local copy
+nix build -L .#nix-installer
+# to build the remote main development branch
 nix build -L github:determinatesystems/nix-installer#nix-installer
+# for a specific version of the installer:
+export NIX_INSTALLER_TAG="v0.5.0"
+nix build -L github:determinatesystems/nix-installer/$NIX_INSTALLER_TAG#nix-installer
 ```
 
 Then copy the `result/bin/nix-installer` to the machine you wish to run it on.
@@ -266,7 +278,14 @@ Then copy the `result/bin/nix-installer` to the machine you wish to run it on.
 You can also add `nix-installer` to a system without Nix via `cargo`:
 
 ```bash
+# to build and run a local copy
+RUSTFLAGS="--cfg tokio_unstable" cargo run -- --help
+# to build the remote main development branch
 RUSTFLAGS="--cfg tokio_unstable" cargo install --git https://github.com/DeterminateSystems/nix-installer
+nix-installer --help
+# for a specific version of the installer:
+export NIX_INSTALLER_TAG="v0.5.0"
+RUSTFLAGS="--cfg tokio_unstable" cargo install --git https://github.com/DeterminateSystems/nix-installer --tag $NIX_INSTALLER_TAG
 nix-installer --help
 ```
 
