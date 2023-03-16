@@ -90,24 +90,24 @@ impl InstallPlan {
         let buf = format!(
             "\
             Nix install plan (v{version})\n\
-            \n\
-            Planner: {planner}\n\
+            Planner: {planner}{maybe_default_setting_note}\n\
             \n\
             {maybe_plan_settings}\
-            \
-            The following actions will be taken:\n\
-            \n\
+            Planned actions:\n\
             {actions}\n\
         ",
             planner = planner.typetag_name(),
+            maybe_default_setting_note = if plan_settings.is_empty() {
+                String::from(" (with default settings)")
+            } else {
+                String::new()
+            },
             maybe_plan_settings = if plan_settings.is_empty() {
                 String::new()
             } else {
-                // TODO: "Changed planner settings"?
                 format!(
                     "\
-                    Planner settings:\n\
-                    \n\
+                    Configured settings:\n\
                     {plan_settings}\n\
                     \n\
                 ",
@@ -213,39 +213,56 @@ impl InstallPlan {
     }
 
     #[tracing::instrument(level = "debug", skip_all)]
-    pub fn describe_uninstall(&self, explain: bool) -> Result<String, NixInstallerError> {
+    pub async fn describe_uninstall(&self, explain: bool) -> Result<String, NixInstallerError> {
         let Self {
-            version: _,
+            version,
             planner,
             actions,
             ..
         } = self;
+
+        let plan_settings = if explain {
+            // List all settings when explaining
+            planner.settings()?
+        } else {
+            // Otherwise, only list user-configured settings
+            planner.configured_settings().await?
+        };
+        let mut plan_settings = plan_settings
+            .into_iter()
+            .map(|(k, v)| format!("* {k}: {v}", k = k.bold()))
+            .collect::<Vec<_>>();
+        // Stabilize output order
+        plan_settings.sort();
+
         let buf = format!(
             "\
-            Nix uninstall plan\n\
+            Nix uninstall plan (v{version})\n\
             \n\
-            Planner: {planner}\n\
+            Planner: {planner}{maybe_default_setting_note}\n\
             \n\
-            Planner settings:\n\
-            \n\
-            {plan_settings}\n\
-            \n\
-            The following actions will be taken{maybe_explain}:\n\
-            \n\
+            {maybe_plan_settings}\
+            Planned actions:\n\
             {actions}\n\
         ",
-            maybe_explain = if !explain {
-                " (`--explain` for more context)"
-            } else {
-                ""
-            },
             planner = planner.typetag_name(),
-            plan_settings = planner
-                .settings()?
-                .into_iter()
-                .map(|(k, v)| format!("* {k}: {v}", k = k.bold()))
-                .collect::<Vec<_>>()
-                .join("\n"),
+            maybe_default_setting_note = if plan_settings.is_empty() {
+                String::from(" (with default settings)")
+            } else {
+                String::new()
+            },
+            maybe_plan_settings = if plan_settings.is_empty() {
+                String::new()
+            } else {
+                format!(
+                    "\
+                Configured settings:\n\
+                {plan_settings}\n\
+                \n\
+            ",
+                    plan_settings = plan_settings.join("\n")
+                )
+            },
             actions = actions
                 .iter()
                 .rev()

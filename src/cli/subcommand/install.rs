@@ -198,6 +198,7 @@ impl CommandExecute for Install {
                         match interaction::prompt(
                             install_plan
                                 .describe_uninstall(currently_explaining)
+                                .await
                                 .map_err(|e| eyre!(e))?,
                             PromptChoice::Yes,
                             currently_explaining,
