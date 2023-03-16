@@ -263,24 +263,24 @@ Build a portable Linux binary on a system with Nix:
 
 ```bash
 # to build a local copy
-nix build -L .#nix-installer-static
+nix build -L ".#nix-installer-static"
 # to build the remote main development branch
-nix build -L github:determinatesystems/nix-installer#nix-installer-static
+nix build -L "github:determinatesystems/nix-installer#nix-installer-static"
 # for a specific version of the installer:
 export NIX_INSTALLER_TAG="v0.5.0"
-nix build -L github:determinatesystems/nix-installer/$NIX_INSTALLER_TAG#nix-installer-static
+nix build -L "github:determinatesystems/nix-installer/$NIX_INSTALLER_TAG#nix-installer-static"
 ```
 
 On Mac:
 
 ```bash
 # to build a local copy
-nix build -L .#nix-installer
+nix build -L ".#nix-installer"
 # to build the remote main development branch
-nix build -L github:determinatesystems/nix-installer#nix-installer
+nix build -L "github:determinatesystems/nix-installer#nix-installer"
 # for a specific version of the installer:
 export NIX_INSTALLER_TAG="v0.5.0"
-nix build -L github:determinatesystems/nix-installer/$NIX_INSTALLER_TAG#nix-installer
+nix build -L "github:determinatesystems/nix-installer/$NIX_INSTALLER_TAG#nix-installer"
 ```
 
 Then copy the `result/bin/nix-installer` to the machine you wish to run it on.
