@@ -362,11 +362,13 @@ You can also remove your `$HOME/nix-installer-wsl-tests-temp` folder whenever yo
 To cut a release:
 
 * Ensure the `flake.lock`, `Cargo.lock`, and Rust dependencies are up-to-date with the following:
-  + `nix flake update --commit-lock-file`
-  + `cargo update` (and commit)
+  + `nix flake update`
+  + `cargo update`
   + `cargo outdated`
+  + Make a PR for for this and let it get merged separately
 * Create a release branch from `main` (`git checkout -b release-v0.0.1`)
 * Remove the `-unreleased` from the `version` field in `Cargo.toml`, `flake.nix`, and the fixture JSON files
+  + Release PRs should not contain any tangible code changes which require review
 * Ensure the VM / container tests still pass with the following:
   + `nix flake check -L`
   + `nix build .#hydraJobs.container-test.all.x86_64-linux.all -L -j 6`

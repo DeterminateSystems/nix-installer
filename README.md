@@ -372,9 +372,9 @@ There are two possible workarounds for this:
   # End Nix
   ```
   <details>
-    <summary>This strategy has some behavioral caveats, namely, `$PATH` may have unexpected contents</summary>
+    <summary>This strategy has some behavioral caveats, namely, <code>$PATH</code> may have unexpected contents</summary>
 
-    For example, if `PATH` gets unset then a script invoked, `PATH` may not be as empty as expected:
+    For example, if `$PATH` gets unset then a script invoked, `$PATH` may not be as empty as expected:
     ```bash
     $ cat example.sh     
     #! /bin/zsh
