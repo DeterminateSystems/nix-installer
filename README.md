@@ -351,7 +351,7 @@ There are two possible workarounds for this:
     $ PATH= ./example.sh 
     /Users/ephemeraladmin/.nix-profile/bin:/nix/var/nix/profiles/default/bin:
     ```
-    **Note:** This strategy results in Nix's paths being present on `$PATH` twice and may have a minor impact on performance
+    This strategy results in Nix's paths being present on `$PATH` twice and may have a minor impact on performance.
 
   </details>
 
