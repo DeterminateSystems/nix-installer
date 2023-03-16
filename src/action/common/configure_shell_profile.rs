@@ -57,7 +57,12 @@ impl ConfigureShellProfile {
         let mut create_directories = Vec::default();
 
         let maybe_ssl_cert_file_setting = if let Some(ssl_cert_file) = ssl_cert_file {
-            format!("export NIX_SSL_CERT_FILE={}\n", ssl_cert_file.display())
+            format!(
+                "export NIX_SSL_CERT_FILE={:?}\n",
+                ssl_cert_file
+                    .canonicalize()
+                    .map_err(|e| { ActionError::Canonicalize(ssl_cert_file, e) })?
+            )
         } else {
             "".to_string()
         };

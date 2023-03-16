@@ -369,6 +369,8 @@ pub enum ActionError {
         std::path::PathBuf,
         #[source] std::io::Error,
     ),
+    #[error("Canonicalizing `{0}`")]
+    Canonicalize(std::path::PathBuf, #[source] std::io::Error),
     #[error("Read path `{0}`")]
     Read(std::path::PathBuf, #[source] std::io::Error),
     #[error("Reading directory `{0}`")]
