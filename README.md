@@ -22,7 +22,8 @@ The `nix-installer` tool is ready to use in a number of environments:
 | Docker Containers            |                    | ✓           | Stable            |
 | Linux (i686)                 | ✓ (via [systemd])  | ✓           | Unstable          |
 
-> **MacOS note:** Removing users and/or groups may fail if there are no users who are logged in graphically.
+> **Note**
+> On **MacOS only**, removing users and/or groups may fail if there are no users who are logged in graphically.
 
 ## Installation Differences
 
@@ -66,6 +67,7 @@ $ curl -sL -o nix-installer https://install.determinate.systems/nix/nix-installe
 $ chmod +x nix-installer
 ```
 
+> **Note**
 > `nix-installer` will elevate itself if needed using `sudo`. If you use `doas` or `please` you may need to elevate `nix-installer` yourself.
 
 `nix-installer` installs Nix by following a *plan* made by a *planner*. Review the available planners:
@@ -156,7 +158,7 @@ jobs:
 ## Without systemd (Linux only)
 
 > **Warning**
-> When installed this way, _only_ `root` or users who can elevate to `root` privileges can run Nix:
+> When `--init none` is used, _only_ `root` or users who can elevate to `root` privileges can run Nix:
 >
 > ```bash
 > sudo -i nix run nixpkgs#hello
@@ -172,7 +174,8 @@ curl --proto '=https' --tlsv1.2 -sSf -L https://install.determinate.systems/nix 
 
 In Docker/Podman containers or WSL2 instances where an init (like `systemd`) is not present, pass `--init none`.
 
-> When `--init none` is used, only `root` or sudoers can run Nix:
+> **Warning**
+> When `--init none` is used, _only_ `root` or users who can elevate to `root` privileges can run Nix:
 >
 > ```bash
 > sudo -i nix run nixpkgs#hello
@@ -206,7 +209,7 @@ ENV PATH="${PATH}:/nix/var/nix/profiles/default/bin"
 RUN nix run nixpkgs#hello
 ```
 
-For Podman containers with an init:
+For Podman containers with a systemd init:
 
 ```dockerfile
 # Dockerfile
@@ -230,7 +233,8 @@ curl --proto '=https' --tlsv1.2 -sSf -L https://install.determinate.systems/nix 
 
 If systemd is not enabled, pass `--init none` at the end of the command:
 
-> When `--init none` is used, only `root` or sudoers can run Nix:
+> **Warning**
+> When `--init none` is used, _only_ `root` or users who can elevate to `root` privileges can run Nix:
 >
 > ```bash
 > sudo -i nix run nixpkgs#hello
@@ -297,11 +301,13 @@ nix-installer --help
 
 To make this build portable, pass ` --target x86_64-unknown-linux-musl`.
 
+> **Note**
 > We currently require `--cfg tokio_unstable` as we utilize [Tokio's process groups](https://docs.rs/tokio/1.24.1/tokio/process/struct.Command.html#method.process_group), which wrap stable `std` APIs, but are unstable due to it requiring an MSRV bump.
 
 
 ## As a library
 
+> **Warning**
 > Use as a library is still experimental, if you're using this, please let us know and we can make a path to stablization.
 
 Add `nix-installer` to your dependencies:
@@ -310,7 +316,7 @@ Add `nix-installer` to your dependencies:
 cargo add nix-installer
 ```
 
-> **Building a CLI?** Check out the `cli` feature flag for `clap` integration.
+If you are **building a CLI**, check out the `cli` feature flag for `clap` integration.
 
 You'll also need to edit your `.cargo/config.toml` to use `tokio_unstable` as we utilize [Tokio's process groups](https://docs.rs/tokio/1.24.1/tokio/process/struct.Command.html#method.process_group), which wrap stable `std` APIs, but are unstable due to it requiring an MSRV bump:
 
