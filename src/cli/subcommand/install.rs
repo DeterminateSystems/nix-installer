@@ -114,7 +114,7 @@ impl CommandExecute for Install {
                 serde_json::from_str(&install_plan_string)?
             },
             (None, None) => {
-                let builtin_planner = BuiltinPlanner::from_common_settings(settings)
+                let builtin_planner = BuiltinPlanner::from_common_settings(settings.clone())
                     .await
                     .map_err(|e| eyre::eyre!(e))?;
 
@@ -249,7 +249,7 @@ impl CommandExecute for Install {
                 println!(
                     "\
                     {success}\n\
-                    To get started using Nix, open a new shell or run `{shell_reminder}`\n\
+                    To get started using Nix, open a new shell or run `{maybe_ssl_cert_file_reminder}{shell_reminder}`\n\
                     ",
                     success = "Nix was installed successfully!".green().bold(),
                     shell_reminder = match std::env::var("SHELL") {
@@ -258,6 +258,16 @@ impl CommandExecute for Install {
                         Ok(_) | Err(_) =>
                             ". /nix/var/nix/profiles/default/etc/profile.d/nix-daemon.sh".bold(),
                     },
+                    maybe_ssl_cert_file_reminder = if let Some(ssl_cert_file) = &settings.ssl_cert_file {
+                        format!(
+                            "export NIX_SSL_CERT_FILE={:?}; ",
+                            ssl_cert_file
+                                .canonicalize()
+                                .map_err(|e| { eyre!(e).wrap_err(format!("Could not canonicalize {}", ssl_cert_file.display())) })?
+                        )
+                    } else {
+                        "".to_string()
+                    }
                 );
             },
         }

@@ -29,9 +29,13 @@ impl ConfigureNix {
             .map_err(|e| ActionError::Child(SetupDefaultProfile::action_tag(), Box::new(e)))?;
 
         let configure_shell_profile = if settings.modify_profile {
-            Some(ConfigureShellProfile::plan().await.map_err(|e| {
-                ActionError::Child(ConfigureShellProfile::action_tag(), Box::new(e))
-            })?)
+            Some(
+                ConfigureShellProfile::plan(settings.ssl_cert_file.clone())
+                    .await
+                    .map_err(|e| {
+                        ActionError::Child(ConfigureShellProfile::action_tag(), Box::new(e))
+                    })?,
+            )
         } else {
             None
         };

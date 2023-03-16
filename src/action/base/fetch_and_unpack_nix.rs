@@ -1,7 +1,7 @@
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 
 use bytes::{Buf, Bytes};
-use reqwest::Url;
+use reqwest::{Certificate, Url};
 use tracing::{span, Span};
 
 use crate::action::{Action, ActionDescription, ActionError, ActionTag, StatefulAction};
@@ -14,6 +14,7 @@ pub struct FetchAndUnpackNix {
     url: Url,
     dest: PathBuf,
     proxy: Option<Url>,
+    ssl_cert_file: Option<PathBuf>,
 }
 
 impl FetchAndUnpackNix {
@@ -22,6 +23,7 @@ impl FetchAndUnpackNix {
         url: Url,
         dest: PathBuf,
         proxy: Option<Url>,
+        ssl_cert_file: Option<PathBuf>,
     ) -> Result<StatefulAction<Self>, ActionError> {
         // TODO(@hoverbear): Check URL exists?
         // TODO(@hoverbear): Check tempdir exists
@@ -46,7 +48,17 @@ impl FetchAndUnpackNix {
             };
         }
 
-        Ok(Self { url, dest, proxy }.into())
+        if let Some(ssl_cert_file) = &ssl_cert_file {
+            parse_ssl_cert(&ssl_cert_file).await?;
+        }
+
+        Ok(Self {
+            url,
+            dest,
+            proxy,
+            ssl_cert_file,
+        }
+        .into())
     }
 }
 
@@ -66,10 +78,17 @@ impl Action for FetchAndUnpackNix {
             "fetch_and_unpack_nix",
             url = tracing::field::display(&self.url),
             proxy = tracing::field::Empty,
+            ssl_cert_file = tracing::field::Empty,
             dest = tracing::field::display(self.dest.display()),
         );
         if let Some(proxy) = &self.proxy {
             span.record("proxy", tracing::field::display(&proxy));
+        }
+        if let Some(ssl_cert_file) = &self.ssl_cert_file {
+            span.record(
+                "ssl_cert_file",
+                tracing::field::display(&ssl_cert_file.display()),
+            );
         }
         span
     }
@@ -88,6 +107,10 @@ impl Action for FetchAndUnpackNix {
                         buildable_client.proxy(reqwest::Proxy::all(proxy.clone()).map_err(|e| {
                             ActionError::Custom(Box::new(FetchUrlError::Reqwest(e)))
                         })?)
+                }
+                if let Some(ssl_cert_file) = &self.ssl_cert_file {
+                    let ssl_cert = parse_ssl_cert(&ssl_cert_file).await?;
+                    buildable_client = buildable_client.add_root_certificate(ssl_cert);
                 }
                 let client = buildable_client
                     .build()
@@ -140,6 +163,23 @@ impl Action for FetchAndUnpackNix {
     }
 }
 
+async fn parse_ssl_cert(ssl_cert_file: &Path) -> Result<Certificate, ActionError> {
+    let cert_buf = tokio::fs::read(ssl_cert_file)
+        .await
+        .map_err(|e| ActionError::Read(ssl_cert_file.to_path_buf(), e))?;
+    // We actually try them since things could be `.crt` and `pem` format or `der` format
+    let cert = if let Ok(cert) = Certificate::from_pem(cert_buf.as_slice()) {
+        cert
+    } else if let Ok(cert) = Certificate::from_der(cert_buf.as_slice()) {
+        cert
+    } else {
+        return Err(ActionError::Custom(Box::new(
+            FetchUrlError::UnknownCertFormat,
+        )));
+    };
+    Ok(cert)
+}
+
 #[non_exhaustive]
 #[derive(Debug, thiserror::Error)]
 pub enum FetchUrlError {
@@ -153,6 +193,8 @@ pub enum FetchUrlError {
     Unarchive(#[source] std::io::Error),
     #[error("Unknown url scheme, `file://`, `https://` and `http://` supported")]
     UnknownUrlScheme,
-    #[error("Unknown url scheme, `https://`, `socks5://`, and `http://` supported")]
+    #[error("Unknown proxy scheme, `https://`, `socks5://`, and `http://` supported")]
     UnknownProxyScheme,
+    #[error("Unknown certificate format, `der` and `pem` supported")]
+    UnknownCertFormat,
 }

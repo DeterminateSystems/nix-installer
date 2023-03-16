@@ -35,6 +35,7 @@ Differing from the current official [Nix](https://github.com/NixOS/nix) installe
   * `extra-nix-path` is set to `nixpkgs=flake:nixpkgs`
 * an installation receipt (for uninstalling) is stored at `/nix/receipt.json` as well as a copy of the install binary at `/nix/nix-installer`
 * `nix-channel --update` is not run, `~/.nix-channels` is not provisioned
+* `NIX_SSL_CERT_FILE` is set in the various shell profiles if the `ssl-cert-file` argument is used.
 
 ## Motivations
 
