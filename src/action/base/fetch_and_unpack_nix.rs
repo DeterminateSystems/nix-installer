@@ -1,10 +1,13 @@
-use std::path::{Path, PathBuf};
+use std::path::PathBuf;
 
 use bytes::{Buf, Bytes};
-use reqwest::{Certificate, Url};
+use reqwest::Url;
 use tracing::{span, Span};
 
-use crate::action::{Action, ActionDescription, ActionError, ActionTag, StatefulAction};
+use crate::{
+    action::{Action, ActionDescription, ActionError, ActionTag, StatefulAction},
+    parse_ssl_cert,
+};
 
 /**
 Fetch a URL to the given path
@@ -163,23 +166,6 @@ impl Action for FetchAndUnpackNix {
     }
 }
 
-async fn parse_ssl_cert(ssl_cert_file: &Path) -> Result<Certificate, ActionError> {
-    let cert_buf = tokio::fs::read(ssl_cert_file)
-        .await
-        .map_err(|e| ActionError::Read(ssl_cert_file.to_path_buf(), e))?;
-    // We actually try them since things could be `.crt` and `pem` format or `der` format
-    let cert = if let Ok(cert) = Certificate::from_pem(cert_buf.as_slice()) {
-        cert
-    } else if let Ok(cert) = Certificate::from_der(cert_buf.as_slice()) {
-        cert
-    } else {
-        return Err(ActionError::Custom(Box::new(
-            FetchUrlError::UnknownCertFormat,
-        )));
-    };
-    Ok(cert)
-}
-
 #[non_exhaustive]
 #[derive(Debug, thiserror::Error)]
 pub enum FetchUrlError {
@@ -195,6 +181,4 @@ pub enum FetchUrlError {
     UnknownUrlScheme,
     #[error("Unknown proxy scheme, `https://`, `socks5://`, and `http://` supported")]
     UnknownProxyScheme,
-    #[error("Unknown certificate format, `der` and `pem` supported")]
-    UnknownCertFormat,
 }

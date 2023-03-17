@@ -33,6 +33,7 @@ Configure the init to run the Nix daemon
 pub struct ConfigureInitService {
     init: InitSystem,
     start_daemon: bool,
+    ssl_cert_file: Option<PathBuf>,
 }
 
 impl ConfigureInitService {
@@ -67,7 +68,18 @@ impl ConfigureInitService {
     pub async fn plan(
         init: InitSystem,
         start_daemon: bool,
+        ssl_cert_file: Option<PathBuf>,
     ) -> Result<StatefulAction<Self>, ActionError> {
+        let ssl_cert_file_path = if let Some(ssl_cert_file) = ssl_cert_file {
+            Some(
+                ssl_cert_file
+                    .canonicalize()
+                    .map_err(|e| ActionError::Canonicalize(ssl_cert_file, e))?,
+            )
+        } else {
+            None
+        };
+
         match init {
             #[cfg(target_os = "macos")]
             InitSystem::Launchd => {
@@ -91,7 +103,12 @@ impl ConfigureInitService {
             },
         };
 
-        Ok(Self { init, start_daemon }.into())
+        Ok(Self {
+            init,
+            start_daemon,
+            ssl_cert_file: ssl_cert_file_path,
+        }
+        .into())
     }
 }
 
@@ -152,7 +169,11 @@ impl Action for ConfigureInitService {
 
     #[tracing::instrument(level = "debug", skip_all)]
     async fn execute(&mut self) -> Result<(), ActionError> {
-        let Self { init, start_daemon } = self;
+        let Self {
+            init,
+            start_daemon,
+            ssl_cert_file,
+        } = self;
 
         match init {
             #[cfg(target_os = "macos")]
@@ -176,6 +197,18 @@ impl Action for ConfigureInitService {
                         .stdin(std::process::Stdio::null()),
                 )
                 .await?;
+
+                if let Some(ssl_cert_file) = ssl_cert_file {
+                    execute_command(
+                        Command::new("launchctl")
+                            .process_group(0)
+                            .arg("setenv")
+                            .arg("NIX_SSL_CERT_FILE")
+                            .arg(format!("{ssl_cert_file:?}"))
+                            .stdin(std::process::Stdio::null()),
+                    )
+                    .await?;
+                }
 
                 if *start_daemon {
                     execute_command(
@@ -269,6 +302,28 @@ impl Action for ConfigureInitService {
                         .stdin(std::process::Stdio::null()),
                 )
                 .await?;
+
+                if let Some(ssl_cert_file) = ssl_cert_file {
+                    let service_conf_dir_path = PathBuf::from(format!("{SERVICE_DEST}.d"));
+                    tokio::fs::create_dir(&service_conf_dir_path)
+                        .await
+                        .map_err(|e| {
+                            ActionError::CreateDirectory(service_conf_dir_path.clone(), e)
+                        })?;
+                    let service_conf_file_path =
+                        service_conf_dir_path.join("nix-ssl-cert-file.conf");
+                    tokio::fs::write(
+                        service_conf_file_path,
+                        format!(
+                            "\
+                        [Service]\n\
+                        Environment=\"NIX_SSL_CERT_FILE={ssl_cert_file:?}\"\n\
+                    "
+                        ),
+                    )
+                    .await
+                    .map_err(|e| ActionError::Write(ssl_cert_file.clone(), e))?;
+                }
 
                 if *start_daemon || socket_was_active {
                     enable(SOCKET_SRC, true).await?;
@@ -381,6 +436,13 @@ impl Action for ConfigureInitService {
                         .stdin(std::process::Stdio::null()),
                 )
                 .await?;
+
+                if self.ssl_cert_file.is_some() {
+                    let service_conf_dir_path = PathBuf::from(format!("{SERVICE_DEST}.d"));
+                    tokio::fs::remove_dir_all(&service_conf_dir_path)
+                        .await
+                        .map_err(|e| ActionError::Remove(service_conf_dir_path.clone(), e))?;
+                }
 
                 tokio::fs::remove_file(TMPFILES_DEST)
                     .await

@@ -84,10 +84,14 @@ impl Planner for Linux {
                 .await
                 .map_err(PlannerError::Action)?
                 .boxed(),
-            ConfigureInitService::plan(self.init.init, self.init.start_daemon)
-                .await
-                .map_err(PlannerError::Action)?
-                .boxed(),
+            ConfigureInitService::plan(
+                self.init.init,
+                self.init.start_daemon,
+                self.settings.ssl_cert_file.clone(),
+            )
+            .await
+            .map_err(PlannerError::Action)?
+            .boxed(),
             RemoveDirectory::plan(crate::settings::SCRATCH_DIR)
                 .await
                 .map_err(PlannerError::Action)?
@@ -130,6 +134,7 @@ impl Planner for Linux {
                 .await?
                 .into_keys()
                 .collect::<Vec<_>>(),
+            self.settings.ssl_cert_file.clone(),
         ))
     }
 }
