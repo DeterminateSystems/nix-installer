@@ -2,7 +2,7 @@
 
 `nix-installer` breaks down into three main concepts:
 
-* [`Action`]: An executable or revertable step, possibly orcestrating sub-[`Action`]s using things
+* [`Action`]: An executable or revertable step, possibly orchestrating sub-[`Action`]s using things
   like [`JoinSet`](tokio::task::JoinSet)s.
 * [`InstallPlan`]: A set of [`Action`]s, along with some metadata, which can be carried out to
   drive an install or revert.

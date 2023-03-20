@@ -1,4 +1,4 @@
-/*! An executable or revertable step, possibly orcestrating sub-[`Action`]s using things like
+/*! An executable or revertable step, possibly orchestrating sub-[`Action`]s using things like
     [`JoinSet`](tokio::task::JoinSet)s
 
 

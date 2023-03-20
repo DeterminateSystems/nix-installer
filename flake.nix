@@ -2,7 +2,7 @@
   description = "The Determinate Nix Installer";
 
   inputs = {
-    nixpkgs.url = "github:nixos/nixpkgs/nixos-22.05";
+    nixpkgs.url = "github:nixos/nixpkgs/nixpkgs-unstable";
 
     fenix = {
       url = "github:nix-community/fenix";
@@ -58,7 +58,7 @@
     {
       overlays.default = final: prev:
         let
-          toolchain = fenixToolchain final.hostPlatform.system;
+          toolchain = fenixToolchain final.stdenv.system;
           naerskLib = final.callPackage naersk {
             cargo = toolchain;
             rustc = toolchain;
@@ -95,19 +95,19 @@
         in
         rec {
           nix-installer = naerskLib.buildPackage sharedAttrs;
-        } // nixpkgs.lib.optionalAttrs (prev.hostPlatform.system == "x86_64-linux") rec {
+        } // nixpkgs.lib.optionalAttrs (prev.stdenv.system == "x86_64-linux") rec {
           default = nix-installer-static;
           nix-installer-static = naerskLib.buildPackage
             (sharedAttrs // {
               CARGO_BUILD_TARGET = "x86_64-unknown-linux-musl";
             });
-        } // nixpkgs.lib.optionalAttrs (prev.hostPlatform.system == "i686-linux") rec {
+        } // nixpkgs.lib.optionalAttrs (prev.stdenv.system == "i686-linux") rec {
           default = nix-installer-static;
           nix-installer-static = naerskLib.buildPackage
             (sharedAttrs // {
               CARGO_BUILD_TARGET = "i686-unknown-linux-musl";
             });
-        } // nixpkgs.lib.optionalAttrs (prev.hostPlatform.system == "aarch64-linux") rec {
+        } // nixpkgs.lib.optionalAttrs (prev.stdenv.system == "aarch64-linux") rec {
           default = nix-installer-static;
           nix-installer-static = naerskLib.buildPackage
             (sharedAttrs // {
