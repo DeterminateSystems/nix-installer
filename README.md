@@ -267,7 +267,7 @@ nix build -L ".#nix-installer-static"
 # to build the remote main development branch
 nix build -L "github:determinatesystems/nix-installer#nix-installer-static"
 # for a specific version of the installer:
-export NIX_INSTALLER_TAG="v0.5.0"
+export NIX_INSTALLER_TAG="v0.6.0"
 nix build -L "github:determinatesystems/nix-installer/$NIX_INSTALLER_TAG#nix-installer-static"
 ```
 
@@ -279,7 +279,7 @@ nix build -L ".#nix-installer"
 # to build the remote main development branch
 nix build -L "github:determinatesystems/nix-installer#nix-installer"
 # for a specific version of the installer:
-export NIX_INSTALLER_TAG="v0.5.0"
+export NIX_INSTALLER_TAG="v0.6.0"
 nix build -L "github:determinatesystems/nix-installer/$NIX_INSTALLER_TAG#nix-installer"
 ```
 
@@ -294,7 +294,7 @@ RUSTFLAGS="--cfg tokio_unstable" cargo run -- --help
 RUSTFLAGS="--cfg tokio_unstable" cargo install --git https://github.com/DeterminateSystems/nix-installer
 nix-installer --help
 # for a specific version of the installer:
-export NIX_INSTALLER_TAG="v0.5.0"
+export NIX_INSTALLER_TAG="v0.6.0"
 RUSTFLAGS="--cfg tokio_unstable" cargo install --git https://github.com/DeterminateSystems/nix-installer --tag $NIX_INSTALLER_TAG
 nix-installer --help
 ```
