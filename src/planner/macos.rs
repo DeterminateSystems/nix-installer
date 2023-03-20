@@ -142,10 +142,14 @@ impl Planner for Macos {
                 .await
                 .map_err(PlannerError::Action)?
                 .boxed(),
-            ConfigureInitService::plan(InitSystem::Launchd, true)
-                .await
-                .map_err(PlannerError::Action)?
-                .boxed(),
+            ConfigureInitService::plan(
+                InitSystem::Launchd,
+                true,
+                self.settings.ssl_cert_file.clone(),
+            )
+            .await
+            .map_err(PlannerError::Action)?
+            .boxed(),
             RemoveDirectory::plan(crate::settings::SCRATCH_DIR)
                 .await
                 .map_err(PlannerError::Action)?
@@ -200,6 +204,7 @@ impl Planner for Macos {
                 .await?
                 .into_keys()
                 .collect::<Vec<_>>(),
+            self.settings.ssl_cert_file.clone(),
         ))
     }
 }

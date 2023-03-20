@@ -5,13 +5,14 @@ When enabled with the `diagnostics` feature (default) this module provides autom
 That endpoint can be a URL such as `https://our.project.org/nix-installer/diagnostics` or `file:///home/$USER/diagnostic.json` which receives a [`DiagnosticReport`] in JSON format.
 */
 
-use std::time::Duration;
+use std::{path::PathBuf, time::Duration};
 
 use os_release::OsRelease;
 use reqwest::Url;
 
 use crate::{
-    action::ActionError, planner::PlannerError, settings::InstallSettingsError, NixInstallerError,
+    action::ActionError, parse_ssl_cert, planner::PlannerError, settings::InstallSettingsError,
+    CertificateError, NixInstallerError,
 };
 
 /// The static of an action attempt
@@ -57,12 +58,18 @@ pub struct DiagnosticData {
     triple: String,
     is_ci: bool,
     endpoint: Option<Url>,
+    ssl_cert_file: Option<PathBuf>,
     /// Generally this includes the [`strum::IntoStaticStr`] representation of the error, we take special care not to include parameters of the error (which may include secrets)
     failure_chain: Option<Vec<String>>,
 }
 
 impl DiagnosticData {
-    pub fn new(endpoint: Option<Url>, planner: String, configured_settings: Vec<String>) -> Self {
+    pub fn new(
+        endpoint: Option<Url>,
+        planner: String,
+        configured_settings: Vec<String>,
+        ssl_cert_file: Option<PathBuf>,
+    ) -> Self {
         let (os_name, os_version) = match OsRelease::new() {
             Ok(os_release) => (os_release.name, os_release.version),
             Err(_) => ("unknown".into(), "unknown".into()),
@@ -78,6 +85,7 @@ impl DiagnosticData {
             os_version,
             triple: target_lexicon::HOST.to_string(),
             is_ci,
+            ssl_cert_file,
             failure_chain: None,
         }
     }
@@ -127,6 +135,7 @@ impl DiagnosticData {
             triple,
             is_ci,
             endpoint: _,
+            ssl_cert_file: _,
             failure_chain,
         } = self;
         DiagnosticReport {
@@ -159,7 +168,15 @@ impl DiagnosticData {
         match endpoint.scheme() {
             "https" | "http" => {
                 tracing::debug!("Sending diagnostic to `{endpoint}`");
-                let client = reqwest::Client::new();
+                let mut buildable_client = reqwest::Client::builder();
+                if let Some(ssl_cert_file) = &self.ssl_cert_file {
+                    let ssl_cert = parse_ssl_cert(&ssl_cert_file).await?;
+                    buildable_client = buildable_client.add_root_certificate(ssl_cert);
+                }
+                let client = buildable_client
+                    .build()
+                    .map_err(|e| DiagnosticError::Reqwest(e))?;
+
                 let res = client
                     .post(endpoint.clone())
                     .body(serialized)
@@ -206,6 +223,8 @@ pub enum DiagnosticError {
         #[source]
         serde_json::Error,
     ),
+    #[error(transparent)]
+    Certificate(#[from] CertificateError),
 }
 
 pub trait ErrorDiagnostic {

@@ -68,7 +68,7 @@ pub struct CommonSettings {
             long = "no-modify-profile"
         )
     )]
-    pub(crate) modify_profile: bool,
+    pub modify_profile: bool,
 
     /// Number of build users to create
     #[cfg_attr(
@@ -81,7 +81,7 @@ pub struct CommonSettings {
             global = true
         )
     )]
-    pub(crate) nix_build_user_count: u32,
+    pub nix_build_user_count: u32,
 
     /// The Nix build group name
     #[cfg_attr(
@@ -93,7 +93,7 @@ pub struct CommonSettings {
             global = true
         )
     )]
-    pub(crate) nix_build_group_name: String,
+    pub nix_build_group_name: String,
 
     /// The Nix build group GID
     #[cfg_attr(
@@ -105,7 +105,7 @@ pub struct CommonSettings {
             global = true
         )
     )]
-    pub(crate) nix_build_group_id: u32,
+    pub nix_build_group_id: u32,
 
     /// The Nix build user prefix (user numbers will be postfixed)
     #[cfg_attr(
@@ -120,7 +120,7 @@ pub struct CommonSettings {
         all(target_os = "linux", feature = "cli"),
         clap(default_value = "nixbld")
     )]
-    pub(crate) nix_build_user_prefix: String,
+    pub nix_build_user_prefix: String,
 
     /// The Nix build user base UID (ascending)
     #[cfg_attr(
@@ -133,7 +133,7 @@ pub struct CommonSettings {
         all(target_os = "linux", feature = "cli"),
         clap(default_value_t = 30_000)
     )]
-    pub(crate) nix_build_user_id_base: u32,
+    pub nix_build_user_id_base: u32,
 
     /// The Nix package URL
     #[cfg_attr(
@@ -170,15 +170,15 @@ pub struct CommonSettings {
             default_value = NIX_AARCH64_LINUX_URL,
         )
     )]
-    pub(crate) nix_package_url: Url,
+    pub nix_package_url: Url,
 
     /// The proxy to use (if any), valid proxy bases are `https://$URL`, `http://$URL` and `socks5://$URL`
     #[cfg_attr(feature = "cli", clap(long, env = "NIX_INSTALLER_PROXY"))]
-    pub(crate) proxy: Option<Url>,
+    pub proxy: Option<Url>,
 
     /// An SSL cert to use (if any), used for fetching Nix and sets `NIX_SSL_CERT_FILE` for Nix
     #[cfg_attr(feature = "cli", clap(long, env = "NIX_INSTALLER_SSL_CERT_FILE"))]
-    pub(crate) ssl_cert_file: Option<PathBuf>,
+    pub ssl_cert_file: Option<PathBuf>,
 
     /// Extra configuration lines for `/etc/nix.conf`
     #[cfg_attr(feature = "cli", clap(long, action = ArgAction::Set, num_args = 0.., value_delimiter = ',', env = "NIX_INSTALLER_EXTRA_CONF", global = true))]
@@ -195,7 +195,7 @@ pub struct CommonSettings {
             env = "NIX_INSTALLER_FORCE"
         )
     )]
-    pub(crate) force: bool,
+    pub force: bool,
 
     #[cfg(feature = "diagnostics")]
     /// The URL or file path for an installation diagnostic to be sent
@@ -379,69 +379,6 @@ async fn linux_detect_systemd_started() -> bool {
     started
 }
 
-// Builder Pattern
-impl CommonSettings {
-    /// Number of build users to create
-    pub fn nix_build_user_count(&mut self, count: u32) -> &mut Self {
-        self.nix_build_user_count = count;
-        self
-    }
-
-    /// Modify the user profile to automatically load nix
-    pub fn modify_profile(&mut self, toggle: bool) -> &mut Self {
-        self.modify_profile = toggle;
-        self
-    }
-
-    /// The Nix build group name
-    pub fn nix_build_group_name(&mut self, val: String) -> &mut Self {
-        self.nix_build_group_name = val;
-        self
-    }
-
-    /// The Nix build group GID
-    pub fn nix_build_group_id(&mut self, count: u32) -> &mut Self {
-        self.nix_build_group_id = count;
-        self
-    }
-
-    /// The Nix build user prefix (user numbers will be postfixed)
-    pub fn nix_build_user_prefix(&mut self, val: String) -> &mut Self {
-        self.nix_build_user_prefix = val;
-        self
-    }
-
-    /// The Nix build user base UID (ascending)
-    pub fn nix_build_user_id_base(&mut self, count: u32) -> &mut Self {
-        self.nix_build_user_id_base = count;
-        self
-    }
-
-    /// The Nix package URL
-    pub fn nix_package_url(&mut self, url: Url) -> &mut Self {
-        self.nix_package_url = url;
-        self
-    }
-    /// Extra configuration lines for `/etc/nix.conf`
-    pub fn extra_conf(&mut self, extra_conf: Vec<String>) -> &mut Self {
-        self.extra_conf = extra_conf;
-        self
-    }
-
-    /// If `nix-installer` should forcibly recreate files it finds existing
-    pub fn force(&mut self, force: bool) -> &mut Self {
-        self.force = force;
-        self
-    }
-
-    #[cfg(feature = "diagnostics")]
-    /// The URL or file path for an [`DiagnosticReport`][crate::diagnostics::DiagnosticReport] to be sent
-    pub fn diagnostic_endpoint(&mut self, diagnostic_endpoint: Option<Url>) -> &mut Self {
-        self.diagnostic_endpoint = diagnostic_endpoint;
-        self
-    }
-}
-
 #[serde_with::serde_as]
 #[derive(Debug, serde::Deserialize, serde::Serialize, Clone)]
 #[cfg_attr(feature = "cli", derive(clap::Parser))]
@@ -456,7 +393,7 @@ pub struct InitSettings {
         all(target_os = "linux", feature = "cli"),
         clap(default_value_t = InitSystem::Systemd)
     )]
-    pub(crate) init: InitSystem,
+    pub init: InitSystem,
 
     /// Start the daemon (if not `--init none`)
     #[cfg_attr(
@@ -470,7 +407,7 @@ pub struct InitSettings {
             long = "no-start-daemon"
         )
     )]
-    pub(crate) start_daemon: bool,
+    pub start_daemon: bool,
 }
 
 impl InitSettings {

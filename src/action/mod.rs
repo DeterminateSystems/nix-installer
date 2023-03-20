@@ -162,6 +162,7 @@ impl Planner for MyPlanner {
                 .await?
                 .into_keys()
                 .collect::<Vec<_>>(),
+            self.common.ssl_cert_file.clone(),
         ))
     }
 }
@@ -197,7 +198,7 @@ use std::{error::Error, process::Output};
 use tokio::task::JoinError;
 use tracing::Span;
 
-use crate::error::HasExpectedErrors;
+use crate::{error::HasExpectedErrors, CertificateError};
 
 /// An action which can be reverted or completed, with an action state
 ///
@@ -305,6 +306,9 @@ pub enum ActionError {
     /// A custom error
     #[error(transparent)]
     Custom(Box<dyn std::error::Error + Send + Sync>),
+    /// An error to do with certificates
+    #[error(transparent)]
+    Certificate(#[from] CertificateError),
     /// A child error
     #[error("Child action `{0}`")]
     Child(ActionTag, #[source] Box<ActionError>),
