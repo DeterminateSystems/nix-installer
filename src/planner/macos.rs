@@ -1,4 +1,4 @@
-use std::{collections::HashMap, io::Cursor, process::Stdio};
+use std::{collections::HashMap, io::Cursor};
 
 #[cfg(feature = "cli")]
 use clap::ArgAction;
@@ -9,7 +9,7 @@ use crate::{
         base::RemoveDirectory,
         common::{ConfigureInitService, ConfigureNix, ProvisionNix},
         macos::CreateNixVolume,
-        ActionError, StatefulAction,
+        StatefulAction,
     },
     execute_command,
     os::darwin::DiskUtilInfoOutput,
@@ -218,28 +218,16 @@ impl Into<BuiltinPlanner> for Macos {
 }
 
 async fn ensure_not_running_in_rosetta() -> Result<(), PlannerError> {
-    let mut command = Command::new("fuser");
-    command.process_group(0);
-    command.arg("/usr/libexec/rosetta/runtime");
-    command.stderr(Stdio::null());
-    command.stdout(Stdio::piped());
-    command.stdin(Stdio::null());
-    tracing::trace!("Executing `{:?}`", command.as_std());
+    use sysctl::{Ctl, Sysctl};
+    const CTLNAME: &str = "sysctl.proc_translated";
 
-    let output = command
-        .output()
-        .await
-        .map_err(|e| PlannerError::Action(ActionError::command(&command, e)))?;
+    let ctl = Ctl::new(CTLNAME).unwrap();
 
-    let stdout = String::from_utf8(output.stdout)?;
+    // On Linux all sysctls are String type. Use the following for
+    // cross-platform compatibility:
+    let str_val = ctl.value_string().unwrap();
 
-    let own_pid = std::process::id();
-    let own_pid_using_rosetta = stdout
-        .split(" ")
-        .flat_map(|v| v.parse::<u32>().ok())
-        .any(|v| v == own_pid);
-
-    if own_pid_using_rosetta {
+    if str_val == "1" {
         return Err(PlannerError::RosettaDetected);
     }
 

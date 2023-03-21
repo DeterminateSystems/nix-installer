@@ -297,13 +297,10 @@ pub enum PlannerError {
     InstallSettings(#[from] InstallSettingsError),
     /// A MacOS (Darwin) plist related error
     #[error(transparent)]
-    #[cfg(target_os = "macos")]
     Plist(#[from] plist::Error),
-    #[error("Detected that this process is running under Rosetta, using Nix in Rosetta is not recommended")]
-    #[cfg(target_os = "macos")]
+    #[error("Detected that this process is running under Rosetta, using Nix in Rosetta is not supported (Please open an issue with your use case)")]
     RosettaDetected,
     /// A Linux SELinux related error
-    #[cfg(target_os = "linux")]
     #[error("This installer doesn't yet support SELinux in `Enforcing` mode. If SELinux is important to you, please see https://github.com/DeterminateSystems/nix-installer/issues/124. You can also try again after setting SELinux to `Permissive` mode with `setenforce Permissive`")]
     SelinuxEnforcing,
     /// A UTF-8 related error
@@ -326,12 +323,9 @@ impl HasExpectedErrors for PlannerError {
             this @ PlannerError::UnsupportedArchitecture(_) => Some(Box::new(this)),
             PlannerError::Action(_) => None,
             PlannerError::InstallSettings(_) => None,
-            #[cfg(target_os = "macos")]
             PlannerError::Plist(_) => None,
-            #[cfg(target_os = "macos")]
             this @ PlannerError::RosettaDetected => Some(Box::new(this)),
             PlannerError::Utf8(_) => None,
-            #[cfg(target_os = "linux")]
             PlannerError::SelinuxEnforcing => Some(Box::new(self)),
             PlannerError::Custom(_) => None,
             this @ PlannerError::NixOs => Some(Box::new(this)),
