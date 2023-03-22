@@ -3,7 +3,6 @@ use crate::action::{Action, ActionDescription, ActionError, ActionTag, StatefulA
 
 use nix::unistd::User;
 use std::path::{Path, PathBuf};
-use target_lexicon::OperatingSystem;
 use tokio::task::JoinSet;
 use tracing::{span, Instrument, Span};
 

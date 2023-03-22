@@ -460,17 +460,19 @@ mod test {
     }
 
     #[tokio::test]
-    async fn recognizes_wrong_mode_and_errors() -> eyre::Result<()> {
+    async fn recognizes_wrong_mode_and_does_not_error() -> eyre::Result<()> {
         let temp_dir = tempfile::tempdir()?;
-        let test_file = temp_dir.path().join("recognizes_wrong_mode_and_errors");
+        let test_file = temp_dir
+            .path()
+            .join("recognizes_wrong_mode_and_does_not_error");
         let initial_mode = 0o777;
-        let expected_mode = 0o000;
+        let expected_mode = 0o666;
 
         write(test_file.as_path(), "Some content").await?;
         tokio::fs::set_permissions(test_file.as_path(), PermissionsExt::from_mode(initial_mode))
             .await?;
 
-        match CreateOrInsertIntoFile::plan(
+        let mut action = CreateOrInsertIntoFile::plan(
             test_file.clone(),
             None,
             None,
@@ -478,19 +480,11 @@ mod test {
             "Some different content".into(),
             Position::End,
         )
-        .await
-        {
-            Err(ActionError::PathModeMismatch(path, got, expected)) => {
-                assert_eq!(path, test_file.as_path());
-                assert_eq!(expected, expected_mode);
-                assert_eq!(got, initial_mode);
-            },
-            _ => {
-                return Err(eyre!(
-                    "Should have returned an ActionError::PathModeMismatch error"
-                ))
-            },
-        }
+        .await?;
+
+        action.try_execute().await?;
+
+        action.try_revert().await?;
 
         assert!(test_file.exists(), "File should have not been deleted");
 
