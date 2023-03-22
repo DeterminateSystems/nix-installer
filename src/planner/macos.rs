@@ -105,17 +105,21 @@ impl Planner for Macos {
         };
 
         let encrypt = if self.encrypt == None {
-            Command::new("/usr/bin/fdesetup")
+            let output = Command::new("/usr/bin/fdesetup")
                 .arg("isactive")
                 .stdout(std::process::Stdio::null())
                 .stderr(std::process::Stdio::null())
                 .process_group(0)
-                .status()
+                .output()
                 .await
-                .map_err(|e| PlannerError::Custom(Box::new(e)))?
-                .code()
-                .map(|v| if v == 0 { false } else { true })
-                .unwrap_or(false)
+                .map_err(|e| PlannerError::Custom(Box::new(e)))?;
+
+            let stdout = String::from_utf8_lossy(&output.stdout);
+            if stdout == "true" {
+                true
+            } else {
+                false
+            }
         } else {
             false
         };
