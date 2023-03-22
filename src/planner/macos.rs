@@ -221,14 +221,17 @@ async fn ensure_not_running_in_rosetta() -> Result<(), PlannerError> {
     use sysctl::{Ctl, Sysctl};
     const CTLNAME: &str = "sysctl.proc_translated";
 
-    let ctl = Ctl::new(CTLNAME).unwrap();
+    match Ctl::new(CTLNAME) {
+        // This Mac doesn't have Rosetta!
+        Err(sysctl::SysctlError::NotFound(_)) => (),
+        Err(e) => Err(e)?,
+        Ok(ctl) => {
+            let str_val = ctl.value_string()?;
 
-    // On Linux all sysctls are String type. Use the following for
-    // cross-platform compatibility:
-    let str_val = ctl.value_string().unwrap();
-
-    if str_val == "1" {
-        return Err(PlannerError::RosettaDetected);
+            if str_val == "1" {
+                return Err(PlannerError::RosettaDetected);
+            }
+        },
     }
 
     Ok(())
