@@ -181,27 +181,6 @@ async fn generate_mount_plist(
             uuid_string,
         ]
     };
-    // let mount_plist = format!(
-    //     "\
-    //     <?xml version=\"1.0\" encoding=\"UTF-8\"?>\n\
-    //     <!DOCTYPE plist PUBLIC \"-//Apple Computer//DTD PLIST 1.0//EN\" \"http://www.apple.com/DTDs/PropertyList-1.0.dtd\">\n\
-    //     <plist version=\"1.0\">\n\
-    //     <dict>\n\
-    //     {two_spaces}<key>RunAtLoad</key>\n\
-    //     {two_spaces}<true/>\n\
-    //     {two_spaces}<key>Label</key>\n\
-    //     <string>org.nixos.darwin-store</string>\n\
-    //     {two_spaces}<key>ProgramArguments</key>\n\
-    //     {two_spaces}<array>\n\
-    //     {two_spaces}  {}\
-    //     {two_spaces}</array>\n\
-    //     </dict>\n\
-    //     </plist>\n\
-    // \
-    // ",
-    //     mount_command.iter().map(|v| format!("  <string>{v}</string>")).collect::<Vec<_>>().join("\n"),
-    //     two_spaces = "  ",
-    // );
 
     let mount_plist = LaunchctlMountPlist {
         run_at_load: true,
