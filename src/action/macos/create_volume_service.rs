@@ -11,49 +11,59 @@ use crate::action::{Action, ActionDescription, ActionError, ActionTag, StatefulA
 
 use super::get_uuid_for_label;
 
-/** Create a file at the given location with the provided `buf`,
-optionally with an owning user, group, and mode.
-
-If `force` is set, the file will always be overwritten (and deleted)
-regardless of its presence prior to install.
+/** Create a plist for a `launchctl` service to mount the given `apfs_volume_label` on the given `mount_point`.
  */
 #[derive(Debug, serde::Deserialize, serde::Serialize, Clone)]
-pub struct SetupVolumeDaemon {
+pub struct CreateVolumeService {
     pub(crate) path: PathBuf,
     apfs_volume_label: String,
     mount_service_label: String,
+    mount_point: PathBuf,
     encrypt: bool,
 }
 
-impl SetupVolumeDaemon {
+impl CreateVolumeService {
     #[tracing::instrument(level = "debug", skip_all)]
     pub async fn plan(
         path: impl AsRef<Path>,
         mount_service_label: impl Into<String>,
         apfs_volume_label: String,
+        mount_point: impl AsRef<Path>,
         encrypt: bool,
     ) -> Result<StatefulAction<Self>, ActionError> {
         let path = path.as_ref().to_path_buf();
+        let mount_point = mount_point.as_ref().to_path_buf();
         let mount_service_label = mount_service_label.into();
         let this = Self {
             path,
             apfs_volume_label,
             mount_service_label,
+            mount_point,
             encrypt,
         };
 
         if this.path.exists() {
             let discovered_plist: LaunchctlMountPlist = plist::from_file(&this.path)?;
-            let expected_plist =
-                generate_mount_plist(&this.mount_service_label, &this.apfs_volume_label, encrypt)
-                    .await?;
+            let expected_plist = generate_mount_plist(
+                &this.mount_service_label,
+                &this.apfs_volume_label,
+                &this.mount_point,
+                encrypt,
+            )
+            .await?;
             if discovered_plist != expected_plist {
                 tracing::trace!(
                     ?discovered_plist,
                     ?expected_plist,
                     "Parsed plists not equal"
                 );
-                return Err(ActionError::DifferentContent(this.path.clone()));
+                return Err(ActionError::Custom(Box::new(
+                    CreateVolumeServiceError::DifferentPlist {
+                        expected: expected_plist,
+                        discovered: discovered_plist,
+                        path: this.path.clone(),
+                    },
+                )));
             }
 
             tracing::debug!("Creating file `{}` already complete", this.path.display());
@@ -65,8 +75,8 @@ impl SetupVolumeDaemon {
 }
 
 #[async_trait::async_trait]
-#[typetag::serde(name = "setup_volume_daemon")]
-impl Action for SetupVolumeDaemon {
+#[typetag::serde(name = "create_volume_service")]
+impl Action for CreateVolumeService {
     fn action_tag() -> ActionTag {
         ActionTag("setup_volume_daemon")
     }
@@ -101,11 +111,17 @@ impl Action for SetupVolumeDaemon {
             path,
             mount_service_label,
             apfs_volume_label,
+            mount_point,
             encrypt,
         } = self;
 
-        let generated_plist =
-            generate_mount_plist(&mount_service_label, &apfs_volume_label, *encrypt).await?;
+        let generated_plist = generate_mount_plist(
+            &mount_service_label,
+            &apfs_volume_label,
+            mount_point,
+            *encrypt,
+        )
+        .await?;
 
         let mut options = OpenOptions::new();
         options.create_new(true).write(true).read(true);
@@ -145,6 +161,7 @@ impl Action for SetupVolumeDaemon {
 async fn generate_mount_plist(
     mount_service_label: &str,
     apfs_volume_label: &str,
+    mount_point: &Path,
     encrypt: bool,
 ) -> Result<LaunchctlMountPlist, ActionError> {
     let apfs_volume_label_with_qoutes = format!("\"{apfs_volume_label}\"");
@@ -153,14 +170,14 @@ async fn generate_mount_plist(
     let uuid_string = uuid.to_string().to_uppercase();
     let encrypted_command;
     let mount_command = if encrypt {
-        encrypted_command = format!("/usr/bin/security find-generic-password -s {apfs_volume_label_with_qoutes} -w |  /usr/sbin/diskutil apfs unlockVolume {apfs_volume_label_with_qoutes} -mountpoint /nix -stdinpassphrase");
+        encrypted_command = format!("/usr/bin/security find-generic-password -s {apfs_volume_label_with_qoutes} -w |  /usr/sbin/diskutil apfs unlockVolume {apfs_volume_label_with_qoutes} -mountpoint {mount_point:?} -stdinpassphrase");
         vec!["/bin/sh".into(), "-c".into(), encrypted_command]
     } else {
         vec![
             "/usr/sbin/diskutil".into(),
             "mount".into(),
             "-mountPoint".into(),
-            "/nix".into(),
+            format!("{mount_point:?}"), // Debug for escaped path
             uuid_string,
         ]
     };
@@ -197,8 +214,19 @@ async fn generate_mount_plist(
 
 #[derive(Deserialize, Clone, Debug, Serialize, PartialEq)]
 #[serde(rename_all = "PascalCase")]
-struct LaunchctlMountPlist {
+pub struct LaunchctlMountPlist {
     run_at_load: bool,
     label: String,
     program_arguments: Vec<String>,
+}
+
+#[non_exhaustive]
+#[derive(Debug, thiserror::Error)]
+pub enum CreateVolumeServiceError {
+    #[error("`{path}` contents differs, planned `{expected:?}`, discovered `{discovered:?}`")]
+    DifferentPlist {
+        expected: LaunchctlMountPlist,
+        discovered: LaunchctlMountPlist,
+        path: PathBuf,
+    },
 }

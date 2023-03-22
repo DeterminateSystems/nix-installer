@@ -57,6 +57,7 @@
             "path": "/Library/LaunchDaemons/org.nixos.darwin-store.plist",
             "apfs_volume_label": "Nix Store",
             "mount_service_label": "org.nixos.darwin-store",
+            "mount_point": "/nix",
             "encrypt": false
           },
           "state": "Uncompleted"

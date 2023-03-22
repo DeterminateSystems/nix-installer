@@ -13,7 +13,7 @@ use std::{
 use tokio::process::Command;
 use tracing::{span, Span};
 
-use super::{create_fstab_entry::CreateFstabEntry, KickstartLaunchctlService, SetupVolumeDaemon};
+use super::{create_fstab_entry::CreateFstabEntry, CreateVolumeService, KickstartLaunchctlService};
 
 pub const NIX_VOLUME_MOUNTD_DEST: &str = "/Library/LaunchDaemons/org.nixos.darwin-store.plist";
 
@@ -30,7 +30,7 @@ pub struct CreateNixVolume {
     create_volume: StatefulAction<CreateApfsVolume>,
     create_fstab_entry: StatefulAction<CreateFstabEntry>,
     encrypt_volume: Option<StatefulAction<EncryptApfsVolume>>,
-    setup_volume_daemon: StatefulAction<SetupVolumeDaemon>,
+    setup_volume_daemon: StatefulAction<CreateVolumeService>,
     bootstrap_volume: StatefulAction<BootstrapLaunchctlService>,
     kickstart_launchctl_service: StatefulAction<KickstartLaunchctlService>,
     enable_ownership: StatefulAction<EnableOwnership>,
@@ -78,14 +78,15 @@ impl CreateNixVolume {
             None
         };
 
-        let setup_volume_daemon = SetupVolumeDaemon::plan(
+        let setup_volume_daemon = CreateVolumeService::plan(
             NIX_VOLUME_MOUNTD_DEST,
             "org.nixos.darwin-store",
             name.clone(),
+            "/nix",
             encrypt,
         )
         .await
-        .map_err(|e| ActionError::Child(SetupVolumeDaemon::action_tag(), Box::new(e)))?;
+        .map_err(|e| ActionError::Child(CreateVolumeService::action_tag(), Box::new(e)))?;
 
         let bootstrap_volume = BootstrapLaunchctlService::plan(
             "system",
