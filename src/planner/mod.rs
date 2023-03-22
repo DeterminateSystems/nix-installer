@@ -298,6 +298,10 @@ pub enum PlannerError {
     /// A MacOS (Darwin) plist related error
     #[error(transparent)]
     Plist(#[from] plist::Error),
+    #[error(transparent)]
+    Sysctl(#[from] sysctl::SysctlError),
+    #[error("Detected that this process is running under Rosetta, using Nix in Rosetta is not supported (Please open an issue with your use case)")]
+    RosettaDetected,
     /// A Linux SELinux related error
     #[error("This installer doesn't yet support SELinux in `Enforcing` mode. If SELinux is important to you, please see https://github.com/DeterminateSystems/nix-installer/issues/124. You can also try again after setting SELinux to `Permissive` mode with `setenforce Permissive`")]
     SelinuxEnforcing,
@@ -322,6 +326,8 @@ impl HasExpectedErrors for PlannerError {
             PlannerError::Action(_) => None,
             PlannerError::InstallSettings(_) => None,
             PlannerError::Plist(_) => None,
+            PlannerError::Sysctl(_) => None,
+            this @ PlannerError::RosettaDetected => Some(Box::new(this)),
             PlannerError::Utf8(_) => None,
             PlannerError::SelinuxEnforcing => Some(Box::new(self)),
             PlannerError::Custom(_) => None,

@@ -87,6 +87,8 @@ impl Planner for Macos {
     }
 
     async fn plan(&self) -> Result<Vec<StatefulAction<Box<dyn Action>>>, PlannerError> {
+        ensure_not_running_in_rosetta().await?;
+
         let root_disk = match &self.root_disk {
             root_disk @ Some(_) => root_disk.clone(),
             None => {
@@ -213,4 +215,24 @@ impl Into<BuiltinPlanner> for Macos {
     fn into(self) -> BuiltinPlanner {
         BuiltinPlanner::Macos(self)
     }
+}
+
+async fn ensure_not_running_in_rosetta() -> Result<(), PlannerError> {
+    use sysctl::{Ctl, Sysctl};
+    const CTLNAME: &str = "sysctl.proc_translated";
+
+    match Ctl::new(CTLNAME) {
+        // This Mac doesn't have Rosetta!
+        Err(sysctl::SysctlError::NotFound(_)) => (),
+        Err(e) => Err(e)?,
+        Ok(ctl) => {
+            let str_val = ctl.value_string()?;
+
+            if str_val == "1" {
+                return Err(PlannerError::RosettaDetected);
+            }
+        },
+    }
+
+    Ok(())
 }
