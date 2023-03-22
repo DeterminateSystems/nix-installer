@@ -79,11 +79,12 @@ impl CreateOrInsertIntoFile {
                 let discovered_mode = discovered_mode & 0o777;
 
                 if discovered_mode != mode {
-                    return Err(ActionError::PathModeMismatch(
-                        this.path.clone(),
+                    tracing::debug!(
+                        "`{}` has mode `{}`, a mode of `{}` was expected",
+                        this.path.display(),
                         discovered_mode,
                         mode,
-                    ));
+                    );
                 }
             }
 

@@ -93,7 +93,7 @@ impl ConfigureShellProfile {
                         profile_target_path,
                         None,
                         None,
-                        None,
+                        0o644,
                         shell_buf.to_string(),
                         create_or_insert_into_file::Position::Beginning,
                     )
