@@ -1,16 +1,13 @@
 use uuid::Uuid;
 
-use super::CreateApfsVolume;
-use crate::{
-    action::{Action, ActionDescription, ActionError, ActionState, ActionTag, StatefulAction},
-    execute_command,
+use super::{get_uuid_for_label, CreateApfsVolume};
+use crate::action::{
+    Action, ActionDescription, ActionError, ActionState, ActionTag, StatefulAction,
 };
-use serde::Deserialize;
 use std::{io::SeekFrom, path::Path};
 use tokio::{
     fs::OpenOptions,
     io::{AsyncReadExt, AsyncSeekExt, AsyncWriteExt},
-    process::Command,
 };
 use tracing::{span, Span};
 
@@ -269,23 +266,6 @@ impl Action for CreateFstabEntry {
     }
 }
 
-async fn get_uuid_for_label(apfs_volume_label: &str) -> Result<Uuid, ActionError> {
-    let output = execute_command(
-        Command::new("/usr/sbin/diskutil")
-            .process_group(0)
-            .arg("info")
-            .arg("-plist")
-            .arg(apfs_volume_label)
-            .stdin(std::process::Stdio::null())
-            .stdout(std::process::Stdio::piped()),
-    )
-    .await?;
-
-    let parsed: DiskUtilApfsInfoOutput = plist::from_bytes(&output.stdout)?;
-
-    Ok(parsed.volume_uuid)
-}
-
 fn fstab_lines(uuid: &Uuid, apfs_volume_label: &str) -> String {
     let prelude_comment = fstab_prelude_comment(apfs_volume_label);
     let fstab_entry = fstab_entry(uuid);
@@ -307,11 +287,4 @@ pub enum CreateFstabEntryError {
     ExistingNixInstallerEntryDisappeared,
     #[error("The `/etc/fstab` entry (previously created by the official install scripts) detected during planning disappeared between planning and executing. Cannot update `/etc/fstab` as planned")]
     ExistingForeignEntryDisappeared,
-}
-
-#[derive(Deserialize, Clone, Debug)]
-#[serde(rename_all = "PascalCase")]
-struct DiskUtilApfsInfoOutput {
-    #[serde(rename = "VolumeUUID")]
-    volume_uuid: Uuid,
 }

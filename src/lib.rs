@@ -93,7 +93,7 @@ use tokio::process::Command;
 
 #[tracing::instrument(level = "debug", skip_all, fields(command = %format!("{:?}", command.as_std())))]
 async fn execute_command(command: &mut Command) -> Result<Output, ActionError> {
-    tracing::trace!("Executing `{:?}`", command.as_std());
+    tracing::trace!("Executing");
     let output = command
         .output()
         .await

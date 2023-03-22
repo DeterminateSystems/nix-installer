@@ -1,5 +1,5 @@
 use crate::action::{
-    base::{create_or_insert_into_file, CreateFile, CreateOrInsertIntoFile},
+    base::{create_or_insert_into_file, CreateOrInsertIntoFile},
     macos::{
         BootstrapLaunchctlService, CreateApfsVolume, CreateSyntheticObjects, EnableOwnership,
         EncryptApfsVolume, UnmountApfsVolume,
@@ -13,7 +13,7 @@ use std::{
 use tokio::process::Command;
 use tracing::{span, Span};
 
-use super::{create_fstab_entry::CreateFstabEntry, KickstartLaunchctlService};
+use super::{create_fstab_entry::CreateFstabEntry, KickstartLaunchctlService, SetupVolumeDaemon};
 
 pub const NIX_VOLUME_MOUNTD_DEST: &str = "/Library/LaunchDaemons/org.nixos.darwin-store.plist";
 
@@ -30,7 +30,7 @@ pub struct CreateNixVolume {
     create_volume: StatefulAction<CreateApfsVolume>,
     create_fstab_entry: StatefulAction<CreateFstabEntry>,
     encrypt_volume: Option<StatefulAction<EncryptApfsVolume>>,
-    setup_volume_daemon: StatefulAction<CreateFile>,
+    setup_volume_daemon: StatefulAction<SetupVolumeDaemon>,
     bootstrap_volume: StatefulAction<BootstrapLaunchctlService>,
     kickstart_launchctl_service: StatefulAction<KickstartLaunchctlService>,
     enable_ownership: StatefulAction<EnableOwnership>,
@@ -78,44 +78,14 @@ impl CreateNixVolume {
             None
         };
 
-        let name_with_qoutes = format!("\"{name}\"");
-        let encrypted_command;
-        let mount_command = if encrypt {
-            encrypted_command = format!("/usr/bin/security find-generic-password -s {name_with_qoutes} -w |  /usr/sbin/diskutil apfs unlockVolume {name_with_qoutes} -mountpoint /nix -stdinpassphrase");
-            vec!["/bin/sh", "-c", encrypted_command.as_str()]
-        } else {
-            vec![
-                "/usr/sbin/diskutil",
-                "mount",
-                "-mountPoint",
-                "/nix",
-                name.as_str(),
-            ]
-        };
-        // TODO(@hoverbear): Use plist lib we have in tree...
-        let mount_plist = format!(
-            "\
-            <?xml version=\"1.0\" encoding=\"UTF-8\"?>\n\
-            <!DOCTYPE plist PUBLIC \"-//Apple Computer//DTD PLIST 1.0//EN\" \"http://www.apple.com/DTDs/PropertyList-1.0.dtd\">\n\
-            <plist version=\"1.0\">\n\
-            <dict>\n\
-            <key>RunAtLoad</key>\n\
-            <true/>\n\
-            <key>Label</key>\n\
-            <string>org.nixos.darwin-store</string>\n\
-            <key>ProgramArguments</key>\n\
-            <array>\n\
-                {}\
-            </array>\n\
-            </dict>\n\
-            </plist>\n\
-        \
-        ", mount_command.iter().map(|v| format!("<string>{v}</string>\n")).collect::<Vec<_>>().join("\n")
-        );
-        let setup_volume_daemon =
-            CreateFile::plan(NIX_VOLUME_MOUNTD_DEST, None, None, None, mount_plist, false)
-                .await
-                .map_err(|e| ActionError::Child(CreateFile::action_tag(), Box::new(e)))?;
+        let setup_volume_daemon = SetupVolumeDaemon::plan(
+            NIX_VOLUME_MOUNTD_DEST,
+            "org.nixos.darwin-store",
+            name.clone(),
+            encrypt,
+        )
+        .await
+        .map_err(|e| ActionError::Child(SetupVolumeDaemon::action_tag(), Box::new(e)))?;
 
         let bootstrap_volume = BootstrapLaunchctlService::plan(
             "system",
