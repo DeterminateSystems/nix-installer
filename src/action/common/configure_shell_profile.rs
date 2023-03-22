@@ -3,7 +3,6 @@ use crate::action::{Action, ActionDescription, ActionError, ActionTag, StatefulA
 
 use nix::unistd::User;
 use std::path::{Path, PathBuf};
-use target_lexicon::OperatingSystem;
 use tokio::task::JoinSet;
 use tracing::{span, Instrument, Span};
 
@@ -88,22 +87,12 @@ impl ConfigureShellProfile {
                     );
                     continue;
                 }
-                // Macs require a different mode on certain files...
-                let required_mode = match target_lexicon::OperatingSystem::host() {
-                    OperatingSystem::MacOSX {
-                        major: _,
-                        minor: _,
-                        patch: _,
-                    }
-                    | OperatingSystem::Darwin => 0o444,
-                    _ => 0o644,
-                };
                 create_or_insert_files.push(
                     CreateOrInsertIntoFile::plan(
                         profile_target_path,
                         None,
                         None,
-                        required_mode,
+                        0o644,
                         shell_buf.to_string(),
                         create_or_insert_into_file::Position::Beginning,
                     )
