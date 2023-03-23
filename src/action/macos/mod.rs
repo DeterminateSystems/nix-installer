@@ -29,7 +29,6 @@ use crate::execute_command;
 
 use super::ActionError;
 
-/// This function must be able to operate at both plan and execute time.
 async fn get_uuid_for_label(apfs_volume_label: &str) -> Result<Uuid, ActionError> {
     let output = execute_command(
         Command::new("/usr/sbin/diskutil")

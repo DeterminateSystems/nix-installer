@@ -164,13 +164,12 @@ async fn generate_mount_plist(
     mount_point: &Path,
     encrypt: bool,
 ) -> Result<LaunchctlMountPlist, ActionError> {
-    let apfs_volume_label_with_qoutes = format!("\"{apfs_volume_label}\"");
+    let apfs_volume_label_with_quotes = format!("\"{apfs_volume_label}\"");
     let uuid = get_uuid_for_label(&apfs_volume_label).await?;
     // The official Nix scripts uppercase the UUID, so we do as well for compatibility.
     let uuid_string = uuid.to_string().to_uppercase();
-    let encrypted_command;
     let mount_command = if encrypt {
-        encrypted_command = format!("/usr/bin/security find-generic-password -s {apfs_volume_label_with_qoutes} -w |  /usr/sbin/diskutil apfs unlockVolume {apfs_volume_label_with_qoutes} -mountpoint {mount_point:?} -stdinpassphrase");
+        let encrypted_command = format!("/usr/bin/security find-generic-password -s {apfs_volume_label_with_quotes} -w |  /usr/sbin/diskutil apfs unlockVolume {apfs_volume_label_with_quotes} -mountpoint {mount_point:?} -stdinpassphrase");
         vec!["/bin/sh".into(), "-c".into(), encrypted_command]
     } else {
         vec![
