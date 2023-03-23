@@ -98,7 +98,7 @@ impl ConfigureInitService {
                 Self::check_if_systemd_unit_exists(SERVICE_SRC, SERVICE_DEST).await?;
                 Self::check_if_systemd_unit_exists(SOCKET_SRC, SOCKET_DEST).await?;
             },
-            #[cfg(not(target_os = "macos"))]
+            #[cfg(target_os = "linux")]
             InitSystem::None => {
                 // Nothing here, no init system
             },
@@ -225,13 +225,15 @@ impl Action for ConfigureInitService {
             },
             #[cfg(target_os = "linux")]
             InitSystem::Systemd => {
-                execute_command(
-                    Command::new("systemctl")
-                        .process_group(0)
-                        .arg("daemon-reload")
-                        .stdin(std::process::Stdio::null()),
-                )
-                .await?;
+                if *start_daemon {
+                    execute_command(
+                        Command::new("systemctl")
+                            .process_group(0)
+                            .arg("daemon-reload")
+                            .stdin(std::process::Stdio::null()),
+                    )
+                    .await?;
+                }
                 // The goal state is the `socket` enabled and active, the service not enabled and stopped (it activates via socket activation)
                 let socket_was_active = if is_enabled("nix-daemon.socket").await? {
                     disable("nix-daemon.socket", true).await?;
@@ -296,13 +298,15 @@ impl Action for ConfigureInitService {
                         )
                     })?;
 
-                execute_command(
-                    Command::new("systemctl")
-                        .process_group(0)
-                        .arg("daemon-reload")
-                        .stdin(std::process::Stdio::null()),
-                )
-                .await?;
+                if *start_daemon {
+                    execute_command(
+                        Command::new("systemctl")
+                            .process_group(0)
+                            .arg("daemon-reload")
+                            .stdin(std::process::Stdio::null()),
+                    )
+                    .await?;
+                }
 
                 if let Some(ssl_cert_file) = ssl_cert_file {
                     let service_conf_dir_path = PathBuf::from(format!("{SERVICE_DEST}.d"));
