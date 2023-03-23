@@ -177,7 +177,7 @@ async fn generate_mount_plist(
             "/usr/sbin/diskutil".into(),
             "mount".into(),
             "-mountPoint".into(),
-            format!("{mount_point:?}"), // Debug for escaped path
+            mount_point.display().to_string(),
             uuid_string,
         ]
     };
