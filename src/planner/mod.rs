@@ -79,7 +79,7 @@ impl Planner for MyPlanner {
                 .into_keys()
                 .collect::<Vec<_>>(),
             self.common.ssl_cert_file.clone(),
-        ))
+        )?)
     }
 }
 
