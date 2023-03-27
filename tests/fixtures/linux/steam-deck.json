@@ -863,7 +863,6 @@
                 ],
                 "vendor_confd_suffix": "vendor_conf.d/nix.fish",
                 "vendor_confd_prefixes": [
-                  "/usr/share/fish/",
                   "/usr/local/share/fish/"
                 ]
               },
