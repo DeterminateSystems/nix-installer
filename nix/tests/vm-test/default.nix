@@ -69,7 +69,7 @@ let
     install-no-start-daemon = {
       install = ''
         NIX_PATH=$(readlink -f nix.tar.xz)
-        RUST_BACKTRACE="full" ./nix-installer install --nix-package-url "file://$NIX_PATH" --no-confirm --logger pretty --log-directive nix_installer=trace --no-start-daemon
+        RUST_BACKTRACE="full" ./nix-installer install linux --nix-package-url "file://$NIX_PATH" --no-confirm --logger pretty --log-directive nix_installer=trace --no-start-daemon
       '';
       check = ''
         set -ex
@@ -269,6 +269,16 @@ let
     "fedora-v36" = {
       image = import <nix/fetchurl.nix> {
         url = "https://app.vagrantup.com/generic/boxes/fedora36/versions/4.1.12/providers/libvirt.box";
+        hash = "sha256-rxPgnDnFkTDwvdqn2CV3ZUo3re9AdPtSZ9SvOHNvaks=";
+      };
+      rootDisk = "box.img";
+      system = "x86_64-linux";
+      postBoot = disableSELinux;
+    };
+
+    "fedora-v37" = {
+      image = import <nix/fetchurl.nix> {
+        url = "https://app.vagrantup.com/generic/boxes/fedora37/versions/4.2.14/providers/libvirt.box";
         hash = "sha256-rxPgnDnFkTDwvdqn2CV3ZUo3re9AdPtSZ9SvOHNvaks=";
       };
       rootDisk = "box.img";
