@@ -6,7 +6,7 @@ use crate::{
     execute_command,
 };
 use serde::Deserialize;
-use std::{io::SeekFrom, path::Path};
+use std::{io::SeekFrom, path::Path, time::Duration};
 use tokio::{
     fs::OpenOptions,
     io::{AsyncReadExt, AsyncSeekExt, AsyncWriteExt},
