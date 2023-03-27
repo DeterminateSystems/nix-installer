@@ -4,6 +4,8 @@ use std::{collections::HashMap, io::Cursor};
 use clap::ArgAction;
 use tokio::process::Command;
 
+use super::ShellProfileLocations;
+
 use crate::{
     action::{
         base::RemoveDirectory,
