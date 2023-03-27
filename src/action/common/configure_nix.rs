@@ -6,6 +6,7 @@ use crate::{
         common::{ConfigureShellProfile, PlaceNixConfiguration},
         Action, ActionDescription, ActionError, ActionTag, StatefulAction,
     },
+    planner::ShellProfileLocations,
     settings::{CommonSettings, SCRATCH_DIR},
 };
 
@@ -23,18 +24,24 @@ pub struct ConfigureNix {
 
 impl ConfigureNix {
     #[tracing::instrument(level = "debug", skip_all)]
-    pub async fn plan(settings: &CommonSettings) -> Result<StatefulAction<Self>, ActionError> {
+    pub async fn plan(
+        shell_profile_locations: ShellProfileLocations,
+        settings: &CommonSettings,
+    ) -> Result<StatefulAction<Self>, ActionError> {
         let setup_default_profile = SetupDefaultProfile::plan(PathBuf::from(SCRATCH_DIR))
             .await
             .map_err(|e| ActionError::Child(SetupDefaultProfile::action_tag(), Box::new(e)))?;
 
         let configure_shell_profile = if settings.modify_profile {
             Some(
-                ConfigureShellProfile::plan(settings.ssl_cert_file.clone())
-                    .await
-                    .map_err(|e| {
-                        ActionError::Child(ConfigureShellProfile::action_tag(), Box::new(e))
-                    })?,
+                ConfigureShellProfile::plan(
+                    shell_profile_locations,
+                    settings.ssl_cert_file.clone(),
+                )
+                .await
+                .map_err(|e| {
+                    ActionError::Child(ConfigureShellProfile::action_tag(), Box::new(e))
+                })?,
             )
         } else {
             None

@@ -144,7 +144,7 @@ impl Planner for Macos {
                 .await
                 .map_err(PlannerError::Action)?
                 .boxed(),
-            ConfigureNix::plan(&self.settings)
+            ConfigureNix::plan(ShellProfileLocations::default(), &self.settings)
                 .await
                 .map_err(PlannerError::Action)?
                 .boxed(),
