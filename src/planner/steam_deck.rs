@@ -287,7 +287,7 @@ impl Planner for SteamDeck {
                 .into_keys()
                 .collect::<Vec<_>>(),
             self.settings.ssl_cert_file.clone(),
-        ))
+        )?)
     }
 }
 

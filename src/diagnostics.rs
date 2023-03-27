@@ -65,18 +65,22 @@ pub struct DiagnosticData {
 
 impl DiagnosticData {
     pub fn new(
-        endpoint: Option<Url>,
+        endpoint: Option<String>,
         planner: String,
         configured_settings: Vec<String>,
         ssl_cert_file: Option<PathBuf>,
-    ) -> Self {
+    ) -> Result<Self, DiagnosticError> {
+        let endpoint = match endpoint {
+            Some(endpoint) => diagnostic_endpoint_parser(&endpoint)?,
+            None => None,
+        };
         let (os_name, os_version) = match OsRelease::new() {
             Ok(os_release) => (os_release.name, os_release.version),
             Err(_) => ("unknown".into(), "unknown".into()),
         };
         let is_ci = is_ci::cached()
             || std::env::var("NIX_INSTALLER_CI").unwrap_or_else(|_| "0".into()) == "1";
-        Self {
+        Ok(Self {
             endpoint,
             version: env!("CARGO_PKG_VERSION").into(),
             planner,
@@ -87,7 +91,7 @@ impl DiagnosticData {
             is_ci,
             ssl_cert_file,
             failure_chain: None,
-        }
+        })
     }
 
     pub fn failure(mut self, err: &NixInstallerError) -> Self {
@@ -215,6 +219,13 @@ pub enum DiagnosticError {
         #[source]
         reqwest::Error,
     ),
+    /// Parsing URL
+    #[error("Parsing URL")]
+    Parse(
+        #[source]
+        #[from]
+        url::ParseError,
+    ),
     #[error("Write path `{0}`")]
     Write(std::path::PathBuf, #[source] std::io::Error),
     #[error("Serializing receipt")]
@@ -236,4 +247,25 @@ impl ErrorDiagnostic for DiagnosticError {
         let static_str: &'static str = (self).into();
         return static_str.to_string();
     }
+}
+
+pub fn diagnostic_endpoint_parser(input: &str) -> Result<Option<Url>, DiagnosticError> {
+    match Url::parse(input) {
+        Ok(v) => match v.scheme() {
+            "https" | "http" | "file" => Ok(Some(v)),
+            _ => Err(DiagnosticError::UnknownUrlScheme),
+        },
+        Err(url_error) if url_error == url::ParseError::RelativeUrlWithoutBase => {
+            match Url::parse(&format!("file://{input}")) {
+                Ok(v) => Ok(Some(v)),
+                Err(file_error) => Err(file_error)?,
+            }
+        },
+        Err(url_error) => Err(url_error)?,
+    }
+}
+
+pub fn diagnostic_endpoint_validator(input: &str) -> Result<String, DiagnosticError> {
+    let _ = diagnostic_endpoint_parser(input)?;
+    Ok(input.to_string())
 }

@@ -79,7 +79,7 @@ impl Planner for MyPlanner {
                 .into_keys()
                 .collect::<Vec<_>>(),
             self.common.ssl_cert_file.clone(),
-        ))
+        )?)
     }
 }
 
@@ -317,6 +317,9 @@ pub enum PlannerError {
     NixExists,
     #[error("WSL1 is not supported, please upgrade to WSL2: https://learn.microsoft.com/en-us/windows/wsl/install#upgrade-version-from-wsl-1-to-wsl-2")]
     Wsl1,
+    #[cfg(feature = "diagnostics")]
+    #[error(transparent)]
+    Diagnostic(#[from] crate::diagnostics::DiagnosticError),
 }
 
 impl HasExpectedErrors for PlannerError {
@@ -334,6 +337,8 @@ impl HasExpectedErrors for PlannerError {
             this @ PlannerError::NixOs => Some(Box::new(this)),
             this @ PlannerError::NixExists => Some(Box::new(this)),
             this @ PlannerError::Wsl1 => Some(Box::new(this)),
+            #[cfg(feature = "diagnostics")]
+            PlannerError::Diagnostic(diagnostic_error) => Some(Box::new(diagnostic_error)),
         }
     }
 }

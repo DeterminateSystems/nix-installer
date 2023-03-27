@@ -211,7 +211,7 @@ impl Planner for Macos {
                 .into_keys()
                 .collect::<Vec<_>>(),
             self.settings.ssl_cert_file.clone(),
-        ))
+        )?)
     }
 }
 
