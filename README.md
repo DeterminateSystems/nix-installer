@@ -172,7 +172,7 @@ curl --proto '=https' --tlsv1.2 -sSf -L https://install.determinate.systems/nix 
 
 ## In a container
 
-In Docker/Podman containers or WSL2 instances where an init (like `systemd`) is not present, pass `--init none`.
+In general, `nix-installer` should work in containers, but in some environments it needs some extra configuration.
 
 > **Warning**
 > When `--init none` is used, _only_ `root` or users who can elevate to `root` privileges can run Nix:
@@ -188,11 +188,12 @@ For Docker containers (without an init):
 FROM ubuntu:latest
 RUN apt update -y
 RUN apt install curl -y
-COPY nix-installer /nix-installer
-RUN /nix-installer install linux --init none --no-confirm
+RUN curl --proto '=https' --tlsv1.2 -sSf -L https://install.determinate.systems/nix | sh -s -- install linux --extra-conf "filter-syscalls = false"  --init none --no-confirm
 ENV PATH="${PATH}:/nix/var/nix/profiles/default/bin"
 RUN nix run nixpkgs#hello
 ```
+
+On ARM Macs (Eg the M1) [`filter-syscalls = false`](https://nixos.org/manual/nix/stable/command-ref/conf-file.html#conf-filter-syscalls) is required to work around a `unable to load seccomp BPF program: Invalid argument` error. If you don't plan to support that platform, you can remove that argument.
 
 Podman containers require `sandbox = false` in your `Nix.conf`.
 
@@ -203,21 +204,19 @@ For podman containers without an init:
 FROM ubuntu:latest
 RUN apt update -y
 RUN apt install curl -y
-COPY nix-installer /nix-installer
-RUN /nix-installer install linux --extra-conf "sandbox = false" --init none --no-confirm
+RUN curl --proto '=https' --tlsv1.2 -sSf -L https://install.determinate.systems/nix | sh -s -- install linux --extra-conf "sandbox = false" --init none --no-confirm
 ENV PATH="${PATH}:/nix/var/nix/profiles/default/bin"
 RUN nix run nixpkgs#hello
 ```
 
-For Podman containers with a systemd init:
+For Podman containers with a systemd init, you can pass `--no-start-daemon` and use Nix in root only mode during `podman build`, then during `podman run` the daemon will start and regular users should be able to use it.
 
 ```dockerfile
 # Dockerfile
 FROM ubuntu:latest
 RUN apt update -y
 RUN apt install curl systemd -y
-COPY nix-installer /nix-installer
-RUN /nix-installer install linux --extra-conf "sandbox = false" --no-start-daemon --no-confirm
+RUN curl --proto '=https' --tlsv1.2 -sSf -L https://install.determinate.systems/nix | sh -s -- install linux --extra-conf "sandbox = false" --no-start-daemon --no-confirm
 ENV PATH="${PATH}:/nix/var/nix/profiles/default/bin"
 RUN nix run nixpkgs#hello
 CMD [ "/usr/sbin/init" ]
