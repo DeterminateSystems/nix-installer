@@ -12,6 +12,8 @@ use crate::{
 use std::{collections::HashMap, path::Path};
 use tokio::process::Command;
 
+use super::ShellProfileLocations;
+
 /// A planner for Linux installs
 #[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
 #[cfg_attr(feature = "cli", derive(clap::Parser))]
@@ -80,7 +82,7 @@ impl Planner for Linux {
                 .await
                 .map_err(PlannerError::Action)?
                 .boxed(),
-            ConfigureNix::plan(&self.settings)
+            ConfigureNix::plan(ShellProfileLocations::default(), &self.settings)
                 .await
                 .map_err(PlannerError::Action)?
                 .boxed(),

@@ -1,43 +1,12 @@
 use crate::action::base::{create_or_insert_into_file, CreateDirectory, CreateOrInsertIntoFile};
 use crate::action::{Action, ActionDescription, ActionError, ActionTag, StatefulAction};
+use crate::planner::ShellProfileLocations;
 
 use nix::unistd::User;
 use std::path::{Path, PathBuf};
 use tokio::task::JoinSet;
 use tracing::{span, Instrument, Span};
 
-// Fish has different syntax than zsh/bash, treat it separate
-const PROFILE_FISH_VENDOR_CONFD_SUFFIX: &str = "vendor_conf.d/nix.fish";
-/**
- Each of these are common values of $__fish_vendor_confdir,
-under which Fish will look for a file named
-[`PROFILE_FISH_CONFD_SUFFIX`].
-
-More info: https://fishshell.com/docs/3.3/index.html#configuration-files
-*/
-const PROFILE_FISH_VENDOR_CONFD_PREFIXES: &[&str] = &["/usr/share/fish/", "/usr/local/share/fish/"];
-
-const PROFILE_FISH_CONFD_SUFFIX: &str = "conf.d/nix.fish";
-/**
- Each of these are common values of $__fish_sysconf_dir,
-under which Fish will look for a file named
-[`PROFILE_FISH_CONFD_PREFIXES`].
-*/
-const PROFILE_FISH_CONFD_PREFIXES: &[&str] = &[
-    "/etc/fish",              // standard
-    "/usr/local/etc/fish",    // their installer .pkg for macOS
-    "/opt/homebrew/etc/fish", // homebrew
-    "/opt/local/etc/fish",    // macports
-];
-
-const PROFILE_TARGETS: &[&str] = &[
-    "/etc/bashrc",
-    "/etc/profile.d/nix.sh",
-    "/etc/bash.bashrc",
-    // https://zsh.sourceforge.io/Intro/intro_3.html
-    "/etc/zshrc",
-    "/etc/zsh/zshrc",
-];
 const PROFILE_NIX_FILE_SHELL: &str = "/nix/var/nix/profiles/default/etc/profile.d/nix-daemon.sh";
 const PROFILE_NIX_FILE_FISH: &str = "/nix/var/nix/profiles/default/etc/profile.d/nix-daemon.fish";
 
@@ -46,13 +15,17 @@ Configure any detected shell profiles to include Nix support
  */
 #[derive(Debug, serde::Deserialize, serde::Serialize, Clone)]
 pub struct ConfigureShellProfile {
+    locations: ShellProfileLocations,
     create_directories: Vec<StatefulAction<CreateDirectory>>,
     create_or_insert_into_files: Vec<StatefulAction<CreateOrInsertIntoFile>>,
 }
 
 impl ConfigureShellProfile {
     #[tracing::instrument(level = "debug", skip_all)]
-    pub async fn plan(ssl_cert_file: Option<PathBuf>) -> Result<StatefulAction<Self>, ActionError> {
+    pub async fn plan(
+        locations: ShellProfileLocations,
+        ssl_cert_file: Option<PathBuf>,
+    ) -> Result<StatefulAction<Self>, ActionError> {
         let mut create_or_insert_files = Vec::default();
         let mut create_directories = Vec::default();
 
@@ -78,12 +51,13 @@ impl ConfigureShellProfile {
             inde = "    ", // indent
         );
 
-        for profile_target in PROFILE_TARGETS {
+        for profile_target in locations.bash.iter().chain(locations.zsh.iter()) {
             let profile_target_path = Path::new(profile_target);
             if let Some(parent) = profile_target_path.parent() {
                 if !parent.exists() {
                     tracing::trace!(
-                        "Did not plan to edit `{profile_target}` as its parent folder does not exist."
+                        "Did not plan to edit `{}` as its parent folder does not exist.",
+                        profile_target.display(),
                     );
                     continue;
                 }
@@ -113,7 +87,7 @@ impl ConfigureShellProfile {
             inde = "    ", // indent
         );
 
-        for fish_prefix in PROFILE_FISH_CONFD_PREFIXES {
+        for fish_prefix in &locations.fish.confd_prefixes {
             let fish_prefix_path = PathBuf::from(fish_prefix);
 
             if !fish_prefix_path.exists() {
@@ -122,7 +96,7 @@ impl ConfigureShellProfile {
             }
 
             let mut profile_target = fish_prefix_path;
-            profile_target.push(PROFILE_FISH_CONFD_SUFFIX);
+            profile_target.push(locations.fish.confd_suffix.clone());
 
             if let Some(conf_d) = profile_target.parent() {
                 create_directories.push(
@@ -142,7 +116,7 @@ impl ConfigureShellProfile {
                 .await?,
             );
         }
-        for fish_prefix in PROFILE_FISH_VENDOR_CONFD_PREFIXES {
+        for fish_prefix in &locations.fish.vendor_confd_prefixes {
             let fish_prefix_path = PathBuf::from(fish_prefix);
 
             if !fish_prefix_path.exists() {
@@ -151,7 +125,7 @@ impl ConfigureShellProfile {
             }
 
             let mut profile_target = fish_prefix_path;
-            profile_target.push(PROFILE_FISH_VENDOR_CONFD_SUFFIX);
+            profile_target.push(locations.fish.vendor_confd_suffix.clone());
 
             if let Some(conf_d) = profile_target.parent() {
                 create_directories.push(
@@ -197,6 +171,7 @@ impl ConfigureShellProfile {
         }
 
         Ok(Self {
+            locations,
             create_directories,
             create_or_insert_into_files: create_or_insert_files,
         }

@@ -852,6 +852,30 @@
         },
         "configure_shell_profile": {
           "action": {
+            "locations": {
+              "fish": {
+                "confd_suffix": "conf.d/nix.fish",
+                "confd_prefixes": [
+                  "/etc/fish",
+                  "/usr/local/etc/fish",
+                  "/opt/homebrew/etc/fish",
+                  "/opt/local/etc/fish"
+                ],
+                "vendor_confd_suffix": "vendor_conf.d/nix.fish",
+                "vendor_confd_prefixes": [
+                  "/usr/local/share/fish/"
+                ]
+              },
+              "bash": [
+                "/etc/bashrc",
+                "/etc/profile.d/nix.sh",
+                "/etc/bash.bashrc"
+              ],
+              "zsh": [
+                "/etc/zshrc",
+                "/etc/zsh/zshrc"
+              ]
+            },
             "create_directories": [],
             "create_or_insert_into_files": [
               {

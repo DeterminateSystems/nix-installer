@@ -4,6 +4,8 @@ use std::{collections::HashMap, io::Cursor};
 use clap::ArgAction;
 use tokio::process::Command;
 
+use super::ShellProfileLocations;
+
 use crate::{
     action::{
         base::RemoveDirectory,
@@ -144,7 +146,7 @@ impl Planner for Macos {
                 .await
                 .map_err(PlannerError::Action)?
                 .boxed(),
-            ConfigureNix::plan(&self.settings)
+            ConfigureNix::plan(ShellProfileLocations::default(), &self.settings)
                 .await
                 .map_err(PlannerError::Action)?
                 .boxed(),
