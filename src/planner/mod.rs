@@ -109,7 +109,9 @@ pub mod macos;
 #[cfg(target_os = "linux")]
 pub mod steam_deck;
 
-use std::{collections::HashMap, string::FromUtf8Error};
+use std::{collections::HashMap, path::PathBuf, string::FromUtf8Error};
+
+use serde::{Deserialize, Serialize};
 
 use crate::{
     action::{ActionError, StatefulAction},
@@ -274,6 +276,68 @@ impl BuiltinPlanner {
             BuiltinPlanner::SteamDeck(i) => i.diagnostic_data().await,
             #[cfg(target_os = "macos")]
             BuiltinPlanner::Macos(i) => i.diagnostic_data().await,
+        }
+    }
+}
+
+#[derive(Debug, Deserialize, Serialize, PartialEq, Eq, Clone)]
+pub struct ShellProfileLocations {
+    pub fish: FishShellProfileLocations,
+    pub bash: Vec<PathBuf>,
+    pub zsh: Vec<PathBuf>,
+}
+
+impl Default for ShellProfileLocations {
+    fn default() -> Self {
+        Self {
+            fish: FishShellProfileLocations::default(),
+            bash: vec![
+                "/etc/bashrc".into(),
+                "/etc/profile.d/nix.sh".into(),
+                "/etc/bash.bashrc".into(),
+            ],
+            zsh: vec![
+                // https://zsh.sourceforge.io/Intro/intro_3.html
+                "/etc/zshrc".into(),
+                "/etc/zsh/zshrc".into(),
+            ],
+        }
+    }
+}
+
+#[derive(Debug, Deserialize, Serialize, PartialEq, Eq, Clone)]
+pub struct FishShellProfileLocations {
+    pub confd_suffix: PathBuf,
+    /**
+     Each of these are common values of $__fish_sysconf_dir,
+    under which Fish will look for the file named by
+    `confd_suffix`.
+    */
+    pub confd_prefixes: Vec<PathBuf>,
+    /// Fish has different syntax than zsh/bash, treat it separate
+    pub vendor_confd_suffix: PathBuf,
+    /**
+    Each of these are common values of $__fish_vendor_confdir,
+    under which Fish will look for the file named by
+    `confd_suffix`.
+
+    More info: <https://fishshell.com/docs/3.3/index.html#configuration-files>
+    */
+    pub vendor_confd_prefixes: Vec<PathBuf>,
+}
+
+impl Default for FishShellProfileLocations {
+    fn default() -> Self {
+        Self {
+            confd_prefixes: vec![
+                "/etc/fish".into(),              // standard
+                "/usr/local/etc/fish".into(),    // their installer .pkg for macOS
+                "/opt/homebrew/etc/fish".into(), // homebrew
+                "/opt/local/etc/fish".into(),    // macports
+            ],
+            confd_suffix: "conf.d/nix.fish".into(),
+            vendor_confd_prefixes: vec!["/usr/share/fish/".into(), "/usr/local/share/fish/".into()],
+            vendor_confd_suffix: "vendor_conf.d/nix.fish".into(),
         }
     }
 }

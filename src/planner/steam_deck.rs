@@ -73,6 +73,8 @@ use crate::{
     BuiltinPlanner,
 };
 
+use super::ShellProfileLocations;
+
 #[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
 #[cfg_attr(feature = "cli", derive(clap::Parser))]
 pub struct SteamDeck {
@@ -205,6 +207,20 @@ impl Planner for SteamDeck {
         .await
         .map_err(PlannerError::Action)?;
 
+        // We need to remove this path since it's part of the read-only install.
+        let mut shell_profile_locations = ShellProfileLocations::default();
+        if let Some(index) = shell_profile_locations
+            .fish
+            .vendor_confd_prefixes
+            .iter()
+            .position(|v| *v == PathBuf::from("/usr/share/fish/"))
+        {
+            shell_profile_locations
+                .fish
+                .vendor_confd_prefixes
+                .remove(index);
+        }
+
         Ok(vec![
             CreateDirectory::plan(&persistence, None, None, 0o0755, true)
                 .await
@@ -221,7 +237,7 @@ impl Planner for SteamDeck {
                 .await
                 .map_err(PlannerError::Action)?
                 .boxed(),
-            ConfigureNix::plan(&self.settings)
+            ConfigureNix::plan(shell_profile_locations, &self.settings)
                 .await
                 .map_err(PlannerError::Action)?
                 .boxed(),

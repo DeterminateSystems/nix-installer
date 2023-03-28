@@ -55,11 +55,10 @@
         "setup_volume_daemon": {
           "action": {
             "path": "/Library/LaunchDaemons/org.nixos.darwin-store.plist",
-            "user": null,
-            "group": null,
-            "mode": null,
-            "buf": "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<!DOCTYPE plist PUBLIC \"-//Apple Computer//DTD PLIST 1.0//EN\" \"http://www.apple.com/DTDs/PropertyList-1.0.dtd\">\n<plist version=\"1.0\">\n<dict>\n<key>RunAtLoad</key>\n<true/>\n<key>Label</key>\n<string>org.nixos.darwin-store</string>\n<key>ProgramArguments</key>\n<array>\n<string>/bin/sh</string>\n\n<string>-c</string>\n\n<string>/usr/bin/security find-generic-password -s \"Nix Store\" -w |  /usr/sbin/diskutil apfs unlockVolume \"Nix Store\" -mountpoint /nix -stdinpassphrase</string>\n</array>\n</dict>\n</plist>\n",
-            "force": false
+            "apfs_volume_label": "Nix Store",
+            "mount_service_label": "org.nixos.darwin-store",
+            "mount_point": "/nix",
+            "encrypt": false
           },
           "state": "Uncompleted"
         },
@@ -889,6 +888,31 @@
         },
         "configure_shell_profile": {
           "action": {
+            "locations": {
+              "fish": {
+                "confd_suffix": "conf.d/nix.fish",
+                "confd_prefixes": [
+                  "/etc/fish",
+                  "/usr/local/etc/fish",
+                  "/opt/homebrew/etc/fish",
+                  "/opt/local/etc/fish"
+                ],
+                "vendor_confd_suffix": "vendor_conf.d/nix.fish",
+                "vendor_confd_prefixes": [
+                  "/usr/share/fish/",
+                  "/usr/local/share/fish/"
+                ]
+              },
+              "bash": [
+                "/etc/bashrc",
+                "/etc/profile.d/nix.sh",
+                "/etc/bash.bashrc"
+              ],
+              "zsh": [
+                "/etc/zshrc",
+                "/etc/zsh/zshrc"
+              ]
+            },
             "create_directories": [],
             "create_or_insert_into_files": [
               {
