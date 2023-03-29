@@ -148,10 +148,10 @@ impl Action for CreateVolumeService {
     }
 
     #[tracing::instrument(level = "debug", skip_all)]
-    async fn revert(&mut self) -> Result<(), ActionError> {
+    async fn revert(&mut self) -> Result<(), Vec<ActionError>> {
         remove_file(&self.path)
             .await
-            .map_err(|e| ActionError::Remove(self.path.to_owned(), e))?;
+            .map_err(|e| vec![ActionError::Remove(self.path.to_owned(), e)])?;
 
         Ok(())
     }

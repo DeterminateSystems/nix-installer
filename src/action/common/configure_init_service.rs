@@ -372,7 +372,7 @@ impl Action for ConfigureInitService {
     }
 
     #[tracing::instrument(level = "debug", skip_all)]
-    async fn revert(&mut self) -> Result<(), ActionError> {
+    async fn revert(&mut self) -> Result<(), Vec<ActionError>> {
         match self.init {
             #[cfg(target_os = "macos")]
             InitSystem::Launchd => {

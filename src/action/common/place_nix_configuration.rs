@@ -122,7 +122,7 @@ impl Action for PlaceNixConfiguration {
     }
 
     #[tracing::instrument(level = "debug", skip_all)]
-    async fn revert(&mut self) -> Result<(), ActionError> {
+    async fn revert(&mut self) -> Result<(), Vec<ActionError>> {
         self.create_or_merge_nix_config
             .try_revert()
             .await

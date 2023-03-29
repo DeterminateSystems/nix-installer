@@ -116,26 +116,26 @@ impl Action for KickstartLaunchctlService {
 
     #[tracing::instrument(level = "debug", skip_all)]
     async fn revert(&mut self) -> Result<(), Vec<ActionError>> {
-        let Self { domain, service } = self;
-
         // MacOs doesn't offer an "ensure-stopped" like they do with Kickstart
         let mut command = Command::new("launchctl");
         command.process_group(0);
         command.arg("stop");
-        command.arg(format!("{domain}/{service}"));
+        command.arg(format!("{}/{}", self.domain, self.service));
         command.stdin(std::process::Stdio::null());
         let command_str = format!("{:?}", command.as_std());
+
         let output = command
             .output()
             .await
-            .map_err(|e| ActionError::command(&command, e))?;
+            .map_err(|e| vec![ActionError::command(&command, e)])?;
+
         // On our test Macs, a status code of `3` was reported if the service was stopped while not running.
         match output.status.code() {
             Some(3) | Some(0) | None => (),
             _ => {
-                return Err(ActionError::Custom(Box::new(
+                return Err(vec![ActionError::Custom(Box::new(
                     KickstartLaunchctlServiceError::CannotStopService(command_str, output),
-                )))
+                ))])
             },
         }
 

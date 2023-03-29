@@ -260,7 +260,7 @@ impl Action for ConfigureShellProfile {
     }
 
     #[tracing::instrument(level = "debug", skip_all)]
-    async fn revert(&mut self) -> Result<(), ActionError> {
+    async fn revert(&mut self) -> Result<(), Vec<ActionError>> {
         let mut set = JoinSet::new();
         let mut errors: Vec<ActionError> = Vec::default();
 

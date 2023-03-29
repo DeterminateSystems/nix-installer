@@ -181,7 +181,7 @@ impl Action for ConfigureNix {
     }
 
     #[tracing::instrument(level = "debug", skip_all)]
-    async fn revert(&mut self) -> Result<(), ActionError> {
+    async fn revert(&mut self) -> Result<(), Vec<ActionError>> {
         if let Some(configure_shell_profile) = &mut self.configure_shell_profile {
             configure_shell_profile.try_revert().await.map_err(|e| {
                 ActionError::Child(configure_shell_profile.action_tag(), Box::new(e))

@@ -105,7 +105,7 @@ impl Action for MoveUnpackedNix {
     }
 
     #[tracing::instrument(level = "debug", skip_all)]
-    async fn revert(&mut self) -> Result<(), ActionError> {
+    async fn revert(&mut self) -> Result<(), Vec<ActionError>> {
         // Noop
         Ok(())
     }

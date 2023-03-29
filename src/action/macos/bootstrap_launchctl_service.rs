@@ -119,7 +119,7 @@ impl Action for BootstrapLaunchctlService {
     }
 
     #[tracing::instrument(level = "debug", skip_all)]
-    async fn revert(&mut self) -> Result<(), ActionError> {
+    async fn revert(&mut self) -> Result<(), Vec<ActionError>> {
         let Self {
             path,
             service: _,

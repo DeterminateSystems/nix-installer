@@ -191,7 +191,7 @@ impl Action for CreateDirectory {
     }
 
     #[tracing::instrument(level = "debug", skip_all)]
-    async fn revert(&mut self) -> Result<(), ActionError> {
+    async fn revert(&mut self) -> Result<(), Vec<ActionError>> {
         let Self {
             path,
             user: _,

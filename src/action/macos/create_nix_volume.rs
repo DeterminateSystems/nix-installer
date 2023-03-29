@@ -270,7 +270,7 @@ impl Action for CreateNixVolume {
     }
 
     #[tracing::instrument(level = "debug", skip_all)]
-    async fn revert(&mut self) -> Result<(), ActionError> {
+    async fn revert(&mut self) -> Result<(), Vec<ActionError>> {
         self.enable_ownership.try_revert().await?;
         self.kickstart_launchctl_service.try_revert().await?;
         self.bootstrap_volume.try_revert().await?;

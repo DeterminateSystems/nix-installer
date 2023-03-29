@@ -107,7 +107,7 @@ impl Action for CreateNixTree {
     }
 
     #[tracing::instrument(level = "debug", skip_all)]
-    async fn revert(&mut self) -> Result<(), ActionError> {
+    async fn revert(&mut self) -> Result<(), Vec<ActionError>> {
         // Just do sequential since parallelizing this will have little benefit
         for create_directory in self.create_directories.iter_mut().rev() {
             create_directory

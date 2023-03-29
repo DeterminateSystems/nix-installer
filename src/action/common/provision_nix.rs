@@ -130,7 +130,7 @@ impl Action for ProvisionNix {
     }
 
     #[tracing::instrument(level = "debug", skip_all)]
-    async fn revert(&mut self) -> Result<(), ActionError> {
+    async fn revert(&mut self) -> Result<(), Vec<ActionError>> {
         // We fetch nix while doing the rest, then move it over.
         let mut fetch_nix_clone = self.fetch_nix.clone();
         let fetch_nix_handle = tokio::task::spawn(async {

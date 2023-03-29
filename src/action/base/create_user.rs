@@ -252,7 +252,7 @@ impl Action for CreateUser {
     }
 
     #[tracing::instrument(level = "debug", skip_all)]
-    async fn revert(&mut self) -> Result<(), ActionError> {
+    async fn revert(&mut self) -> Result<(), Vec<ActionError>> {
         let Self {
             name,
             uid: _,

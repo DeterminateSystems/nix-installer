@@ -219,19 +219,19 @@ impl Action for EncryptApfsVolume {
     #[tracing::instrument(level = "debug", skip_all, fields(
         disk = %self.disk.display(),
     ))]
-    async fn revert(&mut self) -> Result<(), ActionError> {
-        let Self { disk, name } = self;
+    async fn revert(&mut self) -> Result<(), Vec<ActionError>> {
+        let mut errors = vec![];
 
-        let disk_str = disk.to_str().expect("Could not turn disk into string"); /* Should not reasonably ever fail */
+        let disk_str = self.disk.to_str().expect("Could not turn disk into string"); /* Should not reasonably ever fail */
 
         // TODO: This seems very rough and unsafe
-        execute_command(
+        if let Err(e) = execute_command(
             Command::new("/usr/bin/security").process_group(0).args([
                 "delete-generic-password",
                 "-a",
-                name.as_str(),
+                self.name.as_str(),
                 "-s",
-                name.as_str(),
+                self.name.as_str(),
                 "-l",
                 format!("{} encryption password", disk_str).as_str(),
                 "-D",
@@ -243,9 +243,16 @@ impl Action for EncryptApfsVolume {
                 .as_str(),
             ]),
         )
-        .await?;
+        .await
+        {
+            errors.push(e);
+        }
 
-        Ok(())
+        if errors.is_empty() {
+            Ok(())
+        } else {
+            Err(errors)
+        }
     }
 }
 
