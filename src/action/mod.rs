@@ -244,7 +244,7 @@ pub trait Action: Send + Sync + std::fmt::Debug + dyn_clone::DynClone {
     /// If this action calls sub-[`Action`]s, care should be taken to call [`try_revert`][StatefulAction::try_revert], not [`revert`][Action::revert], so that [`ActionState`] is handled correctly and tracing is done.
     ///
     /// /// This is called by [`InstallPlan::uninstall`](crate::InstallPlan::uninstall) through [`StatefulAction::try_revert`] which handles tracing as well as if the action needs to revert based on its `action_state`.
-    async fn revert(&mut self) -> Result<(), ActionError>;
+    async fn revert(&mut self) -> Result<(), Vec<ActionError>>;
 
     fn stateful(self) -> StatefulAction<Self>
     where

@@ -93,18 +93,27 @@ impl Action for UnmountApfsVolume {
     }
 
     #[tracing::instrument(level = "debug", skip_all)]
-    async fn revert(&mut self) -> Result<(), ActionError> {
+    async fn revert(&mut self) -> Result<(), Vec<ActionError>> {
         let Self { disk: _, name } = self;
 
-        execute_command(
+        let mut errors = vec![];
+
+        if let Err(err) = execute_command(
             Command::new("/usr/sbin/diskutil")
                 .process_group(0)
                 .args(["unmount", "force"])
                 .arg(name)
                 .stdin(std::process::Stdio::null()),
         )
-        .await?;
+        .await
+        {
+            errors.push(err);
+        };
 
-        Ok(())
+        if errors.is_empty() {
+            Ok(())
+        } else {
+            Err(errors)
+        }
     }
 }
