@@ -41,4 +41,13 @@ in
       eclint .
     '';
   });
+
+  # Semver
+  check-semver = (writeShellApplication {
+    name = "check-semver";
+    runtimeInputs = with pkgs; [ cargo-semver-checks ];
+    text = ''
+      cargo-semver-checks semver-checks check-release
+    '';
+  });
 }

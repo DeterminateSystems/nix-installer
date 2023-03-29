@@ -139,6 +139,7 @@
               check.check-spelling
               check.check-nixpkgs-fmt
               check.check-editorconfig
+              check.check-semver
             ]
             ++ lib.optionals (pkgs.stdenv.isDarwin) (with pkgs; [ libiconv ]);
           };
