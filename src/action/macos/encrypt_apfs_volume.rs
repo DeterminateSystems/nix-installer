@@ -1,13 +1,20 @@
 use crate::{
     action::{
-        macos::NIX_VOLUME_MOUNTD_DEST, Action, ActionDescription, ActionError, StatefulAction,
+        macos::NIX_VOLUME_MOUNTD_DEST, Action, ActionDescription, ActionError, ActionState,
+        ActionTag, StatefulAction,
     },
     execute_command,
+    os::darwin::DiskUtilApfsListOutput,
 };
 use rand::Rng;
-use std::path::{Path, PathBuf};
+use std::{
+    path::{Path, PathBuf},
+    process::Stdio,
+};
 use tokio::process::Command;
 use tracing::{span, Span};
+
+use super::CreateApfsVolume;
 
 /**
 Encrypt an APFS volume
@@ -23,19 +30,82 @@ impl EncryptApfsVolume {
     pub async fn plan(
         disk: impl AsRef<Path>,
         name: impl AsRef<str>,
+        planned_create_apfs_volume: &StatefulAction<CreateApfsVolume>,
     ) -> Result<StatefulAction<Self>, ActionError> {
         let name = name.as_ref().to_owned();
-        Ok(Self {
-            name,
-            disk: disk.as_ref().to_path_buf(),
+        let disk = disk.as_ref().to_path_buf();
+
+        let mut command = Command::new("/usr/bin/security");
+        command.args(["find-generic-password", "-a"]);
+        command.arg(&name);
+        command.arg("-s");
+        command.arg("Nix Store");
+        command.arg("-l");
+        command.arg(&format!("{} encryption password", disk.display()));
+        command.arg("-D");
+        command.arg("Encrypted volume password");
+        command.process_group(0);
+        command.stdin(Stdio::null());
+        command.stdout(Stdio::null());
+        command.stderr(Stdio::null());
+        if command
+            .status()
+            .await
+            .map_err(|e| ActionError::command(&command, e))?
+            .success()
+        {
+            // The user has a password matching what we would create.
+            if planned_create_apfs_volume.state == ActionState::Completed {
+                // We detected a created volume already, and a password exists, so we can keep using that and skip doing anything
+                return Ok(StatefulAction::completed(Self { name, disk }));
+            }
+
+            // Ask the user to remove it
+            return Err(ActionError::Custom(Box::new(
+                EncryptApfsVolumeError::ExistingPasswordFound(name, disk),
+            )));
+        } else {
+            if planned_create_apfs_volume.state == ActionState::Completed {
+                // The user has a volume already created, but a password not set. This means we probably can't decrypt the volume.
+                return Err(ActionError::Custom(Box::new(
+                    EncryptApfsVolumeError::MissingPasswordForExistingVolume(name, disk),
+                )));
+            }
         }
-        .into())
+
+        // Ensure if the disk already exists, that it's encrypted
+        let output =
+            execute_command(Command::new("/usr/sbin/diskutil").args(["apfs", "list", "-plist"]))
+                .await?;
+
+        let parsed: DiskUtilApfsListOutput = plist::from_bytes(&output.stdout)?;
+        for container in parsed.containers {
+            for volume in container.volumes {
+                if volume.name == name {
+                    match volume.encryption == false {
+                        true => {
+                            return Ok(StatefulAction::completed(Self { disk, name }));
+                        },
+                        false => {
+                            return Err(ActionError::Custom(Box::new(
+                                EncryptApfsVolumeError::ExistingVolumeNotEncrypted(name, disk),
+                            )));
+                        },
+                    }
+                }
+            }
+        }
+
+        Ok(StatefulAction::uncompleted(Self { name, disk }))
     }
 }
 
 #[async_trait::async_trait]
 #[typetag::serde(name = "encrypt_volume")]
 impl Action for EncryptApfsVolume {
+    fn action_tag() -> ActionTag {
+        ActionTag("encrypt_apfs_volume")
+    }
     fn tracing_synopsis(&self) -> String {
         format!(
             "Encrypt volume `{}` on disk `{}`",
@@ -80,9 +150,7 @@ impl Action for EncryptApfsVolume {
 
         let disk_str = disk.to_str().expect("Could not turn disk into string"); /* Should not reasonably ever fail */
 
-        execute_command(Command::new("/usr/sbin/diskutil").arg("mount").arg(&name))
-            .await
-            .map_err(ActionError::Command)?;
+        execute_command(Command::new("/usr/sbin/diskutil").arg("mount").arg(&name)).await?;
 
         // Add the password to the user keychain so they can unlock it later.
         execute_command(
@@ -91,7 +159,7 @@ impl Action for EncryptApfsVolume {
                 "-a",
                 name.as_str(),
                 "-s",
-                name.as_str(),
+                "Nix Store",
                 "-l",
                 format!("{} encryption password", disk_str).as_str(),
                 "-D",
@@ -112,8 +180,7 @@ impl Action for EncryptApfsVolume {
                 "/Library/Keychains/System.keychain",
             ]),
         )
-        .await
-        .map_err(ActionError::Command)?;
+        .await?;
 
         // Encrypt the mounted volume
         execute_command(Command::new("/usr/sbin/diskutil").process_group(0).args([
@@ -125,8 +192,7 @@ impl Action for EncryptApfsVolume {
             "-passphrase",
             password.as_str(),
         ]))
-        .await
-        .map_err(ActionError::Command)?;
+        .await?;
 
         execute_command(
             Command::new("/usr/sbin/diskutil")
@@ -135,8 +201,7 @@ impl Action for EncryptApfsVolume {
                 .arg("force")
                 .arg(&name),
         )
-        .await
-        .map_err(ActionError::Command)?;
+        .await?;
 
         Ok(())
     }
@@ -178,9 +243,18 @@ impl Action for EncryptApfsVolume {
                 .as_str(),
             ]),
         )
-        .await
-        .map_err(ActionError::Command)?;
+        .await?;
 
         Ok(())
     }
+}
+
+#[derive(thiserror::Error, Debug)]
+pub enum EncryptApfsVolumeError {
+    #[error("The keychain has an existing password for a non-existing \"{0}\" volume on disk `{1}`, consider removing the password with `security delete-generic-password  -a \"{0}\" -s \"Nix Store\" -l \"{1} encryption password\" -D \"Encrypted volume password\"`")]
+    ExistingPasswordFound(String, PathBuf),
+    #[error("The keychain lacks a password for the already existing \"{0}\" volume on disk `{1}`, consider removing the volume with `diskutil apfs deleteVolume \"{0}\"` (if you receive error -69888, you may need to run `launchctl bootout system/org.nixos.darwin-store` and `launchctl bootout system/org.nixos.nix-daemon` first)")]
+    MissingPasswordForExistingVolume(String, PathBuf),
+    #[error("The existing APFS volume \"{0}\" on disk `{1}` is not encrypted but it should be, consider removing the volume with `diskutil apfs deleteVolume \"{0}\"` (if you receive error -69888, you may need to run `launchctl bootout system/org.nixos.darwin-store` and `launchctl bootout system/org.nixos.nix-daemon` first)")]
+    ExistingVolumeNotEncrypted(String, PathBuf),
 }

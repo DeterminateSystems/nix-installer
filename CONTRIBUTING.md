@@ -16,7 +16,7 @@ surprises.
 
 # What kinds of contributions are needed?
 
-Riff can benefit from all kinds of contributions:
+`nix-installer` can benefit from all kinds of contributions:
 
 * Bug reports
 * Code improvements
@@ -27,7 +27,7 @@ Riff can benefit from all kinds of contributions:
 * Graphical/visual asset improvement
 * Kind words or recommendation on your own site, repo, stream, or social media
   account
-* Onboarding others to using Riff
+* Onboarding others to using `nix-installer`
 
 
 # What are the expectations you can have of the maintainers?
@@ -196,8 +196,10 @@ nix build .#hydraJobs.vm-test.all.x86_64-linux.all -L
 To run a specific distribution listed in the `nix flake show` output:
 
 ```bash
-nix build .#hydraJobs.vm-test.rhel-v7.x86_64-linux.all -L
+nix build .#hydraJobs.vm-test.rhel-v7.x86_64-linux.all -L -j 4
 ```
+
+> You may wish to set `-j 4` to some other number. Some OS's (Ubuntu 16.04) exhibit problems rapidly updating their users/groups on a system running dozens of VMs.
 
 For PR review, you can also test arbitrary branches or checkouts like so:
 
@@ -276,9 +278,12 @@ git+file:///home/ana/git/determinatesystems/nix-installer
 
 To run all of the currently supported tests:
 
+
 ```bash
-nix build .#hydraJobs.container-test.all.x86_64-linux.all -L
+nix build .#hydraJobs.container-test.all.x86_64-linux.all -L -j 4
 ```
+
+> You may wish to set `-j 4` to some other number. Some OS's (Ubuntu 16.04) exhibit problems rapidly updating their users/groups on a system running dozens of VMs.
 
 To run a specific distribution listed in the `nix flake show` output:
 
@@ -352,12 +357,6 @@ wsl --unregister nix-installer-test-ubuntu-jammy
 You can also remove your `$HOME/nix-installer-wsl-tests-temp` folder whenever you wish.
 
 
-## Testing the `action.yml`
-
-The `action.yml` is used directly in the CI process, so it is automatically tested for most changes.
-
-If you are working on the `action.yml` There is an integration test for `action.yml` at https://github.com/DeterminateSystems/nix-installer-example. You can create PRs there to prompt rebuilds, please refer to what you might be working on in the PR description so readers can easily find your work. (The commits don't have to be meaningful, `git commit --allow-empty -m "prod at ci"` is perfectly reasonable.)
-
 # Releases
 
 
@@ -365,8 +364,18 @@ This package uses [Semantic Versioning](https://semver.org/). When determining t
 
 To cut a release:
 
+* Ensure the `flake.lock`, `Cargo.lock`, and Rust dependencies are up-to-date with the following:
+  + `nix flake update`
+  + `cargo update`
+  + `cargo outdated`
+  + Make a PR for for this and let it get merged separately
 * Create a release branch from `main` (`git checkout -b release-v0.0.1`)
-* Remove the `-unreleased` from the `version` field in `Cargo.toml` and `flake.nix`
+* Remove the `-unreleased` from the `version` field in `Cargo.toml`, `flake.nix`, and the fixture JSON files
+  + Release PRs should not contain any tangible code changes which require review
+* Ensure the VM / container tests still pass with the following:
+  + `nix flake check -L`
+  + `nix build .#hydraJobs.container-test.all.x86_64-linux.all -L -j 6`
+  + `nix build .#hydraJobs.vm-test.all.x86_64-linux.all -L -j 6`
 * Push the branch, create a PR ("Release v0.0.1")
 * Once the PR tests pass and it has been reviewed, merge it
 * `git pull` on the `main` branch
@@ -379,7 +388,7 @@ To cut a release:
 * Undraft the release
 * Once you are certain the release is good, `cargo publish` it
   + **Warning:** While you can re-release Github releases, it is not possible to do the same on `crates.io`
-* Create a PR bumping the version up one minor in the `Cargo.toml` and `flake.nix`, adding `-unreleased` at the end (`v0.0.2-unreleased`)
+* Create a PR bumping the version up one minor in the `Cargo.toml`, `flake.nix`, and fixture JSON files, adding `-unreleased` at the end (`v0.0.2-unreleased`)
 
 # Who maintains `nix-installer` and why?
 

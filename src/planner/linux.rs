@@ -1,6 +1,6 @@
 use crate::{
     action::{
-        base::CreateDirectory,
+        base::{CreateDirectory, RemoveDirectory},
         common::{ConfigureInitService, ConfigureNix, ProvisionNix},
         StatefulAction,
     },
@@ -11,6 +11,8 @@ use crate::{
 };
 use std::{collections::HashMap, path::Path};
 use tokio::process::Command;
+
+use super::ShellProfileLocations;
 
 /// A planner for Linux installs
 #[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
@@ -80,11 +82,19 @@ impl Planner for Linux {
                 .await
                 .map_err(PlannerError::Action)?
                 .boxed(),
-            ConfigureNix::plan(&self.settings)
+            ConfigureNix::plan(ShellProfileLocations::default(), &self.settings)
                 .await
                 .map_err(PlannerError::Action)?
                 .boxed(),
-            ConfigureInitService::plan(self.init.init, self.init.start_daemon)
+            ConfigureInitService::plan(
+                self.init.init,
+                self.init.start_daemon,
+                self.settings.ssl_cert_file.clone(),
+            )
+            .await
+            .map_err(PlannerError::Action)?
+            .boxed(),
+            RemoveDirectory::plan(crate::settings::SCRATCH_DIR)
                 .await
                 .map_err(PlannerError::Action)?
                 .boxed(),
@@ -101,13 +111,33 @@ impl Planner for Linux {
         Ok(map)
     }
 
+    async fn configured_settings(
+        &self,
+    ) -> Result<HashMap<String, serde_json::Value>, PlannerError> {
+        let default = Self::default().await?.settings()?;
+        let configured = self.settings()?;
+
+        let mut settings: HashMap<String, serde_json::Value> = HashMap::new();
+        for (key, value) in configured.iter() {
+            if default.get(key) != Some(value) {
+                settings.insert(key.clone(), value.clone());
+            }
+        }
+
+        Ok(settings)
+    }
+
     #[cfg(feature = "diagnostics")]
     async fn diagnostic_data(&self) -> Result<crate::diagnostics::DiagnosticData, PlannerError> {
         Ok(crate::diagnostics::DiagnosticData::new(
             self.settings.diagnostic_endpoint.clone(),
             self.typetag_name().into(),
-            self.configured_settings().await?,
-        ))
+            self.configured_settings()
+                .await?
+                .into_keys()
+                .collect::<Vec<_>>(),
+            self.settings.ssl_cert_file.clone(),
+        )?)
     }
 }
 

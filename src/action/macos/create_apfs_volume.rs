@@ -3,11 +3,11 @@ use std::path::{Path, PathBuf};
 use tokio::process::Command;
 use tracing::{span, Span};
 
-use crate::action::{ActionError, StatefulAction};
+use crate::action::{ActionError, ActionTag, StatefulAction};
 use crate::execute_command;
-use serde::Deserialize;
 
 use crate::action::{Action, ActionDescription};
+use crate::os::darwin::DiskUtilApfsListOutput;
 
 #[derive(Debug, serde::Deserialize, serde::Serialize, Clone)]
 pub struct CreateApfsVolume {
@@ -25,32 +25,35 @@ impl CreateApfsVolume {
     ) -> Result<StatefulAction<Self>, ActionError> {
         let output =
             execute_command(Command::new("/usr/sbin/diskutil").args(["apfs", "list", "-plist"]))
-                .await
-                .map_err(ActionError::Command)?;
+                .await?;
 
         let parsed: DiskUtilApfsListOutput = plist::from_bytes(&output.stdout)?;
         for container in parsed.containers {
             for volume in container.volumes {
                 if volume.name == name {
-                    return Err(ActionError::Custom(Box::new(
-                        CreateApfsVolumeError::ExistingVolume(name),
-                    )));
+                    return Ok(StatefulAction::completed(Self {
+                        disk: disk.as_ref().to_path_buf(),
+                        name,
+                        case_sensitive,
+                    }));
                 }
             }
         }
 
-        Ok(Self {
+        Ok(StatefulAction::uncompleted(Self {
             disk: disk.as_ref().to_path_buf(),
             name,
             case_sensitive,
-        }
-        .into())
+        }))
     }
 }
 
 #[async_trait::async_trait]
 #[typetag::serde(name = "create_volume")]
 impl Action for CreateApfsVolume {
+    fn action_tag() -> ActionTag {
+        ActionTag("create_apfs_volume")
+    }
     fn tracing_synopsis(&self) -> String {
         format!(
             "Create an APFS volume on `{}` named `{}`",
@@ -98,8 +101,7 @@ impl Action for CreateApfsVolume {
                 ])
                 .stdin(std::process::Stdio::null()),
         )
-        .await
-        .map_err(|e| ActionError::Command(e))?;
+        .await?;
 
         Ok(())
     }
@@ -129,33 +131,8 @@ impl Action for CreateApfsVolume {
                 .args(["apfs", "deleteVolume", name])
                 .stdin(std::process::Stdio::null()),
         )
-        .await
-        .map_err(|e| ActionError::Command(e))?;
+        .await?;
 
         Ok(())
     }
-}
-
-#[derive(Debug, thiserror::Error)]
-pub enum CreateApfsVolumeError {
-    #[error("Existing volume called `{0}` found in `diskutil apfs list`, delete it with `diskutil apfs deleteVolume \"{0}\"`")]
-    ExistingVolume(String),
-}
-
-#[derive(Deserialize, Clone, Debug)]
-#[serde(rename_all = "PascalCase")]
-struct DiskUtilApfsListOutput {
-    containers: Vec<DiskUtilApfsContainer>,
-}
-
-#[derive(Deserialize, Clone, Debug)]
-#[serde(rename_all = "PascalCase")]
-struct DiskUtilApfsContainer {
-    volumes: Vec<DiskUtilApfsListVolume>,
-}
-
-#[derive(Deserialize, Clone, Debug)]
-#[serde(rename_all = "PascalCase")]
-struct DiskUtilApfsListVolume {
-    name: String,
 }

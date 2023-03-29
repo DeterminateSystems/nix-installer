@@ -3,7 +3,7 @@ use tracing::{span, Span};
 
 use crate::execute_command;
 
-use crate::action::{Action, ActionDescription, ActionError, StatefulAction};
+use crate::action::{Action, ActionDescription, ActionError, ActionTag, StatefulAction};
 
 /// Create the synthetic objects defined in `/etc/synthetic.conf`
 #[derive(Debug, serde::Deserialize, serde::Serialize, Clone)]
@@ -19,6 +19,9 @@ impl CreateSyntheticObjects {
 #[async_trait::async_trait]
 #[typetag::serde(name = "create_synthetic_objects")]
 impl Action for CreateSyntheticObjects {
+    fn action_tag() -> ActionTag {
+        ActionTag("create_synthetic_objects")
+    }
     fn tracing_synopsis(&self) -> String {
         "Create objects defined in `/etc/synthetic.conf`".to_string()
     }
@@ -88,6 +91,7 @@ impl Action for CreateSyntheticObjects {
     }
 }
 
+#[non_exhaustive]
 #[derive(Debug, thiserror::Error)]
 pub enum CreateSyntheticObjectsError {
     #[error("Failed to execute command")]

@@ -1,4 +1,4 @@
-/*! An executable or revertable step, possibly orcestrating sub-[`Action`]s using things like
+/*! An executable or revertable step, possibly orchestrating sub-[`Action`]s using things like
     [`JoinSet`](tokio::task::JoinSet)s
 
 
@@ -68,6 +68,9 @@ impl MyAction {
 #[async_trait::async_trait]
 #[typetag::serde(name = "my_action")]
 impl Action for MyAction {
+    fn action_tag() -> nix_installer::action::ActionTag {
+        "my_action".into()
+    }
     fn tracing_synopsis(&self) -> String {
         "My action".to_string()
     }
@@ -134,13 +137,33 @@ impl Planner for MyPlanner {
         Ok(map)
     }
 
+    async fn configured_settings(
+        &self,
+    ) -> Result<HashMap<String, serde_json::Value>, PlannerError> {
+        let default = Self::default().await?.settings()?;
+        let configured = self.settings()?;
+
+        let mut settings: HashMap<String, serde_json::Value> = HashMap::new();
+        for (key, value) in configured.iter() {
+            if default.get(key) != Some(value) {
+                settings.insert(key.clone(), value.clone());
+            }
+        }
+
+        Ok(settings)
+    }
+
     #[cfg(feature = "diagnostics")]
     async fn diagnostic_data(&self) -> Result<nix_installer::diagnostics::DiagnosticData, PlannerError> {
         Ok(nix_installer::diagnostics::DiagnosticData::new(
             self.common.diagnostic_endpoint.clone(),
             self.typetag_name().into(),
-            self.configured_settings().await?,
-        ))
+            self.configured_settings()
+                .await?
+                .into_keys()
+                .collect::<Vec<_>>(),
+            self.common.ssl_cert_file.clone(),
+        )?)
     }
 }
 
@@ -171,11 +194,11 @@ pub mod macos;
 mod stateful;
 
 pub use stateful::{ActionState, StatefulAction};
-use std::error::Error;
+use std::{error::Error, process::Output};
 use tokio::task::JoinError;
 use tracing::Span;
 
-use crate::error::HasExpectedErrors;
+use crate::{error::HasExpectedErrors, CertificateError};
 
 /// An action which can be reverted or completed, with an action state
 ///
@@ -185,6 +208,9 @@ use crate::error::HasExpectedErrors;
 #[async_trait::async_trait]
 #[typetag::serde(tag = "action")]
 pub trait Action: Send + Sync + std::fmt::Debug + dyn_clone::DynClone {
+    fn action_tag() -> ActionTag
+    where
+        Self: Sized;
     /// A synopsis of the action for tracing purposes
     fn tracing_synopsis(&self) -> String;
     /// A tracing span suitable for the action
@@ -252,17 +278,42 @@ impl ActionDescription {
     }
 }
 
+/// A 'tag' name an action has that corresponds to the one we serialize in [`typetag]`
+pub struct ActionTag(&'static str);
+
+impl std::fmt::Display for ActionTag {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.write_str(self.0)
+    }
+}
+
+impl std::fmt::Debug for ActionTag {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.write_str(self.0)
+    }
+}
+
+impl From<&'static str> for ActionTag {
+    fn from(value: &'static str) -> Self {
+        Self(value)
+    }
+}
+
 /// An error occurring during an action
+#[non_exhaustive]
 #[derive(thiserror::Error, Debug, strum::IntoStaticStr)]
 pub enum ActionError {
     /// A custom error
     #[error(transparent)]
     Custom(Box<dyn std::error::Error + Send + Sync>),
-    /// A child error
+    /// An error to do with certificates
     #[error(transparent)]
-    Child(#[from] Box<ActionError>),
+    Certificate(#[from] CertificateError),
+    /// A child error
+    #[error("Child action `{0}`")]
+    Child(ActionTag, #[source] Box<ActionError>),
     /// Several child errors
-    #[error("Multiple errors: {}", .0.iter().map(|v| {
+    #[error("Child action errors: {}", .0.iter().map(|v| {
         if let Some(source) = v.source() {
             format!("{v} ({source})")
         } else {
@@ -270,11 +321,20 @@ pub enum ActionError {
         }
     }).collect::<Vec<_>>().join(" & "))]
     Children(Vec<Box<ActionError>>),
-    /// The path already exists
+    /// The path already exists with different content that expected
     #[error(
         "`{0}` exists with different content than planned, consider removing it with `rm {0}`"
     )]
-    Exists(std::path::PathBuf),
+    DifferentContent(std::path::PathBuf),
+    /// The file already exists
+    #[error("`{0}` already exists, consider removing it with `rm {0}`")]
+    FileExists(std::path::PathBuf),
+    /// The directory already exists
+    #[error("`{0}` already exists, consider removing it with `rm -r {0}`")]
+    DirExists(std::path::PathBuf),
+    /// The symlink already exists
+    #[error("`{0}` already exists, consider removing it with `rm {0}`")]
+    SymlinkExists(std::path::PathBuf),
     #[error("`{0}` exists with a different uid ({1}) than planned ({2}), consider updating it with `chown {2} {0}`")]
     PathUserMismatch(std::path::PathBuf, u32, u32),
     #[error("`{0}` exists with a different gid ({1}) than planned ({2}), consider updating it with `chgrp {2} {0}`")]
@@ -283,8 +343,10 @@ pub enum ActionError {
         existing_mode = .1 & 0o777,
         planned_mode = .2 & 0o777)]
     PathModeMismatch(std::path::PathBuf, u32, u32),
-    #[error("`{0}` was not a file")]
+    #[error("Path `{0}` exists, but is not a file, consider removing it with `rm {0}`")]
     PathWasNotFile(std::path::PathBuf),
+    #[error("Path `{0}` exists, but is not a directory, consider removing it with `rm {0}`")]
+    PathWasNotDirectory(std::path::PathBuf),
     #[error("Getting metadata for {0}`")]
     GettingMetadata(std::path::PathBuf, #[source] std::io::Error),
     #[error("Creating directory `{0}`")]
@@ -311,8 +373,14 @@ pub enum ActionError {
         std::path::PathBuf,
         #[source] std::io::Error,
     ),
+    #[error("Canonicalizing `{0}`")]
+    Canonicalize(std::path::PathBuf, #[source] std::io::Error),
     #[error("Read path `{0}`")]
     Read(std::path::PathBuf, #[source] std::io::Error),
+    #[error("Reading directory `{0}`")]
+    ReadDir(std::path::PathBuf, #[source] std::io::Error),
+    #[error("Reading symbolic link `{0}`")]
+    ReadSymlink(std::path::PathBuf, #[source] std::io::Error),
     #[error("Open path `{0}`")]
     Open(std::path::PathBuf, #[source] std::io::Error),
     #[error("Write path `{0}`")]
@@ -340,8 +408,33 @@ pub enum ActionError {
     #[error("Chowning path `{0}`")]
     Chown(std::path::PathBuf, #[source] nix::errno::Errno),
     /// Failed to execute command
-    #[error("Failed to execute command")]
-    Command(#[source] std::io::Error),
+    #[error("Failed to execute command `{command}`",
+        command = .command,
+    )]
+    Command {
+        #[cfg(feature = "diagnostics")]
+        program: String,
+        command: String,
+        #[source]
+        error: std::io::Error,
+    },
+    #[error(
+        "Failed to execute command{maybe_status} `{command}`, stdout: {stdout}\nstderr: {stderr}\n",
+        command = .command,
+        stdout = String::from_utf8_lossy(&.output.stdout),
+        stderr = String::from_utf8_lossy(&.output.stderr),
+        maybe_status = if let Some(status) = .output.status.code() {
+            format!(" with status {status}")
+        } else {
+            "".to_string()
+        }
+    )]
+    CommandOutput {
+        #[cfg(feature = "diagnostics")]
+        program: String,
+        command: String,
+        output: Output,
+    },
     #[error("Joining spawned async task")]
     Join(
         #[source]
@@ -357,6 +450,48 @@ pub enum ActionError {
     /// A MacOS (Darwin) plist related error
     #[error(transparent)]
     Plist(#[from] plist::Error),
+    #[error("Unexpected binary tarball contents found, the build result from `https://releases.nixos.org/?prefix=nix/` or `nix build nix#hydraJobs.binaryTarball.$SYSTEM` is expected")]
+    MalformedBinaryTarball,
+    #[error(
+        "Could not find a supported command to create users in PATH; please install `useradd` or `adduser`"
+    )]
+    MissingUserCreationCommand,
+    #[error("Could not find a supported command to create groups in PATH; please install `groupadd` or `addgroup`")]
+    MissingGroupCreationCommand,
+    #[error("Could not find a supported command to add users to groups in PATH; please install `gpasswd` or `addgroup`")]
+    MissingAddUserToGroupCommand,
+    #[error(
+        "Could not find a supported command to delete users in PATH; please install `userdel` or `deluser`"
+    )]
+    MissingUserDeletionCommand,
+    #[error("Could not find a supported command to delete groups in PATH; please install `groupdel` or `delgroup`")]
+    MissingGroupDeletionCommand,
+    #[error("Could not find a supported command to remove users from groups in PATH; please install `gpasswd` or `deluser`")]
+    MissingRemoveUserFromGroupCommand,
+    #[error("\
+        Could not detect systemd; you may be able to get up and running without systemd with `nix-installer install linux --init none`.\n\
+        See https://github.com/DeterminateSystems/nix-installer#without-systemd-linux-only for documentation on usage and drawbacks.\
+        ")]
+    SystemdMissing,
+}
+
+impl ActionError {
+    pub fn command(command: &tokio::process::Command, error: std::io::Error) -> Self {
+        Self::Command {
+            #[cfg(feature = "diagnostics")]
+            program: command.as_std().get_program().to_string_lossy().into(),
+            command: format!("{:?}", command.as_std()),
+            error,
+        }
+    }
+    pub fn command_output(command: &tokio::process::Command, output: std::process::Output) -> Self {
+        Self::CommandOutput {
+            #[cfg(feature = "diagnostics")]
+            program: command.as_std().get_program().to_string_lossy().into(),
+            command: format!("{:?}", command.as_std()),
+            output,
+        }
+    }
 }
 
 impl HasExpectedErrors for ActionError {
@@ -367,5 +502,58 @@ impl HasExpectedErrors for ActionError {
             | Self::PathModeMismatch(_, _, _) => Some(Box::new(self)),
             _ => None,
         }
+    }
+}
+
+#[cfg(feature = "diagnostics")]
+impl crate::diagnostics::ErrorDiagnostic for ActionError {
+    fn diagnostic(&self) -> String {
+        let static_str: &'static str = (self).into();
+        let context = match self {
+            Self::Child(action, _) => vec![action.to_string()],
+            Self::Read(path, _)
+            | Self::Open(path, _)
+            | Self::Write(path, _)
+            | Self::Flush(path, _)
+            | Self::SetPermissions(_, path, _)
+            | Self::GettingMetadata(path, _)
+            | Self::CreateDirectory(path, _)
+            | Self::PathWasNotFile(path) => {
+                vec![path.to_string_lossy().to_string()]
+            },
+            Self::Rename(first_path, second_path, _)
+            | Self::Copy(first_path, second_path, _)
+            | Self::Symlink(first_path, second_path, _) => {
+                vec![
+                    first_path.to_string_lossy().to_string(),
+                    second_path.to_string_lossy().to_string(),
+                ]
+            },
+            Self::NoGroup(name) | Self::NoUser(name) => {
+                vec![name.clone()]
+            },
+            Self::Command {
+                program,
+                command: _,
+                error: _,
+            }
+            | Self::CommandOutput {
+                program,
+                command: _,
+                output: _,
+            } => {
+                vec![program.clone()]
+            },
+            _ => vec![],
+        };
+        return format!(
+            "{}({})",
+            static_str,
+            context
+                .iter()
+                .map(|v| format!("\"{v}\""))
+                .collect::<Vec<_>>()
+                .join(", ")
+        );
     }
 }

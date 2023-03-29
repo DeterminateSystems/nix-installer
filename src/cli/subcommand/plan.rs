@@ -13,7 +13,12 @@ use crate::cli::CommandExecute;
 pub struct Plan {
     #[clap(subcommand)]
     pub planner: Option<BuiltinPlanner>,
-    #[clap(env = "NIX_INSTALLER_PLAN", default_value = "/dev/stdout")]
+    /// Where to write the generated plan (in JSON format)
+    #[clap(
+        long = "out-file",
+        env = "NIX_INSTALLER_PLAN_OUT_FILE",
+        default_value = "/dev/stdout"
+    )]
     pub output: PathBuf,
 }
 
@@ -25,21 +30,19 @@ impl CommandExecute for Plan {
 
         let planner = match planner {
             Some(planner) => planner,
-            None => BuiltinPlanner::default()
-                .await
-                .map_err(|e| eyre::eyre!(e))?,
+            None => BuiltinPlanner::default().await?,
         };
 
         let res = planner.plan().await;
 
         let install_plan = match res {
             Ok(plan) => plan,
-            Err(e) => {
-                if let Some(expected) = e.expected() {
+            Err(err) => {
+                if let Some(expected) = err.expected() {
                     eprintln!("{}", expected.red());
                     return Ok(ExitCode::FAILURE);
                 }
-                return Err(e.into());
+                return Err(err)?;
             },
         };
 

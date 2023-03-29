@@ -53,13 +53,33 @@ impl Planner for MyPlanner {
         Ok(map)
     }
 
+    async fn configured_settings(
+        &self,
+    ) -> Result<HashMap<String, serde_json::Value>, PlannerError> {
+        let default = Self::default().await?.settings()?;
+        let configured = self.settings()?;
+
+        let mut settings: HashMap<String, serde_json::Value> = HashMap::new();
+        for (key, value) in configured.iter() {
+            if default.get(key) != Some(value) {
+                settings.insert(key.clone(), value.clone());
+            }
+        }
+
+        Ok(settings)
+    }
+
     #[cfg(feature = "diagnostics")]
     async fn diagnostic_data(&self) -> Result<nix_installer::diagnostics::DiagnosticData, PlannerError> {
         Ok(nix_installer::diagnostics::DiagnosticData::new(
             self.common.diagnostic_endpoint.clone(),
             self.typetag_name().into(),
-            self.configured_settings().await?,
-        ))
+            self.configured_settings()
+                .await?
+                .into_keys()
+                .collect::<Vec<_>>(),
+            self.common.ssl_cert_file.clone(),
+        )?)
     }
 }
 
@@ -89,7 +109,9 @@ pub mod macos;
 #[cfg(target_os = "linux")]
 pub mod steam_deck;
 
-use std::{collections::HashMap, string::FromUtf8Error};
+use std::{collections::HashMap, path::PathBuf, string::FromUtf8Error};
+
+use serde::{Deserialize, Serialize};
 
 use crate::{
     action::{ActionError, StatefulAction},
@@ -111,21 +133,8 @@ pub trait Planner: std::fmt::Debug + Send + Sync + dyn_clone::DynClone {
     /// The settings being used by the planner
     fn settings(&self) -> Result<HashMap<String, serde_json::Value>, InstallSettingsError>;
 
-    async fn configured_settings(&self) -> Result<Vec<String>, PlannerError>
-    where
-        Self: Sized,
-    {
-        let default = Self::default().await?.settings()?;
-        let configured = self.settings()?;
-
-        let mut keys: Vec<String> = Vec::new();
-        for (key, value) in configured.iter() {
-            if default.get(key) != Some(value) {
-                keys.push(key.clone())
-            }
-        }
-        Ok(keys)
-    }
+    async fn configured_settings(&self)
+        -> Result<HashMap<String, serde_json::Value>, PlannerError>;
 
     /// A boxed, type erased planner
     fn boxed(self) -> Box<dyn Planner>
@@ -200,7 +209,9 @@ impl BuiltinPlanner {
         Ok(built)
     }
 
-    pub async fn configured_settings(&self) -> Result<Vec<String>, PlannerError> {
+    pub async fn configured_settings(
+        &self,
+    ) -> Result<HashMap<String, serde_json::Value>, PlannerError> {
         match self {
             #[cfg(target_os = "linux")]
             BuiltinPlanner::Linux(inner) => inner.configured_settings().await,
@@ -269,7 +280,70 @@ impl BuiltinPlanner {
     }
 }
 
+#[derive(Debug, Deserialize, Serialize, PartialEq, Eq, Clone)]
+pub struct ShellProfileLocations {
+    pub fish: FishShellProfileLocations,
+    pub bash: Vec<PathBuf>,
+    pub zsh: Vec<PathBuf>,
+}
+
+impl Default for ShellProfileLocations {
+    fn default() -> Self {
+        Self {
+            fish: FishShellProfileLocations::default(),
+            bash: vec![
+                "/etc/bashrc".into(),
+                "/etc/profile.d/nix.sh".into(),
+                "/etc/bash.bashrc".into(),
+            ],
+            zsh: vec![
+                // https://zsh.sourceforge.io/Intro/intro_3.html
+                "/etc/zshrc".into(),
+                "/etc/zsh/zshrc".into(),
+            ],
+        }
+    }
+}
+
+#[derive(Debug, Deserialize, Serialize, PartialEq, Eq, Clone)]
+pub struct FishShellProfileLocations {
+    pub confd_suffix: PathBuf,
+    /**
+     Each of these are common values of $__fish_sysconf_dir,
+    under which Fish will look for the file named by
+    `confd_suffix`.
+    */
+    pub confd_prefixes: Vec<PathBuf>,
+    /// Fish has different syntax than zsh/bash, treat it separate
+    pub vendor_confd_suffix: PathBuf,
+    /**
+    Each of these are common values of $__fish_vendor_confdir,
+    under which Fish will look for the file named by
+    `confd_suffix`.
+
+    More info: <https://fishshell.com/docs/3.3/index.html#configuration-files>
+    */
+    pub vendor_confd_prefixes: Vec<PathBuf>,
+}
+
+impl Default for FishShellProfileLocations {
+    fn default() -> Self {
+        Self {
+            confd_prefixes: vec![
+                "/etc/fish".into(),              // standard
+                "/usr/local/etc/fish".into(),    // their installer .pkg for macOS
+                "/opt/homebrew/etc/fish".into(), // homebrew
+                "/opt/local/etc/fish".into(),    // macports
+            ],
+            confd_suffix: "conf.d/nix.fish".into(),
+            vendor_confd_prefixes: vec!["/usr/share/fish/".into(), "/usr/local/share/fish/".into()],
+            vendor_confd_suffix: "vendor_conf.d/nix.fish".into(),
+        }
+    }
+}
+
 /// An error originating from a [`Planner`]
+#[non_exhaustive]
 #[derive(thiserror::Error, Debug, strum::IntoStaticStr)]
 pub enum PlannerError {
     /// `nix-installer` does not have a default planner for the target architecture right now
@@ -288,6 +362,10 @@ pub enum PlannerError {
     /// A MacOS (Darwin) plist related error
     #[error(transparent)]
     Plist(#[from] plist::Error),
+    #[error(transparent)]
+    Sysctl(#[from] sysctl::SysctlError),
+    #[error("Detected that this process is running under Rosetta, using Nix in Rosetta is not supported (Please open an issue with your use case)")]
+    RosettaDetected,
     /// A Linux SELinux related error
     #[error("This installer doesn't yet support SELinux in `Enforcing` mode. If SELinux is important to you, please see https://github.com/DeterminateSystems/nix-installer/issues/124. You can also try again after setting SELinux to `Permissive` mode with `setenforce Permissive`")]
     SelinuxEnforcing,
@@ -303,6 +381,9 @@ pub enum PlannerError {
     NixExists,
     #[error("WSL1 is not supported, please upgrade to WSL2: https://learn.microsoft.com/en-us/windows/wsl/install#upgrade-version-from-wsl-1-to-wsl-2")]
     Wsl1,
+    #[cfg(feature = "diagnostics")]
+    #[error(transparent)]
+    Diagnostic(#[from] crate::diagnostics::DiagnosticError),
 }
 
 impl HasExpectedErrors for PlannerError {
@@ -312,12 +393,24 @@ impl HasExpectedErrors for PlannerError {
             PlannerError::Action(_) => None,
             PlannerError::InstallSettings(_) => None,
             PlannerError::Plist(_) => None,
+            PlannerError::Sysctl(_) => None,
+            this @ PlannerError::RosettaDetected => Some(Box::new(this)),
             PlannerError::Utf8(_) => None,
             PlannerError::SelinuxEnforcing => Some(Box::new(self)),
             PlannerError::Custom(_) => None,
             this @ PlannerError::NixOs => Some(Box::new(this)),
             this @ PlannerError::NixExists => Some(Box::new(this)),
             this @ PlannerError::Wsl1 => Some(Box::new(this)),
+            #[cfg(feature = "diagnostics")]
+            PlannerError::Diagnostic(diagnostic_error) => Some(Box::new(diagnostic_error)),
         }
+    }
+}
+
+#[cfg(feature = "diagnostics")]
+impl crate::diagnostics::ErrorDiagnostic for PlannerError {
+    fn diagnostic(&self) -> String {
+        let static_str: &'static str = (self).into();
+        return static_str.to_string();
     }
 }

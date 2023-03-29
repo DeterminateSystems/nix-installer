@@ -22,14 +22,21 @@ The `nix-installer` tool is ready to use in a number of environments:
 | Docker Containers            |                    | ✓           | Stable            |
 | Linux (i686)                 | ✓ (via [systemd])  | ✓           | Unstable          |
 
-> **MacOS note:** Removing users and/or groups may fail if there are no users who are logged in graphically.
+> **Note**
+> On **MacOS only**, removing users and/or groups may fail if there are no users who are logged in graphically.
 
 ## Installation Differences
 
 Differing from the current official [Nix](https://github.com/NixOS/nix) installer scripts:
 
-* Nix is installed with the `nix-command` and `flakes` features enabled in the `nix.conf`
-* `nix-installer` stores an installation receipt (for uninstalling) at `/nix/receipt.json` as well as a copy of the install binary at `/nix/nix-installer`
+* In `nix.conf`:
+  + the `nix-command` and `flakes` features are enabled
+  + `bash-prompt-prefix` is set
+  + `auto-optimise-store` is set to `true`
+  * `extra-nix-path` is set to `nixpkgs=flake:nixpkgs`
+* an installation receipt (for uninstalling) is stored at `/nix/receipt.json` as well as a copy of the install binary at `/nix/nix-installer`
+* `nix-channel --update` is not run, `~/.nix-channels` is not provisioned
+* `NIX_SSL_CERT_FILE` is set in the various shell profiles if the `ssl-cert-file` argument is used.
 
 ## Motivations
 
@@ -60,6 +67,7 @@ $ curl -sL -o nix-installer https://install.determinate.systems/nix/nix-installe
 $ chmod +x nix-installer
 ```
 
+> **Note**
 > `nix-installer` will elevate itself if needed using `sudo`. If you use `doas` or `please` you may need to elevate `nix-installer` yourself.
 
 `nix-installer` installs Nix by following a *plan* made by a *planner*. Review the available planners:
@@ -147,11 +155,27 @@ jobs:
       run: nix build .
 ```
 
+## Without systemd (Linux only)
+
+> **Warning**
+> When `--init none` is used, _only_ `root` or users who can elevate to `root` privileges can run Nix:
+>
+> ```bash
+> sudo -i nix run nixpkgs#hello
+> ```
+
+If you don't use [systemd], you can still install Nix by explicitly specifying the `linux` plan and `--init none`:
+
+```bash
+curl --proto '=https' --tlsv1.2 -sSf -L https://install.determinate.systems/nix | sh -s -- install linux --init none
+```
+
 ## In a container
 
-In Docker/Podman containers or WSL instances where an init (like `systemd`) is not present, pass `--init none`.
+In Docker/Podman containers or WSL2 instances where an init (like `systemd`) is not present, pass `--init none`.
 
-> When `--init none` is used, only `root` or sudoers can run Nix:
+> **Warning**
+> When `--init none` is used, _only_ `root` or users who can elevate to `root` privileges can run Nix:
 >
 > ```bash
 > sudo -i nix run nixpkgs#hello
@@ -185,7 +209,7 @@ ENV PATH="${PATH}:/nix/var/nix/profiles/default/bin"
 RUN nix run nixpkgs#hello
 ```
 
-For Podman containers with an init:
+For Podman containers with a systemd init:
 
 ```dockerfile
 # Dockerfile
@@ -199,7 +223,7 @@ RUN nix run nixpkgs#hello
 CMD [ "/usr/sbin/init" ]
 ```
 
-## In WSL
+## In WSL2
 
 If [systemd is enabled](https://ubuntu.com/blog/ubuntu-wsl-enable-systemd) it's possible to install Nix as normal using the command at the top of this document:
 
@@ -209,7 +233,8 @@ curl --proto '=https' --tlsv1.2 -sSf -L https://install.determinate.systems/nix 
 
 If systemd is not enabled, pass `--init none` at the end of the command:
 
-> When `--init none` is used, only `root` or sudoers can run Nix:
+> **Warning**
+> When `--init none` is used, _only_ `root` or users who can elevate to `root` privileges can run Nix:
 >
 > ```bash
 > sudo -i nix run nixpkgs#hello
@@ -237,13 +262,25 @@ Since you'll be using `nix-installer` to install Nix on systems without Nix, the
 Build a portable Linux binary on a system with Nix:
 
 ```bash
-nix build -L github:determinatesystems/nix-installer#nix-installer-static
+# to build a local copy
+nix build -L ".#nix-installer-static"
+# to build the remote main development branch
+nix build -L "github:determinatesystems/nix-installer#nix-installer-static"
+# for a specific version of the installer:
+export NIX_INSTALLER_TAG="v0.6.0"
+nix build -L "github:determinatesystems/nix-installer/$NIX_INSTALLER_TAG#nix-installer-static"
 ```
 
 On Mac:
 
 ```bash
-nix build -L github:determinatesystems/nix-installer#nix-installer
+# to build a local copy
+nix build -L ".#nix-installer"
+# to build the remote main development branch
+nix build -L "github:determinatesystems/nix-installer#nix-installer"
+# for a specific version of the installer:
+export NIX_INSTALLER_TAG="v0.6.0"
+nix build -L "github:determinatesystems/nix-installer/$NIX_INSTALLER_TAG#nix-installer"
 ```
 
 Then copy the `result/bin/nix-installer` to the machine you wish to run it on.
@@ -251,17 +288,26 @@ Then copy the `result/bin/nix-installer` to the machine you wish to run it on.
 You can also add `nix-installer` to a system without Nix via `cargo`:
 
 ```bash
-RUSTFLAGS="--cfg tokio_unstable" cargo install nix-installer
+# to build and run a local copy
+RUSTFLAGS="--cfg tokio_unstable" cargo run -- --help
+# to build the remote main development branch
+RUSTFLAGS="--cfg tokio_unstable" cargo install --git https://github.com/DeterminateSystems/nix-installer
+nix-installer --help
+# for a specific version of the installer:
+export NIX_INSTALLER_TAG="v0.6.0"
+RUSTFLAGS="--cfg tokio_unstable" cargo install --git https://github.com/DeterminateSystems/nix-installer --tag $NIX_INSTALLER_TAG
 nix-installer --help
 ```
 
 To make this build portable, pass ` --target x86_64-unknown-linux-musl`.
 
+> **Note**
 > We currently require `--cfg tokio_unstable` as we utilize [Tokio's process groups](https://docs.rs/tokio/1.24.1/tokio/process/struct.Command.html#method.process_group), which wrap stable `std` APIs, but are unstable due to it requiring an MSRV bump.
 
 
 ## As a library
 
+> **Warning**
 > Use as a library is still experimental, if you're using this, please let us know and we can make a path to stablization.
 
 Add `nix-installer` to your dependencies:
@@ -270,7 +316,7 @@ Add `nix-installer` to your dependencies:
 cargo add nix-installer
 ```
 
-> **Building a CLI?** Check out the `cli` feature flag for `clap` integration.
+If you are **building a CLI**, check out the `cli` feature flag for `clap` integration.
 
 You'll also need to edit your `.cargo/config.toml` to use `tokio_unstable` as we utilize [Tokio's process groups](https://docs.rs/tokio/1.24.1/tokio/process/struct.Command.html#method.process_group), which wrap stable `std` APIs, but are unstable due to it requiring an MSRV bump:
 
@@ -293,6 +339,53 @@ nix build github:DeterminateSystems/nix-installer#nix-installer.doc
 firefox result-doc/nix-installer/index.html
 ```
 
+## Quirks
+
+While `nix-installer` tries to provide a comprehensive and unquirky experience, there are unfortunately some issues which may require manual intervention or operator choices.
+
+### Using MacOS remote SSH builders, Nix binaries are not on `$PATH`
+
+When connecting to a Mac remote SSH builder users may sometimes see this error:
+
+```bash
+$ nix store ping --store "ssh://$USER@$HOST"
+Store URL: ssh://$USER@$HOST
+zsh:1: command not found: nix-store
+error: cannot connect to '$USER@$HOST'
+```
+
+The way MacOS populates the `PATH` environment differs from other environments. ([Some background](https://gist.github.com/Linerre/f11ad4a6a934dcf01ee8415c9457e7b2))
+
+There are two possible workarounds for this:
+
+* **(Preferred)** Update the remote builder URL to include the `remote-program` parameter pointing to `nix-store`. For example:
+  ```bash
+  nix store ping --store "ssh://$USER@$HOST?remote-program=/nix/var/nix/profiles/default/bin/nix-store"
+  ```
+  If you are unsure where the `nix-store` binary is located, run `which nix-store` on the remote.
+* Update `/etc/zshenv` on the remote so that `zsh` populates the Nix path for every shell, even those that are neither *interactive* or *login*:
+  ```bash
+  # Nix
+  if [ -e '/nix/var/nix/profiles/default/etc/profile.d/nix-daemon.sh' ]; then
+      . '/nix/var/nix/profiles/default/etc/profile.d/nix-daemon.sh'
+  fi
+  # End Nix
+  ```
+  <details>
+    <summary>This strategy has some behavioral caveats, namely, <code>$PATH</code> may have unexpected contents</summary>
+
+    For example, if `$PATH` gets unset then a script invoked, `$PATH` may not be as empty as expected:
+    ```bash
+    $ cat example.sh     
+    #! /bin/zsh
+    echo $PATH
+    $ PATH= ./example.sh 
+    /Users/ephemeraladmin/.nix-profile/bin:/nix/var/nix/profiles/default/bin:
+    ```
+    This strategy results in Nix's paths being present on `$PATH` twice and may have a minor impact on performance.
+
+  </details>
+
 ## Diagnostics
 
 The goal of the Determinate Nix Installer is to successfully and correctly install Nix.
@@ -311,7 +404,7 @@ Here is a table of the [diagnostic data we collect][diagnosticdata]:
 | `is_ci`               | Whether the installer is being used in CI (e.g. GitHub Actions).                                      |
 | `action`              | Either `Install` or `Uninstall`.                                                                      |
 | `status`              | One of `Success`, `Failure`, `Pending`, or `Cancelled`.                                               |
-| `failure_variant`     | A high level description of what the failure was, if any. For example: `Command` if a command failed. |
+| `failure_chain`     | A high level description of what the failure was, if any. For example: `Command("diskutil")` if the command `diskutil list` failed. |
 
 To disable diagnostic reporting, set the diagnostics URL to an empty string by passing `--diagnostic-endpoint=""` or setting `NIX_INSTALLER_DIAGNOSTIC_ENDPOINT=""`.
 

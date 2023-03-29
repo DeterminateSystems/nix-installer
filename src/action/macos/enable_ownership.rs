@@ -4,11 +4,11 @@ use std::path::{Path, PathBuf};
 use tokio::process::Command;
 use tracing::{span, Span};
 
-use crate::action::{ActionError, StatefulAction};
+use crate::action::{ActionError, ActionTag, StatefulAction};
 use crate::execute_command;
 
 use crate::action::{Action, ActionDescription};
-use crate::os::darwin::DiskUtilOutput;
+use crate::os::darwin::DiskUtilInfoOutput;
 
 /**
 Enable ownership on a volume
@@ -31,8 +31,11 @@ impl EnableOwnership {
 #[async_trait::async_trait]
 #[typetag::serde(name = "enable_ownership")]
 impl Action for EnableOwnership {
+    fn action_tag() -> ActionTag {
+        ActionTag("enable_ownership")
+    }
     fn tracing_synopsis(&self) -> String {
-        format!("Enable ownership on {}", self.path.display())
+        format!("Enable ownership on `{}`", self.path.display())
     }
 
     fn tracing_span(&self) -> Span {
@@ -59,10 +62,9 @@ impl Action for EnableOwnership {
                     .arg(&path)
                     .stdin(std::process::Stdio::null()),
             )
-            .await
-            .map_err(ActionError::Command)?
+            .await?
             .stdout;
-            let the_plist: DiskUtilOutput = plist::from_reader(Cursor::new(buf))?;
+            let the_plist: DiskUtilInfoOutput = plist::from_reader(Cursor::new(buf))?;
 
             the_plist.global_permissions_enabled
         };
@@ -75,8 +77,7 @@ impl Action for EnableOwnership {
                     .arg(path)
                     .stdin(std::process::Stdio::null()),
             )
-            .await
-            .map_err(ActionError::Command)?;
+            .await?;
         }
 
         Ok(())
@@ -93,6 +94,7 @@ impl Action for EnableOwnership {
     }
 }
 
+#[non_exhaustive]
 #[derive(Debug, thiserror::Error)]
 pub enum EnableOwnershipError {
     #[error("Failed to execute command")]

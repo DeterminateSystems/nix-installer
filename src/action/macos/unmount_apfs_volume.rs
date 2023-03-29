@@ -1,12 +1,14 @@
+use std::io::Cursor;
 use std::path::{Path, PathBuf};
 
 use tokio::process::Command;
 use tracing::{span, Span};
 
-use crate::action::{ActionError, StatefulAction};
+use crate::action::{ActionError, ActionTag, StatefulAction};
 use crate::execute_command;
 
 use crate::action::{Action, ActionDescription};
+use crate::os::darwin::DiskUtilInfoOutput;
 
 /**
 Unmount an APFS volume
@@ -31,6 +33,9 @@ impl UnmountApfsVolume {
 #[async_trait::async_trait]
 #[typetag::serde(name = "unmount_volume")]
 impl Action for UnmountApfsVolume {
+    fn action_tag() -> ActionTag {
+        ActionTag("unmount_apfs_volume")
+    }
     fn tracing_synopsis(&self) -> String {
         format!("Unmount the `{}` APFS volume", self.name)
     }
@@ -52,15 +57,33 @@ impl Action for UnmountApfsVolume {
     async fn execute(&mut self) -> Result<(), ActionError> {
         let Self { disk: _, name } = self;
 
-        execute_command(
-            Command::new("/usr/sbin/diskutil")
-                .process_group(0)
-                .args(["unmount", "force"])
-                .arg(name)
-                .stdin(std::process::Stdio::null()),
-        )
-        .await
-        .map_err(|e| ActionError::Command(e))?;
+        let currently_mounted = {
+            let buf = execute_command(
+                Command::new("/usr/sbin/diskutil")
+                    .process_group(0)
+                    .args(["info", "-plist"])
+                    .arg(&name)
+                    .stdin(std::process::Stdio::null()),
+            )
+            .await?
+            .stdout;
+            let the_plist: DiskUtilInfoOutput = plist::from_reader(Cursor::new(buf))?;
+
+            the_plist.mount_point.is_some()
+        };
+
+        if !currently_mounted {
+            execute_command(
+                Command::new("/usr/sbin/diskutil")
+                    .process_group(0)
+                    .args(["unmount", "force"])
+                    .arg(name)
+                    .stdin(std::process::Stdio::null()),
+            )
+            .await?;
+        } else {
+            tracing::debug!("Volume was already unmounted, can skip unmounting")
+        }
 
         Ok(())
     }
@@ -80,8 +103,7 @@ impl Action for UnmountApfsVolume {
                 .arg(name)
                 .stdin(std::process::Stdio::null()),
         )
-        .await
-        .map_err(|e| ActionError::Command(e))?;
+        .await?;
 
         Ok(())
     }

@@ -1,7 +1,7 @@
 use tokio::process::Command;
 use tracing::{span, Span};
 
-use crate::action::{ActionError, ActionState, StatefulAction};
+use crate::action::{ActionError, ActionState, ActionTag, StatefulAction};
 use crate::execute_command;
 
 use crate::action::{Action, ActionDescription};
@@ -22,12 +22,13 @@ impl StartSystemdUnit {
         enable: bool,
     ) -> Result<StatefulAction<Self>, ActionError> {
         let unit = unit.as_ref();
-        let output = Command::new("systemctl")
-            .arg("is-active")
-            .arg(unit)
+        let mut command = Command::new("systemctl");
+        command.arg("is-active");
+        command.arg(unit);
+        let output = command
             .output()
             .await
-            .map_err(ActionError::Command)?;
+            .map_err(|e| ActionError::command(&command, e))?;
 
         let state = if output.status.success() {
             tracing::debug!("Starting systemd unit `{}` already complete", unit);
@@ -49,6 +50,9 @@ impl StartSystemdUnit {
 #[async_trait::async_trait]
 #[typetag::serde(name = "start_systemd_unit")]
 impl Action for StartSystemdUnit {
+    fn action_tag() -> ActionTag {
+        ActionTag("start_systemd_unit")
+    }
     fn tracing_synopsis(&self) -> String {
         format!("Enable (and start) the systemd unit {}", self.unit)
     }
@@ -80,8 +84,7 @@ impl Action for StartSystemdUnit {
                         .arg(format!("{unit}"))
                         .stdin(std::process::Stdio::null()),
                 )
-                .await
-                .map_err(|e| ActionError::Custom(Box::new(StartSystemdUnitError::Command(e))))?;
+                .await?;
             },
             false => {
                 // TODO(@Hoverbear): Handle proxy vars
@@ -92,8 +95,7 @@ impl Action for StartSystemdUnit {
                         .arg(format!("{unit}"))
                         .stdin(std::process::Stdio::null()),
                 )
-                .await
-                .map_err(|e| ActionError::Custom(Box::new(StartSystemdUnitError::Command(e))))?;
+                .await?;
             },
         }
 
@@ -119,8 +121,7 @@ impl Action for StartSystemdUnit {
                     .arg(format!("{unit}"))
                     .stdin(std::process::Stdio::null()),
             )
-            .await
-            .map_err(|e| ActionError::Custom(Box::new(StartSystemdUnitError::Command(e))))?;
+            .await?;
         };
 
         // We do both to avoid an error doing `disable --now` if the user did stop it already somehow.
@@ -131,13 +132,13 @@ impl Action for StartSystemdUnit {
                 .arg(format!("{unit}"))
                 .stdin(std::process::Stdio::null()),
         )
-        .await
-        .map_err(|e| ActionError::Custom(Box::new(StartSystemdUnitError::Command(e))))?;
+        .await?;
 
         Ok(())
     }
 }
 
+#[non_exhaustive]
 #[derive(Debug, thiserror::Error)]
 pub enum StartSystemdUnitError {
     #[error("Failed to execute command")]

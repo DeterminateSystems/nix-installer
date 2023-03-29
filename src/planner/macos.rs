@@ -4,14 +4,17 @@ use std::{collections::HashMap, io::Cursor};
 use clap::ArgAction;
 use tokio::process::Command;
 
+use super::ShellProfileLocations;
+
 use crate::{
     action::{
+        base::RemoveDirectory,
         common::{ConfigureInitService, ConfigureNix, ProvisionNix},
         macos::CreateNixVolume,
         StatefulAction,
     },
     execute_command,
-    os::darwin::DiskUtilOutput,
+    os::darwin::DiskUtilInfoOutput,
     planner::{Planner, PlannerError},
     settings::InstallSettingsError,
     settings::{CommonSettings, InitSystem},
@@ -67,7 +70,7 @@ async fn default_root_disk() -> Result<String, PlannerError> {
     .await
     .unwrap()
     .stdout;
-    let the_plist: DiskUtilOutput = plist::from_reader(Cursor::new(buf))?;
+    let the_plist: DiskUtilInfoOutput = plist::from_reader(Cursor::new(buf))?;
 
     Ok(the_plist.parent_whole_disk)
 }
@@ -86,6 +89,8 @@ impl Planner for Macos {
     }
 
     async fn plan(&self) -> Result<Vec<StatefulAction<Box<dyn Action>>>, PlannerError> {
+        ensure_not_running_in_rosetta().await?;
+
         let root_disk = match &self.root_disk {
             root_disk @ Some(_) => root_disk.clone(),
             None => {
@@ -97,24 +102,28 @@ impl Planner for Macos {
                 .await
                 .unwrap()
                 .stdout;
-                let the_plist: DiskUtilOutput = plist::from_reader(Cursor::new(buf)).unwrap();
+                let the_plist: DiskUtilInfoOutput = plist::from_reader(Cursor::new(buf)).unwrap();
 
                 Some(the_plist.parent_whole_disk)
             },
         };
 
         let encrypt = if self.encrypt == None {
-            Command::new("/usr/bin/fdesetup")
+            let output = Command::new("/usr/bin/fdesetup")
                 .arg("isactive")
                 .stdout(std::process::Stdio::null())
                 .stderr(std::process::Stdio::null())
                 .process_group(0)
-                .status()
+                .output()
                 .await
-                .map_err(|e| PlannerError::Custom(Box::new(e)))?
-                .code()
-                .map(|v| if v == 0 { false } else { true })
-                .unwrap_or(false)
+                .map_err(|e| PlannerError::Custom(Box::new(e)))?;
+
+            let stdout = String::from_utf8_lossy(&output.stdout);
+            if stdout == "true" {
+                true
+            } else {
+                false
+            }
         } else {
             false
         };
@@ -137,11 +146,19 @@ impl Planner for Macos {
                 .await
                 .map_err(PlannerError::Action)?
                 .boxed(),
-            ConfigureNix::plan(&self.settings)
+            ConfigureNix::plan(ShellProfileLocations::default(), &self.settings)
                 .await
                 .map_err(PlannerError::Action)?
                 .boxed(),
-            ConfigureInitService::plan(InitSystem::Launchd, true)
+            ConfigureInitService::plan(
+                InitSystem::Launchd,
+                true,
+                self.settings.ssl_cert_file.clone(),
+            )
+            .await
+            .map_err(PlannerError::Action)?
+            .boxed(),
+            RemoveDirectory::plan(crate::settings::SCRATCH_DIR)
                 .await
                 .map_err(PlannerError::Action)?
                 .boxed(),
@@ -170,13 +187,33 @@ impl Planner for Macos {
         Ok(map)
     }
 
+    async fn configured_settings(
+        &self,
+    ) -> Result<HashMap<String, serde_json::Value>, PlannerError> {
+        let default = Self::default().await?.settings()?;
+        let configured = self.settings()?;
+
+        let mut settings: HashMap<String, serde_json::Value> = HashMap::new();
+        for (key, value) in configured.iter() {
+            if default.get(key) != Some(value) {
+                settings.insert(key.clone(), value.clone());
+            }
+        }
+
+        Ok(settings)
+    }
+
     #[cfg(feature = "diagnostics")]
     async fn diagnostic_data(&self) -> Result<crate::diagnostics::DiagnosticData, PlannerError> {
         Ok(crate::diagnostics::DiagnosticData::new(
             self.settings.diagnostic_endpoint.clone(),
             self.typetag_name().into(),
-            self.configured_settings().await?,
-        ))
+            self.configured_settings()
+                .await?
+                .into_keys()
+                .collect::<Vec<_>>(),
+            self.settings.ssl_cert_file.clone(),
+        )?)
     }
 }
 
@@ -184,4 +221,24 @@ impl Into<BuiltinPlanner> for Macos {
     fn into(self) -> BuiltinPlanner {
         BuiltinPlanner::Macos(self)
     }
+}
+
+async fn ensure_not_running_in_rosetta() -> Result<(), PlannerError> {
+    use sysctl::{Ctl, Sysctl};
+    const CTLNAME: &str = "sysctl.proc_translated";
+
+    match Ctl::new(CTLNAME) {
+        // This Mac doesn't have Rosetta!
+        Err(sysctl::SysctlError::NotFound(_)) => (),
+        Err(e) => Err(e)?,
+        Ok(ctl) => {
+            let str_val = ctl.value_string()?;
+
+            if str_val == "1" {
+                return Err(PlannerError::RosettaDetected);
+            }
+        },
+    }
+
+    Ok(())
 }

@@ -57,7 +57,7 @@ pub struct Install {
 
 #[async_trait::async_trait]
 impl CommandExecute for Install {
-    #[tracing::instrument(level = "debug", skip_all)]
+    #[tracing::instrument(level = "trace", skip_all)]
     async fn execute(self) -> eyre::Result<ExitCode> {
         let Self {
             no_confirm,
@@ -71,12 +71,18 @@ impl CommandExecute for Install {
 
         let existing_receipt: Option<InstallPlan> = match Path::new(RECEIPT_LOCATION).exists() {
             true => {
+                tracing::trace!("Reading existing receipt");
                 let install_plan_string = tokio::fs::read_to_string(&RECEIPT_LOCATION)
                     .await
                     .wrap_err("Reading plan")?;
                 Some(serde_json::from_str(&install_plan_string)?)
             },
             false => None,
+        };
+
+        let uninstall_command = match Path::new("/nix/nix-installer").exists() {
+            true => "/nix/nix-installer uninstall".into(),
+            false => format!("curl --proto '=https' --tlsv1.2 -sSf -L https://install.determinate.systems/nix/tag/v{} | sh -s -- uninstall", env!("CARGO_PKG_VERSION")),
         };
 
         let mut install_plan = match (planner, plan) {
@@ -86,18 +92,15 @@ impl CommandExecute for Install {
                 match existing_receipt {
                     Some(existing_receipt) => {
                         if existing_receipt.planner.typetag_name() != chosen_planner.typetag_name() {
-                            eprintln!("{}", format!("Found existing plan in `{RECEIPT_LOCATION}` which used a different planner, try uninstalling the existing install").red());
+                            eprintln!("{}", format!("Found existing plan in `{RECEIPT_LOCATION}` which used a different planner, try uninstalling the existing install with `{uninstall_command}`").red());
                             return Ok(ExitCode::FAILURE)
                         }
                         if existing_receipt.planner.settings().map_err(|e| eyre!(e))? != chosen_planner.settings().map_err(|e| eyre!(e))? {
-                            eprintln!("{}", format!("Found existing plan in `{RECEIPT_LOCATION}` which used different planner settings, try uninstalling the existing install").red());
+                            eprintln!("{}", format!("Found existing plan in `{RECEIPT_LOCATION}` which used different planner settings, try uninstalling the existing install with `{uninstall_command}`").red());
                             return Ok(ExitCode::FAILURE)
                         }
-                        if existing_receipt.actions.iter().all(|v| v.state == ActionState::Completed) {
-                            eprintln!("{}", format!("Found existing plan in `{RECEIPT_LOCATION}`, with the same settings, already completed, try uninstalling and reinstalling if Nix isn't working").red());
-                            return Ok(ExitCode::FAILURE)
-                        }
-                        existing_receipt
+                        eprintln!("{}", format!("Found existing plan in `{RECEIPT_LOCATION}`, with the same settings, already completed, try uninstalling (`{uninstall_command}`) and reinstalling if Nix isn't working").red());
+                        return Ok(ExitCode::FAILURE)
                     } ,
                     None => {
                         planner.plan().await.map_err(|e| eyre!(e))?
@@ -111,21 +114,22 @@ impl CommandExecute for Install {
                 serde_json::from_str(&install_plan_string)?
             },
             (None, None) => {
-                let builtin_planner = BuiltinPlanner::from_common_settings(settings)
+                let builtin_planner = BuiltinPlanner::from_common_settings(settings.clone())
                     .await
                     .map_err(|e| eyre::eyre!(e))?;
+
                 match existing_receipt {
                     Some(existing_receipt) => {
                         if existing_receipt.planner.typetag_name() != builtin_planner.typetag_name() {
-                            eprintln!("{}", format!("Found existing plan in `{RECEIPT_LOCATION}` which used a different planner, try uninstalling the existing install").red());
+                            eprintln!("{}", format!("Found existing plan in `{RECEIPT_LOCATION}` which used a different planner, try uninstalling the existing install with `{uninstall_command}`").red());
                             return Ok(ExitCode::FAILURE)
                         }
                         if existing_receipt.planner.settings().map_err(|e| eyre!(e))? != builtin_planner.settings().map_err(|e| eyre!(e))? {
-                            eprintln!("{}", format!("Found existing plan in `{RECEIPT_LOCATION}` which used different planner settings, try uninstalling the existing install").red());
+                            eprintln!("{}", format!("Found existing plan in `{RECEIPT_LOCATION}` which used different planner settings, try uninstalling the existing install with `{uninstall_command}`").red());
                             return Ok(ExitCode::FAILURE)
                         }
                         if existing_receipt.actions.iter().all(|v| v.state == ActionState::Completed) {
-                            eprintln!("{}", format!("Found existing plan in `{RECEIPT_LOCATION}`, with the same settings, already completed, try uninstalling and reinstalling if Nix isn't working").red());
+                            eprintln!("{}", format!("Found existing plan in `{RECEIPT_LOCATION}`, with the same settings, already completed, try uninstalling (`{uninstall_command}`) and reinstalling if Nix isn't working").red());
                             return Ok(ExitCode::FAILURE)
                         }
                         existing_receipt
@@ -139,7 +143,7 @@ impl CommandExecute for Install {
                                     eprintln!("{}", expected.red());
                                     return Ok(ExitCode::FAILURE);
                                 }
-                                return Err(err.into())
+                                return Err(err)?;
                             }
                         }
                     },
@@ -154,6 +158,7 @@ impl CommandExecute for Install {
                 match interaction::prompt(
                     install_plan
                         .describe_install(currently_explaining)
+                        .await
                         .map_err(|e| eyre!(e))?,
                     PromptChoice::Yes,
                     currently_explaining,
@@ -193,6 +198,7 @@ impl CommandExecute for Install {
                         match interaction::prompt(
                             install_plan
                                 .describe_uninstall(currently_explaining)
+                                .await
                                 .map_err(|e| eyre!(e))?,
                             PromptChoice::Yes,
                             currently_explaining,
@@ -212,12 +218,12 @@ impl CommandExecute for Install {
                     let rx2 = tx.subscribe();
                     let res = install_plan.uninstall(rx2).await;
 
-                    if let Err(e) = res {
-                        if let Some(expected) = e.expected() {
+                    if let Err(err) = res {
+                        if let Some(expected) = err.expected() {
                             eprintln!("{}", expected.red());
                             return Ok(ExitCode::FAILURE);
                         }
-                        return Err(e.into());
+                        return Err(err)?;
                     } else {
                         println!(
                             "\
@@ -233,7 +239,7 @@ impl CommandExecute for Install {
                     }
 
                     let error = eyre!(err).wrap_err("Install failure");
-                    return Err(error);
+                    return Err(error)?;
                 }
             },
             Ok(_) => {
@@ -243,7 +249,7 @@ impl CommandExecute for Install {
                 println!(
                     "\
                     {success}\n\
-                    To get started using Nix, open a new shell or run `{shell_reminder}`\n\
+                    To get started using Nix, open a new shell or run `{maybe_ssl_cert_file_reminder}{shell_reminder}`\n\
                     ",
                     success = "Nix was installed successfully!".green().bold(),
                     shell_reminder = match std::env::var("SHELL") {
@@ -252,6 +258,16 @@ impl CommandExecute for Install {
                         Ok(_) | Err(_) =>
                             ". /nix/var/nix/profiles/default/etc/profile.d/nix-daemon.sh".bold(),
                     },
+                    maybe_ssl_cert_file_reminder = if let Some(ssl_cert_file) = &settings.ssl_cert_file {
+                        format!(
+                            "export NIX_SSL_CERT_FILE={:?}; ",
+                            ssl_cert_file
+                                .canonicalize()
+                                .map_err(|e| { eyre!(e).wrap_err(format!("Could not canonicalize {}", ssl_cert_file.display())) })?
+                        )
+                    } else {
+                        "".to_string()
+                    }
                 );
             },
         }

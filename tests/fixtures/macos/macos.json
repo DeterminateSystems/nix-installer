@@ -1,10 +1,10 @@
 {
-  "version": "0.4.0",
+  "version": "0.6.1-unreleased",
   "actions": [
     {
       "action": {
         "action": "create_apfs_volume",
-        "disk": "disk3",
+        "disk": "disk1",
         "name": "Nix Store",
         "case_sensitive": false,
         "encrypt": true,
@@ -25,14 +25,14 @@
         },
         "unmount_volume": {
           "action": {
-            "disk": "disk3",
+            "disk": "disk1",
             "name": "Nix Store"
           },
           "state": "Uncompleted"
         },
         "create_volume": {
           "action": {
-            "disk": "disk3",
+            "disk": "disk1",
             "name": "Nix Store",
             "case_sensitive": false
           },
@@ -40,13 +40,14 @@
         },
         "create_fstab_entry": {
           "action": {
-            "apfs_volume_label": "Nix Store"
+            "apfs_volume_label": "Nix Store",
+            "existing_entry": "None"
           },
           "state": "Uncompleted"
         },
         "encrypt_volume": {
           "action": {
-            "disk": "disk3",
+            "disk": "disk1",
             "name": "Nix Store"
           },
           "state": "Uncompleted"
@@ -54,17 +55,25 @@
         "setup_volume_daemon": {
           "action": {
             "path": "/Library/LaunchDaemons/org.nixos.darwin-store.plist",
-            "user": null,
-            "group": null,
-            "mode": null,
-            "buf": "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<!DOCTYPE plist PUBLIC \"-//Apple Computer//DTD PLIST 1.0//EN\" \"http://www.apple.com/DTDs/PropertyList-1.0.dtd\">\n<plist version=\"1.0\">\n<dict>\n<key>RunAtLoad</key>\n<true/>\n<key>Label</key>\n<string>org.nixos.darwin-store</string>\n<key>ProgramArguments</key>\n<array>\n<string>/bin/sh</string>\n\n<string>-c</string>\n\n<string>/usr/bin/security find-generic-password -s \"Nix Store\" -w |  /usr/sbin/diskutil apfs unlockVolume \"Nix Store\" -mountpoint /nix -stdinpassphrase</string>\n</array>\n</dict>\n</plist>\n",
-            "force": false
+            "apfs_volume_label": "Nix Store",
+            "mount_service_label": "org.nixos.darwin-store",
+            "mount_point": "/nix",
+            "encrypt": false
           },
           "state": "Uncompleted"
         },
         "bootstrap_volume": {
           "action": {
+            "domain": "system",
+            "service": "org.nixos.darwin-store",
             "path": "/Library/LaunchDaemons/org.nixos.darwin-store.plist"
+          },
+          "state": "Uncompleted"
+        },
+        "kickstart_launchctl_service": {
+          "action": {
+            "domain": "system",
+            "service": "org.nixos.darwin-store"
           },
           "state": "Uncompleted"
         },
@@ -82,7 +91,7 @@
         "action": "provision_nix",
         "fetch_nix": {
           "action": {
-            "url": "https://releases.nixos.org/nix/nix-2.13.2/nix-2.13.2-aarch64-darwin.tar.xz",
+            "url": "https://releases.nixos.org/nix/nix-2.13.2/nix-2.13.2-x86_64-darwin.tar.xz",
             "dest": "/nix/temp-install-dir"
           },
           "state": "Uncompleted"
@@ -104,15 +113,7 @@
             "create_users": [
               {
                 "action": {
-                  "name": "_nixbld0",
-                  "uid": 300,
-                  "groupname": "nixbld",
-                  "gid": 3000
-                },
-                "state": "Uncompleted"
-              },
-              {
-                "action": {
+                  "comment": "Nix build user 1",
                   "name": "_nixbld1",
                   "uid": 301,
                   "groupname": "nixbld",
@@ -122,6 +123,7 @@
               },
               {
                 "action": {
+                  "comment": "Nix build user 2",
                   "name": "_nixbld2",
                   "uid": 302,
                   "groupname": "nixbld",
@@ -131,6 +133,7 @@
               },
               {
                 "action": {
+                  "comment": "Nix build user 3",
                   "name": "_nixbld3",
                   "uid": 303,
                   "groupname": "nixbld",
@@ -140,6 +143,7 @@
               },
               {
                 "action": {
+                  "comment": "Nix build user 4",
                   "name": "_nixbld4",
                   "uid": 304,
                   "groupname": "nixbld",
@@ -149,6 +153,7 @@
               },
               {
                 "action": {
+                  "comment": "Nix build user 5",
                   "name": "_nixbld5",
                   "uid": 305,
                   "groupname": "nixbld",
@@ -158,6 +163,7 @@
               },
               {
                 "action": {
+                  "comment": "Nix build user 6",
                   "name": "_nixbld6",
                   "uid": 306,
                   "groupname": "nixbld",
@@ -167,6 +173,7 @@
               },
               {
                 "action": {
+                  "comment": "Nix build user 7",
                   "name": "_nixbld7",
                   "uid": 307,
                   "groupname": "nixbld",
@@ -176,6 +183,7 @@
               },
               {
                 "action": {
+                  "comment": "Nix build user 8",
                   "name": "_nixbld8",
                   "uid": 308,
                   "groupname": "nixbld",
@@ -185,6 +193,7 @@
               },
               {
                 "action": {
+                  "comment": "Nix build user 9",
                   "name": "_nixbld9",
                   "uid": 309,
                   "groupname": "nixbld",
@@ -194,6 +203,7 @@
               },
               {
                 "action": {
+                  "comment": "Nix build user 10",
                   "name": "_nixbld10",
                   "uid": 310,
                   "groupname": "nixbld",
@@ -203,6 +213,7 @@
               },
               {
                 "action": {
+                  "comment": "Nix build user 11",
                   "name": "_nixbld11",
                   "uid": 311,
                   "groupname": "nixbld",
@@ -212,6 +223,7 @@
               },
               {
                 "action": {
+                  "comment": "Nix build user 12",
                   "name": "_nixbld12",
                   "uid": 312,
                   "groupname": "nixbld",
@@ -221,6 +233,7 @@
               },
               {
                 "action": {
+                  "comment": "Nix build user 13",
                   "name": "_nixbld13",
                   "uid": 313,
                   "groupname": "nixbld",
@@ -230,6 +243,7 @@
               },
               {
                 "action": {
+                  "comment": "Nix build user 14",
                   "name": "_nixbld14",
                   "uid": 314,
                   "groupname": "nixbld",
@@ -239,6 +253,7 @@
               },
               {
                 "action": {
+                  "comment": "Nix build user 15",
                   "name": "_nixbld15",
                   "uid": 315,
                   "groupname": "nixbld",
@@ -248,6 +263,7 @@
               },
               {
                 "action": {
+                  "comment": "Nix build user 16",
                   "name": "_nixbld16",
                   "uid": 316,
                   "groupname": "nixbld",
@@ -257,6 +273,7 @@
               },
               {
                 "action": {
+                  "comment": "Nix build user 17",
                   "name": "_nixbld17",
                   "uid": 317,
                   "groupname": "nixbld",
@@ -266,6 +283,7 @@
               },
               {
                 "action": {
+                  "comment": "Nix build user 18",
                   "name": "_nixbld18",
                   "uid": 318,
                   "groupname": "nixbld",
@@ -275,6 +293,7 @@
               },
               {
                 "action": {
+                  "comment": "Nix build user 19",
                   "name": "_nixbld19",
                   "uid": 319,
                   "groupname": "nixbld",
@@ -284,6 +303,7 @@
               },
               {
                 "action": {
+                  "comment": "Nix build user 20",
                   "name": "_nixbld20",
                   "uid": 320,
                   "groupname": "nixbld",
@@ -293,6 +313,7 @@
               },
               {
                 "action": {
+                  "comment": "Nix build user 21",
                   "name": "_nixbld21",
                   "uid": 321,
                   "groupname": "nixbld",
@@ -302,6 +323,7 @@
               },
               {
                 "action": {
+                  "comment": "Nix build user 22",
                   "name": "_nixbld22",
                   "uid": 322,
                   "groupname": "nixbld",
@@ -311,6 +333,7 @@
               },
               {
                 "action": {
+                  "comment": "Nix build user 23",
                   "name": "_nixbld23",
                   "uid": 323,
                   "groupname": "nixbld",
@@ -320,6 +343,7 @@
               },
               {
                 "action": {
+                  "comment": "Nix build user 24",
                   "name": "_nixbld24",
                   "uid": 324,
                   "groupname": "nixbld",
@@ -329,6 +353,7 @@
               },
               {
                 "action": {
+                  "comment": "Nix build user 25",
                   "name": "_nixbld25",
                   "uid": 325,
                   "groupname": "nixbld",
@@ -338,6 +363,7 @@
               },
               {
                 "action": {
+                  "comment": "Nix build user 26",
                   "name": "_nixbld26",
                   "uid": 326,
                   "groupname": "nixbld",
@@ -347,6 +373,7 @@
               },
               {
                 "action": {
+                  "comment": "Nix build user 27",
                   "name": "_nixbld27",
                   "uid": 327,
                   "groupname": "nixbld",
@@ -356,6 +383,7 @@
               },
               {
                 "action": {
+                  "comment": "Nix build user 28",
                   "name": "_nixbld28",
                   "uid": 328,
                   "groupname": "nixbld",
@@ -365,6 +393,7 @@
               },
               {
                 "action": {
+                  "comment": "Nix build user 29",
                   "name": "_nixbld29",
                   "uid": 329,
                   "groupname": "nixbld",
@@ -374,6 +403,7 @@
               },
               {
                 "action": {
+                  "comment": "Nix build user 30",
                   "name": "_nixbld30",
                   "uid": 330,
                   "groupname": "nixbld",
@@ -383,8 +413,19 @@
               },
               {
                 "action": {
+                  "comment": "Nix build user 31",
                   "name": "_nixbld31",
                   "uid": 331,
+                  "groupname": "nixbld",
+                  "gid": 3000
+                },
+                "state": "Uncompleted"
+              },
+              {
+                "action": {
+                  "comment": "Nix build user 32",
+                  "name": "_nixbld32",
+                  "uid": 332,
                   "groupname": "nixbld",
                   "gid": 3000
                 },
@@ -394,15 +435,6 @@
             "add_users_to_groups": [
               {
                 "action": {
-                  "name": "_nixbld0",
-                  "uid": 300,
-                  "groupname": "nixbld",
-                  "gid": 3000
-                },
-                "state": "Uncompleted"
-              },
-              {
-                "action": {
                   "name": "_nixbld1",
                   "uid": 301,
                   "groupname": "nixbld",
@@ -675,6 +707,15 @@
                 "action": {
                   "name": "_nixbld31",
                   "uid": 331,
+                  "groupname": "nixbld",
+                  "gid": 3000
+                },
+                "state": "Uncompleted"
+              },
+              {
+                "action": {
+                  "name": "_nixbld32",
+                  "uid": 332,
                   "groupname": "nixbld",
                   "gid": 3000
                 },
@@ -823,7 +864,7 @@
         },
         "move_unpacked_nix": {
           "action": {
-            "src": "/nix/temp-install-dir"
+            "unpacked_path": "/nix/temp-install-dir"
           },
           "state": "Uncompleted"
         }
@@ -840,12 +881,38 @@
                 "nixpkgs",
                 "https://nixos.org/channels/nixpkgs-unstable"
               ]
-            ]
+            ],
+            "unpacked_path": "/nix/temp-install-dir"
           },
           "state": "Uncompleted"
         },
         "configure_shell_profile": {
           "action": {
+            "locations": {
+              "fish": {
+                "confd_suffix": "conf.d/nix.fish",
+                "confd_prefixes": [
+                  "/etc/fish",
+                  "/usr/local/etc/fish",
+                  "/opt/homebrew/etc/fish",
+                  "/opt/local/etc/fish"
+                ],
+                "vendor_confd_suffix": "vendor_conf.d/nix.fish",
+                "vendor_confd_prefixes": [
+                  "/usr/share/fish/",
+                  "/usr/local/share/fish/"
+                ]
+              },
+              "bash": [
+                "/etc/bashrc",
+                "/etc/profile.d/nix.sh",
+                "/etc/bash.bashrc"
+              ],
+              "zsh": [
+                "/etc/zshrc",
+                "/etc/zsh/zshrc"
+              ]
+            },
             "create_directories": [],
             "create_or_insert_into_files": [
               {
@@ -885,28 +952,6 @@
           },
           "state": "Uncompleted"
         },
-        "place_channel_configuration": {
-          "action": {
-            "channels": [
-              [
-                "nixpkgs",
-                "https://nixos.org/channels/nixpkgs-unstable"
-              ]
-            ],
-            "create_file": {
-              "action": {
-                "path": "/Users/ephemeraladmin/.nix-channels",
-                "user": null,
-                "group": null,
-                "mode": 436,
-                "buf": "https://nixos.org/channels/nixpkgs-unstable nixpkgs",
-                "force": false
-              },
-              "state": "Uncompleted"
-            }
-          },
-          "state": "Uncompleted"
-        },
         "place_nix_configuration": {
           "action": {
             "create_directory": {
@@ -919,14 +964,17 @@
               },
               "state": "Uncompleted"
             },
-            "create_file": {
+            "create_or_merge_nix_config": {
               "action": {
                 "path": "/etc/nix/nix.conf",
-                "user": null,
-                "group": null,
-                "mode": 436,
-                "buf": "# Generated by https://github.com/DeterminateSystems/nix-installer, version 0.3.0.\n\n\n\nbuild-users-group = nixbld\n\nexperimental-features = nix-command flakes\n\nauto-optimise-store = true\n\nbash-prompt-prefix = (nix:$name)\\040\n",
-                "force": false
+                "pending_nix_config": {
+                  "settings": {
+                    "bash-prompt-prefix": "(nix:$name)\\040",
+                    "auto-optimise-store": "true",
+                    "build-users-group": "nixbld",
+                    "experimental-features": "nix-command flakes"
+                  }
+                }
               },
               "state": "Uncompleted"
             }
@@ -938,7 +986,7 @@
     },
     {
       "action": {
-        "action": "configure_nix_daemon",
+        "action": "configure_init_service",
         "init": "Launchd",
         "start_daemon": true
       },
@@ -960,13 +1008,13 @@
       "nix_build_group_id": 3000,
       "nix_build_user_prefix": "_nixbld",
       "nix_build_user_id_base": 300,
-      "nix_package_url": "https://releases.nixos.org/nix/nix-2.13.2/nix-2.13.2-aarch64-darwin.tar.xz",
+      "nix_package_url": "https://releases.nixos.org/nix/nix-2.13.2/nix-2.13.2-x86_64-darwin.tar.xz",
       "extra_conf": [],
       "force": false
     },
     "encrypt": null,
     "case_sensitive": false,
     "volume_label": "Nix Store",
-    "root_disk": "disk3"
+    "root_disk": "disk1"
   }
 }

@@ -5,10 +5,15 @@ When enabled with the `diagnostics` feature (default) this module provides autom
 That endpoint can be a URL such as `https://our.project.org/nix-installer/diagnostics` or `file:///home/$USER/diagnostic.json` which receives a [`DiagnosticReport`] in JSON format.
 */
 
-use std::time::Duration;
+use std::{path::PathBuf, time::Duration};
 
 use os_release::OsRelease;
 use reqwest::Url;
+
+use crate::{
+    action::ActionError, parse_ssl_cert, planner::PlannerError, settings::InstallSettingsError,
+    CertificateError, NixInstallerError,
+};
 
 /// The static of an action attempt
 #[derive(Debug, serde::Deserialize, serde::Serialize, Clone)]
@@ -39,7 +44,7 @@ pub struct DiagnosticReport {
     pub action: DiagnosticAction,
     pub status: DiagnosticStatus,
     /// Generally this includes the [`strum::IntoStaticStr`] representation of the error, we take special care not to include parameters of the error (which may include secrets)
-    pub failure_variant: Option<String>,
+    pub failure_chain: Option<Vec<String>>,
 }
 
 /// A preparation of data to be sent to the `endpoint`.
@@ -53,18 +58,29 @@ pub struct DiagnosticData {
     triple: String,
     is_ci: bool,
     endpoint: Option<Url>,
-    failure_variant: Option<String>,
+    ssl_cert_file: Option<PathBuf>,
+    /// Generally this includes the [`strum::IntoStaticStr`] representation of the error, we take special care not to include parameters of the error (which may include secrets)
+    failure_chain: Option<Vec<String>>,
 }
 
 impl DiagnosticData {
-    pub fn new(endpoint: Option<Url>, planner: String, configured_settings: Vec<String>) -> Self {
+    pub fn new(
+        endpoint: Option<String>,
+        planner: String,
+        configured_settings: Vec<String>,
+        ssl_cert_file: Option<PathBuf>,
+    ) -> Result<Self, DiagnosticError> {
+        let endpoint = match endpoint {
+            Some(endpoint) => diagnostic_endpoint_parser(&endpoint)?,
+            None => None,
+        };
         let (os_name, os_version) = match OsRelease::new() {
             Ok(os_release) => (os_release.name, os_release.version),
             Err(_) => ("unknown".into(), "unknown".into()),
         };
         let is_ci = is_ci::cached()
             || std::env::var("NIX_INSTALLER_CI").unwrap_or_else(|_| "0".into()) == "1";
-        Self {
+        Ok(Self {
             endpoint,
             version: env!("CARGO_PKG_VERSION").into(),
             planner,
@@ -73,12 +89,43 @@ impl DiagnosticData {
             os_version,
             triple: target_lexicon::HOST.to_string(),
             is_ci,
-            failure_variant: None,
-        }
+            ssl_cert_file,
+            failure_chain: None,
+        })
     }
 
-    pub fn variant(mut self, variant: String) -> Self {
-        self.failure_variant = Some(variant);
+    pub fn failure(mut self, err: &NixInstallerError) -> Self {
+        let mut failure_chain = vec![];
+        let diagnostic = err.diagnostic();
+        failure_chain.push(diagnostic);
+
+        let mut walker: &dyn std::error::Error = &err;
+        while let Some(source) = walker.source() {
+            if let Some(downcasted) = source.downcast_ref::<ActionError>() {
+                let downcasted_diagnostic = downcasted.diagnostic();
+                failure_chain.push(downcasted_diagnostic);
+            }
+            if let Some(downcasted) = source.downcast_ref::<Box<ActionError>>() {
+                let downcasted_diagnostic = downcasted.diagnostic();
+                failure_chain.push(downcasted_diagnostic);
+            }
+            if let Some(downcasted) = source.downcast_ref::<PlannerError>() {
+                let downcasted_diagnostic = downcasted.diagnostic();
+                failure_chain.push(downcasted_diagnostic);
+            }
+            if let Some(downcasted) = source.downcast_ref::<InstallSettingsError>() {
+                let downcasted_diagnostic = downcasted.diagnostic();
+                failure_chain.push(downcasted_diagnostic);
+            }
+            if let Some(downcasted) = source.downcast_ref::<DiagnosticError>() {
+                let downcasted_diagnostic = downcasted.diagnostic();
+                failure_chain.push(downcasted_diagnostic);
+            }
+
+            walker = source;
+        }
+
+        self.failure_chain = Some(failure_chain);
         self
     }
 
@@ -92,7 +139,8 @@ impl DiagnosticData {
             triple,
             is_ci,
             endpoint: _,
-            failure_variant: variant,
+            ssl_cert_file: _,
+            failure_chain,
         } = self;
         DiagnosticReport {
             version: version.clone(),
@@ -104,7 +152,7 @@ impl DiagnosticData {
             is_ci: *is_ci,
             action,
             status,
-            failure_variant: variant.clone(),
+            failure_chain: failure_chain.clone(),
         }
     }
 
@@ -124,7 +172,15 @@ impl DiagnosticData {
         match endpoint.scheme() {
             "https" | "http" => {
                 tracing::debug!("Sending diagnostic to `{endpoint}`");
-                let client = reqwest::Client::new();
+                let mut buildable_client = reqwest::Client::builder();
+                if let Some(ssl_cert_file) = &self.ssl_cert_file {
+                    let ssl_cert = parse_ssl_cert(&ssl_cert_file).await?;
+                    buildable_client = buildable_client.add_root_certificate(ssl_cert);
+                }
+                let client = buildable_client
+                    .build()
+                    .map_err(|e| DiagnosticError::Reqwest(e))?;
+
                 let res = client
                     .post(endpoint.clone())
                     .body(serialized)
@@ -152,7 +208,8 @@ impl DiagnosticData {
     }
 }
 
-#[derive(thiserror::Error, Debug)]
+#[non_exhaustive]
+#[derive(thiserror::Error, Debug, strum::IntoStaticStr)]
 pub enum DiagnosticError {
     #[error("Unknown url scheme")]
     UnknownUrlScheme,
@@ -162,6 +219,13 @@ pub enum DiagnosticError {
         #[source]
         reqwest::Error,
     ),
+    /// Parsing URL
+    #[error("Parsing URL")]
+    Parse(
+        #[source]
+        #[from]
+        url::ParseError,
+    ),
     #[error("Write path `{0}`")]
     Write(std::path::PathBuf, #[source] std::io::Error),
     #[error("Serializing receipt")]
@@ -170,4 +234,38 @@ pub enum DiagnosticError {
         #[source]
         serde_json::Error,
     ),
+    #[error(transparent)]
+    Certificate(#[from] CertificateError),
+}
+
+pub trait ErrorDiagnostic {
+    fn diagnostic(&self) -> String;
+}
+
+impl ErrorDiagnostic for DiagnosticError {
+    fn diagnostic(&self) -> String {
+        let static_str: &'static str = (self).into();
+        return static_str.to_string();
+    }
+}
+
+pub fn diagnostic_endpoint_parser(input: &str) -> Result<Option<Url>, DiagnosticError> {
+    match Url::parse(input) {
+        Ok(v) => match v.scheme() {
+            "https" | "http" | "file" => Ok(Some(v)),
+            _ => Err(DiagnosticError::UnknownUrlScheme),
+        },
+        Err(url_error) if url_error == url::ParseError::RelativeUrlWithoutBase => {
+            match Url::parse(&format!("file://{input}")) {
+                Ok(v) => Ok(Some(v)),
+                Err(file_error) => Err(file_error)?,
+            }
+        },
+        Err(url_error) => Err(url_error)?,
+    }
+}
+
+pub fn diagnostic_endpoint_validator(input: &str) -> Result<String, DiagnosticError> {
+    let _ = diagnostic_endpoint_parser(input)?;
+    Ok(input.to_string())
 }

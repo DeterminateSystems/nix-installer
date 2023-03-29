@@ -10,7 +10,7 @@ use tokio::{
     io::{AsyncReadExt, AsyncWriteExt},
 };
 
-use crate::action::{Action, ActionDescription, ActionError, StatefulAction};
+use crate::action::{Action, ActionDescription, ActionError, ActionTag, StatefulAction};
 
 /** Create a file at the given location with the provided `buf`,
 optionally with an owning user, group, and mode.
@@ -120,7 +120,7 @@ impl CreateFile {
                 .map_err(|e| ActionError::Read(this.path.clone(), e))?;
 
             if discovered_buf != this.buf {
-                return Err(ActionError::Exists(this.path.clone()));
+                return Err(ActionError::DifferentContent(this.path.clone()));
             }
 
             tracing::debug!("Creating file `{}` already complete", this.path.display());
@@ -134,6 +134,9 @@ impl CreateFile {
 #[async_trait::async_trait]
 #[typetag::serde(name = "create_file")]
 impl Action for CreateFile {
+    fn action_tag() -> ActionTag {
+        ActionTag("create_file")
+    }
     fn tracing_synopsis(&self) -> String {
         format!("Create or overwrite file `{}`", self.path.display())
     }
@@ -343,7 +346,7 @@ mod test {
         )
         .await
         {
-            Err(ActionError::Exists(path)) => assert_eq!(path, test_file.as_path()),
+            Err(ActionError::DifferentContent(path)) => assert_eq!(path, test_file.as_path()),
             _ => return Err(eyre!("Should have returned an ActionError::Exists error")),
         }
 

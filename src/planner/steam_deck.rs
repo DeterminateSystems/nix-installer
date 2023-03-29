@@ -63,7 +63,7 @@ use std::{collections::HashMap, path::PathBuf};
 
 use crate::{
     action::{
-        base::{CreateDirectory, CreateFile},
+        base::{CreateDirectory, CreateFile, RemoveDirectory},
         common::{ConfigureInitService, ConfigureNix, ProvisionNix},
         linux::StartSystemdUnit,
         Action, StatefulAction,
@@ -72,6 +72,8 @@ use crate::{
     settings::{CommonSettings, InitSystem, InstallSettingsError},
     BuiltinPlanner,
 };
+
+use super::ShellProfileLocations;
 
 #[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
 #[cfg_attr(feature = "cli", derive(clap::Parser))]
@@ -205,6 +207,20 @@ impl Planner for SteamDeck {
         .await
         .map_err(PlannerError::Action)?;
 
+        // We need to remove this path since it's part of the read-only install.
+        let mut shell_profile_locations = ShellProfileLocations::default();
+        if let Some(index) = shell_profile_locations
+            .fish
+            .vendor_confd_prefixes
+            .iter()
+            .position(|v| *v == PathBuf::from("/usr/share/fish/"))
+        {
+            shell_profile_locations
+                .fish
+                .vendor_confd_prefixes
+                .remove(index);
+        }
+
         Ok(vec![
             CreateDirectory::plan(&persistence, None, None, 0o0755, true)
                 .await
@@ -221,16 +237,24 @@ impl Planner for SteamDeck {
                 .await
                 .map_err(PlannerError::Action)?
                 .boxed(),
-            ConfigureNix::plan(&self.settings)
+            ConfigureNix::plan(shell_profile_locations, &self.settings)
                 .await
                 .map_err(PlannerError::Action)?
                 .boxed(),
             // Init is required for the steam-deck archetype to make the `/nix` mount
-            ConfigureInitService::plan(InitSystem::Systemd, true)
+            ConfigureInitService::plan(
+                InitSystem::Systemd,
+                true,
+                self.settings.ssl_cert_file.clone(),
+            )
+            .await
+            .map_err(PlannerError::Action)?
+            .boxed(),
+            StartSystemdUnit::plan("ensure-symlinked-units-resolve.service".to_string(), true)
                 .await
                 .map_err(PlannerError::Action)?
                 .boxed(),
-            StartSystemdUnit::plan("ensure-symlinked-units-resolve.service".to_string(), true)
+            RemoveDirectory::plan(crate::settings::SCRATCH_DIR)
                 .await
                 .map_err(PlannerError::Action)?
                 .boxed(),
@@ -253,13 +277,33 @@ impl Planner for SteamDeck {
         Ok(map)
     }
 
+    async fn configured_settings(
+        &self,
+    ) -> Result<HashMap<String, serde_json::Value>, PlannerError> {
+        let default = Self::default().await?.settings()?;
+        let configured = self.settings()?;
+
+        let mut settings: HashMap<String, serde_json::Value> = HashMap::new();
+        for (key, value) in configured.iter() {
+            if default.get(key) != Some(value) {
+                settings.insert(key.clone(), value.clone());
+            }
+        }
+
+        Ok(settings)
+    }
+
     #[cfg(feature = "diagnostics")]
     async fn diagnostic_data(&self) -> Result<crate::diagnostics::DiagnosticData, PlannerError> {
         Ok(crate::diagnostics::DiagnosticData::new(
             self.settings.diagnostic_endpoint.clone(),
             self.typetag_name().into(),
-            self.configured_settings().await?,
-        ))
+            self.configured_settings()
+                .await?
+                .into_keys()
+                .collect::<Vec<_>>(),
+            self.settings.ssl_cert_file.clone(),
+        )?)
     }
 }
 
@@ -269,8 +313,9 @@ impl Into<BuiltinPlanner> for SteamDeck {
     }
 }
 
+#[non_exhaustive]
 #[derive(thiserror::Error, Debug)]
-enum SteamDeckError {
+pub enum SteamDeckError {
     #[error("`{0}` is not a path that can be canonicalized into an absolute path, bind mounts require an absolute path")]
     AbsolutePathRequired(PathBuf),
 }

@@ -65,11 +65,11 @@
           };
           sharedAttrs = {
             pname = "nix-installer";
-            version = "0.4.0";
+            version = "0.6.1-unreleased";
             src = builtins.path {
               name = "nix-installer-source";
               path = self;
-              filter = (path: type: baseNameOf path != "nix" || baseNameOf path != ".github");
+              filter = (path: type: baseNameOf path != "nix" && baseNameOf path != ".github");
             };
 
             nativeBuildInputs = with final; [ ];

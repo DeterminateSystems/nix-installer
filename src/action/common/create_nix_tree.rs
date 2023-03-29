@@ -1,7 +1,7 @@
 use tracing::{span, Span};
 
 use crate::action::base::CreateDirectory;
-use crate::action::{Action, ActionDescription, ActionError, StatefulAction};
+use crate::action::{Action, ActionDescription, ActionError, ActionTag, StatefulAction};
 
 const PATHS: &[&str] = &[
     "/nix/var",
@@ -33,7 +33,11 @@ impl CreateNixTree {
         let mut create_directories = Vec::default();
         for path in PATHS {
             // We use `create_dir` over `create_dir_all` to ensure we always set permissions right
-            create_directories.push(CreateDirectory::plan(path, None, None, 0o0755, false).await?)
+            create_directories.push(
+                CreateDirectory::plan(path, String::from("root"), None, 0o0755, false)
+                    .await
+                    .map_err(|e| ActionError::Child(CreateDirectory::action_tag(), Box::new(e)))?,
+            )
         }
 
         Ok(Self { create_directories }.into())
@@ -43,6 +47,9 @@ impl CreateNixTree {
 #[async_trait::async_trait]
 #[typetag::serde(name = "create_nix_tree")]
 impl Action for CreateNixTree {
+    fn action_tag() -> ActionTag {
+        ActionTag("create_nix_tree")
+    }
     fn tracing_synopsis(&self) -> String {
         "Create a directory tree in `/nix`".to_string()
     }
@@ -68,11 +75,12 @@ impl Action for CreateNixTree {
 
     #[tracing::instrument(level = "debug", skip_all)]
     async fn execute(&mut self) -> Result<(), ActionError> {
-        let Self { create_directories } = self;
-
         // Just do sequential since parallelizing this will have little benefit
-        for create_directory in create_directories {
-            create_directory.try_execute().await?
+        for create_directory in self.create_directories.iter_mut() {
+            create_directory
+                .try_execute()
+                .await
+                .map_err(|e| ActionError::Child(create_directory.action_tag(), Box::new(e)))?
         }
 
         Ok(())
@@ -100,11 +108,12 @@ impl Action for CreateNixTree {
 
     #[tracing::instrument(level = "debug", skip_all)]
     async fn revert(&mut self) -> Result<(), ActionError> {
-        let Self { create_directories } = self;
-
         // Just do sequential since parallelizing this will have little benefit
-        for create_directory in create_directories.iter_mut().rev() {
-            create_directory.try_revert().await?
+        for create_directory in self.create_directories.iter_mut().rev() {
+            create_directory
+                .try_revert()
+                .await
+                .map_err(|e| ActionError::Child(create_directory.action_tag(), Box::new(e)))?
         }
 
         Ok(())

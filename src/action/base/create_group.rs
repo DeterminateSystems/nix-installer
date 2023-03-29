@@ -2,7 +2,7 @@ use nix::unistd::Group;
 use tokio::process::Command;
 use tracing::{span, Span};
 
-use crate::action::ActionError;
+use crate::action::{ActionError, ActionTag};
 use crate::execute_command;
 
 use crate::action::{Action, ActionDescription, StatefulAction};
@@ -45,6 +45,9 @@ impl CreateGroup {
 #[async_trait::async_trait]
 #[typetag::serde(name = "create_group")]
 impl Action for CreateGroup {
+    fn action_tag() -> ActionTag {
+        ActionTag("create_group")
+    }
     fn tracing_synopsis(&self) -> String {
         format!("Create group `{}` (GID {})", self.name, self.gid)
     }
@@ -89,22 +92,32 @@ impl Action for CreateGroup {
                             "Nix build group for nix-daemon",
                             "-i",
                             &format!("{gid}"),
-                            name.as_str(),
+                            name,
                         ])
                         .stdin(std::process::Stdio::null()),
                 )
-                .await
-                .map_err(|e| ActionError::Command(e))?;
+                .await?;
             },
             _ => {
-                execute_command(
-                    Command::new("groupadd")
-                        .process_group(0)
-                        .args(["-g", &gid.to_string(), "--system", &name])
-                        .stdin(std::process::Stdio::null()),
-                )
-                .await
-                .map_err(|e| ActionError::Command(e))?;
+                if which::which("groupadd").is_ok() {
+                    execute_command(
+                        Command::new("groupadd")
+                            .process_group(0)
+                            .args(["-g", &gid.to_string(), "--system", name])
+                            .stdin(std::process::Stdio::null()),
+                    )
+                    .await?;
+                } else if which::which("addgroup").is_ok() {
+                    execute_command(
+                        Command::new("addgroup")
+                            .process_group(0)
+                            .args(["-g", &gid.to_string(), "--system", name])
+                            .stdin(std::process::Stdio::null()),
+                    )
+                    .await?;
+                } else {
+                    return Err(ActionError::MissingGroupCreationCommand);
+                }
             },
         };
 
@@ -138,19 +151,29 @@ impl Action for CreateGroup {
                         .args([".", "-delete", &format!("/Groups/{name}")])
                         .stdin(std::process::Stdio::null()),
                 )
-                .await
-                .map_err(|e| ActionError::Command(e))?;
+                .await?;
                 if !output.status.success() {}
             },
             _ => {
-                execute_command(
-                    Command::new("groupdel")
-                        .process_group(0)
-                        .arg(&name)
-                        .stdin(std::process::Stdio::null()),
-                )
-                .await
-                .map_err(ActionError::Command)?;
+                if which::which("groupdel").is_ok() {
+                    execute_command(
+                        Command::new("groupdel")
+                            .process_group(0)
+                            .arg(name)
+                            .stdin(std::process::Stdio::null()),
+                    )
+                    .await?;
+                } else if which::which("delgroup").is_ok() {
+                    execute_command(
+                        Command::new("delgroup")
+                            .process_group(0)
+                            .arg(name)
+                            .stdin(std::process::Stdio::null()),
+                    )
+                    .await?;
+                } else {
+                    return Err(ActionError::MissingGroupDeletionCommand);
+                }
             },
         };
 

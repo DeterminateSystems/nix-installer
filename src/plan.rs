@@ -65,34 +65,55 @@ impl InstallPlan {
         })
     }
     #[tracing::instrument(level = "debug", skip_all)]
-    pub fn describe_install(&self, explain: bool) -> Result<String, NixInstallerError> {
+    pub async fn describe_install(&self, explain: bool) -> Result<String, NixInstallerError> {
         let Self {
             planner,
             actions,
             version,
             ..
         } = self;
+
+        let plan_settings = if explain {
+            // List all settings when explaining
+            planner.settings()?
+        } else {
+            // Otherwise, only list user-configured settings
+            planner.configured_settings().await?
+        };
+        let mut plan_settings = plan_settings
+            .into_iter()
+            .map(|(k, v)| format!("* {k}: {v}", k = k.bold()))
+            .collect::<Vec<_>>();
+        // Stabilize output order
+        plan_settings.sort();
+
         let buf = format!(
             "\
             Nix install plan (v{version})\n\
+            Planner: {planner}{maybe_default_setting_note}\n\
             \n\
-            Planner: {planner}\n\
-            \n\
-            Planner settings:\n\
-            \n\
-            {plan_settings}\n\
-            \n\
-            The following actions will be taken:\n\
-            \n\
+            {maybe_plan_settings}\
+            Planned actions:\n\
             {actions}\n\
         ",
             planner = planner.typetag_name(),
-            plan_settings = planner
-                .settings()?
-                .into_iter()
-                .map(|(k, v)| format!("* {k}: {v}", k = k.bold()))
-                .collect::<Vec<_>>()
-                .join("\n"),
+            maybe_default_setting_note = if plan_settings.is_empty() {
+                String::from(" (with default settings)")
+            } else {
+                String::new()
+            },
+            maybe_plan_settings = if plan_settings.is_empty() {
+                String::new()
+            } else {
+                format!(
+                    "\
+                    Configured settings:\n\
+                    {plan_settings}\n\
+                    \n\
+                ",
+                    plan_settings = plan_settings.join("\n")
+                )
+            },
             actions = actions
                 .iter()
                 .map(|v| v.describe_execute())
@@ -154,18 +175,17 @@ impl InstallPlan {
             }
 
             tracing::info!("Step: {}", action.tracing_synopsis());
+            let typetag_name = action.inner_typetag_name();
             if let Err(err) = action.try_execute().await {
                 if let Err(err) = write_receipt(self.clone()).await {
                     tracing::error!("Error saving receipt: {:?}", err);
                 }
+                let err = NixInstallerError::Action(typetag_name.into(), err);
                 #[cfg(feature = "diagnostics")]
                 if let Some(diagnostic_data) = &self.diagnostic_data {
                     diagnostic_data
                         .clone()
-                        .variant({
-                            let x: &'static str = (&err).into();
-                            x.to_string()
-                        })
+                        .failure(&err)
                         .send(
                             crate::diagnostics::DiagnosticAction::Install,
                             crate::diagnostics::DiagnosticStatus::Failure,
@@ -173,7 +193,7 @@ impl InstallPlan {
                         .await?;
                 }
 
-                return Err(NixInstallerError::Action(err));
+                return Err(err);
             }
         }
 
@@ -193,39 +213,56 @@ impl InstallPlan {
     }
 
     #[tracing::instrument(level = "debug", skip_all)]
-    pub fn describe_uninstall(&self, explain: bool) -> Result<String, NixInstallerError> {
+    pub async fn describe_uninstall(&self, explain: bool) -> Result<String, NixInstallerError> {
         let Self {
-            version: _,
+            version,
             planner,
             actions,
             ..
         } = self;
+
+        let plan_settings = if explain {
+            // List all settings when explaining
+            planner.settings()?
+        } else {
+            // Otherwise, only list user-configured settings
+            planner.configured_settings().await?
+        };
+        let mut plan_settings = plan_settings
+            .into_iter()
+            .map(|(k, v)| format!("* {k}: {v}", k = k.bold()))
+            .collect::<Vec<_>>();
+        // Stabilize output order
+        plan_settings.sort();
+
         let buf = format!(
             "\
-            Nix uninstall plan\n\
+            Nix uninstall plan (v{version})\n\
             \n\
-            Planner: {planner}\n\
+            Planner: {planner}{maybe_default_setting_note}\n\
             \n\
-            Planner settings:\n\
-            \n\
-            {plan_settings}\n\
-            \n\
-            The following actions will be taken{maybe_explain}:\n\
-            \n\
+            {maybe_plan_settings}\
+            Planned actions:\n\
             {actions}\n\
         ",
-            maybe_explain = if !explain {
-                " (`--explain` for more context)"
-            } else {
-                ""
-            },
             planner = planner.typetag_name(),
-            plan_settings = planner
-                .settings()?
-                .into_iter()
-                .map(|(k, v)| format!("* {k}: {v}", k = k.bold()))
-                .collect::<Vec<_>>()
-                .join("\n"),
+            maybe_default_setting_note = if plan_settings.is_empty() {
+                String::from(" (with default settings)")
+            } else {
+                String::new()
+            },
+            maybe_plan_settings = if plan_settings.is_empty() {
+                String::new()
+            } else {
+                format!(
+                    "\
+                Configured settings:\n\
+                {plan_settings}\n\
+                \n\
+            ",
+                    plan_settings = plan_settings.join("\n")
+                )
+            },
             actions = actions
                 .iter()
                 .rev()
@@ -287,25 +324,24 @@ impl InstallPlan {
             }
 
             tracing::info!("Revert: {}", action.tracing_synopsis());
+            let typetag_name = action.inner_typetag_name();
             if let Err(err) = action.try_revert().await {
                 if let Err(err) = write_receipt(self.clone()).await {
                     tracing::error!("Error saving receipt: {:?}", err);
                 }
+                let err = NixInstallerError::Action(typetag_name.into(), err);
                 #[cfg(feature = "diagnostics")]
                 if let Some(diagnostic_data) = &self.diagnostic_data {
                     diagnostic_data
                         .clone()
-                        .variant({
-                            let x: &'static str = (&err).into();
-                            x.to_string()
-                        })
+                        .failure(&err)
                         .send(
                             crate::diagnostics::DiagnosticAction::Uninstall,
                             crate::diagnostics::DiagnosticStatus::Failure,
                         )
                         .await?;
                 }
-                return Err(NixInstallerError::Action(err));
+                return Err(err);
             }
         }
 

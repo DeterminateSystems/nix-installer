@@ -1,12 +1,11 @@
 use crate::{
     action::{
         base::{AddUserToGroup, CreateGroup, CreateUser},
-        Action, ActionDescription, ActionError, StatefulAction,
+        Action, ActionDescription, ActionError, ActionTag, StatefulAction,
     },
     settings::CommonSettings,
 };
-use tokio::task::JoinSet;
-use tracing::{span, Instrument, Span};
+use tracing::{span, Span};
 
 #[derive(Debug, serde::Deserialize, serde::Serialize, Clone)]
 pub struct CreateUsersAndGroups {
@@ -29,15 +28,17 @@ impl CreateUsersAndGroups {
         )?;
         let mut create_users = Vec::with_capacity(settings.nix_build_user_count as usize);
         let mut add_users_to_groups = Vec::with_capacity(settings.nix_build_user_count as usize);
-        for index in 0..settings.nix_build_user_count {
+        for index in 1..=settings.nix_build_user_count {
             create_users.push(
                 CreateUser::plan(
                     format!("{}{index}", settings.nix_build_user_prefix),
                     settings.nix_build_user_id_base + index,
                     settings.nix_build_group_name.clone(),
                     settings.nix_build_group_id,
+                    format!("Nix build user {index}"),
                 )
-                .await?,
+                .await
+                .map_err(|e| ActionError::Child(CreateUser::action_tag(), Box::new(e)))?,
             );
             add_users_to_groups.push(
                 AddUserToGroup::plan(
@@ -46,7 +47,8 @@ impl CreateUsersAndGroups {
                     settings.nix_build_group_name.clone(),
                     settings.nix_build_group_id,
                 )
-                .await?,
+                .await
+                .map_err(|e| ActionError::Child(AddUserToGroup::action_tag(), Box::new(e)))?,
             );
         }
         Ok(Self {
@@ -66,6 +68,9 @@ impl CreateUsersAndGroups {
 #[async_trait::async_trait]
 #[typetag::serde(name = "create_users_and_group")]
 impl Action for CreateUsersAndGroups {
+    fn action_tag() -> ActionTag {
+        ActionTag("create_users_and_group")
+    }
     fn tracing_synopsis(&self) -> String {
         format!(
             "Create build users (UID {}-{}) and group (GID {})",
@@ -151,12 +156,18 @@ impl Action for CreateUsersAndGroups {
             }
             | OperatingSystem::Darwin => {
                 for create_user in create_users.iter_mut() {
-                    create_user.try_execute().await?;
+                    create_user
+                        .try_execute()
+                        .await
+                        .map_err(|e| ActionError::Child(create_user.action_tag(), Box::new(e)))?;
                 }
             },
             _ => {
                 for create_user in create_users.iter_mut() {
-                    create_user.try_execute().await?;
+                    create_user
+                        .try_execute()
+                        .await
+                        .map_err(|e| ActionError::Child(create_user.action_tag(), Box::new(e)))?;
                 }
                 // While we may be tempted to do something like this, it can break on many older OSes like Ubuntu 18.04:
                 // ```
@@ -194,7 +205,10 @@ impl Action for CreateUsersAndGroups {
         };
 
         for add_user_to_group in add_users_to_groups.iter_mut() {
-            add_user_to_group.try_execute().await?;
+            add_user_to_group
+                .try_execute()
+                .await
+                .map_err(|e| ActionError::Child(add_user_to_group.action_tag(), Box::new(e)))?;
         }
 
         Ok(())
@@ -252,33 +266,11 @@ impl Action for CreateUsersAndGroups {
             nix_build_user_prefix: _,
             nix_build_user_id_base: _,
         } = self;
-        let mut set = JoinSet::new();
-
-        let mut errors = Vec::default();
-
-        for (idx, create_user) in create_users.iter().enumerate() {
-            let span = tracing::Span::current().clone();
-            let mut create_user_clone = create_user.clone();
-            let _abort_handle = set.spawn(async move {
-                create_user_clone.try_revert().instrument(span).await?;
-                Result::<_, ActionError>::Ok((idx, create_user_clone))
-            });
-        }
-
-        while let Some(result) = set.join_next().await {
-            match result {
-                Ok(Ok((idx, success))) => create_users[idx] = success,
-                Ok(Err(e)) => errors.push(Box::new(e)),
-                Err(e) => return Err(ActionError::Join(e))?,
-            };
-        }
-
-        if !errors.is_empty() {
-            if errors.len() == 1 {
-                return Err(errors.into_iter().next().unwrap().into());
-            } else {
-                return Err(ActionError::Children(errors));
-            }
+        for create_user in create_users.iter_mut() {
+            create_user
+                .try_revert()
+                .await
+                .map_err(|e| ActionError::Child(create_user.action_tag(), Box::new(e)))?;
         }
 
         // We don't actually need to do this, when a user is deleted they are removed from groups
@@ -287,7 +279,10 @@ impl Action for CreateUsersAndGroups {
         // }
 
         // Create group
-        create_group.try_revert().await?;
+        create_group
+            .try_revert()
+            .await
+            .map_err(|e| ActionError::Child(create_group.action_tag(), Box::new(e)))?;
 
         Ok(())
     }

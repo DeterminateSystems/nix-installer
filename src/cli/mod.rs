@@ -34,7 +34,7 @@ pub struct NixInstallerCli {
 
 #[async_trait::async_trait]
 impl CommandExecute for NixInstallerCli {
-    #[tracing::instrument(level = "debug", skip_all)]
+    #[tracing::instrument(level = "trace", skip_all)]
     async fn execute(self) -> eyre::Result<ExitCode> {
         let Self {
             instrumentation: _,
@@ -107,6 +107,8 @@ pub fn ensure_root() -> eyre::Result<()> {
                 "GITHUB_PATH" => true,
                 // Used for detecting what command to suggest for sourcing Nix
                 "SHELL" => true,
+                // Proxy settings (automatically picked up by Reqwest)
+                "HTTP_PROXY" | "http_proxy" | "HTTPS_PROXY" | "https_proxy" => true,
                 // Our own environments
                 key if key.starts_with("NIX_INSTALLER") => true,
                 _ => false,

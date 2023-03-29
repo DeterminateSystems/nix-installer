@@ -2,7 +2,7 @@
 
 `nix-installer` breaks down into three main concepts:
 
-* [`Action`]: An executable or revertable step, possibly orcestrating sub-[`Action`]s using things
+* [`Action`]: An executable or revertable step, possibly orchestrating sub-[`Action`]s using things
   like [`JoinSet`](tokio::task::JoinSet)s.
 * [`InstallPlan`]: A set of [`Action`]s, along with some metadata, which can be carried out to
   drive an install or revert.
@@ -70,7 +70,6 @@ match plan.install(None).await {
 */
 
 pub mod action;
-mod channel_value;
 #[cfg(feature = "cli")]
 pub mod cli;
 #[cfg(feature = "diagnostics")]
@@ -81,36 +80,27 @@ mod plan;
 pub mod planner;
 pub mod settings;
 
-use std::{ffi::OsStr, process::Output};
+use std::{ffi::OsStr, path::Path, process::Output};
 
-use action::Action;
+use action::{Action, ActionError};
 
-pub use channel_value::ChannelValue;
 pub use error::NixInstallerError;
 pub use plan::InstallPlan;
 use planner::BuiltinPlanner;
 
+use reqwest::Certificate;
 use tokio::process::Command;
 
 #[tracing::instrument(level = "debug", skip_all, fields(command = %format!("{:?}", command.as_std())))]
-async fn execute_command(command: &mut Command) -> Result<Output, std::io::Error> {
-    let command_str = format!("{:?}", command.as_std());
-    tracing::trace!("Executing `{command_str}`");
-    let output = command.output().await?;
+async fn execute_command(command: &mut Command) -> Result<Output, ActionError> {
+    tracing::trace!("Executing");
+    let output = command
+        .output()
+        .await
+        .map_err(|e| ActionError::command(command, e))?;
     match output.status.success() {
         true => Ok(output),
-        false => Err(std::io::Error::new(
-            std::io::ErrorKind::Other,
-            format!(
-                "Command `{command_str}` failed{}, stderr:\n{}\n",
-                if let Some(code) = output.status.code() {
-                    format!(" status {code}")
-                } else {
-                    "".to_string()
-                },
-                String::from_utf8_lossy(&output.stderr)
-            ),
-        )),
+        false => Err(ActionError::command_output(command, output)),
     }
 }
 
@@ -121,4 +111,29 @@ async fn execute_command(command: &mut Command) -> Result<Output, std::io::Error
 fn set_env(k: impl AsRef<OsStr>, v: impl AsRef<OsStr>) {
     tracing::trace!("Setting env");
     std::env::set_var(k.as_ref(), v.as_ref());
+}
+
+async fn parse_ssl_cert(ssl_cert_file: &Path) -> Result<Certificate, CertificateError> {
+    let cert_buf = tokio::fs::read(ssl_cert_file)
+        .await
+        .map_err(|e| CertificateError::Read(ssl_cert_file.to_path_buf(), e))?;
+    // We actually try them since things could be `.crt` and `pem` format or `der` format
+    let cert = if let Ok(cert) = Certificate::from_pem(cert_buf.as_slice()) {
+        cert
+    } else if let Ok(cert) = Certificate::from_der(cert_buf.as_slice()) {
+        cert
+    } else {
+        return Err(CertificateError::UnknownCertFormat);
+    };
+    Ok(cert)
+}
+
+#[derive(Debug, thiserror::Error)]
+pub enum CertificateError {
+    #[error(transparent)]
+    Reqwest(reqwest::Error),
+    #[error("Read path `{0}`")]
+    Read(std::path::PathBuf, #[source] std::io::Error),
+    #[error("Unknown certificate format, `der` and `pem` supported")]
+    UnknownCertFormat,
 }

@@ -1,12 +1,12 @@
 /*! Configurable knobs and their related errors
 */
-use std::collections::HashMap;
+use std::{collections::HashMap, path::PathBuf};
 
 #[cfg(feature = "cli")]
 use clap::ArgAction;
 use url::Url;
 
-use crate::channel_value::ChannelValue;
+pub const SCRATCH_DIR: &str = "/nix/temp-install-dir";
 
 /// Default [`nix_package_url`](CommonSettings::nix_package_url) for Linux x86_64
 pub const NIX_X64_64_LINUX_URL: &str =
@@ -57,20 +57,6 @@ Settings which only apply to certain [`Planner`](crate::planner::Planner)s shoul
 #[derive(Debug, serde::Deserialize, serde::Serialize, Clone)]
 #[cfg_attr(feature = "cli", derive(clap::Parser))]
 pub struct CommonSettings {
-    /// Channel(s) to add, for no default channel, pass `--channel`
-    #[cfg_attr(
-        feature = "cli",
-        clap(
-            value_parser,
-            long = "channel",
-            num_args = 0..,
-            action = clap::ArgAction::Append,
-            env = "NIX_INSTALLER_CHANNELS",
-            default_value = "nixpkgs=https://nixos.org/channels/nixpkgs-unstable",
-        )
-    )]
-    pub(crate) channels: Vec<ChannelValue>,
-
     /// Modify the user profile to automatically load nix
     #[cfg_attr(
         feature = "cli",
@@ -82,7 +68,7 @@ pub struct CommonSettings {
             long = "no-modify-profile"
         )
     )]
-    pub(crate) modify_profile: bool,
+    pub modify_profile: bool,
 
     /// Number of build users to create
     #[cfg_attr(
@@ -95,7 +81,7 @@ pub struct CommonSettings {
             global = true
         )
     )]
-    pub(crate) nix_build_user_count: u32,
+    pub nix_build_user_count: u32,
 
     /// The Nix build group name
     #[cfg_attr(
@@ -107,7 +93,7 @@ pub struct CommonSettings {
             global = true
         )
     )]
-    pub(crate) nix_build_group_name: String,
+    pub nix_build_group_name: String,
 
     /// The Nix build group GID
     #[cfg_attr(
@@ -119,7 +105,7 @@ pub struct CommonSettings {
             global = true
         )
     )]
-    pub(crate) nix_build_group_id: u32,
+    pub nix_build_group_id: u32,
 
     /// The Nix build user prefix (user numbers will be postfixed)
     #[cfg_attr(
@@ -134,7 +120,7 @@ pub struct CommonSettings {
         all(target_os = "linux", feature = "cli"),
         clap(default_value = "nixbld")
     )]
-    pub(crate) nix_build_user_prefix: String,
+    pub nix_build_user_prefix: String,
 
     /// The Nix build user base UID (ascending)
     #[cfg_attr(
@@ -147,7 +133,7 @@ pub struct CommonSettings {
         all(target_os = "linux", feature = "cli"),
         clap(default_value_t = 30_000)
     )]
-    pub(crate) nix_build_user_id_base: u32,
+    pub nix_build_user_id_base: u32,
 
     /// The Nix package URL
     #[cfg_attr(
@@ -184,7 +170,15 @@ pub struct CommonSettings {
             default_value = NIX_AARCH64_LINUX_URL,
         )
     )]
-    pub(crate) nix_package_url: Url,
+    pub nix_package_url: Url,
+
+    /// The proxy to use (if any), valid proxy bases are `https://$URL`, `http://$URL` and `socks5://$URL`
+    #[cfg_attr(feature = "cli", clap(long, env = "NIX_INSTALLER_PROXY"))]
+    pub proxy: Option<Url>,
+
+    /// An SSL cert to use (if any), used for fetching Nix and sets `NIX_SSL_CERT_FILE` for Nix
+    #[cfg_attr(feature = "cli", clap(long, env = "NIX_INSTALLER_SSL_CERT_FILE"))]
+    pub ssl_cert_file: Option<PathBuf>,
 
     /// Extra configuration lines for `/etc/nix.conf`
     #[cfg_attr(feature = "cli", clap(long, action = ArgAction::Set, num_args = 0.., value_delimiter = ',', env = "NIX_INSTALLER_EXTRA_CONF", global = true))]
@@ -201,7 +195,7 @@ pub struct CommonSettings {
             env = "NIX_INSTALLER_FORCE"
         )
     )]
-    pub(crate) force: bool,
+    pub force: bool,
 
     #[cfg(feature = "diagnostics")]
     /// The URL or file path for an installation diagnostic to be sent
@@ -217,18 +211,19 @@ pub struct CommonSettings {
     ///     "triple": "x86_64-unknown-linux-gnu",
     ///     "is_ci": false,
     ///     "action": "Install",
-    ///     "status": "Failure",
-    ///     "failure_variant": "Symlink"
+    ///     "status": "Success"
     /// }
     ///
-    /// To disable diagnostic reporting, unset the default with `--diagnostic-endpoint=`
+    /// To disable diagnostic reporting, unset the default with `--diagnostic-endpoint ""`, or `NIX_INSTALLER_DIAGNOSTIC_ENDPOINT=""`
     #[clap(
         long,
         env = "NIX_INSTALLER_DIAGNOSTIC_ENDPOINT",
         global = true,
+        value_parser = crate::diagnostics::diagnostic_endpoint_validator,
+        num_args = 0..=1, // Required to allow `--diagnostic-endpoint` or `NIX_INSTALLER_DIAGNOSTIC_ENDPOINT=""`
         default_value = "https://install.determinate.systems/nix/diagnostic"
     )]
-    pub diagnostic_endpoint: Option<Url>,
+    pub diagnostic_endpoint: Option<String>,
 }
 
 impl CommonSettings {
@@ -281,30 +276,24 @@ impl CommonSettings {
 
         Ok(Self {
             nix_build_user_count: 32,
-            channels: vec![ChannelValue(
-                "nixpkgs".into(),
-                reqwest::Url::parse("https://nixos.org/channels/nixpkgs-unstable")
-                    .expect("Embedded default URL was not a URL, please report this"),
-            )],
             modify_profile: true,
             nix_build_group_name: String::from("nixbld"),
             nix_build_group_id: 30_000,
             nix_build_user_prefix: nix_build_user_prefix.to_string(),
             nix_build_user_id_base,
             nix_package_url: url.parse()?,
+            proxy: Default::default(),
             extra_conf: Default::default(),
             force: false,
+            ssl_cert_file: Default::default(),
             #[cfg(feature = "diagnostics")]
-            diagnostic_endpoint: Some(
-                "https://install.determinate.systems/nix/diagnostic".try_into()?,
-            ),
+            diagnostic_endpoint: Some("https://install.determinate.systems/nix/diagnostic".into()),
         })
     }
 
     /// A listing of the settings, suitable for [`Planner::settings`](crate::planner::Planner::settings)
     pub fn settings(&self) -> Result<HashMap<String, serde_json::Value>, InstallSettingsError> {
         let Self {
-            channels,
             modify_profile,
             nix_build_user_count,
             nix_build_group_name,
@@ -312,22 +301,15 @@ impl CommonSettings {
             nix_build_user_prefix,
             nix_build_user_id_base,
             nix_package_url,
+            proxy,
             extra_conf,
             force,
+            ssl_cert_file,
             #[cfg(feature = "diagnostics")]
             diagnostic_endpoint,
         } = self;
         let mut map = HashMap::default();
 
-        map.insert(
-            "channels".into(),
-            serde_json::to_value(
-                channels
-                    .iter()
-                    .map(|ChannelValue(k, v)| format!("{k}={v}"))
-                    .collect::<Vec<_>>(),
-            )?,
-        );
         map.insert(
             "modify_profile".into(),
             serde_json::to_value(modify_profile)?,
@@ -356,6 +338,8 @@ impl CommonSettings {
             "nix_package_url".into(),
             serde_json::to_value(nix_package_url)?,
         );
+        map.insert("proxy".into(), serde_json::to_value(proxy)?);
+        map.insert("ssl_cert_file".into(), serde_json::to_value(ssl_cert_file)?);
         map.insert("extra_conf".into(), serde_json::to_value(extra_conf)?);
         map.insert("force".into(), serde_json::to_value(force)?);
 
@@ -369,13 +353,11 @@ impl CommonSettings {
     }
 }
 #[cfg(target_os = "linux")]
-async fn linux_detect_init() -> (InitSystem, bool) {
+async fn linux_detect_systemd_started() -> bool {
     use std::process::Stdio;
 
-    let mut detected = InitSystem::None;
     let mut started = false;
     if std::path::Path::new("/run/systemd/system").exists() {
-        detected = InitSystem::Systemd;
         started = if tokio::process::Command::new("systemctl")
             .arg("status")
             .stdin(Stdio::null())
@@ -394,76 +376,7 @@ async fn linux_detect_init() -> (InitSystem, bool) {
     }
 
     // TODO: Other inits
-    (detected, started)
-}
-
-// Builder Pattern
-impl CommonSettings {
-    /// Number of build users to create
-    pub fn nix_build_user_count(&mut self, count: u32) -> &mut Self {
-        self.nix_build_user_count = count;
-        self
-    }
-
-    /// Channel(s) to add
-    pub fn channels(&mut self, channels: impl IntoIterator<Item = (String, Url)>) -> &mut Self {
-        self.channels = channels.into_iter().map(Into::into).collect();
-        self
-    }
-
-    /// Modify the user profile to automatically load nix
-    pub fn modify_profile(&mut self, toggle: bool) -> &mut Self {
-        self.modify_profile = toggle;
-        self
-    }
-
-    /// The Nix build group name
-    pub fn nix_build_group_name(&mut self, val: String) -> &mut Self {
-        self.nix_build_group_name = val;
-        self
-    }
-
-    /// The Nix build group GID
-    pub fn nix_build_group_id(&mut self, count: u32) -> &mut Self {
-        self.nix_build_group_id = count;
-        self
-    }
-
-    /// The Nix build user prefix (user numbers will be postfixed)
-    pub fn nix_build_user_prefix(&mut self, val: String) -> &mut Self {
-        self.nix_build_user_prefix = val;
-        self
-    }
-
-    /// The Nix build user base UID (ascending)
-    pub fn nix_build_user_id_base(&mut self, count: u32) -> &mut Self {
-        self.nix_build_user_id_base = count;
-        self
-    }
-
-    /// The Nix package URL
-    pub fn nix_package_url(&mut self, url: Url) -> &mut Self {
-        self.nix_package_url = url;
-        self
-    }
-    /// Extra configuration lines for `/etc/nix.conf`
-    pub fn extra_conf(&mut self, extra_conf: Vec<String>) -> &mut Self {
-        self.extra_conf = extra_conf;
-        self
-    }
-
-    /// If `nix-installer` should forcibly recreate files it finds existing
-    pub fn force(&mut self, force: bool) -> &mut Self {
-        self.force = force;
-        self
-    }
-
-    #[cfg(feature = "diagnostics")]
-    /// The URL or file path for an [`DiagnosticReport`][crate::diagnostics::DiagnosticReport] to be sent
-    pub fn diagnostic_endpoint(&mut self, diagnostic_endpoint: Option<Url>) -> &mut Self {
-        self.diagnostic_endpoint = diagnostic_endpoint;
-        self
-    }
+    started
 }
 
 #[serde_with::serde_as]
@@ -480,7 +393,7 @@ pub struct InitSettings {
         all(target_os = "linux", feature = "cli"),
         clap(default_value_t = InitSystem::Systemd)
     )]
-    pub(crate) init: InitSystem,
+    pub init: InitSystem,
 
     /// Start the daemon (if not `--init none`)
     #[cfg_attr(
@@ -494,39 +407,32 @@ pub struct InitSettings {
             long = "no-start-daemon"
         )
     )]
-    pub(crate) start_daemon: bool,
+    pub start_daemon: bool,
 }
 
 impl InitSettings {
     /// The default settings for the given Architecture & Operating System
     pub async fn default() -> Result<Self, InstallSettingsError> {
-        let init;
-        let start_daemon;
-
         use target_lexicon::{Architecture, OperatingSystem};
-        match (Architecture::host(), OperatingSystem::host()) {
+        let (init, start_daemon) = match (Architecture::host(), OperatingSystem::host()) {
             #[cfg(target_os = "linux")]
             (Architecture::X86_64, OperatingSystem::Linux) => {
-                (init, start_daemon) = linux_detect_init().await;
+                (InitSystem::Systemd, linux_detect_systemd_started().await)
             },
             #[cfg(target_os = "linux")]
             (Architecture::X86_32(_), OperatingSystem::Linux) => {
-                (init, start_daemon) = linux_detect_init().await;
+                (InitSystem::Systemd, linux_detect_systemd_started().await)
             },
             #[cfg(target_os = "linux")]
             (Architecture::Aarch64(_), OperatingSystem::Linux) => {
-                (init, start_daemon) = linux_detect_init().await;
+                (InitSystem::Systemd, linux_detect_systemd_started().await)
             },
             #[cfg(target_os = "macos")]
             (Architecture::X86_64, OperatingSystem::MacOSX { .. })
-            | (Architecture::X86_64, OperatingSystem::Darwin) => {
-                (init, start_daemon) = (InitSystem::Launchd, true);
-            },
+            | (Architecture::X86_64, OperatingSystem::Darwin) => (InitSystem::Launchd, true),
             #[cfg(target_os = "macos")]
             (Architecture::Aarch64(_), OperatingSystem::MacOSX { .. })
-            | (Architecture::Aarch64(_), OperatingSystem::Darwin) => {
-                (init, start_daemon) = (InitSystem::Launchd, true);
-            },
+            | (Architecture::Aarch64(_), OperatingSystem::Darwin) => (InitSystem::Launchd, true),
             _ => {
                 return Err(InstallSettingsError::UnsupportedArchitecture(
                     target_lexicon::HOST,
@@ -561,7 +467,8 @@ impl InitSettings {
 }
 
 /// An error originating from a [`Planner::settings`](crate::planner::Planner::settings)
-#[derive(thiserror::Error, Debug)]
+#[non_exhaustive]
+#[derive(thiserror::Error, Debug, strum::IntoStaticStr)]
 pub enum InstallSettingsError {
     /// `nix-installer` does not support the architecture right now
     #[error("`nix-installer` does not support the `{0}` architecture right now")]
@@ -582,4 +489,12 @@ pub enum InstallSettingsError {
     ),
     #[error("No supported init system found")]
     InitNotSupported,
+}
+
+#[cfg(feature = "diagnostics")]
+impl crate::diagnostics::ErrorDiagnostic for InstallSettingsError {
+    fn diagnostic(&self) -> String {
+        let static_str: &'static str = (self).into();
+        return static_str.to_string();
+    }
 }

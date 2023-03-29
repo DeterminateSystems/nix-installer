@@ -42,7 +42,7 @@ impl CreateDirectory {
                 .await
                 .map_err(|e| ActionError::GettingMetadata(path.clone(), e))?;
             if !metadata.is_dir() {
-                return Err(ActionError::Exists(path.to_owned()));
+                return Err(ActionError::PathWasNotDirectory(path.to_owned()));
             }
 
             // Does it have the right user/group?
@@ -78,7 +78,7 @@ impl CreateDirectory {
             }
 
             tracing::debug!("Creating directory `{}` already complete", path.display(),);
-            ActionState::Skipped
+            ActionState::Completed
         } else {
             ActionState::Uncompleted
         };
@@ -99,6 +99,9 @@ impl CreateDirectory {
 #[async_trait::async_trait]
 #[typetag::serde(name = "create_directory")]
 impl Action for CreateDirectory {
+    fn action_tag() -> crate::action::ActionTag {
+        crate::action::ActionTag("create_directory")
+    }
     fn tracing_synopsis(&self) -> String {
         format!("Create directory `{}`", self.path.display())
     }
