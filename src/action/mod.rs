@@ -313,14 +313,14 @@ pub enum ActionError {
     #[error("Child action `{0}`")]
     Child(ActionTag, #[source] Box<ActionError>),
     /// Several child errors
-    #[error("Child action errors: {}", .0.iter().map(|v| {
-        if let Some(source) = v.source() {
-            format!("{v} ({source})")
+    #[error("Child action errors:\n{}", .0.iter().map(|(tag, err)| {
+        if let Some(source) = err.source() {
+            format!("`{tag}` {err} ({source})")
         } else {
-            format!("{v}") 
+            format!("`{tag}` {err}") 
         }
-    }).collect::<Vec<_>>().join(" & "))]
-    Children(Vec<Box<ActionError>>),
+    }).collect::<Vec<_>>().join("\n"))]
+    Children(Vec<(ActionTag, Box<ActionError>)>),
     /// The path already exists with different content that expected
     #[error(
         "`{0}` exists with different content than planned, consider removing it with `rm {0}`"
