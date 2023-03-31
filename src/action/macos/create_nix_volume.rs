@@ -177,7 +177,30 @@ impl Action for CreateNixVolume {
         self.create_volume
             .try_execute()
             .await
-            .map_err(Self::error)?;
+            .map_err(|e| ActionError::Child(self.create_volume.action_tag(), Box::new(e)))?;
+
+        let mut retry_tokens: usize = 50;
+        loop {
+            let mut command = Command::new("/usr/sbin/diskutil");
+            command.args(["info", "-plist"]);
+            command.arg(&self.name);
+            command.stderr(std::process::Stdio::null());
+            command.stdout(std::process::Stdio::null());
+            tracing::trace!(%retry_tokens, command = ?command.as_std(), "Checking for Nix Store volume existence");
+            let output = command
+                .output()
+                .await
+                .map_err(|e| ActionError::command(&command, e))?;
+            if output.status.success() {
+                break;
+            } else if retry_tokens == 0 {
+                return Err(ActionError::command_output(&command, output));
+            } else {
+                retry_tokens = retry_tokens.saturating_sub(1);
+            }
+            tokio::time::sleep(Duration::from_millis(100)).await;
+        }
+
         self.create_fstab_entry
             .try_execute()
             .await
@@ -201,17 +224,20 @@ impl Action for CreateNixVolume {
 
         let mut retry_tokens: usize = 50;
         loop {
-            tracing::trace!(%retry_tokens, "Checking for Nix Store existence");
             let mut command = Command::new("/usr/sbin/diskutil");
             command.args(["info", "/nix"]);
             command.stderr(std::process::Stdio::null());
             command.stdout(std::process::Stdio::null());
-            let status = command
-                .status()
+            tracing::trace!(%retry_tokens, command = ?command.as_std(), "Checking for Nix Store mount path existence");
+            let output = command
+                .output()
                 .await
-                .map_err(|e| Self::error(ActionErrorKind::command(&command, e)))?;
-            if status.success() || retry_tokens == 0 {
+                .map_err(|e| ActionError::command(&command, e))
+                .map_err(Self::error)?;
+            if output.status.success() {
                 break;
+            } else if retry_tokens == 0 {
+                return Err(ActionError::command_output(&command, output));
             } else {
                 retry_tokens = retry_tokens.saturating_sub(1);
             }

@@ -1,7 +1,7 @@
 [package]
 name = "nix-installer"
 description = "The Determinate Nix Installer"
-version = "0.6.1-unreleased"
+version = "0.7.1-unreleased"
 edition = "2021"
 resolver = "2"
 license = "LGPL-2.1"
@@ -47,7 +47,7 @@ tracing-subscriber = { version = "0.3.15", default-features = false, features = 
 url = { version = "2.3.1", default-features = false, features = ["serde"] }
 xz2 = { version = "0.1.7", default-features = false, features = ["static", "tokio"] }
 plist = { version = "1.3.1", default-features = false, features = [ "serde" ]}
-dirs = { version = "4.0.0", default-features = false }
+dirs = { version = "5.0.0", default-features = false }
 typetag = { version = "0.2.3", default-features = false }
 dyn-clone = { version = "1.0.9", default-features = false }
 rand = { version = "0.8.5", default-features = false, features = [ "std", "std_rng" ] }

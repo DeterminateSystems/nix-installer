@@ -65,7 +65,7 @@
           };
           sharedAttrs = {
             pname = "nix-installer";
-            version = "0.6.1-unreleased";
+            version = "0.7.1-unreleased";
             src = builtins.path {
               name = "nix-installer-source";
               path = self;
@@ -139,6 +139,7 @@
               check.check-spelling
               check.check-nixpkgs-fmt
               check.check-editorconfig
+              check.check-semver
             ]
             ++ lib.optionals (pkgs.stdenv.isDarwin) (with pkgs; [ libiconv ]);
           };

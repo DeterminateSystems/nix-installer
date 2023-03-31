@@ -339,6 +339,26 @@ nix build github:DeterminateSystems/nix-installer#nix-installer.doc
 firefox result-doc/nix-installer/index.html
 ```
 
+## Accessing other versions
+
+For users who desire version pinning, the version of `nix-installer` to use can be specified in the `curl` command:
+
+```bash
+VERSION="v0.6.0"
+curl --proto '=https' --tlsv1.2 -sSf -L https://install.determinate.systems/nix/tag/${VERSION} | sh -s -- install
+```
+
+To discover which versions are available, or download the binaries for any release, check the [Github Releases](https://github.com/DeterminateSystems/nix-installer/releases).
+
+These releases can be downloaded and used directly:
+
+```bash
+VERSION="v0.6.0"
+ARCH="aarch64-linux"
+curl -sSf -L https://github.com/DeterminateSystems/nix-installer/releases/download/${VERSION}/nix-installer-${ARCH} -o nix-installer
+./nix-installer install
+```
+
 ## Quirks
 
 While `nix-installer` tries to provide a comprehensive and unquirky experience, there are unfortunately some issues which may require manual intervention or operator choices.

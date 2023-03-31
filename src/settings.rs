@@ -225,7 +225,7 @@ pub struct CommonSettings {
         global = true,
         value_parser = crate::diagnostics::diagnostic_endpoint_validator,
         num_args = 0..=1, // Required to allow `--diagnostic-endpoint` or `NIX_INSTALLER_DIAGNOSTIC_ENDPOINT=""`
-        default_missing_value = "https://install.determinate.systems/nix/diagnostic"
+        default_value = "https://install.determinate.systems/nix/diagnostic"
     )]
     pub diagnostic_endpoint: Option<String>,
 }
