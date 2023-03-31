@@ -3,7 +3,7 @@ use std::path::{Path, PathBuf};
 use tokio::fs::remove_dir_all;
 use tracing::{span, Span};
 
-use crate::action::{Action, ActionDescription, ActionState};
+use crate::action::{Action, ActionDescription, ActionErrorKind, ActionState};
 use crate::action::{ActionError, StatefulAction};
 
 /** Remove a directory, does nothing on revert.
@@ -53,11 +53,13 @@ impl Action for RemoveDirectory {
     async fn execute(&mut self) -> Result<(), ActionError> {
         if self.path.exists() {
             if !self.path.is_dir() {
-                return Err(ActionError::PathWasNotDirectory(self.path.clone()));
+                return Err(Self::error(ActionErrorKind::PathWasNotDirectory(
+                    self.path.clone(),
+                )));
             }
             remove_dir_all(&self.path)
                 .await
-                .map_err(|e| ActionError::Remove(self.path.clone(), e))?;
+                .map_err(|e| Self::error(ActionErrorKind::Remove(self.path.clone(), e)))?;
         } else {
             tracing::debug!("Directory `{}` not present, skipping", self.path.display(),);
         };
@@ -70,7 +72,7 @@ impl Action for RemoveDirectory {
     }
 
     #[tracing::instrument(level = "debug", skip_all)]
-    async fn revert(&mut self) -> Result<(), Vec<ActionError>> {
+    async fn revert(&mut self) -> Result<(), ActionError> {
         Ok(())
     }
 }

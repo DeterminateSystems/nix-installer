@@ -2,7 +2,7 @@ use nix::unistd::Group;
 use tokio::process::Command;
 use tracing::{span, Span};
 
-use crate::action::{ActionError, ActionTag};
+use crate::action::{ActionError, ActionErrorKind, ActionTag};
 use crate::execute_command;
 
 use crate::action::{Action, ActionDescription, StatefulAction};
@@ -25,14 +25,15 @@ impl CreateGroup {
         };
         // Ensure group does not exists
         if let Some(group) = Group::from_name(name.as_str())
-            .map_err(|e| ActionError::GettingGroupId(name.clone(), e))?
+            .map_err(|e| ActionErrorKind::GettingGroupId(name.clone(), e))
+            .map_err(Self::error)?
         {
             if group.gid.as_raw() != gid {
-                return Err(ActionError::GroupGidMismatch(
+                return Err(Self::error(ActionErrorKind::GroupGidMismatch(
                     name.clone(),
                     group.gid.as_raw(),
                     gid,
-                ));
+                )));
             }
 
             tracing::debug!("Creating group `{}` already complete", this.name);
@@ -96,7 +97,8 @@ impl Action for CreateGroup {
                         ])
                         .stdin(std::process::Stdio::null()),
                 )
-                .await?;
+                .await
+                .map_err(Self::error)?;
             },
             _ => {
                 if which::which("groupadd").is_ok() {
@@ -106,7 +108,8 @@ impl Action for CreateGroup {
                             .args(["-g", &gid.to_string(), "--system", name])
                             .stdin(std::process::Stdio::null()),
                     )
-                    .await?;
+                    .await
+                    .map_err(Self::error)?;
                 } else if which::which("addgroup").is_ok() {
                     execute_command(
                         Command::new("addgroup")
@@ -114,9 +117,10 @@ impl Action for CreateGroup {
                             .args(["-g", &gid.to_string(), "--system", name])
                             .stdin(std::process::Stdio::null()),
                     )
-                    .await?;
+                    .await
+                    .map_err(Self::error)?;
                 } else {
-                    return Err(ActionError::MissingGroupCreationCommand);
+                    return Err(Self::error(ActionErrorKind::MissingGroupCreationCommand));
                 }
             },
         };
@@ -135,7 +139,7 @@ impl Action for CreateGroup {
     }
 
     #[tracing::instrument(level = "debug", skip_all)]
-    async fn revert(&mut self) -> Result<(), Vec<ActionError>> {
+    async fn revert(&mut self) -> Result<(), ActionError> {
         let Self { name, gid: _ } = self;
 
         use target_lexicon::OperatingSystem;
@@ -152,7 +156,7 @@ impl Action for CreateGroup {
                         .stdin(std::process::Stdio::null()),
                 )
                 .await
-                .map_err(|e| vec![e])?;
+                .map_err(Self::error)?;
                 if !output.status.success() {}
             },
             _ => {
@@ -164,7 +168,7 @@ impl Action for CreateGroup {
                             .stdin(std::process::Stdio::null()),
                     )
                     .await
-                    .map_err(|e| vec![e])?;
+                    .map_err(Self::error)?;
                 } else if which::which("delgroup").is_ok() {
                     execute_command(
                         Command::new("delgroup")
@@ -173,9 +177,9 @@ impl Action for CreateGroup {
                             .stdin(std::process::Stdio::null()),
                     )
                     .await
-                    .map_err(|e| vec![e])?;
+                    .map_err(Self::error)?;
                 } else {
-                    return Err(vec![ActionError::MissingGroupDeletionCommand]);
+                    return Err(Self::error(ActionErrorKind::MissingGroupDeletionCommand));
                 }
             },
         };

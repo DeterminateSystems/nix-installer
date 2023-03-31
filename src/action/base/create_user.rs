@@ -2,7 +2,7 @@ use nix::unistd::User;
 use tokio::process::Command;
 use tracing::{span, Span};
 
-use crate::action::{ActionError, ActionTag};
+use crate::action::{ActionError, ActionErrorKind, ActionTag};
 use crate::execute_command;
 
 use crate::action::{Action, ActionDescription, StatefulAction};
@@ -37,22 +37,23 @@ impl CreateUser {
         };
         // Ensure user does not exists
         if let Some(user) = User::from_name(name.as_str())
-            .map_err(|e| ActionError::GettingUserId(name.clone(), e))?
+            .map_err(|e| ActionErrorKind::GettingUserId(name.clone(), e))
+            .map_err(Self::error)?
         {
             if user.uid.as_raw() != uid {
-                return Err(ActionError::UserUidMismatch(
+                return Err(Self::error(ActionErrorKind::UserUidMismatch(
                     name.clone(),
                     user.uid.as_raw(),
                     uid,
-                ));
+                )));
             }
 
             if user.gid.as_raw() != gid {
-                return Err(ActionError::UserGidMismatch(
+                return Err(Self::error(ActionErrorKind::UserGidMismatch(
                     name.clone(),
                     user.gid.as_raw(),
                     gid,
-                ));
+                )));
             }
 
             tracing::debug!("Creating user `{}` already complete", this.name);
@@ -120,7 +121,8 @@ impl Action for CreateUser {
                         .args([".", "-create", &format!("/Users/{name}")])
                         .stdin(std::process::Stdio::null()),
                 )
-                .await?;
+                .await
+                .map_err(Self::error)?;
                 execute_command(
                     Command::new("/usr/bin/dscl")
                         .process_group(0)
@@ -133,7 +135,8 @@ impl Action for CreateUser {
                         ])
                         .stdin(std::process::Stdio::null()),
                 )
-                .await?;
+                .await
+                .map_err(Self::error)?;
                 execute_command(
                     Command::new("/usr/bin/dscl")
                         .process_group(0)
@@ -146,7 +149,8 @@ impl Action for CreateUser {
                         ])
                         .stdin(std::process::Stdio::null()),
                 )
-                .await?;
+                .await
+                .map_err(Self::error)?;
                 execute_command(
                     Command::new("/usr/bin/dscl")
                         .process_group(0)
@@ -159,7 +163,8 @@ impl Action for CreateUser {
                         ])
                         .stdin(std::process::Stdio::null()),
                 )
-                .await?;
+                .await
+                .map_err(Self::error)?;
                 execute_command(
                     Command::new("/usr/bin/dscl")
                         .process_group(0)
@@ -172,14 +177,16 @@ impl Action for CreateUser {
                         ])
                         .stdin(std::process::Stdio::null()),
                 )
-                .await?;
+                .await
+                .map_err(Self::error)?;
                 execute_command(
                     Command::new("/usr/bin/dscl")
                         .process_group(0)
                         .args([".", "-create", &format!("/Users/{name}"), "IsHidden", "1"])
                         .stdin(std::process::Stdio::null()),
                 )
-                .await?;
+                .await
+                .map_err(Self::error)?;
             },
             _ => {
                 if which::which("useradd").is_ok() {
@@ -207,7 +214,8 @@ impl Action for CreateUser {
                             ])
                             .stdin(std::process::Stdio::null()),
                     )
-                    .await?;
+                    .await
+                    .map_err(Self::error)?;
                 } else if which::which("adduser").is_ok() {
                     execute_command(
                         Command::new("adduser")
@@ -229,9 +237,10 @@ impl Action for CreateUser {
                             ])
                             .stdin(std::process::Stdio::null()),
                     )
-                    .await?;
+                    .await
+                    .map_err(Self::error)?;
                 } else {
-                    return Err(ActionError::MissingUserCreationCommand);
+                    return Err(Self::error(ActionErrorKind::MissingUserCreationCommand));
                 }
             },
         }
@@ -252,7 +261,7 @@ impl Action for CreateUser {
     }
 
     #[tracing::instrument(level = "debug", skip_all)]
-    async fn revert(&mut self) -> Result<(), Vec<ActionError>> {
+    async fn revert(&mut self) -> Result<(), ActionError> {
         use target_lexicon::OperatingSystem;
         match target_lexicon::OperatingSystem::host() {
             OperatingSystem::MacOSX {
@@ -273,7 +282,8 @@ impl Action for CreateUser {
                 let output = command
                     .output()
                     .await
-                    .map_err(|e| vec![ActionError::command(&command, e)])?;
+                    .map_err(|e| ActionErrorKind::command(&command, e))
+                    .map_err(Self::error)?;
                 let stderr = String::from_utf8_lossy(&output.stderr);
                 match output.status.code() {
                     Some(0) => (),
@@ -284,7 +294,9 @@ impl Action for CreateUser {
                     },
                     _ => {
                         // Something went wrong
-                        return Err(vec![ActionError::command_output(&command, output)]);
+                        return Err(Self::error(ActionErrorKind::command_output(
+                            &command, output,
+                        )));
                     },
                 }
             },
@@ -297,7 +309,7 @@ impl Action for CreateUser {
                             .stdin(std::process::Stdio::null()),
                     )
                     .await
-                    .map_err(|e| vec![e])?;
+                    .map_err(Self::error)?;
                 } else if which::which("deluser").is_ok() {
                     execute_command(
                         Command::new("deluser")
@@ -306,9 +318,9 @@ impl Action for CreateUser {
                             .stdin(std::process::Stdio::null()),
                     )
                     .await
-                    .map_err(|e| vec![e])?;
+                    .map_err(Self::error)?;
                 } else {
-                    return Err(vec![ActionError::MissingUserDeletionCommand]);
+                    return Err(Self::error(ActionErrorKind::MissingUserDeletionCommand));
                 }
             },
         };

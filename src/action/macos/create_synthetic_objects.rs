@@ -68,7 +68,7 @@ impl Action for CreateSyntheticObjects {
     }
 
     #[tracing::instrument(level = "debug", skip_all)]
-    async fn revert(&mut self) -> Result<(), Vec<ActionError>> {
+    async fn revert(&mut self) -> Result<(), ActionError> {
         // Yup we literally call both and ignore the error! Reasoning: https://github.com/NixOS/nix/blob/95331cb9c99151cbd790ceb6ddaf49fc1c0da4b3/scripts/create-darwin-volume.sh#L261
         execute_command(
             Command::new("/System/Library/Filesystems/apfs.fs/Contents/Resources/apfs.util")
@@ -89,11 +89,4 @@ impl Action for CreateSyntheticObjects {
 
         Ok(())
     }
-}
-
-#[non_exhaustive]
-#[derive(Debug, thiserror::Error)]
-pub enum CreateSyntheticObjectsError {
-    #[error("Failed to execute command")]
-    Command(#[source] std::io::Error),
 }

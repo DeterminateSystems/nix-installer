@@ -4,7 +4,7 @@ use crate::action::{
         BootstrapLaunchctlService, CreateApfsVolume, CreateSyntheticObjects, EnableOwnership,
         EncryptApfsVolume, UnmountApfsVolume,
     },
-    Action, ActionDescription, ActionError, ActionTag, StatefulAction,
+    Action, ActionDescription, ActionError, ActionErrorKind, ActionTag, StatefulAction,
 };
 use std::{
     path::{Path, PathBuf},
@@ -54,23 +54,21 @@ impl CreateNixVolume {
             create_or_insert_into_file::Position::End,
         )
         .await
-        .map_err(|e| ActionError::Child(CreateOrInsertIntoFile::action_tag(), Box::new(e)))?;
+        .map_err(Self::error)?;
 
-        let create_synthetic_objects = CreateSyntheticObjects::plan()
-            .await
-            .map_err(|e| ActionError::Child(CreateSyntheticObjects::action_tag(), Box::new(e)))?;
+        let create_synthetic_objects = CreateSyntheticObjects::plan().await.map_err(Self::error)?;
 
         let unmount_volume = UnmountApfsVolume::plan(disk, name.clone())
             .await
-            .map_err(|e| ActionError::Child(UnmountApfsVolume::action_tag(), Box::new(e)))?;
+            .map_err(Self::error)?;
 
         let create_volume = CreateApfsVolume::plan(disk, name.clone(), case_sensitive)
             .await
-            .map_err(|e| ActionError::Child(CreateApfsVolume::action_tag(), Box::new(e)))?;
+            .map_err(Self::error)?;
 
         let create_fstab_entry = CreateFstabEntry::plan(name.clone(), &create_volume)
             .await
-            .map_err(|e| ActionError::Child(CreateFstabEntry::action_tag(), Box::new(e)))?;
+            .map_err(Self::error)?;
 
         let encrypt_volume = if encrypt {
             Some(EncryptApfsVolume::plan(disk, &name, &create_volume).await?)
@@ -86,7 +84,7 @@ impl CreateNixVolume {
             encrypt,
         )
         .await
-        .map_err(|e| ActionError::Child(CreateVolumeService::action_tag(), Box::new(e)))?;
+        .map_err(Self::error)?;
 
         let bootstrap_volume = BootstrapLaunchctlService::plan(
             "system",
@@ -94,14 +92,12 @@ impl CreateNixVolume {
             NIX_VOLUME_MOUNTD_DEST,
         )
         .await
-        .map_err(|e| ActionError::Child(BootstrapLaunchctlService::action_tag(), Box::new(e)))?;
+        .map_err(Self::error)?;
         let kickstart_launchctl_service =
             KickstartLaunchctlService::plan("system", "org.nixos.darwin-store")
                 .await
-                .map_err(|e| {
-                    ActionError::Child(KickstartLaunchctlService::action_tag(), Box::new(e))
-                })?;
-        let enable_ownership = EnableOwnership::plan("/nix").await?;
+                .map_err(Self::error)?;
+        let enable_ownership = EnableOwnership::plan("/nix").await.map_err(Self::error)?;
 
         Ok(Self {
             disk: disk.to_path_buf(),
@@ -172,48 +168,36 @@ impl Action for CreateNixVolume {
         self.create_or_append_synthetic_conf
             .try_execute()
             .await
-            .map_err(|e| {
-                ActionError::Child(
-                    self.create_or_append_synthetic_conf.action_tag(),
-                    Box::new(e),
-                )
-            })?;
+            .map_err(Self::error)?;
         self.create_synthetic_objects
             .try_execute()
             .await
-            .map_err(|e| {
-                ActionError::Child(self.create_synthetic_objects.action_tag(), Box::new(e))
-            })?;
+            .map_err(Self::error)?;
         self.unmount_volume.try_execute().await.ok(); // We actually expect this may fail.
         self.create_volume
             .try_execute()
             .await
-            .map_err(|e| ActionError::Child(self.create_volume.action_tag(), Box::new(e)))?;
+            .map_err(Self::error)?;
         self.create_fstab_entry
             .try_execute()
             .await
-            .map_err(|e| ActionError::Child(self.create_fstab_entry.action_tag(), Box::new(e)))?;
+            .map_err(Self::error)?;
         if let Some(encrypt_volume) = &mut self.encrypt_volume {
-            encrypt_volume
-                .try_execute()
-                .await
-                .map_err(|e| ActionError::Child(encrypt_volume.action_tag(), Box::new(e)))?
+            encrypt_volume.try_execute().await.map_err(Self::error)?
         }
         self.setup_volume_daemon
             .try_execute()
             .await
-            .map_err(|e| ActionError::Child(self.setup_volume_daemon.action_tag(), Box::new(e)))?;
+            .map_err(Self::error)?;
 
         self.bootstrap_volume
             .try_execute()
             .await
-            .map_err(|e| ActionError::Child(self.bootstrap_volume.action_tag(), Box::new(e)))?;
+            .map_err(Self::error)?;
         self.kickstart_launchctl_service
             .try_execute()
             .await
-            .map_err(|e| {
-                ActionError::Child(self.kickstart_launchctl_service.action_tag(), Box::new(e))
-            })?;
+            .map_err(Self::error)?;
 
         let mut retry_tokens: usize = 50;
         loop {
@@ -225,7 +209,7 @@ impl Action for CreateNixVolume {
             let status = command
                 .status()
                 .await
-                .map_err(|e| ActionError::command(&command, e))?;
+                .map_err(|e| Self::error(ActionErrorKind::command(&command, e)))?;
             if status.success() || retry_tokens == 0 {
                 break;
             } else {
@@ -237,7 +221,7 @@ impl Action for CreateNixVolume {
         self.enable_ownership
             .try_execute()
             .await
-            .map_err(|e| ActionError::Child(self.enable_ownership.action_tag(), Box::new(e)))?;
+            .map_err(Self::error)?;
 
         Ok(())
     }
@@ -270,98 +254,49 @@ impl Action for CreateNixVolume {
     }
 
     #[tracing::instrument(level = "debug", skip_all)]
-    async fn revert(&mut self) -> Result<(), Vec<ActionError>> {
+    async fn revert(&mut self) -> Result<(), ActionError> {
         let mut errors = vec![];
 
-        if let Err(err) = self
-            .enable_ownership
-            .try_revert()
-            .await
-            .map_err(|errs| ActionError::ChildRevert(self.enable_ownership.action_tag(), errs))
-        {
+        if let Err(err) = self.enable_ownership.try_revert().await {
             errors.push(err)
         };
-        if let Err(err) = self
-            .kickstart_launchctl_service
-            .try_revert()
-            .await
-            .map_err(|errs| {
-                ActionError::ChildRevert(self.kickstart_launchctl_service.action_tag(), errs)
-            })
-        {
+        if let Err(err) = self.kickstart_launchctl_service.try_revert().await {
             errors.push(err)
         };
-        if let Err(err) = self
-            .bootstrap_volume
-            .try_revert()
-            .await
-            .map_err(|errs| ActionError::ChildRevert(self.bootstrap_volume.action_tag(), errs))
-        {
+        if let Err(err) = self.bootstrap_volume.try_revert().await {
             errors.push(err)
         };
-        if let Err(err) =
-            self.setup_volume_daemon.try_revert().await.map_err(|errs| {
-                ActionError::ChildRevert(self.setup_volume_daemon.action_tag(), errs)
-            })
-        {
+        if let Err(err) = self.setup_volume_daemon.try_revert().await {
             errors.push(err)
         };
         if let Some(encrypt_volume) = &mut self.encrypt_volume {
-            if let Err(err) = encrypt_volume
-                .try_revert()
-                .await
-                .map_err(|errs| ActionError::ChildRevert(encrypt_volume.action_tag(), errs))
-            {
+            if let Err(err) = encrypt_volume.try_revert().await {
                 errors.push(err)
             }
         }
-        if let Err(err) =
-            self.create_fstab_entry.try_revert().await.map_err(|errs| {
-                ActionError::ChildRevert(self.create_fstab_entry.action_tag(), errs)
-            })
-        {
+        if let Err(err) = self.create_fstab_entry.try_revert().await {
             errors.push(err)
         }
 
-        if let Err(err) = self
-            .unmount_volume
-            .try_revert()
-            .await
-            .map_err(|errs| ActionError::ChildRevert(self.unmount_volume.action_tag(), errs))
-        {
+        if let Err(err) = self.unmount_volume.try_revert().await {
             errors.push(err)
         }
-        if let Err(err) = self
-            .create_volume
-            .try_revert()
-            .await
-            .map_err(|errs| ActionError::ChildRevert(self.create_volume.action_tag(), errs))
-        {
+        if let Err(err) = self.create_volume.try_revert().await {
             errors.push(err)
         }
 
         // Purposefully not reversed
-        if let Err(err) = self
-            .create_or_append_synthetic_conf
-            .try_revert()
-            .await
-            .map_err(|errs| {
-                ActionError::ChildRevert(self.create_or_append_synthetic_conf.action_tag(), errs)
-            })
-        {
+        if let Err(err) = self.create_or_append_synthetic_conf.try_revert().await {
             errors.push(err)
         }
-        if let Err(err) = self
-            .create_synthetic_objects
-            .try_revert()
-            .await
-            .map_err(|errs| {
-                ActionError::ChildRevert(self.create_synthetic_objects.action_tag(), errs)
-            })
-        {
+        if let Err(err) = self.create_synthetic_objects.try_revert().await {
             errors.push(err)
         }
 
-        Ok(())
+        if errors.is_empty() {
+            Ok(())
+        } else {
+            Err(Self::error(ActionErrorKind::MultipleChildren(errors)))
+        }
     }
 }

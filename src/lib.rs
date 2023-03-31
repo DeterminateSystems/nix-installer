@@ -82,8 +82,6 @@ pub mod settings;
 
 use std::{ffi::OsStr, path::Path, process::Output};
 
-use action::{Action, ActionError};
-
 pub use error::NixInstallerError;
 pub use plan::InstallPlan;
 use planner::BuiltinPlanner;
@@ -91,16 +89,18 @@ use planner::BuiltinPlanner;
 use reqwest::Certificate;
 use tokio::process::Command;
 
+use crate::action::{Action, ActionErrorKind};
+
 #[tracing::instrument(level = "debug", skip_all, fields(command = %format!("{:?}", command.as_std())))]
-async fn execute_command(command: &mut Command) -> Result<Output, ActionError> {
+async fn execute_command(command: &mut Command) -> Result<Output, ActionErrorKind> {
     tracing::trace!("Executing");
     let output = command
         .output()
         .await
-        .map_err(|e| ActionError::command(command, e))?;
+        .map_err(|e| ActionErrorKind::command(command, e))?;
     match output.status.success() {
         true => Ok(output),
-        false => Err(ActionError::command_output(command, output)),
+        false => Err(ActionErrorKind::command_output(command, output)),
     }
 }
 

@@ -1,6 +1,8 @@
 use nix::unistd::{chown, Group, User};
 
-use crate::action::{Action, ActionDescription, ActionError, ActionTag, StatefulAction};
+use crate::action::{
+    Action, ActionDescription, ActionError, ActionErrorKind, ActionTag, StatefulAction,
+};
 use rand::Rng;
 use std::{
     io::SeekFrom,
@@ -61,15 +63,17 @@ impl CreateOrInsertIntoFile {
             // If the path exists, perhaps we can just skip this
             let mut file = File::open(&this.path)
                 .await
-                .map_err(|e| ActionError::Open(this.path.clone(), e))?;
+                .map_err(|e| ActionErrorKind::Open(this.path.clone(), e))
+                .map_err(Self::error)?;
 
             let metadata = file
                 .metadata()
                 .await
-                .map_err(|e| ActionError::GettingMetadata(this.path.clone(), e))?;
+                .map_err(|e| ActionErrorKind::GettingMetadata(this.path.clone(), e))
+                .map_err(Self::error)?;
 
             if !metadata.is_file() {
-                return Err(ActionError::PathWasNotFile(this.path));
+                return Err(Self::error(ActionErrorKind::PathWasNotFile(this.path)));
             }
 
             if let Some(mode) = mode {
@@ -92,31 +96,35 @@ impl CreateOrInsertIntoFile {
             if let Some(user) = &this.user {
                 // If the file exists, the user must also exist to be correct.
                 let expected_uid = User::from_name(user.as_str())
-                    .map_err(|e| ActionError::GettingUserId(user.clone(), e))?
-                    .ok_or_else(|| ActionError::NoUser(user.clone()))?
+                    .map_err(|e| ActionErrorKind::GettingUserId(user.clone(), e))
+                    .map_err(Self::error)?
+                    .ok_or_else(|| ActionErrorKind::NoUser(user.clone()))
+                    .map_err(Self::error)?
                     .uid;
                 let found_uid = metadata.uid();
                 if found_uid != expected_uid.as_raw() {
-                    return Err(ActionError::PathUserMismatch(
+                    return Err(Self::error(ActionErrorKind::PathUserMismatch(
                         this.path.clone(),
                         found_uid,
                         expected_uid.as_raw(),
-                    ));
+                    )));
                 }
             }
             if let Some(group) = &this.group {
                 // If the file exists, the group must also exist to be correct.
                 let expected_gid = Group::from_name(group.as_str())
-                    .map_err(|e| ActionError::GettingGroupId(group.clone(), e))?
-                    .ok_or_else(|| ActionError::NoUser(group.clone()))?
+                    .map_err(|e| ActionErrorKind::GettingGroupId(group.clone(), e))
+                    .map_err(Self::error)?
+                    .ok_or_else(|| ActionErrorKind::NoUser(group.clone()))
+                    .map_err(Self::error)?
                     .gid;
                 let found_gid = metadata.gid();
                 if found_gid != expected_gid.as_raw() {
-                    return Err(ActionError::PathGroupMismatch(
+                    return Err(Self::error(ActionErrorKind::PathGroupMismatch(
                         this.path.clone(),
                         found_gid,
                         expected_gid.as_raw(),
-                    ));
+                    )));
                 }
             }
 
@@ -124,7 +132,8 @@ impl CreateOrInsertIntoFile {
             let mut discovered_buf = String::new();
             file.read_to_string(&mut discovered_buf)
                 .await
-                .map_err(|e| ActionError::Read(this.path.clone(), e))?;
+                .map_err(|e| ActionErrorKind::Read(this.path.clone(), e))
+                .map_err(Self::error)?;
 
             if discovered_buf.contains(&this.buf) {
                 tracing::debug!("Inserting into `{}` already complete", this.path.display(),);
@@ -185,7 +194,7 @@ impl Action for CreateOrInsertIntoFile {
         let mut orig_file = match OpenOptions::new().read(true).open(&path).await {
             Ok(f) => Some(f),
             Err(e) if e.kind() == std::io::ErrorKind::NotFound => None,
-            Err(e) => return Err(ActionError::Open(path.to_owned(), e)),
+            Err(e) => return Err(Self::error(ActionErrorKind::Open(path.to_owned(), e))),
         };
 
         // Create a temporary file in the same directory as the one
@@ -209,39 +218,44 @@ impl Action for CreateOrInsertIntoFile {
             .open(&temp_file_path)
             .await
             .map_err(|e| {
-                ActionError::Open(temp_file_path.clone(), e)
-            })?;
+                ActionErrorKind::Open(temp_file_path.clone(), e)
+            }).map_err(Self::error)?;
 
         if *position == Position::End {
             if let Some(ref mut orig_file) = orig_file {
                 tokio::io::copy(orig_file, &mut temp_file)
                     .await
                     .map_err(|e| {
-                        ActionError::Copy(path.to_owned(), temp_file_path.to_owned(), e)
-                    })?;
+                        ActionErrorKind::Copy(path.to_owned(), temp_file_path.to_owned(), e)
+                    })
+                    .map_err(Self::error)?;
             }
         }
 
         temp_file
             .write_all(buf.as_bytes())
             .await
-            .map_err(|e| ActionError::Write(temp_file_path.clone(), e))?;
+            .map_err(|e| ActionErrorKind::Write(temp_file_path.clone(), e))
+            .map_err(Self::error)?;
 
         if *position == Position::Beginning {
             if let Some(ref mut orig_file) = orig_file {
                 tokio::io::copy(orig_file, &mut temp_file)
                     .await
                     .map_err(|e| {
-                        ActionError::Copy(path.to_owned(), temp_file_path.to_owned(), e)
-                    })?;
+                        ActionErrorKind::Copy(path.to_owned(), temp_file_path.to_owned(), e)
+                    })
+                    .map_err(Self::error)?;
             }
         }
 
         let gid = if let Some(group) = group {
             Some(
                 Group::from_name(group.as_str())
-                    .map_err(|e| ActionError::GettingGroupId(group.clone(), e))?
-                    .ok_or(ActionError::NoGroup(group.clone()))?
+                    .map_err(|e| ActionErrorKind::GettingGroupId(group.clone(), e))
+                    .map_err(Self::error)?
+                    .ok_or(ActionErrorKind::NoGroup(group.clone()))
+                    .map_err(Self::error)?
                     .gid,
             )
         } else {
@@ -250,8 +264,10 @@ impl Action for CreateOrInsertIntoFile {
         let uid = if let Some(user) = user {
             Some(
                 User::from_name(user.as_str())
-                    .map_err(|e| ActionError::GettingUserId(user.clone(), e))?
-                    .ok_or(ActionError::NoUser(user.clone()))?
+                    .map_err(|e| ActionErrorKind::GettingUserId(user.clone(), e))
+                    .map_err(Self::error)?
+                    .ok_or(ActionErrorKind::NoUser(user.clone()))
+                    .map_err(Self::error)?
                     .uid,
             )
         } else {
@@ -261,17 +277,21 @@ impl Action for CreateOrInsertIntoFile {
         // Change ownership _before_ applying mode, to ensure that if
         // a file needs to be setuid it will never be setuid for the
         // wrong user
-        chown(&temp_file_path, uid, gid).map_err(|e| ActionError::Chown(path.clone(), e))?;
+        chown(&temp_file_path, uid, gid)
+            .map_err(|e| ActionErrorKind::Chown(path.clone(), e))
+            .map_err(Self::error)?;
 
         if let Some(mode) = mode {
             tokio::fs::set_permissions(&temp_file_path, PermissionsExt::from_mode(*mode))
                 .await
-                .map_err(|e| ActionError::SetPermissions(*mode, path.to_owned(), e))?;
+                .map_err(|e| ActionErrorKind::SetPermissions(*mode, path.to_owned(), e))
+                .map_err(Self::error)?;
         } else if let Some(original_file) = orig_file {
             let original_file_mode = original_file
                 .metadata()
                 .await
-                .map_err(|e| ActionError::GettingMetadata(path.to_path_buf(), e))?
+                .map_err(|e| ActionErrorKind::GettingMetadata(path.to_path_buf(), e))
+                .map_err(Self::error)?
                 .permissions()
                 .mode();
             tokio::fs::set_permissions(
@@ -279,12 +299,14 @@ impl Action for CreateOrInsertIntoFile {
                 PermissionsExt::from_mode(original_file_mode),
             )
             .await
-            .map_err(|e| ActionError::SetPermissions(original_file_mode, path.to_owned(), e))?;
+            .map_err(|e| ActionErrorKind::SetPermissions(original_file_mode, path.to_owned(), e))
+            .map_err(Self::error)?;
         }
 
         tokio::fs::rename(&temp_file_path, &path)
             .await
-            .map_err(|e| ActionError::Rename(path.to_owned(), temp_file_path.to_owned(), e))?;
+            .map_err(|e| ActionErrorKind::Rename(path.to_owned(), temp_file_path.to_owned(), e))
+            .map_err(Self::error)?;
 
         Ok(())
     }
@@ -308,7 +330,7 @@ impl Action for CreateOrInsertIntoFile {
     }
 
     #[tracing::instrument(level = "debug", skip_all)]
-    async fn revert(&mut self) -> Result<(), Vec<ActionError>> {
+    async fn revert(&mut self) -> Result<(), ActionError> {
         let Self {
             path,
             user: _,
@@ -323,12 +345,14 @@ impl Action for CreateOrInsertIntoFile {
             .read(true)
             .open(&path)
             .await
-            .map_err(|e| vec![ActionError::Open(path.to_owned(), e)])?;
+            .map_err(|e| ActionErrorKind::Open(path.to_owned(), e))
+            .map_err(Self::error)?;
 
         let mut file_contents = String::default();
         file.read_to_string(&mut file_contents)
             .await
-            .map_err(|e| vec![ActionError::Read(path.to_owned(), e)])?;
+            .map_err(|e| ActionErrorKind::Read(path.to_owned(), e))
+            .map_err(Self::error)?;
 
         if let Some(start) = file_contents.rfind(buf.as_str()) {
             let end = start + buf.len();
@@ -338,20 +362,25 @@ impl Action for CreateOrInsertIntoFile {
         if file_contents.is_empty() {
             remove_file(&path)
                 .await
-                .map_err(|e| vec![ActionError::Remove(path.to_owned(), e)])?;
+                .map_err(|e| ActionErrorKind::Remove(path.to_owned(), e))
+                .map_err(Self::error)?;
         } else {
             file.seek(SeekFrom::Start(0))
                 .await
-                .map_err(|e| vec![ActionError::Seek(path.to_owned(), e)])?;
+                .map_err(|e| ActionErrorKind::Seek(path.to_owned(), e))
+                .map_err(Self::error)?;
             file.set_len(0)
                 .await
-                .map_err(|e| vec![ActionError::Truncate(path.to_owned(), e)])?;
+                .map_err(|e| ActionErrorKind::Truncate(path.to_owned(), e))
+                .map_err(Self::error)?;
             file.write_all(file_contents.as_bytes())
                 .await
-                .map_err(|e| vec![ActionError::Write(path.to_owned(), e)])?;
+                .map_err(|e| ActionErrorKind::Write(path.to_owned(), e))
+                .map_err(Self::error)?;
             file.flush()
                 .await
-                .map_err(|e| vec![ActionError::Flush(path.to_owned(), e)])?;
+                .map_err(|e| ActionErrorKind::Flush(path.to_owned(), e))
+                .map_err(Self::error)?;
         }
         Ok(())
     }
@@ -360,7 +389,7 @@ impl Action for CreateOrInsertIntoFile {
 #[cfg(test)]
 mod test {
     use super::*;
-    use color_eyre::{eyre::eyre, Section};
+    use color_eyre::eyre::eyre;
     use tokio::fs::{read_to_string, write};
 
     #[tokio::test]
@@ -379,12 +408,7 @@ mod test {
 
         action.try_execute().await?;
 
-        if let Err(errs) = action.try_revert().await {
-            let mut report = eyre!("Errors");
-            for err in errs {
-                report = report.error(err);
-            }
-        }
+        action.try_revert().await?;
 
         assert!(!test_file.exists(), "File should have been deleted");
 
@@ -413,12 +437,7 @@ mod test {
 
         action.try_execute().await?;
 
-        if let Err(errs) = action.try_revert().await {
-            let mut report = eyre!("Errors");
-            for err in errs {
-                report = report.error(err);
-            }
-        }
+        action.try_revert().await?;
 
         assert!(test_file.exists(), "File should have not been deleted");
 
@@ -459,12 +478,7 @@ mod test {
 
             action.try_execute().await?;
 
-            if let Err(errs) = action.try_revert().await {
-                let mut report = eyre!("Errors");
-                for err in errs {
-                    report = report.error(err);
-                }
-            }
+            action.try_revert().await?;
 
             assert!(test_file.exists(), "File should have not been deleted");
             let after_revert_content = read_to_string(&test_file).await?;
@@ -499,12 +513,7 @@ mod test {
 
         action.try_execute().await?;
 
-        if let Err(errs) = action.try_revert().await {
-            let mut report = eyre!("Errors");
-            for err in errs {
-                report = report.error(err);
-            }
-        }
+        action.try_revert().await?;
 
         assert!(test_file.exists(), "File should have not been deleted");
 
@@ -533,12 +542,7 @@ mod test {
 
         action.try_execute().await?;
 
-        if let Err(errs) = action.try_revert().await {
-            let mut report = eyre!("Errors");
-            for err in errs {
-                report = report.error(err);
-            }
-        }
+        action.try_revert().await?;
 
         assert!(!test_file.exists(), "File should have been deleted");
 
@@ -559,7 +563,14 @@ mod test {
         )
         .await
         {
-            Err(ActionError::PathWasNotFile(path)) => assert_eq!(path, temp_dir.path()),
+            Err(err) => match err.kind() {
+                ActionErrorKind::PathWasNotFile(path) => assert_eq!(path, temp_dir.path()),
+                _ => {
+                    return Err(eyre!(
+                        "Should have returned an ActionError::PathWasNotFile error"
+                    ))
+                },
+            },
             _ => {
                 return Err(eyre!(
                     "Should have returned an ActionError::PathWasNotFile error"

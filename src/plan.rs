@@ -175,12 +175,11 @@ impl InstallPlan {
             }
 
             tracing::info!("Step: {}", action.tracing_synopsis());
-            let typetag_name = action.inner_typetag_name();
             if let Err(err) = action.try_execute().await {
                 if let Err(err) = write_receipt(self.clone()).await {
                     tracing::error!("Error saving receipt: {:?}", err);
                 }
-                let err = NixInstallerError::Action(typetag_name.into(), err);
+                let err = NixInstallerError::Action(err);
                 #[cfg(feature = "diagnostics")]
                 if let Some(diagnostic_data) = &self.diagnostic_data {
                     diagnostic_data
@@ -326,7 +325,7 @@ impl InstallPlan {
 
             tracing::info!("Revert: {}", action.tracing_synopsis());
             if let Err(errs) = action.try_revert().await {
-                errors.extend(errs);
+                errors.push(errs);
             }
         }
 

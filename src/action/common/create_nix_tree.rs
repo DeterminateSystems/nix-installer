@@ -1,7 +1,9 @@
 use tracing::{span, Span};
 
 use crate::action::base::CreateDirectory;
-use crate::action::{Action, ActionDescription, ActionError, ActionTag, StatefulAction};
+use crate::action::{
+    Action, ActionDescription, ActionError, ActionErrorKind, ActionTag, StatefulAction,
+};
 
 const PATHS: &[&str] = &[
     "/nix/var",
@@ -36,7 +38,7 @@ impl CreateNixTree {
             create_directories.push(
                 CreateDirectory::plan(path, String::from("root"), None, 0o0755, false)
                     .await
-                    .map_err(|e| ActionError::Child(CreateDirectory::action_tag(), Box::new(e)))?,
+                    .map_err(Self::error)?,
             )
         }
 
@@ -77,10 +79,7 @@ impl Action for CreateNixTree {
     async fn execute(&mut self) -> Result<(), ActionError> {
         // Just do sequential since parallelizing this will have little benefit
         for create_directory in self.create_directories.iter_mut() {
-            create_directory
-                .try_execute()
-                .await
-                .map_err(|e| ActionError::Child(create_directory.action_tag(), Box::new(e)))?
+            create_directory.try_execute().await.map_err(Self::error)?;
         }
 
         Ok(())
@@ -107,15 +106,11 @@ impl Action for CreateNixTree {
     }
 
     #[tracing::instrument(level = "debug", skip_all)]
-    async fn revert(&mut self) -> Result<(), Vec<ActionError>> {
+    async fn revert(&mut self) -> Result<(), ActionError> {
         let mut errors = vec![];
         // Just do sequential since parallelizing this will have little benefit
         for create_directory in self.create_directories.iter_mut().rev() {
-            if let Err(err) = create_directory
-                .try_revert()
-                .await
-                .map_err(|errs| ActionError::ChildRevert(create_directory.action_tag(), errs))
-            {
+            if let Err(err) = create_directory.try_revert().await {
                 errors.push(err);
             }
         }
@@ -123,7 +118,7 @@ impl Action for CreateNixTree {
         if errors.is_empty() {
             Ok(())
         } else {
-            Err(errors)
+            Err(Self::error(ActionErrorKind::MultipleChildren(errors)))
         }
     }
 }

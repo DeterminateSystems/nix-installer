@@ -83,7 +83,7 @@ impl StatefulAction<Box<dyn Action>> {
     ///
     /// You should prefer this ([`try_revert`][StatefulAction::try_revert]) over [`revert`][Action::revert] as it handles [`ActionState`] and does tracing
     #[tracing::instrument(level = "debug", skip_all)]
-    pub async fn try_revert(&mut self) -> Result<(), Vec<ActionError>> {
+    pub async fn try_revert(&mut self) -> Result<(), ActionError> {
         match self.state {
             ActionState::Uncompleted => {
                 tracing::trace!(
@@ -193,7 +193,7 @@ where
     /// Perform any revert steps
     ///
     /// You should prefer this ([`try_revert`][StatefulAction::try_revert]) over [`revert`][Action::revert] as it handles [`ActionState`] and does tracing
-    pub async fn try_revert(&mut self) -> Result<(), Vec<ActionError>> {
+    pub async fn try_revert(&mut self) -> Result<(), ActionError> {
         let span = self.action.tracing_span();
         match self.state {
             ActionState::Uncompleted => {

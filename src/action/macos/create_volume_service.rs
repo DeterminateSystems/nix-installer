@@ -7,7 +7,9 @@ use tokio::{
     io::AsyncWriteExt,
 };
 
-use crate::action::{Action, ActionDescription, ActionError, ActionTag, StatefulAction};
+use crate::action::{
+    Action, ActionDescription, ActionError, ActionErrorKind, ActionTag, StatefulAction,
+};
 
 use super::get_uuid_for_label;
 
@@ -43,27 +45,27 @@ impl CreateVolumeService {
         };
 
         if this.path.exists() {
-            let discovered_plist: LaunchctlMountPlist = plist::from_file(&this.path)?;
+            let discovered_plist: LaunchctlMountPlist =
+                plist::from_file(&this.path).map_err(Self::error)?;
             let expected_plist = generate_mount_plist(
                 &this.mount_service_label,
                 &this.apfs_volume_label,
                 &this.mount_point,
                 encrypt,
             )
-            .await?;
+            .await
+            .map_err(Self::error)?;
             if discovered_plist != expected_plist {
                 tracing::trace!(
                     ?discovered_plist,
                     ?expected_plist,
                     "Parsed plists not equal"
                 );
-                return Err(ActionError::Custom(Box::new(
-                    CreateVolumeServiceError::DifferentPlist {
-                        expected: expected_plist,
-                        discovered: discovered_plist,
-                        path: this.path.clone(),
-                    },
-                )));
+                return Err(Self::error(CreateVolumeServiceError::DifferentPlist {
+                    expected: expected_plist,
+                    discovered: discovered_plist,
+                    path: this.path.clone(),
+                }));
             }
 
             tracing::debug!("Creating file `{}` already complete", this.path.display());
@@ -121,7 +123,8 @@ impl Action for CreateVolumeService {
             mount_point,
             *encrypt,
         )
-        .await?;
+        .await
+        .map_err(Self::error)?;
 
         let mut options = OpenOptions::new();
         options.create_new(true).write(true).read(true);
@@ -129,13 +132,13 @@ impl Action for CreateVolumeService {
         let mut file = options
             .open(&path)
             .await
-            .map_err(|e| ActionError::Open(path.to_owned(), e))?;
+            .map_err(|e| Self::error(ActionErrorKind::Open(path.to_owned(), e)))?;
 
         let mut buf = Vec::new();
-        plist::to_writer_xml(&mut buf, &generated_plist)?;
+        plist::to_writer_xml(&mut buf, &generated_plist).map_err(Self::error)?;
         file.write_all(&buf)
             .await
-            .map_err(|e| ActionError::Write(path.to_owned(), e))?;
+            .map_err(|e| Self::error(ActionErrorKind::Write(path.to_owned(), e)))?;
 
         Ok(())
     }
@@ -148,10 +151,10 @@ impl Action for CreateVolumeService {
     }
 
     #[tracing::instrument(level = "debug", skip_all)]
-    async fn revert(&mut self) -> Result<(), Vec<ActionError>> {
+    async fn revert(&mut self) -> Result<(), ActionError> {
         remove_file(&self.path)
             .await
-            .map_err(|e| vec![ActionError::Remove(self.path.to_owned(), e)])?;
+            .map_err(|e| Self::error(ActionErrorKind::Remove(self.path.to_owned(), e)))?;
 
         Ok(())
     }
@@ -163,7 +166,7 @@ async fn generate_mount_plist(
     apfs_volume_label: &str,
     mount_point: &Path,
     encrypt: bool,
-) -> Result<LaunchctlMountPlist, ActionError> {
+) -> Result<LaunchctlMountPlist, ActionErrorKind> {
     let apfs_volume_label_with_quotes = format!("\"{apfs_volume_label}\"");
     let uuid = get_uuid_for_label(&apfs_volume_label).await?;
     // The official Nix scripts uppercase the UUID, so we do as well for compatibility.
@@ -207,4 +210,10 @@ pub enum CreateVolumeServiceError {
         discovered: LaunchctlMountPlist,
         path: PathBuf,
     },
+}
+
+impl Into<ActionErrorKind> for CreateVolumeServiceError {
+    fn into(self) -> ActionErrorKind {
+        ActionErrorKind::Custom(Box::new(self))
+    }
 }

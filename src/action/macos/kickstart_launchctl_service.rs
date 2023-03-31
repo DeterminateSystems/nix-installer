@@ -3,7 +3,7 @@ use std::process::Output;
 use tokio::process::Command;
 use tracing::{span, Span};
 
-use crate::action::{ActionError, ActionTag, StatefulAction};
+use crate::action::{ActionError, ActionErrorKind, ActionTag, StatefulAction};
 use crate::execute_command;
 
 use crate::action::{Action, ActionDescription};
@@ -39,11 +39,11 @@ impl KickstartLaunchctlService {
         let output = command
             .output()
             .await
-            .map_err(|e| ActionError::command(&command, e))?;
+            .map_err(|e| Self::error(ActionErrorKind::command(&command, e)))?;
         if output.status.success() {
             service_exists = true;
 
-            let output_string = String::from_utf8(output.stdout)?;
+            let output_string = String::from_utf8(output.stdout).map_err(|e| Self::error(e))?;
             // We are looking for a line containing "state = " with some trailing content
             // The output is not a JSON or a plist
             // MacOS's man pages explicitly tell us not to try to parse this output
@@ -102,7 +102,8 @@ impl Action for KickstartLaunchctlService {
                 .arg(format!("{domain}/{service}"))
                 .stdin(std::process::Stdio::null()),
         )
-        .await?;
+        .await
+        .map_err(Self::error)?;
 
         Ok(())
     }
@@ -115,7 +116,7 @@ impl Action for KickstartLaunchctlService {
     }
 
     #[tracing::instrument(level = "debug", skip_all)]
-    async fn revert(&mut self) -> Result<(), Vec<ActionError>> {
+    async fn revert(&mut self) -> Result<(), ActionError> {
         // MacOs doesn't offer an "ensure-stopped" like they do with Kickstart
         let mut command = Command::new("launchctl");
         command.process_group(0);
@@ -127,15 +128,15 @@ impl Action for KickstartLaunchctlService {
         let output = command
             .output()
             .await
-            .map_err(|e| vec![ActionError::command(&command, e)])?;
+            .map_err(|e| Self::error(ActionErrorKind::command(&command, e)))?;
 
         // On our test Macs, a status code of `3` was reported if the service was stopped while not running.
         match output.status.code() {
             Some(3) | Some(0) | None => (),
             _ => {
-                return Err(vec![ActionError::Custom(Box::new(
+                return Err(Self::error(ActionErrorKind::Custom(Box::new(
                     KickstartLaunchctlServiceError::CannotStopService(command_str, output),
-                ))])
+                ))))
             },
         }
 

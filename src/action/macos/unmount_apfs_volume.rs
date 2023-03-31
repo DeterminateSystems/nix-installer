@@ -65,9 +65,11 @@ impl Action for UnmountApfsVolume {
                     .arg(&name)
                     .stdin(std::process::Stdio::null()),
             )
-            .await?
+            .await
+            .map_err(Self::error)?
             .stdout;
-            let the_plist: DiskUtilInfoOutput = plist::from_reader(Cursor::new(buf))?;
+            let the_plist: DiskUtilInfoOutput =
+                plist::from_reader(Cursor::new(buf)).map_err(|e| Self::error(e))?;
 
             the_plist.mount_point.is_some()
         };
@@ -80,7 +82,8 @@ impl Action for UnmountApfsVolume {
                     .arg(name)
                     .stdin(std::process::Stdio::null()),
             )
-            .await?;
+            .await
+            .map_err(Self::error)?;
         } else {
             tracing::debug!("Volume was already unmounted, can skip unmounting")
         }
@@ -93,10 +96,8 @@ impl Action for UnmountApfsVolume {
     }
 
     #[tracing::instrument(level = "debug", skip_all)]
-    async fn revert(&mut self) -> Result<(), Vec<ActionError>> {
-        let mut errors = vec![];
-
-        if let Err(err) = execute_command(
+    async fn revert(&mut self) -> Result<(), ActionError> {
+        execute_command(
             Command::new("/usr/sbin/diskutil")
                 .process_group(0)
                 .args(["unmount", "force"])
@@ -104,14 +105,8 @@ impl Action for UnmountApfsVolume {
                 .stdin(std::process::Stdio::null()),
         )
         .await
-        {
-            errors.push(err);
-        };
+        .map_err(Self::error)?;
 
-        if errors.is_empty() {
-            Ok(())
-        } else {
-            Err(errors)
-        }
+        Ok(())
     }
 }

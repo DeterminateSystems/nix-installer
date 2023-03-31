@@ -1,7 +1,7 @@
 use tokio::process::Command;
 use tracing::{span, Span};
 
-use crate::action::{ActionError, ActionState, ActionTag, StatefulAction};
+use crate::action::{ActionError, ActionErrorKind, ActionState, ActionTag, StatefulAction};
 use crate::execute_command;
 
 use crate::action::{Action, ActionDescription};
@@ -28,7 +28,7 @@ impl StartSystemdUnit {
         let output = command
             .output()
             .await
-            .map_err(|e| ActionError::command(&command, e))?;
+            .map_err(|e| Self::error(ActionErrorKind::command(&command, e)))?;
 
         let state = if output.status.success() {
             tracing::debug!("Starting systemd unit `{}` already complete", unit);
@@ -84,7 +84,8 @@ impl Action for StartSystemdUnit {
                         .arg(format!("{unit}"))
                         .stdin(std::process::Stdio::null()),
                 )
-                .await?;
+                .await
+                .map_err(Self::error)?;
             },
             false => {
                 // TODO(@Hoverbear): Handle proxy vars
@@ -95,7 +96,8 @@ impl Action for StartSystemdUnit {
                         .arg(format!("{unit}"))
                         .stdin(std::process::Stdio::null()),
                 )
-                .await?;
+                .await
+                .map_err(Self::error)?;
             },
         }
 
@@ -110,7 +112,7 @@ impl Action for StartSystemdUnit {
     }
 
     #[tracing::instrument(level = "debug", skip_all)]
-    async fn revert(&mut self) -> Result<(), Vec<ActionError>> {
+    async fn revert(&mut self) -> Result<(), ActionError> {
         let mut errors = vec![];
 
         if self.enable {
@@ -122,6 +124,7 @@ impl Action for StartSystemdUnit {
                     .stdin(std::process::Stdio::null()),
             )
             .await
+            .map_err(Self::error)
             {
                 errors.push(e);
             }
@@ -136,6 +139,7 @@ impl Action for StartSystemdUnit {
                 .stdin(std::process::Stdio::null()),
         )
         .await
+        .map_err(Self::error)
         {
             errors.push(e);
         }
@@ -143,7 +147,7 @@ impl Action for StartSystemdUnit {
         if errors.is_empty() {
             Ok(())
         } else {
-            Err(errors)
+            Err(Self::error(ActionErrorKind::MultipleChildren(errors)))
         }
     }
 }

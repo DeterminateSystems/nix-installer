@@ -2,7 +2,9 @@ use std::path::{Path, PathBuf};
 
 use tracing::{span, Span};
 
-use crate::action::{Action, ActionDescription, ActionError, ActionTag, StatefulAction};
+use crate::action::{
+    Action, ActionDescription, ActionError, ActionErrorKind, ActionTag, StatefulAction,
+};
 
 pub(crate) const DEST: &str = "/nix/";
 
@@ -57,32 +59,37 @@ impl Action for MoveUnpackedNix {
 
         // This is the `nix-$VERSION` folder which unpacks from the tarball, not a nix derivation
         let found_nix_paths = glob::glob(&format!("{}/nix-*", unpacked_path.display()))
-            .map_err(|e| ActionError::Custom(Box::new(e)))?
+            .map_err(|e| Self::error(MoveUnpackedNixError::from(e)))?
             .collect::<Result<Vec<_>, _>>()
-            .map_err(|e| ActionError::Custom(Box::new(e)))?;
+            .map_err(|e| Self::error(MoveUnpackedNixError::from(e)))?;
         if found_nix_paths.len() != 1 {
-            return Err(ActionError::MalformedBinaryTarball);
+            return Err(Self::error(ActionErrorKind::MalformedBinaryTarball));
         }
         let found_nix_path = found_nix_paths.into_iter().next().unwrap();
         let src_store = found_nix_path.join("store");
         let mut src_store_listing = tokio::fs::read_dir(src_store.clone())
             .await
-            .map_err(|e| ActionError::ReadDir(src_store.clone(), e))?;
+            .map_err(|e| ActionErrorKind::ReadDir(src_store.clone(), e))
+            .map_err(Self::error)?;
         let dest_store = Path::new(DEST).join("store");
         if dest_store.exists() {
             if !dest_store.is_dir() {
-                return Err(ActionError::PathWasNotDirectory(dest_store.clone()))?;
+                return Err(Self::error(ActionErrorKind::PathWasNotDirectory(
+                    dest_store.clone(),
+                )))?;
             }
         } else {
             tokio::fs::create_dir(&dest_store)
                 .await
-                .map_err(|e| ActionError::CreateDirectory(dest_store.clone(), e))?;
+                .map_err(|e| ActionErrorKind::CreateDirectory(dest_store.clone(), e))
+                .map_err(Self::error)?;
         }
 
         while let Some(entry) = src_store_listing
             .next_entry()
             .await
-            .map_err(|e| ActionError::ReadDir(src_store.clone(), e))?
+            .map_err(|e| ActionErrorKind::ReadDir(src_store.clone(), e))
+            .map_err(Self::error)?
         {
             let entry_dest = dest_store.join(entry.file_name());
             if entry_dest.exists() {
@@ -92,8 +99,9 @@ impl Action for MoveUnpackedNix {
                 tokio::fs::rename(&entry.path(), &entry_dest)
                     .await
                     .map_err(|e| {
-                        ActionError::Rename(entry.path().clone(), entry_dest.to_owned(), e)
-                    })?;
+                        ActionErrorKind::Rename(entry.path().clone(), entry_dest.to_owned(), e)
+                    })
+                    .map_err(Self::error)?;
             }
         }
 
@@ -105,7 +113,7 @@ impl Action for MoveUnpackedNix {
     }
 
     #[tracing::instrument(level = "debug", skip_all)]
-    async fn revert(&mut self) -> Result<(), Vec<ActionError>> {
+    async fn revert(&mut self) -> Result<(), ActionError> {
         // Noop
         Ok(())
     }
@@ -126,4 +134,10 @@ pub enum MoveUnpackedNixError {
         #[source]
         glob::GlobError,
     ),
+}
+
+impl Into<ActionErrorKind> for MoveUnpackedNixError {
+    fn into(self) -> ActionErrorKind {
+        ActionErrorKind::Custom(Box::new(self))
+    }
 }

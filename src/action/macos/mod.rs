@@ -15,7 +15,7 @@ pub(crate) mod unmount_apfs_volume;
 pub use bootstrap_launchctl_service::BootstrapLaunchctlService;
 pub use create_apfs_volume::CreateApfsVolume;
 pub use create_nix_volume::{CreateNixVolume, NIX_VOLUME_MOUNTD_DEST};
-pub use create_synthetic_objects::{CreateSyntheticObjects, CreateSyntheticObjectsError};
+pub use create_synthetic_objects::CreateSyntheticObjects;
 pub use create_volume_service::CreateVolumeService;
 pub use enable_ownership::{EnableOwnership, EnableOwnershipError};
 pub use encrypt_apfs_volume::EncryptApfsVolume;
@@ -27,9 +27,9 @@ use uuid::Uuid;
 
 use crate::execute_command;
 
-use super::ActionError;
+use super::ActionErrorKind;
 
-async fn get_uuid_for_label(apfs_volume_label: &str) -> Result<Uuid, ActionError> {
+async fn get_uuid_for_label(apfs_volume_label: &str) -> Result<Uuid, ActionErrorKind> {
     let output = execute_command(
         Command::new("/usr/sbin/diskutil")
             .process_group(0)

@@ -11,7 +11,9 @@ use tokio::{
 };
 use tracing::{span, Span};
 
-use crate::action::{Action, ActionDescription, ActionError, ActionTag, StatefulAction};
+use crate::action::{
+    Action, ActionDescription, ActionError, ActionErrorKind, ActionTag, StatefulAction,
+};
 
 /// The `nix.conf` configuration names that are safe to merge.
 // FIXME(@cole-h): make configurable by downstream users?
@@ -31,6 +33,12 @@ pub enum CreateOrMergeNixConfigError {
         .collect::<Vec<_>>()
         .join(", "))]
     UnmergeableConfig(Vec<String>, std::path::PathBuf),
+}
+
+impl Into<ActionErrorKind> for CreateOrMergeNixConfigError {
+    fn into(self) -> ActionErrorKind {
+        ActionErrorKind::Custom(Box::new(self))
+    }
 }
 
 /// Create or merge an existing `nix.conf` at the specified path.
@@ -132,10 +140,10 @@ impl CreateOrMergeNixConfig {
         let path = path.to_path_buf();
         let metadata = path
             .metadata()
-            .map_err(|e| ActionError::GettingMetadata(path.clone(), e))?;
+            .map_err(|e| Self::error(ActionErrorKind::GettingMetadata(path.clone(), e)))?;
 
         if !metadata.is_file() {
-            return Err(ActionError::PathWasNotFile(path));
+            return Err(Self::error(ActionErrorKind::PathWasNotFile(path)));
         }
 
         // Does the file have the right permissions?
@@ -144,23 +152,23 @@ impl CreateOrMergeNixConfig {
         let discovered_mode = discovered_mode & 0o777;
 
         if discovered_mode != NIX_CONF_MODE {
-            return Err(ActionError::PathModeMismatch(
+            return Err(Self::error(ActionErrorKind::PathModeMismatch(
                 path,
                 discovered_mode,
                 NIX_CONF_MODE,
-            ));
+            )));
         }
 
         let existing_nix_config = NixConfig::parse_file(&path)
             .map_err(CreateOrMergeNixConfigError::ParseNixConfig)
-            .map_err(|e| ActionError::Custom(Box::new(e)))?;
+            .map_err(Self::error)?;
 
         let (merged_nix_config, existing_nix_config) = Self::merge_pending_and_existing_nix_config(
             &pending_nix_config,
             &existing_nix_config,
             &path,
         )
-        .map_err(|e| ActionError::Custom(Box::new(e)))?;
+        .map_err(Self::error)?;
 
         Ok((merged_nix_config, existing_nix_config))
     }
@@ -260,7 +268,7 @@ impl Action for CreateOrMergeNixConfig {
             .open(&temp_file_path)
             .await
             .map_err(|e| {
-                ActionError::Open(temp_file_path.clone(), e)
+                Self::error(ActionErrorKind::Open(temp_file_path.clone(), e))
             })?;
 
         let (mut merged_nix_config, mut existing_nix_config) = if path.exists() {
@@ -276,7 +284,7 @@ impl Action for CreateOrMergeNixConfig {
         if let Some(existing_nix_config) = existing_nix_config.as_mut() {
             let mut discovered_buf = tokio::fs::read_to_string(&path)
                 .await
-                .map_err(|e| ActionError::Read(path.to_path_buf(), e))?;
+                .map_err(|e| Self::error(ActionErrorKind::Read(path.to_path_buf(), e)))?;
 
             // We append a newline to ensure that, in the case there are comments at the end of the
             // file and _NO_ trailing newline, we still preserve the entire block of comments.
@@ -416,13 +424,25 @@ impl Action for CreateOrMergeNixConfig {
         temp_file
             .write_all(new_config.as_bytes())
             .await
-            .map_err(|e| ActionError::Write(temp_file_path.clone(), e))?;
+            .map_err(|e| Self::error(ActionErrorKind::Write(temp_file_path.clone(), e)))?;
         tokio::fs::set_permissions(&temp_file_path, PermissionsExt::from_mode(NIX_CONF_MODE))
             .await
-            .map_err(|e| ActionError::SetPermissions(NIX_CONF_MODE, path.to_owned(), e))?;
+            .map_err(|e| {
+                Self::error(ActionErrorKind::SetPermissions(
+                    NIX_CONF_MODE,
+                    path.to_owned(),
+                    e,
+                ))
+            })?;
         tokio::fs::rename(&temp_file_path, &path)
             .await
-            .map_err(|e| ActionError::Rename(temp_file_path.to_owned(), path.to_owned(), e))?;
+            .map_err(|e| {
+                Self::error(ActionErrorKind::Rename(
+                    temp_file_path.to_owned(),
+                    path.to_owned(),
+                    e,
+                ))
+            })?;
 
         Ok(())
     }
@@ -440,7 +460,7 @@ impl Action for CreateOrMergeNixConfig {
     }
 
     #[tracing::instrument(level = "debug", skip_all)]
-    async fn revert(&mut self) -> Result<(), Vec<ActionError>> {
+    async fn revert(&mut self) -> Result<(), ActionError> {
         let Self {
             path,
             pending_nix_config: _,
@@ -448,7 +468,7 @@ impl Action for CreateOrMergeNixConfig {
 
         remove_file(&path)
             .await
-            .map_err(|e| vec![ActionError::Remove(path.to_owned(), e)])?;
+            .map_err(|e| Self::error(ActionErrorKind::Remove(path.to_owned(), e)))?;
 
         Ok(())
     }
@@ -457,7 +477,7 @@ impl Action for CreateOrMergeNixConfig {
 #[cfg(test)]
 mod test {
     use super::*;
-    use color_eyre::{eyre::eyre, Section};
+    use color_eyre::eyre::eyre;
     use tokio::fs::write;
 
     #[tokio::test]
@@ -477,12 +497,7 @@ mod test {
         assert!(s.contains("ca-references"));
         assert!(NixConfig::parse_file(&test_file).is_ok());
 
-        if let Err(errs) = action.try_revert().await {
-            let mut report = eyre!("Errors");
-            for err in errs {
-                report = report.error(err);
-            }
-        }
+        action.try_revert().await?;
 
         assert!(!test_file.exists(), "File should have been deleted");
 
@@ -505,12 +520,7 @@ mod test {
 
         write(test_file.as_path(), "More content").await?;
 
-        if let Err(errs) = action.try_revert().await {
-            let mut report = eyre!("Errors");
-            for err in errs {
-                report = report.error(err);
-            }
-        }
+        action.try_revert().await?;
 
         assert!(!test_file.exists(), "File should have been deleted");
 
@@ -536,12 +546,7 @@ mod test {
 
         action.try_execute().await?;
 
-        if let Err(errs) = action.try_revert().await {
-            let mut report = eyre!("Errors");
-            for err in errs {
-                report = report.error(err);
-            }
-        }
+        action.try_revert().await?;
 
         assert!(!test_file.exists(), "File should have been deleted");
 
@@ -586,12 +591,7 @@ mod test {
         assert!(s.contains("warn-dirty = true"));
         assert!(NixConfig::parse_file(&test_file).is_ok());
 
-        if let Err(errs) = action.try_revert().await {
-            let mut report = eyre!("Errors");
-            for err in errs {
-                report = report.error(err);
-            }
-        }
+        action.try_revert().await?;
 
         assert!(!test_file.exists(), "File should have been deleted");
 
@@ -620,15 +620,20 @@ mod test {
             .settings_mut()
             .insert("warn-dirty".into(), "false".into());
         match CreateOrMergeNixConfig::plan(&test_file, nix_config).await {
-            Err(ActionError::Custom(e)) => match e.downcast_ref::<CreateOrMergeNixConfigError>() {
-                Some(CreateOrMergeNixConfigError::UnmergeableConfig(_, path)) => {
-                    assert_eq!(path, test_file.as_path())
+            Err(err) => match err.kind() {
+                ActionErrorKind::Custom(e) => {
+                    match e.downcast_ref::<CreateOrMergeNixConfigError>() {
+                        Some(CreateOrMergeNixConfigError::UnmergeableConfig(_, path)) => {
+                            assert_eq!(path, test_file.as_path())
+                        },
+                        _ => {
+                            return Err(eyre!(
+                            "Should have returned CreateOrMergeNixConfigError::UnmergeableConfig"
+                        ))
+                        },
+                    }
                 },
-                _ => {
-                    return Err(eyre!(
-                        "Should have returned CreateOrMergeNixConfigError::UnmergeableConfig"
-                    ))
-                },
+                _ => (),
             },
             _ => {
                 return Err(eyre!(
@@ -671,12 +676,7 @@ mod test {
         assert!(s.contains("ca-references"));
         assert!(NixConfig::parse_file(&test_file).is_ok());
 
-        if let Err(errs) = action.try_revert().await {
-            let mut report = eyre!("Errors");
-            for err in errs {
-                report = report.error(err);
-            }
-        }
+        action.try_revert().await?;
 
         assert!(!test_file.exists(), "File should have been deleted");
 
@@ -704,12 +704,7 @@ mod test {
         assert_eq!(s.matches("a = b").count(), 1);
         assert!(NixConfig::parse_file(&test_file).is_ok());
 
-        if let Err(errs) = action.try_revert().await {
-            let mut report = eyre!("Errors");
-            for err in errs {
-                report = report.error(err);
-            }
-        }
+        action.try_revert().await?;
 
         assert!(!test_file.exists(), "File should have been deleted");
 

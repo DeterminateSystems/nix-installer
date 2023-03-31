@@ -1,18 +1,14 @@
 use std::path::PathBuf;
 
-use crate::{
-    action::{ActionError, ActionTag},
-    planner::PlannerError,
-    settings::InstallSettingsError,
-};
+use crate::{action::ActionError, planner::PlannerError, settings::InstallSettingsError};
 
 /// An error occurring during a call defined in this crate
 #[non_exhaustive]
 #[derive(thiserror::Error, Debug, strum::IntoStaticStr)]
 pub enum NixInstallerError {
     /// An error originating from an [`Action`](crate::action::Action)
-    #[error("Error executing action `{0}`")]
-    Action(ActionTag, #[source] ActionError),
+    #[error("Error executing action")]
+    Action(#[source] ActionError),
     /// An error originating from an [`Action`](crate::action::Action) while reverting
     #[error("Error reverting")]
     ActionRevert(Vec<ActionError>),
@@ -75,7 +71,7 @@ pub(crate) trait HasExpectedErrors: std::error::Error + Sized + Send + Sync {
 impl HasExpectedErrors for NixInstallerError {
     fn expected<'a>(&'a self) -> Option<Box<dyn std::error::Error + 'a>> {
         match self {
-            NixInstallerError::Action(_, action_error) => action_error.expected(),
+            NixInstallerError::Action(action_error) => action_error.kind().expected(),
             NixInstallerError::ActionRevert(_) => None,
             NixInstallerError::RecordingReceipt(_, _) => None,
             NixInstallerError::CopyingSelf(_) => None,
@@ -95,7 +91,7 @@ impl crate::diagnostics::ErrorDiagnostic for NixInstallerError {
     fn diagnostic(&self) -> String {
         let static_str: &'static str = (self).into();
         let context = match self {
-            Self::Action(action, _) => vec![action.to_string()],
+            Self::Action(action_error) => vec![action_error.action_tag().to_string()],
             _ => vec![],
         };
         return format!(
