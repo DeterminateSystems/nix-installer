@@ -177,7 +177,7 @@ impl Action for CreateNixVolume {
         self.create_volume
             .try_execute()
             .await
-            .map_err(|e| ActionError::Child(self.create_volume.action_tag(), Box::new(e)))?;
+            .map_err(Self::error)?;
 
         let mut retry_tokens: usize = 50;
         loop {
@@ -190,11 +190,14 @@ impl Action for CreateNixVolume {
             let output = command
                 .output()
                 .await
-                .map_err(|e| ActionError::command(&command, e))?;
+                .map_err(|e| ActionErrorKind::command(&command, e))
+                .map_err(Self::error)?;
             if output.status.success() {
                 break;
             } else if retry_tokens == 0 {
-                return Err(ActionError::command_output(&command, output));
+                return Err(Self::error(ActionErrorKind::command_output(
+                    &command, output,
+                )));
             } else {
                 retry_tokens = retry_tokens.saturating_sub(1);
             }
@@ -232,12 +235,14 @@ impl Action for CreateNixVolume {
             let output = command
                 .output()
                 .await
-                .map_err(|e| ActionError::command(&command, e))
+                .map_err(|e| ActionErrorKind::command(&command, e))
                 .map_err(Self::error)?;
             if output.status.success() {
                 break;
             } else if retry_tokens == 0 {
-                return Err(ActionError::command_output(&command, output));
+                return Err(Self::error(ActionErrorKind::command_output(
+                    &command, output,
+                )));
             } else {
                 retry_tokens = retry_tokens.saturating_sub(1);
             }

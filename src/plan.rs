@@ -329,10 +329,6 @@ impl InstallPlan {
             }
         }
 
-        if let Err(err) = write_receipt(self.clone()).await {
-            tracing::error!("Error saving receipt: {:?}", err);
-        }
-
         if errors.is_empty() {
             #[cfg(feature = "diagnostics")]
             if let Some(diagnostic_data) = &self.diagnostic_data {
