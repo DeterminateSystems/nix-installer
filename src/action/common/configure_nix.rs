@@ -182,21 +182,37 @@ impl Action for ConfigureNix {
 
     #[tracing::instrument(level = "debug", skip_all)]
     async fn revert(&mut self) -> Result<(), Vec<ActionError>> {
+        let mut errors = vec![];
         if let Some(configure_shell_profile) = &mut self.configure_shell_profile {
-            configure_shell_profile.try_revert().await.map_err(|e| {
-                ActionError::Child(configure_shell_profile.action_tag(), Box::new(e))
-            })?;
+            if let Err(err) = configure_shell_profile.try_revert().await.map_err(|errs| {
+                ActionError::ChildRevert(configure_shell_profile.action_tag(), errs)
+            }) {
+                errors.push(err);
+            }
         }
-        self.place_nix_configuration
+        if let Err(err) = self
+            .place_nix_configuration
             .try_revert()
             .await
-            .map_err(|e| {
-                ActionError::Child(self.place_nix_configuration.action_tag(), Box::new(e))
-            })?;
-        self.setup_default_profile.try_revert().await.map_err(|e| {
-            ActionError::Child(self.setup_default_profile.action_tag(), Box::new(e))
-        })?;
+            .map_err(|errs| {
+                ActionError::ChildRevert(self.place_nix_configuration.action_tag(), errs)
+            })
+        {
+            errors.push(err);
+        }
+        if let Err(err) = self
+            .setup_default_profile
+            .try_revert()
+            .await
+            .map_err(|errs| ActionError::ChildRevert(self.setup_default_profile.action_tag(), errs))
+        {
+            errors.push(err);
+        }
 
-        Ok(())
+        if errors.is_empty() {
+            Ok(())
+        } else {
+            Err(errors)
+        }
     }
 }

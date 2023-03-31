@@ -448,7 +448,7 @@ impl Action for CreateOrMergeNixConfig {
 
         remove_file(&path)
             .await
-            .map_err(|e| ActionError::Remove(path.to_owned(), e))?;
+            .map_err(|e| vec![ActionError::Remove(path.to_owned(), e)])?;
 
         Ok(())
     }
@@ -457,7 +457,7 @@ impl Action for CreateOrMergeNixConfig {
 #[cfg(test)]
 mod test {
     use super::*;
-    use eyre::eyre;
+    use color_eyre::{eyre::eyre, Section};
     use tokio::fs::write;
 
     #[tokio::test]
@@ -477,7 +477,12 @@ mod test {
         assert!(s.contains("ca-references"));
         assert!(NixConfig::parse_file(&test_file).is_ok());
 
-        action.try_revert().await?;
+        if let Err(errs) = action.try_revert().await {
+            let mut report = eyre!("Errors");
+            for err in errs {
+                report = report.error(err);
+            }
+        }
 
         assert!(!test_file.exists(), "File should have been deleted");
 
@@ -500,7 +505,12 @@ mod test {
 
         write(test_file.as_path(), "More content").await?;
 
-        action.try_revert().await?;
+        if let Err(errs) = action.try_revert().await {
+            let mut report = eyre!("Errors");
+            for err in errs {
+                report = report.error(err);
+            }
+        }
 
         assert!(!test_file.exists(), "File should have been deleted");
 
@@ -526,7 +536,12 @@ mod test {
 
         action.try_execute().await?;
 
-        action.try_revert().await?;
+        if let Err(errs) = action.try_revert().await {
+            let mut report = eyre!("Errors");
+            for err in errs {
+                report = report.error(err);
+            }
+        }
 
         assert!(!test_file.exists(), "File should have been deleted");
 
@@ -571,7 +586,12 @@ mod test {
         assert!(s.contains("warn-dirty = true"));
         assert!(NixConfig::parse_file(&test_file).is_ok());
 
-        action.try_revert().await?;
+        if let Err(errs) = action.try_revert().await {
+            let mut report = eyre!("Errors");
+            for err in errs {
+                report = report.error(err);
+            }
+        }
 
         assert!(!test_file.exists(), "File should have been deleted");
 
@@ -651,7 +671,12 @@ mod test {
         assert!(s.contains("ca-references"));
         assert!(NixConfig::parse_file(&test_file).is_ok());
 
-        action.try_revert().await?;
+        if let Err(errs) = action.try_revert().await {
+            let mut report = eyre!("Errors");
+            for err in errs {
+                report = report.error(err);
+            }
+        }
 
         assert!(!test_file.exists(), "File should have been deleted");
 
@@ -679,7 +704,12 @@ mod test {
         assert_eq!(s.matches("a = b").count(), 1);
         assert!(NixConfig::parse_file(&test_file).is_ok());
 
-        action.try_revert().await?;
+        if let Err(errs) = action.try_revert().await {
+            let mut report = eyre!("Errors");
+            for err in errs {
+                report = report.error(err);
+            }
+        }
 
         assert!(!test_file.exists(), "File should have been deleted");
 

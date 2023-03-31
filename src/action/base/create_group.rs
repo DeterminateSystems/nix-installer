@@ -151,7 +151,8 @@ impl Action for CreateGroup {
                         .args([".", "-delete", &format!("/Groups/{name}")])
                         .stdin(std::process::Stdio::null()),
                 )
-                .await?;
+                .await
+                .map_err(|e| vec![e])?;
                 if !output.status.success() {}
             },
             _ => {
@@ -162,7 +163,8 @@ impl Action for CreateGroup {
                             .arg(name)
                             .stdin(std::process::Stdio::null()),
                     )
-                    .await?;
+                    .await
+                    .map_err(|e| vec![e])?;
                 } else if which::which("delgroup").is_ok() {
                     execute_command(
                         Command::new("delgroup")
@@ -170,9 +172,10 @@ impl Action for CreateGroup {
                             .arg(name)
                             .stdin(std::process::Stdio::null()),
                     )
-                    .await?;
+                    .await
+                    .map_err(|e| vec![e])?;
                 } else {
-                    return Err(ActionError::MissingGroupDeletionCommand);
+                    return Err(vec![ActionError::MissingGroupDeletionCommand]);
                 }
             },
         };

@@ -220,12 +220,10 @@ impl Action for EncryptApfsVolume {
         disk = %self.disk.display(),
     ))]
     async fn revert(&mut self) -> Result<(), Vec<ActionError>> {
-        let mut errors = vec![];
-
         let disk_str = self.disk.to_str().expect("Could not turn disk into string"); /* Should not reasonably ever fail */
 
         // TODO: This seems very rough and unsafe
-        if let Err(e) = execute_command(
+        execute_command(
             Command::new("/usr/bin/security").process_group(0).args([
                 "delete-generic-password",
                 "-a",
@@ -244,15 +242,9 @@ impl Action for EncryptApfsVolume {
             ]),
         )
         .await
-        {
-            errors.push(e);
-        }
+        .map_err(|e| vec![e])?;
 
-        if errors.is_empty() {
-            Ok(())
-        } else {
-            Err(errors)
-        }
+        Ok(())
     }
 }
 

@@ -264,7 +264,8 @@ impl Action for AddUserToGroup {
                         .arg(&name)
                         .stdin(std::process::Stdio::null()),
                 )
-                .await?;
+                .await
+                .map_err(|e| vec![e])?;
             },
             _ => {
                 if which::which("gpasswd").is_ok() {
@@ -275,7 +276,8 @@ impl Action for AddUserToGroup {
                             .args([&name.to_string(), &groupname.to_string()])
                             .stdin(std::process::Stdio::null()),
                     )
-                    .await?;
+                    .await
+                    .map_err(|e| vec![e])?;
                 } else if which::which("delgroup").is_ok() {
                     execute_command(
                         Command::new("delgroup")
@@ -283,9 +285,10 @@ impl Action for AddUserToGroup {
                             .args([name, groupname])
                             .stdin(std::process::Stdio::null()),
                     )
-                    .await?;
+                    .await
+                    .map_err(|e| vec![e])?;
                 } else {
-                    return Err(ActionError::MissingRemoveUserFromGroupCommand);
+                    return Err(vec![ActionError::MissingRemoveUserFromGroupCommand]);
                 }
             },
         };

@@ -296,6 +296,7 @@ impl InstallPlan {
     ) -> Result<(), NixInstallerError> {
         let Self { actions, .. } = self;
         let mut cancel_channel = cancel_channel.into();
+        let mut errors = vec![];
 
         // This is **deliberately sequential**.
         // Actions which are parallelizable are represented by "group actions" like CreateUsers
@@ -324,39 +325,44 @@ impl InstallPlan {
             }
 
             tracing::info!("Revert: {}", action.tracing_synopsis());
-            let typetag_name = action.inner_typetag_name();
-            if let Err(err) = action.try_revert().await {
-                if let Err(err) = write_receipt(self.clone()).await {
-                    tracing::error!("Error saving receipt: {:?}", err);
-                }
-                let err = NixInstallerError::Action(typetag_name.into(), err);
-                #[cfg(feature = "diagnostics")]
-                if let Some(diagnostic_data) = &self.diagnostic_data {
-                    diagnostic_data
-                        .clone()
-                        .failure(&err)
-                        .send(
-                            crate::diagnostics::DiagnosticAction::Uninstall,
-                            crate::diagnostics::DiagnosticStatus::Failure,
-                        )
-                        .await?;
-                }
-                return Err(err);
+            if let Err(errs) = action.try_revert().await {
+                errors.extend(errs);
             }
         }
 
-        #[cfg(feature = "diagnostics")]
-        if let Some(diagnostic_data) = &self.diagnostic_data {
-            diagnostic_data
-                .clone()
-                .send(
-                    crate::diagnostics::DiagnosticAction::Uninstall,
-                    crate::diagnostics::DiagnosticStatus::Success,
-                )
-                .await?;
+        if let Err(err) = write_receipt(self.clone()).await {
+            tracing::error!("Error saving receipt: {:?}", err);
         }
 
-        Ok(())
+        if errors.is_empty() {
+            #[cfg(feature = "diagnostics")]
+            if let Some(diagnostic_data) = &self.diagnostic_data {
+                diagnostic_data
+                    .clone()
+                    .send(
+                        crate::diagnostics::DiagnosticAction::Uninstall,
+                        crate::diagnostics::DiagnosticStatus::Success,
+                    )
+                    .await?;
+            }
+
+            Ok(())
+        } else {
+            let error = NixInstallerError::ActionRevert(errors);
+            #[cfg(feature = "diagnostics")]
+            if let Some(diagnostic_data) = &self.diagnostic_data {
+                diagnostic_data
+                    .clone()
+                    .failure(&error)
+                    .send(
+                        crate::diagnostics::DiagnosticAction::Uninstall,
+                        crate::diagnostics::DiagnosticStatus::Failure,
+                    )
+                    .await?;
+            }
+
+            return Err(error);
+        }
     }
 }
 

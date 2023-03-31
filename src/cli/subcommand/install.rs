@@ -15,10 +15,13 @@ use crate::{
     plan::RECEIPT_LOCATION,
     planner::Planner,
     settings::CommonSettings,
-    BuiltinPlanner, InstallPlan,
+    BuiltinPlanner, InstallPlan, NixInstallerError,
 };
 use clap::{ArgAction, Parser};
-use eyre::{eyre, WrapErr};
+use color_eyre::{
+    eyre::{eyre, WrapErr},
+    Section,
+};
 use owo_colors::OwoColorize;
 
 /// Execute an install (possibly using an existing plan)
@@ -218,19 +221,30 @@ impl CommandExecute for Install {
                     let rx2 = tx.subscribe();
                     let res = install_plan.uninstall(rx2).await;
 
-                    if let Err(err) = res {
-                        if let Some(expected) = err.expected() {
-                            eprintln!("{}", expected.red());
-                            return Ok(ExitCode::FAILURE);
-                        }
-                        return Err(err)?;
-                    } else {
-                        println!(
-                            "\
-                            {message}\n\
-                            ",
-                            message = "Partial Nix install was uninstalled successfully!".bold(),
-                        );
+                    match res {
+                        Err(NixInstallerError::ActionRevert(errs)) => {
+                            let mut report = eyre!("Multiple errors");
+                            for err in errs {
+                                report = report.error(err);
+                            }
+                            return Err(report)?;
+                        },
+                        Err(err) => {
+                            if let Some(expected) = err.expected() {
+                                eprintln!("{}", expected.red());
+                                return Ok(ExitCode::FAILURE);
+                            }
+                            return Err(err)?;
+                        },
+                        _ => {
+                            println!(
+                                "\
+                                {message}\n\
+                                ",
+                                message =
+                                    "Partial Nix install was uninstalled successfully!".bold(),
+                            );
+                        },
                     }
                 } else {
                     if let Some(expected) = err.expected() {

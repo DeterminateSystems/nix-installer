@@ -373,6 +373,8 @@ impl Action for ConfigureInitService {
 
     #[tracing::instrument(level = "debug", skip_all)]
     async fn revert(&mut self) -> Result<(), Vec<ActionError>> {
+        let mut errors = vec![];
+
         match self.init {
             #[cfg(target_os = "macos")]
             InitSystem::Launchd => {
@@ -388,78 +390,107 @@ impl Action for ConfigureInitService {
             InitSystem::Systemd => {
                 // We separate stop and disable (instead of using `--now`) to avoid cases where the service isn't started, but is enabled.
 
-                let socket_is_active = is_active("nix-daemon.socket").await?;
-                let socket_is_enabled = is_enabled("nix-daemon.socket").await?;
-                let service_is_active = is_active("nix-daemon.service").await?;
-                let service_is_enabled = is_enabled("nix-daemon.service").await?;
+                // These have to fail fast.
+                let socket_is_active = is_active("nix-daemon.socket").await.map_err(|e| vec![e])?;
+                let socket_is_enabled =
+                    is_enabled("nix-daemon.socket").await.map_err(|e| vec![e])?;
+                let service_is_active =
+                    is_active("nix-daemon.service").await.map_err(|e| vec![e])?;
+                let service_is_enabled = is_enabled("nix-daemon.service")
+                    .await
+                    .map_err(|e| vec![e])?;
 
                 if socket_is_active {
-                    execute_command(
+                    if let Err(err) = execute_command(
                         Command::new("systemctl")
                             .process_group(0)
                             .args(["stop", "nix-daemon.socket"])
                             .stdin(std::process::Stdio::null()),
                     )
-                    .await?;
+                    .await
+                    {
+                        errors.push(err);
+                    }
                 }
 
                 if socket_is_enabled {
-                    execute_command(
+                    if let Err(err) = execute_command(
                         Command::new("systemctl")
                             .process_group(0)
                             .args(["disable", "nix-daemon.socket"])
                             .stdin(std::process::Stdio::null()),
                     )
-                    .await?;
+                    .await
+                    {
+                        errors.push(err);
+                    }
                 }
 
                 if service_is_active {
-                    execute_command(
+                    if let Err(err) = execute_command(
                         Command::new("systemctl")
                             .process_group(0)
                             .args(["stop", "nix-daemon.service"])
                             .stdin(std::process::Stdio::null()),
                     )
-                    .await?;
+                    .await
+                    {
+                        errors.push(err);
+                    }
                 }
 
                 if service_is_enabled {
-                    execute_command(
+                    if let Err(err) = execute_command(
                         Command::new("systemctl")
                             .process_group(0)
                             .args(["disable", "nix-daemon.service"])
                             .stdin(std::process::Stdio::null()),
                     )
-                    .await?;
+                    .await
+                    {
+                        errors.push(err);
+                    }
                 }
 
-                execute_command(
+                if let Err(err) = execute_command(
                     Command::new("systemd-tmpfiles")
                         .process_group(0)
                         .arg("--remove")
                         .arg("--prefix=/nix/var/nix")
                         .stdin(std::process::Stdio::null()),
                 )
-                .await?;
+                .await
+                {
+                    errors.push(err);
+                }
 
                 if self.ssl_cert_file.is_some() {
                     let service_conf_dir_path = PathBuf::from(format!("{SERVICE_DEST}.d"));
-                    tokio::fs::remove_dir_all(&service_conf_dir_path)
+                    if let Err(err) = tokio::fs::remove_dir_all(&service_conf_dir_path)
                         .await
-                        .map_err(|e| ActionError::Remove(service_conf_dir_path.clone(), e))?;
+                        .map_err(|e| ActionError::Remove(service_conf_dir_path.clone(), e))
+                    {
+                        errors.push(err);
+                    }
                 }
 
-                tokio::fs::remove_file(TMPFILES_DEST)
+                if let Err(err) = tokio::fs::remove_file(TMPFILES_DEST)
                     .await
-                    .map_err(|e| ActionError::Remove(PathBuf::from(TMPFILES_DEST), e))?;
+                    .map_err(|e| ActionError::Remove(PathBuf::from(TMPFILES_DEST), e))
+                {
+                    errors.push(err);
+                }
 
-                execute_command(
+                if let Err(err) = execute_command(
                     Command::new("systemctl")
                         .process_group(0)
                         .arg("daemon-reload")
                         .stdin(std::process::Stdio::null()),
                 )
-                .await?;
+                .await
+                {
+                    errors.push(err);
+                }
             },
             #[cfg(not(target_os = "macos"))]
             InitSystem::None => {
@@ -467,7 +498,11 @@ impl Action for ConfigureInitService {
             },
         };
 
-        Ok(())
+        if errors.is_empty() {
+            Ok(())
+        } else {
+            Err(errors)
+        }
     }
 }
 

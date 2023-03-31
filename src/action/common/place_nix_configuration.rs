@@ -123,17 +123,30 @@ impl Action for PlaceNixConfiguration {
 
     #[tracing::instrument(level = "debug", skip_all)]
     async fn revert(&mut self) -> Result<(), Vec<ActionError>> {
-        self.create_or_merge_nix_config
+        let mut errors = vec![];
+        if let Err(err) = self
+            .create_or_merge_nix_config
             .try_revert()
             .await
-            .map_err(|e| {
-                ActionError::Child(self.create_or_merge_nix_config.action_tag(), Box::new(e))
-            })?;
-        self.create_directory
+            .map_err(|errs| {
+                ActionError::ChildRevert(self.create_or_merge_nix_config.action_tag(), errs)
+            })
+        {
+            errors.push(err);
+        }
+        if let Err(err) = self
+            .create_directory
             .try_revert()
             .await
-            .map_err(|e| ActionError::Child(self.create_directory.action_tag(), Box::new(e)))?;
+            .map_err(|errs| ActionError::ChildRevert(self.create_directory.action_tag(), errs))
+        {
+            errors.push(err);
+        }
 
-        Ok(())
+        if errors.is_empty() {
+            Ok(())
+        } else {
+            Err(errors)
+        }
     }
 }

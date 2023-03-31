@@ -256,21 +256,15 @@ impl Action for CreateUsersAndGroups {
 
     #[tracing::instrument(level = "debug", skip_all)]
     async fn revert(&mut self) -> Result<(), Vec<ActionError>> {
-        let Self {
-            create_users,
-            create_group,
-            add_users_to_groups: _,
-            nix_build_user_count: _,
-            nix_build_group_name: _,
-            nix_build_group_id: _,
-            nix_build_user_prefix: _,
-            nix_build_user_id_base: _,
-        } = self;
-        for create_user in create_users.iter_mut() {
-            create_user
+        let mut errors = vec![];
+        for create_user in self.create_users.iter_mut() {
+            if let Err(err) = create_user
                 .try_revert()
                 .await
-                .map_err(|e| ActionError::Child(create_user.action_tag(), Box::new(e)))?;
+                .map_err(|errs| ActionError::ChildRevert(create_user.action_tag(), errs))
+            {
+                errors.push(err);
+            }
         }
 
         // We don't actually need to do this, when a user is deleted they are removed from groups
@@ -279,11 +273,19 @@ impl Action for CreateUsersAndGroups {
         // }
 
         // Create group
-        create_group
+        if let Err(err) = self
+            .create_group
             .try_revert()
             .await
-            .map_err(|e| ActionError::Child(create_group.action_tag(), Box::new(e)))?;
+            .map_err(|errs| ActionError::ChildRevert(self.create_group.action_tag(), errs))
+        {
+            errors.push(err);
+        }
 
-        Ok(())
+        if errors.is_empty() {
+            Ok(())
+        } else {
+            Err(errors)
+        }
     }
 }

@@ -111,30 +111,40 @@ impl Action for StartSystemdUnit {
 
     #[tracing::instrument(level = "debug", skip_all)]
     async fn revert(&mut self) -> Result<(), Vec<ActionError>> {
-        let Self { unit, enable } = self;
+        let mut errors = vec![];
 
-        if *enable {
-            execute_command(
+        if self.enable {
+            if let Err(e) = execute_command(
                 Command::new("systemctl")
                     .process_group(0)
                     .arg("disable")
-                    .arg(format!("{unit}"))
+                    .arg(format!("{}", self.unit))
                     .stdin(std::process::Stdio::null()),
             )
-            .await?;
+            .await
+            {
+                errors.push(e);
+            }
         };
 
         // We do both to avoid an error doing `disable --now` if the user did stop it already somehow.
-        execute_command(
+        if let Err(e) = execute_command(
             Command::new("systemctl")
                 .process_group(0)
                 .arg("stop")
-                .arg(format!("{unit}"))
+                .arg(format!("{}", self.unit))
                 .stdin(std::process::Stdio::null()),
         )
-        .await?;
+        .await
+        {
+            errors.push(e);
+        }
 
-        Ok(())
+        if errors.is_empty() {
+            Ok(())
+        } else {
+            Err(errors)
+        }
     }
 }
 

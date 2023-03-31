@@ -323,12 +323,12 @@ impl Action for CreateOrInsertIntoFile {
             .read(true)
             .open(&path)
             .await
-            .map_err(|e| ActionError::Open(path.to_owned(), e))?;
+            .map_err(|e| vec![ActionError::Open(path.to_owned(), e)])?;
 
         let mut file_contents = String::default();
         file.read_to_string(&mut file_contents)
             .await
-            .map_err(|e| ActionError::Read(path.to_owned(), e))?;
+            .map_err(|e| vec![ActionError::Read(path.to_owned(), e)])?;
 
         if let Some(start) = file_contents.rfind(buf.as_str()) {
             let end = start + buf.len();
@@ -338,20 +338,20 @@ impl Action for CreateOrInsertIntoFile {
         if file_contents.is_empty() {
             remove_file(&path)
                 .await
-                .map_err(|e| ActionError::Remove(path.to_owned(), e))?;
+                .map_err(|e| vec![ActionError::Remove(path.to_owned(), e)])?;
         } else {
             file.seek(SeekFrom::Start(0))
                 .await
-                .map_err(|e| ActionError::Seek(path.to_owned(), e))?;
+                .map_err(|e| vec![ActionError::Seek(path.to_owned(), e)])?;
             file.set_len(0)
                 .await
-                .map_err(|e| ActionError::Truncate(path.to_owned(), e))?;
+                .map_err(|e| vec![ActionError::Truncate(path.to_owned(), e)])?;
             file.write_all(file_contents.as_bytes())
                 .await
-                .map_err(|e| ActionError::Write(path.to_owned(), e))?;
+                .map_err(|e| vec![ActionError::Write(path.to_owned(), e)])?;
             file.flush()
                 .await
-                .map_err(|e| ActionError::Flush(path.to_owned(), e))?;
+                .map_err(|e| vec![ActionError::Flush(path.to_owned(), e)])?;
         }
         Ok(())
     }
@@ -360,7 +360,7 @@ impl Action for CreateOrInsertIntoFile {
 #[cfg(test)]
 mod test {
     use super::*;
-    use eyre::eyre;
+    use color_eyre::{eyre::eyre, Section};
     use tokio::fs::{read_to_string, write};
 
     #[tokio::test]
@@ -379,7 +379,12 @@ mod test {
 
         action.try_execute().await?;
 
-        action.try_revert().await?;
+        if let Err(errs) = action.try_revert().await {
+            let mut report = eyre!("Errors");
+            for err in errs {
+                report = report.error(err);
+            }
+        }
 
         assert!(!test_file.exists(), "File should have been deleted");
 
@@ -408,7 +413,12 @@ mod test {
 
         action.try_execute().await?;
 
-        action.try_revert().await?;
+        if let Err(errs) = action.try_revert().await {
+            let mut report = eyre!("Errors");
+            for err in errs {
+                report = report.error(err);
+            }
+        }
 
         assert!(test_file.exists(), "File should have not been deleted");
 
@@ -449,7 +459,12 @@ mod test {
 
             action.try_execute().await?;
 
-            action.try_revert().await?;
+            if let Err(errs) = action.try_revert().await {
+                let mut report = eyre!("Errors");
+                for err in errs {
+                    report = report.error(err);
+                }
+            }
 
             assert!(test_file.exists(), "File should have not been deleted");
             let after_revert_content = read_to_string(&test_file).await?;
@@ -484,7 +499,12 @@ mod test {
 
         action.try_execute().await?;
 
-        action.try_revert().await?;
+        if let Err(errs) = action.try_revert().await {
+            let mut report = eyre!("Errors");
+            for err in errs {
+                report = report.error(err);
+            }
+        }
 
         assert!(test_file.exists(), "File should have not been deleted");
 
@@ -513,7 +533,12 @@ mod test {
 
         action.try_execute().await?;
 
-        action.try_revert().await?;
+        if let Err(errs) = action.try_revert().await {
+            let mut report = eyre!("Errors");
+            for err in errs {
+                report = report.error(err);
+            }
+        }
 
         assert!(!test_file.exists(), "File should have been deleted");
 

@@ -131,34 +131,46 @@ impl Action for ProvisionNix {
 
     #[tracing::instrument(level = "debug", skip_all)]
     async fn revert(&mut self) -> Result<(), Vec<ActionError>> {
-        // We fetch nix while doing the rest, then move it over.
-        let mut fetch_nix_clone = self.fetch_nix.clone();
-        let fetch_nix_handle = tokio::task::spawn(async {
-            fetch_nix_clone
-                .try_revert()
-                .await
-                .map_err(|e| ActionError::Child(fetch_nix_clone.action_tag(), Box::new(e)))?;
-            Result::<_, ActionError>::Ok(fetch_nix_clone)
-        });
+        let mut errors = vec![];
 
-        if let Err(err) = self.create_users_and_group.try_revert().await {
-            fetch_nix_handle.abort();
-            return Err(err);
-        }
-        if let Err(err) = self.create_nix_tree.try_revert().await {
-            fetch_nix_handle.abort();
-            return Err(err);
-        }
-
-        self.fetch_nix = fetch_nix_handle
-            .await
-            .map_err(ActionError::Join)?
-            .map_err(|e| ActionError::Child(self.fetch_nix.action_tag(), Box::new(e)))?;
-        self.move_unpacked_nix
+        if let Err(err) = self
+            .fetch_nix
             .try_revert()
             .await
-            .map_err(|e| ActionError::Child(self.move_unpacked_nix.action_tag(), Box::new(e)))?;
+            .map_err(|errs| ActionError::ChildRevert(self.fetch_nix.action_tag(), errs))
+        {
+            errors.push(err)
+        }
 
-        Ok(())
+        if let Err(err) = self
+            .create_users_and_group
+            .try_revert()
+            .await
+            .map_err(|errs| {
+                ActionError::ChildRevert(self.create_users_and_group.action_tag(), errs)
+            })
+        {
+            errors.push(err)
+        }
+        if let Err(err) = self.create_nix_tree.try_revert().await.map_err(|errs| {
+            ActionError::ChildRevert(self.create_users_and_group.action_tag(), errs)
+        }) {
+            errors.push(err)
+        }
+
+        if let Err(err) = self
+            .move_unpacked_nix
+            .try_revert()
+            .await
+            .map_err(|e| ActionError::ChildRevert(self.move_unpacked_nix.action_tag(), e))
+        {
+            errors.push(err)
+        }
+
+        if errors.is_empty() {
+            Ok(())
+        } else {
+            Err(errors)
+        }
     }
 }

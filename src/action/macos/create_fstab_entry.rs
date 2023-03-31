@@ -223,13 +223,13 @@ impl Action for CreateFstabEntry {
 
     #[tracing::instrument(level = "debug", skip_all)]
     async fn revert(&mut self) -> Result<(), Vec<ActionError>> {
-        let Self {
-            apfs_volume_label,
-            existing_entry: _,
-        } = self;
         let fstab_path = Path::new(FSTAB_PATH);
-        let uuid = get_uuid_for_label(&apfs_volume_label).await?;
-        let fstab_entry = fstab_lines(&uuid, apfs_volume_label);
+
+        let uuid = get_uuid_for_label(&self.apfs_volume_label)
+            .await
+            .map_err(|v| vec![v])?;
+
+        let fstab_entry = fstab_lines(&uuid, &self.apfs_volume_label);
 
         let mut file = OpenOptions::new()
             .create(false)
@@ -237,12 +237,12 @@ impl Action for CreateFstabEntry {
             .read(true)
             .open(&fstab_path)
             .await
-            .map_err(|e| ActionError::Open(fstab_path.to_owned(), e))?;
+            .map_err(|e| vec![ActionError::Open(fstab_path.to_owned(), e)])?;
 
         let mut file_contents = String::default();
         file.read_to_string(&mut file_contents)
             .await
-            .map_err(|e| ActionError::Read(fstab_path.to_owned(), e))?;
+            .map_err(|e| vec![ActionError::Read(fstab_path.to_owned(), e)])?;
 
         if let Some(start) = file_contents.rfind(fstab_entry.as_str()) {
             let end = start + fstab_entry.len();
@@ -251,16 +251,16 @@ impl Action for CreateFstabEntry {
 
         file.seek(SeekFrom::Start(0))
             .await
-            .map_err(|e| ActionError::Seek(fstab_path.to_owned(), e))?;
+            .map_err(|e| vec![ActionError::Seek(fstab_path.to_owned(), e)])?;
         file.set_len(0)
             .await
-            .map_err(|e| ActionError::Truncate(fstab_path.to_owned(), e))?;
+            .map_err(|e| vec![ActionError::Truncate(fstab_path.to_owned(), e)])?;
         file.write_all(file_contents.as_bytes())
             .await
-            .map_err(|e| ActionError::Write(fstab_path.to_owned(), e))?;
+            .map_err(|e| vec![ActionError::Write(fstab_path.to_owned(), e)])?;
         file.flush()
             .await
-            .map_err(|e| ActionError::Flush(fstab_path.to_owned(), e))?;
+            .map_err(|e| vec![ActionError::Flush(fstab_path.to_owned(), e)])?;
 
         Ok(())
     }

@@ -238,7 +238,7 @@ impl Action for CreateFile {
     }
 
     #[tracing::instrument(level = "debug", skip_all)]
-    async fn revert(&mut self) -> Result<(), Vec<ActionError>> {async fn revert(&mut self) -> Result<(), ActionError> {
+    async fn revert(&mut self) -> Result<(), Vec<ActionError>> {
         let Self {
             path,
             user: _,
@@ -250,7 +250,7 @@ impl Action for CreateFile {
 
         remove_file(&path)
             .await
-            .map_err(|e| ActionError::Remove(path.to_owned(), e))?;
+            .map_err(|e| vec![ActionError::Remove(path.to_owned(), e)])?;
 
         Ok(())
     }
@@ -259,7 +259,7 @@ impl Action for CreateFile {
 #[cfg(test)]
 mod test {
     use super::*;
-    use eyre::eyre;
+    use color_eyre::{eyre::eyre, Section};
     use tokio::fs::write;
 
     #[tokio::test]
@@ -271,7 +271,12 @@ mod test {
 
         action.try_execute().await?;
 
-        action.try_revert().await?;
+        if let Err(errs) = action.try_revert().await {
+            let mut report = eyre!("Errors");
+            for err in errs {
+                report = report.error(err);
+            }
+        }
 
         assert!(!test_file.exists(), "File should have been deleted");
 
@@ -291,7 +296,12 @@ mod test {
 
         write(test_file.as_path(), "More content").await?;
 
-        action.try_revert().await?;
+        if let Err(errs) = action.try_revert().await {
+            let mut report = eyre!("Errors");
+            for err in errs {
+                report = report.error(err);
+            }
+        }
 
         assert!(!test_file.exists(), "File should have been deleted");
 
@@ -320,7 +330,12 @@ mod test {
 
         action.try_execute().await?;
 
-        action.try_revert().await?;
+        if let Err(errs) = action.try_revert().await {
+            let mut report = eyre!("Errors");
+            for err in errs {
+                report = report.error(err);
+            }
+        }
 
         assert!(!test_file.exists(), "File should have been deleted");
 
@@ -415,7 +430,12 @@ mod test {
 
         action.try_execute().await?;
 
-        action.try_revert().await?;
+        if let Err(errs) = action.try_revert().await {
+            let mut report = eyre!("Errors");
+            for err in errs {
+                report = report.error(err);
+            }
+        }
 
         assert!(!test_file.exists(), "File should have been deleted");
 

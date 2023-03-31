@@ -13,6 +13,9 @@ pub enum NixInstallerError {
     /// An error originating from an [`Action`](crate::action::Action)
     #[error("Error executing action `{0}`")]
     Action(ActionTag, #[source] ActionError),
+    /// An error originating from an [`Action`](crate::action::Action) while reverting
+    #[error("Error reverting")]
+    ActionRevert(Vec<ActionError>),
     /// An error while writing the [`InstallPlan`](crate::InstallPlan)
     #[error("Recording install receipt")]
     RecordingReceipt(PathBuf, #[source] std::io::Error),
@@ -73,6 +76,7 @@ impl HasExpectedErrors for NixInstallerError {
     fn expected<'a>(&'a self) -> Option<Box<dyn std::error::Error + 'a>> {
         match self {
             NixInstallerError::Action(_, action_error) => action_error.expected(),
+            NixInstallerError::ActionRevert(_) => None,
             NixInstallerError::RecordingReceipt(_, _) => None,
             NixInstallerError::CopyingSelf(_) => None,
             NixInstallerError::SerializingReceipt(_) => None,

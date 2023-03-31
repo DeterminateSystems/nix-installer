@@ -273,43 +273,94 @@ impl Action for CreateNixVolume {
     async fn revert(&mut self) -> Result<(), Vec<ActionError>> {
         let mut errors = vec![];
 
-        self.enable_ownership.try_revert().await?;
-        self.kickstart_launchctl_service.try_revert().await?;
-        self.bootstrap_volume.try_revert().await?;
-        self.setup_volume_daemon.try_revert().await?;
+        if let Err(err) = self
+            .enable_ownership
+            .try_revert()
+            .await
+            .map_err(|errs| ActionError::ChildRevert(self.enable_ownership.action_tag(), errs))
+        {
+            errors.push(err)
+        };
+        if let Err(err) = self
+            .kickstart_launchctl_service
+            .try_revert()
+            .await
+            .map_err(|errs| {
+                ActionError::ChildRevert(self.kickstart_launchctl_service.action_tag(), errs)
+            })
+        {
+            errors.push(err)
+        };
+        if let Err(err) = self
+            .bootstrap_volume
+            .try_revert()
+            .await
+            .map_err(|errs| ActionError::ChildRevert(self.bootstrap_volume.action_tag(), errs))
+        {
+            errors.push(err)
+        };
+        if let Err(err) =
+            self.setup_volume_daemon.try_revert().await.map_err(|errs| {
+                ActionError::ChildRevert(self.setup_volume_daemon.action_tag(), errs)
+            })
+        {
+            errors.push(err)
+        };
         if let Some(encrypt_volume) = &mut self.encrypt_volume {
-            encrypt_volume.try_revert().await?;
+            if let Err(err) = encrypt_volume
+                .try_revert()
+                .await
+                .map_err(|errs| ActionError::ChildRevert(encrypt_volume.action_tag(), errs))
+            {
+                errors.push(err)
+            }
         }
-        self.create_fstab_entry
-            .try_revert()
-            .await
-            .map_err(|e| ActionError::Child(self.create_fstab_entry.action_tag(), Box::new(e)))?;
+        if let Err(err) =
+            self.create_fstab_entry.try_revert().await.map_err(|errs| {
+                ActionError::ChildRevert(self.create_fstab_entry.action_tag(), errs)
+            })
+        {
+            errors.push(err)
+        }
 
-        self.unmount_volume
+        if let Err(err) = self
+            .unmount_volume
             .try_revert()
             .await
-            .map_err(|e| ActionError::Child(self.unmount_volume.action_tag(), Box::new(e)))?;
-        self.create_volume
+            .map_err(|errs| ActionError::ChildRevert(self.unmount_volume.action_tag(), errs))
+        {
+            errors.push(err)
+        }
+        if let Err(err) = self
+            .create_volume
             .try_revert()
             .await
-            .map_err(|e| ActionError::Child(self.create_volume.action_tag(), Box::new(e)))?;
+            .map_err(|errs| ActionError::ChildRevert(self.create_volume.action_tag(), errs))
+        {
+            errors.push(err)
+        }
 
         // Purposefully not reversed
-        self.create_or_append_synthetic_conf
+        if let Err(err) = self
+            .create_or_append_synthetic_conf
             .try_revert()
             .await
-            .map_err(|e| {
-                ActionError::Child(
-                    self.create_or_append_synthetic_conf.action_tag(),
-                    Box::new(e),
-                )
-            })?;
-        self.create_synthetic_objects
+            .map_err(|errs| {
+                ActionError::ChildRevert(self.create_or_append_synthetic_conf.action_tag(), errs)
+            })
+        {
+            errors.push(err)
+        }
+        if let Err(err) = self
+            .create_synthetic_objects
             .try_revert()
             .await
-            .map_err(|e| {
-                ActionError::Child(self.create_synthetic_objects.action_tag(), Box::new(e))
-            })?;
+            .map_err(|errs| {
+                ActionError::ChildRevert(self.create_synthetic_objects.action_tag(), errs)
+            })
+        {
+            errors.push(err)
+        }
 
         Ok(())
     }

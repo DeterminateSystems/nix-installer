@@ -253,14 +253,6 @@ impl Action for CreateUser {
 
     #[tracing::instrument(level = "debug", skip_all)]
     async fn revert(&mut self) -> Result<(), Vec<ActionError>> {
-        let Self {
-            name,
-            uid: _,
-            groupname: _,
-            gid: _,
-            comment: _,
-        } = self;
-
         use target_lexicon::OperatingSystem;
         match target_lexicon::OperatingSystem::host() {
             OperatingSystem::MacOSX {
@@ -274,25 +266,25 @@ impl Action for CreateUser {
                 // Documentation on https://it.megocollector.com/macos/cant-delete-a-macos-user-with-dscl-resolution/ and http://www.aixperts.co.uk/?p=214 suggested it was a secure token
                 // That is correct, however it's a bit more nuanced. It appears to be that a user must be graphically logged in for some other user on the system to be deleted.
                 let mut command = Command::new("/usr/bin/dscl");
-                command.args([".", "-delete", &format!("/Users/{name}")]);
+                command.args([".", "-delete", &format!("/Users/{}", self.name)]);
                 command.process_group(0);
                 command.stdin(std::process::Stdio::null());
 
                 let output = command
                     .output()
                     .await
-                    .map_err(|e| ActionError::command(&command, e))?;
+                    .map_err(|e| vec![ActionError::command(&command, e)])?;
                 let stderr = String::from_utf8_lossy(&output.stderr);
                 match output.status.code() {
                     Some(0) => (),
                     Some(40) if stderr.contains("-14120") => {
                         // The user is on an ephemeral Mac, like detsys uses
                         // These Macs cannot always delete users, as sometimes there is no graphical login
-                        tracing::warn!("Encountered an exit code 40 with -14120 error while removing user, this is likely because the initial executing user did not have a secure token, or that there was no graphical login session. To delete the user, log in graphically, then run `/usr/bin/dscl . -delete /Users/{name}");
+                        tracing::warn!("Encountered an exit code 40 with -14120 error while removing user, this is likely because the initial executing user did not have a secure token, or that there was no graphical login session. To delete the user, log in graphically, then run `/usr/bin/dscl . -delete /Users/{}", self.name);
                     },
                     _ => {
                         // Something went wrong
-                        return Err(ActionError::command_output(&command, output));
+                        return Err(vec![ActionError::command_output(&command, output)]);
                     },
                 }
             },
@@ -301,20 +293,22 @@ impl Action for CreateUser {
                     execute_command(
                         Command::new("userdel")
                             .process_group(0)
-                            .arg(name)
+                            .arg(&self.name)
                             .stdin(std::process::Stdio::null()),
                     )
-                    .await?;
+                    .await
+                    .map_err(|e| vec![e])?;
                 } else if which::which("deluser").is_ok() {
                     execute_command(
                         Command::new("deluser")
                             .process_group(0)
-                            .arg(name)
+                            .arg(&self.name)
                             .stdin(std::process::Stdio::null()),
                     )
-                    .await?;
+                    .await
+                    .map_err(|e| vec![e])?;
                 } else {
-                    return Err(ActionError::MissingUserDeletionCommand);
+                    return Err(vec![ActionError::MissingUserDeletionCommand]);
                 }
             },
         };

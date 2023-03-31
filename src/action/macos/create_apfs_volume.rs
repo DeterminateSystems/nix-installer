@@ -119,19 +119,14 @@ impl Action for CreateApfsVolume {
 
     #[tracing::instrument(level = "debug", skip_all)]
     async fn revert(&mut self) -> Result<(), Vec<ActionError>> {
-        let Self {
-            disk: _,
-            name,
-            case_sensitive: _,
-        } = self;
-
         execute_command(
             Command::new("/usr/sbin/diskutil")
                 .process_group(0)
-                .args(["apfs", "deleteVolume", name])
+                .args(["apfs", "deleteVolume", &self.name])
                 .stdin(std::process::Stdio::null()),
         )
-        .await?;
+        .await
+        .map_err(|v| vec![v])?;
 
         Ok(())
     }

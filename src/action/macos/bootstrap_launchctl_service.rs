@@ -120,21 +120,16 @@ impl Action for BootstrapLaunchctlService {
 
     #[tracing::instrument(level = "debug", skip_all)]
     async fn revert(&mut self) -> Result<(), Vec<ActionError>> {
-        let Self {
-            path,
-            service: _,
-            domain,
-        } = self;
-
         execute_command(
             Command::new("launchctl")
                 .process_group(0)
                 .arg("bootout")
-                .arg(domain)
-                .arg(path)
+                .arg(&self.domain)
+                .arg(&self.path)
                 .stdin(std::process::Stdio::null()),
         )
-        .await?;
+        .await
+        .map_err(|e| vec![e])?;
 
         Ok(())
     }

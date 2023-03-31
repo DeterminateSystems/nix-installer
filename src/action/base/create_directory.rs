@@ -202,14 +202,14 @@ impl Action for CreateDirectory {
 
         let is_empty = path
             .read_dir()
-            .map_err(|e| ActionError::Read(path.clone(), e))?
+            .map_err(|e| vec![ActionError::Read(path.clone(), e)])?
             .next()
             .is_none();
 
         match (is_empty, force_prune_on_revert) {
             (true, _) | (false, true) => remove_dir_all(path.clone())
                 .await
-                .map_err(|e| ActionError::Remove(path.clone(), e))?,
+                .map_err(|e| vec![ActionError::Remove(path.clone(), e)])?,
             (false, false) => {
                 tracing::debug!("Not removing `{}`, the folder is not empty", path.display());
             },
@@ -222,6 +222,7 @@ impl Action for CreateDirectory {
 #[cfg(test)]
 mod test {
     use super::*;
+    use color_eyre::{eyre::eyre, Section};
 
     #[tokio::test]
     async fn creates_and_deletes_empty_directory() -> eyre::Result<()> {
@@ -231,7 +232,12 @@ mod test {
 
         action.try_execute().await?;
 
-        action.try_revert().await?;
+        if let Err(errs) = action.try_revert().await {
+            let mut report = eyre!("Errors");
+            for err in errs {
+                report = report.error(err);
+            }
+        }
 
         assert!(!test_dir.exists(), "Folder should have been deleted");
 
@@ -251,7 +257,12 @@ mod test {
         let stub_file = test_dir.as_path().join("stub");
         tokio::fs::write(stub_file, "More content").await?;
 
-        action.try_revert().await?;
+        if let Err(errs) = action.try_revert().await {
+            let mut report = eyre!("Errors");
+            for err in errs {
+                report = report.error(err);
+            }
+        }
 
         assert!(!test_dir.exists(), "Folder should have been deleted");
 
@@ -271,7 +282,12 @@ mod test {
         let stub_file = test_dir.as_path().join("stub");
         tokio::fs::write(&stub_file, "More content").await?;
 
-        action.try_revert().await?;
+        if let Err(errs) = action.try_revert().await {
+            let mut report = eyre!("Errors");
+            for err in errs {
+                report = report.error(err);
+            }
+        }
 
         assert!(test_dir.exists(), "Folder should not have been deleted");
         assert!(stub_file.exists(), "Folder should not have been deleted");

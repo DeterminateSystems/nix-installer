@@ -100,7 +100,7 @@ impl Action for UnmountApfsVolume {
             Command::new("/usr/sbin/diskutil")
                 .process_group(0)
                 .args(["unmount", "force"])
-                .arg(self.name)
+                .arg(&self.name)
                 .stdin(std::process::Stdio::null()),
         )
         .await
