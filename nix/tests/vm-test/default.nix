@@ -41,13 +41,15 @@ let
           systemctl status nix-daemon.socket
           exit 1
         fi
-        if systemctl is-failed nix-daemon.service; then
-          echo "nix-daemon.service is failed"
+
+        if !(sudo systemctl start nix-daemon.service); then
+          echo "nix-daemon.service failed to start"
           systemctl status nix-daemon.service
           exit 1
         fi
-        if !(sudo systemctl start nix-daemon.service); then
-          echo "nix-daemon.service failed to start"
+
+        if systemctl is-failed nix-daemon.service; then
+          echo "nix-daemon.service is failed"
           systemctl status nix-daemon.service
           exit 1
         fi
@@ -69,7 +71,26 @@ let
         out=$(nix-build --no-substitute -E 'derivation { name = "foo"; system = "x86_64-linux"; builder = "/bin/sh"; args = ["-c" "echo foobar > $out"]; }')
         [[ $(cat $out) = foobar ]]
       '';
+      uninstall = ''
+        /nix/nix-installer uninstall --no-confirm
+      '';
       uninstallCheck = ''
+        if which nix; then
+          echo "nix existed on path after uninstall"
+          exit 1
+        fi
+
+        for i in $(seq 1 32); do
+          if id -u nixbld$i; then
+            echo "User nixbld$i exists after uninstall"
+            exit 1
+          fi
+        done
+        if grep "^nixbld:" /etc/groups; then
+          echo "Group nixbld exists after uninstall"
+          exit 1
+        fi
+
         if sudo -i nix store ping --store daemon; then
           echo "Could run nix store ping after uninstall"
           exit 1
@@ -85,13 +106,24 @@ let
           exit 1
         fi
 
-        if systemctl is-active nix-daemon.socket; then
-          echo "nix-daemon.socket still active after uninstall"
+        if [ -f /etc/systemd/system/nix-daemon.socket ]; then
+          echo "/etc/systemd/system/nix-daemon.socket exists after uninstall"
           exit 1
         fi
 
-        if systemctl is-active nix-daemon.service; then
-          echo "nix-daemon.service still active after uninstall"
+        if [ -f /etc/systemd/system/nix-daemon.service ]; then
+          echo "/etc/systemd/system/nix-daemon.socket exists after uninstall"
+          exit 1
+        fi
+
+
+        if systemctl status nix-daemon.socket > /dev/null; then
+          echo "systemd unit nix-daemon.socket still exists after uninstall"
+          exit 1
+        fi
+
+        if systemctl status nix-daemon.service > /dev/null; then
+          echo "systemd unit nix-daemon.service still exists after uninstall"
           exit 1
         fi
       '';
@@ -120,6 +152,7 @@ let
 
         [[ $(cat $out) = foobar ]]
       '';
+      uninstall = installCases.install-default.uninstall;
       uninstallCheck = installCases.install-default.uninstallCheck;
     };
     install-daemonless = {
@@ -137,6 +170,7 @@ let
 
         [[ $(cat $out) = foobar ]]
       '';
+      uninstall = installCases.install-default.uninstall;
       uninstallCheck = installCases.install-default.uninstallCheck;
     };
   };
@@ -148,6 +182,7 @@ let
       '';
       install = installCases.install-default.install;
       check = installCases.install-default.check;
+      uninstall = installCases.install-default.uninstall;
       uninstallCheck = installCases.install-default.uninstallCheck;
     };
     cure-self-linux-broken-no-nix-path = {
@@ -159,6 +194,7 @@ let
       '';
       install = installCases.install-default.install;
       check = installCases.install-default.check;
+      uninstall = installCases.install-default.uninstall;
       uninstallCheck = installCases.install-default.uninstallCheck;
     };
     cure-self-linux-broken-missing-users = {
@@ -171,6 +207,7 @@ let
       '';
       install = installCases.install-default.install;
       check = installCases.install-default.check;
+      uninstall = installCases.install-default.uninstall;
       uninstallCheck = installCases.install-default.uninstallCheck;
     };
     cure-self-linux-broken-missing-users-and-group = {
@@ -185,6 +222,7 @@ let
       '';
       install = installCases.install-default.install;
       check = installCases.install-default.check;
+      uninstall = installCases.install-default.uninstall;
       uninstallCheck = installCases.install-default.uninstallCheck;
     };
     cure-self-linux-broken-daemon-disabled = {
@@ -195,6 +233,7 @@ let
       '';
       install = installCases.install-default.install;
       check = installCases.install-default.check;
+      uninstall = installCases.install-default.uninstall;
       uninstallCheck = installCases.install-default.uninstallCheck;
     };
     cure-self-linux-broken-no-etc-nix = {
@@ -205,6 +244,7 @@ let
       '';
       install = installCases.install-default.install;
       check = installCases.install-default.check;
+      uninstall = installCases.install-default.uninstall;
       uninstallCheck = installCases.install-default.uninstallCheck;
     };
     cure-self-linux-broken-unmodified-bashrc = {
@@ -215,6 +255,7 @@ let
       '';
       install = installCases.install-default.install;
       check = installCases.install-default.check;
+      uninstall = installCases.install-default.uninstall;
       uninstallCheck = installCases.install-default.uninstallCheck;
     };
     cure-script-multi-self-broken-no-nix-path = {
@@ -224,6 +265,7 @@ let
       '';
       install = installCases.install-default.install;
       check = installCases.install-default.check;
+      uninstall = installCases.install-default.uninstall;
       uninstallCheck = installCases.install-default.uninstallCheck;
     };
     cure-script-multi-broken-missing-users = {
@@ -235,6 +277,7 @@ let
       '';
       install = installCases.install-default.install;
       check = installCases.install-default.check;
+      uninstall = installCases.install-default.uninstall;
       uninstallCheck = installCases.install-default.uninstallCheck;
     };
     cure-script-multi-broken-daemon-disabled = {
@@ -244,6 +287,7 @@ let
       '';
       install = installCases.install-default.install;
       check = installCases.install-default.check;
+      uninstall = installCases.install-default.uninstall;
       uninstallCheck = installCases.install-default.uninstallCheck;
     };
     cure-script-multi-broken-no-etc-nix = {
@@ -253,6 +297,7 @@ let
       '';
       install = installCases.install-default.install;
       check = installCases.install-default.check;
+      uninstall = installCases.install-default.uninstall;
       uninstallCheck = installCases.install-default.uninstallCheck;
     };
     cure-script-multi-broken-unmodified-bashrc = {
@@ -262,12 +307,14 @@ let
       '';
       install = installCases.install-default.install;
       check = installCases.install-default.check;
+      uninstall = installCases.install-default.uninstall;
       uninstallCheck = installCases.install-default.uninstallCheck;
     };
     cure-script-multi-working = {
       preinstall = cure-script-multi-user;
       install = installCases.install-default.install;
       check = installCases.install-default.check;
+      uninstall = installCases.install-default.uninstall;
       uninstallCheck = installCases.install-default.uninstallCheck;
     };
     # cure-script-single-working = {
@@ -275,6 +322,46 @@ let
     #   install = installCases.install-default.install;
     #   check = installCases.install-default.check;
     # };
+  };
+  # Cases to test uninstalling is complete even in the face of errors.
+  uninstallCases = let uninstallFailExpected = ''
+    if /nix/nix-installer uninstall --no-confirm; then
+      echo "/nix/nix-installer uninstall exited with 0 during a uninstall failure test"
+      exit 1
+    else
+      exit 0
+    fi
+  ''; in {
+    uninstall-users-and-groups-missing = {
+      install = installCases.install-default.install;
+      check = installCases.install-default.check;
+      preuninstall = ''
+        for i in $(seq 1 32); do
+          sudo userdel nixbld$i
+        done
+        sudo groupdel nixbld
+      '';
+      uninstall = uninstallFailExpected;
+      uninstallCheck = installCases.install-default.uninstallCheck;
+    };
+    uninstall-nix-conf-gone = {
+      install = installCases.install-default.install;
+      check = installCases.install-default.check;
+      preuninstall = ''
+        sudo rm -rf /etc/nix
+      '';
+      uninstall = uninstallFailExpected;
+      uninstallCheck = installCases.install-default.uninstallCheck;
+    };
+    uninstall-shell-profile-clobbered = {
+      install = installCases.install-default.install;
+      check = installCases.install-default.check;
+      preuninstall = ''
+        sudo rm -rf /etc/bashrc
+      '';
+      uninstall = uninstallFailExpected;
+      uninstallCheck = installCases.install-default.uninstallCheck;
+    };
   };
 
   disableSELinux = "sudo setenforce 0";
@@ -392,6 +479,8 @@ let
         preinstallScript = test.preinstall or "echo \"Not Applicable\"";
         installScript = test.install;
         checkScript = test.check;
+        uninstallScript = test.uninstall;
+        preuninstallScript = test.preuninstall or "echo \"Not Applicable\"";
         uninstallCheckScript = test.uninstallCheck;
         installer = nix-installer-static;
         binaryTarball = binaryTarball.${system};
@@ -465,8 +554,11 @@ let
         echo "Checking Nix installation..."
         $ssh "set -eux; $checkScript"
 
+        echo "Running preuninstall..."
+        $ssh "set -eux; $preuninstallScript"
+
         echo "Running Nix uninstallation..."
-        $ssh "set -eux; /nix/nix-installer uninstall --no-confirm"
+        $ssh "set -eux; $uninstallScript"
 
         echo "Checking Nix uninstallation..."
         $ssh "set -eux; $uninstallCheckScript"
@@ -498,11 +590,13 @@ let
       )
       images;
 
-  allCases = lib.recursiveUpdate installCases cureCases;
+  allCases = lib.recursiveUpdate (lib.recursiveUpdate installCases cureCases) uninstallCases;
 
   install-tests = makeTests "install" installCases;
 
   cure-tests = makeTests "cure" cureCases;
+
+  uninstall-tests = makeTests "uninstall" uninstallCases;
 
   all-tests = builtins.mapAttrs (imageName: image: {
     "x86_64-linux".all = (with (forSystem "x86_64-linux" ({ system, pkgs, ... }: pkgs)); pkgs.releaseTools.aggregate {
@@ -510,11 +604,12 @@ let
       constituents = [
         install-tests."${imageName}"."x86_64-linux".install
         cure-tests."${imageName}"."x86_64-linux".cure
+        uninstall-tests."${imageName}"."x86_64-linux".uninstall
       ];
     });
   }) images;
 
-  joined-tests = lib.recursiveUpdate (lib.recursiveUpdate cure-tests install-tests) all-tests;
+  joined-tests = lib.recursiveUpdate (lib.recursiveUpdate (lib.recursiveUpdate cure-tests install-tests) uninstall-tests) all-tests;
 
 in
 lib.recursiveUpdate joined-tests {
@@ -523,5 +618,5 @@ lib.recursiveUpdate joined-tests {
       name = caseName;
       constituents = pkgs.lib.mapAttrsToList (name: value: value."x86_64-linux"."${caseName}") joined-tests;
     }
-  )) (allCases // { "cure" = {}; "install" = {}; "all" = {}; });
+  )) (allCases // { "cure" = {}; "install" = {}; "uninstall" = {}; "all" = {}; });
 }

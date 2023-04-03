@@ -575,7 +575,8 @@ impl crate::diagnostics::ErrorDiagnostic for ActionErrorKind {
             | Self::SetPermissions(_, path, _)
             | Self::GettingMetadata(path, _)
             | Self::CreateDirectory(path, _)
-            | Self::PathWasNotFile(path) => {
+            | Self::PathWasNotFile(path)
+            | Self::Remove(path, _) => {
                 vec![path.to_string_lossy().to_string()]
             },
             Self::Rename(first_path, second_path, _)
