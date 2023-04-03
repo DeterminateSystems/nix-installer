@@ -1,5 +1,5 @@
 # Largely derived from https://github.com/NixOS/nix/blob/14f7dae3e4eb0c34192d0077383a7f2a2d630129/tests/installer/default.nix
-{ forSystem, binaryTarball }:
+{ forSystem, binaryTarball, lib }:
 
 let
   nix-installer-install = ''
@@ -18,7 +18,7 @@ let
     tar xvf nix.tar.xz
     ./nix-*/install --no-channel-add --yes --no-daemon
   '';
-  installScripts = rec {
+  installCases = rec {
     install-default = {
       install = nix-installer-install;
       check = ''
@@ -107,13 +107,15 @@ let
         [[ $(cat $out) = foobar ]]
       '';
     };
+  };
+  cureCases = {
     cure-self-linux-working = {
       preinstall = ''
         ${nix-installer-install-quiet}
         sudo mv /nix/receipt.json /nix/old-receipt.json
       '';
-      install = install-default.install;
-      check = install-default.check;
+      install = installCases.install-default.install;
+      check = installCases.install-default.check;
     };
     cure-self-linux-broken-no-nix-path = {
       preinstall = ''
@@ -122,8 +124,8 @@ let
         sudo mv /nix/receipt.json /nix/old-receipt.json
         sudo rm -rf /nix/
       '';
-      install = install-default.install;
-      check = install-default.check;
+      install = installCases.install-default.install;
+      check = installCases.install-default.check;
     };
     cure-self-linux-broken-missing-users = {
       preinstall = ''
@@ -133,8 +135,8 @@ let
         sudo userdel nixbld3
         sudo userdel nixbld16
       '';
-      install = install-default.install;
-      check = install-default.check;
+      install = installCases.install-default.install;
+      check = installCases.install-default.check;
     };
     cure-self-linux-broken-missing-users-and-group = {
       preinstall = ''
@@ -146,8 +148,8 @@ let
         done
         sudo groupdel nixbld
       '';
-      install = install-default.install;
-      check = install-default.check;
+      install = installCases.install-default.install;
+      check = installCases.install-default.check;
     };
     cure-self-linux-broken-daemon-disabled = {
       preinstall = ''
@@ -155,8 +157,8 @@ let
         sudo mv /nix/receipt.json /nix/old-receipt.json
         sudo systemctl disable --now nix-daemon.socket
       '';
-      install = install-default.install;
-      check = install-default.check;
+      install = installCases.install-default.install;
+      check = installCases.install-default.check;
     };
     cure-self-linux-broken-no-etc-nix = {
       preinstall = ''
@@ -164,8 +166,8 @@ let
         sudo mv /nix/receipt.json /nix/old-receipt.json
         sudo rm -rf /etc/nix
       '';
-      install = install-default.install;
-      check = install-default.check;
+      install = installCases.install-default.install;
+      check = installCases.install-default.check;
     };
     cure-self-linux-broken-unmodified-bashrc = {
       preinstall = ''
@@ -173,16 +175,16 @@ let
         sudo mv /nix/receipt.json /nix/old-receipt.json
         sudo sed -i '/# Nix/,/# End Nix/d' /etc/bash.bashrc
       '';
-      install = install-default.install;
-      check = install-default.check;
+      install = installCases.install-default.install;
+      check = installCases.install-default.check;
     };
     cure-script-multi-self-broken-no-nix-path = {
       preinstall = ''
         ${cure-script-multi-user}
         sudo rm -rf /nix/
       '';
-      install = install-default.install;
-      check = install-default.check;
+      install = installCases.install-default.install;
+      check = installCases.install-default.check;
     };
     cure-script-multi-broken-missing-users = {
       preinstall = ''
@@ -191,42 +193,42 @@ let
         sudo userdel nixbld3
         sudo userdel nixbld16
       '';
-      install = install-default.install;
-      check = install-default.check;
+      install = installCases.install-default.install;
+      check = installCases.install-default.check;
     };
     cure-script-multi-broken-daemon-disabled = {
       preinstall = ''
         ${cure-script-multi-user}
         sudo systemctl disable --now nix-daemon.socket
       '';
-      install = install-default.install;
-      check = install-default.check;
+      install = installCases.install-default.install;
+      check = installCases.install-default.check;
     };
     cure-script-multi-broken-no-etc-nix = {
       preinstall = ''
         ${cure-script-multi-user}
         sudo rm -rf /etc/nix
       '';
-      install = install-default.install;
-      check = install-default.check;
+      install = installCases.install-default.install;
+      check = installCases.install-default.check;
     };
     cure-script-multi-broken-unmodified-bashrc = {
       preinstall = ''
         ${cure-script-multi-user}
         sudo sed -i '/# Nix/,/# End Nix/d' /etc/bash.bashrc
       '';
-      install = install-default.install;
-      check = install-default.check;
+      install = installCases.install-default.install;
+      check = installCases.install-default.check;
     };
     cure-script-multi-working = {
       preinstall = cure-script-multi-user;
-      install = install-default.install;
-      check = install-default.check;
+      install = installCases.install-default.install;
+      check = installCases.install-default.check;
     };
     # cure-script-single-working = {
     #   preinstall = cure-script-single-user;
-    #   install = install-default.install;
-    #   check = install-default.check;
+    #   install = installCases.install-default.install;
+    #   check = installCases.install-default.check;
     # };
   };
 
@@ -333,7 +335,7 @@ let
 
   };
 
-  makeTest = imageName: testName:
+  makeTest = imageName: testName: test:
     let image = images.${imageName}; in
     with (forSystem image.system ({ system, pkgs, ... }: pkgs));
     runCommand
@@ -342,9 +344,9 @@ let
         buildInputs = [ qemu_kvm openssh ];
         image = image.image;
         postBoot = image.postBoot or "";
-        preinstallScript = installScripts.${testName}.preinstall or "echo \"Not Applicable\"";
-        installScript = installScripts.${testName}.install;
-        checkScript = installScripts.${testName}.check;
+        preinstallScript = test.preinstall or "echo \"Not Applicable\"";
+        installScript = test.install;
+        checkScript = test.check;
         installer = nix-installer-static;
         binaryTarball = binaryTarball.${system};
       }
@@ -424,119 +426,53 @@ let
         touch $out
       '';
 
-  vm-tests = builtins.mapAttrs
-    (imageName: image:
-      rec {
-        ${image.system} = (builtins.mapAttrs
-          (testName: test:
-            makeTest imageName testName
-          )
-          installScripts) // {
-          all = (with (forSystem "x86_64-linux" ({ system, pkgs, ... }: pkgs)); pkgs.releaseTools.aggregate {
-            name = "all";
-            constituents = (
-              pkgs.lib.mapAttrsToList
-                (testName: test:
-                  makeTest imageName testName
-                )
-                installScripts
-            );
-          });
-        };
-      }
-    )
-    images;
+  makeTests = name: tests: builtins.mapAttrs
+      (imageName: image:
+        rec {
+          ${image.system} = (builtins.mapAttrs
+            (testName: test:
+              makeTest imageName testName test
+            )
+            tests) // {
+            "${name}" = (with (forSystem "x86_64-linux" ({ system, pkgs, ... }: pkgs)); pkgs.releaseTools.aggregate {
+              name = name;
+              constituents = (
+                pkgs.lib.mapAttrsToList
+                  (testName: test:
+                    makeTest imageName testName test
+                  )
+                  tests
+              );
+            });
+          };
+        }
+      )
+      images;
+
+  allCases = lib.recursiveUpdate installCases cureCases;
+
+  install-tests = makeTests "install" installCases;
+
+  cure-tests = makeTests "cure" cureCases;
+
+  all-tests = builtins.mapAttrs (imageName: image: {
+    "x86_64-linux".all = (with (forSystem "x86_64-linux" ({ system, pkgs, ... }: pkgs)); pkgs.releaseTools.aggregate {
+      name = "all";
+      constituents = [
+        install-tests."${imageName}"."x86_64-linux".install
+        cure-tests."${imageName}"."x86_64-linux".cure
+      ];
+    });
+  }) images;
+
+  joined-tests = lib.recursiveUpdate (lib.recursiveUpdate cure-tests install-tests) all-tests;
 
 in
-vm-tests // rec {
-  all."x86_64-linux".install-default = (with (forSystem "x86_64-linux" ({ system, pkgs, ... }: pkgs)); pkgs.releaseTools.aggregate {
-    name = "all";
-    constituents = pkgs.lib.mapAttrsToList (name: value: value."x86_64-linux".install-default) vm-tests;
-  });
-  all."x86_64-linux".install-no-start-daemon = (with (forSystem "x86_64-linux" ({ system, pkgs, ... }: pkgs)); pkgs.releaseTools.aggregate {
-    name = "all";
-    constituents = pkgs.lib.mapAttrsToList (name: value: value."x86_64-linux".install-default) vm-tests;
-  });
-  all."x86_64-linux".install-daemonless = (with (forSystem "x86_64-linux" ({ system, pkgs, ... }: pkgs)); pkgs.releaseTools.aggregate {
-    name = "all";
-    constituents = pkgs.lib.mapAttrsToList (name: value: value."x86_64-linux".install-daemonless) vm-tests;
-  });
-  all."x86_64-linux".cure-self-linux-working = (with (forSystem "x86_64-linux" ({ system, pkgs, ... }: pkgs)); pkgs.releaseTools.aggregate {
-    name = "all";
-    constituents = pkgs.lib.mapAttrsToList (name: value: value."x86_64-linux".cure-self-linux-working) vm-tests;
-  });
-  all."x86_64-linux".cure-self-linux-broken-no-nix-path = (with (forSystem "x86_64-linux" ({ system, pkgs, ... }: pkgs)); pkgs.releaseTools.aggregate {
-    name = "all";
-    constituents = pkgs.lib.mapAttrsToList (name: value: value."x86_64-linux".cure-self-linux-broken-no-nix-path) vm-tests;
-  });
-  all."x86_64-linux".cure-self-linux-broken-missing-users = (with (forSystem "x86_64-linux" ({ system, pkgs, ... }: pkgs)); pkgs.releaseTools.aggregate {
-    name = "all";
-    constituents = pkgs.lib.mapAttrsToList (name: value: value."x86_64-linux".cure-self-linux-broken-missing-users) vm-tests;
-  });
-  all."x86_64-linux".cure-self-linux-broken-missing-users-and-group = (with (forSystem "x86_64-linux" ({ system, pkgs, ... }: pkgs)); pkgs.releaseTools.aggregate {
-    name = "all";
-    constituents = pkgs.lib.mapAttrsToList (name: value: value."x86_64-linux".cure-self-linux-broken-missing-users-and-group) vm-tests;
-  });
-  all."x86_64-linux".cure-self-linux-broken-daemon-disabled = (with (forSystem "x86_64-linux" ({ system, pkgs, ... }: pkgs)); pkgs.releaseTools.aggregate {
-    name = "all";
-    constituents = pkgs.lib.mapAttrsToList (name: value: value."x86_64-linux".cure-self-linux-broken-daemon-disabled) vm-tests;
-  });
-  all."x86_64-linux".cure-self-linux-broken-no-etc-nix = (with (forSystem "x86_64-linux" ({ system, pkgs, ... }: pkgs)); pkgs.releaseTools.aggregate {
-    name = "all";
-    constituents = pkgs.lib.mapAttrsToList (name: value: value."x86_64-linux".cure-self-linux-broken-no-etc-nix) vm-tests;
-  });
-  all."x86_64-linux".cure-self-linux-broken-unmodified-bashrc = (with (forSystem "x86_64-linux" ({ system, pkgs, ... }: pkgs)); pkgs.releaseTools.aggregate {
-    name = "all";
-    constituents = pkgs.lib.mapAttrsToList (name: value: value."x86_64-linux".cure-self-linux-broken-unmodified-bashrc) vm-tests;
-  });
-  all."x86_64-linux".cure-script-multi-working = (with (forSystem "x86_64-linux" ({ system, pkgs, ... }: pkgs)); pkgs.releaseTools.aggregate {
-    name = "all";
-    constituents = pkgs.lib.mapAttrsToList (name: value: value."x86_64-linux".cure-script-multi-working) vm-tests;
-  });
-  # all."x86_64-linux".cure-script-multi-broken-no-nix-path = (with (forSystem "x86_64-linux" ({ system, pkgs, ... }: pkgs)); pkgs.releaseTools.aggregate {
-  #   name = "all";
-  #   constituents = pkgs.lib.mapAttrsToList (name: value: value."x86_64-linux".cure-script-multi-broken-no-nix-path) vm-tests;
-  # });
-  all."x86_64-linux".cure-script-multi-broken-missing-users = (with (forSystem "x86_64-linux" ({ system, pkgs, ... }: pkgs)); pkgs.releaseTools.aggregate {
-    name = "all";
-    constituents = pkgs.lib.mapAttrsToList (name: value: value."x86_64-linux".cure-script-multi-broken-missing-users) vm-tests;
-  });
-  all."x86_64-linux".cure-script-multi-broken-daemon-disabled = (with (forSystem "x86_64-linux" ({ system, pkgs, ... }: pkgs)); pkgs.releaseTools.aggregate {
-    name = "all";
-    constituents = pkgs.lib.mapAttrsToList (name: value: value."x86_64-linux".cure-script-multi-broken-daemon-disabled) vm-tests;
-  });
-  all."x86_64-linux".cure-script-multi-broken-no-etc-nix = (with (forSystem "x86_64-linux" ({ system, pkgs, ... }: pkgs)); pkgs.releaseTools.aggregate {
-    name = "all";
-    constituents = pkgs.lib.mapAttrsToList (name: value: value."x86_64-linux".cure-script-multi-broken-no-etc-nix) vm-tests;
-  });
-  all."x86_64-linux".cure-script-multi-broken-unmodified-bashrc = (with (forSystem "x86_64-linux" ({ system, pkgs, ... }: pkgs)); pkgs.releaseTools.aggregate {
-    name = "all";
-    constituents = pkgs.lib.mapAttrsToList (name: value: value."x86_64-linux".cure-script-multi-broken-unmodified-bashrc) vm-tests;
-  });
-  # all."x86_64-linux".cure-script-single-working = (with (forSystem "x86_64-linux" ({ system, pkgs, ... }: pkgs)); pkgs.releaseTools.aggregate {
-  #   name = "all";
-  #   constituents = pkgs.lib.mapAttrsToList (name: value: value."x86_64-linux".cure-script-single-working) vm-tests;
-  # });
-  all."x86_64-linux".all = (with (forSystem "x86_64-linux" ({ system, pkgs, ... }: pkgs)); pkgs.releaseTools.aggregate {
-    name = "all";
-    constituents = [
-      all."x86_64-linux".install-default
-      all."x86_64-linux".install-no-start-daemon
-      all."x86_64-linux".install-daemonless
-      all."x86_64-linux".cure-self-linux-working
-      all."x86_64-linux".cure-self-linux-broken-no-nix-path
-      all."x86_64-linux".cure-self-linux-broken-missing-users
-      all."x86_64-linux".cure-self-linux-broken-missing-users-and-group
-      all."x86_64-linux".cure-self-linux-broken-daemon-disabled
-      all."x86_64-linux".cure-self-linux-broken-no-etc-nix
-      all."x86_64-linux".cure-self-linux-broken-unmodified-bashrc
-      all."x86_64-linux".cure-script-multi-working
-      # all."x86_64-linux".cure-script-multi-broken-no-nix-path
-      all."x86_64-linux".cure-script-multi-broken-missing-users
-      all."x86_64-linux".cure-script-multi-broken-daemon-disabled
-      all."x86_64-linux".cure-script-multi-broken-no-etc-nix
-      all."x86_64-linux".cure-script-multi-broken-unmodified-bashrc
-      # all."x86_64-linux".cure-script-single-working
-    ];
-  });
+lib.recursiveUpdate joined-tests {
+  all."x86_64-linux" = (with (forSystem "x86_64-linux" ({ system, pkgs, ... }: pkgs)); pkgs.lib.mapAttrs (caseName: case: 
+    pkgs.releaseTools.aggregate {
+      name = caseName;
+      constituents = pkgs.lib.mapAttrsToList (name: value: value."x86_64-linux"."${caseName}") joined-tests;
+    }
+  )) (allCases // { "cure" = {}; "install" = {}; "all" = {}; });
 }

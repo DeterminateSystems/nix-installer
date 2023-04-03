@@ -194,6 +194,7 @@
         vm-test = import ./nix/tests/vm-test {
           inherit forSystem;
           inherit (nix.hydraJobs) binaryTarball;
+          inherit (nixpkgs) lib;
         };
         container-test = import ./nix/tests/container-test {
           inherit forSystem;
