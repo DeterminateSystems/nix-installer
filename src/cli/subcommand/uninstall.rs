@@ -146,9 +146,6 @@ impl CommandExecute for Uninstall {
             _ => (),
         }
 
-        // TODO(@hoverbear): It would be so nice to catch errors and offer the user a way to keep going...
-        //                   However that will require being able to link error -> step and manually setting that step as `Uncompleted`.
-
         println!(
             "\
             {success}\n\

@@ -38,19 +38,23 @@ let
         fi
         if systemctl is-failed nix-daemon.socket; then
           echo "nix-daemon.socket is failed"
+          systemctl status nix-daemon.socket
           exit 1
         fi
         if systemctl is-failed nix-daemon.service; then
           echo "nix-daemon.service is failed"
+          systemctl status nix-daemon.service
           exit 1
         fi
         if !(sudo systemctl start nix-daemon.service); then
           echo "nix-daemon.service failed to start"
+          systemctl status nix-daemon.service
           exit 1
         fi
 
         if !(sudo systemctl stop nix-daemon.service); then
           echo "nix-daemon.service failed to stop"
+          systemctl status nix-daemon.service
           exit 1
         fi
 
@@ -64,6 +68,32 @@ let
 
         out=$(nix-build --no-substitute -E 'derivation { name = "foo"; system = "x86_64-linux"; builder = "/bin/sh"; args = ["-c" "echo foobar > $out"]; }')
         [[ $(cat $out) = foobar ]]
+      '';
+      uninstallCheck = ''
+        if sudo -i nix store ping --store daemon; then
+          echo "Could run nix store ping after uninstall"
+          exit 1
+        fi
+
+        if [ -d /nix ]; then
+          echo "/nix exists after uninstall"
+          exit 1
+        fi
+
+        if [ -d /etc/nix/nix.conf ]; then
+          echo "/etc/nix/nix.conf exists after uninstall"
+          exit 1
+        fi
+
+        if systemctl is-active nix-daemon.socket; then
+          echo "nix-daemon.socket still active after uninstall"
+          exit 1
+        fi
+
+        if systemctl is-active nix-daemon.service; then
+          echo "nix-daemon.service still active after uninstall"
+          exit 1
+        fi
       '';
     };
     install-no-start-daemon = {
@@ -90,6 +120,7 @@ let
 
         [[ $(cat $out) = foobar ]]
       '';
+      uninstallCheck = installCases.install-default.uninstallCheck;
     };
     install-daemonless = {
       install = ''
@@ -106,6 +137,7 @@ let
 
         [[ $(cat $out) = foobar ]]
       '';
+      uninstallCheck = installCases.install-default.uninstallCheck;
     };
   };
   cureCases = {
@@ -116,6 +148,7 @@ let
       '';
       install = installCases.install-default.install;
       check = installCases.install-default.check;
+      uninstallCheck = installCases.install-default.uninstallCheck;
     };
     cure-self-linux-broken-no-nix-path = {
       preinstall = ''
@@ -126,6 +159,7 @@ let
       '';
       install = installCases.install-default.install;
       check = installCases.install-default.check;
+      uninstallCheck = installCases.install-default.uninstallCheck;
     };
     cure-self-linux-broken-missing-users = {
       preinstall = ''
@@ -137,6 +171,7 @@ let
       '';
       install = installCases.install-default.install;
       check = installCases.install-default.check;
+      uninstallCheck = installCases.install-default.uninstallCheck;
     };
     cure-self-linux-broken-missing-users-and-group = {
       preinstall = ''
@@ -150,6 +185,7 @@ let
       '';
       install = installCases.install-default.install;
       check = installCases.install-default.check;
+      uninstallCheck = installCases.install-default.uninstallCheck;
     };
     cure-self-linux-broken-daemon-disabled = {
       preinstall = ''
@@ -159,6 +195,7 @@ let
       '';
       install = installCases.install-default.install;
       check = installCases.install-default.check;
+      uninstallCheck = installCases.install-default.uninstallCheck;
     };
     cure-self-linux-broken-no-etc-nix = {
       preinstall = ''
@@ -168,6 +205,7 @@ let
       '';
       install = installCases.install-default.install;
       check = installCases.install-default.check;
+      uninstallCheck = installCases.install-default.uninstallCheck;
     };
     cure-self-linux-broken-unmodified-bashrc = {
       preinstall = ''
@@ -177,6 +215,7 @@ let
       '';
       install = installCases.install-default.install;
       check = installCases.install-default.check;
+      uninstallCheck = installCases.install-default.uninstallCheck;
     };
     cure-script-multi-self-broken-no-nix-path = {
       preinstall = ''
@@ -185,6 +224,7 @@ let
       '';
       install = installCases.install-default.install;
       check = installCases.install-default.check;
+      uninstallCheck = installCases.install-default.uninstallCheck;
     };
     cure-script-multi-broken-missing-users = {
       preinstall = ''
@@ -195,6 +235,7 @@ let
       '';
       install = installCases.install-default.install;
       check = installCases.install-default.check;
+      uninstallCheck = installCases.install-default.uninstallCheck;
     };
     cure-script-multi-broken-daemon-disabled = {
       preinstall = ''
@@ -203,6 +244,7 @@ let
       '';
       install = installCases.install-default.install;
       check = installCases.install-default.check;
+      uninstallCheck = installCases.install-default.uninstallCheck;
     };
     cure-script-multi-broken-no-etc-nix = {
       preinstall = ''
@@ -211,6 +253,7 @@ let
       '';
       install = installCases.install-default.install;
       check = installCases.install-default.check;
+      uninstallCheck = installCases.install-default.uninstallCheck;
     };
     cure-script-multi-broken-unmodified-bashrc = {
       preinstall = ''
@@ -219,11 +262,13 @@ let
       '';
       install = installCases.install-default.install;
       check = installCases.install-default.check;
+      uninstallCheck = installCases.install-default.uninstallCheck;
     };
     cure-script-multi-working = {
       preinstall = cure-script-multi-user;
       install = installCases.install-default.install;
       check = installCases.install-default.check;
+      uninstallCheck = installCases.install-default.uninstallCheck;
     };
     # cure-script-single-working = {
     #   preinstall = cure-script-single-user;
@@ -347,6 +392,7 @@ let
         preinstallScript = test.preinstall or "echo \"Not Applicable\"";
         installScript = test.install;
         checkScript = test.check;
+        uninstallCheckScript = test.uninstallCheck;
         installer = nix-installer-static;
         binaryTarball = binaryTarball.${system};
       }
@@ -416,11 +462,14 @@ let
         echo "Running installer..."
         $ssh "set -eux; $installScript"
 
-        echo "Testing Nix installation..."
+        echo "Checking Nix installation..."
         $ssh "set -eux; $checkScript"
 
-        echo "Testing Nix uninstallation..."
+        echo "Running Nix uninstallation..."
         $ssh "set -eux; /nix/nix-installer uninstall --no-confirm"
+
+        echo "Checking Nix uninstallation..."
+        $ssh "set -eux; $uninstallCheckScript"
 
         echo "Done!"
         touch $out
