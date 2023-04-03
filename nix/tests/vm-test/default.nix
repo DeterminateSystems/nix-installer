@@ -86,7 +86,7 @@ let
             exit 1
           fi
         done
-        if grep "^nixbld:" /etc/groups; then
+        if grep "^nixbld:" /etc/group; then
           echo "Group nixbld exists after uninstall"
           exit 1
         fi

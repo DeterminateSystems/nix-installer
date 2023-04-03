@@ -1,4 +1,4 @@
-use std::path::PathBuf;
+use std::{error::Error, path::PathBuf};
 
 use crate::{action::ActionError, planner::PlannerError, settings::InstallSettingsError};
 
@@ -10,7 +10,13 @@ pub enum NixInstallerError {
     #[error("Error executing action")]
     Action(#[source] ActionError),
     /// An error originating from an [`Action`](crate::action::Action) while reverting
-    #[error("Error reverting")]
+    #[error("Error reverting\n{}", .0.iter().map(|err| {
+        if let Some(source) = err.source() {
+            format!("{err}\n{source}\n")
+        } else {
+            format!("{err}\n") 
+        }
+    }).collect::<Vec<_>>().join("\n"))]
     ActionRevert(Vec<ActionError>),
     /// An error while writing the [`InstallPlan`](crate::InstallPlan)
     #[error("Recording install receipt")]

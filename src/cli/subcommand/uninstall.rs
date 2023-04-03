@@ -129,12 +129,9 @@ impl CommandExecute for Uninstall {
 
         let res = plan.uninstall(rx).await;
         match res {
-            Err(NixInstallerError::ActionRevert(errs)) => {
-                let mut report = eyre!("Multiple errors");
-                for err in errs {
-                    report = report.error(err);
-                }
-                return Err(report)?;
+            Err(err @ NixInstallerError::ActionRevert(_)) => {
+                tracing::info!("Uninstallation complete, some errors encountered");
+                return Err(err)?;
             },
             Err(err) => {
                 if let Some(expected) = err.expected() {
