@@ -78,7 +78,7 @@ impl CreateVolumeService {
 #[typetag::serde(name = "create_volume_service")]
 impl Action for CreateVolumeService {
     fn action_tag() -> ActionTag {
-        ActionTag("setup_volume_daemon")
+        ActionTag("create_volume_service")
     }
     fn tracing_synopsis(&self) -> String {
         format!(
@@ -90,7 +90,7 @@ impl Action for CreateVolumeService {
     fn tracing_span(&self) -> Span {
         let span = span!(
             tracing::Level::DEBUG,
-            "setup_volume_daemon",
+            "create_volume_service",
             path = tracing::field::display(self.path.display()),
             buf = tracing::field::Empty,
         );
