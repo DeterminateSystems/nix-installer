@@ -324,45 +324,49 @@ let
     # };
   };
   # Cases to test uninstalling is complete even in the face of errors.
-  uninstallCases = let uninstallFailExpected = ''
-    if /nix/nix-installer uninstall --no-confirm; then
-      echo "/nix/nix-installer uninstall exited with 0 during a uninstall failure test"
-      exit 1
-    else
-      exit 0
-    fi
-  ''; in {
-    uninstall-users-and-groups-missing = {
-      install = installCases.install-default.install;
-      check = installCases.install-default.check;
-      preuninstall = ''
-        for i in $(seq 1 32); do
-          sudo userdel nixbld$i
-        done
-        sudo groupdel nixbld
+  uninstallCases =
+    let
+      uninstallFailExpected = ''
+        if /nix/nix-installer uninstall --no-confirm; then
+          echo "/nix/nix-installer uninstall exited with 0 during a uninstall failure test"
+          exit 1
+        else
+          exit 0
+        fi
       '';
-      uninstall = uninstallFailExpected;
-      uninstallCheck = installCases.install-default.uninstallCheck;
+    in
+    {
+      uninstall-users-and-groups-missing = {
+        install = installCases.install-default.install;
+        check = installCases.install-default.check;
+        preuninstall = ''
+          for i in $(seq 1 32); do
+            sudo userdel nixbld$i
+          done
+          sudo groupdel nixbld
+        '';
+        uninstall = uninstallFailExpected;
+        uninstallCheck = installCases.install-default.uninstallCheck;
+      };
+      uninstall-nix-conf-gone = {
+        install = installCases.install-default.install;
+        check = installCases.install-default.check;
+        preuninstall = ''
+          sudo rm -rf /etc/nix
+        '';
+        uninstall = uninstallFailExpected;
+        uninstallCheck = installCases.install-default.uninstallCheck;
+      };
+      uninstall-shell-profile-clobbered = {
+        install = installCases.install-default.install;
+        check = installCases.install-default.check;
+        preuninstall = ''
+          sudo rm -rf /etc/bashrc
+        '';
+        uninstall = uninstallFailExpected;
+        uninstallCheck = installCases.install-default.uninstallCheck;
+      };
     };
-    uninstall-nix-conf-gone = {
-      install = installCases.install-default.install;
-      check = installCases.install-default.check;
-      preuninstall = ''
-        sudo rm -rf /etc/nix
-      '';
-      uninstall = uninstallFailExpected;
-      uninstallCheck = installCases.install-default.uninstallCheck;
-    };
-    uninstall-shell-profile-clobbered = {
-      install = installCases.install-default.install;
-      check = installCases.install-default.check;
-      preuninstall = ''
-        sudo rm -rf /etc/bashrc
-      '';
-      uninstall = uninstallFailExpected;
-      uninstallCheck = installCases.install-default.uninstallCheck;
-    };
-  };
 
   disableSELinux = "sudo setenforce 0";
 
@@ -568,27 +572,27 @@ let
       '';
 
   makeTests = name: tests: builtins.mapAttrs
-      (imageName: image:
-        rec {
-          ${image.system} = (builtins.mapAttrs
-            (testName: test:
-              makeTest imageName testName test
-            )
-            tests) // {
-            "${name}" = (with (forSystem "x86_64-linux" ({ system, pkgs, ... }: pkgs)); pkgs.releaseTools.aggregate {
-              name = name;
-              constituents = (
-                pkgs.lib.mapAttrsToList
-                  (testName: test:
-                    makeTest imageName testName test
-                  )
-                  tests
-              );
-            });
-          };
-        }
-      )
-      images;
+    (imageName: image:
+      rec {
+        ${image.system} = (builtins.mapAttrs
+          (testName: test:
+            makeTest imageName testName test
+          )
+          tests) // {
+          "${name}" = (with (forSystem "x86_64-linux" ({ system, pkgs, ... }: pkgs)); pkgs.releaseTools.aggregate {
+            name = name;
+            constituents = (
+              pkgs.lib.mapAttrsToList
+                (testName: test:
+                  makeTest imageName testName test
+                )
+                tests
+            );
+          });
+        };
+      }
+    )
+    images;
 
   allCases = lib.recursiveUpdate (lib.recursiveUpdate installCases cureCases) uninstallCases;
 
@@ -598,25 +602,27 @@ let
 
   uninstall-tests = makeTests "uninstall" uninstallCases;
 
-  all-tests = builtins.mapAttrs (imageName: image: {
-    "x86_64-linux".all = (with (forSystem "x86_64-linux" ({ system, pkgs, ... }: pkgs)); pkgs.releaseTools.aggregate {
-      name = "all";
-      constituents = [
-        install-tests."${imageName}"."x86_64-linux".install
-        cure-tests."${imageName}"."x86_64-linux".cure
-        uninstall-tests."${imageName}"."x86_64-linux".uninstall
-      ];
-    });
-  }) images;
+  all-tests = builtins.mapAttrs
+    (imageName: image: {
+      "x86_64-linux".all = (with (forSystem "x86_64-linux" ({ system, pkgs, ... }: pkgs)); pkgs.releaseTools.aggregate {
+        name = "all";
+        constituents = [
+          install-tests."${imageName}"."x86_64-linux".install
+          cure-tests."${imageName}"."x86_64-linux".cure
+          uninstall-tests."${imageName}"."x86_64-linux".uninstall
+        ];
+      });
+    })
+    images;
 
   joined-tests = lib.recursiveUpdate (lib.recursiveUpdate (lib.recursiveUpdate cure-tests install-tests) uninstall-tests) all-tests;
 
 in
 lib.recursiveUpdate joined-tests {
-  all."x86_64-linux" = (with (forSystem "x86_64-linux" ({ system, pkgs, ... }: pkgs)); pkgs.lib.mapAttrs (caseName: case: 
+  all."x86_64-linux" = (with (forSystem "x86_64-linux" ({ system, pkgs, ... }: pkgs)); pkgs.lib.mapAttrs (caseName: case:
     pkgs.releaseTools.aggregate {
       name = caseName;
       constituents = pkgs.lib.mapAttrsToList (name: value: value."x86_64-linux"."${caseName}") joined-tests;
     }
-  )) (allCases // { "cure" = {}; "install" = {}; "uninstall" = {}; "all" = {}; });
+  )) (allCases // { "cure" = { }; "install" = { }; "uninstall" = { }; "all" = { }; });
 }
