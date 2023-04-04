@@ -178,10 +178,6 @@ pub struct CommonSettings {
 
     /// An SSL cert to use (if any), used for fetching Nix and sets `NIX_SSL_CERT_FILE` for Nix
     #[cfg_attr(feature = "cli", clap(long, env = "NIX_INSTALLER_SSL_CERT_FILE"))]
-    #[cfg_attr(
-        all(target_os = "macos", feature = "cli"),
-        clap(default_value = "/etc/ssl/certs/ca-certificates.crt")
-    )]
     pub ssl_cert_file: Option<PathBuf>,
 
     /// Extra configuration lines for `/etc/nix.conf`
