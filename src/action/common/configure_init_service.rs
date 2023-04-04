@@ -414,7 +414,8 @@ impl Action for ConfigureInitService {
                         .arg("unload")
                         .arg(DARWIN_NIX_DAEMON_DEST),
                 )
-                .await?;
+                .await
+                .map_err(|e| Self::error(e))?;
             },
             #[cfg(target_os = "linux")]
             InitSystem::Systemd => {
