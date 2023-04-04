@@ -362,7 +362,7 @@ pub enum ActionErrorKind {
     #[error(transparent)]
     Child(Box<ActionError>),
     /// Several errors
-    #[error("Multiple child errors\n{}", .0.iter().map(|err| {
+    #[error("Multiple child errors\n\n{}", .0.iter().map(|err| {
         if let Some(source) = err.source() {
             format!("{err}\n{source}\n")
         } else {
@@ -371,11 +371,11 @@ pub enum ActionErrorKind {
     }).collect::<Vec<_>>().join("\n"))]
     MultipleChildren(Vec<ActionError>),
     /// Several errors
-    #[error("Multiple errors\n{}", .0.iter().map(|err| {
+    #[error("Multiple errors\n\n{}", .0.iter().map(|err| {
         if let Some(source) = err.source() {
-            format!("{err} ({source})\n")
+            format!("{err}\n{source}")
         } else {
-            format!("{err}\n") 
+            format!("{err}\n")
         }
     }).collect::<Vec<_>>().join("\n"))]
     Multiple(Vec<ActionErrorKind>),

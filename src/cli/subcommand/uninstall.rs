@@ -11,10 +11,7 @@ use crate::{
     InstallPlan, NixInstallerError,
 };
 use clap::{ArgAction, Parser};
-use color_eyre::{
-    eyre::{eyre, WrapErr},
-    Section,
-};
+use color_eyre::eyre::{eyre, WrapErr};
 use owo_colors::OwoColorize;
 use rand::Rng;
 

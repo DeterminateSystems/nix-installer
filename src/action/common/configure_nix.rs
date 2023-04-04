@@ -185,6 +185,11 @@ impl Action for ConfigureNix {
 
         if errors.is_empty() {
             Ok(())
+        } else if errors.len() == 1 {
+            Err(errors
+                .into_iter()
+                .next()
+                .expect("Expected 1 len Vec to have at least 1 item"))
         } else {
             Err(Self::error(ActionErrorKind::MultipleChildren(errors)))
         }
