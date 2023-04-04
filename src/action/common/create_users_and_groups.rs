@@ -184,7 +184,7 @@ impl Action for CreateUsersAndGroups {
                 //     match result {
                 //         Ok(Ok((idx, success))) => create_users[idx] = success,
                 //         Ok(Err(e)) => errors.push(Box::new(e)),
-                //         Err(e) => return Err(ActionError::Join(e))?,
+                //         Err(e) => return Err(ActionErrorKind::Join(e))?,
                 //     };
                 // }
 
@@ -192,7 +192,7 @@ impl Action for CreateUsersAndGroups {
                 //     if errors.len() == 1 {
                 //         return Err(errors.into_iter().next().unwrap().into());
                 //     } else {
-                //         return Err(ActionError::Children(errors));
+                //         return Err(ActionErrorKind::Children(errors));
                 //     }
                 // }
             },

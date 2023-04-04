@@ -368,9 +368,17 @@ mod test {
         {
             Err(error) => match error.kind() {
                 ActionErrorKind::DifferentContent(path) => assert_eq!(path, test_file.as_path()),
-                _ => return Err(eyre!("Should have returned an ActionError::Exists error")),
+                _ => {
+                    return Err(eyre!(
+                        "Should have returned an ActionErrorKind::Exists error"
+                    ))
+                },
             },
-            _ => return Err(eyre!("Should have returned an ActionError::Exists error")),
+            _ => {
+                return Err(eyre!(
+                    "Should have returned an ActionErrorKind::Exists error"
+                ))
+            },
         };
 
         assert!(test_file.exists(), "File should have not been deleted");
@@ -407,13 +415,13 @@ mod test {
                 },
                 _ => {
                     return Err(eyre!(
-                        "Should have returned an ActionError::PathModeMismatch error"
+                        "Should have returned an ActionErrorKind::PathModeMismatch error"
                     ))
                 },
             },
             _ => {
                 return Err(eyre!(
-                    "Should have returned an ActionError::PathModeMismatch error"
+                    "Should have returned an ActionErrorKind::PathModeMismatch error"
                 ))
             },
         }
@@ -470,13 +478,13 @@ mod test {
                 ActionErrorKind::PathWasNotFile(path) => assert_eq!(path, temp_dir.path()),
                 _ => {
                     return Err(eyre!(
-                        "Should have returned an ActionError::PathWasNotFile error"
+                        "Should have returned an ActionErrorKind::PathWasNotFile error"
                     ))
                 },
             },
             _ => {
                 return Err(eyre!(
-                    "Should have returned an ActionError::PathWasNotFile error"
+                    "Should have returned an ActionErrorKind::PathWasNotFile error"
                 ))
             },
         }

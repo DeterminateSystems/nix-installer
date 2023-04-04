@@ -567,13 +567,13 @@ mod test {
                 ActionErrorKind::PathWasNotFile(path) => assert_eq!(path, temp_dir.path()),
                 _ => {
                     return Err(eyre!(
-                        "Should have returned an ActionError::PathWasNotFile error"
+                        "Should have returned an ActionErrorKind::PathWasNotFile error"
                     ))
                 },
             },
             _ => {
                 return Err(eyre!(
-                    "Should have returned an ActionError::PathWasNotFile error"
+                    "Should have returned an ActionErrorKind::PathWasNotFile error"
                 ))
             },
         }

@@ -190,7 +190,7 @@ impl Action for ConfigureInitService {
                 tokio::fs::copy(src.clone(), DARWIN_NIX_DAEMON_DEST)
                     .await
                     .map_err(|e| {
-                        Self::error(ActionError::Copy(
+                        Self::error(ActionErrorKind::Copy(
                             src.to_path_buf(),
                             PathBuf::from(DARWIN_NIX_DAEMON_DEST),
                             e,
