@@ -285,7 +285,7 @@ impl CommonSettings {
             proxy: Default::default(),
             extra_conf: Default::default(),
             force: false,
-            ssl_cert_file,
+            ssl_cert_file: Default::default(),
             #[cfg(feature = "diagnostics")]
             diagnostic_endpoint: Some("https://install.determinate.systems/nix/diagnostic".into()),
         })
