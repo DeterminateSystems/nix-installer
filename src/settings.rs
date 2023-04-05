@@ -263,7 +263,6 @@ impl CommonSettings {
                 url = NIX_X64_64_DARWIN_URL;
                 nix_build_user_prefix = "_nixbld";
                 nix_build_user_id_base = 300;
-                ssl_cert_file = Some("/etc/ssl/certs/ca-certificates.crt".into());
             },
             #[cfg(target_os = "macos")]
             (Architecture::Aarch64(_), OperatingSystem::MacOSX { .. })
@@ -271,7 +270,6 @@ impl CommonSettings {
                 url = NIX_AARCH64_DARWIN_URL;
                 nix_build_user_prefix = "_nixbld";
                 nix_build_user_id_base = 300;
-                ssl_cert_file = Some("/etc/ssl/certs/ca-certificates.crt".into());
             },
             _ => {
                 return Err(InstallSettingsError::UnsupportedArchitecture(

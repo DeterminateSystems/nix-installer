@@ -119,7 +119,8 @@ impl Planner for Macos {
                 .map_err(|e| PlannerError::Custom(Box::new(e)))?;
 
             let stdout = String::from_utf8_lossy(&output.stdout);
-            if stdout == "true" {
+            let stdout_trimmed = stdout.trim();
+            if stdout_trimmed == "true" {
                 true
             } else {
                 false
