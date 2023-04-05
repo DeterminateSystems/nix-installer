@@ -4,7 +4,7 @@ use super::{CreateNixTree, CreateUsersAndGroups};
 use crate::{
     action::{
         base::{FetchAndUnpackNix, MoveUnpackedNix},
-        Action, ActionDescription, ActionError, ActionTag, StatefulAction,
+        Action, ActionDescription, ActionError, ActionErrorKind, ActionTag, StatefulAction,
     },
     settings::{CommonSettings, SCRATCH_DIR},
 };
@@ -33,13 +33,11 @@ impl ProvisionNix {
         .await?;
         let create_users_and_group = CreateUsersAndGroups::plan(settings.clone())
             .await
-            .map_err(|e| ActionError::Child(CreateUsersAndGroups::action_tag(), Box::new(e)))?;
-        let create_nix_tree = CreateNixTree::plan()
-            .await
-            .map_err(|e| ActionError::Child(CreateNixTree::action_tag(), Box::new(e)))?;
+            .map_err(Self::error)?;
+        let create_nix_tree = CreateNixTree::plan().await.map_err(Self::error)?;
         let move_unpacked_nix = MoveUnpackedNix::plan(PathBuf::from(SCRATCH_DIR))
             .await
-            .map_err(|e| ActionError::Child(MoveUnpackedNix::action_tag(), Box::new(e)))?;
+            .map_err(Self::error)?;
         Ok(Self {
             fetch_nix,
             create_users_and_group,
@@ -86,29 +84,27 @@ impl Action for ProvisionNix {
         // We fetch nix while doing the rest, then move it over.
         let mut fetch_nix_clone = self.fetch_nix.clone();
         let fetch_nix_handle = tokio::task::spawn(async {
-            fetch_nix_clone
-                .try_execute()
-                .await
-                .map_err(|e| ActionError::Child(fetch_nix_clone.action_tag(), Box::new(e)))?;
+            fetch_nix_clone.try_execute().await.map_err(Self::error)?;
             Result::<_, ActionError>::Ok(fetch_nix_clone)
         });
 
         self.create_users_and_group
             .try_execute()
             .await
-            .map_err(|e| {
-                ActionError::Child(self.create_users_and_group.action_tag(), Box::new(e))
-            })?;
+            .map_err(Self::error)?;
         self.create_nix_tree
             .try_execute()
             .await
-            .map_err(|e| ActionError::Child(self.create_nix_tree.action_tag(), Box::new(e)))?;
+            .map_err(Self::error)?;
 
-        self.fetch_nix = fetch_nix_handle.await.map_err(ActionError::Join)??;
+        self.fetch_nix = fetch_nix_handle
+            .await
+            .map_err(ActionErrorKind::Join)
+            .map_err(Self::error)??;
         self.move_unpacked_nix
             .try_execute()
             .await
-            .map_err(|e| ActionError::Child(self.move_unpacked_nix.action_tag(), Box::new(e)))?;
+            .map_err(Self::error)?;
 
         Ok(())
     }
@@ -131,34 +127,32 @@ impl Action for ProvisionNix {
 
     #[tracing::instrument(level = "debug", skip_all)]
     async fn revert(&mut self) -> Result<(), ActionError> {
-        // We fetch nix while doing the rest, then move it over.
-        let mut fetch_nix_clone = self.fetch_nix.clone();
-        let fetch_nix_handle = tokio::task::spawn(async {
-            fetch_nix_clone
-                .try_revert()
-                .await
-                .map_err(|e| ActionError::Child(fetch_nix_clone.action_tag(), Box::new(e)))?;
-            Result::<_, ActionError>::Ok(fetch_nix_clone)
-        });
+        let mut errors = vec![];
+
+        if let Err(err) = self.fetch_nix.try_revert().await {
+            errors.push(err)
+        }
 
         if let Err(err) = self.create_users_and_group.try_revert().await {
-            fetch_nix_handle.abort();
-            return Err(err);
+            errors.push(err)
         }
         if let Err(err) = self.create_nix_tree.try_revert().await {
-            fetch_nix_handle.abort();
-            return Err(err);
+            errors.push(err)
         }
 
-        self.fetch_nix = fetch_nix_handle
-            .await
-            .map_err(ActionError::Join)?
-            .map_err(|e| ActionError::Child(self.fetch_nix.action_tag(), Box::new(e)))?;
-        self.move_unpacked_nix
-            .try_revert()
-            .await
-            .map_err(|e| ActionError::Child(self.move_unpacked_nix.action_tag(), Box::new(e)))?;
+        if let Err(err) = self.move_unpacked_nix.try_revert().await {
+            errors.push(err)
+        }
 
-        Ok(())
+        if errors.is_empty() {
+            Ok(())
+        } else if errors.len() == 1 {
+            Err(errors
+                .into_iter()
+                .next()
+                .expect("Expected 1 len Vec to have at least 1 item"))
+        } else {
+            Err(Self::error(ActionErrorKind::MultipleChildren(errors)))
+        }
     }
 }

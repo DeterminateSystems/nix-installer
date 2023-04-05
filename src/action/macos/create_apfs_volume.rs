@@ -25,9 +25,11 @@ impl CreateApfsVolume {
     ) -> Result<StatefulAction<Self>, ActionError> {
         let output =
             execute_command(Command::new("/usr/sbin/diskutil").args(["apfs", "list", "-plist"]))
-                .await?;
+                .await
+                .map_err(Self::error)?;
 
-        let parsed: DiskUtilApfsListOutput = plist::from_bytes(&output.stdout)?;
+        let parsed: DiskUtilApfsListOutput =
+            plist::from_bytes(&output.stdout).map_err(Self::error)?;
         for container in parsed.containers {
             for volume in container.volumes {
                 if volume.name == name {
@@ -101,7 +103,8 @@ impl Action for CreateApfsVolume {
                 ])
                 .stdin(std::process::Stdio::null()),
         )
-        .await?;
+        .await
+        .map_err(Self::error)?;
 
         Ok(())
     }
@@ -119,19 +122,14 @@ impl Action for CreateApfsVolume {
 
     #[tracing::instrument(level = "debug", skip_all)]
     async fn revert(&mut self) -> Result<(), ActionError> {
-        let Self {
-            disk: _,
-            name,
-            case_sensitive: _,
-        } = self;
-
         execute_command(
             Command::new("/usr/sbin/diskutil")
                 .process_group(0)
-                .args(["apfs", "deleteVolume", name])
+                .args(["apfs", "deleteVolume", &self.name])
                 .stdin(std::process::Stdio::null()),
         )
-        .await?;
+        .await
+        .map_err(Self::error)?;
 
         Ok(())
     }

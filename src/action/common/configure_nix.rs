@@ -4,7 +4,7 @@ use crate::{
     action::{
         base::SetupDefaultProfile,
         common::{ConfigureShellProfile, PlaceNixConfiguration},
-        Action, ActionDescription, ActionError, ActionTag, StatefulAction,
+        Action, ActionDescription, ActionError, ActionErrorKind, ActionTag, StatefulAction,
     },
     planner::ShellProfileLocations,
     settings::{CommonSettings, SCRATCH_DIR},
@@ -30,7 +30,7 @@ impl ConfigureNix {
     ) -> Result<StatefulAction<Self>, ActionError> {
         let setup_default_profile = SetupDefaultProfile::plan(PathBuf::from(SCRATCH_DIR))
             .await
-            .map_err(|e| ActionError::Child(SetupDefaultProfile::action_tag(), Box::new(e)))?;
+            .map_err(Self::error)?;
 
         let configure_shell_profile = if settings.modify_profile {
             Some(
@@ -39,9 +39,7 @@ impl ConfigureNix {
                     settings.ssl_cert_file.clone(),
                 )
                 .await
-                .map_err(|e| {
-                    ActionError::Child(ConfigureShellProfile::action_tag(), Box::new(e))
-                })?,
+                .map_err(Self::error)?,
             )
         } else {
             None
@@ -52,7 +50,7 @@ impl ConfigureNix {
             settings.force,
         )
         .await
-        .map_err(|e| ActionError::Child(PlaceNixConfiguration::action_tag(), Box::new(e)))?;
+        .map_err(Self::error)?;
 
         Ok(Self {
             place_nix_configuration,
@@ -112,27 +110,21 @@ impl Action for ConfigureNix {
                         .try_execute()
                         .instrument(setup_default_profile_span)
                         .await
-                        .map_err(|e| {
-                            ActionError::Child(setup_default_profile.action_tag(), Box::new(e))
-                        })
+                        .map_err(Self::error)
                 },
                 async move {
                     place_nix_configuration
                         .try_execute()
                         .instrument(place_nix_configuration_span)
                         .await
-                        .map_err(|e| {
-                            ActionError::Child(place_nix_configuration.action_tag(), Box::new(e))
-                        })
+                        .map_err(Self::error)
                 },
                 async move {
                     configure_shell_profile
                         .try_execute()
                         .instrument(configure_shell_profile_span)
                         .await
-                        .map_err(|e| {
-                            ActionError::Child(configure_shell_profile.action_tag(), Box::new(e))
-                        })
+                        .map_err(Self::error)
                 },
             )?;
         } else {
@@ -144,18 +136,14 @@ impl Action for ConfigureNix {
                         .try_execute()
                         .instrument(setup_default_profile_span)
                         .await
-                        .map_err(|e| {
-                            ActionError::Child(setup_default_profile.action_tag(), Box::new(e))
-                        })
+                        .map_err(Self::error)
                 },
                 async move {
                     place_nix_configuration
                         .try_execute()
                         .instrument(place_nix_configuration_span)
                         .await
-                        .map_err(|e| {
-                            ActionError::Child(place_nix_configuration.action_tag(), Box::new(e))
-                        })
+                        .map_err(Self::error)
                 },
             )?;
         };
@@ -182,21 +170,28 @@ impl Action for ConfigureNix {
 
     #[tracing::instrument(level = "debug", skip_all)]
     async fn revert(&mut self) -> Result<(), ActionError> {
+        let mut errors = vec![];
         if let Some(configure_shell_profile) = &mut self.configure_shell_profile {
-            configure_shell_profile.try_revert().await.map_err(|e| {
-                ActionError::Child(configure_shell_profile.action_tag(), Box::new(e))
-            })?;
+            if let Err(err) = configure_shell_profile.try_revert().await {
+                errors.push(err);
+            }
         }
-        self.place_nix_configuration
-            .try_revert()
-            .await
-            .map_err(|e| {
-                ActionError::Child(self.place_nix_configuration.action_tag(), Box::new(e))
-            })?;
-        self.setup_default_profile.try_revert().await.map_err(|e| {
-            ActionError::Child(self.setup_default_profile.action_tag(), Box::new(e))
-        })?;
+        if let Err(err) = self.place_nix_configuration.try_revert().await {
+            errors.push(err);
+        }
+        if let Err(err) = self.setup_default_profile.try_revert().await {
+            errors.push(err);
+        }
 
-        Ok(())
+        if errors.is_empty() {
+            Ok(())
+        } else if errors.len() == 1 {
+            Err(errors
+                .into_iter()
+                .next()
+                .expect("Expected 1 len Vec to have at least 1 item"))
+        } else {
+            Err(Self::error(ActionErrorKind::MultipleChildren(errors)))
+        }
     }
 }

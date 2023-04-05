@@ -1,7 +1,7 @@
 use tokio::process::Command;
 use tracing::{span, Span};
 
-use crate::action::{ActionError, ActionState, ActionTag, StatefulAction};
+use crate::action::{ActionError, ActionErrorKind, ActionState, ActionTag, StatefulAction};
 use crate::execute_command;
 
 use crate::action::{Action, ActionDescription};
@@ -28,7 +28,7 @@ impl StartSystemdUnit {
         let output = command
             .output()
             .await
-            .map_err(|e| ActionError::command(&command, e))?;
+            .map_err(|e| Self::error(ActionErrorKind::command(&command, e)))?;
 
         let state = if output.status.success() {
             tracing::debug!("Starting systemd unit `{}` already complete", unit);
@@ -84,7 +84,8 @@ impl Action for StartSystemdUnit {
                         .arg(format!("{unit}"))
                         .stdin(std::process::Stdio::null()),
                 )
-                .await?;
+                .await
+                .map_err(Self::error)?;
             },
             false => {
                 // TODO(@Hoverbear): Handle proxy vars
@@ -95,7 +96,8 @@ impl Action for StartSystemdUnit {
                         .arg(format!("{unit}"))
                         .stdin(std::process::Stdio::null()),
                 )
-                .await?;
+                .await
+                .map_err(Self::error)?;
             },
         }
 
@@ -111,30 +113,47 @@ impl Action for StartSystemdUnit {
 
     #[tracing::instrument(level = "debug", skip_all)]
     async fn revert(&mut self) -> Result<(), ActionError> {
-        let Self { unit, enable } = self;
+        let mut errors = vec![];
 
-        if *enable {
-            execute_command(
+        if self.enable {
+            if let Err(e) = execute_command(
                 Command::new("systemctl")
                     .process_group(0)
                     .arg("disable")
-                    .arg(format!("{unit}"))
+                    .arg(format!("{}", self.unit))
                     .stdin(std::process::Stdio::null()),
             )
-            .await?;
+            .await
+            .map_err(Self::error)
+            {
+                errors.push(e);
+            }
         };
 
         // We do both to avoid an error doing `disable --now` if the user did stop it already somehow.
-        execute_command(
+        if let Err(e) = execute_command(
             Command::new("systemctl")
                 .process_group(0)
                 .arg("stop")
-                .arg(format!("{unit}"))
+                .arg(format!("{}", self.unit))
                 .stdin(std::process::Stdio::null()),
         )
-        .await?;
+        .await
+        .map_err(Self::error)
+        {
+            errors.push(e);
+        }
 
-        Ok(())
+        if errors.is_empty() {
+            Ok(())
+        } else if errors.len() == 1 {
+            Err(errors
+                .into_iter()
+                .next()
+                .expect("Expected 1 len Vec to have at least 1 item"))
+        } else {
+            Err(Self::error(ActionErrorKind::MultipleChildren(errors)))
+        }
     }
 }
 

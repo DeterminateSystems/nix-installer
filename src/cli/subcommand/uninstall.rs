@@ -8,10 +8,10 @@ use crate::{
     cli::{ensure_root, interaction::PromptChoice, signal_channel},
     error::HasExpectedErrors,
     plan::RECEIPT_LOCATION,
-    InstallPlan,
+    InstallPlan, NixInstallerError,
 };
 use clap::{ArgAction, Parser};
-use eyre::{eyre, WrapErr};
+use color_eyre::eyre::{eyre, WrapErr};
 use owo_colors::OwoColorize;
 use rand::Rng;
 
@@ -125,16 +125,20 @@ impl CommandExecute for Uninstall {
         let (_tx, rx) = signal_channel().await?;
 
         let res = plan.uninstall(rx).await;
-        if let Err(err) = res {
-            if let Some(expected) = err.expected() {
-                println!("{}", expected.red());
-                return Ok(ExitCode::FAILURE);
-            }
-            return Err(err)?;
+        match res {
+            Err(err @ NixInstallerError::ActionRevert(_)) => {
+                tracing::error!("Uninstallation complete, some errors encountered");
+                return Err(err)?;
+            },
+            Err(err) => {
+                if let Some(expected) = err.expected() {
+                    println!("{}", expected.red());
+                    return Ok(ExitCode::FAILURE);
+                }
+                return Err(err)?;
+            },
+            _ => (),
         }
-
-        // TODO(@hoverbear): It would be so nice to catch errors and offer the user a way to keep going...
-        //                   However that will require being able to link error -> step and manually setting that step as `Uncompleted`.
 
         println!(
             "\

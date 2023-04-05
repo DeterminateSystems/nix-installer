@@ -1,5 +1,7 @@
 use crate::action::base::{create_or_insert_into_file, CreateDirectory, CreateOrInsertIntoFile};
-use crate::action::{Action, ActionDescription, ActionError, ActionTag, StatefulAction};
+use crate::action::{
+    Action, ActionDescription, ActionError, ActionErrorKind, ActionTag, StatefulAction,
+};
 use crate::planner::ShellProfileLocations;
 
 use nix::unistd::User;
@@ -32,9 +34,9 @@ impl ConfigureShellProfile {
         let maybe_ssl_cert_file_setting = if let Some(ssl_cert_file) = ssl_cert_file {
             format!(
                 "export NIX_SSL_CERT_FILE={:?}\n",
-                ssl_cert_file
-                    .canonicalize()
-                    .map_err(|e| { ActionError::Canonicalize(ssl_cert_file, e) })?
+                ssl_cert_file.canonicalize().map_err(|e| {
+                    Self::error(ActionErrorKind::Canonicalize(ssl_cert_file, e))
+                })?
             )
         } else {
             "".to_string()
@@ -207,7 +209,7 @@ impl Action for ConfigureShellProfile {
         }
 
         let mut set = JoinSet::new();
-        let mut errors = Vec::default();
+        let mut errors = vec![];
 
         for (idx, create_or_insert_into_file) in
             self.create_or_insert_into_files.iter_mut().enumerate()
@@ -219,12 +221,7 @@ impl Action for ConfigureShellProfile {
                     .try_execute()
                     .instrument(span)
                     .await
-                    .map_err(|e| {
-                        ActionError::Child(
-                            create_or_insert_into_file_clone.action_tag(),
-                            Box::new(e),
-                        )
-                    })?;
+                    .map_err(Self::error)?;
                 Result::<_, ActionError>::Ok((idx, create_or_insert_into_file_clone))
             });
         }
@@ -235,17 +232,17 @@ impl Action for ConfigureShellProfile {
                     self.create_or_insert_into_files[idx] = create_or_insert_into_file
                 },
                 Ok(Err(e)) => errors.push(e),
-                Err(e) => return Err(e)?,
+                Err(e) => return Err(Self::error(e))?,
             };
         }
 
         if !errors.is_empty() {
             if errors.len() == 1 {
-                return Err(errors.into_iter().next().unwrap())?;
+                return Err(Self::error(errors.into_iter().next().unwrap()))?;
             } else {
-                return Err(ActionError::Children(
-                    errors.into_iter().map(|v| Box::new(v)).collect(),
-                ));
+                return Err(Self::error(ActionErrorKind::MultipleChildren(
+                    errors.into_iter().collect(),
+                )));
             }
         }
 
@@ -262,7 +259,7 @@ impl Action for ConfigureShellProfile {
     #[tracing::instrument(level = "debug", skip_all)]
     async fn revert(&mut self) -> Result<(), ActionError> {
         let mut set = JoinSet::new();
-        let mut errors: Vec<ActionError> = Vec::default();
+        let mut errors = vec![];
 
         for (idx, create_or_insert_into_file) in
             self.create_or_insert_into_files.iter_mut().enumerate()
@@ -280,27 +277,26 @@ impl Action for ConfigureShellProfile {
                     self.create_or_insert_into_files[idx] = create_or_insert_into_file
                 },
                 Ok(Err(e)) => errors.push(e),
-                Err(e) => return Err(e)?,
+                // This is quite rare and generally a very bad sign.
+                Err(e) => return Err(e).map_err(|e| Self::error(ActionErrorKind::from(e)))?,
             };
         }
 
         for create_directory in self.create_directories.iter_mut() {
-            create_directory
-                .try_revert()
-                .await
-                .map_err(|e| ActionError::Child(create_directory.action_tag(), Box::new(e)))?;
-        }
-
-        if !errors.is_empty() {
-            if errors.len() == 1 {
-                return Err(errors.into_iter().next().unwrap())?;
-            } else {
-                return Err(ActionError::Children(
-                    errors.into_iter().map(|v| Box::new(v)).collect(),
-                ));
+            if let Err(err) = create_directory.try_revert().await {
+                errors.push(err);
             }
         }
 
-        Ok(())
+        if errors.is_empty() {
+            Ok(())
+        } else if errors.len() == 1 {
+            Err(errors
+                .into_iter()
+                .next()
+                .expect("Expected 1 len Vec to have at least 1 item"))
+        } else {
+            Err(Self::error(ActionErrorKind::MultipleChildren(errors)))
+        }
     }
 }

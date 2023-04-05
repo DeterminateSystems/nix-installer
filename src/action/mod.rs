@@ -255,6 +255,14 @@ pub trait Action: Send + Sync + std::fmt::Debug + dyn_clone::DynClone {
             state: ActionState::Uncompleted,
         }
     }
+
+    fn error(kind: impl Into<ActionErrorKind>) -> ActionError
+    where
+        Self: Sized,
+    {
+        ActionError::new(Self::action_tag(), kind)
+    }
+
     // They should also have an `async fn plan(args...) -> Result<StatefulAction<Self>, ActionError>;`
 }
 
@@ -299,10 +307,51 @@ impl From<&'static str> for ActionTag {
     }
 }
 
+#[derive(Debug)]
+pub struct ActionError {
+    action_tag: ActionTag,
+    kind: ActionErrorKind,
+}
+
+impl ActionError {
+    pub fn new(action_tag: ActionTag, kind: impl Into<ActionErrorKind>) -> Self {
+        Self {
+            action_tag,
+            kind: kind.into(),
+        }
+    }
+
+    pub fn kind(&self) -> &ActionErrorKind {
+        &self.kind
+    }
+
+    pub fn action_tag(&self) -> &ActionTag {
+        &self.action_tag
+    }
+}
+
+impl std::fmt::Display for ActionError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.write_fmt(format_args!("Action `{}` errored", self.action_tag))
+    }
+}
+
+impl std::error::Error for ActionError {
+    fn source(&self) -> Option<&(dyn Error + 'static)> {
+        Some(&self.kind)
+    }
+}
+
+impl From<ActionError> for ActionErrorKind {
+    fn from(value: ActionError) -> Self {
+        Self::Child(Box::new(value))
+    }
+}
+
 /// An error occurring during an action
 #[non_exhaustive]
 #[derive(thiserror::Error, Debug, strum::IntoStaticStr)]
-pub enum ActionError {
+pub enum ActionErrorKind {
     /// A custom error
     #[error(transparent)]
     Custom(Box<dyn std::error::Error + Send + Sync>),
@@ -310,17 +359,26 @@ pub enum ActionError {
     #[error(transparent)]
     Certificate(#[from] CertificateError),
     /// A child error
-    #[error("Child action `{0}`")]
-    Child(ActionTag, #[source] Box<ActionError>),
-    /// Several child errors
-    #[error("Child action errors: {}", .0.iter().map(|v| {
-        if let Some(source) = v.source() {
-            format!("{v} ({source})")
+    #[error(transparent)]
+    Child(Box<ActionError>),
+    /// Several errors
+    #[error("Multiple child errors\n\n{}", .0.iter().map(|err| {
+        if let Some(source) = err.source() {
+            format!("{err}\n{source}\n")
         } else {
-            format!("{v}") 
+            format!("{err}\n") 
         }
-    }).collect::<Vec<_>>().join(" & "))]
-    Children(Vec<Box<ActionError>>),
+    }).collect::<Vec<_>>().join("\n"))]
+    MultipleChildren(Vec<ActionError>),
+    /// Several errors
+    #[error("Multiple errors\n\n{}", .0.iter().map(|err| {
+        if let Some(source) = err.source() {
+            format!("{err}\n{source}")
+        } else {
+            format!("{err}\n")
+        }
+    }).collect::<Vec<_>>().join("\n"))]
+    Multiple(Vec<ActionErrorKind>),
     /// The path already exists with different content that expected
     #[error(
         "`{0}` exists with different content than planned, consider removing it with `rm {0}`"
@@ -475,7 +533,7 @@ pub enum ActionError {
     SystemdMissing,
 }
 
-impl ActionError {
+impl ActionErrorKind {
     pub fn command(command: &tokio::process::Command, error: std::io::Error) -> Self {
         Self::Command {
             #[cfg(feature = "diagnostics")]
@@ -494,7 +552,7 @@ impl ActionError {
     }
 }
 
-impl HasExpectedErrors for ActionError {
+impl HasExpectedErrors for ActionErrorKind {
     fn expected<'a>(&'a self) -> Option<Box<dyn std::error::Error + 'a>> {
         match self {
             Self::PathUserMismatch(_, _, _)
@@ -506,11 +564,10 @@ impl HasExpectedErrors for ActionError {
 }
 
 #[cfg(feature = "diagnostics")]
-impl crate::diagnostics::ErrorDiagnostic for ActionError {
+impl crate::diagnostics::ErrorDiagnostic for ActionErrorKind {
     fn diagnostic(&self) -> String {
         let static_str: &'static str = (self).into();
         let context = match self {
-            Self::Child(action, _) => vec![action.to_string()],
             Self::Read(path, _)
             | Self::Open(path, _)
             | Self::Write(path, _)
@@ -518,7 +575,8 @@ impl crate::diagnostics::ErrorDiagnostic for ActionError {
             | Self::SetPermissions(_, path, _)
             | Self::GettingMetadata(path, _)
             | Self::CreateDirectory(path, _)
-            | Self::PathWasNotFile(path) => {
+            | Self::PathWasNotFile(path)
+            | Self::Remove(path, _) => {
                 vec![path.to_string_lossy().to_string()]
             },
             Self::Rename(first_path, second_path, _)

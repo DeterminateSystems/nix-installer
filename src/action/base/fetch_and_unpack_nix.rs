@@ -5,7 +5,7 @@ use reqwest::Url;
 use tracing::{span, Span};
 
 use crate::{
-    action::{Action, ActionDescription, ActionError, ActionTag, StatefulAction},
+    action::{Action, ActionDescription, ActionError, ActionErrorKind, ActionTag, StatefulAction},
     parse_ssl_cert,
 };
 
@@ -33,26 +33,18 @@ impl FetchAndUnpackNix {
 
         match url.scheme() {
             "https" | "http" | "file" => (),
-            _ => {
-                return Err(ActionError::Custom(Box::new(
-                    FetchUrlError::UnknownUrlScheme,
-                )))
-            },
+            _ => return Err(Self::error(FetchUrlError::UnknownUrlScheme)),
         };
 
         if let Some(proxy) = &proxy {
             match proxy.scheme() {
                 "https" | "http" | "socks5" => (),
-                _ => {
-                    return Err(ActionError::Custom(Box::new(
-                        FetchUrlError::UnknownProxyScheme,
-                    )))
-                },
+                _ => return Err(Self::error(FetchUrlError::UnknownProxyScheme)),
             };
         }
 
         if let Some(ssl_cert_file) = &ssl_cert_file {
-            parse_ssl_cert(&ssl_cert_file).await?;
+            parse_ssl_cert(&ssl_cert_file).await.map_err(Self::error)?;
         }
 
         Ok(Self {
@@ -106,41 +98,43 @@ impl Action for FetchAndUnpackNix {
             "https" | "http" => {
                 let mut buildable_client = reqwest::Client::builder();
                 if let Some(proxy) = &self.proxy {
-                    buildable_client =
-                        buildable_client.proxy(reqwest::Proxy::all(proxy.clone()).map_err(|e| {
-                            ActionError::Custom(Box::new(FetchUrlError::Reqwest(e)))
-                        })?)
+                    buildable_client = buildable_client.proxy(
+                        reqwest::Proxy::all(proxy.clone())
+                            .map_err(FetchUrlError::Reqwest)
+                            .map_err(Self::error)?,
+                    )
                 }
                 if let Some(ssl_cert_file) = &self.ssl_cert_file {
-                    let ssl_cert = parse_ssl_cert(&ssl_cert_file).await?;
+                    let ssl_cert = parse_ssl_cert(&ssl_cert_file).await.map_err(Self::error)?;
                     buildable_client = buildable_client.add_root_certificate(ssl_cert);
                 }
                 let client = buildable_client
                     .build()
-                    .map_err(|e| ActionError::Custom(Box::new(FetchUrlError::Reqwest(e))))?;
+                    .map_err(FetchUrlError::Reqwest)
+                    .map_err(Self::error)?;
                 let req = client
                     .get(self.url.clone())
                     .build()
-                    .map_err(|e| ActionError::Custom(Box::new(FetchUrlError::Reqwest(e))))?;
+                    .map_err(FetchUrlError::Reqwest)
+                    .map_err(Self::error)?;
                 let res = client
                     .execute(req)
                     .await
-                    .map_err(|e| ActionError::Custom(Box::new(FetchUrlError::Reqwest(e))))?;
+                    .map_err(FetchUrlError::Reqwest)
+                    .map_err(Self::error)?;
                 res.bytes()
                     .await
-                    .map_err(|e| ActionError::Custom(Box::new(FetchUrlError::Reqwest(e))))?
+                    .map_err(FetchUrlError::Reqwest)
+                    .map_err(Self::error)?
             },
             "file" => {
                 let buf = tokio::fs::read(self.url.path())
                     .await
-                    .map_err(|e| ActionError::Read(PathBuf::from(self.url.path()), e))?;
+                    .map_err(|e| ActionErrorKind::Read(PathBuf::from(self.url.path()), e))
+                    .map_err(Self::error)?;
                 Bytes::from(buf)
             },
-            _ => {
-                return Err(ActionError::Custom(Box::new(
-                    FetchUrlError::UnknownUrlScheme,
-                )))
-            },
+            _ => return Err(Self::error(FetchUrlError::UnknownUrlScheme)),
         };
 
         // TODO(@Hoverbear): Pick directory
@@ -151,7 +145,8 @@ impl Action for FetchAndUnpackNix {
         let mut archive = tar::Archive::new(decoder);
         archive
             .unpack(&dest_clone)
-            .map_err(|e| ActionError::Custom(Box::new(FetchUrlError::Unarchive(e))))?;
+            .map_err(FetchUrlError::Unarchive)
+            .map_err(Self::error)?;
 
         Ok(())
     }
@@ -181,4 +176,10 @@ pub enum FetchUrlError {
     UnknownUrlScheme,
     #[error("Unknown proxy scheme, `https://`, `socks5://`, and `http://` supported")]
     UnknownProxyScheme,
+}
+
+impl Into<ActionErrorKind> for FetchUrlError {
+    fn into(self) -> ActionErrorKind {
+        ActionErrorKind::Custom(Box::new(self))
+    }
 }

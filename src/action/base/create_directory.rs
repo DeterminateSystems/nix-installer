@@ -6,7 +6,7 @@ use nix::unistd::{chown, Group, User};
 use tokio::fs::{create_dir, remove_dir_all};
 use tracing::{span, Span};
 
-use crate::action::{Action, ActionDescription, ActionState};
+use crate::action::{Action, ActionDescription, ActionErrorKind, ActionState};
 use crate::action::{ActionError, StatefulAction};
 
 /** Create a directory at the given location, optionally with an owning user, group, and mode.
@@ -40,40 +40,47 @@ impl CreateDirectory {
         let action_state = if path.exists() {
             let metadata = tokio::fs::metadata(&path)
                 .await
-                .map_err(|e| ActionError::GettingMetadata(path.clone(), e))?;
+                .map_err(|e| ActionErrorKind::GettingMetadata(path.clone(), e))
+                .map_err(Self::error)?;
             if !metadata.is_dir() {
-                return Err(ActionError::PathWasNotDirectory(path.to_owned()));
+                return Err(Self::error(ActionErrorKind::PathWasNotDirectory(
+                    path.to_owned(),
+                )));
             }
 
             // Does it have the right user/group?
             if let Some(user) = &user {
                 // If the file exists, the user must also exist to be correct.
                 let expected_uid = User::from_name(user.as_str())
-                    .map_err(|e| ActionError::GettingUserId(user.clone(), e))?
-                    .ok_or_else(|| ActionError::NoUser(user.clone()))?
+                    .map_err(|e| ActionErrorKind::GettingUserId(user.clone(), e))
+                    .map_err(Self::error)?
+                    .ok_or_else(|| ActionErrorKind::NoUser(user.clone()))
+                    .map_err(Self::error)?
                     .uid;
                 let found_uid = metadata.uid();
                 if found_uid != expected_uid.as_raw() {
-                    return Err(ActionError::PathUserMismatch(
+                    return Err(Self::error(ActionErrorKind::PathUserMismatch(
                         path.clone(),
                         found_uid,
                         expected_uid.as_raw(),
-                    ));
+                    )));
                 }
             }
             if let Some(group) = &group {
                 // If the file exists, the group must also exist to be correct.
                 let expected_gid = Group::from_name(group.as_str())
-                    .map_err(|e| ActionError::GettingGroupId(group.clone(), e))?
-                    .ok_or_else(|| ActionError::NoUser(group.clone()))?
+                    .map_err(|e| ActionErrorKind::GettingGroupId(group.clone(), e))
+                    .map_err(Self::error)?
+                    .ok_or_else(|| ActionErrorKind::NoUser(group.clone()))
+                    .map_err(Self::error)?
                     .gid;
                 let found_gid = metadata.gid();
                 if found_gid != expected_gid.as_raw() {
-                    return Err(ActionError::PathGroupMismatch(
+                    return Err(Self::error(ActionErrorKind::PathGroupMismatch(
                         path.clone(),
                         found_gid,
                         expected_gid.as_raw(),
-                    ));
+                    )));
                 }
             }
 
@@ -136,8 +143,10 @@ impl Action for CreateDirectory {
         let gid = if let Some(group) = group {
             Some(
                 Group::from_name(group.as_str())
-                    .map_err(|e| ActionError::GettingGroupId(group.clone(), e))?
-                    .ok_or(ActionError::NoGroup(group.clone()))?
+                    .map_err(|e| ActionErrorKind::GettingGroupId(group.clone(), e))
+                    .map_err(Self::error)?
+                    .ok_or(ActionErrorKind::NoGroup(group.clone()))
+                    .map_err(Self::error)?
                     .gid,
             )
         } else {
@@ -146,8 +155,10 @@ impl Action for CreateDirectory {
         let uid = if let Some(user) = user {
             Some(
                 User::from_name(user.as_str())
-                    .map_err(|e| ActionError::GettingUserId(user.clone(), e))?
-                    .ok_or(ActionError::NoUser(user.clone()))?
+                    .map_err(|e| ActionErrorKind::GettingUserId(user.clone(), e))
+                    .map_err(Self::error)?
+                    .ok_or(ActionErrorKind::NoUser(user.clone()))
+                    .map_err(Self::error)?
                     .uid,
             )
         } else {
@@ -156,13 +167,17 @@ impl Action for CreateDirectory {
 
         create_dir(path.clone())
             .await
-            .map_err(|e| ActionError::CreateDirectory(path.clone(), e))?;
-        chown(path, uid, gid).map_err(|e| ActionError::Chown(path.clone(), e))?;
+            .map_err(|e| ActionErrorKind::CreateDirectory(path.clone(), e))
+            .map_err(Self::error)?;
+        chown(path, uid, gid)
+            .map_err(|e| ActionErrorKind::Chown(path.clone(), e))
+            .map_err(Self::error)?;
 
         if let Some(mode) = mode {
             tokio::fs::set_permissions(&path, PermissionsExt::from_mode(*mode))
                 .await
-                .map_err(|e| ActionError::SetPermissions(*mode, path.to_owned(), e))?;
+                .map_err(|e| ActionErrorKind::SetPermissions(*mode, path.to_owned(), e))
+                .map_err(Self::error)?;
         }
 
         Ok(())
@@ -202,14 +217,16 @@ impl Action for CreateDirectory {
 
         let is_empty = path
             .read_dir()
-            .map_err(|e| ActionError::Read(path.clone(), e))?
+            .map_err(|e| ActionErrorKind::Read(path.clone(), e))
+            .map_err(Self::error)?
             .next()
             .is_none();
 
         match (is_empty, force_prune_on_revert) {
             (true, _) | (false, true) => remove_dir_all(path.clone())
                 .await
-                .map_err(|e| ActionError::Remove(path.clone(), e))?,
+                .map_err(|e| ActionErrorKind::Remove(path.clone(), e))
+                .map_err(Self::error)?,
             (false, false) => {
                 tracing::debug!("Not removing `{}`, the folder is not empty", path.display());
             },

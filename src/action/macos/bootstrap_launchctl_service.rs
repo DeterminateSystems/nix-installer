@@ -3,7 +3,7 @@ use std::path::{Path, PathBuf};
 use tokio::process::Command;
 use tracing::{span, Span};
 
-use crate::action::{ActionError, ActionTag, StatefulAction};
+use crate::action::{ActionError, ActionErrorKind, ActionTag, StatefulAction};
 use crate::execute_command;
 
 use crate::action::{Action, ActionDescription};
@@ -40,7 +40,7 @@ impl BootstrapLaunchctlService {
         let output = command
             .output()
             .await
-            .map_err(|e| ActionError::command(&command, e))?;
+            .map_err(|e| Self::error(ActionErrorKind::command(&command, e)))?;
         if output.status.success() || output.status.code() == Some(37) {
             // We presume that success means it's found
             return Ok(StatefulAction::completed(Self {
@@ -102,7 +102,8 @@ impl Action for BootstrapLaunchctlService {
                 .arg(path)
                 .stdin(std::process::Stdio::null()),
         )
-        .await?;
+        .await
+        .map_err(Self::error)?;
 
         Ok(())
     }
@@ -120,21 +121,16 @@ impl Action for BootstrapLaunchctlService {
 
     #[tracing::instrument(level = "debug", skip_all)]
     async fn revert(&mut self) -> Result<(), ActionError> {
-        let Self {
-            path,
-            service: _,
-            domain,
-        } = self;
-
         execute_command(
             Command::new("launchctl")
                 .process_group(0)
                 .arg("bootout")
-                .arg(domain)
-                .arg(path)
+                .arg(&self.domain)
+                .arg(&self.path)
                 .stdin(std::process::Stdio::null()),
         )
-        .await?;
+        .await
+        .map_err(Self::error)?;
 
         Ok(())
     }

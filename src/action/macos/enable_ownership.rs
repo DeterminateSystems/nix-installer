@@ -4,7 +4,7 @@ use std::path::{Path, PathBuf};
 use tokio::process::Command;
 use tracing::{span, Span};
 
-use crate::action::{ActionError, ActionTag, StatefulAction};
+use crate::action::{ActionError, ActionErrorKind, ActionTag, StatefulAction};
 use crate::execute_command;
 
 use crate::action::{Action, ActionDescription};
@@ -62,9 +62,11 @@ impl Action for EnableOwnership {
                     .arg(&path)
                     .stdin(std::process::Stdio::null()),
             )
-            .await?
+            .await
+            .map_err(Self::error)?
             .stdout;
-            let the_plist: DiskUtilInfoOutput = plist::from_reader(Cursor::new(buf))?;
+            let the_plist: DiskUtilInfoOutput =
+                plist::from_reader(Cursor::new(buf)).map_err(Self::error)?;
 
             the_plist.global_permissions_enabled
         };
@@ -77,7 +79,8 @@ impl Action for EnableOwnership {
                     .arg(path)
                     .stdin(std::process::Stdio::null()),
             )
-            .await?;
+            .await
+            .map_err(Self::error)?;
         }
 
         Ok(())
@@ -99,4 +102,10 @@ impl Action for EnableOwnership {
 pub enum EnableOwnershipError {
     #[error("Failed to execute command")]
     Command(#[source] std::io::Error),
+}
+
+impl Into<ActionErrorKind> for EnableOwnershipError {
+    fn into(self) -> ActionErrorKind {
+        ActionErrorKind::Custom(Box::new(self))
+    }
 }

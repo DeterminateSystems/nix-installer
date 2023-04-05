@@ -102,11 +102,11 @@ impl DiagnosticData {
         let mut walker: &dyn std::error::Error = &err;
         while let Some(source) = walker.source() {
             if let Some(downcasted) = source.downcast_ref::<ActionError>() {
-                let downcasted_diagnostic = downcasted.diagnostic();
+                let downcasted_diagnostic = downcasted.kind().diagnostic();
                 failure_chain.push(downcasted_diagnostic);
             }
             if let Some(downcasted) = source.downcast_ref::<Box<ActionError>>() {
-                let downcasted_diagnostic = downcasted.diagnostic();
+                let downcasted_diagnostic = downcasted.kind().diagnostic();
                 failure_chain.push(downcasted_diagnostic);
             }
             if let Some(downcasted) = source.downcast_ref::<PlannerError>() {

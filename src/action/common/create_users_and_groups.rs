@@ -1,7 +1,7 @@
 use crate::{
     action::{
         base::{AddUserToGroup, CreateGroup, CreateUser},
-        Action, ActionDescription, ActionError, ActionTag, StatefulAction,
+        Action, ActionDescription, ActionError, ActionErrorKind, ActionTag, StatefulAction,
     },
     settings::CommonSettings,
 };
@@ -38,7 +38,7 @@ impl CreateUsersAndGroups {
                     format!("Nix build user {index}"),
                 )
                 .await
-                .map_err(|e| ActionError::Child(CreateUser::action_tag(), Box::new(e)))?,
+                .map_err(Self::error)?,
             );
             add_users_to_groups.push(
                 AddUserToGroup::plan(
@@ -48,7 +48,7 @@ impl CreateUsersAndGroups {
                     settings.nix_build_group_id,
                 )
                 .await
-                .map_err(|e| ActionError::Child(AddUserToGroup::action_tag(), Box::new(e)))?,
+                .map_err(Self::error)?,
             );
         }
         Ok(Self {
@@ -156,18 +156,12 @@ impl Action for CreateUsersAndGroups {
             }
             | OperatingSystem::Darwin => {
                 for create_user in create_users.iter_mut() {
-                    create_user
-                        .try_execute()
-                        .await
-                        .map_err(|e| ActionError::Child(create_user.action_tag(), Box::new(e)))?;
+                    create_user.try_execute().await.map_err(Self::error)?;
                 }
             },
             _ => {
                 for create_user in create_users.iter_mut() {
-                    create_user
-                        .try_execute()
-                        .await
-                        .map_err(|e| ActionError::Child(create_user.action_tag(), Box::new(e)))?;
+                    create_user.try_execute().await.map_err(Self::error)?;
                 }
                 // While we may be tempted to do something like this, it can break on many older OSes like Ubuntu 18.04:
                 // ```
@@ -190,7 +184,7 @@ impl Action for CreateUsersAndGroups {
                 //     match result {
                 //         Ok(Ok((idx, success))) => create_users[idx] = success,
                 //         Ok(Err(e)) => errors.push(Box::new(e)),
-                //         Err(e) => return Err(ActionError::Join(e))?,
+                //         Err(e) => return Err(ActionErrorKind::Join(e))?,
                 //     };
                 // }
 
@@ -198,17 +192,14 @@ impl Action for CreateUsersAndGroups {
                 //     if errors.len() == 1 {
                 //         return Err(errors.into_iter().next().unwrap().into());
                 //     } else {
-                //         return Err(ActionError::Children(errors));
+                //         return Err(ActionErrorKind::Children(errors));
                 //     }
                 // }
             },
         };
 
         for add_user_to_group in add_users_to_groups.iter_mut() {
-            add_user_to_group
-                .try_execute()
-                .await
-                .map_err(|e| ActionError::Child(add_user_to_group.action_tag(), Box::new(e)))?;
+            add_user_to_group.try_execute().await.map_err(Self::error)?;
         }
 
         Ok(())
@@ -256,21 +247,11 @@ impl Action for CreateUsersAndGroups {
 
     #[tracing::instrument(level = "debug", skip_all)]
     async fn revert(&mut self) -> Result<(), ActionError> {
-        let Self {
-            create_users,
-            create_group,
-            add_users_to_groups: _,
-            nix_build_user_count: _,
-            nix_build_group_name: _,
-            nix_build_group_id: _,
-            nix_build_user_prefix: _,
-            nix_build_user_id_base: _,
-        } = self;
-        for create_user in create_users.iter_mut() {
-            create_user
-                .try_revert()
-                .await
-                .map_err(|e| ActionError::Child(create_user.action_tag(), Box::new(e)))?;
+        let mut errors = vec![];
+        for create_user in self.create_users.iter_mut() {
+            if let Err(err) = create_user.try_revert().await {
+                errors.push(err);
+            }
         }
 
         // We don't actually need to do this, when a user is deleted they are removed from groups
@@ -279,11 +260,19 @@ impl Action for CreateUsersAndGroups {
         // }
 
         // Create group
-        create_group
-            .try_revert()
-            .await
-            .map_err(|e| ActionError::Child(create_group.action_tag(), Box::new(e)))?;
+        if let Err(err) = self.create_group.try_revert().await {
+            errors.push(err);
+        }
 
-        Ok(())
+        if errors.is_empty() {
+            Ok(())
+        } else if errors.len() == 1 {
+            Err(errors
+                .into_iter()
+                .next()
+                .expect("Expected 1 len Vec to have at least 1 item"))
+        } else {
+            Err(Self::error(ActionErrorKind::MultipleChildren(errors)))
+        }
     }
 }

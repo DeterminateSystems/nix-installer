@@ -5,7 +5,7 @@ use target_lexicon::OperatingSystem;
 use tokio::process::Command;
 use tracing::{span, Span};
 
-use crate::action::ActionError;
+use crate::action::{ActionError, ActionErrorKind};
 use crate::execute_command;
 
 use crate::action::{Action, ActionDescription, StatefulAction};
@@ -37,22 +37,23 @@ impl AddUserToGroup {
         };
         // Ensure user does not exists
         if let Some(user) = User::from_name(name.as_str())
-            .map_err(|e| ActionError::GettingUserId(name.clone(), e))?
+            .map_err(|e| ActionErrorKind::GettingUserId(name.clone(), e))
+            .map_err(Self::error)?
         {
             if user.uid.as_raw() != uid {
-                return Err(ActionError::UserUidMismatch(
+                return Err(Self::error(ActionErrorKind::UserUidMismatch(
                     name.clone(),
                     user.uid.as_raw(),
                     uid,
-                ));
+                )));
             }
 
             if user.gid.as_raw() != gid {
-                return Err(ActionError::UserGidMismatch(
+                return Err(Self::error(ActionErrorKind::UserGidMismatch(
                     name.clone(),
                     user.gid.as_raw(),
                     gid,
-                ));
+                )));
             }
 
             // See if group membership needs to be done
@@ -74,7 +75,8 @@ impl AddUserToGroup {
                     let output = command
                         .output()
                         .await
-                        .map_err(|e| ActionError::command(&command, e))?;
+                        .map_err(|e| ActionErrorKind::command(&command, e))
+                        .map_err(Self::error)?;
                     match output.status.code() {
                         Some(0) => {
                             // yes {user} is a member of {groupname}
@@ -98,7 +100,9 @@ impl AddUserToGroup {
                         },
                         _ => {
                             // Some other issue
-                            return Err(ActionError::command_output(&command, output));
+                            return Err(Self::error(ActionErrorKind::command_output(
+                                &command, output,
+                            )));
                         },
                     };
                 },
@@ -109,8 +113,9 @@ impl AddUserToGroup {
                             .arg(&this.name)
                             .stdin(std::process::Stdio::null()),
                     )
-                    .await?;
-                    let output_str = String::from_utf8(output.stdout)?;
+                    .await
+                    .map_err(Self::error)?;
+                    let output_str = String::from_utf8(output.stdout).map_err(Self::error)?;
                     let user_in_group = output_str.split(" ").any(|v| v == &this.groupname);
 
                     if user_in_group {
@@ -187,7 +192,8 @@ impl Action for AddUserToGroup {
                         .arg(&name)
                         .stdin(std::process::Stdio::null()),
                 )
-                .await?;
+                .await
+                .map_err(Self::error)?;
                 execute_command(
                     Command::new("/usr/sbin/dseditgroup")
                         .process_group(0)
@@ -199,7 +205,8 @@ impl Action for AddUserToGroup {
                         .arg(groupname)
                         .stdin(std::process::Stdio::null()),
                 )
-                .await?;
+                .await
+                .map_err(Self::error)?;
             },
             _ => {
                 if which::which("gpasswd").is_ok() {
@@ -210,7 +217,8 @@ impl Action for AddUserToGroup {
                             .args([name, groupname])
                             .stdin(std::process::Stdio::null()),
                     )
-                    .await?;
+                    .await
+                    .map_err(Self::error)?;
                 } else if which::which("addgroup").is_ok() {
                     execute_command(
                         Command::new("addgroup")
@@ -218,9 +226,12 @@ impl Action for AddUserToGroup {
                             .args([name, groupname])
                             .stdin(std::process::Stdio::null()),
                     )
-                    .await?;
+                    .await
+                    .map_err(Self::error)?;
                 } else {
-                    return Err(ActionError::MissingAddUserToGroupCommand);
+                    return Err(Self::error(Self::error(
+                        ActionErrorKind::MissingAddUserToGroupCommand,
+                    )));
                 }
             },
         }
@@ -264,7 +275,8 @@ impl Action for AddUserToGroup {
                         .arg(&name)
                         .stdin(std::process::Stdio::null()),
                 )
-                .await?;
+                .await
+                .map_err(Self::error)?;
             },
             _ => {
                 if which::which("gpasswd").is_ok() {
@@ -275,7 +287,8 @@ impl Action for AddUserToGroup {
                             .args([&name.to_string(), &groupname.to_string()])
                             .stdin(std::process::Stdio::null()),
                     )
-                    .await?;
+                    .await
+                    .map_err(Self::error)?;
                 } else if which::which("delgroup").is_ok() {
                     execute_command(
                         Command::new("delgroup")
@@ -283,9 +296,12 @@ impl Action for AddUserToGroup {
                             .args([name, groupname])
                             .stdin(std::process::Stdio::null()),
                     )
-                    .await?;
+                    .await
+                    .map_err(Self::error)?;
                 } else {
-                    return Err(ActionError::MissingRemoveUserFromGroupCommand);
+                    return Err(Self::error(
+                        ActionErrorKind::MissingRemoveUserFromGroupCommand,
+                    ));
                 }
             },
         };

@@ -1,7 +1,7 @@
 use std::path::PathBuf;
 
 use crate::{
-    action::{ActionError, ActionTag, StatefulAction},
+    action::{ActionError, ActionErrorKind, ActionTag, StatefulAction},
     execute_command, set_env,
 };
 
@@ -50,9 +50,9 @@ impl Action for SetupDefaultProfile {
         // Find an `nix` package
         let nix_pkg_glob = "/nix/store/*-nix-*";
         let mut found_nix_pkg = None;
-        for entry in glob(nix_pkg_glob).map_err(|e| {
-            ActionError::Custom(Box::new(SetupDefaultProfileError::GlobPatternError(e)))
-        })? {
+        for entry in glob(nix_pkg_glob)
+            .map_err(|e| Self::error(SetupDefaultProfileError::GlobPatternError(e)))?
+        {
             match entry {
                 Ok(path) => {
                     // TODO(@Hoverbear): Should probably ensure is unique
@@ -65,17 +65,15 @@ impl Action for SetupDefaultProfile {
         let nix_pkg = if let Some(nix_pkg) = found_nix_pkg {
             nix_pkg
         } else {
-            return Err(ActionError::Custom(Box::new(
-                SetupDefaultProfileError::NoNix,
-            )));
+            return Err(Self::error(SetupDefaultProfileError::NoNix));
         };
 
         // Find an `nss-cacert` package, add it too.
         let nss_ca_cert_pkg_glob = "/nix/store/*-nss-cacert-*";
         let mut found_nss_ca_cert_pkg = None;
-        for entry in glob(nss_ca_cert_pkg_glob).map_err(|e| {
-            ActionError::Custom(Box::new(SetupDefaultProfileError::GlobPatternError(e)))
-        })? {
+        for entry in glob(nss_ca_cert_pkg_glob)
+            .map_err(|e| Self::error(SetupDefaultProfileError::GlobPatternError(e)))?
+        {
             match entry {
                 Ok(path) => {
                     // TODO(@Hoverbear): Should probably ensure is unique
@@ -88,23 +86,22 @@ impl Action for SetupDefaultProfile {
         let nss_ca_cert_pkg = if let Some(nss_ca_cert_pkg) = found_nss_ca_cert_pkg {
             nss_ca_cert_pkg
         } else {
-            return Err(ActionError::Custom(Box::new(
-                SetupDefaultProfileError::NoNssCacert,
-            )));
+            return Err(Self::error(SetupDefaultProfileError::NoNssCacert));
         };
 
         let found_nix_paths = glob::glob(&format!("{}/nix-*", self.unpacked_path.display()))
-            .map_err(|e| ActionError::Custom(Box::new(e)))?
+            .map_err(|e| Self::error(SetupDefaultProfileError::from(e)))?
             .collect::<Result<Vec<_>, _>>()
-            .map_err(|e| ActionError::Custom(Box::new(e)))?;
+            .map_err(|e| Self::error(SetupDefaultProfileError::from(e)))?;
         if found_nix_paths.len() != 1 {
-            return Err(ActionError::MalformedBinaryTarball);
+            return Err(Self::error(ActionErrorKind::MalformedBinaryTarball));
         }
         let found_nix_path = found_nix_paths.into_iter().next().unwrap();
         let reginfo_path = PathBuf::from(found_nix_path).join(".reginfo");
         let reginfo = tokio::fs::read(&reginfo_path)
             .await
-            .map_err(|e| ActionError::Read(reginfo_path.to_path_buf(), e))?;
+            .map_err(|e| ActionErrorKind::Read(reginfo_path.to_path_buf(), e))
+            .map_err(Self::error)?;
         let mut load_db_command = Command::new(nix_pkg.join("bin/nix-store"));
         load_db_command.process_group(0);
         load_db_command.arg("--load-db");
@@ -113,9 +110,7 @@ impl Action for SetupDefaultProfile {
         load_db_command.stderr(std::process::Stdio::piped());
         load_db_command.env(
             "HOME",
-            dirs::home_dir().ok_or_else(|| {
-                ActionError::Custom(Box::new(SetupDefaultProfileError::NoRootHome))
-            })?,
+            dirs::home_dir().ok_or_else(|| Self::error(SetupDefaultProfileError::NoRootHome))?,
         );
         tracing::trace!(
             "Executing `{:?}` with stdin from `{}`",
@@ -124,17 +119,20 @@ impl Action for SetupDefaultProfile {
         );
         let mut handle = load_db_command
             .spawn()
-            .map_err(|e| ActionError::command(&load_db_command, e))?;
+            .map_err(|e| ActionErrorKind::command(&load_db_command, e))
+            .map_err(Self::error)?;
 
         let mut stdin = handle.stdin.take().unwrap();
         stdin
             .write_all(&reginfo)
             .await
-            .map_err(|e| ActionError::Write(PathBuf::from("/dev/stdin"), e))?;
+            .map_err(|e| ActionErrorKind::Write(PathBuf::from("/dev/stdin"), e))
+            .map_err(Self::error)?;
         stdin
             .flush()
             .await
-            .map_err(|e| ActionError::Write(PathBuf::from("/dev/stdin"), e))?;
+            .map_err(|e| ActionErrorKind::Write(PathBuf::from("/dev/stdin"), e))
+            .map_err(Self::error)?;
         drop(stdin);
         tracing::trace!(
             "Wrote `{}` to stdin of `nix-store --load-db`",
@@ -144,9 +142,13 @@ impl Action for SetupDefaultProfile {
         let output = handle
             .wait_with_output()
             .await
-            .map_err(|e| ActionError::command(&load_db_command, e))?;
+            .map_err(|e| ActionErrorKind::command(&load_db_command, e))
+            .map_err(Self::error)?;
         if !output.status.success() {
-            return Err(ActionError::command_output(&load_db_command, output));
+            return Err(Self::error(ActionErrorKind::command_output(
+                &load_db_command,
+                output,
+            )));
         };
 
         // Install `nix` itself into the store
@@ -158,16 +160,16 @@ impl Action for SetupDefaultProfile {
                 .stdin(std::process::Stdio::null())
                 .env(
                     "HOME",
-                    dirs::home_dir().ok_or_else(|| {
-                        ActionError::Custom(Box::new(SetupDefaultProfileError::NoRootHome))
-                    })?,
+                    dirs::home_dir()
+                        .ok_or_else(|| Self::error(SetupDefaultProfileError::NoRootHome))?,
                 )
                 .env(
                     "NIX_SSL_CERT_FILE",
                     nss_ca_cert_pkg.join("etc/ssl/certs/ca-bundle.crt"),
                 ), /* This is apparently load bearing... */
         )
-        .await?;
+        .await
+        .map_err(Self::error)?;
 
         // Install `nix` itself into the store
         execute_command(
@@ -178,16 +180,16 @@ impl Action for SetupDefaultProfile {
                 .stdin(std::process::Stdio::null())
                 .env(
                     "HOME",
-                    dirs::home_dir().ok_or_else(|| {
-                        ActionError::Custom(Box::new(SetupDefaultProfileError::NoRootHome))
-                    })?,
+                    dirs::home_dir()
+                        .ok_or_else(|| Self::error(SetupDefaultProfileError::NoRootHome))?,
                 )
                 .env(
                     "NIX_SSL_CERT_FILE",
                     nss_ca_cert_pkg.join("etc/ssl/certs/ca-bundle.crt"),
                 ), /* This is apparently load bearing... */
         )
-        .await?;
+        .await
+        .map_err(Self::error)?;
 
         set_env(
             "NIX_SSL_CERT_FILE",
@@ -233,4 +235,10 @@ pub enum SetupDefaultProfileError {
     NoNix,
     #[error("No root home found to place channel configuration in")]
     NoRootHome,
+}
+
+impl Into<ActionErrorKind> for SetupDefaultProfileError {
+    fn into(self) -> ActionErrorKind {
+        ActionErrorKind::Custom(Box::new(self))
+    }
 }

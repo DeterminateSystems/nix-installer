@@ -90,10 +90,3 @@ impl Action for CreateSyntheticObjects {
         Ok(())
     }
 }
-
-#[non_exhaustive]
-#[derive(Debug, thiserror::Error)]
-pub enum CreateSyntheticObjectsError {
-    #[error("Failed to execute command")]
-    Command(#[source] std::io::Error),
-}

@@ -232,6 +232,7 @@ impl CommonSettings {
         let url;
         let nix_build_user_prefix;
         let nix_build_user_id_base;
+        let ssl_cert_file;
 
         use target_lexicon::{Architecture, OperatingSystem};
         match (Architecture::host(), OperatingSystem::host()) {
@@ -240,18 +241,21 @@ impl CommonSettings {
                 url = NIX_X64_64_LINUX_URL;
                 nix_build_user_prefix = "nixbld";
                 nix_build_user_id_base = 30000;
+                ssl_cert_file = None;
             },
             #[cfg(target_os = "linux")]
             (Architecture::X86_32(_), OperatingSystem::Linux) => {
                 url = NIX_I686_LINUX_URL;
                 nix_build_user_prefix = "nixbld";
                 nix_build_user_id_base = 30000;
+                ssl_cert_file = None;
             },
             #[cfg(target_os = "linux")]
             (Architecture::Aarch64(_), OperatingSystem::Linux) => {
                 url = NIX_AARCH64_LINUX_URL;
                 nix_build_user_prefix = "nixbld";
                 nix_build_user_id_base = 30000;
+                ssl_cert_file = None;
             },
             #[cfg(target_os = "macos")]
             (Architecture::X86_64, OperatingSystem::MacOSX { .. })
@@ -259,6 +263,7 @@ impl CommonSettings {
                 url = NIX_X64_64_DARWIN_URL;
                 nix_build_user_prefix = "_nixbld";
                 nix_build_user_id_base = 300;
+                ssl_cert_file = Some("/etc/ssl/certs/ca-certificates.crt".into());
             },
             #[cfg(target_os = "macos")]
             (Architecture::Aarch64(_), OperatingSystem::MacOSX { .. })
@@ -266,6 +271,7 @@ impl CommonSettings {
                 url = NIX_AARCH64_DARWIN_URL;
                 nix_build_user_prefix = "_nixbld";
                 nix_build_user_id_base = 300;
+                ssl_cert_file = Some("/etc/ssl/certs/ca-certificates.crt".into());
             },
             _ => {
                 return Err(InstallSettingsError::UnsupportedArchitecture(
@@ -285,7 +291,7 @@ impl CommonSettings {
             proxy: Default::default(),
             extra_conf: Default::default(),
             force: false,
-            ssl_cert_file: Default::default(),
+            ssl_cert_file,
             #[cfg(feature = "diagnostics")]
             diagnostic_endpoint: Some("https://install.determinate.systems/nix/diagnostic".into()),
         })

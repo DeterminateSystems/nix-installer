@@ -10,7 +10,9 @@ use tokio::{
     io::{AsyncReadExt, AsyncWriteExt},
 };
 
-use crate::action::{Action, ActionDescription, ActionError, ActionTag, StatefulAction};
+use crate::action::{
+    Action, ActionDescription, ActionError, ActionErrorKind, ActionTag, StatefulAction,
+};
 
 /** Create a file at the given location with the provided `buf`,
 optionally with an owning user, group, and mode.
@@ -55,15 +57,17 @@ impl CreateFile {
             // If the path exists, perhaps we can just skip this
             let mut file = File::open(&this.path)
                 .await
-                .map_err(|e| ActionError::Open(this.path.clone(), e))?;
+                .map_err(|e| ActionErrorKind::Open(this.path.clone(), e))
+                .map_err(Self::error)?;
 
             let metadata = file
                 .metadata()
                 .await
-                .map_err(|e| ActionError::GettingMetadata(this.path.clone(), e))?;
+                .map_err(|e| ActionErrorKind::GettingMetadata(this.path.clone(), e))
+                .map_err(Self::error)?;
 
             if !metadata.is_file() {
-                return Err(ActionError::PathWasNotFile(this.path));
+                return Err(Self::error(ActionErrorKind::PathWasNotFile(this.path)));
             }
 
             if let Some(mode) = mode {
@@ -73,11 +77,11 @@ impl CreateFile {
                 let discovered_mode = discovered_mode & 0o777;
 
                 if discovered_mode != mode {
-                    return Err(ActionError::PathModeMismatch(
+                    return Err(Self::error(ActionErrorKind::PathModeMismatch(
                         this.path.clone(),
                         discovered_mode,
                         mode,
-                    ));
+                    )));
                 }
             }
 
@@ -85,31 +89,35 @@ impl CreateFile {
             if let Some(user) = &this.user {
                 // If the file exists, the user must also exist to be correct.
                 let expected_uid = User::from_name(user.as_str())
-                    .map_err(|e| ActionError::GettingUserId(user.clone(), e))?
-                    .ok_or_else(|| ActionError::NoUser(user.clone()))?
+                    .map_err(|e| ActionErrorKind::GettingUserId(user.clone(), e))
+                    .map_err(Self::error)?
+                    .ok_or_else(|| ActionErrorKind::NoUser(user.clone()))
+                    .map_err(Self::error)?
                     .uid;
                 let found_uid = metadata.uid();
                 if found_uid != expected_uid.as_raw() {
-                    return Err(ActionError::PathUserMismatch(
+                    return Err(Self::error(ActionErrorKind::PathUserMismatch(
                         this.path.clone(),
                         found_uid,
                         expected_uid.as_raw(),
-                    ));
+                    )));
                 }
             }
             if let Some(group) = &this.group {
                 // If the file exists, the group must also exist to be correct.
                 let expected_gid = Group::from_name(group.as_str())
-                    .map_err(|e| ActionError::GettingGroupId(group.clone(), e))?
-                    .ok_or_else(|| ActionError::NoUser(group.clone()))?
+                    .map_err(|e| ActionErrorKind::GettingGroupId(group.clone(), e))
+                    .map_err(Self::error)?
+                    .ok_or_else(|| ActionErrorKind::NoUser(group.clone()))
+                    .map_err(Self::error)?
                     .gid;
                 let found_gid = metadata.gid();
                 if found_gid != expected_gid.as_raw() {
-                    return Err(ActionError::PathGroupMismatch(
+                    return Err(Self::error(ActionErrorKind::PathGroupMismatch(
                         this.path.clone(),
                         found_gid,
                         expected_gid.as_raw(),
-                    ));
+                    )));
                 }
             }
 
@@ -117,10 +125,13 @@ impl CreateFile {
             let mut discovered_buf = String::new();
             file.read_to_string(&mut discovered_buf)
                 .await
-                .map_err(|e| ActionError::Read(this.path.clone(), e))?;
+                .map_err(|e| ActionErrorKind::Read(this.path.clone(), e))
+                .map_err(Self::error)?;
 
             if discovered_buf != this.buf {
-                return Err(ActionError::DifferentContent(this.path.clone()));
+                return Err(Self::error(ActionErrorKind::DifferentContent(
+                    this.path.clone(),
+                )));
             }
 
             tracing::debug!("Creating file `{}` already complete", this.path.display());
@@ -190,17 +201,21 @@ impl Action for CreateFile {
         let mut file = options
             .open(&path)
             .await
-            .map_err(|e| ActionError::Open(path.to_owned(), e))?;
+            .map_err(|e| ActionErrorKind::Open(path.to_owned(), e))
+            .map_err(Self::error)?;
 
         file.write_all(buf.as_bytes())
             .await
-            .map_err(|e| ActionError::Write(path.to_owned(), e))?;
+            .map_err(|e| ActionErrorKind::Write(path.to_owned(), e))
+            .map_err(Self::error)?;
 
         let gid = if let Some(group) = group {
             Some(
                 Group::from_name(group.as_str())
-                    .map_err(|e| ActionError::GettingGroupId(group.clone(), e))?
-                    .ok_or(ActionError::NoGroup(group.clone()))?
+                    .map_err(|e| ActionErrorKind::GettingGroupId(group.clone(), e))
+                    .map_err(Self::error)?
+                    .ok_or(ActionErrorKind::NoGroup(group.clone()))
+                    .map_err(Self::error)?
                     .gid,
             )
         } else {
@@ -209,14 +224,18 @@ impl Action for CreateFile {
         let uid = if let Some(user) = user {
             Some(
                 User::from_name(user.as_str())
-                    .map_err(|e| ActionError::GettingUserId(user.clone(), e))?
-                    .ok_or(ActionError::NoUser(user.clone()))?
+                    .map_err(|e| ActionErrorKind::GettingUserId(user.clone(), e))
+                    .map_err(Self::error)?
+                    .ok_or(ActionErrorKind::NoUser(user.clone()))
+                    .map_err(Self::error)?
                     .uid,
             )
         } else {
             None
         };
-        chown(path, uid, gid).map_err(|e| ActionError::Chown(path.clone(), e))?;
+        chown(path, uid, gid)
+            .map_err(|e| ActionErrorKind::Chown(path.clone(), e))
+            .map_err(Self::error)?;
 
         Ok(())
     }
@@ -250,7 +269,8 @@ impl Action for CreateFile {
 
         remove_file(&path)
             .await
-            .map_err(|e| ActionError::Remove(path.to_owned(), e))?;
+            .map_err(|e| ActionErrorKind::Remove(path.to_owned(), e))
+            .map_err(Self::error)?;
 
         Ok(())
     }
@@ -259,7 +279,7 @@ impl Action for CreateFile {
 #[cfg(test)]
 mod test {
     use super::*;
-    use eyre::eyre;
+    use color_eyre::eyre::eyre;
     use tokio::fs::write;
 
     #[tokio::test]
@@ -346,9 +366,20 @@ mod test {
         )
         .await
         {
-            Err(ActionError::DifferentContent(path)) => assert_eq!(path, test_file.as_path()),
-            _ => return Err(eyre!("Should have returned an ActionError::Exists error")),
-        }
+            Err(error) => match error.kind() {
+                ActionErrorKind::DifferentContent(path) => assert_eq!(path, test_file.as_path()),
+                _ => {
+                    return Err(eyre!(
+                        "Should have returned an ActionErrorKind::Exists error"
+                    ))
+                },
+            },
+            _ => {
+                return Err(eyre!(
+                    "Should have returned an ActionErrorKind::Exists error"
+                ))
+            },
+        };
 
         assert!(test_file.exists(), "File should have not been deleted");
 
@@ -376,14 +407,21 @@ mod test {
         )
         .await
         {
-            Err(ActionError::PathModeMismatch(path, got, expected)) => {
-                assert_eq!(path, test_file.as_path());
-                assert_eq!(expected, expected_mode);
-                assert_eq!(got, initial_mode);
+            Err(err) => match err.kind() {
+                ActionErrorKind::PathModeMismatch(path, got, expected) => {
+                    assert_eq!(path, test_file.as_path());
+                    assert_eq!(*expected, expected_mode);
+                    assert_eq!(*got, initial_mode);
+                },
+                _ => {
+                    return Err(eyre!(
+                        "Should have returned an ActionErrorKind::PathModeMismatch error"
+                    ))
+                },
             },
             _ => {
                 return Err(eyre!(
-                    "Should have returned an ActionError::PathModeMismatch error"
+                    "Should have returned an ActionErrorKind::PathModeMismatch error"
                 ))
             },
         }
@@ -436,10 +474,17 @@ mod test {
         )
         .await
         {
-            Err(ActionError::PathWasNotFile(path)) => assert_eq!(path, temp_dir.path()),
+            Err(err) => match err.kind() {
+                ActionErrorKind::PathWasNotFile(path) => assert_eq!(path, temp_dir.path()),
+                _ => {
+                    return Err(eyre!(
+                        "Should have returned an ActionErrorKind::PathWasNotFile error"
+                    ))
+                },
+            },
             _ => {
                 return Err(eyre!(
-                    "Should have returned an ActionError::PathWasNotFile error"
+                    "Should have returned an ActionErrorKind::PathWasNotFile error"
                 ))
             },
         }

@@ -2,7 +2,9 @@ use tracing::{span, Span};
 
 use crate::action::base::create_or_merge_nix_config::CreateOrMergeNixConfigError;
 use crate::action::base::{CreateDirectory, CreateOrMergeNixConfig};
-use crate::action::{Action, ActionDescription, ActionError, ActionTag, StatefulAction};
+use crate::action::{
+    Action, ActionDescription, ActionError, ActionErrorKind, ActionTag, StatefulAction,
+};
 
 const NIX_CONF_FOLDER: &str = "/etc/nix";
 const NIX_CONF: &str = "/etc/nix/nix.conf";
@@ -26,7 +28,7 @@ impl PlaceNixConfiguration {
         let extra_conf = extra_conf.join("\n");
         let mut nix_config = nix_config_parser::NixConfig::parse_string(extra_conf, None)
             .map_err(CreateOrMergeNixConfigError::ParseNixConfig)
-            .map_err(|e| ActionError::Custom(Box::new(e)))?;
+            .map_err(Self::error)?;
         let settings = nix_config.settings_mut();
 
         settings.insert("build-users-group".to_string(), nix_build_group_name);
@@ -46,12 +48,10 @@ impl PlaceNixConfiguration {
 
         let create_directory = CreateDirectory::plan(NIX_CONF_FOLDER, None, None, 0o0755, force)
             .await
-            .map_err(|e| ActionError::Child(CreateDirectory::action_tag(), Box::new(e)))?;
+            .map_err(Self::error)?;
         let create_or_merge_nix_config = CreateOrMergeNixConfig::plan(NIX_CONF, nix_config)
             .await
-            .map_err(|e| {
-            ActionError::Child(CreateOrMergeNixConfig::action_tag(), Box::new(e))
-        })?;
+            .map_err(Self::error)?;
         Ok(Self {
             create_directory,
             create_or_merge_nix_config,
@@ -100,13 +100,11 @@ impl Action for PlaceNixConfiguration {
         self.create_directory
             .try_execute()
             .await
-            .map_err(|e| ActionError::Child(self.create_directory.action_tag(), Box::new(e)))?;
+            .map_err(Self::error)?;
         self.create_or_merge_nix_config
             .try_execute()
             .await
-            .map_err(|e| {
-                ActionError::Child(self.create_or_merge_nix_config.action_tag(), Box::new(e))
-            })?;
+            .map_err(Self::error)?;
 
         Ok(())
     }
@@ -123,17 +121,23 @@ impl Action for PlaceNixConfiguration {
 
     #[tracing::instrument(level = "debug", skip_all)]
     async fn revert(&mut self) -> Result<(), ActionError> {
-        self.create_or_merge_nix_config
-            .try_revert()
-            .await
-            .map_err(|e| {
-                ActionError::Child(self.create_or_merge_nix_config.action_tag(), Box::new(e))
-            })?;
-        self.create_directory
-            .try_revert()
-            .await
-            .map_err(|e| ActionError::Child(self.create_directory.action_tag(), Box::new(e)))?;
+        let mut errors = vec![];
+        if let Err(err) = self.create_or_merge_nix_config.try_revert().await {
+            errors.push(err);
+        }
+        if let Err(err) = self.create_directory.try_revert().await {
+            errors.push(err);
+        }
 
-        Ok(())
+        if errors.is_empty() {
+            Ok(())
+        } else if errors.len() == 1 {
+            Err(errors
+                .into_iter()
+                .next()
+                .expect("Expected 1 len Vec to have at least 1 item"))
+        } else {
+            Err(Self::error(ActionErrorKind::MultipleChildren(errors)))
+        }
     }
 }
