@@ -122,9 +122,12 @@ impl Action for CreateFstabEntry {
             existing_entry,
         } = self;
         let fstab_path = Path::new(FSTAB_PATH);
-        let uuid = get_uuid_for_label(&apfs_volume_label)
+        let uuid = match get_uuid_for_label(&apfs_volume_label)
             .await
-            .map_err(Self::error)?;
+            .map_err(Self::error)? {
+            Some(uuid) => uuid,
+            None => return Err(Self::error(CreateFstabEntryError::CannotDetermineUuid(apfs_volume_label.clone())))?
+        };
 
         let mut fstab = tokio::fs::OpenOptions::new()
             .create(true)
@@ -227,42 +230,42 @@ impl Action for CreateFstabEntry {
     async fn revert(&mut self) -> Result<(), ActionError> {
         let fstab_path = Path::new(FSTAB_PATH);
 
-        let uuid = get_uuid_for_label(&self.apfs_volume_label)
-            .await
-            .map_err(Self::error)?;
+        if let Some(uuid) = get_uuid_for_label(&self.apfs_volume_label).await.map_err(Self::error)? {
+            let fstab_entry = fstab_lines(&uuid, &self.apfs_volume_label);
 
-        let fstab_entry = fstab_lines(&uuid, &self.apfs_volume_label);
+            let mut file = OpenOptions::new()
+                .create(false)
+                .write(true)
+                .read(true)
+                .open(&fstab_path)
+                .await
+                .map_err(|e| Self::error(ActionErrorKind::Open(fstab_path.to_owned(), e)))?;
 
-        let mut file = OpenOptions::new()
-            .create(false)
-            .write(true)
-            .read(true)
-            .open(&fstab_path)
-            .await
-            .map_err(|e| Self::error(ActionErrorKind::Open(fstab_path.to_owned(), e)))?;
+            let mut file_contents = String::default();
+            file.read_to_string(&mut file_contents)
+                .await
+                .map_err(|e| Self::error(ActionErrorKind::Read(fstab_path.to_owned(), e)))?;
 
-        let mut file_contents = String::default();
-        file.read_to_string(&mut file_contents)
-            .await
-            .map_err(|e| Self::error(ActionErrorKind::Read(fstab_path.to_owned(), e)))?;
+            if let Some(start) = file_contents.rfind(fstab_entry.as_str()) {
+                let end = start + fstab_entry.len();
+                file_contents.replace_range(start..end, "")
+            }
 
-        if let Some(start) = file_contents.rfind(fstab_entry.as_str()) {
-            let end = start + fstab_entry.len();
-            file_contents.replace_range(start..end, "")
+            file.seek(SeekFrom::Start(0))
+                .await
+                .map_err(|e| Self::error(ActionErrorKind::Seek(fstab_path.to_owned(), e)))?;
+            file.set_len(0)
+                .await
+                .map_err(|e| Self::error(ActionErrorKind::Truncate(fstab_path.to_owned(), e)))?;
+            file.write_all(file_contents.as_bytes())
+                .await
+                .map_err(|e| Self::error(ActionErrorKind::Write(fstab_path.to_owned(), e)))?;
+            file.flush()
+                .await
+                .map_err(|e| Self::error(ActionErrorKind::Flush(fstab_path.to_owned(), e)))?;   
+        } else {
+            return Err(Self::error(CreateFstabEntryError::EntryNoLongerDeterminable))
         }
-
-        file.seek(SeekFrom::Start(0))
-            .await
-            .map_err(|e| Self::error(ActionErrorKind::Seek(fstab_path.to_owned(), e)))?;
-        file.set_len(0)
-            .await
-            .map_err(|e| Self::error(ActionErrorKind::Truncate(fstab_path.to_owned(), e)))?;
-        file.write_all(file_contents.as_bytes())
-            .await
-            .map_err(|e| Self::error(ActionErrorKind::Write(fstab_path.to_owned(), e)))?;
-        file.flush()
-            .await
-            .map_err(|e| Self::error(ActionErrorKind::Flush(fstab_path.to_owned(), e)))?;
 
         Ok(())
     }
@@ -289,6 +292,10 @@ pub enum CreateFstabEntryError {
     ExistingNixInstallerEntryDisappeared,
     #[error("The `/etc/fstab` entry (previously created by the official install scripts) detected during planning disappeared between planning and executing. Cannot update `/etc/fstab` as planned")]
     ExistingForeignEntryDisappeared,
+    #[error("Unable to determine how to add APFS volume `{0}` the `/etc/fstab` line, likely the volume is not yet created or there is some syncronization issue, please report this")]
+    CannotDetermineUuid(String),
+    #[error("Unable to reliably determine which `/etc/fstab` line to remove, the volume is likely already deleted, the line involving `/nix` in `/etc/fstab` should be removed manually")]
+    EntryNoLongerDeterminable,
 }
 
 impl Into<ActionErrorKind> for CreateFstabEntryError {

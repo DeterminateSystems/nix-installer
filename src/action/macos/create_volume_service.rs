@@ -47,29 +47,54 @@ impl CreateVolumeService {
         if this.path.exists() {
             let discovered_plist: LaunchctlMountPlist =
                 plist::from_file(&this.path).map_err(Self::error)?;
-            let expected_plist = generate_mount_plist(
-                &this.mount_service_label,
-                &this.apfs_volume_label,
-                &this.mount_point,
-                encrypt,
-            )
-            .await
-            .map_err(Self::error)?;
-            if discovered_plist != expected_plist {
-                tracing::trace!(
-                    ?discovered_plist,
-                    ?expected_plist,
-                    "Parsed plists not equal"
-                );
-                return Err(Self::error(CreateVolumeServiceError::DifferentPlist {
-                    expected: expected_plist,
-                    discovered: discovered_plist,
-                    path: this.path.clone(),
-                }));
+            match get_uuid_for_label(&this.apfs_volume_label).await.map_err(Self::error)? {
+                Some(uuid) => {
+                    let expected_plist = generate_mount_plist(
+                        &this.mount_service_label,
+                        &this.apfs_volume_label,
+                        uuid,
+                        &this.mount_point,
+                        encrypt,
+                    )
+                    .await
+                    .map_err(Self::error)?;
+                    if discovered_plist != expected_plist {
+                        tracing::trace!(
+                            ?discovered_plist,
+                            ?expected_plist,
+                            "Parsed plists not equal"
+                        );
+                        return Err(Self::error(CreateVolumeServiceError::DifferentPlist {
+                            expected: expected_plist,
+                            discovered: discovered_plist,
+                            path: this.path.clone(),
+                        }));
+                    }
+        
+                    tracing::debug!("Creating file `{}` already complete", this.path.display());
+                    return Ok(StatefulAction::completed(this));
+                },
+                None => {
+                    tracing::debug!("Detected existing service `{}` but could not detect a UUID for the volume", this.path.display());
+                    // If there is already a line in `/etc/fstab` with `/nix` in it, the user will likely experience an error during execute,
+                    // so check if there exists a line, which is not a comment, that contains `/nix`
+                    let fstab = PathBuf::from("/etc/fstab");
+                    if fstab.exists() {
+                        let contents = tokio::fs::read_to_string(&fstab).await.map_err(|e| Self::error(ActionErrorKind::Read(fstab, e)))?;
+                        for line in contents.lines() {
+                            if line.starts_with("#") {
+                                continue
+                            }
+                            let split = line.split_whitespace();
+                            for item in split {
+                                if item == "/nix" {
+                                    return Err(Self::error(CreateVolumeServiceError::VolumeDoesNotExistButVolumeServiceAndFstabEntryDoes(this.path.clone(), this.apfs_volume_label)));
+                                }
+                            }
+                        }
+                    }
+                },
             }
-
-            tracing::debug!("Creating file `{}` already complete", this.path.display());
-            return Ok(StatefulAction::completed(this));
         }
 
         Ok(StatefulAction::uncompleted(this))
@@ -117,9 +142,14 @@ impl Action for CreateVolumeService {
             encrypt,
         } = self;
 
+        let uuid = match get_uuid_for_label(&apfs_volume_label).await.map_err(Self::error)? {
+            Some(uuid) => uuid,
+            None => return Err(Self::error(CreateVolumeServiceError::CannotDetermineUuid(apfs_volume_label.to_string()))),
+        };
         let generated_plist = generate_mount_plist(
             &mount_service_label,
             &apfs_volume_label,
+            uuid,
             mount_point,
             *encrypt,
         )
@@ -127,7 +157,7 @@ impl Action for CreateVolumeService {
         .map_err(Self::error)?;
 
         let mut options = OpenOptions::new();
-        options.create_new(true).write(true).read(true);
+        options.create(true).write(true).read(true);
 
         let mut file = options
             .open(&path)
@@ -164,11 +194,11 @@ impl Action for CreateVolumeService {
 async fn generate_mount_plist(
     mount_service_label: &str,
     apfs_volume_label: &str,
+    uuid: uuid::Uuid,
     mount_point: &Path,
     encrypt: bool,
 ) -> Result<LaunchctlMountPlist, ActionErrorKind> {
     let apfs_volume_label_with_quotes = format!("\"{apfs_volume_label}\"");
-    let uuid = get_uuid_for_label(&apfs_volume_label).await?;
     // The official Nix scripts uppercase the UUID, so we do as well for compatibility.
     let uuid_string = uuid.to_string().to_uppercase();
     let mount_command = if encrypt {
@@ -210,6 +240,10 @@ pub enum CreateVolumeServiceError {
         discovered: LaunchctlMountPlist,
         path: PathBuf,
     },
+    #[error("UUID for APFS volume labelled `{0}` was not found")]
+    CannotDetermineUuid(String),
+    #[error("An APFS volume labelled `{1}` does not exist, but there exists an fstab entry for that volume, as well as a service file at `{0}`. Consider removing the line containing `/nix` from the `/etc/fstab` and deleting `{0}`")]
+    VolumeDoesNotExistButVolumeServiceAndFstabEntryDoes(PathBuf, String),
 }
 
 impl Into<ActionErrorKind> for CreateVolumeServiceError {
