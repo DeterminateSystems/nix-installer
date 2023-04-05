@@ -127,7 +127,7 @@ impl CommandExecute for Uninstall {
         let res = plan.uninstall(rx).await;
         match res {
             Err(err @ NixInstallerError::ActionRevert(_)) => {
-                tracing::info!("Uninstallation complete, some errors encountered");
+                tracing::error!("Uninstallation complete, some errors encountered");
                 return Err(err)?;
             },
             Err(err) => {
