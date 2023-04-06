@@ -77,6 +77,9 @@
               SystemConfiguration
             ]);
 
+            copyBins = true;
+            copyDocsToSeparateOutput = true;
+
             doCheck = true;
             doDoc = true;
             doDocFail = true;
