@@ -58,7 +58,8 @@
             "apfs_volume_label": "Nix Store",
             "mount_service_label": "org.nixos.darwin-store",
             "mount_point": "/nix",
-            "encrypt": false
+            "encrypt": false,
+            "needs_bootout": false
           },
           "state": "Uncompleted"
         },

@@ -531,7 +531,6 @@ pub enum ActionErrorKind {
         See https://github.com/DeterminateSystems/nix-installer#without-systemd-linux-only for documentation on usage and drawbacks.\
         ")]
     SystemdMissing,
-    #[cfg(target_os = "macos")]
     #[error("`{command}` failed, message: {message}")]
     DiskUtilInfoError { command: String, message: String },
 }
