@@ -37,8 +37,7 @@ impl AddUserToGroup {
         };
 
         match OperatingSystem::host() {
-            OperatingSystem::MacOSX { .. }
-            | OperatingSystem::Darwin => (),
+            OperatingSystem::MacOSX { .. } | OperatingSystem::Darwin => (),
             _ => {
                 if !(which::which("addgroup").is_ok() || which::which("gpasswd").is_ok()) {
                     return Err(Self::error(ActionErrorKind::MissingAddUserToGroupCommand));
@@ -48,7 +47,7 @@ impl AddUserToGroup {
                         ActionErrorKind::MissingRemoveUserFromGroupCommand,
                     ));
                 }
-            }
+            },
         }
 
         // Ensure user does not exists

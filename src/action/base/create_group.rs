@@ -1,7 +1,7 @@
 use nix::unistd::Group;
+use target_lexicon::OperatingSystem;
 use tokio::process::Command;
 use tracing::{span, Span};
-use target_lexicon::OperatingSystem;
 
 use crate::action::{ActionError, ActionErrorKind, ActionTag};
 use crate::execute_command;
@@ -26,8 +26,7 @@ impl CreateGroup {
         };
 
         match OperatingSystem::host() {
-            OperatingSystem::MacOSX { .. }
-            | OperatingSystem::Darwin => (),
+            OperatingSystem::MacOSX { .. } | OperatingSystem::Darwin => (),
             _ => {
                 if !(which::which("groupadd").is_ok() || which::which("addgroup").is_ok()) {
                     return Err(Self::error(ActionErrorKind::MissingGroupCreationCommand));
@@ -35,7 +34,7 @@ impl CreateGroup {
                 if !(which::which("groupdel").is_ok() || which::which("delgroup").is_ok()) {
                     return Err(Self::error(ActionErrorKind::MissingGroupDeletionCommand));
                 }
-            }
+            },
         }
 
         // Ensure group does not exists
