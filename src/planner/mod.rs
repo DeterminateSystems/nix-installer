@@ -405,7 +405,7 @@ impl HasExpectedErrors for PlannerError {
             PlannerError::Custom(e) => {
                 #[cfg(target_os = "linux")]
                 if let Some(err) = e.downcast_ref::<linux::LinuxErrorKind>() {
-                    err.expected()
+                    return err.expected();
                 }
                 None
             },
