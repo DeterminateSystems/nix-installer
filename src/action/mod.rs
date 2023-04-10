@@ -531,6 +531,8 @@ pub enum ActionErrorKind {
         See https://github.com/DeterminateSystems/nix-installer#without-systemd-linux-only for documentation on usage and drawbacks.\
         ")]
     SystemdMissing,
+    #[error("`{command}` failed, message: {message}")]
+    DiskUtilInfoError { command: String, message: String },
 }
 
 impl ActionErrorKind {

@@ -76,7 +76,10 @@ impl Action for KickstartLaunchctlService {
         ActionTag("kickstart_launchctl_service")
     }
     fn tracing_synopsis(&self) -> String {
-        format!("Run `launchctl kickstart -k {}`", self.service)
+        format!(
+            "Run `launchctl kickstart -k {}/{}`",
+            self.domain, self.service
+        )
     }
 
     fn tracing_span(&self) -> Span {
