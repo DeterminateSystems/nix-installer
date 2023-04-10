@@ -35,6 +35,16 @@ impl AddUserToGroup {
             groupname,
             gid,
         };
+
+        if !(which::which("addgroup").is_ok() || which::which("gpasswd").is_ok()) {
+            return Err(Self::error(ActionErrorKind::MissingAddUserToGroupCommand));
+        }
+        if !(which::which("delgroup").is_ok() || which::which("gpasswd").is_ok()) {
+            return Err(Self::error(
+                ActionErrorKind::MissingRemoveUserFromGroupCommand,
+            ));
+        }
+
         // Ensure user does not exists
         if let Some(user) = User::from_name(name.as_str())
             .map_err(|e| ActionErrorKind::GettingUserId(name.clone(), e))
@@ -119,7 +129,11 @@ impl AddUserToGroup {
                     let user_in_group = output_str.split(" ").any(|v| v == &this.groupname);
 
                     if user_in_group {
-                        tracing::debug!("Creating user `{}` already complete", this.name);
+                        tracing::debug!(
+                            "Adding user `{}` to group `{}` already complete",
+                            this.name,
+                            this.group
+                        );
                         return Ok(StatefulAction::completed(this));
                     }
                 },

@@ -35,6 +35,14 @@ impl CreateUser {
             gid,
             comment,
         };
+
+        if !(which::which("useradd").is_ok() || which::which("adduser").is_ok()) {
+            return Err(Self::error(ActionErrorKind::MissingUserCreationCommand));
+        }
+        if !(which::which("userdel").is_ok() || which::which("deluser").is_ok()) {
+            return Err(Self::error(ActionErrorKind::MissingUserDeletionCommand));
+        }
+
         // Ensure user does not exists
         if let Some(user) = User::from_name(name.as_str())
             .map_err(|e| ActionErrorKind::GettingUserId(name.clone(), e))
