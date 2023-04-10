@@ -132,7 +132,7 @@ impl AddUserToGroup {
                         tracing::debug!(
                             "Adding user `{}` to group `{}` already complete",
                             this.name,
-                            this.group
+                            this.groupname
                         );
                         return Ok(StatefulAction::completed(this));
                     }
