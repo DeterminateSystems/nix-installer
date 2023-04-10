@@ -144,12 +144,12 @@ impl Action for CreateVolumeService {
     }
     fn tracing_synopsis(&self) -> String {
         format!(
-            "{maybe_unload}reate a `launchctl` plist to mount the APFS volume `{path}`",
+            "{maybe_unload} a `launchctl` plist to mount the APFS volume `{path}`",
             path = self.path.display(),
             maybe_unload = if self.needs_bootout {
-                "Unload, then rec"
+                "Unload, then recreate"
             } else {
-                "C"
+                "Create"
             }
         )
     }

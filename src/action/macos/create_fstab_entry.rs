@@ -124,9 +124,14 @@ impl Action for CreateFstabEntry {
         let fstab_path = Path::new(FSTAB_PATH);
         let uuid = match get_uuid_for_label(&apfs_volume_label)
             .await
-            .map_err(Self::error)? {
+            .map_err(Self::error)?
+        {
             Some(uuid) => uuid,
-            None => return Err(Self::error(CreateFstabEntryError::CannotDetermineUuid(apfs_volume_label.clone())))?
+            None => {
+                return Err(Self::error(CreateFstabEntryError::CannotDetermineUuid(
+                    apfs_volume_label.clone(),
+                )))?
+            },
         };
 
         let mut fstab = tokio::fs::OpenOptions::new()
@@ -230,7 +235,10 @@ impl Action for CreateFstabEntry {
     async fn revert(&mut self) -> Result<(), ActionError> {
         let fstab_path = Path::new(FSTAB_PATH);
 
-        if let Some(uuid) = get_uuid_for_label(&self.apfs_volume_label).await.map_err(Self::error)? {
+        if let Some(uuid) = get_uuid_for_label(&self.apfs_volume_label)
+            .await
+            .map_err(Self::error)?
+        {
             let fstab_entry = fstab_lines(&uuid, &self.apfs_volume_label);
 
             let mut file = OpenOptions::new()
@@ -262,9 +270,11 @@ impl Action for CreateFstabEntry {
                 .map_err(|e| Self::error(ActionErrorKind::Write(fstab_path.to_owned(), e)))?;
             file.flush()
                 .await
-                .map_err(|e| Self::error(ActionErrorKind::Flush(fstab_path.to_owned(), e)))?;   
+                .map_err(|e| Self::error(ActionErrorKind::Flush(fstab_path.to_owned(), e)))?;
         } else {
-            return Err(Self::error(CreateFstabEntryError::EntryNoLongerDeterminable))
+            return Err(Self::error(
+                CreateFstabEntryError::EntryNoLongerDeterminable,
+            ));
         }
 
         Ok(())
@@ -292,7 +302,7 @@ pub enum CreateFstabEntryError {
     ExistingNixInstallerEntryDisappeared,
     #[error("The `/etc/fstab` entry (previously created by the official install scripts) detected during planning disappeared between planning and executing. Cannot update `/etc/fstab` as planned")]
     ExistingForeignEntryDisappeared,
-    #[error("Unable to determine how to add APFS volume `{0}` the `/etc/fstab` line, likely the volume is not yet created or there is some syncronization issue, please report this")]
+    #[error("Unable to determine how to add APFS volume `{0}` the `/etc/fstab` line, likely the volume is not yet created or there is some synchronization issue, please report this")]
     CannotDetermineUuid(String),
     #[error("Unable to reliably determine which `/etc/fstab` line to remove, the volume is likely already deleted, the line involving `/nix` in `/etc/fstab` should be removed manually")]
     EntryNoLongerDeterminable,

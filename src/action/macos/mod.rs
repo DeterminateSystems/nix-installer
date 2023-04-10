@@ -39,19 +39,22 @@ async fn get_uuid_for_label(apfs_volume_label: &str) -> Result<Option<Uuid>, Act
     let command_str = format!("{:?}", command.as_std());
 
     tracing::trace!(command = command_str, "Executing");
-    let output = command.output().await.map_err(|e| ActionErrorKind::command(&command, e))?;
+    let output = command
+        .output()
+        .await
+        .map_err(|e| ActionErrorKind::command(&command, e))?;
 
     let parsed: DiskUtilApfsInfoOutput = plist::from_bytes(&output.stdout)?;
 
     if let Some(error_message) = parsed.error_message {
         let expected_not_found = format!("Could not find disk: {apfs_volume_label}");
         if error_message.contains(&expected_not_found) {
-            return Ok(None)
+            return Ok(None);
         } else {
             return Err(ActionErrorKind::DiskUtilInfoError {
                 command: command_str,
                 message: error_message,
-            })
+            });
         }
     } else if let Some(uuid) = parsed.volume_uuid {
         Ok(Some(uuid))
