@@ -36,13 +36,19 @@ impl AddUserToGroup {
             gid,
         };
 
-        if !(which::which("addgroup").is_ok() || which::which("gpasswd").is_ok()) {
-            return Err(Self::error(ActionErrorKind::MissingAddUserToGroupCommand));
-        }
-        if !(which::which("delgroup").is_ok() || which::which("gpasswd").is_ok()) {
-            return Err(Self::error(
-                ActionErrorKind::MissingRemoveUserFromGroupCommand,
-            ));
+        match OperatingSystem::host() {
+            OperatingSystem::MacOSX { .. }
+            | OperatingSystem::Darwin => (),
+            _ => {
+                if !(which::which("addgroup").is_ok() || which::which("gpasswd").is_ok()) {
+                    return Err(Self::error(ActionErrorKind::MissingAddUserToGroupCommand));
+                }
+                if !(which::which("delgroup").is_ok() || which::which("gpasswd").is_ok()) {
+                    return Err(Self::error(
+                        ActionErrorKind::MissingRemoveUserFromGroupCommand,
+                    ));
+                }
+            }
         }
 
         // Ensure user does not exists
@@ -67,7 +73,7 @@ impl AddUserToGroup {
             }
 
             // See if group membership needs to be done
-            match target_lexicon::OperatingSystem::host() {
+            match OperatingSystem::host() {
                 OperatingSystem::MacOSX {
                     major: _,
                     minor: _,

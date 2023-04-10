@@ -1,6 +1,7 @@
 use nix::unistd::User;
 use tokio::process::Command;
 use tracing::{span, Span};
+use target_lexicon::OperatingSystem;
 
 use crate::action::{ActionError, ActionErrorKind, ActionTag};
 use crate::execute_command;
@@ -36,11 +37,17 @@ impl CreateUser {
             comment,
         };
 
-        if !(which::which("useradd").is_ok() || which::which("adduser").is_ok()) {
-            return Err(Self::error(ActionErrorKind::MissingUserCreationCommand));
-        }
-        if !(which::which("userdel").is_ok() || which::which("deluser").is_ok()) {
-            return Err(Self::error(ActionErrorKind::MissingUserDeletionCommand));
+        match OperatingSystem::host() {
+            OperatingSystem::MacOSX { .. }
+            | OperatingSystem::Darwin => (),
+            _ => {
+                if !(which::which("useradd").is_ok() || which::which("adduser").is_ok()) {
+                    return Err(Self::error(ActionErrorKind::MissingUserCreationCommand));
+                }
+                if !(which::which("userdel").is_ok() || which::which("deluser").is_ok()) {
+                    return Err(Self::error(ActionErrorKind::MissingUserDeletionCommand));
+                }
+            }
         }
 
         // Ensure user does not exists
@@ -115,7 +122,7 @@ impl Action for CreateUser {
             comment,
         } = self;
 
-        use target_lexicon::OperatingSystem;
+        use OperatingSystem;
         match OperatingSystem::host() {
             OperatingSystem::MacOSX {
                 major: _,
@@ -270,8 +277,8 @@ impl Action for CreateUser {
 
     #[tracing::instrument(level = "debug", skip_all)]
     async fn revert(&mut self) -> Result<(), ActionError> {
-        use target_lexicon::OperatingSystem;
-        match target_lexicon::OperatingSystem::host() {
+        use OperatingSystem;
+        match OperatingSystem::host() {
             OperatingSystem::MacOSX {
                 major: _,
                 minor: _,
