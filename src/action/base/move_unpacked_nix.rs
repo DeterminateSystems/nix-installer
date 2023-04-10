@@ -102,6 +102,14 @@ impl Action for MoveUnpackedNix {
                         ActionErrorKind::Rename(entry.path().clone(), entry_dest.to_owned(), e)
                     })
                     .map_err(Self::error)?;
+                // Leave a back link where we copied from since later we may need to know which packages we actually transferred
+                // eg, know which `nix` version we installed when curing a user with several versions installed
+                tokio::fs::symlink(&entry_dest, entry.path())
+                    .await
+                    .map_err(|e| {
+                        ActionErrorKind::Symlink(entry_dest.to_owned(), entry.path().clone(), e)
+                    })
+                    .map_err(Self::error)?;
             }
         }
 
