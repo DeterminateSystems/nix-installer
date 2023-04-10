@@ -403,11 +403,11 @@ impl HasExpectedErrors for PlannerError {
             PlannerError::Utf8(_) => None,
             PlannerError::SelinuxEnforcing => Some(Box::new(self)),
             PlannerError::Custom(e) => {
+                #[cfg(target_os = "linux")]
                 if let Some(err) = e.downcast_ref::<linux::LinuxErrorKind>() {
                     err.expected()
-                } else {
-                    None
                 }
+                None
             },
             this @ PlannerError::NixOs => Some(Box::new(this)),
             this @ PlannerError::NixExists => Some(Box::new(this)),

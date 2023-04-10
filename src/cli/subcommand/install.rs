@@ -88,7 +88,6 @@ impl CommandExecute for Install {
             false => format!("curl --proto '=https' --tlsv1.2 -sSf -L https://install.determinate.systems/nix/tag/v{} | sh -s -- uninstall", env!("CARGO_PKG_VERSION")),
         };
 
-
         let mut install_plan = match (planner, plan) {
             (Some(planner), None) => {
                 let chosen_planner: Box<dyn Planner> = planner.clone().boxed();
