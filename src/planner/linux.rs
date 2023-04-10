@@ -4,9 +4,10 @@ use crate::{
         common::{ConfigureInitService, ConfigureNix, ProvisionNix},
         StatefulAction,
     },
+    error::HasExpectedErrors,
     planner::{Planner, PlannerError},
     settings::CommonSettings,
-    settings::{InitSettings, InstallSettingsError},
+    settings::{InitSettings, InitSystem, InstallSettingsError},
     Action, BuiltinPlanner,
 };
 use std::{collections::HashMap, path::Path};
@@ -35,42 +36,16 @@ impl Planner for Linux {
     }
 
     async fn plan(&self) -> Result<Vec<StatefulAction<Box<dyn Action>>>, PlannerError> {
-        // If on NixOS, running `nix_installer` is pointless
-        // NixOS always sets up this file as part of setting up /etc itself: https://github.com/NixOS/nixpkgs/blob/bdd39e5757d858bd6ea58ed65b4a2e52c8ed11ca/nixos/modules/system/etc/setup-etc.pl#L145
-        if Path::new("/etc/NIXOS").exists() {
-            return Err(PlannerError::NixOs);
-        }
+        check_not_nixos()?;
 
-        if std::env::var("WSL_DISTRO_NAME").is_ok() && std::env::var("WSL_INTEROP").is_err() {
-            return Err(PlannerError::Wsl1);
-        }
+        check_nix_not_already_installed().await?;
 
-        // We currently do not support SELinux
-        match Command::new("getenforce").output().await {
-            Ok(output) => {
-                let stdout_string = String::from_utf8(output.stdout).map_err(PlannerError::Utf8)?;
-                tracing::trace!(getenforce_stdout = stdout_string, "SELinux detected");
-                match stdout_string.trim() {
-                    "Enforcing" => return Err(PlannerError::SelinuxEnforcing),
-                    _ => (),
-                }
-            },
-            // The device doesn't have SELinux set up
-            Err(e) if e.kind() == std::io::ErrorKind::NotFound => (),
-            // Some unknown error
-            Err(e) => {
-                tracing::warn!(error = ?e, "Got an error checking for SELinux setting, this install may fail if SELinux is set to `Enforcing`")
-            },
-        }
+        check_not_wsl1()?;
 
-        // For now, we don't try to repair the user's Nix install or anything special.
-        if let Ok(_) = Command::new("nix-env")
-            .arg("--version")
-            .stdin(std::process::Stdio::null())
-            .status()
-            .await
-        {
-            return Err(PlannerError::NixExists);
+        check_not_selinux().await?;
+
+        if self.init.init == InitSystem::Systemd && self.init.start_daemon {
+            check_systemd_active()?;
         }
 
         Ok(vec![
@@ -144,5 +119,110 @@ impl Planner for Linux {
 impl Into<BuiltinPlanner> for Linux {
     fn into(self) -> BuiltinPlanner {
         BuiltinPlanner::Linux(self)
+    }
+}
+
+// If on NixOS, running `nix_installer` is pointless
+fn check_not_nixos() -> Result<(), PlannerError> {
+    // NixOS always sets up this file as part of setting up /etc itself: https://github.com/NixOS/nixpkgs/blob/bdd39e5757d858bd6ea58ed65b4a2e52c8ed11ca/nixos/modules/system/etc/setup-etc.pl#L145
+    if Path::new("/etc/NIXOS").exists() {
+        return Err(PlannerError::NixOs);
+    }
+    Ok(())
+}
+
+fn check_not_wsl1() -> Result<(), PlannerError> {
+    // Detection strategies: https://patrickwu.space/wslconf/
+    if std::env::var("WSL_DISTRO_NAME").is_ok() && std::env::var("WSL_INTEROP").is_err() {
+        return Err(PlannerError::Wsl1);
+    }
+    Ok(())
+}
+
+async fn check_not_selinux() -> Result<(), PlannerError> {
+    // We currently do not support SELinux
+    match Command::new("getenforce").output().await {
+        Ok(output) => {
+            let stdout_string = String::from_utf8(output.stdout).map_err(PlannerError::Utf8)?;
+            tracing::trace!(getenforce_stdout = stdout_string, "SELinux detected");
+            match stdout_string.trim() {
+                "Enforcing" => return Err(PlannerError::SelinuxEnforcing),
+                _ => (),
+            }
+        },
+        // The device doesn't have SELinux set up
+        Err(e) if e.kind() == std::io::ErrorKind::NotFound => (),
+        // Some unknown error
+        Err(e) => {
+            tracing::warn!(error = ?e, "Got an error checking for SELinux setting, this install may fail if SELinux is set to `Enforcing`")
+        },
+    }
+
+    Ok(())
+}
+
+async fn check_nix_not_already_installed() -> Result<(), PlannerError> {
+    // For now, we don't try to repair the user's Nix install or anything special.
+    if let Ok(_) = Command::new("nix-env")
+        .arg("--version")
+        .stdin(std::process::Stdio::null())
+        .status()
+        .await
+    {
+        return Err(PlannerError::NixExists);
+    }
+
+    Ok(())
+}
+
+fn check_systemd_active() -> Result<(), PlannerError> {
+    if Path::new("/run/systemd/system").exists() {
+        if std::env::var("WSL_DISTRO_NAME").is_ok() {
+            return Err(LinuxErrorKind::Wsl2SystemdNotActive)?;
+        } else {
+            return Err(LinuxErrorKind::SystemdNotActive)?;
+        }
+    }
+
+    Ok(())
+}
+
+#[non_exhaustive]
+#[derive(Debug, thiserror::Error)]
+pub enum LinuxErrorKind {
+    #[error(
+        "\
+        systemd was not active.\n\
+        \n\
+        If it will be started later consider, passing `--no-start-daemon`.\n\
+        \n\
+        To use a `root`-only Nix install, consider passing `--init none`."
+    )]
+    SystemdNotActive,
+    #[error(
+        "\
+        systemd was not active.\n\
+        \n
+        On WSL2, systemd is not enabled by default. Consider enabling it by adding it to your `/etc/wsl.conf` with `echo -e '[boot]\\nsystemd=true'` then restarting WSL2 with `wsl.exe --shutdown` and re-entering the WSL shell. For more information, see https://devblogs.microsoft.com/commandline/systemd-support-is-now-available-in-wsl/.\n\
+        \n\
+        If it will be started later consider, passing `--no-start-daemon`.\n\
+        \n\
+        To use a `root`-only Nix install, consider passing `--init none`."
+    )]
+    Wsl2SystemdNotActive,
+}
+
+impl HasExpectedErrors for LinuxErrorKind {
+    fn expected<'a>(&'a self) -> Option<Box<dyn std::error::Error + 'a>> {
+        match self {
+            LinuxErrorKind::SystemdNotActive => Some(Box::new(self)),
+            LinuxErrorKind::Wsl2SystemdNotActive => Some(Box::new(self)),
+        }
+    }
+}
+
+impl From<LinuxErrorKind> for PlannerError {
+    fn from(v: LinuxErrorKind) -> PlannerError {
+        PlannerError::Custom(Box::new(v))
     }
 }

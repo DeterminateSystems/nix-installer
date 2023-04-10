@@ -24,7 +24,7 @@ pub const NIX_X64_64_DARWIN_URL: &str =
 pub const NIX_AARCH64_DARWIN_URL: &str =
     "https://releases.nixos.org/nix/nix-2.13.3/nix-2.13.3-aarch64-darwin.tar.xz";
 
-#[derive(Debug, serde::Deserialize, serde::Serialize, Clone, Copy)]
+#[derive(Debug, serde::Deserialize, serde::Serialize, Clone, Copy, PartialEq, Eq)]
 #[cfg_attr(feature = "cli", derive(clap::ValueEnum))]
 pub enum InitSystem {
     #[cfg(not(target_os = "macos"))]
