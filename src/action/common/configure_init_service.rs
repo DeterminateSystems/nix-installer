@@ -251,7 +251,7 @@ impl Action for ConfigureInitService {
                         .await
                         .map_err(Self::error)?;
                 }
-                let socket_was_active = 
+                let socket_was_active =
                     if is_active("nix-daemon.socket").await.map_err(Self::error)? {
                         stop("nix-daemon.socket").await.map_err(Self::error)?;
                         true
