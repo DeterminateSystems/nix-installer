@@ -236,6 +236,17 @@ let
       uninstall = installCases.install-default.uninstall;
       uninstallCheck = installCases.install-default.uninstallCheck;
     };
+    cure-self-multi-broken-daemon-stopped = {
+      preinstall = ''
+        ${nix-installer-install-quiet}
+        sudo mv /nix/receipt.json /nix/old-receipt.json
+        sudo systemctl stop nix-daemon.socket
+      '';
+      install = installCases.install-default.install;
+      check = installCases.install-default.check;
+      uninstall = installCases.install-default.uninstall;
+      uninstallCheck = installCases.install-default.uninstallCheck;
+    };
     cure-self-linux-broken-no-etc-nix = {
       preinstall = ''
         ${nix-installer-install-quiet}
@@ -284,6 +295,16 @@ let
       preinstall = ''
         ${cure-script-multi-user}
         sudo systemctl disable --now nix-daemon.socket
+      '';
+      install = installCases.install-default.install;
+      check = installCases.install-default.check;
+      uninstall = installCases.install-default.uninstall;
+      uninstallCheck = installCases.install-default.uninstallCheck;
+    };
+    cure-script-multi-broken-daemon-stopped = {
+      preinstall = ''
+        ${cure-script-multi-user}
+        sudo systemctl stop nix-daemon.socket
       '';
       install = installCases.install-default.install;
       check = installCases.install-default.check;
