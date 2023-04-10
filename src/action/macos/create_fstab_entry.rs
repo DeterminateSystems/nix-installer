@@ -272,9 +272,7 @@ impl Action for CreateFstabEntry {
                 .await
                 .map_err(|e| Self::error(ActionErrorKind::Flush(fstab_path.to_owned(), e)))?;
         } else {
-            return Err(Self::error(
-                CreateFstabEntryError::CannotDetermineFstabLine,
-            ));
+            return Err(Self::error(CreateFstabEntryError::CannotDetermineFstabLine));
         }
 
         Ok(())
