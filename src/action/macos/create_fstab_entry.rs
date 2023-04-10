@@ -273,7 +273,7 @@ impl Action for CreateFstabEntry {
                 .map_err(|e| Self::error(ActionErrorKind::Flush(fstab_path.to_owned(), e)))?;
         } else {
             return Err(Self::error(
-                CreateFstabEntryError::EntryNoLongerDeterminable,
+                CreateFstabEntryError::CannotDetermineFstabLine,
             ));
         }
 
@@ -305,7 +305,7 @@ pub enum CreateFstabEntryError {
     #[error("Unable to determine how to add APFS volume `{0}` the `/etc/fstab` line, likely the volume is not yet created or there is some synchronization issue, please report this")]
     CannotDetermineUuid(String),
     #[error("Unable to reliably determine which `/etc/fstab` line to remove, the volume is likely already deleted, the line involving `/nix` in `/etc/fstab` should be removed manually")]
-    EntryNoLongerDeterminable,
+    CannotDetermineFstabLine,
 }
 
 impl Into<ActionErrorKind> for CreateFstabEntryError {
