@@ -88,6 +88,7 @@ impl CommandExecute for Install {
             false => format!("curl --proto '=https' --tlsv1.2 -sSf -L https://install.determinate.systems/nix/tag/v{} | sh -s -- uninstall", env!("CARGO_PKG_VERSION")),
         };
 
+
         let mut install_plan = match (planner, plan) {
             (Some(planner), None) => {
                 let chosen_planner: Box<dyn Planner> = planner.clone().boxed();
@@ -106,7 +107,17 @@ impl CommandExecute for Install {
                         return Ok(ExitCode::FAILURE)
                     } ,
                     None => {
-                        planner.plan().await.map_err(|e| eyre!(e))?
+                        let res = planner.plan().await;
+                        match res {
+                            Ok(plan) => plan,
+                            Err(err) => {
+                                if let Some(expected) = err.expected() {
+                                    eprintln!("{}", expected.red());
+                                    return Ok(ExitCode::FAILURE);
+                                }
+                                return Err(err)?;
+                            }
+                        }
                     },
                 }
             },

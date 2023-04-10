@@ -176,7 +176,7 @@ async fn check_nix_not_already_installed() -> Result<(), PlannerError> {
 }
 
 fn check_systemd_active() -> Result<(), PlannerError> {
-    if Path::new("/run/systemd/system").exists() {
+    if !Path::new("/run/systemd/system").exists() {
         if std::env::var("WSL_DISTRO_NAME").is_ok() {
             return Err(LinuxErrorKind::Wsl2SystemdNotActive)?;
         } else {
@@ -202,7 +202,7 @@ pub enum LinuxErrorKind {
     #[error(
         "\
         systemd was not active.\n\
-        \n
+        \n\
         On WSL2, systemd is not enabled by default. Consider enabling it by adding it to your `/etc/wsl.conf` with `echo -e '[boot]\\nsystemd=true'` then restarting WSL2 with `wsl.exe --shutdown` and re-entering the WSL shell. For more information, see https://devblogs.microsoft.com/commandline/systemd-support-is-now-available-in-wsl/.\n\
         \n\
         If it will be started later consider, passing `--no-start-daemon`.\n\
