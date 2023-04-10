@@ -246,13 +246,13 @@ impl Action for ConfigureInitService {
                     .map_err(Self::error)?;
                 }
                 // The goal state is the `socket` enabled and active, the service not enabled and stopped (it activates via socket activation)
-                let socket_was_active =
-                    if is_enabled("nix-daemon.socket").await.map_err(Self::error)? {
-                        disable("nix-daemon.socket", true)
-                            .await
-                            .map_err(Self::error)?;
-                        true
-                    } else if is_active("nix-daemon.socket").await.map_err(Self::error)? {
+                if is_enabled("nix-daemon.socket").await.map_err(Self::error)? {
+                    disable("nix-daemon.socket", false)
+                        .await
+                        .map_err(Self::error)?;
+                }
+                let socket_was_active = 
+                    if is_active("nix-daemon.socket").await.map_err(Self::error)? {
                         stop("nix-daemon.socket").await.map_err(Self::error)?;
                         true
                     } else {
