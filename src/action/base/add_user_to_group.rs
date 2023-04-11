@@ -35,6 +35,21 @@ impl AddUserToGroup {
             groupname,
             gid,
         };
+
+        match OperatingSystem::host() {
+            OperatingSystem::MacOSX { .. } | OperatingSystem::Darwin => (),
+            _ => {
+                if !(which::which("addgroup").is_ok() || which::which("gpasswd").is_ok()) {
+                    return Err(Self::error(ActionErrorKind::MissingAddUserToGroupCommand));
+                }
+                if !(which::which("delgroup").is_ok() || which::which("gpasswd").is_ok()) {
+                    return Err(Self::error(
+                        ActionErrorKind::MissingRemoveUserFromGroupCommand,
+                    ));
+                }
+            },
+        }
+
         // Ensure user does not exists
         if let Some(user) = User::from_name(name.as_str())
             .map_err(|e| ActionErrorKind::GettingUserId(name.clone(), e))
@@ -57,7 +72,7 @@ impl AddUserToGroup {
             }
 
             // See if group membership needs to be done
-            match target_lexicon::OperatingSystem::host() {
+            match OperatingSystem::host() {
                 OperatingSystem::MacOSX {
                     major: _,
                     minor: _,
@@ -119,7 +134,11 @@ impl AddUserToGroup {
                     let user_in_group = output_str.split(" ").any(|v| v == &this.groupname);
 
                     if user_in_group {
-                        tracing::debug!("Creating user `{}` already complete", this.name);
+                        tracing::debug!(
+                            "Adding user `{}` to group `{}` already complete",
+                            this.name,
+                            this.groupname
+                        );
                         return Ok(StatefulAction::completed(this));
                     }
                 },

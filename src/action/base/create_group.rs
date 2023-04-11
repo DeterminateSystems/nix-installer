@@ -1,4 +1,5 @@
 use nix::unistd::Group;
+use target_lexicon::OperatingSystem;
 use tokio::process::Command;
 use tracing::{span, Span};
 
@@ -23,6 +24,19 @@ impl CreateGroup {
             name: name.clone(),
             gid,
         };
+
+        match OperatingSystem::host() {
+            OperatingSystem::MacOSX { .. } | OperatingSystem::Darwin => (),
+            _ => {
+                if !(which::which("groupadd").is_ok() || which::which("addgroup").is_ok()) {
+                    return Err(Self::error(ActionErrorKind::MissingGroupCreationCommand));
+                }
+                if !(which::which("groupdel").is_ok() || which::which("delgroup").is_ok()) {
+                    return Err(Self::error(ActionErrorKind::MissingGroupDeletionCommand));
+                }
+            },
+        }
+
         // Ensure group does not exists
         if let Some(group) = Group::from_name(name.as_str())
             .map_err(|e| ActionErrorKind::GettingGroupId(name.clone(), e))
@@ -75,8 +89,8 @@ impl Action for CreateGroup {
     async fn execute(&mut self) -> Result<(), ActionError> {
         let Self { name, gid } = self;
 
-        use target_lexicon::OperatingSystem;
-        match target_lexicon::OperatingSystem::host() {
+        use OperatingSystem;
+        match OperatingSystem::host() {
             OperatingSystem::MacOSX {
                 major: _,
                 minor: _,
@@ -142,8 +156,8 @@ impl Action for CreateGroup {
     async fn revert(&mut self) -> Result<(), ActionError> {
         let Self { name, gid: _ } = self;
 
-        use target_lexicon::OperatingSystem;
-        match target_lexicon::OperatingSystem::host() {
+        use OperatingSystem;
+        match OperatingSystem::host() {
             OperatingSystem::MacOSX {
                 major: _,
                 minor: _,

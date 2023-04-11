@@ -1,4 +1,5 @@
 use nix::unistd::User;
+use target_lexicon::OperatingSystem;
 use tokio::process::Command;
 use tracing::{span, Span};
 
@@ -35,6 +36,19 @@ impl CreateUser {
             gid,
             comment,
         };
+
+        match OperatingSystem::host() {
+            OperatingSystem::MacOSX { .. } | OperatingSystem::Darwin => (),
+            _ => {
+                if !(which::which("useradd").is_ok() || which::which("adduser").is_ok()) {
+                    return Err(Self::error(ActionErrorKind::MissingUserCreationCommand));
+                }
+                if !(which::which("userdel").is_ok() || which::which("deluser").is_ok()) {
+                    return Err(Self::error(ActionErrorKind::MissingUserDeletionCommand));
+                }
+            },
+        }
+
         // Ensure user does not exists
         if let Some(user) = User::from_name(name.as_str())
             .map_err(|e| ActionErrorKind::GettingUserId(name.clone(), e))
@@ -107,7 +121,7 @@ impl Action for CreateUser {
             comment,
         } = self;
 
-        use target_lexicon::OperatingSystem;
+        use OperatingSystem;
         match OperatingSystem::host() {
             OperatingSystem::MacOSX {
                 major: _,
@@ -262,8 +276,8 @@ impl Action for CreateUser {
 
     #[tracing::instrument(level = "debug", skip_all)]
     async fn revert(&mut self) -> Result<(), ActionError> {
-        use target_lexicon::OperatingSystem;
-        match target_lexicon::OperatingSystem::host() {
+        use OperatingSystem;
+        match OperatingSystem::host() {
             OperatingSystem::MacOSX {
                 major: _,
                 minor: _,
