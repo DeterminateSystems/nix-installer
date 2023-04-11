@@ -21,7 +21,7 @@ jobs:
           buildkite_token: ${{ secrets.BUILDKITE_TOKEN }}
           output_path: artifacts
       - name: Configure AWS Credentials
-        uses: aws-actions/configure-aws-credentials@v1
+        uses: aws-actions/configure-aws-credentials@v2
         with:
           role-to-assume: ${{ secrets.AWS_S3_UPLOAD_ROLE }}
           aws-region: us-east-2
