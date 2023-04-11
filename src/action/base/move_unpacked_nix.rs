@@ -93,24 +93,27 @@ impl Action for MoveUnpackedNix {
         {
             let entry_dest = dest_store.join(entry.file_name());
             if entry_dest.exists() {
-                tracing::trace!(src = %entry.path().display(), dest = %entry_dest.display(), "Skipping, already exists");
-            } else {
-                tracing::trace!(src = %entry.path().display(), dest = %entry_dest.display(), "Renaming");
-                tokio::fs::rename(&entry.path(), &entry_dest)
+                tracing::trace!(src = %entry.path().display(), dest = %entry_dest.display(), "Removing already existing package");
+                tokio::fs::remove_dir_all(&entry_dest)
                     .await
-                    .map_err(|e| {
-                        ActionErrorKind::Rename(entry.path().clone(), entry_dest.to_owned(), e)
-                    })
-                    .map_err(Self::error)?;
-                // Leave a back link where we copied from since later we may need to know which packages we actually transferred
-                // eg, know which `nix` version we installed when curing a user with several versions installed
-                tokio::fs::symlink(&entry_dest, entry.path())
-                    .await
-                    .map_err(|e| {
-                        ActionErrorKind::Symlink(entry_dest.to_owned(), entry.path().clone(), e)
-                    })
+                    .map_err(|e| ActionErrorKind::Remove(entry_dest.clone(), e))
                     .map_err(Self::error)?;
             }
+            tracing::trace!(src = %entry.path().display(), dest = %entry_dest.display(), "Renaming");
+            tokio::fs::rename(&entry.path(), &entry_dest)
+                .await
+                .map_err(|e| {
+                    ActionErrorKind::Rename(entry.path().clone(), entry_dest.to_owned(), e)
+                })
+                .map_err(Self::error)?;
+            // Leave a back link where we copied from since later we may need to know which packages we actually transferred
+            // eg, know which `nix` version we installed when curing a user with several versions installed
+            tokio::fs::symlink(&entry_dest, entry.path())
+                .await
+                .map_err(|e| {
+                    ActionErrorKind::Symlink(entry_dest.to_owned(), entry.path().clone(), e)
+                })
+                .map_err(Self::error)?;
         }
 
         Ok(())
