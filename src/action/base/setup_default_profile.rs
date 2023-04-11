@@ -38,7 +38,11 @@ impl Action for SetupDefaultProfile {
     }
 
     fn tracing_span(&self) -> Span {
-        span!(tracing::Level::DEBUG, "setup_default_profile",)
+        span!(
+            tracing::Level::DEBUG,
+            "setup_default_profile",
+            unpacked_path = %self.unpacked_path.display(),
+        )
     }
 
     fn execute_description(&self) -> Vec<ActionDescription> {
@@ -48,43 +52,62 @@ impl Action for SetupDefaultProfile {
     #[tracing::instrument(level = "debug", skip_all)]
     async fn execute(&mut self) -> Result<(), ActionError> {
         // Find an `nix` package
-        let nix_pkg_glob = "/nix/store/*-nix-*";
+        let nix_pkg_glob = format!("{}/nix-*/store/*-nix-*.*.*", self.unpacked_path.display());
         let mut found_nix_pkg = None;
-        for entry in glob(nix_pkg_glob)
+        for entry in glob(&nix_pkg_glob)
             .map_err(|e| Self::error(SetupDefaultProfileError::GlobPatternError(e)))?
         {
             match entry {
                 Ok(path) => {
-                    // TODO(@Hoverbear): Should probably ensure is unique
-                    found_nix_pkg = Some(path);
+                    // If we are curing, the user may have multiple of these installed
+                    if let Some(_existing) = found_nix_pkg {
+                        return Err(Self::error(SetupDefaultProfileError::MultipleNixPackages))?;
+                    } else {
+                        found_nix_pkg = Some(path);
+                    }
                     break;
                 },
                 Err(_) => continue, /* Ignore it */
             };
         }
         let nix_pkg = if let Some(nix_pkg) = found_nix_pkg {
-            nix_pkg
+            tokio::fs::read_link(&nix_pkg)
+                .await
+                .map_err(|e| ActionErrorKind::Canonicalize(nix_pkg, e))
+                .map_err(Self::error)?
         } else {
             return Err(Self::error(SetupDefaultProfileError::NoNix));
         };
 
         // Find an `nss-cacert` package, add it too.
-        let nss_ca_cert_pkg_glob = "/nix/store/*-nss-cacert-*";
+        let nss_ca_cert_pkg_glob = format!(
+            "{}/nix-*/store/*-nss-cacert-*.*",
+            self.unpacked_path.display()
+        );
         let mut found_nss_ca_cert_pkg = None;
-        for entry in glob(nss_ca_cert_pkg_glob)
+        for entry in glob(&nss_ca_cert_pkg_glob)
             .map_err(|e| Self::error(SetupDefaultProfileError::GlobPatternError(e)))?
         {
             match entry {
                 Ok(path) => {
-                    // TODO(@Hoverbear): Should probably ensure is unique
-                    found_nss_ca_cert_pkg = Some(path);
+                    // If we are curing, the user may have multiple of these installed
+                    if let Some(_existing) = found_nss_ca_cert_pkg {
+                        return Err(Self::error(
+                            SetupDefaultProfileError::MultipleNssCaCertPackages,
+                        ))?;
+                    } else {
+                        found_nss_ca_cert_pkg = Some(path);
+                    }
                     break;
                 },
                 Err(_) => continue, /* Ignore it */
             };
         }
         let nss_ca_cert_pkg = if let Some(nss_ca_cert_pkg) = found_nss_ca_cert_pkg {
-            nss_ca_cert_pkg
+            tokio::fs::read_link(&nss_ca_cert_pkg)
+                .await
+                .map_err(|e| ActionErrorKind::Canonicalize(nss_ca_cert_pkg, e))
+                .map_err(Self::error)?
         } else {
             return Err(Self::error(SetupDefaultProfileError::NoNssCacert));
         };
@@ -235,6 +258,10 @@ pub enum SetupDefaultProfileError {
     NoNix,
     #[error("No root home found to place channel configuration in")]
     NoRootHome,
+    #[error("Unarchived Nix store appears to contain multiple `nss-ca-cert` packages, cannot select one")]
+    MultipleNssCaCertPackages,
+    #[error("Unarchived Nix store appears to contain multiple `nix` packages, cannot select one")]
+    MultipleNixPackages,
 }
 
 impl Into<ActionErrorKind> for SetupDefaultProfileError {
