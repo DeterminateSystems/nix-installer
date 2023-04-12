@@ -73,7 +73,7 @@ impl Action for SetupDefaultProfile {
         let nix_pkg = if let Some(nix_pkg) = found_nix_pkg {
             tokio::fs::read_link(&nix_pkg)
                 .await
-                .map_err(|e| ActionErrorKind::Canonicalize(nix_pkg, e))
+                .map_err(|e| ActionErrorKind::ReadSymlink(nix_pkg, e))
                 .map_err(Self::error)?
         } else {
             return Err(Self::error(SetupDefaultProfileError::NoNix));
@@ -106,7 +106,7 @@ impl Action for SetupDefaultProfile {
         let nss_ca_cert_pkg = if let Some(nss_ca_cert_pkg) = found_nss_ca_cert_pkg {
             tokio::fs::read_link(&nss_ca_cert_pkg)
                 .await
-                .map_err(|e| ActionErrorKind::Canonicalize(nss_ca_cert_pkg, e))
+                .map_err(|e| ActionErrorKind::ReadSymlink(nss_ca_cert_pkg, e))
                 .map_err(Self::error)?
         } else {
             return Err(Self::error(SetupDefaultProfileError::NoNssCacert));
