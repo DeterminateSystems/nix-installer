@@ -197,27 +197,11 @@ let
       uninstall = installCases.install-default.uninstall;
       uninstallCheck = installCases.install-default.uninstallCheck;
     };
-    cure-self-linux-broken-missing-users = {
-      preinstall = ''
-        ${nix-installer-install-quiet}
-        sudo mv /nix/receipt.json /nix/old-receipt.json
-        sudo userdel nixbld1
-        sudo userdel nixbld3
-        sudo userdel nixbld16
-      '';
-      install = installCases.install-default.install;
-      check = installCases.install-default.check;
-      uninstall = installCases.install-default.uninstall;
-      uninstallCheck = installCases.install-default.uninstallCheck;
-    };
-    cure-self-linux-broken-missing-users-and-group = {
+    cure-self-linux-broken-missing-group = {
       preinstall = ''
         NIX_PATH=$(readlink -f nix.tar.xz)
         RUST_BACKTRACE="full" ./nix-installer install --nix-package-url "file://$NIX_PATH" --no-confirm
         sudo mv /nix/receipt.json /nix/old-receipt.json
-        for i in {1..32}; do
-          sudo userdel "nixbld''${i}"
-        done
         sudo groupdel nixbld
       '';
       install = installCases.install-default.install;

@@ -164,14 +164,13 @@ impl Action for CreateGroup {
                 patch: _,
             }
             | OperatingSystem::Darwin => {
-                let output = execute_command(
+                execute_command(
                     Command::new("/usr/bin/dscl")
                         .args([".", "-delete", &format!("/Groups/{name}")])
                         .stdin(std::process::Stdio::null()),
                 )
                 .await
                 .map_err(Self::error)?;
-                if !output.status.success() {}
             },
             _ => {
                 if which::which("groupdel").is_ok() {

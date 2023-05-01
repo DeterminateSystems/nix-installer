@@ -34,7 +34,7 @@ impl PlaceNixConfiguration {
         settings.insert("build-users-group".to_string(), nix_build_group_name);
         settings.insert(
             "experimental-features".to_string(),
-            "nix-command flakes".to_string(),
+            "nix-command flakes auto-allocate-uids".to_string(),
         );
         settings.insert("auto-optimise-store".to_string(), "true".to_string());
         settings.insert(
@@ -45,6 +45,7 @@ impl PlaceNixConfiguration {
             "extra-nix-path".to_string(),
             "nixpkgs=flake:nixpkgs".to_string(),
         );
+        settings.insert("auto-allocate-uids".to_string(), "true".to_string());
 
         let create_directory = CreateDirectory::plan(NIX_CONF_FOLDER, None, None, 0o0755, force)
             .await
