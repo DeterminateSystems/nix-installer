@@ -154,10 +154,7 @@ impl ConfigureShellProfile {
             let mut buf = "/nix/var/nix/profiles/default/bin\n".to_string();
             // Actions runners operate as `runner` user by default
             if let Ok(Some(runner)) = User::from_name("runner") {
-                buf += &format!(
-                    "/nix/var/nix/profiles/per-user/{}/profile/bin\n",
-                    runner.name
-                );
+                buf += &format!("/home/{}/.nix-profile/bin\n", runner.name);
             }
             create_or_insert_files.push(
                 CreateOrInsertIntoFile::plan(
