@@ -136,6 +136,7 @@
               toolchain
               rust-analyzer
               cargo-outdated
+              cacert
               cargo-audit
               nixpkgs-fmt
               check.check-rustfmt
