@@ -1,9 +1,10 @@
+use nix::unistd::Group;
 use tracing::{span, Span};
 
 use super::CreateNixTree;
 use crate::{
     action::{
-        base::{CreateGroup, FetchAndUnpackNix, MoveUnpackedNix},
+        base::{CreateGroup, DeleteUser, FetchAndUnpackNix, MoveUnpackedNix},
         Action, ActionDescription, ActionError, ActionErrorKind, ActionTag, StatefulAction,
     },
     settings::{CommonSettings, SCRATCH_DIR},
@@ -16,6 +17,7 @@ Place Nix and it's requirements onto the target
 #[derive(Debug, serde::Deserialize, serde::Serialize, Clone)]
 pub struct ProvisionNix {
     fetch_nix: StatefulAction<FetchAndUnpackNix>,
+    delete_users: Vec<StatefulAction<DeleteUser>>,
     create_group: StatefulAction<CreateGroup>,
     create_nix_tree: StatefulAction<CreateNixTree>,
     move_unpacked_nix: StatefulAction<MoveUnpackedNix>,
@@ -31,6 +33,24 @@ impl ProvisionNix {
             settings.ssl_cert_file.clone(),
         )
         .await?;
+
+        let mut delete_users = vec![];
+        if let Some(group) = Group::from_name(settings.nix_build_group_name.as_str())
+            .map_err(|e| ActionErrorKind::GettingGroupId(settings.nix_build_group_name.clone(), e))
+            .map_err(Self::error)?
+        {
+            if group.gid.as_raw() != settings.nix_build_group_id {
+                return Err(Self::error(ActionErrorKind::GroupGidMismatch(
+                    settings.nix_build_group_name.clone(),
+                    group.gid.as_raw(),
+                    settings.nix_build_group_id,
+                )));
+            }
+            for member in group.mem {
+                delete_users.push(DeleteUser::plan(member).await?)
+            }
+        }
+
         let create_group = CreateGroup::plan(
             settings.nix_build_group_name.clone(),
             settings.nix_build_group_id,
@@ -42,6 +62,7 @@ impl ProvisionNix {
             .map_err(Self::error)?;
         Ok(Self {
             fetch_nix,
+            delete_users,
             create_group,
             create_nix_tree,
             move_unpacked_nix,
@@ -67,6 +88,7 @@ impl Action for ProvisionNix {
     fn execute_description(&self) -> Vec<ActionDescription> {
         let Self {
             fetch_nix,
+            delete_users,
             create_group,
             create_nix_tree,
             move_unpacked_nix,
@@ -74,6 +96,12 @@ impl Action for ProvisionNix {
 
         let mut buf = Vec::default();
         buf.append(&mut fetch_nix.describe_execute());
+
+        // TODO: This is a bit... loud
+        for delete_user in delete_users {
+            buf.append(&mut delete_user.describe_execute());
+        }
+
         buf.append(&mut create_group.describe_execute());
         buf.append(&mut create_nix_tree.describe_execute());
         buf.append(&mut move_unpacked_nix.describe_execute());
@@ -89,6 +117,10 @@ impl Action for ProvisionNix {
             fetch_nix_clone.try_execute().await.map_err(Self::error)?;
             Result::<_, ActionError>::Ok(fetch_nix_clone)
         });
+
+        for delete_users in self.delete_users.iter_mut() {
+            delete_users.try_execute().await.map_err(Self::error)?;
+        }
 
         self.create_group.try_execute().await.map_err(Self::error)?;
         self.create_nix_tree
@@ -111,6 +143,7 @@ impl Action for ProvisionNix {
     fn revert_description(&self) -> Vec<ActionDescription> {
         let Self {
             fetch_nix,
+            delete_users,
             create_group,
             create_nix_tree,
             move_unpacked_nix,
@@ -120,6 +153,9 @@ impl Action for ProvisionNix {
         buf.append(&mut move_unpacked_nix.describe_revert());
         buf.append(&mut create_nix_tree.describe_revert());
         buf.append(&mut create_group.describe_revert());
+        for delete_user in delete_users {
+            buf.append(&mut delete_user.describe_revert());
+        }
         buf.append(&mut fetch_nix.describe_revert());
         buf
     }
@@ -129,6 +165,10 @@ impl Action for ProvisionNix {
         let mut errors = vec![];
 
         if let Err(err) = self.fetch_nix.try_revert().await {
+            errors.push(err)
+        }
+
+        if let Err(err) = self.create_group.try_revert().await {
             errors.push(err)
         }
 

@@ -93,6 +93,7 @@
           },
           "state": "Uncompleted"
         },
+        "delete_users": [],
         "create_group": {
           "action": {
             "name": "nixbld",

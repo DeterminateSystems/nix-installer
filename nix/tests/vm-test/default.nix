@@ -341,13 +341,10 @@ let
       '';
     in
     {
-      uninstall-users-and-groups-missing = {
+      uninstall-groups-missing = {
         install = installCases.install-default.install;
         check = installCases.install-default.check;
         preuninstall = ''
-          for i in $(seq 1 32); do
-            sudo userdel nixbld$i
-          done
           sudo groupdel nixbld
         '';
         uninstall = uninstallFailExpected;
