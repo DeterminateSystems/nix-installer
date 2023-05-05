@@ -60,6 +60,7 @@ strum = { version = "0.24.1", features = ["derive"] }
 nix-config-parser = { version = "0.1.2", features = ["serde"] }
 which = "4.4.0"
 sysctl = "0.5.4"
+walkdir = "2.3.3"
 
 [dev-dependencies]
 eyre = { version = "0.6.8", default-features = false, features = [ "track-caller" ] }

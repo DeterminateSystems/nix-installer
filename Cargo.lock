@@ -1065,6 +1065,7 @@ dependencies = [
  "typetag",
  "url",
  "uuid",
+ "walkdir",
  "which",
  "xz2",
 ]

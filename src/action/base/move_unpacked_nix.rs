@@ -1,6 +1,11 @@
-use std::path::{Path, PathBuf};
+use std::{
+    fs::Permissions,
+    os::unix::prelude::PermissionsExt,
+    path::{Path, PathBuf},
+};
 
 use tracing::{span, Span};
+use walkdir::WalkDir;
 
 use crate::action::{
     Action, ActionDescription, ActionError, ActionErrorKind, ActionTag, StatefulAction,
@@ -106,6 +111,25 @@ impl Action for MoveUnpackedNix {
                     ActionErrorKind::Rename(entry.path().clone(), entry_dest.to_owned(), e)
                 })
                 .map_err(Self::error)?;
+
+            let perms: Permissions = PermissionsExt::from_mode(0o555);
+            for entry_item in WalkDir::new(&entry_dest)
+                .into_iter()
+                .filter_map(Result::ok)
+                .filter(|e| !e.file_type().is_symlink())
+            {
+                tokio::fs::set_permissions(&entry_item.path(), perms.clone())
+                    .await
+                    .map_err(|e| {
+                        ActionErrorKind::SetPermissions(
+                            perms.mode(),
+                            entry_item.path().to_owned(),
+                            e,
+                        )
+                    })
+                    .map_err(Self::error)?;
+            }
+
             // Leave a back link where we copied from since later we may need to know which packages we actually transferred
             // eg, know which `nix` version we installed when curing a user with several versions installed
             tokio::fs::symlink(&entry_dest, entry.path())
