@@ -443,6 +443,8 @@ pub enum ActionErrorKind {
     Open(std::path::PathBuf, #[source] std::io::Error),
     #[error("Write path `{0}`")]
     Write(std::path::PathBuf, #[source] std::io::Error),
+    #[error("Sync path `{0}`")]
+    Sync(std::path::PathBuf, #[source] std::io::Error),
     #[error("Seek path `{0}`")]
     Seek(std::path::PathBuf, #[source] std::io::Error),
     #[error("Flushing `{0}`")]

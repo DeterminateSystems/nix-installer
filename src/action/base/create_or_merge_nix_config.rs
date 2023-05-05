@@ -434,6 +434,10 @@ impl Action for CreateOrMergeNixConfig {
                     e,
                 ))
             })?;
+        temp_file
+            .sync_all()
+            .await
+            .map_err(|e| Self::error(ActionErrorKind::Sync(temp_file_path.clone(), e)))?;
         tokio::fs::rename(&temp_file_path, &path)
             .await
             .map_err(|e| {

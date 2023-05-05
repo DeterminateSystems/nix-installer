@@ -27,7 +27,7 @@ impl std::fmt::Display for Logger {
     }
 }
 
-#[derive(clap::Args, Debug)]
+#[derive(clap::Args, Debug, Default)]
 pub struct Instrumentation {
     /// Enable debug logs, -vv for trace
     #[clap(short = 'v', env = "NIX_INSTALLER_VERBOSITY", long, action = clap::ArgAction::Count, global = true)]
