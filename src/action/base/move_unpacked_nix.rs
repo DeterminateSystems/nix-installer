@@ -113,7 +113,11 @@ impl Action for MoveUnpackedNix {
                 .map_err(Self::error)?;
 
             let perms: Permissions = PermissionsExt::from_mode(0o555);
-            for entry_item in WalkDir::new(&entry_dest).into_iter().filter_map(Result::ok) {
+            for entry_item in WalkDir::new(&entry_dest)
+                .into_iter()
+                .filter_map(Result::ok)
+                .filter(|e| !e.file_type().is_symlink())
+            {
                 tokio::fs::set_permissions(&entry_item.path(), perms.clone())
                     .await
                     .map_err(|e| {
