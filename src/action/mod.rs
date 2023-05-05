@@ -415,7 +415,7 @@ pub enum ActionErrorKind {
         std::path::PathBuf,
         #[source] std::io::Error,
     ),
-    #[error("Set mode `{0}` on `{1}`")]
+    #[error("Set mode `{0:#o}` on `{1}`")]
     SetPermissions(u32, std::path::PathBuf, #[source] std::io::Error),
     #[error("Remove file `{0}`")]
     Remove(std::path::PathBuf, #[source] std::io::Error),

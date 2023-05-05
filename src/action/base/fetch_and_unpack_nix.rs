@@ -143,6 +143,9 @@ impl Action for FetchAndUnpackNix {
 
         let decoder = xz2::read::XzDecoder::new(bytes.reader());
         let mut archive = tar::Archive::new(decoder);
+        archive.set_preserve_permissions(true);
+        archive.set_preserve_mtime(true);
+        archive.set_unpack_xattrs(true);
         archive
             .unpack(&dest_clone)
             .map_err(FetchUrlError::Unarchive)
