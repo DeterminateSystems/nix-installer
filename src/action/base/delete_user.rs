@@ -24,9 +24,6 @@ impl DeleteUser {
         match OperatingSystem::host() {
             OperatingSystem::MacOSX { .. } | OperatingSystem::Darwin => (),
             _ => {
-                if !(which::which("useradd").is_ok() || which::which("adduser").is_ok()) {
-                    return Err(Self::error(ActionErrorKind::MissingUserCreationCommand));
-                }
                 if !(which::which("userdel").is_ok() || which::which("deluser").is_ok()) {
                     return Err(Self::error(ActionErrorKind::MissingUserDeletionCommand));
                 }
@@ -55,7 +52,7 @@ impl Action for DeleteUser {
     }
     fn tracing_synopsis(&self) -> String {
         format!(
-            "Delete user `{}`, which exists due to an existing install, but is no longer required",
+            "Delete user `{}`, which exists due to a previous install, but is no longer required",
             self.name
         )
     }
