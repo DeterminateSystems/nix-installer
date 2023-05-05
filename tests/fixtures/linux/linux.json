@@ -17,637 +17,18 @@
         "action": "provision_nix",
         "fetch_nix": {
           "action": {
-            "url": "https://releases.nixos.org/nix/nix-2.13.3/nix-2.13.3-x86_64-linux.tar.xz",
-            "dest": "/nix/temp-install-dir"
+            "url": "https://releases.nixos.org/nix/nix-2.15.0/nix-2.15.0-x86_64-linux.tar.xz",
+            "dest": "/nix/temp-install-dir",
+            "proxy": null,
+            "ssl_cert_file": null
           },
           "state": "Uncompleted"
         },
-        "create_users_and_group": {
+        "delete_users": [],
+        "create_group": {
           "action": {
-            "nix_build_user_count": 32,
-            "nix_build_group_name": "nixbld",
-            "nix_build_group_id": 30000,
-            "nix_build_user_prefix": "nixbld",
-            "nix_build_user_id_base": 30000,
-            "create_group": {
-              "action": {
-                "name": "nixbld",
-                "gid": 30000
-              },
-              "state": "Uncompleted"
-            },
-            "create_users": [
-              {
-                "action": {
-                  "comment": "Nix build user 1",
-                  "name": "nixbld1",
-                  "uid": 30001,
-                  "groupname": "nixbld",
-                  "gid": 30000
-                },
-                "state": "Uncompleted"
-              },
-              {
-                "action": {
-                  "comment": "Nix build user 2",
-                  "name": "nixbld2",
-                  "uid": 30002,
-                  "groupname": "nixbld",
-                  "gid": 30000
-                },
-                "state": "Uncompleted"
-              },
-              {
-                "action": {
-                  "comment": "Nix build user 3",
-                  "name": "nixbld3",
-                  "uid": 30003,
-                  "groupname": "nixbld",
-                  "gid": 30000
-                },
-                "state": "Uncompleted"
-              },
-              {
-                "action": {
-                  "comment": "Nix build user 4",
-                  "name": "nixbld4",
-                  "uid": 30004,
-                  "groupname": "nixbld",
-                  "gid": 30000
-                },
-                "state": "Uncompleted"
-              },
-              {
-                "action": {
-                  "comment": "Nix build user 5",
-                  "name": "nixbld5",
-                  "uid": 30005,
-                  "groupname": "nixbld",
-                  "gid": 30000
-                },
-                "state": "Uncompleted"
-              },
-              {
-                "action": {
-                  "comment": "Nix build user 6",
-                  "name": "nixbld6",
-                  "uid": 30006,
-                  "groupname": "nixbld",
-                  "gid": 30000
-                },
-                "state": "Uncompleted"
-              },
-              {
-                "action": {
-                  "comment": "Nix build user 7",
-                  "name": "nixbld7",
-                  "uid": 30007,
-                  "groupname": "nixbld",
-                  "gid": 30000
-                },
-                "state": "Uncompleted"
-              },
-              {
-                "action": {
-                  "comment": "Nix build user 8",
-                  "name": "nixbld8",
-                  "uid": 30008,
-                  "groupname": "nixbld",
-                  "gid": 30000
-                },
-                "state": "Uncompleted"
-              },
-              {
-                "action": {
-                  "comment": "Nix build user 9",
-                  "name": "nixbld9",
-                  "uid": 30009,
-                  "groupname": "nixbld",
-                  "gid": 30000
-                },
-                "state": "Uncompleted"
-              },
-              {
-                "action": {
-                  "comment": "Nix build user 10",
-                  "name": "nixbld10",
-                  "uid": 30010,
-                  "groupname": "nixbld",
-                  "gid": 30000
-                },
-                "state": "Uncompleted"
-              },
-              {
-                "action": {
-                  "comment": "Nix build user 11",
-                  "name": "nixbld11",
-                  "uid": 30011,
-                  "groupname": "nixbld",
-                  "gid": 30000
-                },
-                "state": "Uncompleted"
-              },
-              {
-                "action": {
-                  "comment": "Nix build user 12",
-                  "name": "nixbld12",
-                  "uid": 30012,
-                  "groupname": "nixbld",
-                  "gid": 30000
-                },
-                "state": "Uncompleted"
-              },
-              {
-                "action": {
-                  "comment": "Nix build user 13",
-                  "name": "nixbld13",
-                  "uid": 30013,
-                  "groupname": "nixbld",
-                  "gid": 30000
-                },
-                "state": "Uncompleted"
-              },
-              {
-                "action": {
-                  "comment": "Nix build user 14",
-                  "name": "nixbld14",
-                  "uid": 30014,
-                  "groupname": "nixbld",
-                  "gid": 30000
-                },
-                "state": "Uncompleted"
-              },
-              {
-                "action": {
-                  "comment": "Nix build user 15",
-                  "name": "nixbld15",
-                  "uid": 30015,
-                  "groupname": "nixbld",
-                  "gid": 30000
-                },
-                "state": "Uncompleted"
-              },
-              {
-                "action": {
-                  "comment": "Nix build user 16",
-                  "name": "nixbld16",
-                  "uid": 30016,
-                  "groupname": "nixbld",
-                  "gid": 30000
-                },
-                "state": "Uncompleted"
-              },
-              {
-                "action": {
-                  "comment": "Nix build user 17",
-                  "name": "nixbld17",
-                  "uid": 30017,
-                  "groupname": "nixbld",
-                  "gid": 30000
-                },
-                "state": "Uncompleted"
-              },
-              {
-                "action": {
-                  "comment": "Nix build user 18",
-                  "name": "nixbld18",
-                  "uid": 30018,
-                  "groupname": "nixbld",
-                  "gid": 30000
-                },
-                "state": "Uncompleted"
-              },
-              {
-                "action": {
-                  "comment": "Nix build user 19",
-                  "name": "nixbld19",
-                  "uid": 30019,
-                  "groupname": "nixbld",
-                  "gid": 30000
-                },
-                "state": "Uncompleted"
-              },
-              {
-                "action": {
-                  "comment": "Nix build user 20",
-                  "name": "nixbld20",
-                  "uid": 30020,
-                  "groupname": "nixbld",
-                  "gid": 30000
-                },
-                "state": "Uncompleted"
-              },
-              {
-                "action": {
-                  "comment": "Nix build user 21",
-                  "name": "nixbld21",
-                  "uid": 30021,
-                  "groupname": "nixbld",
-                  "gid": 30000
-                },
-                "state": "Uncompleted"
-              },
-              {
-                "action": {
-                  "comment": "Nix build user 22",
-                  "name": "nixbld22",
-                  "uid": 30022,
-                  "groupname": "nixbld",
-                  "gid": 30000
-                },
-                "state": "Uncompleted"
-              },
-              {
-                "action": {
-                  "comment": "Nix build user 23",
-                  "name": "nixbld23",
-                  "uid": 30023,
-                  "groupname": "nixbld",
-                  "gid": 30000
-                },
-                "state": "Uncompleted"
-              },
-              {
-                "action": {
-                  "comment": "Nix build user 24",
-                  "name": "nixbld24",
-                  "uid": 30024,
-                  "groupname": "nixbld",
-                  "gid": 30000
-                },
-                "state": "Uncompleted"
-              },
-              {
-                "action": {
-                  "comment": "Nix build user 25",
-                  "name": "nixbld25",
-                  "uid": 30025,
-                  "groupname": "nixbld",
-                  "gid": 30000
-                },
-                "state": "Uncompleted"
-              },
-              {
-                "action": {
-                  "comment": "Nix build user 26",
-                  "name": "nixbld26",
-                  "uid": 30026,
-                  "groupname": "nixbld",
-                  "gid": 30000
-                },
-                "state": "Uncompleted"
-              },
-              {
-                "action": {
-                  "comment": "Nix build user 27",
-                  "name": "nixbld27",
-                  "uid": 30027,
-                  "groupname": "nixbld",
-                  "gid": 30000
-                },
-                "state": "Uncompleted"
-              },
-              {
-                "action": {
-                  "comment": "Nix build user 28",
-                  "name": "nixbld28",
-                  "uid": 30028,
-                  "groupname": "nixbld",
-                  "gid": 30000
-                },
-                "state": "Uncompleted"
-              },
-              {
-                "action": {
-                  "comment": "Nix build user 29",
-                  "name": "nixbld29",
-                  "uid": 30029,
-                  "groupname": "nixbld",
-                  "gid": 30000
-                },
-                "state": "Uncompleted"
-              },
-              {
-                "action": {
-                  "comment": "Nix build user 30",
-                  "name": "nixbld30",
-                  "uid": 30030,
-                  "groupname": "nixbld",
-                  "gid": 30000
-                },
-                "state": "Uncompleted"
-              },
-              {
-                "action": {
-                  "comment": "Nix build user 31",
-                  "name": "nixbld31",
-                  "uid": 30031,
-                  "groupname": "nixbld",
-                  "gid": 30000
-                },
-                "state": "Uncompleted"
-              },
-              {
-                "action": {
-                  "comment": "Nix build user 32",
-                  "name": "nixbld32",
-                  "uid": 30032,
-                  "groupname": "nixbld",
-                  "gid": 30000
-                },
-                "state": "Uncompleted"
-              }
-            ],
-            "add_users_to_groups": [
-              {
-                "action": {
-                  "name": "nixbld1",
-                  "uid": 30001,
-                  "groupname": "nixbld",
-                  "gid": 30000
-                },
-                "state": "Uncompleted"
-              },
-              {
-                "action": {
-                  "name": "nixbld2",
-                  "uid": 30002,
-                  "groupname": "nixbld",
-                  "gid": 30000
-                },
-                "state": "Uncompleted"
-              },
-              {
-                "action": {
-                  "name": "nixbld3",
-                  "uid": 30003,
-                  "groupname": "nixbld",
-                  "gid": 30000
-                },
-                "state": "Uncompleted"
-              },
-              {
-                "action": {
-                  "name": "nixbld4",
-                  "uid": 30004,
-                  "groupname": "nixbld",
-                  "gid": 30000
-                },
-                "state": "Uncompleted"
-              },
-              {
-                "action": {
-                  "name": "nixbld5",
-                  "uid": 30005,
-                  "groupname": "nixbld",
-                  "gid": 30000
-                },
-                "state": "Uncompleted"
-              },
-              {
-                "action": {
-                  "name": "nixbld6",
-                  "uid": 30006,
-                  "groupname": "nixbld",
-                  "gid": 30000
-                },
-                "state": "Uncompleted"
-              },
-              {
-                "action": {
-                  "name": "nixbld7",
-                  "uid": 30007,
-                  "groupname": "nixbld",
-                  "gid": 30000
-                },
-                "state": "Uncompleted"
-              },
-              {
-                "action": {
-                  "name": "nixbld8",
-                  "uid": 30008,
-                  "groupname": "nixbld",
-                  "gid": 30000
-                },
-                "state": "Uncompleted"
-              },
-              {
-                "action": {
-                  "name": "nixbld9",
-                  "uid": 30009,
-                  "groupname": "nixbld",
-                  "gid": 30000
-                },
-                "state": "Uncompleted"
-              },
-              {
-                "action": {
-                  "name": "nixbld10",
-                  "uid": 30010,
-                  "groupname": "nixbld",
-                  "gid": 30000
-                },
-                "state": "Uncompleted"
-              },
-              {
-                "action": {
-                  "name": "nixbld11",
-                  "uid": 30011,
-                  "groupname": "nixbld",
-                  "gid": 30000
-                },
-                "state": "Uncompleted"
-              },
-              {
-                "action": {
-                  "name": "nixbld12",
-                  "uid": 30012,
-                  "groupname": "nixbld",
-                  "gid": 30000
-                },
-                "state": "Uncompleted"
-              },
-              {
-                "action": {
-                  "name": "nixbld13",
-                  "uid": 30013,
-                  "groupname": "nixbld",
-                  "gid": 30000
-                },
-                "state": "Uncompleted"
-              },
-              {
-                "action": {
-                  "name": "nixbld14",
-                  "uid": 30014,
-                  "groupname": "nixbld",
-                  "gid": 30000
-                },
-                "state": "Uncompleted"
-              },
-              {
-                "action": {
-                  "name": "nixbld15",
-                  "uid": 30015,
-                  "groupname": "nixbld",
-                  "gid": 30000
-                },
-                "state": "Uncompleted"
-              },
-              {
-                "action": {
-                  "name": "nixbld16",
-                  "uid": 30016,
-                  "groupname": "nixbld",
-                  "gid": 30000
-                },
-                "state": "Uncompleted"
-              },
-              {
-                "action": {
-                  "name": "nixbld17",
-                  "uid": 30017,
-                  "groupname": "nixbld",
-                  "gid": 30000
-                },
-                "state": "Uncompleted"
-              },
-              {
-                "action": {
-                  "name": "nixbld18",
-                  "uid": 30018,
-                  "groupname": "nixbld",
-                  "gid": 30000
-                },
-                "state": "Uncompleted"
-              },
-              {
-                "action": {
-                  "name": "nixbld19",
-                  "uid": 30019,
-                  "groupname": "nixbld",
-                  "gid": 30000
-                },
-                "state": "Uncompleted"
-              },
-              {
-                "action": {
-                  "name": "nixbld20",
-                  "uid": 30020,
-                  "groupname": "nixbld",
-                  "gid": 30000
-                },
-                "state": "Uncompleted"
-              },
-              {
-                "action": {
-                  "name": "nixbld21",
-                  "uid": 30021,
-                  "groupname": "nixbld",
-                  "gid": 30000
-                },
-                "state": "Uncompleted"
-              },
-              {
-                "action": {
-                  "name": "nixbld22",
-                  "uid": 30022,
-                  "groupname": "nixbld",
-                  "gid": 30000
-                },
-                "state": "Uncompleted"
-              },
-              {
-                "action": {
-                  "name": "nixbld23",
-                  "uid": 30023,
-                  "groupname": "nixbld",
-                  "gid": 30000
-                },
-                "state": "Uncompleted"
-              },
-              {
-                "action": {
-                  "name": "nixbld24",
-                  "uid": 30024,
-                  "groupname": "nixbld",
-                  "gid": 30000
-                },
-                "state": "Uncompleted"
-              },
-              {
-                "action": {
-                  "name": "nixbld25",
-                  "uid": 30025,
-                  "groupname": "nixbld",
-                  "gid": 30000
-                },
-                "state": "Uncompleted"
-              },
-              {
-                "action": {
-                  "name": "nixbld26",
-                  "uid": 30026,
-                  "groupname": "nixbld",
-                  "gid": 30000
-                },
-                "state": "Uncompleted"
-              },
-              {
-                "action": {
-                  "name": "nixbld27",
-                  "uid": 30027,
-                  "groupname": "nixbld",
-                  "gid": 30000
-                },
-                "state": "Uncompleted"
-              },
-              {
-                "action": {
-                  "name": "nixbld28",
-                  "uid": 30028,
-                  "groupname": "nixbld",
-                  "gid": 30000
-                },
-                "state": "Uncompleted"
-              },
-              {
-                "action": {
-                  "name": "nixbld29",
-                  "uid": 30029,
-                  "groupname": "nixbld",
-                  "gid": 30000
-                },
-                "state": "Uncompleted"
-              },
-              {
-                "action": {
-                  "name": "nixbld30",
-                  "uid": 30030,
-                  "groupname": "nixbld",
-                  "gid": 30000
-                },
-                "state": "Uncompleted"
-              },
-              {
-                "action": {
-                  "name": "nixbld31",
-                  "uid": 30031,
-                  "groupname": "nixbld",
-                  "gid": 30000
-                },
-                "state": "Uncompleted"
-              },
-              {
-                "action": {
-                  "name": "nixbld32",
-                  "uid": 30032,
-                  "groupname": "nixbld",
-                  "gid": 30000
-                },
-                "state": "Uncompleted"
-              }
-            ]
+            "name": "nixbld",
+            "gid": 30000
           },
           "state": "Uncompleted"
         },
@@ -657,7 +38,7 @@
               {
                 "action": {
                   "path": "/nix/var",
-                  "user": null,
+                  "user": "root",
                   "group": null,
                   "mode": 493,
                   "force_prune_on_revert": false
@@ -667,7 +48,7 @@
               {
                 "action": {
                   "path": "/nix/var/log",
-                  "user": null,
+                  "user": "root",
                   "group": null,
                   "mode": 493,
                   "force_prune_on_revert": false
@@ -677,7 +58,7 @@
               {
                 "action": {
                   "path": "/nix/var/log/nix",
-                  "user": null,
+                  "user": "root",
                   "group": null,
                   "mode": 493,
                   "force_prune_on_revert": false
@@ -687,7 +68,7 @@
               {
                 "action": {
                   "path": "/nix/var/log/nix/drvs",
-                  "user": null,
+                  "user": "root",
                   "group": null,
                   "mode": 493,
                   "force_prune_on_revert": false
@@ -697,7 +78,7 @@
               {
                 "action": {
                   "path": "/nix/var/nix",
-                  "user": null,
+                  "user": "root",
                   "group": null,
                   "mode": 493,
                   "force_prune_on_revert": false
@@ -707,7 +88,7 @@
               {
                 "action": {
                   "path": "/nix/var/nix/db",
-                  "user": null,
+                  "user": "root",
                   "group": null,
                   "mode": 493,
                   "force_prune_on_revert": false
@@ -717,7 +98,7 @@
               {
                 "action": {
                   "path": "/nix/var/nix/gcroots",
-                  "user": null,
+                  "user": "root",
                   "group": null,
                   "mode": 493,
                   "force_prune_on_revert": false
@@ -727,7 +108,7 @@
               {
                 "action": {
                   "path": "/nix/var/nix/gcroots/per-user",
-                  "user": null,
+                  "user": "root",
                   "group": null,
                   "mode": 493,
                   "force_prune_on_revert": false
@@ -737,7 +118,7 @@
               {
                 "action": {
                   "path": "/nix/var/nix/profiles",
-                  "user": null,
+                  "user": "root",
                   "group": null,
                   "mode": 493,
                   "force_prune_on_revert": false
@@ -747,7 +128,7 @@
               {
                 "action": {
                   "path": "/nix/var/nix/profiles/per-user",
-                  "user": null,
+                  "user": "root",
                   "group": null,
                   "mode": 493,
                   "force_prune_on_revert": false
@@ -757,7 +138,7 @@
               {
                 "action": {
                   "path": "/nix/var/nix/temproots",
-                  "user": null,
+                  "user": "root",
                   "group": null,
                   "mode": 493,
                   "force_prune_on_revert": false
@@ -767,7 +148,7 @@
               {
                 "action": {
                   "path": "/nix/var/nix/userpool",
-                  "user": null,
+                  "user": "root",
                   "group": null,
                   "mode": 493,
                   "force_prune_on_revert": false
@@ -777,7 +158,7 @@
               {
                 "action": {
                   "path": "/nix/var/nix/daemon-socket",
-                  "user": null,
+                  "user": "root",
                   "group": null,
                   "mode": 493,
                   "force_prune_on_revert": false
@@ -833,7 +214,18 @@
                 "/etc/zsh/zshrc"
               ]
             },
-            "create_directories": [],
+            "create_directories": [
+              {
+                "action": {
+                  "path": "/usr/share/fish/vendor_conf.d",
+                  "user": null,
+                  "group": null,
+                  "mode": 493,
+                  "force_prune_on_revert": false
+                },
+                "state": "Completed"
+              }
+            ],
             "create_or_insert_into_files": [
               {
                 "action": {
@@ -859,7 +251,7 @@
               },
               {
                 "action": {
-                  "path": "/etc/zshenv",
+                  "path": "/etc/bash.bashrc",
                   "user": null,
                   "group": null,
                   "mode": 420,
@@ -870,11 +262,22 @@
               },
               {
                 "action": {
-                  "path": "/etc/bash.bashrc",
+                  "path": "/etc/zshrc",
                   "user": null,
                   "group": null,
                   "mode": 420,
                   "buf": "\n# Nix\nif [ -e '/nix/var/nix/profiles/default/etc/profile.d/nix-daemon.sh' ]; then\n    . '/nix/var/nix/profiles/default/etc/profile.d/nix-daemon.sh'\nfi\n# End Nix\n\n        \n",
+                  "position": "Beginning"
+                },
+                "state": "Uncompleted"
+              },
+              {
+                "action": {
+                  "path": "/usr/share/fish/vendor_conf.d/nix.fish",
+                  "user": null,
+                  "group": null,
+                  "mode": 420,
+                  "buf": "\n# Nix\nif test -e '/nix/var/nix/profiles/default/etc/profile.d/nix-daemon.fish'\n    . '/nix/var/nix/profiles/default/etc/profile.d/nix-daemon.fish'\nend\n# End Nix\n\n",
                   "position": "Beginning"
                 },
                 "state": "Uncompleted"
@@ -900,11 +303,12 @@
                 "path": "/etc/nix/nix.conf",
                 "pending_nix_config": {
                   "settings": {
-                    "experimental-features": "nix-command flakes",
-                    "auto-optimise-store": "true",
-                    "extra-nix-path": "nixpkgs=flake:nixpkgs",
+                    "experimental-features": "nix-command flakes auto-allocate-uids",
                     "build-users-group": "nixbld",
-                    "bash-prompt-prefix": "(nix:$name)\\040"
+                    "auto-optimise-store": "true",
+                    "bash-prompt-prefix": "(nix:$name)\\040",
+                    "extra-nix-path": "nixpkgs=flake:nixpkgs",
+                    "auto-allocate-uids": "true"
                   }
                 }
               },
@@ -920,7 +324,8 @@
       "action": {
         "action": "configure_init_service",
         "init": "Systemd",
-        "start_daemon": true
+        "start_daemon": true,
+        "ssl_cert_file": null
       },
       "state": "Uncompleted"
     },
@@ -936,12 +341,11 @@
     "planner": "linux",
     "settings": {
       "modify_profile": true,
-      "nix_build_user_count": 32,
       "nix_build_group_name": "nixbld",
       "nix_build_group_id": 30000,
-      "nix_build_user_prefix": "nixbld",
-      "nix_build_user_id_base": 30000,
-      "nix_package_url": "https://releases.nixos.org/nix/nix-2.13.3/nix-2.13.3-x86_64-linux.tar.xz",
+      "nix_package_url": "https://releases.nixos.org/nix/nix-2.15.0/nix-2.15.0-x86_64-linux.tar.xz",
+      "proxy": null,
+      "ssl_cert_file": null,
       "extra_conf": [],
       "force": false,
       "diagnostic_endpoint": "https://install.determinate.systems/nix/diagnostic"
@@ -956,10 +360,11 @@
     "planner": "linux",
     "configured_settings": [],
     "os_name": "Ubuntu",
-    "os_version": "22.04.1 LTS (Jammy Jellyfish)",
+    "os_version": "22.04.2 LTS (Jammy Jellyfish)",
     "triple": "x86_64-unknown-linux-musl",
     "is_ci": false,
     "endpoint": "https://install.determinate.systems/nix/diagnostic",
+    "ssl_cert_file": null,
     "failure_chain": null
   }
 }

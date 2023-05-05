@@ -9,12 +9,12 @@ Base actions are things like:
 
 * [`CreateDirectory`](base::CreateDirectory)
 * [`CreateFile`](base::CreateFile)
-* [`CreateUser`](base::CreateUser)
+* [`CreateGroup`](base::CreateGroup)
 
 Composite actions are things like:
 
 * [`CreateNixTree`](common::CreateNixTree)
-* [`CreateUsersAndGroups`](common::CreateUsersAndGroups)
+* [`ConfigureShellProfile`](common::ConfigureShellProfile)
 
 During their `plan` phase, [`Planner`](crate::planner::Planner)s call an [`Action`]s `plan` function, which may accept any
 arguments. For example, several 'composite' actions accept a [`CommonSettings`](crate::settings::CommonSettings). Later, the
