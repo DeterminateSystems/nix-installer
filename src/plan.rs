@@ -395,7 +395,7 @@ fn ensure_version<'de, D: Deserializer<'de>>(d: D) -> Result<Version, D::Error> 
         Ok(plan_version)
     } else {
         Err(D::Error::custom(&format!(
-            "This version of `nix-installer` ({nix_installer_version}) is not compatible with this plan's version ({plan_version}), you probably are trying to install with a new version of `nix-installer` which is not compatible with version {plan_version} plans. To upgrade Nix, try `sudo -i nix upgrade-nix`. To reinstall Nix, try `/nix/nix-installer uninstall` then installing again from the instructions on https://github.com/DeterminateSystems/nix-installer. To continue using this plan, use `/nix/nix-installer` or download the matching release from https://github.com/DeterminateSystems/nix-installer/releases.",
+            "This version of `nix-installer` ({nix_installer_version}) is not compatible with this plan's version ({plan_version}), you probably are trying to install with a new version of `nix-installer` which is not compatible with version {plan_version} plans. To upgrade Nix, try `sudo -i nix upgrade-nix`. To reinstall Nix, try `/nix/nix-installer uninstall` then installing again from the instructions on https://github.com/DeterminateSystems/nix-installer. To continue using this plan, download the matching release from https://github.com/DeterminateSystems/nix-installer/releases.",
         )))
     }
 }
