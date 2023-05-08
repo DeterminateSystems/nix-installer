@@ -140,7 +140,7 @@ pub struct CommonSettings {
     pub ssl_cert_file: Option<PathBuf>,
 
     /// Extra configuration lines for `/etc/nix.conf`
-    #[cfg_attr(feature = "cli", clap(long, action = ArgAction::Set, num_args = 0.., value_delimiter = ',', env = "NIX_INSTALLER_EXTRA_CONF", global = true))]
+    #[cfg_attr(feature = "cli", clap(long, action = ArgAction::Append, num_args = 0.., env = "NIX_INSTALLER_EXTRA_CONF", global = true))]
     pub extra_conf: Vec<String>,
 
     /// If `nix-installer` should forcibly recreate files it finds existing
