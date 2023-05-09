@@ -5,6 +5,7 @@ use crate::action::base::{CreateDirectory, CreateOrMergeNixConfig};
 use crate::action::{
     Action, ActionDescription, ActionError, ActionErrorKind, ActionTag, StatefulAction,
 };
+use std::collections::hash_map::Entry;
 
 const NIX_CONF_FOLDER: &str = "/etc/nix";
 const NIX_CONF: &str = "/etc/nix/nix.conf";
@@ -32,10 +33,21 @@ impl PlaceNixConfiguration {
         let settings = nix_config.settings_mut();
 
         settings.insert("build-users-group".to_string(), nix_build_group_name);
-        settings.insert(
-            "experimental-features".to_string(),
-            "nix-command flakes auto-allocate-uids".to_string(),
-        );
+        let experimental_features = ["nix-command", "flakes", "auto-allocate-uids"];
+        match settings.entry("experimental-features".to_string()) {
+            Entry::Occupied(mut slot) => {
+                let slot_mut = slot.get_mut();
+                for experimental_feature in experimental_features {
+                    if !slot_mut.contains(experimental_feature) {
+                        *slot_mut += " ";
+                        *slot_mut += experimental_feature;
+                    }
+                }
+            },
+            Entry::Vacant(slot) => {
+                let _ = slot.insert(experimental_features.join(" ").to_string());
+            },
+        };
         settings.insert("auto-optimise-store".to_string(), "true".to_string());
         settings.insert(
             "bash-prompt-prefix".to_string(),
