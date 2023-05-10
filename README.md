@@ -1,4 +1,14 @@
-# The Determinate Nix Installer
+# An experimental fork of the Determinate Nix Installer, to play with upstreaming.
+
+Note, this is different from the Determinate Nix Installer, available at https://github.com/DeterminateSystems/nix-installer.
+
+## If you're having a problem with installing Nix, this repository is almost certainly the wrong place to record issues.
+
+If you used the **official Nix install scripts**, report issues at https://github.com/NixOS/nix/issues.
+
+If you used the **Determinate Nix Installer**, report issues at https://github.com/DeterminateSystems/nix-installer.
+
+---
 
 [![Crates.io](https://img.shields.io/crates/v/nix-installer)](https://crates.io/crates/nix-installer)
 [![Docs.rs](https://img.shields.io/docsrs/nix-installer)](https://docs.rs/nix-installer/latest/nix_installer/)
