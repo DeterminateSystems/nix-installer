@@ -88,6 +88,13 @@ impl Action for MoveUnpackedNix {
                 .await
                 .map_err(|e| ActionErrorKind::CreateDirectory(dest_store.clone(), e))
                 .map_err(Self::error)?;
+            let perms: Permissions = PermissionsExt::from_mode(0o735);
+            tokio::fs::set_permissions(&dest_store, perms.clone())
+                .await
+                .map_err(|e| {
+                    ActionErrorKind::SetPermissions(perms.mode(), dest_store.to_owned(), e)
+                })
+                .map_err(Self::error)?;
         }
 
         while let Some(entry) = src_store_listing
