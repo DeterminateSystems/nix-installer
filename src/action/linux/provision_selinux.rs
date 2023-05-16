@@ -12,7 +12,7 @@ use crate::action::{Action, ActionDescription, StatefulAction};
 const SE_LINUX_POLICY_PP_CONTENT: &[u8] = include_bytes!("selinux/nix.pp");
 
 /**
-Delete an operating system level user
+Provision the selinux/nix.pp for SELinux compatability
 */
 #[derive(Debug, serde::Deserialize, serde::Serialize, Clone)]
 pub struct ProvisionSelinux {
