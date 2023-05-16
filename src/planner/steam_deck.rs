@@ -154,8 +154,6 @@ impl Planner for SteamDeck {
             Requires=nix-directory.service\n\
             ConditionPathIsDirectory=/nix\n\
             DefaultDependencies=no\n\
-            RequiredBy=nix-daemon.service\n\
-            RequiredBy=nix-daemon.socket\n\
             \n\
             [Mount]\n\
             What={persistence}\n\
@@ -163,6 +161,10 @@ impl Planner for SteamDeck {
             Type=none\n\
             DirectoryMode=0755\n\
             Options=bind\n\
+            \n\
+            [Install]\n\
+            RequiredBy=nix-daemon.service\n\
+            RequiredBy=nix-daemon.socket\n
         ",
             persistence = persistence.display(),
         );

@@ -142,8 +142,8 @@ impl CommandExecute for Install {
                             return Ok(ExitCode::FAILURE)
                         }
                         if existing_receipt.actions.iter().all(|v| v.state == ActionState::Completed) {
-                            eprintln!("{}", format!("Found existing plan in `{RECEIPT_LOCATION}`, with the same settings, already completed, try uninstalling (`{uninstall_command}`) and reinstalling if Nix isn't working").red());
-                            return Ok(ExitCode::FAILURE)
+                            eprintln!("{}", format!("Found existing plan in `{RECEIPT_LOCATION}`, with the same settings, already completed, try uninstalling (`{uninstall_command}`) and reinstalling if Nix isn't working").yellow());
+                            return Ok(ExitCode::SUCCESS)
                         }
                         existing_receipt
                     },
