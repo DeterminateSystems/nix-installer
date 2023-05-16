@@ -316,6 +316,25 @@ impl Action for ConfigureInitService {
                         )
                     })
                     .map_err(Self::error)?;
+                Self::check_if_systemd_unit_exists(SOCKET_SRC, SOCKET_DEST)
+                    .await
+                    .map_err(Self::error)?;
+                if Path::new(SOCKET_DEST).exists() {
+                    tokio::fs::remove_file(SOCKET_DEST)
+                        .await
+                        .map_err(|e| ActionErrorKind::Remove(SOCKET_DEST.into(), e))
+                        .map_err(Self::error)?;
+                }
+                tokio::fs::symlink(SOCKET_SRC, SOCKET_DEST)
+                    .await
+                    .map_err(|e| {
+                        ActionErrorKind::Symlink(
+                            PathBuf::from(SOCKET_SRC),
+                            PathBuf::from(SOCKET_DEST),
+                            e,
+                        )
+                    })
+                    .map_err(Self::error)?;
 
                 if *start_daemon {
                     execute_command(
