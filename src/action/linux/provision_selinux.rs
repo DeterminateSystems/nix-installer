@@ -78,9 +78,13 @@ impl Action for ProvisionSelinux {
             .map_err(|e| ActionErrorKind::Write(self.policy_path.clone(), e))
             .map_err(Self::error)?;
 
-        execute_command(Command::new("semodule").arg("-i").arg(&self.policy_path))
-            .await
-            .map_err(Self::error)?;
+        execute_command(
+            Command::new("semodule")
+                .arg("--install")
+                .arg(&self.policy_path),
+        )
+        .await
+        .map_err(Self::error)?;
 
         execute_command(Command::new("restorecon").args(["-FR", "/nix"]))
             .await
@@ -109,7 +113,7 @@ impl Action for ProvisionSelinux {
 }
 
 async fn remove_existing_policy(policy_path: &Path) -> Result<(), ActionErrorKind> {
-    execute_command(Command::new("semodule").arg("-r").arg("nix")).await?;
+    execute_command(Command::new("semodule").arg("--remove").arg("nix")).await?;
 
     remove_file(&policy_path)
         .await
