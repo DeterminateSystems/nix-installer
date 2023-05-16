@@ -12,7 +12,7 @@ use crate::action::{Action, ActionDescription, StatefulAction};
 const SE_LINUX_POLICY_PP_CONTENT: &[u8] = include_bytes!("selinux/nix.pp");
 
 /**
-Provision the selinux/nix.pp for SELinux compatability
+Provision the selinux/nix.pp for SELinux compatibility
 */
 #[derive(Debug, serde::Deserialize, serde::Serialize, Clone)]
 pub struct ProvisionSelinux {
