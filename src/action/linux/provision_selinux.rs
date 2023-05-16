@@ -86,10 +86,6 @@ impl Action for ProvisionSelinux {
             .await
             .map_err(Self::error)?;
 
-        // execute_command(Command::new("systemctl").arg("daemon-reexec"))
-        //     .await
-        //     .map_err(Self::error)?;
-
         Ok(())
     }
 

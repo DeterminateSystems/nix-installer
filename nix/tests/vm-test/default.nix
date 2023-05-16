@@ -4,7 +4,7 @@
 let
   nix-installer-install = ''
     NIX_PATH=$(readlink -f nix.tar.xz)
-    RUST_BACKTRACE="full" ./nix-installer install --nix-package-url "file://$NIX_PATH" --no-confirm --logger pretty --log-directive nix_installer=info
+    RUST_BACKTRACE="full" ./nix-installer install --nix-package-url "file://$NIX_PATH" --no-confirm --logger pretty --log-directive nix_installer=trace
   '';
   nix-installer-install-quiet = ''
     NIX_PATH=$(readlink -f nix.tar.xz)

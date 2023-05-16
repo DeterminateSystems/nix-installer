@@ -367,7 +367,7 @@ pub enum PlannerError {
     #[error("Detected that this process is running under Rosetta, using Nix in Rosetta is not supported (Please open an issue with your use case)")]
     RosettaDetected,
     /// A Linux SELinux related error
-    #[error("Unable to install on an SELinux system without common SELinux tooling, the binaries `restorecon`, `semodule_package`, and `semodule` are required")]
+    #[error("Unable to install on an SELinux system without common SELinux tooling, the binaries `restorecon`, and `semodule` are required")]
     SelinuxRequirements,
     /// A UTF-8 related error
     #[error("UTF-8 error")]
