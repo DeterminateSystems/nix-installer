@@ -300,6 +300,12 @@ impl Action for ConfigureInitService {
                 Self::check_if_systemd_unit_exists(SERVICE_SRC, SERVICE_DEST)
                     .await
                     .map_err(Self::error)?;
+                if Path::new(SERVICE_DEST).exists() {
+                    tokio::fs::remove_file(SERVICE_DEST)
+                        .await
+                        .map_err(|e| ActionErrorKind::Remove(SERVICE_DEST.into(), e))
+                        .map_err(Self::error)?;
+                }
                 tokio::fs::symlink(SERVICE_SRC, SERVICE_DEST)
                     .await
                     .map_err(|e| {
@@ -310,10 +316,15 @@ impl Action for ConfigureInitService {
                         )
                     })
                     .map_err(Self::error)?;
-
                 Self::check_if_systemd_unit_exists(SOCKET_SRC, SOCKET_DEST)
                     .await
                     .map_err(Self::error)?;
+                if Path::new(SOCKET_DEST).exists() {
+                    tokio::fs::remove_file(SOCKET_DEST)
+                        .await
+                        .map_err(|e| ActionErrorKind::Remove(SOCKET_DEST.into(), e))
+                        .map_err(Self::error)?;
+                }
                 tokio::fs::symlink(SOCKET_SRC, SOCKET_DEST)
                     .await
                     .map_err(|e| {

@@ -19,6 +19,7 @@
       # Omitting `inputs.nixpkgs.follows = "nixpkgs";` on purpose
     };
 
+    flake-compat = { url = "github:edolstra/flake-compat"; flake = false; };
   };
 
   outputs =
@@ -139,6 +140,8 @@
               cacert
               cargo-audit
               nixpkgs-fmt
+              semodule-utils
+              checkpolicy
               check.check-rustfmt
               check.check-spelling
               check.check-nixpkgs-fmt

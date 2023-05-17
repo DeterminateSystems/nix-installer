@@ -367,13 +367,8 @@ pub enum PlannerError {
     #[error("Detected that this process is running under Rosetta, using Nix in Rosetta is not supported (Please open an issue with your use case)")]
     RosettaDetected,
     /// A Linux SELinux related error
-    #[error("\
-        This installer doesn't yet support SELinux in `Enforcing` mode.\n
-        \n\
-        If desirable, consider setting SELinux to `Permissive` mode with `setenforce Permissive`.\n\
-        \n\
-        If SELinux is important to you, please see https://github.com/DeterminateSystems/nix-installer/issues/124.")]
-    SelinuxEnforcing,
+    #[error("Unable to install on an SELinux system without common SELinux tooling, the binaries `restorecon`, and `semodule` are required")]
+    SelinuxRequirements,
     /// A UTF-8 related error
     #[error("UTF-8 error")]
     Utf8(#[from] FromUtf8Error),
@@ -401,7 +396,7 @@ impl HasExpectedErrors for PlannerError {
             PlannerError::Sysctl(_) => None,
             this @ PlannerError::RosettaDetected => Some(Box::new(this)),
             PlannerError::Utf8(_) => None,
-            PlannerError::SelinuxEnforcing => Some(Box::new(self)),
+            PlannerError::SelinuxRequirements => Some(Box::new(self)),
             PlannerError::Custom(e) => {
                 #[cfg(target_os = "linux")]
                 if let Some(err) = e.downcast_ref::<linux::LinuxErrorKind>() {

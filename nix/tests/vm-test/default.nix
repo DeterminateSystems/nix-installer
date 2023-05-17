@@ -174,7 +174,7 @@ let
       uninstallCheck = installCases.install-default.uninstallCheck;
     };
   };
-  cureCases = {
+  cureSelfCases = {
     cure-self-linux-working = {
       preinstall = ''
         ${nix-installer-install-quiet}
@@ -253,6 +253,8 @@ let
       uninstall = installCases.install-default.uninstall;
       uninstallCheck = installCases.install-default.uninstallCheck;
     };
+  };
+  cureScriptCases = {
     cure-script-multi-self-broken-no-nix-path = {
       preinstall = ''
         ${cure-script-multi-user}
@@ -413,7 +415,7 @@ let
       };
       rootDisk = "box.img";
       system = "x86_64-linux";
-      postBoot = disableSELinux;
+      upstreamScriptsWork = false; # SELinux!
     };
 
     "fedora-v37" = {
@@ -423,7 +425,7 @@ let
       };
       rootDisk = "box.img";
       system = "x86_64-linux";
-      postBoot = disableSELinux;
+      upstreamScriptsWork = false; # SELinux!
     };
 
     # Currently fails with 'error while loading shared libraries:
@@ -435,7 +437,7 @@ let
       hash = "sha256-QwzbvRoRRGqUCQptM7X/InRWFSP2sqwRt2HaaO6zBGM=";
       };
       rootDisk = "box.img";
-      postBoot = disableSELinux;
+      upstreamScriptsWork = false; # SELinux!
       system = "x86_64-linux";
       };
     */
@@ -446,7 +448,7 @@ let
         hash = "sha256-b4afnqKCO9oWXgYHb9DeQ2berSwOjS27rSd9TxXDc/U=";
       };
       rootDisk = "box.img";
-      postBoot = disableSELinux;
+      upstreamScriptsWork = false; # SELinux!
       system = "x86_64-linux";
     };
 
@@ -457,7 +459,7 @@ let
       };
       rootDisk = "box.img";
       system = "x86_64-linux";
-      postBoot = disableSELinux;
+      upstreamScriptsWork = false; # SELinux!
     };
 
     "rhel-v9" = {
@@ -467,7 +469,7 @@ let
       };
       rootDisk = "box.img";
       system = "x86_64-linux";
-      postBoot = disableSELinux;
+      upstreamScriptsWork = false; # SELinux!
       extraQemuOpts = "-cpu Westmere-v2";
     };
 
@@ -596,11 +598,13 @@ let
     )
     images;
 
-  allCases = lib.recursiveUpdate (lib.recursiveUpdate installCases cureCases) uninstallCases;
+  allCases = lib.recursiveUpdate (lib.recursiveUpdate installCases (lib.recursiveUpdate cureSelfCases cureScriptCases)) uninstallCases;
 
   install-tests = makeTests "install" installCases;
 
-  cure-tests = makeTests "cure" cureCases;
+  cure-self-tests = makeTests "cure-self" cureSelfCases;
+
+  cure-script-tests = makeTests "cure-script" cureScriptCases;
 
   uninstall-tests = makeTests "uninstall" uninstallCases;
 
@@ -610,14 +614,14 @@ let
         name = "all";
         constituents = [
           install-tests."${imageName}"."x86_64-linux".install
-          cure-tests."${imageName}"."x86_64-linux".cure
+          cure-self-tests."${imageName}"."x86_64-linux".cure-self
           uninstall-tests."${imageName}"."x86_64-linux".uninstall
-        ];
+        ] ++ (lib.optional (image.upstreamScriptsWork or false) cure-script-tests."${imageName}"."x86_64-linux".cure-script);
       });
     })
     images;
 
-  joined-tests = lib.recursiveUpdate (lib.recursiveUpdate (lib.recursiveUpdate cure-tests install-tests) uninstall-tests) all-tests;
+  joined-tests = lib.recursiveUpdate (lib.recursiveUpdate (lib.recursiveUpdate install-tests (lib.recursiveUpdate cure-self-tests cure-script-tests)) uninstall-tests) all-tests;
 
 in
 lib.recursiveUpdate joined-tests {
@@ -626,5 +630,5 @@ lib.recursiveUpdate joined-tests {
       name = caseName;
       constituents = pkgs.lib.mapAttrsToList (name: value: value."x86_64-linux"."${caseName}") joined-tests;
     }
-  )) (allCases // { "cure" = { }; "install" = { }; "uninstall" = { }; "all" = { }; });
+  )) (allCases // { "cure-self" = { }; "cure-script" = { }; "install" = { }; "uninstall" = { }; "all" = { }; });
 }
