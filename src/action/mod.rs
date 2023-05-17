@@ -328,6 +328,12 @@ impl ActionError {
     pub fn action_tag(&self) -> &ActionTag {
         &self.action_tag
     }
+
+    #[cfg(feature = "diagnostics")]
+    pub fn diagnostic(&self) -> String {
+        use crate::diagnostics::ErrorDiagnostic;
+        self.kind.diagnostic()
+    }
 }
 
 impl std::fmt::Display for ActionError {
@@ -572,6 +578,10 @@ impl crate::diagnostics::ErrorDiagnostic for ActionErrorKind {
     fn diagnostic(&self) -> String {
         let static_str: &'static str = (self).into();
         let context = match self {
+            Self::Child(child) => vec![child.diagnostic()],
+            Self::MultipleChildren(children) => {
+                children.iter().map(|child| child.diagnostic()).collect()
+            },
             Self::Read(path, _)
             | Self::Open(path, _)
             | Self::Write(path, _)

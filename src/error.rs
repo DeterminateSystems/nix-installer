@@ -98,6 +98,10 @@ impl crate::diagnostics::ErrorDiagnostic for NixInstallerError {
         let static_str: &'static str = (self).into();
         let context = match self {
             Self::Action(action_error) => vec![action_error.action_tag().to_string()],
+            Self::ActionRevert(action_errors) => action_errors
+                .iter()
+                .map(|action_error| action_error.action_tag().to_string())
+                .collect(),
             _ => vec![],
         };
         return format!(
