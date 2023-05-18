@@ -23,6 +23,7 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v3
+      - run: echo nice it worked && exit 1
       - name: Download Buildkite Artifacts
         uses: EnricoMi/download-buildkite-artifact-action@v1.14
         with:
