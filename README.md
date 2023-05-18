@@ -232,7 +232,7 @@ podman rm -f $CONTAINER
 podman rmi $IMAGE
 ```
 
-On some container tools, such as `docker`, `sandbox = false` can be omitted. This will negatively impact compatability with container tools like `podman`.
+On some container tools, such as `docker`, `sandbox = false` can be omitted. This will negatively impact compatibility with container tools like `podman`.
 
 ## In WSL2
 
