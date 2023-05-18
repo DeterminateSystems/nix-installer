@@ -148,7 +148,11 @@
               check.check-editorconfig
               check.check-semver
             ]
-            ++ lib.optionals (pkgs.stdenv.isDarwin) (with pkgs; [ libiconv ]);
+            ++ lib.optionals (pkgs.stdenv.isDarwin) (with pkgs; [ libiconv ])
+            ++ lib.optionals (pkgs.stdenv.isLinux) (with pkgs; [
+              podman
+              /* users are expected to have a system docker, too */
+            ]);
           };
         });
 
