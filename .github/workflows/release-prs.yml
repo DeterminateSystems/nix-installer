@@ -13,7 +13,6 @@ jobs:
     concurrency: release
     # Only intra-repo PRs are allowed to have PR artifacts uploaded
     # We only want to trigger once the upload once in the case the upload label is added, not when any label is added
-    # bogus
     if: |
         github.event.pull_request.head.repo.full_name == 'DeterminateSystems/nix-installer'
         && (github.event.action == 'labeled' && github.event.label.name == 'upload to s3')
@@ -24,7 +23,6 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v3
-      - run: echo nice it worked && exit 1
       - name: Download Buildkite Artifacts
         uses: EnricoMi/download-buildkite-artifact-action@v1.14
         with:
