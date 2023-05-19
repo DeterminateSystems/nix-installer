@@ -568,6 +568,7 @@ impl HasExpectedErrors for ActionErrorKind {
             Self::PathUserMismatch(_, _, _)
             | Self::PathGroupMismatch(_, _, _)
             | Self::PathModeMismatch(_, _, _) => Some(Box::new(self)),
+            Self::SystemdMissing => Some(Box::new(self)),
             _ => None,
         }
     }
