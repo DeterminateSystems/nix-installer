@@ -103,27 +103,6 @@ impl CreateNixVolume {
                 .map_err(Self::error)?;
         let enable_ownership = EnableOwnership::plan("/nix").await.map_err(Self::error)?;
 
-        /* Testing with `sudo tmutil addexclusion -p /nix` and  `sudo tmutil addexclusion -v "Nix Store"` on DetSys's Macs
-           yielded this error:
-
-           ```
-            tmutil: addexclusion requires Full Disk Access privileges.
-            To allow this operation, select Full Disk Access in the Privacy
-            tab of the Security & Privacy preference pane, and add Terminal
-            to the list of applications which are allowed Full Disk Access.
-            ```
-
-            So we do these subdirectories instead.
-        */
-        let set_tmutil_exclusions = vec![
-            SetTmutilExclusion::plan("/nix/store")
-                .await
-                .map_err(Self::error)?,
-            SetTmutilExclusion::plan("/nix/var")
-                .await
-                .map_err(Self::error)?,
-        ];
-
         Ok(Self {
             disk: disk.to_path_buf(),
             name,
