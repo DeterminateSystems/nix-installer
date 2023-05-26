@@ -143,7 +143,7 @@ impl Planner for Macos {
                 .await
                 .map_err(PlannerError::Action)?
                 .boxed(),
-            SetTmutilExclusions::plan(vec!["/nix/store", "/nix/var"])
+            SetTmutilExclusions::plan(vec![PathBuf::from("/nix/store"), PathBuf::from("/nix/var")])
                 .await
                 .map_err(PlannerError::Action)?
                 .boxed(),
