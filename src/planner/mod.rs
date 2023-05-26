@@ -397,9 +397,9 @@ impl HasExpectedErrors for PlannerError {
             this @ PlannerError::RosettaDetected => Some(Box::new(this)),
             PlannerError::Utf8(_) => None,
             PlannerError::SelinuxRequirements => Some(Box::new(self)),
-            PlannerError::Custom(e) => {
+            PlannerError::Custom(_e) => {
                 #[cfg(target_os = "linux")]
-                if let Some(err) = e.downcast_ref::<linux::LinuxErrorKind>() {
+                if let Some(err) = _e.downcast_ref::<linux::LinuxErrorKind>() {
                     return err.expected();
                 }
                 None

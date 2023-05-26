@@ -1,14 +1,12 @@
-use std::io::Cursor;
 use std::path::{Path, PathBuf};
 
 use tokio::process::Command;
 use tracing::{span, Span};
 
-use crate::action::{ActionError, ActionErrorKind, ActionTag, StatefulAction};
+use crate::action::{ActionError, ActionTag, StatefulAction};
 use crate::execute_command;
 
 use crate::action::{Action, ActionDescription};
-use crate::os::darwin::DiskUtilInfoOutput;
 
 /**
 Set a time machine exclusion on a path.
