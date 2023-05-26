@@ -13,10 +13,7 @@ use std::{
 use tokio::process::Command;
 use tracing::{span, Span};
 
-use super::{
-    create_fstab_entry::CreateFstabEntry, CreateVolumeService, KickstartLaunchctlService,
-    SetTmutilExclusion,
-};
+use super::{create_fstab_entry::CreateFstabEntry, CreateVolumeService, KickstartLaunchctlService};
 
 pub const NIX_VOLUME_MOUNTD_DEST: &str = "/Library/LaunchDaemons/org.nixos.darwin-store.plist";
 

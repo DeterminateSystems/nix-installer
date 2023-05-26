@@ -10,7 +10,7 @@ use crate::{
     action::{
         base::RemoveDirectory,
         common::{ConfigureInitService, ConfigureNix, ProvisionNix},
-        macos::CreateNixVolume,
+        macos::{CreateNixVolume, SetTmutilExclusions},
         StatefulAction,
     },
     execute_command,

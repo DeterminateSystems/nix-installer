@@ -2,7 +2,6 @@ use std::path::PathBuf;
 
 use tracing::{span, Span};
 
-use crate::action::base::CreateDirectory;
 use crate::action::{
     Action, ActionDescription, ActionError, ActionErrorKind, ActionTag, StatefulAction,
 };
