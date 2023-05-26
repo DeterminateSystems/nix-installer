@@ -1,9 +1,13 @@
+use std::path::PathBuf;
+
 use tracing::{span, Span};
 
 use crate::action::base::CreateDirectory;
 use crate::action::{
     Action, ActionDescription, ActionError, ActionErrorKind, ActionTag, StatefulAction,
 };
+
+use super::SetTmutilExclusion;
 
 /**
 Set a time machine exclusion on several paths.
@@ -41,9 +45,9 @@ impl SetTmutilExclusions {
 
             So we do these subdirectories instead.
         */
-        let set_tmutil_exclusions = Vec::new();
+        let mut set_tmutil_exclusions = Vec::new();
         for path in paths {
-            set_tmutil_exclusion = SetTmutilExclusion::plan(path).await.map_err(Self::error)?;
+            let set_tmutil_exclusion = SetTmutilExclusion::plan(path).await.map_err(Self::error)?;
             set_tmutil_exclusions.push(set_tmutil_exclusion);
         }
 
@@ -69,25 +73,30 @@ impl Action for SetTmutilExclusions {
     }
 
     fn execute_description(&self) -> Vec<ActionDescription> {
-        let Self { create_directories } = &self;
+        let Self {
+            set_tmutil_exclusions,
+        } = &self;
 
-        let mut create_directory_descriptions = Vec::new();
-        for create_directory in create_directories {
-            if let Some(val) = create_directory.describe_execute().iter().next() {
-                create_directory_descriptions.push(val.description.clone())
+        let mut set_tmutil_exclusion_descriptions = Vec::new();
+        for set_tmutil_exclusion in set_tmutil_exclusions {
+            if let Some(val) = set_tmutil_exclusion.describe_execute().iter().next() {
+                set_tmutil_exclusion_descriptions.push(val.description.clone())
             }
         }
         vec![ActionDescription::new(
             self.tracing_synopsis(),
-            create_directory_descriptions,
+            set_tmutil_exclusion_descriptions,
         )]
     }
 
     #[tracing::instrument(level = "debug", skip_all)]
     async fn execute(&mut self) -> Result<(), ActionError> {
         // Just do sequential since parallelizing this will have little benefit
-        for create_directory in self.create_directories.iter_mut() {
-            create_directory.try_execute().await.map_err(Self::error)?;
+        for set_tmutil_exclusion in self.set_tmutil_exclusions.iter_mut() {
+            set_tmutil_exclusion
+                .try_execute()
+                .await
+                .map_err(Self::error)?;
         }
 
         Ok(())
@@ -95,21 +104,8 @@ impl Action for SetTmutilExclusions {
 
     fn revert_description(&self) -> Vec<ActionDescription> {
         vec![ActionDescription::new(
-            format!("Remove the directory tree in `/nix`"),
-            vec![
-                format!(
-                    "Nix and the Nix daemon require a Nix Store, which will be stored at `/nix`"
-                ),
-                format!(
-                    "Removes: {}",
-                    PATHS
-                        .iter()
-                        .rev()
-                        .map(|v| format!("`{v}`"))
-                        .collect::<Vec<_>>()
-                        .join(", ")
-                ),
-            ],
+            format!("Remove time machine exclusions"),
+            vec![],
         )]
     }
 
@@ -117,8 +113,8 @@ impl Action for SetTmutilExclusions {
     async fn revert(&mut self) -> Result<(), ActionError> {
         let mut errors = vec![];
         // Just do sequential since parallelizing this will have little benefit
-        for create_directory in self.create_directories.iter_mut().rev() {
-            if let Err(err) = create_directory.try_revert().await {
+        for set_tmutil_exclusion in self.set_tmutil_exclusions.iter_mut().rev() {
+            if let Err(err) = set_tmutil_exclusion.try_revert().await {
                 errors.push(err);
             }
         }

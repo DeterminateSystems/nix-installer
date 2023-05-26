@@ -37,7 +37,6 @@ pub struct CreateNixVolume {
     bootstrap_volume: StatefulAction<BootstrapLaunchctlService>,
     kickstart_launchctl_service: StatefulAction<KickstartLaunchctlService>,
     enable_ownership: StatefulAction<EnableOwnership>,
-    set_tmutil_exclusions: Vec<StatefulAction<SetTmutilExclusion>>,
 }
 
 impl CreateNixVolume {
@@ -118,7 +117,6 @@ impl CreateNixVolume {
             bootstrap_volume,
             kickstart_launchctl_service,
             enable_ownership,
-            set_tmutil_exclusions,
         }
         .into())
     }
@@ -164,9 +162,6 @@ impl Action for CreateNixVolume {
             self.bootstrap_volume.tracing_synopsis(),
             self.enable_ownership.tracing_synopsis(),
         ]);
-        for set_tmutil_exclusion in &self.set_tmutil_exclusions {
-            explanation.push(set_tmutil_exclusion.tracing_synopsis())
-        }
 
         vec![ActionDescription::new(self.tracing_synopsis(), explanation)]
     }
@@ -262,13 +257,6 @@ impl Action for CreateNixVolume {
             .await
             .map_err(Self::error)?;
 
-        for set_tmutil_exclusion in &mut self.set_tmutil_exclusions {
-            set_tmutil_exclusion
-                .try_execute()
-                .await
-                .map_err(Self::error)?;
-        }
-
         Ok(())
     }
 
@@ -288,9 +276,6 @@ impl Action for CreateNixVolume {
             self.bootstrap_volume.tracing_synopsis(),
             self.enable_ownership.tracing_synopsis(),
         ]);
-        for set_tmutil_exclusion in &self.set_tmutil_exclusions {
-            explanation.push(set_tmutil_exclusion.tracing_synopsis())
-        }
 
         vec![ActionDescription::new(
             format!(
@@ -305,12 +290,6 @@ impl Action for CreateNixVolume {
     #[tracing::instrument(level = "debug", skip_all)]
     async fn revert(&mut self) -> Result<(), ActionError> {
         let mut errors = vec![];
-
-        for set_tmutil_exclusion in &mut self.set_tmutil_exclusions {
-            if let Err(err) = set_tmutil_exclusion.try_revert().await {
-                errors.push(err)
-            };
-        }
 
         if let Err(err) = self.enable_ownership.try_revert().await {
             errors.push(err)

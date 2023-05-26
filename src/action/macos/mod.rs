@@ -11,6 +11,7 @@ pub(crate) mod enable_ownership;
 pub(crate) mod encrypt_apfs_volume;
 pub(crate) mod kickstart_launchctl_service;
 pub(crate) mod set_tmutil_exclusion;
+pub(crate) mod set_tmutil_exclusions;
 pub(crate) mod unmount_apfs_volume;
 
 pub use bootstrap_launchctl_service::BootstrapLaunchctlService;
@@ -23,6 +24,7 @@ pub use encrypt_apfs_volume::EncryptApfsVolume;
 pub use kickstart_launchctl_service::KickstartLaunchctlService;
 use serde::Deserialize;
 pub use set_tmutil_exclusion::SetTmutilExclusion;
+pub use set_tmutil_exclusions::SetTmutilExclusions;
 use tokio::process::Command;
 pub use unmount_apfs_volume::UnmountApfsVolume;
 use uuid::Uuid;
