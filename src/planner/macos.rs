@@ -1,4 +1,4 @@
-use std::{collections::HashMap, io::Cursor};
+use std::{collections::HashMap, io::Cursor, path::PathBuf};
 
 #[cfg(feature = "cli")]
 use clap::ArgAction;
