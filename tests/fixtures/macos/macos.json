@@ -77,7 +77,21 @@
             "path": "/nix"
           },
           "state": "Uncompleted"
-        }
+        },
+        "set_tmutil_exclusions": [
+          {
+            "action": {
+              "path": "/nix/store"
+            },
+            "state": "Uncompleted"
+          },
+          {
+            "action": {
+              "path": "/nix/var"
+            },
+            "state": "Uncompleted"
+          }
+        ]
       },
       "state": "Uncompleted"
     },
