@@ -77,21 +77,7 @@
             "path": "/nix"
           },
           "state": "Uncompleted"
-        },
-        "set_tmutil_exclusions": [
-          {
-            "action": {
-              "path": "/nix/store"
-            },
-            "state": "Uncompleted"
-          },
-          {
-            "action": {
-              "path": "/nix/var"
-            },
-            "state": "Uncompleted"
-          }
-        ]
+        }
       },
       "state": "Uncompleted"
     },
@@ -107,7 +93,7 @@
           },
           "state": "Uncompleted"
         },
-        "delete_users": [],
+        "delete_users_in_group": null,
         "create_group": {
           "action": {
             "name": "nixbld",
@@ -263,6 +249,26 @@
     },
     {
       "action": {
+        "action": "set_tmutil_exclusions",
+        "set_tmutil_exclusions": [
+          {
+            "action": {
+              "path": "/nix/store"
+            },
+            "state": "Uncompleted"
+          },
+          {
+            "action": {
+              "path": "/nix/var"
+            },
+            "state": "Uncompleted"
+          }
+        ]
+      },
+      "state": "Uncompleted"
+    },
+    {
+      "action": {
         "action": "configure_nix",
         "setup_default_profile": {
           "action": {
@@ -353,12 +359,12 @@
                 "path": "/etc/nix/nix.conf",
                 "pending_nix_config": {
                   "settings": {
-                    "experimental-features": "nix-command flakes auto-allocate-uids",
                     "extra-nix-path": "nixpkgs=flake:nixpkgs",
+                    "auto-allocate-uids": "true",
                     "auto-optimise-store": "true",
                     "build-users-group": "nixbld",
                     "bash-prompt-prefix": "(nix:$name)\\040",
-                    "auto-allocate-uids": "true"
+                    "experimental-features": "nix-command flakes auto-allocate-uids"
                   }
                 }
               },
