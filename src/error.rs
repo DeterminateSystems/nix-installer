@@ -1,5 +1,7 @@
 use std::{error::Error, path::PathBuf};
 
+use semver::Version;
+
 use crate::{action::ActionError, planner::PlannerError, settings::InstallSettingsError};
 
 /// An error occurring during a call defined in this crate
@@ -68,6 +70,15 @@ pub enum NixInstallerError {
         #[source]
         crate::diagnostics::DiagnosticError,
     ),
+    /// Could not parse the value as a version requirement in order to ensure it's compatible
+    #[error("Could not parse `{0}` as a version requirement in order to ensure it's compatible")]
+    InvalidVersionRequirement(String, semver::Error),
+    /// Could not parse `nix-installer`'s version as a valid version according to Semantic Versioning, therefore the plan version compatibility cannot be checked
+    #[error("Could not parse `nix-installer`'s version `{0}` as a valid version according to Semantic Versioning, therefore the plan version compatibility cannot be checked")]
+    InvalidCurrentVersion(String, semver::Error),
+    /// This version of `nix-installer` is not compatible with this plan's version
+    #[error("`nix-installer` version `{}` is not compatible with this plan's version `{}`", .binary, .plan)]
+    IncompatibleVersion { binary: Version, plan: Version },
 }
 
 pub(crate) trait HasExpectedErrors: std::error::Error + Sized + Send + Sync {
@@ -86,6 +97,11 @@ impl HasExpectedErrors for NixInstallerError {
             NixInstallerError::SemVer(_) => None,
             NixInstallerError::Planner(planner_error) => planner_error.expected(),
             NixInstallerError::InstallSettings(_) => None,
+            this @ NixInstallerError::InvalidVersionRequirement(_, _) => Some(Box::new(this)),
+            this @ NixInstallerError::InvalidCurrentVersion(_, _) => Some(Box::new(this)),
+            this @ NixInstallerError::IncompatibleVersion { binary: _, plan: _ } => {
+                Some(Box::new(this))
+            },
             #[cfg(feature = "diagnostics")]
             NixInstallerError::Diagnostic(_) => None,
         }
