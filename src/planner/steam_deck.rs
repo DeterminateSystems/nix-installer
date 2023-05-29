@@ -39,6 +39,7 @@ One time step:
 6. Run `sudo steamos-chroot --disk /dev/nvme0n1 --partset B` and inside run the same above commands
 7. Safely turn off the VM!
 
+
 Repeated step:
 1. Create a snapshot of the base install to work on
     ```sh
@@ -58,6 +59,42 @@ Repeated step:
     ```
 3. **Do your testing!** You can `ssh deck@localhost -p 2222` in and use `rsync -e 'ssh -p 2222' result/bin/nix-installer deck@localhost:nix-installer` to send a `nix-installer build.
 4. Delete `steamos-hack.qcow2`
+
+
+To test a specific channel of the Steam Deck:
+1. Use `steamos-select-branch -l` to list possible branches.
+2. Run `steamos-select-branch $BRANCH` to choose a branch
+3. Run `steamos-update`
+4. Run `sudo steamos-chroot --disk /dev/vda --partset A` and inside run this
+    ```sh
+    steamos-readonly disable
+    echo -e '[Autologin]\nSession=plasma.desktop' > /etc/sddm.conf.d/zz-steamos-autologin.conf
+    passwd deck
+    sudo systemctl enable sshd
+    steamos-readonly enable
+    exit
+    ```
+5. Run `sudo steamos-chroot --disk /dev/vda --partset B` and inside run the same above commands
+6. Safely turn off the VM!
+
+
+To test on a specific build id of the Steam Deck:
+1. Determine the build id to be targetted. On a running system this is found in `/etc/os-release` under `BUILD_ID`.
+2. Run `steamos-update-os now --update-version $BUILD_ID`
+    + If you can't access a specific build ID you may need to change branches, see above.
+    + Be patient, don't ctrl+C it, it breaks. Don't reboot yet!
+4. Run `sudo steamos-chroot --disk /dev/vda --partset A` and inside run this
+    ```sh
+    steamos-readonly disable
+    echo -e '[Autologin]\nSession=plasma.desktop' > /etc/sddm.conf.d/zz-steamos-autologin.conf
+    passwd deck
+    sudo systemctl enable sshd
+    steamos-readonly enable
+    exit
+    ```
+5. Run `sudo steamos-chroot --disk /dev/vda --partset B` and inside run the same above commands
+6. Safely turn off the VM!
+
 */
 use std::{collections::HashMap, path::PathBuf};
 
