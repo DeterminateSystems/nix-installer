@@ -2,12 +2,11 @@ use std::{path::PathBuf, str::FromStr};
 
 use crate::{
     action::{Action, ActionDescription, StatefulAction},
-    planner::{BuiltinPlanner, Planner, PlannerError},
+    planner::{BuiltinPlanner, Planner},
     NixInstallerError,
 };
 use owo_colors::OwoColorize;
 use semver::{Version, VersionReq};
-use serde::{de::Error, Deserialize, Deserializer};
 use tokio::sync::broadcast::Receiver;
 
 pub const RECEIPT_LOCATION: &str = "/nix/receipt.json";
@@ -412,8 +411,8 @@ mod test {
             "version": good_version,
             "actions": [],
         });
-        let maybe_plan: Result<InstallPlan, serde_json::Error> = serde_json::from_value(value);
-        maybe_plan.unwrap();
+        let maybe_plan: InstallPlan = serde_json::from_value(value)?;
+        maybe_plan.check_compatible()?;
         Ok(())
     }
 
@@ -426,10 +425,8 @@ mod test {
             "version": bad_version,
             "actions": [],
         });
-        let maybe_plan: Result<InstallPlan, serde_json::Error> = serde_json::from_value(value);
-        assert!(maybe_plan.is_err());
-        let err = maybe_plan.unwrap_err();
-        assert!(err.is_data());
+        let maybe_plan: InstallPlan = serde_json::from_value(value)?;
+        assert!(maybe_plan.check_compatible().is_err());
         Ok(())
     }
 }
