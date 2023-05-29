@@ -79,7 +79,7 @@ To test a specific channel of the Steam Deck:
 
 
 To test on a specific build id of the Steam Deck:
-1. Determine the build id to be targetted. On a running system this is found in `/etc/os-release` under `BUILD_ID`.
+1. Determine the build id to be targeted. On a running system this is found in `/etc/os-release` under `BUILD_ID`.
 2. Run `steamos-update-os now --update-version $BUILD_ID`
     + If you can't access a specific build ID you may need to change branches, see above.
     + Be patient, don't ctrl+C it, it breaks. Don't reboot yet!
