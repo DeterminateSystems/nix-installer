@@ -96,7 +96,12 @@ To test on a specific build id of the Steam Deck:
 6. Safely turn off the VM!
 
 */
-use std::{collections::HashMap, path::PathBuf};
+use std::{
+    collections::HashMap,
+    path::{Path, PathBuf},
+};
+
+use tokio::process::Command;
 
 use crate::{
     action::{
@@ -115,6 +120,7 @@ use super::ShellProfileLocations;
 #[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
 #[cfg_attr(feature = "cli", derive(clap::Parser))]
 pub struct SteamDeck {
+    /// Where `/nix` will be bind mounted to. Deprecated in SteamOS build ID 20230522.1000 or later
     #[cfg_attr(
         feature = "cli",
         clap(
@@ -139,89 +145,103 @@ impl Planner for SteamDeck {
     }
 
     async fn plan(&self) -> Result<Vec<StatefulAction<Box<dyn Action>>>, PlannerError> {
-        let persistence = &self.persistence;
-        if !persistence.is_absolute() {
-            return Err(PlannerError::Custom(Box::new(
-                SteamDeckError::AbsolutePathRequired(self.persistence.clone()),
-            )));
-        };
+        // Starting in roughly build ID `20230522.1000`, the Steam Deck has a `/home/.steamos/offload/nix` directory and `nix.mount` unit we can use instead of creating a mountpoint.
+        let requires_nix_bind_mount = detect_requires_bind_mount().await?;
 
-        let nix_directory_buf = format!(
-            "\
-            [Unit]\n\
-            Description=Create a `/nix` directory to be used for bind mounting\n\
-            PropagatesStopTo=nix-daemon.service\n\
-            PropagatesStopTo=nix.mount\n\
-            DefaultDependencies=no\n\
-            After=grub-recordfail.service\n\
-            After=steamos-finish-oobe-migration.service\n\
-            \n\
-            [Service]\n\
-            Type=oneshot\n\
-            ExecStart=steamos-readonly disable\n\
-            ExecStart=mkdir -vp /nix\n\
-            ExecStart=chmod -v 0755 /nix\n\
-            ExecStart=chown -v root /nix\n\
-            ExecStart=chgrp -v root /nix\n\
-            ExecStart=steamos-readonly enable\n\
-            ExecStop=steamos-readonly disable\n\
-            ExecStop=rmdir /nix\n\
-            ExecStop=steamos-readonly enable\n\
-            RemainAfterExit=true\n\
-        "
-        );
-        let nix_directory_unit = CreateFile::plan(
-            "/etc/systemd/system/nix-directory.service",
-            None,
-            None,
-            0o0644,
-            nix_directory_buf,
-            false,
-        )
-        .await
-        .map_err(PlannerError::Action)?;
+        let mut actions = vec![];
 
-        let create_bind_mount_buf = format!(
-            "\
-            [Unit]\n\
-            Description=Mount `{persistence}` on `/nix`\n\
-            PropagatesStopTo=nix-daemon.service\n\
-            PropagatesStopTo=nix-directory.service\n\
-            After=nix-directory.service\n\
-            Requires=nix-directory.service\n\
-            ConditionPathIsDirectory=/nix\n\
-            DefaultDependencies=no\n\
-            \n\
-            [Mount]\n\
-            What={persistence}\n\
-            Where=/nix\n\
-            Type=none\n\
-            DirectoryMode=0755\n\
-            Options=bind\n\
-            \n\
-            [Install]\n\
-            RequiredBy=nix-daemon.service\n\
-            RequiredBy=nix-daemon.socket\n
-        ",
-            persistence = persistence.display(),
-        );
-        let create_bind_mount_unit = CreateFile::plan(
-            "/etc/systemd/system/nix.mount",
-            None,
-            None,
-            0o0644,
-            create_bind_mount_buf,
-            false,
-        )
-        .await
-        .map_err(PlannerError::Action)?;
+        if requires_nix_bind_mount {
+            let persistence = &self.persistence;
+            if !persistence.is_absolute() {
+                return Err(PlannerError::Custom(Box::new(
+                    SteamDeckError::AbsolutePathRequired(self.persistence.clone()),
+                )));
+            };
+            actions.push(
+                CreateDirectory::plan(&persistence, None, None, 0o0755, true)
+                    .await
+                    .map_err(PlannerError::Action)?
+                    .boxed(),
+            );
+
+            let nix_directory_buf = format!(
+                "\
+                [Unit]\n\
+                Description=Create a `/nix` directory to be used for bind mounting\n\
+                PropagatesStopTo=nix-daemon.service\n\
+                PropagatesStopTo=nix.mount\n\
+                DefaultDependencies=no\n\
+                After=grub-recordfail.service\n\
+                After=steamos-finish-oobe-migration.service\n\
+                \n\
+                [Service]\n\
+                Type=oneshot\n\
+                ExecStart=steamos-readonly disable\n\
+                ExecStart=mkdir -vp /nix\n\
+                ExecStart=chmod -v 0755 /nix\n\
+                ExecStart=chown -v root /nix\n\
+                ExecStart=chgrp -v root /nix\n\
+                ExecStart=steamos-readonly enable\n\
+                ExecStop=steamos-readonly disable\n\
+                ExecStop=rmdir /nix\n\
+                ExecStop=steamos-readonly enable\n\
+                RemainAfterExit=true\n\
+            "
+            );
+            let nix_directory_unit = CreateFile::plan(
+                "/etc/systemd/system/nix-directory.service",
+                None,
+                None,
+                0o0644,
+                nix_directory_buf,
+                false,
+            )
+            .await
+            .map_err(PlannerError::Action)?;
+            actions.push(nix_directory_unit.boxed());
+
+            let create_bind_mount_buf = format!(
+                "\
+                [Unit]\n\
+                Description=Mount `{persistence}` on `/nix`\n\
+                PropagatesStopTo=nix-daemon.service\n\
+                PropagatesStopTo=nix-directory.service\n\
+                After=nix-directory.service\n\
+                Requires=nix-directory.service\n\
+                ConditionPathIsDirectory=/nix\n\
+                DefaultDependencies=no\n\
+                \n\
+                [Mount]\n\
+                What={persistence}\n\
+                Where=/nix\n\
+                Type=none\n\
+                DirectoryMode=0755\n\
+                Options=bind\n\
+                \n\
+                [Install]\n\
+                RequiredBy=nix-daemon.service\n\
+                RequiredBy=nix-daemon.socket\n
+            ",
+                persistence = persistence.display(),
+            );
+            let create_bind_mount_unit = CreateFile::plan(
+                "/etc/systemd/system/nix.mount",
+                None,
+                None,
+                0o0644,
+                create_bind_mount_buf,
+                false,
+            )
+            .await
+            .map_err(PlannerError::Action)?;
+            actions.push(create_bind_mount_unit.boxed());
+        }
 
         let ensure_symlinked_units_resolve_buf = format!(
             "\
             [Unit]\n\
             Description=Ensure Nix related units which are symlinked resolve\n\
             After=nix.mount\n\
-            Requires=nix-directory.service\n\
             Requires=nix.mount\n\
             DefaultDependencies=no\n\
             \n\
@@ -245,6 +265,7 @@ impl Planner for SteamDeck {
         )
         .await
         .map_err(PlannerError::Action)?;
+        actions.push(ensure_symlinked_units_resolve_unit.boxed());
 
         // We need to remove this path since it's part of the read-only install.
         let mut shell_profile_locations = ShellProfileLocations::default();
@@ -260,18 +281,16 @@ impl Planner for SteamDeck {
                 .remove(index);
         }
 
-        Ok(vec![
-            CreateDirectory::plan(&persistence, None, None, 0o0755, true)
-                .await
-                .map_err(PlannerError::Action)?
-                .boxed(),
-            nix_directory_unit.boxed(),
-            create_bind_mount_unit.boxed(),
-            ensure_symlinked_units_resolve_unit.boxed(),
-            StartSystemdUnit::plan("nix.mount".to_string(), false)
-                .await
-                .map_err(PlannerError::Action)?
-                .boxed(),
+        if requires_nix_bind_mount {
+            actions.push(
+                StartSystemdUnit::plan("nix.mount".to_string(), false)
+                    .await
+                    .map_err(PlannerError::Action)?
+                    .boxed(),
+            )
+        }
+
+        actions.append(&mut vec![
             ProvisionNix::plan(&self.settings.clone())
                 .await
                 .map_err(PlannerError::Action)?
@@ -297,7 +316,8 @@ impl Planner for SteamDeck {
                 .await
                 .map_err(PlannerError::Action)?
                 .boxed(),
-        ])
+        ]);
+        Ok(actions)
     }
 
     fn settings(&self) -> Result<HashMap<String, serde_json::Value>, InstallSettingsError> {
@@ -357,4 +377,40 @@ impl Into<BuiltinPlanner> for SteamDeck {
 pub enum SteamDeckError {
     #[error("`{0}` is not a path that can be canonicalized into an absolute path, bind mounts require an absolute path")]
     AbsolutePathRequired(PathBuf),
+    #[error("A `/home/.steamos/offload/nix` exists, however `nix.mount` does not point at it. If Nix was previously installed, try uninstalling then rebooting first")]
+    OffloadExistsButUnitIncorrect,
+}
+
+async fn detect_requires_bind_mount() -> Result<bool, PlannerError> {
+    const NIX_OFFLOAD_PATH: &str = "/home/.steamos/offload/nix";
+    let offload_exists = Path::new(NIX_OFFLOAD_PATH).exists();
+    let nix_mount_unit = cat_systemd_unit("nix.mount").await?;
+    match (offload_exists, nix_mount_unit) {
+        (false, _) => Ok(true),
+        (true, Some(nix_mount_unit))
+            if nix_mount_unit.contains("What=/home/.steamos/offload/nix") =>
+        {
+            Ok(false)
+        },
+        (true, None) | (true, Some(_)) => Err(PlannerError::Custom(Box::new(
+            SteamDeckError::OffloadExistsButUnitIncorrect,
+        ))),
+    }
+}
+
+async fn cat_systemd_unit(unit: &str) -> Result<Option<String>, PlannerError> {
+    let mut command = Command::new("systemctl");
+    command.arg("cat");
+    command.arg(unit);
+    let output = command
+        .output()
+        .await
+        .map_err(|e| PlannerError::Command(format!("{:?}", command.as_std()), e))?;
+    match output.status.success() {
+        true => {
+            tracing::trace!(%unit, "Does not exist");
+            Ok(Some(String::from_utf8(output.stdout)?))
+        },
+        false => Ok(None),
+    }
 }

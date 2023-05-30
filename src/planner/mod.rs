@@ -381,6 +381,9 @@ pub enum PlannerError {
     NixExists,
     #[error("WSL1 is not supported, please upgrade to WSL2: https://learn.microsoft.com/en-us/windows/wsl/install#upgrade-version-from-wsl-1-to-wsl-2")]
     Wsl1,
+    /// Failed to execute command
+    #[error("Failed to execute command `{0}`")]
+    Command(String, #[source] std::io::Error),
     #[cfg(feature = "diagnostics")]
     #[error(transparent)]
     Diagnostic(#[from] crate::diagnostics::DiagnosticError),
@@ -407,6 +410,7 @@ impl HasExpectedErrors for PlannerError {
             this @ PlannerError::NixOs => Some(Box::new(this)),
             this @ PlannerError::NixExists => Some(Box::new(this)),
             this @ PlannerError::Wsl1 => Some(Box::new(this)),
+            PlannerError::Command(_, _) => None,
             #[cfg(feature = "diagnostics")]
             PlannerError::Diagnostic(diagnostic_error) => Some(Box::new(diagnostic_error)),
         }
