@@ -13,7 +13,7 @@ use crate::action::{Action, ActionDescription, StatefulAction};
 Ensure SeamOS's `/nix` folder exists.
 
 In SteamOS build ID 20230522.1000 (and, presumably, later) a `/nix` directory and related units
-exist. In previous verions of `nix-installer` the uninstall process would remove that direcory.
+exist. In previous versions of `nix-installer` the uninstall process would remove that directory.
 This action ensures that the folder does indeed exist.
 */
 #[derive(Debug, serde::Deserialize, serde::Serialize, Clone)]
@@ -55,7 +55,7 @@ impl Action for EnsureSteamosNixDirectory {
             vec![
                 "On more recent versions of SteamOS, a `/nix` folder now exists on the base image.".to_string(),
                 "Previously, `nix-installer` created this directory through systemd units.".to_string(),
-                "It's likely you updated SteamOS, then ran `/nix/nix-installer uninstall`, which deleted the `/nix` direcory.".to_string(),
+                "It's likely you updated SteamOS, then ran `/nix/nix-installer uninstall`, which deleted the `/nix` directory.".to_string(),
             ],
         )]
     }
