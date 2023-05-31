@@ -83,7 +83,7 @@ impl EncryptApfsVolume {
             plist::from_bytes(&output.stdout).map_err(Self::error)?;
         for container in parsed.containers {
             for volume in container.volumes {
-                if volume.name == name {
+                if volume.name.as_ref() == Some(&name) {
                     match volume.encryption == false {
                         true => {
                             return Ok(StatefulAction::completed(Self { disk, name }));
