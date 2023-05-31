@@ -631,7 +631,7 @@ async fn disable(unit: &str, now: bool) -> Result<(), ActionErrorKind> {
 }
 
 #[cfg(target_os = "linux")]
-async fn is_active(unit: &str) -> Result<bool, ActionErrorKind> {
+pub(crate) async fn is_active(unit: &str) -> Result<bool, ActionErrorKind> {
     let mut command = Command::new("systemctl");
     command.arg("is-active");
     command.arg(unit);
@@ -649,7 +649,7 @@ async fn is_active(unit: &str) -> Result<bool, ActionErrorKind> {
 }
 
 #[cfg(target_os = "linux")]
-async fn is_enabled(unit: &str) -> Result<bool, ActionErrorKind> {
+pub(crate) async fn is_enabled(unit: &str) -> Result<bool, ActionErrorKind> {
     let mut command = Command::new("systemctl");
     command.arg("is-enabled");
     command.arg(unit);

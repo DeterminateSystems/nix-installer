@@ -99,6 +99,7 @@ To test on a specific build id of the Steam Deck:
 use std::{
     collections::HashMap,
     path::{Path, PathBuf},
+    process::Output,
 };
 
 use tokio::process::Command;
@@ -107,7 +108,7 @@ use crate::{
     action::{
         base::{CreateDirectory, CreateFile, RemoveDirectory},
         common::{ConfigureInitService, ConfigureNix, ProvisionNix},
-        linux::StartSystemdUnit,
+        linux::{EnsureSteamosNixDirectory, StartSystemdUnit, SystemctlDaemonReload},
         Action, StatefulAction,
     },
     planner::{Planner, PlannerError},
@@ -148,7 +149,22 @@ impl Planner for SteamDeck {
         // Starting in roughly build ID `20230522.1000`, the Steam Deck has a `/home/.steamos/offload/nix` directory and `nix.mount` unit we can use instead of creating a mountpoint.
         let requires_nix_bind_mount = detect_requires_bind_mount().await?;
 
-        let mut actions = vec![];
+        let mut actions = vec![
+            // Primarily for uninstall
+            SystemctlDaemonReload::plan()
+                .await
+                .map_err(PlannerError::Action)?
+                .boxed(),
+        ];
+
+        if let Ok(nix_mount_status) = systemctl_status("nix.mount").await {
+            let nix_mount_status_stderr = String::from_utf8(nix_mount_status.stderr)?;
+            if nix_mount_status_stderr.contains("Warning: The unit file, source configuration file or drop-ins of nix.mount changed on disk. Run 'systemctl daemon-reload' to reload units.") {
+                return Err(PlannerError::Custom(Box::new(
+                    SteamDeckError::NixMountSystemctlDaemonReloadRequired,
+                )))
+            }
+        }
 
         if requires_nix_bind_mount {
             let persistence = &self.persistence;
@@ -235,6 +251,15 @@ impl Planner for SteamDeck {
             .await
             .map_err(PlannerError::Action)?;
             actions.push(create_bind_mount_unit.boxed());
+        } else {
+            let ensure_steamos_nix_directory = EnsureSteamosNixDirectory::plan()
+                .await
+                .map_err(PlannerError::Action)?;
+            actions.push(ensure_steamos_nix_directory.boxed());
+            let start_nix_mount = StartSystemdUnit::plan("nix.mount".to_string(), true)
+                .await
+                .map_err(PlannerError::Action)?;
+            actions.push(start_nix_mount.boxed());
         }
 
         let ensure_symlinked_units_resolve_buf = format!(
@@ -316,6 +341,10 @@ impl Planner for SteamDeck {
                 .await
                 .map_err(PlannerError::Action)?
                 .boxed(),
+            SystemctlDaemonReload::plan()
+                .await
+                .map_err(PlannerError::Action)?
+                .boxed(),
         ]);
         Ok(actions)
     }
@@ -379,38 +408,34 @@ pub enum SteamDeckError {
     AbsolutePathRequired(PathBuf),
     #[error("A `/home/.steamos/offload/nix` exists, however `nix.mount` does not point at it. If Nix was previously installed, try uninstalling then rebooting first")]
     OffloadExistsButUnitIncorrect,
+    #[error("Detected the SteamOS `nix.mount` unit exists, but `systemctl status nix.mount` did not return success. Try running `systemctl daemon-reload`.")]
+    SteamosNixMountUnitNotExists,
+    #[error("Detected the SteamOS `nix.mount` unit exists, but `systemctl status nix.mount` returned a warning that `systemctl daemon-reload` should be run. Run `systemctl daemon-reload` then `systemctl start nix.mount`, then try again.")]
+    NixMountSystemctlDaemonReloadRequired,
 }
 
-async fn detect_requires_bind_mount() -> Result<bool, PlannerError> {
-    const NIX_OFFLOAD_PATH: &str = "/home/.steamos/offload/nix";
-    let offload_exists = Path::new(NIX_OFFLOAD_PATH).exists();
-    let nix_mount_unit = cat_systemd_unit("nix.mount").await?;
-    match (offload_exists, nix_mount_unit) {
-        (false, _) => Ok(true),
-        (true, Some(nix_mount_unit))
-            if nix_mount_unit.contains("What=/home/.steamos/offload/nix") =>
-        {
+pub(crate) async fn detect_requires_bind_mount() -> Result<bool, PlannerError> {
+    let steamos_nix_mount_unit_path = "/usr/lib/systemd/system/nix.mount";
+    let nix_mount_unit = tokio::fs::read_to_string(steamos_nix_mount_unit_path)
+        .await
+        .map(|v| Some(v))
+        .unwrap_or_else(|_| None);
+
+    match nix_mount_unit {
+        Some(nix_mount_unit) if nix_mount_unit.contains("What=/home/.steamos/offload/nix") => {
             Ok(false)
         },
-        (true, None) | (true, Some(_)) => Err(PlannerError::Custom(Box::new(
-            SteamDeckError::OffloadExistsButUnitIncorrect,
-        ))),
+        None | Some(_) => Ok(true),
     }
 }
 
-async fn cat_systemd_unit(unit: &str) -> Result<Option<String>, PlannerError> {
+async fn systemctl_status(unit: &str) -> Result<Output, PlannerError> {
     let mut command = Command::new("systemctl");
-    command.arg("cat");
+    command.arg("status");
     command.arg(unit);
     let output = command
         .output()
         .await
         .map_err(|e| PlannerError::Command(format!("{:?}", command.as_std()), e))?;
-    match output.status.success() {
-        true => {
-            tracing::trace!(%unit, "Does not exist");
-            Ok(Some(String::from_utf8(output.stdout)?))
-        },
-        false => Ok(None),
-    }
+    Ok(output)
 }
