@@ -1,4 +1,4 @@
-use std::{collections::HashMap, io::Cursor};
+use std::{collections::HashMap, io::Cursor, path::PathBuf};
 
 #[cfg(feature = "cli")]
 use clap::ArgAction;
@@ -10,7 +10,7 @@ use crate::{
     action::{
         base::RemoveDirectory,
         common::{ConfigureInitService, ConfigureNix, ProvisionNix},
-        macos::CreateNixVolume,
+        macos::{CreateNixVolume, SetTmutilExclusions},
         StatefulAction,
     },
     execute_command,
@@ -130,10 +130,6 @@ impl Planner for Macos {
         };
 
         Ok(vec![
-            // Create Volume step:
-            //
-            // setup_Synthetic -> create_synthetic_objects
-            // Unmount -> create_volume -> Setup_fstab -> maybe encrypt_volume -> launchctl bootstrap -> launchctl kickstart -> await_volume -> maybe enableOwnership
             CreateNixVolume::plan(
                 root_disk.unwrap(), /* We just ensured it was populated */
                 self.volume_label.clone(),
@@ -144,6 +140,10 @@ impl Planner for Macos {
             .map_err(PlannerError::Action)?
             .boxed(),
             ProvisionNix::plan(&self.settings)
+                .await
+                .map_err(PlannerError::Action)?
+                .boxed(),
+            SetTmutilExclusions::plan(vec![PathBuf::from("/nix/store"), PathBuf::from("/nix/var")])
                 .await
                 .map_err(PlannerError::Action)?
                 .boxed(),
