@@ -24,6 +24,12 @@ use color_eyre::{
 };
 use owo_colors::OwoColorize;
 
+const EXISTING_INCOMPATIBLE_PLAN_GUIDANCE: &'static str = "\
+    If you are trying to upgrade Nix, try running `sudo -i nix upgrade-nix` instead.\n\
+    If you are trying to install Nix over an existing install (from an incompatible `nix-installer` install), try running `/nix/nix-installer uninstall` then try to install again.\n\
+    If you are using `nix-installer` in an automated curing process and seeing this message, consider pinning the version you use via https://github.com/DeterminateSystems/nix-installer#accessing-other-versions.\
+";
+
 /// Execute an install (possibly using an existing plan)
 ///
 /// To pass custom options, select a planner, for example `nix-installer install linux-multi --help`
@@ -105,9 +111,7 @@ impl CommandExecute for Install {
                                     {e}\n\
                                     \n\
                                     Found existing plan in `{RECEIPT_LOCATION}` which was created by a version incompatible `nix-installer`.\n\
-                                    If you are trying to upgrade Nix, try running `sudo -i nix upgrade-nix` instead.\n\
-                                    If you are trying to install Nix over an existing install (from an incompatible `nix-installer` install), try running `/nix/nix-installer uninstall` then try to install again.\n\
-                                    If you are using `nix-installer` in an automated curing process and seeing this message, consider pinning the version you use via https://github.com/DeterminateSystems/nix-installer#accessing-other-versions.\n\
+                                    {EXISTING_INCOMPATIBLE_PLAN_GUIDANCE}\n\
                                 ").red()
                             );
                             return Ok(ExitCode::FAILURE)
@@ -158,9 +162,7 @@ impl CommandExecute for Install {
                                     {e}\n\
                                     \n\
                                     Found existing plan in `{RECEIPT_LOCATION}` which was created by a version incompatible `nix-installer`.\n\
-                                    If you are trying to upgrade Nix, try running `sudo -i nix upgrade-nix` instead.\n\
-                                    If you are trying to install Nix over an existing install (from an incompatible `nix-installer` install), try running `/nix/nix-installer uninstall` then try to install again.\n\
-                                    If you are using `nix-installer` in an automated curing process and seeing this message, consider pinning the version you use via https://github.com/DeterminateSystems/nix-installer#accessing-other-versions.\n\
+                                    {EXISTING_INCOMPATIBLE_PLAN_GUIDANCE}\n\
                                 ").red()
                             );
                             return Ok(ExitCode::FAILURE)
