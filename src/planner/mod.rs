@@ -404,7 +404,7 @@ impl HasExpectedErrors for PlannerError {
             PlannerError::Plist(_) => None,
             PlannerError::Sysctl(_) => None,
             this @ PlannerError::RosettaDetected => Some(Box::new(this)),
-            PlannerError::OsRelase(_) => None,
+            PlannerError::OsRelease(_) => None,
             PlannerError::Utf8(_) => None,
             PlannerError::SelinuxRequirements => Some(Box::new(self)),
             PlannerError::Custom(_e) => {
