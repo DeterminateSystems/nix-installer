@@ -104,7 +104,10 @@ use crate::{
     action::{
         base::{CreateDirectory, CreateFile, RemoveDirectory},
         common::{ConfigureInitService, ConfigureNix, ProvisionNix},
-        linux::{EnsureSteamosNixDirectory, StartSystemdUnit, SystemctlDaemonReload},
+        linux::{
+            EnsureSteamosNixDirectory, RevertCleanSteamosNixOffload, StartSystemdUnit,
+            SystemctlDaemonReload,
+        },
         Action, StatefulAction,
     },
     planner::{Planner, PlannerError},
@@ -248,10 +251,16 @@ impl Planner for SteamDeck {
             .map_err(PlannerError::Action)?;
             actions.push(create_bind_mount_unit.boxed());
         } else {
+            let revert_clean_streamos_nix_offload = RevertCleanSteamosNixOffload::plan()
+                .await
+                .map_err(PlannerError::Action)?;
+            actions.push(revert_clean_streamos_nix_offload.boxed());
+
             let ensure_steamos_nix_directory = EnsureSteamosNixDirectory::plan()
                 .await
                 .map_err(PlannerError::Action)?;
             actions.push(ensure_steamos_nix_directory.boxed());
+
             let start_nix_mount = StartSystemdUnit::plan("nix.mount".to_string(), true)
                 .await
                 .map_err(PlannerError::Action)?;
