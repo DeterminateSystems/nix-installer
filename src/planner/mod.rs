@@ -172,7 +172,13 @@ impl BuiltinPlanner {
         match (Architecture::host(), OperatingSystem::host()) {
             #[cfg(target_os = "linux")]
             (Architecture::X86_64, OperatingSystem::Linux) => {
-                Ok(Self::Linux(linux::Linux::default().await?))
+                let os_release = os_release::OsRelease::new().ok();
+                match os_release {
+                    Some(os_release) if os_release.id == "steamos" => {
+                        Ok(Self::SteamDeck(steam_deck::SteamDeck::default().await?))
+                    },
+                    _ => Ok(Self::Linux(linux::Linux::default().await?)),
+                }
             },
             #[cfg(target_os = "linux")]
             (Architecture::X86_32(_), OperatingSystem::Linux) => {
@@ -360,6 +366,9 @@ pub enum PlannerError {
     #[error(transparent)]
     InstallSettings(#[from] InstallSettingsError),
     /// A MacOS (Darwin) plist related error
+    #[error("Fetching `/etc/os-release`")]
+    OsRelase(#[source] std::io::Error),
+    /// A MacOS (Darwin) plist related error
     #[error(transparent)]
     Plist(#[from] plist::Error),
     #[error(transparent)]
@@ -395,6 +404,7 @@ impl HasExpectedErrors for PlannerError {
             PlannerError::Plist(_) => None,
             PlannerError::Sysctl(_) => None,
             this @ PlannerError::RosettaDetected => Some(Box::new(this)),
+            PlannerError::OsRelase(_) => None,
             PlannerError::Utf8(_) => None,
             PlannerError::SelinuxRequirements => Some(Box::new(self)),
             PlannerError::Custom(_e) => {
