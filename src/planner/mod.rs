@@ -365,9 +365,9 @@ pub enum PlannerError {
     /// An [`InstallSettingsError`]
     #[error(transparent)]
     InstallSettings(#[from] InstallSettingsError),
-    /// A MacOS (Darwin) plist related error
+    /// An OS Release error
     #[error("Fetching `/etc/os-release`")]
-    OsRelase(#[source] std::io::Error),
+    OsRelease(#[source] std::io::Error),
     /// A MacOS (Darwin) plist related error
     #[error(transparent)]
     Plist(#[from] plist::Error),
