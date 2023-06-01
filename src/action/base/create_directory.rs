@@ -165,7 +165,7 @@ impl Action for CreateDirectory {
             None
         };
 
-        create_dir(path.clone())
+        create_dir(&path)
             .await
             .map_err(|e| ActionErrorKind::CreateDirectory(path.clone(), e))
             .map_err(Self::error)?;

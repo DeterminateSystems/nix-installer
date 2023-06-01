@@ -243,7 +243,7 @@ pub trait Action: Send + Sync + std::fmt::Debug + dyn_clone::DynClone {
     ///
     /// If this action calls sub-[`Action`]s, care should be taken to call [`try_revert`][StatefulAction::try_revert], not [`revert`][Action::revert], so that [`ActionState`] is handled correctly and tracing is done.
     ///
-    /// /// This is called by [`InstallPlan::uninstall`](crate::InstallPlan::uninstall) through [`StatefulAction::try_revert`] which handles tracing as well as if the action needs to revert based on its `action_state`.
+    /// This is called by [`InstallPlan::uninstall`](crate::InstallPlan::uninstall) through [`StatefulAction::try_revert`] which handles tracing as well as if the action needs to revert based on its `action_state`.
     async fn revert(&mut self) -> Result<(), ActionError>;
 
     fn stateful(self) -> StatefulAction<Self>
@@ -518,6 +518,8 @@ pub enum ActionErrorKind {
     Plist(#[from] plist::Error),
     #[error("Unexpected binary tarball contents found, the build result from `https://releases.nixos.org/?prefix=nix/` or `nix build nix#hydraJobs.binaryTarball.$SYSTEM` is expected")]
     MalformedBinaryTarball,
+    #[error("Could not find `{0}` in PATH; This action only works on SteamOS, which should have this present in PATH.")]
+    MissingSteamosBinary(String),
     #[error(
         "Could not find a supported command to create users in PATH; please install `useradd` or `adduser`"
     )]
