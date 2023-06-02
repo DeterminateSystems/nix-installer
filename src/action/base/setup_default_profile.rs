@@ -54,9 +54,7 @@ impl Action for SetupDefaultProfile {
         // Find an `nix` package
         let nix_pkg_glob = format!("{}/nix-*/store/*-nix-*.*.*", self.unpacked_path.display());
         let mut found_nix_pkg = None;
-        for entry in glob(&nix_pkg_glob)
-            .map_err(|e| Self::error(SetupDefaultProfileError::GlobPatternError(e)))?
-        {
+        for entry in glob(&nix_pkg_glob).map_err(|e| Self::error(e))? {
             match entry {
                 Ok(path) => {
                     // If we are curing, the user may have multiple of these installed
@@ -85,9 +83,7 @@ impl Action for SetupDefaultProfile {
             self.unpacked_path.display()
         );
         let mut found_nss_ca_cert_pkg = None;
-        for entry in glob(&nss_ca_cert_pkg_glob)
-            .map_err(|e| Self::error(SetupDefaultProfileError::GlobPatternError(e)))?
-        {
+        for entry in glob(&nss_ca_cert_pkg_glob).map_err(|e| Self::error(e))? {
             match entry {
                 Ok(path) => {
                     // If we are curing, the user may have multiple of these installed
@@ -113,9 +109,9 @@ impl Action for SetupDefaultProfile {
         };
 
         let found_nix_paths = glob::glob(&format!("{}/nix-*", self.unpacked_path.display()))
-            .map_err(|e| Self::error(SetupDefaultProfileError::from(e)))?
+            .map_err(|e| Self::error(e))?
             .collect::<Result<Vec<_>, _>>()
-            .map_err(|e| Self::error(SetupDefaultProfileError::from(e)))?;
+            .map_err(|e| Self::error(e))?;
         if found_nix_paths.len() != 1 {
             return Err(Self::error(ActionErrorKind::MalformedBinaryTarball));
         }
@@ -240,18 +236,6 @@ impl Action for SetupDefaultProfile {
 #[non_exhaustive]
 #[derive(Debug, thiserror::Error)]
 pub enum SetupDefaultProfileError {
-    #[error("Glob pattern error")]
-    GlobPatternError(
-        #[from]
-        #[source]
-        glob::PatternError,
-    ),
-    #[error("Glob globbing error")]
-    GlobGlobError(
-        #[from]
-        #[source]
-        glob::GlobError,
-    ),
     #[error("Unarchived Nix store did not appear to include a `nss-cacert` location")]
     NoNssCacert,
     #[error("Unarchived Nix store did not appear to include a `nix` location")]

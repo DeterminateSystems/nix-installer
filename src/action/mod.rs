@@ -473,6 +473,18 @@ pub enum ActionErrorKind {
     NoGroup(String),
     #[error("Chowning path `{0}`")]
     Chown(std::path::PathBuf, #[source] nix::errno::Errno),
+    #[error("Glob globbing error")]
+    GlobGlobError(
+        #[from]
+        #[source]
+        glob::GlobError,
+    ),
+    #[error("Glob pattern error")]
+    GlobPatternError(
+        #[from]
+        #[source]
+        glob::PatternError,
+    ),
     /// Failed to execute command
     #[error("Failed to execute command `{command}`",
         command = .command,
