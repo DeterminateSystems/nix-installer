@@ -34,7 +34,7 @@ Differing from the current official [Nix](https://github.com/NixOS/nix) installe
   + `bash-prompt-prefix` is set
   + `auto-optimise-store` is set to `true`
   * `extra-nix-path` is set to `nixpkgs=flake:nixpkgs`
-  * `auto-uid-allocation` is set to `true`.
+  * `auto-allocate-uids` is set to `true`.
 * an installation receipt (for uninstalling) is stored at `/nix/receipt.json` as well as a copy of the install binary at `/nix/nix-installer`
 * `nix-channel --update` is not run, `~/.nix-channels` is not provisioned
 * `NIX_SSL_CERT_FILE` is set in the various shell profiles if the `ssl-cert-file` argument is used.
