@@ -4,7 +4,7 @@ use tokio::process::Command;
 use which::which;
 
 #[non_exhaustive]
-#[derive(thiserror::Error, Debug)]
+#[derive(thiserror::Error, Debug, strum::IntoStaticStr)]
 pub enum SelfTestError {
     #[error("Shell `{shell}` failed self-test with command `{command}`, stderr:\n{}", String::from_utf8_lossy(&output.stderr))]
     ShellFailed {
@@ -17,10 +17,31 @@ pub enum SelfTestError {
         command = .command,
     )]
     Command {
+        shell: Shell,
         command: String,
         #[source]
         error: std::io::Error,
     },
+}
+
+#[cfg(feature = "diagnostics")]
+impl crate::diagnostics::ErrorDiagnostic for SelfTestError {
+    fn diagnostic(&self) -> String {
+        let static_str: &'static str = (self).into();
+        let context = match self {
+            Self::ShellFailed { shell, .. } => vec![shell.to_string()],
+            Self::Command { shell, .. } => vec![shell.to_string()],
+        };
+        return format!(
+            "{}({})",
+            static_str,
+            context
+                .iter()
+                .map(|v| format!("\"{v}\""))
+                .collect::<Vec<_>>()
+                .join(", ")
+        );
+    }
 }
 
 #[derive(Clone, Copy, Debug)]
@@ -89,6 +110,7 @@ impl Shell {
             .output()
             .await
             .map_err(|error| SelfTestError::Command {
+                shell: *self,
                 command: command_str.clone(),
                 error,
             })?;
