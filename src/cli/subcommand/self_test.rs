@@ -4,7 +4,7 @@ use clap::Parser;
 
 use crate::cli::CommandExecute;
 
-/// Plan an install that can be repeated on an identical host later
+/// Run a self test of Nix to ensure that the install worked.
 #[derive(Debug, Parser)]
 pub struct SelfTest {}
 
