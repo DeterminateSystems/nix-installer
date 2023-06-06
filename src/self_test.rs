@@ -50,15 +50,17 @@ impl Shell {
         }
     }
 
+    #[tracing::instrument(skip_all)]
     pub async fn self_test(&self) -> Result<(), SelfTestError> {
         let executable = self.executable();
         let mut command = match &self {
-            Shell::Sh => {
+            // On Mac, `bash -ic nix` won't work, but `bash -lc nix` will.
+            Shell::Sh | Shell::Bash => {
                 let mut command = Command::new(executable);
                 command.arg("-lc");
                 command
             },
-            Shell::Zsh | Shell::Bash | Shell::Fish => {
+            Shell::Zsh | Shell::Fish => {
                 let mut command = Command::new(executable);
                 command.arg("-ic");
                 command
@@ -102,11 +104,12 @@ impl Shell {
         }
     }
 
+    #[tracing::instrument(skip_all)]
     pub fn discover() -> Vec<Shell> {
         let mut found_shells = vec![];
         for shell in Self::all() {
             if which(shell.executable()).is_ok() {
-                tracing::trace!("Discovered `{shell}`");
+                tracing::debug!("Discovered `{shell}`");
                 found_shells.push(*shell)
             }
         }
@@ -114,6 +117,7 @@ impl Shell {
     }
 }
 
+#[tracing::instrument(skip_all)]
 pub async fn self_test() -> Result<(), SelfTestError> {
     let shells = Shell::discover();
 
