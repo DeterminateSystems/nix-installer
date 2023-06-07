@@ -1,4 +1,4 @@
-use std::process::Output;
+use std::{process::Output, time::SystemTime};
 
 use tokio::process::Command;
 use which::which;
@@ -22,6 +22,8 @@ pub enum SelfTestError {
         #[source]
         error: std::io::Error,
     },
+    #[error(transparent)]
+    SystemTime(#[from] std::time::SystemTimeError),
 }
 
 #[cfg(feature = "diagnostics")]
@@ -31,6 +33,7 @@ impl crate::diagnostics::ErrorDiagnostic for SelfTestError {
         let context = match self {
             Self::ShellFailed { shell, .. } => vec![shell.to_string()],
             Self::Command { shell, .. } => vec![shell.to_string()],
+            Self::SystemTime(_) => vec![],
         };
         return format!(
             "{}({})",
@@ -99,8 +102,12 @@ impl Shell {
         #[cfg(all(target_os = "macos", target_arch = "aarch64"))]
         const SYSTEM: &str = "aarch64-darwin";
 
+        let timestamp_millis = SystemTime::now()
+            .duration_since(SystemTime::UNIX_EPOCH)?
+            .as_millis();
+
         command.arg(format!(
-            r#"nix build --no-link --expr 'derivation {{ name = "self-test-{executable}"; system = "{SYSTEM}"; builder = "/bin/sh"; args = ["-c" "echo hello > \$out"]; }}'"#
+            r#"nix build --no-link --expr 'derivation {{ name = "self-test-{executable}-{timestamp_millis}"; system = "{SYSTEM}"; builder = "/bin/sh"; args = ["-c" "echo hello > \$out"]; }}'"#
         ));
         let command_str = format!("{:?}", command.as_std());
 

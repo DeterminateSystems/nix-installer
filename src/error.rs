@@ -14,7 +14,7 @@ pub enum NixInstallerError {
     /// An error originating from an [`Action`](crate::action::Action)
     #[error("Error executing action")]
     Action(#[source] ActionError),
-    /// An error originating from an [`Action`](crate::action::Action)
+    /// An error originating from a [`self_test`](crate::self_test)
     #[error("Self test")]
     SelfTest(
         #[source]
