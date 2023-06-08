@@ -196,6 +196,26 @@ impl InstallPlan {
         }
 
         write_receipt(self.clone()).await?;
+
+        if let Err(err) = crate::self_test::self_test()
+            .await
+            .map_err(NixInstallerError::SelfTest)
+        {
+            #[cfg(feature = "diagnostics")]
+            if let Some(diagnostic_data) = &self.diagnostic_data {
+                diagnostic_data
+                    .clone()
+                    .failure(&err)
+                    .send(
+                        crate::diagnostics::DiagnosticAction::Install,
+                        crate::diagnostics::DiagnosticStatus::Failure,
+                    )
+                    .await?;
+            }
+
+            return Err(err);
+        }
+
         #[cfg(feature = "diagnostics")]
         if let Some(diagnostic_data) = &self.diagnostic_data {
             diagnostic_data

@@ -2,7 +2,10 @@ use std::{error::Error, path::PathBuf};
 
 use semver::Version;
 
-use crate::{action::ActionError, planner::PlannerError, settings::InstallSettingsError};
+use crate::{
+    action::ActionError, planner::PlannerError, self_test::SelfTestError,
+    settings::InstallSettingsError,
+};
 
 /// An error occurring during a call defined in this crate
 #[non_exhaustive]
@@ -11,6 +14,13 @@ pub enum NixInstallerError {
     /// An error originating from an [`Action`](crate::action::Action)
     #[error("Error executing action")]
     Action(#[source] ActionError),
+    /// An error originating from a [`self_test`](crate::self_test)
+    #[error("Self test")]
+    SelfTest(
+        #[source]
+        #[from]
+        SelfTestError,
+    ),
     /// An error originating from an [`Action`](crate::action::Action) while reverting
     #[error("Error reverting\n{}", .0.iter().map(|err| {
         if let Some(source) = err.source() {
@@ -90,6 +100,7 @@ impl HasExpectedErrors for NixInstallerError {
         match self {
             NixInstallerError::Action(action_error) => action_error.kind().expected(),
             NixInstallerError::ActionRevert(_) => None,
+            NixInstallerError::SelfTest(_) => None,
             NixInstallerError::RecordingReceipt(_, _) => None,
             NixInstallerError::CopyingSelf(_) => None,
             NixInstallerError::SerializingReceipt(_) => None,
@@ -113,6 +124,7 @@ impl crate::diagnostics::ErrorDiagnostic for NixInstallerError {
     fn diagnostic(&self) -> String {
         let static_str: &'static str = (self).into();
         let context = match self {
+            Self::SelfTest(self_test) => vec![self_test.diagnostic().to_string()],
             Self::Action(action_error) => vec![action_error.diagnostic().to_string()],
             Self::ActionRevert(action_errors) => action_errors
                 .iter()
