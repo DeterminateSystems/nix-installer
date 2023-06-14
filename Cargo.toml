@@ -15,7 +15,7 @@ build-inputs = ["darwin.apple_sdk.frameworks.Security"]
 build-inputs = ["darwin.apple_sdk.frameworks.Security"]
 
 [features]
-default = ["cli", "diagnostics"]
+default = ["cli"]
 cli = ["eyre", "color-eyre", "clap", "tracing-subscriber", "tracing-error"]
 diagnostics = ["is_ci"]
 
