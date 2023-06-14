@@ -146,7 +146,10 @@
               check.check-editorconfig
               check.check-semver
             ]
-            ++ lib.optionals (pkgs.stdenv.isDarwin) (with pkgs; [ libiconv ])
+            ++ lib.optionals (pkgs.stdenv.isDarwin) (with pkgs; [
+              libiconv
+              darwin.apple_sdk.frameworks.Security
+            ])
             ++ lib.optionals (pkgs.stdenv.isLinux) (with pkgs; [
               checkpolicy
               podman
