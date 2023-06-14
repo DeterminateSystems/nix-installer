@@ -140,17 +140,20 @@
               cacert
               cargo-audit
               nixpkgs-fmt
-              semodule-utils
-              checkpolicy
               check.check-rustfmt
               check.check-spelling
               check.check-nixpkgs-fmt
               check.check-editorconfig
               check.check-semver
             ]
-            ++ lib.optionals (pkgs.stdenv.isDarwin) (with pkgs; [ libiconv ])
+            ++ lib.optionals (pkgs.stdenv.isDarwin) (with pkgs; [
+              libiconv
+              darwin.apple_sdk.frameworks.Security
+            ])
             ++ lib.optionals (pkgs.stdenv.isLinux) (with pkgs; [
+              checkpolicy
               podman
+              semodule-utils
               /* users are expected to have a system docker, too */
             ]);
           };
