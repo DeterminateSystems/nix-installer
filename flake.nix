@@ -140,8 +140,6 @@
               cacert
               cargo-audit
               nixpkgs-fmt
-              semodule-utils
-              checkpolicy
               check.check-rustfmt
               check.check-spelling
               check.check-nixpkgs-fmt
@@ -150,7 +148,9 @@
             ]
             ++ lib.optionals (pkgs.stdenv.isDarwin) (with pkgs; [ libiconv ])
             ++ lib.optionals (pkgs.stdenv.isLinux) (with pkgs; [
+              checkpolicy
               podman
+              semodule-utils
               /* users are expected to have a system docker, too */
             ]);
           };
