@@ -12,7 +12,13 @@ jobs:
   release:
     concurrency: release
     # Only intra-repo PRs are allowed to have PR artifacts uploaded
-    if: github.event.pull_request.head.repo.full_name == 'DeterminateSystems/nix-installer' && contains(github.event.pull_request.labels.*.name, 'upload to s3')
+    # We only want to trigger once the upload once in the case the upload label is added, not when any label is added
+    if: |
+        github.event.pull_request.head.repo.full_name == 'DeterminateSystems/nix-installer'
+        && (
+          (github.event.action == 'labeled' && github.event.label.name == 'upload to s3')
+          || (github.event.action != 'labeled' && contains(github.event.pull_request.labels.*.name, 'upload to s3'))
+        )
     runs-on: ubuntu-latest
     permissions:
       id-token: write # In order to request a JWT for AWS auth

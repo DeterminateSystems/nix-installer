@@ -54,7 +54,7 @@ impl Action for StartSystemdUnit {
         ActionTag("start_systemd_unit")
     }
     fn tracing_synopsis(&self) -> String {
-        format!("Enable (and start) the systemd unit {}", self.unit)
+        format!("Enable (and start) the systemd unit `{}`", self.unit)
     }
 
     fn tracing_span(&self) -> Span {
@@ -106,7 +106,7 @@ impl Action for StartSystemdUnit {
 
     fn revert_description(&self) -> Vec<ActionDescription> {
         vec![ActionDescription::new(
-            format!("Disable (and stop) the systemd unit {}", self.unit),
+            format!("Disable (and stop) the systemd unit `{}`", self.unit),
             vec![],
         )]
     }

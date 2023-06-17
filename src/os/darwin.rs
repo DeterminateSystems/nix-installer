@@ -23,6 +23,6 @@ pub struct DiskUtilApfsContainer {
 #[derive(serde::Deserialize, Clone, Debug)]
 #[serde(rename_all = "PascalCase")]
 pub struct DiskUtilApfsListVolume {
-    pub name: String,
+    pub name: Option<String>,
     pub encryption: bool,
 }

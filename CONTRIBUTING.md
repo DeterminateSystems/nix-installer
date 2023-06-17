@@ -74,7 +74,7 @@ Create an issue on [the issue page](https://github.com/DeterminateSystems/nix-in
 It should contain:
 
 1. Your OS (Linux, Mac) and architecture (x86_64, aarch64)
-2. Your `nix-installer` version (`nix-installer --version`)
+2. Your `nix-installer` version (`/nix/nix-installer --version`)
 3. The thing you tried to run (eg `nix-installer`)
 4. What happened (the output of the command, please)
 5. What you expected to happen

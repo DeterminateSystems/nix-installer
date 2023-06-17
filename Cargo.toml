@@ -1,7 +1,7 @@
 [package]
 name = "nix-installer"
 description = "The Determinate Nix Installer"
-version = "0.8.1-unreleased"
+version = "0.9.2-unreleased"
 edition = "2021"
 resolver = "2"
 license = "LGPL-2.1"
@@ -17,7 +17,7 @@ build-inputs = ["darwin.apple_sdk.frameworks.Security"]
 [features]
 default = ["cli", "diagnostics"]
 cli = ["eyre", "color-eyre", "clap", "tracing-subscriber", "tracing-error", "atty"]
-diagnostics = ["os-release", "is_ci"]
+diagnostics = ["is_ci"]
 
 [[bin]]
 name = "nix-installer"
@@ -54,7 +54,7 @@ rand = { version = "0.8.5", default-features = false, features = [ "std", "std_r
 semver = { version = "1.0.14", default-features = false, features = ["serde", "std"] }
 term = { version = "0.7.0", default-features = false }
 uuid = { version = "1.2.2", features = ["serde"] }
-os-release = { version = "0.1.0", default-features = false, optional = true }
+os-release = { version = "0.1.0", default-features = false }
 is_ci = { version = "1.1.1", default-features = false, optional = true }
 strum = { version = "0.24.1", features = ["derive"] }
 nix-config-parser = { version = "0.1.2", features = ["serde"] }

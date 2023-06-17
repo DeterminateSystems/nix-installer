@@ -18,8 +18,8 @@ in
     runtimeInputs = with pkgs; [ git codespell ];
     text = ''
       codespell \
-        --ignore-words-list ba,sur,crate,pullrequest,pullrequests,ser,distroname \
-        --skip target,.git \
+        --ignore-words-list="ba,sur,crate,pullrequest,pullrequests,ser,distroname" \
+        --skip="./target,.git,./src/action/linux/selinux" \
         .
     '';
   });

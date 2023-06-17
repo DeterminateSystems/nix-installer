@@ -2,3 +2,4 @@
 .ci-store
 .direnv
 result*
+src/action/linux/selinux/nix.mod

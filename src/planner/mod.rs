@@ -172,7 +172,13 @@ impl BuiltinPlanner {
         match (Architecture::host(), OperatingSystem::host()) {
             #[cfg(target_os = "linux")]
             (Architecture::X86_64, OperatingSystem::Linux) => {
-                Ok(Self::Linux(linux::Linux::default().await?))
+                let os_release = os_release::OsRelease::new().ok();
+                match os_release {
+                    Some(os_release) if os_release.id == "steamos" => {
+                        Ok(Self::SteamDeck(steam_deck::SteamDeck::default().await?))
+                    },
+                    _ => Ok(Self::Linux(linux::Linux::default().await?)),
+                }
             },
             #[cfg(target_os = "linux")]
             (Architecture::X86_32(_), OperatingSystem::Linux) => {
@@ -359,6 +365,9 @@ pub enum PlannerError {
     /// An [`InstallSettingsError`]
     #[error(transparent)]
     InstallSettings(#[from] InstallSettingsError),
+    /// An OS Release error
+    #[error("Fetching `/etc/os-release`")]
+    OsRelease(#[source] std::io::Error),
     /// A MacOS (Darwin) plist related error
     #[error(transparent)]
     Plist(#[from] plist::Error),
@@ -367,13 +376,8 @@ pub enum PlannerError {
     #[error("Detected that this process is running under Rosetta, using Nix in Rosetta is not supported (Please open an issue with your use case)")]
     RosettaDetected,
     /// A Linux SELinux related error
-    #[error("\
-        This installer doesn't yet support SELinux in `Enforcing` mode.\n
-        \n\
-        If desirable, consider setting SELinux to `Permissive` mode with `setenforce Permissive`.\n\
-        \n\
-        If SELinux is important to you, please see https://github.com/DeterminateSystems/nix-installer/issues/124.")]
-    SelinuxEnforcing,
+    #[error("Unable to install on an SELinux system without common SELinux tooling, the binaries `restorecon`, and `semodule` are required")]
+    SelinuxRequirements,
     /// A UTF-8 related error
     #[error("UTF-8 error")]
     Utf8(#[from] FromUtf8Error),
@@ -386,6 +390,9 @@ pub enum PlannerError {
     NixExists,
     #[error("WSL1 is not supported, please upgrade to WSL2: https://learn.microsoft.com/en-us/windows/wsl/install#upgrade-version-from-wsl-1-to-wsl-2")]
     Wsl1,
+    /// Failed to execute command
+    #[error("Failed to execute command `{0}`")]
+    Command(String, #[source] std::io::Error),
     #[cfg(feature = "diagnostics")]
     #[error(transparent)]
     Diagnostic(#[from] crate::diagnostics::DiagnosticError),
@@ -400,11 +407,12 @@ impl HasExpectedErrors for PlannerError {
             PlannerError::Plist(_) => None,
             PlannerError::Sysctl(_) => None,
             this @ PlannerError::RosettaDetected => Some(Box::new(this)),
+            PlannerError::OsRelease(_) => None,
             PlannerError::Utf8(_) => None,
-            PlannerError::SelinuxEnforcing => Some(Box::new(self)),
-            PlannerError::Custom(e) => {
+            PlannerError::SelinuxRequirements => Some(Box::new(self)),
+            PlannerError::Custom(_e) => {
                 #[cfg(target_os = "linux")]
-                if let Some(err) = e.downcast_ref::<linux::LinuxErrorKind>() {
+                if let Some(err) = _e.downcast_ref::<linux::LinuxErrorKind>() {
                     return err.expected();
                 }
                 None
@@ -412,6 +420,7 @@ impl HasExpectedErrors for PlannerError {
             this @ PlannerError::NixOs => Some(Box::new(this)),
             this @ PlannerError::NixExists => Some(Box::new(this)),
             this @ PlannerError::Wsl1 => Some(Box::new(this)),
+            PlannerError::Command(_, _) => None,
             #[cfg(feature = "diagnostics")]
             PlannerError::Diagnostic(diagnostic_error) => Some(Box::new(diagnostic_error)),
         }

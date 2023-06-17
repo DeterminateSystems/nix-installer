@@ -19,6 +19,7 @@
       # Omitting `inputs.nixpkgs.follows = "nixpkgs";` on purpose
     };
 
+    flake-compat = { url = "github:edolstra/flake-compat"; flake = false; };
   };
 
   outputs =
@@ -65,7 +66,7 @@
           };
           sharedAttrs = {
             pname = "nix-installer";
-            version = "0.8.1-unreleased";
+            version = "0.9.2-unreleased";
             src = builtins.path {
               name = "nix-installer-source";
               path = self;
@@ -145,7 +146,16 @@
               check.check-editorconfig
               check.check-semver
             ]
-            ++ lib.optionals (pkgs.stdenv.isDarwin) (with pkgs; [ libiconv ]);
+            ++ lib.optionals (pkgs.stdenv.isDarwin) (with pkgs; [
+              libiconv
+              darwin.apple_sdk.frameworks.Security
+            ])
+            ++ lib.optionals (pkgs.stdenv.isLinux) (with pkgs; [
+              checkpolicy
+              podman
+              semodule-utils
+              /* users are expected to have a system docker, too */
+            ]);
           };
         });
 

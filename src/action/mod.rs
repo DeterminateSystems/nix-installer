@@ -243,7 +243,7 @@ pub trait Action: Send + Sync + std::fmt::Debug + dyn_clone::DynClone {
     ///
     /// If this action calls sub-[`Action`]s, care should be taken to call [`try_revert`][StatefulAction::try_revert], not [`revert`][Action::revert], so that [`ActionState`] is handled correctly and tracing is done.
     ///
-    /// /// This is called by [`InstallPlan::uninstall`](crate::InstallPlan::uninstall) through [`StatefulAction::try_revert`] which handles tracing as well as if the action needs to revert based on its `action_state`.
+    /// This is called by [`InstallPlan::uninstall`](crate::InstallPlan::uninstall) through [`StatefulAction::try_revert`] which handles tracing as well as if the action needs to revert based on its `action_state`.
     async fn revert(&mut self) -> Result<(), ActionError>;
 
     fn stateful(self) -> StatefulAction<Self>
@@ -327,6 +327,12 @@ impl ActionError {
 
     pub fn action_tag(&self) -> &ActionTag {
         &self.action_tag
+    }
+
+    #[cfg(feature = "diagnostics")]
+    pub fn diagnostic(&self) -> String {
+        use crate::diagnostics::ErrorDiagnostic;
+        self.kind.diagnostic()
     }
 }
 
@@ -467,6 +473,18 @@ pub enum ActionErrorKind {
     NoGroup(String),
     #[error("Chowning path `{0}`")]
     Chown(std::path::PathBuf, #[source] nix::errno::Errno),
+    #[error("Glob globbing error")]
+    GlobGlobError(
+        #[from]
+        #[source]
+        glob::GlobError,
+    ),
+    #[error("Glob pattern error")]
+    GlobPatternError(
+        #[from]
+        #[source]
+        glob::PatternError,
+    ),
     /// Failed to execute command
     #[error("Failed to execute command `{command}`",
         command = .command,
@@ -512,6 +530,8 @@ pub enum ActionErrorKind {
     Plist(#[from] plist::Error),
     #[error("Unexpected binary tarball contents found, the build result from `https://releases.nixos.org/?prefix=nix/` or `nix build nix#hydraJobs.binaryTarball.$SYSTEM` is expected")]
     MalformedBinaryTarball,
+    #[error("Could not find `{0}` in PATH; This action only works on SteamOS, which should have this present in PATH.")]
+    MissingSteamosBinary(String),
     #[error(
         "Could not find a supported command to create users in PATH; please install `useradd` or `adduser`"
     )]
@@ -562,6 +582,7 @@ impl HasExpectedErrors for ActionErrorKind {
             Self::PathUserMismatch(_, _, _)
             | Self::PathGroupMismatch(_, _, _)
             | Self::PathModeMismatch(_, _, _) => Some(Box::new(self)),
+            Self::SystemdMissing => Some(Box::new(self)),
             _ => None,
         }
     }
@@ -572,6 +593,10 @@ impl crate::diagnostics::ErrorDiagnostic for ActionErrorKind {
     fn diagnostic(&self) -> String {
         let static_str: &'static str = (self).into();
         let context = match self {
+            Self::Child(child) => vec![child.diagnostic()],
+            Self::MultipleChildren(children) => {
+                children.iter().map(|child| child.diagnostic()).collect()
+            },
             Self::Read(path, _)
             | Self::Open(path, _)
             | Self::Write(path, _)

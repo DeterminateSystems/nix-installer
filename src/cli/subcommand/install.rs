@@ -24,6 +24,12 @@ use color_eyre::{
 };
 use owo_colors::OwoColorize;
 
+const EXISTING_INCOMPATIBLE_PLAN_GUIDANCE: &'static str = "\
+    If you are trying to upgrade Nix, try running `sudo -i nix upgrade-nix` instead.\n\
+    If you are trying to install Nix over an existing install (from an incompatible `nix-installer` install), try running `/nix/nix-installer uninstall` then try to install again.\n\
+    If you are using `nix-installer` in an automated curing process and seeing this message, consider pinning the version you use via https://github.com/DeterminateSystems/nix-installer#accessing-other-versions.\
+";
+
 /// Execute an install (possibly using an existing plan)
 ///
 /// To pass custom options, select a planner, for example `nix-installer install linux-multi --help`
@@ -78,7 +84,11 @@ impl CommandExecute for Install {
                 let install_plan_string = tokio::fs::read_to_string(&RECEIPT_LOCATION)
                     .await
                     .wrap_err("Reading plan")?;
-                Some(serde_json::from_str(&install_plan_string)?)
+                Some(
+                    serde_json::from_str(&install_plan_string).wrap_err_with(|| {
+                        format!("Unable to parse existing receipt `{RECEIPT_LOCATION}`, it may be from an incompatible version of `nix-installer`. Try running `/nix/nix-installer uninstall`, then installing again.")
+                    })?,
+                )
             },
             false => None,
         };
@@ -94,6 +104,18 @@ impl CommandExecute for Install {
 
                 match existing_receipt {
                     Some(existing_receipt) => {
+                        if let Err(e) = existing_receipt.check_compatible() {
+                            eprintln!(
+                                "{}", 
+                                format!("\
+                                    {e}\n\
+                                    \n\
+                                    Found existing plan in `{RECEIPT_LOCATION}` which was created by a version incompatible `nix-installer`.\n\
+                                    {EXISTING_INCOMPATIBLE_PLAN_GUIDANCE}\n\
+                                ").red()
+                            );
+                            return Ok(ExitCode::FAILURE)
+                        }
                         if existing_receipt.planner.typetag_name() != chosen_planner.typetag_name() {
                             eprintln!("{}", format!("Found existing plan in `{RECEIPT_LOCATION}` which used a different planner, try uninstalling the existing install with `{uninstall_command}`").red());
                             return Ok(ExitCode::FAILURE)
@@ -104,7 +126,7 @@ impl CommandExecute for Install {
                         }
                         eprintln!("{}", format!("Found existing plan in `{RECEIPT_LOCATION}`, with the same settings, already completed, try uninstalling (`{uninstall_command}`) and reinstalling if Nix isn't working").red());
                         return Ok(ExitCode::FAILURE)
-                    } ,
+                    },
                     None => {
                         let res = planner.plan().await;
                         match res {
@@ -133,6 +155,18 @@ impl CommandExecute for Install {
 
                 match existing_receipt {
                     Some(existing_receipt) => {
+                        if let Err(e) = existing_receipt.check_compatible() {
+                            eprintln!(
+                                "{}", 
+                                format!("\
+                                    {e}\n\
+                                    \n\
+                                    Found existing plan in `{RECEIPT_LOCATION}` which was created by a version incompatible `nix-installer`.\n\
+                                    {EXISTING_INCOMPATIBLE_PLAN_GUIDANCE}\n\
+                                ").red()
+                            );
+                            return Ok(ExitCode::FAILURE)
+                        }
                         if existing_receipt.planner.typetag_name() != builtin_planner.typetag_name() {
                             eprintln!("{}", format!("Found existing plan in `{RECEIPT_LOCATION}` which used a different planner, try uninstalling the existing install with `{uninstall_command}`").red());
                             return Ok(ExitCode::FAILURE)
@@ -193,7 +227,7 @@ impl CommandExecute for Install {
             Err(err) => {
                 if !no_confirm {
                     // Attempt to copy self to the store if possible, but since the install failed, this might not work, that's ok.
-                    copy_self_to_nix_store().await.ok();
+                    copy_self_to_nix_dir().await.ok();
 
                     let mut was_expected = false;
                     if let Some(expected) = err.expected() {
@@ -267,7 +301,7 @@ impl CommandExecute for Install {
                 }
             },
             Ok(_) => {
-                copy_self_to_nix_store()
+                copy_self_to_nix_dir()
                     .await
                     .wrap_err("Copying `nix-installer` to `/nix/nix-installer`")?;
                 println!(
@@ -301,7 +335,7 @@ impl CommandExecute for Install {
 }
 
 #[tracing::instrument(level = "debug")]
-async fn copy_self_to_nix_store() -> Result<(), std::io::Error> {
+async fn copy_self_to_nix_dir() -> Result<(), std::io::Error> {
     let path = std::env::current_exe()?;
     tokio::fs::copy(path, "/nix/nix-installer").await?;
     tokio::fs::set_permissions("/nix/nix-installer", PermissionsExt::from_mode(0o0755)).await?;

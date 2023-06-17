@@ -44,10 +44,10 @@ Differing from the current official [Nix](https://github.com/NixOS/nix) installe
   + `bash-prompt-prefix` is set
   + `auto-optimise-store` is set to `true`
   * `extra-nix-path` is set to `nixpkgs=flake:nixpkgs`
+  * `auto-allocate-uids` is set to `true`.
 * an installation receipt (for uninstalling) is stored at `/nix/receipt.json` as well as a copy of the install binary at `/nix/nix-installer`
 * `nix-channel --update` is not run, `~/.nix-channels` is not provisioned
 * `NIX_SSL_CERT_FILE` is set in the various shell profiles if the `ssl-cert-file` argument is used.
-* `auto-uid-allocation` is set to `true`.
 
 ## Motivations
 
@@ -185,6 +185,8 @@ curl --proto '=https' --tlsv1.2 -sSf -L https://install.determinate.systems/nix 
 
 In Docker/Podman containers or WSL2 instances where an init (like `systemd`) is not present, pass `--init none`.
 
+For containers (without an init):
+
 > **Warning**
 > When `--init none` is used, _only_ `root` or users who can elevate to `root` privileges can run Nix:
 >
@@ -192,47 +194,55 @@ In Docker/Podman containers or WSL2 instances where an init (like `systemd`) is 
 > sudo -i nix run nixpkgs#hello
 > ```
 
-For Docker containers (without an init):
-
 ```dockerfile
 # Dockerfile
 FROM ubuntu:latest
 RUN apt update -y
 RUN apt install curl -y
-COPY nix-installer /nix-installer
-RUN /nix-installer install linux --init none --no-confirm
+RUN curl --proto '=https' --tlsv1.2 -sSf -L https://install.determinate.systems/nix | sh -s -- install linux \
+  --extra-conf "sandbox = false" \
+  --init none \
+  --no-confirm
 ENV PATH="${PATH}:/nix/var/nix/profiles/default/bin"
 RUN nix run nixpkgs#hello
 ```
 
-Podman containers require `sandbox = false` in your `Nix.conf`.
-
-For podman containers without an init:
-
-```dockerfile
-# Dockerfile
-FROM ubuntu:latest
-RUN apt update -y
-RUN apt install curl -y
-COPY nix-installer /nix-installer
-RUN /nix-installer install linux --extra-conf "sandbox = false" --init none --no-confirm
-ENV PATH="${PATH}:/nix/var/nix/profiles/default/bin"
-RUN nix run nixpkgs#hello
+```bash
+docker build -t ubuntu-with-nix .
+docker run --rm -ti ubuntu-with-nix
+docker rmi ubuntu-with-nix
+# or
+podman build -t ubuntu-with-nix .
+podman run --rm -ti ubuntu-with-nix
+podman rmi ubuntu-with-nix
 ```
 
-For Podman containers with a systemd init:
+For containers with a systemd init:
 
 ```dockerfile
 # Dockerfile
 FROM ubuntu:latest
 RUN apt update -y
 RUN apt install curl systemd -y
-COPY nix-installer /nix-installer
-RUN /nix-installer install linux --extra-conf "sandbox = false" --no-start-daemon --no-confirm
+RUN curl --proto '=https' --tlsv1.2 -sSf -L https://install.determinate.systems/nix | sh -s -- install linux \
+  --extra-conf "sandbox = false" \
+  --no-start-daemon \
+  --no-confirm
 ENV PATH="${PATH}:/nix/var/nix/profiles/default/bin"
 RUN nix run nixpkgs#hello
-CMD [ "/usr/sbin/init" ]
+CMD [ "/bin/systemd" ]
 ```
+
+```bash
+podman build -t ubuntu-systemd-with-nix .
+IMAGE=$(podman create ubuntu-systemd-with-nix)
+CONTAINER=$(podman start $IMAGE)
+podman exec -ti $CONTAINER /bin/bash
+podman rm -f $CONTAINER
+podman rmi $IMAGE
+```
+
+On some container tools, such as `docker`, `sandbox = false` can be omitted. Omitting it will negatively impact compatibility with container tools like `podman`.
 
 ## In WSL2
 

@@ -1,5 +1,5 @@
 {
-  "version": "0.8.1-unreleased",
+  "version": "0.9.2-unreleased",
   "actions": [
     {
       "action": {
@@ -93,7 +93,7 @@
           },
           "state": "Uncompleted"
         },
-        "delete_users": [],
+        "delete_users_in_group": null,
         "create_group": {
           "action": {
             "name": "nixbld",
@@ -249,6 +249,26 @@
     },
     {
       "action": {
+        "action": "set_tmutil_exclusions",
+        "set_tmutil_exclusions": [
+          {
+            "action": {
+              "path": "/nix/store"
+            },
+            "state": "Uncompleted"
+          },
+          {
+            "action": {
+              "path": "/nix/var"
+            },
+            "state": "Uncompleted"
+          }
+        ]
+      },
+      "state": "Uncompleted"
+    },
+    {
+      "action": {
         "action": "configure_nix",
         "setup_default_profile": {
           "action": {
@@ -339,12 +359,12 @@
                 "path": "/etc/nix/nix.conf",
                 "pending_nix_config": {
                   "settings": {
-                    "experimental-features": "nix-command flakes auto-allocate-uids",
                     "extra-nix-path": "nixpkgs=flake:nixpkgs",
+                    "auto-allocate-uids": "true",
                     "auto-optimise-store": "true",
                     "build-users-group": "nixbld",
                     "bash-prompt-prefix": "(nix:$name)\\040",
-                    "auto-allocate-uids": "true"
+                    "experimental-features": "nix-command flakes auto-allocate-uids"
                   }
                 }
               },
@@ -392,7 +412,7 @@
     "root_disk": "disk3"
   },
   "diagnostic_data": {
-    "version": "0.8.1-unreleased",
+    "version": "0.9.2-unreleased",
     "planner": "macos",
     "configured_settings": [],
     "os_name": "unknown",

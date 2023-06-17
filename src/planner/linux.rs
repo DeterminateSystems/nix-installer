@@ -2,6 +2,7 @@ use crate::{
     action::{
         base::{CreateDirectory, RemoveDirectory},
         common::{ConfigureInitService, ConfigureNix, ProvisionNix},
+        linux::ProvisionSelinux,
         StatefulAction,
     },
     error::HasExpectedErrors,
@@ -12,6 +13,7 @@ use crate::{
 };
 use std::{collections::HashMap, path::Path};
 use tokio::process::Command;
+use which::which;
 
 use super::ShellProfileLocations;
 
@@ -42,25 +44,44 @@ impl Planner for Linux {
 
         check_not_wsl1()?;
 
-        check_not_selinux().await?;
+        let has_selinux = detect_selinux().await?;
 
         if self.init.init == InitSystem::Systemd && self.init.start_daemon {
             check_systemd_active()?;
         }
 
-        Ok(vec![
+        let mut plan = vec![];
+
+        plan.push(
             CreateDirectory::plan("/nix", None, None, 0o0755, true)
                 .await
                 .map_err(PlannerError::Action)?
                 .boxed(),
+        );
+
+        plan.push(
             ProvisionNix::plan(&self.settings.clone())
                 .await
                 .map_err(PlannerError::Action)?
                 .boxed(),
+        );
+        plan.push(
             ConfigureNix::plan(ShellProfileLocations::default(), &self.settings)
                 .await
                 .map_err(PlannerError::Action)?
                 .boxed(),
+        );
+
+        if has_selinux {
+            plan.push(
+                ProvisionSelinux::plan("/usr/share/selinux/packages/nix.pp".into())
+                    .await
+                    .map_err(PlannerError::Action)?
+                    .boxed(),
+            );
+        }
+
+        plan.push(
             ConfigureInitService::plan(
                 self.init.init,
                 self.init.start_daemon,
@@ -69,11 +90,15 @@ impl Planner for Linux {
             .await
             .map_err(PlannerError::Action)?
             .boxed(),
+        );
+        plan.push(
             RemoveDirectory::plan(crate::settings::SCRATCH_DIR)
                 .await
                 .map_err(PlannerError::Action)?
                 .boxed(),
-        ])
+        );
+
+        Ok(plan)
     }
 
     fn settings(&self) -> Result<HashMap<String, serde_json::Value>, InstallSettingsError> {
@@ -139,26 +164,19 @@ fn check_not_wsl1() -> Result<(), PlannerError> {
     Ok(())
 }
 
-async fn check_not_selinux() -> Result<(), PlannerError> {
-    // We currently do not support SELinux
-    match Command::new("getenforce").output().await {
-        Ok(output) => {
-            let stdout_string = String::from_utf8(output.stdout).map_err(PlannerError::Utf8)?;
-            tracing::trace!(getenforce_stdout = stdout_string, "SELinux detected");
-            match stdout_string.trim() {
-                "Enforcing" => return Err(PlannerError::SelinuxEnforcing),
-                _ => (),
-            }
-        },
-        // The device doesn't have SELinux set up
-        Err(e) if e.kind() == std::io::ErrorKind::NotFound => (),
-        // Some unknown error
-        Err(e) => {
-            tracing::warn!(error = ?e, "Got an error checking for SELinux setting, this install may fail if SELinux is set to `Enforcing`")
-        },
+async fn detect_selinux() -> Result<bool, PlannerError> {
+    if Path::new("/sys/fs/selinux").exists() && which("sestatus").is_ok() {
+        // We expect systems with SELinux to have the normal SELinux tools.
+        let has_semodule = which("semodule").is_ok();
+        let has_restorecon = which("restorecon").is_ok();
+        if !(has_semodule && has_restorecon) {
+            Err(PlannerError::SelinuxRequirements)
+        } else {
+            Ok(true)
+        }
+    } else {
+        Ok(false)
     }
-
-    Ok(())
 }
 
 async fn check_nix_not_already_installed() -> Result<(), PlannerError> {

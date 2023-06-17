@@ -7,7 +7,6 @@ use crate::{
 };
 use owo_colors::OwoColorize;
 use semver::{Version, VersionReq};
-use serde::{de::Error, Deserialize, Deserializer};
 use tokio::sync::broadcast::Receiver;
 
 pub const RECEIPT_LOCATION: &str = "/nix/receipt.json";
@@ -18,7 +17,6 @@ revert
 */
 #[derive(Debug, serde::Deserialize, serde::Serialize, Clone)]
 pub struct InstallPlan {
-    #[serde(deserialize_with = "ensure_version")]
     pub(crate) version: Version,
 
     pub(crate) actions: Vec<StatefulAction<Box<dyn Action>>>,
@@ -144,6 +142,7 @@ impl InstallPlan {
         &mut self,
         cancel_channel: impl Into<Option<Receiver<()>>>,
     ) -> Result<(), NixInstallerError> {
+        self.check_compatible()?;
         let Self { actions, .. } = self;
         let mut cancel_channel = cancel_channel.into();
 
@@ -197,6 +196,26 @@ impl InstallPlan {
         }
 
         write_receipt(self.clone()).await?;
+
+        if let Err(err) = crate::self_test::self_test()
+            .await
+            .map_err(NixInstallerError::SelfTest)
+        {
+            #[cfg(feature = "diagnostics")]
+            if let Some(diagnostic_data) = &self.diagnostic_data {
+                diagnostic_data
+                    .clone()
+                    .failure(&err)
+                    .send(
+                        crate::diagnostics::DiagnosticAction::Install,
+                        crate::diagnostics::DiagnosticStatus::Failure,
+                    )
+                    .await?;
+            }
+
+            return Err(err);
+        }
+
         #[cfg(feature = "diagnostics")]
         if let Some(diagnostic_data) = &self.diagnostic_data {
             diagnostic_data
@@ -293,6 +312,7 @@ impl InstallPlan {
         &mut self,
         cancel_channel: impl Into<Option<Receiver<()>>>,
     ) -> Result<(), NixInstallerError> {
+        self.check_compatible()?;
         let Self { actions, .. } = self;
         let mut cancel_channel = cancel_channel.into();
         let mut errors = vec![];
@@ -359,6 +379,21 @@ impl InstallPlan {
             return Err(error);
         }
     }
+
+    pub fn check_compatible(&self) -> Result<(), NixInstallerError> {
+        let self_version_string = self.version.to_string();
+        let req = VersionReq::parse(&self_version_string)
+            .map_err(|e| NixInstallerError::InvalidVersionRequirement(self_version_string, e))?;
+        let nix_installer_version = current_version()?;
+        if req.matches(&nix_installer_version) {
+            Ok(())
+        } else {
+            Err(NixInstallerError::IncompatibleVersion {
+                binary: nix_installer_version,
+                plan: self.version.clone(),
+            })
+        }
+    }
 }
 
 async fn write_receipt(plan: InstallPlan) -> Result<(), NixInstallerError> {
@@ -374,30 +409,11 @@ async fn write_receipt(plan: InstallPlan) -> Result<(), NixInstallerError> {
     Result::<(), NixInstallerError>::Ok(())
 }
 
-fn current_version() -> Result<Version, semver::Error> {
+fn current_version() -> Result<Version, NixInstallerError> {
     let nix_installer_version_str = env!("CARGO_PKG_VERSION");
-    Version::from_str(nix_installer_version_str)
-}
-
-fn ensure_version<'de, D: Deserializer<'de>>(d: D) -> Result<Version, D::Error> {
-    let plan_version = Version::deserialize(d)?;
-    let req = VersionReq::parse(&plan_version.to_string()).map_err(|_e| {
-        D::Error::custom(&format!(
-            "Could not parse version `{plan_version}` as a version requirement, please report this",
-        ))
-    })?;
-    let nix_installer_version = current_version().map_err(|_e| {
-        D::Error::custom(&format!(
-            "Could not parse `nix-installer`'s version `{}` as a valid version according to Semantic Versioning, therefore the plan version ({plan_version}) compatibility cannot be checked", env!("CARGO_PKG_VERSION")
-        ))
-    })?;
-    if req.matches(&nix_installer_version) {
-        Ok(plan_version)
-    } else {
-        Err(D::Error::custom(&format!(
-            "This version of `nix-installer` ({nix_installer_version}) is not compatible with this plan's version ({plan_version}), check for a compatible version at `/nix/nix-installer` or download the matching release from https://github.com/DeterminateSystems/nix-installer/releases",
-        )))
-    }
+    Version::from_str(nix_installer_version_str).map_err(|e| {
+        NixInstallerError::InvalidCurrentVersion(nix_installer_version_str.to_string(), e)
+    })
 }
 
 #[cfg(test)]
@@ -415,8 +431,8 @@ mod test {
             "version": good_version,
             "actions": [],
         });
-        let maybe_plan: Result<InstallPlan, serde_json::Error> = serde_json::from_value(value);
-        maybe_plan.unwrap();
+        let maybe_plan: InstallPlan = serde_json::from_value(value)?;
+        maybe_plan.check_compatible()?;
         Ok(())
     }
 
@@ -429,10 +445,8 @@ mod test {
             "version": bad_version,
             "actions": [],
         });
-        let maybe_plan: Result<InstallPlan, serde_json::Error> = serde_json::from_value(value);
-        assert!(maybe_plan.is_err());
-        let err = maybe_plan.unwrap_err();
-        assert!(err.is_data());
+        let maybe_plan: InstallPlan = serde_json::from_value(value)?;
+        assert!(maybe_plan.check_compatible().is_err());
         Ok(())
     }
 }

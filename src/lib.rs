@@ -78,6 +78,7 @@ mod error;
 mod os;
 mod plan;
 pub mod planner;
+pub mod self_test;
 pub mod settings;
 
 use std::{ffi::OsStr, path::Path, process::Output};

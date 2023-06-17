@@ -1,6 +1,11 @@
 use std::{error::Error, path::PathBuf};
 
-use crate::{action::ActionError, planner::PlannerError, settings::InstallSettingsError};
+use semver::Version;
+
+use crate::{
+    action::ActionError, planner::PlannerError, self_test::SelfTestError,
+    settings::InstallSettingsError,
+};
 
 /// An error occurring during a call defined in this crate
 #[non_exhaustive]
@@ -9,6 +14,13 @@ pub enum NixInstallerError {
     /// An error originating from an [`Action`](crate::action::Action)
     #[error("Error executing action")]
     Action(#[source] ActionError),
+    /// An error originating from a [`self_test`](crate::self_test)
+    #[error("Self test")]
+    SelfTest(
+        #[source]
+        #[from]
+        SelfTestError,
+    ),
     /// An error originating from an [`Action`](crate::action::Action) while reverting
     #[error("Error reverting\n{}", .0.iter().map(|err| {
         if let Some(source) = err.source() {
@@ -68,6 +80,15 @@ pub enum NixInstallerError {
         #[source]
         crate::diagnostics::DiagnosticError,
     ),
+    /// Could not parse the value as a version requirement in order to ensure it's compatible
+    #[error("Could not parse `{0}` as a version requirement in order to ensure it's compatible")]
+    InvalidVersionRequirement(String, semver::Error),
+    /// Could not parse `nix-installer`'s version as a valid version according to Semantic Versioning, therefore the plan version compatibility cannot be checked
+    #[error("Could not parse `nix-installer`'s version `{0}` as a valid version according to Semantic Versioning, therefore the plan version compatibility cannot be checked")]
+    InvalidCurrentVersion(String, semver::Error),
+    /// This version of `nix-installer` is not compatible with this plan's version
+    #[error("`nix-installer` version `{}` is not compatible with this plan's version `{}`", .binary, .plan)]
+    IncompatibleVersion { binary: Version, plan: Version },
 }
 
 pub(crate) trait HasExpectedErrors: std::error::Error + Sized + Send + Sync {
@@ -79,6 +100,7 @@ impl HasExpectedErrors for NixInstallerError {
         match self {
             NixInstallerError::Action(action_error) => action_error.kind().expected(),
             NixInstallerError::ActionRevert(_) => None,
+            NixInstallerError::SelfTest(_) => None,
             NixInstallerError::RecordingReceipt(_, _) => None,
             NixInstallerError::CopyingSelf(_) => None,
             NixInstallerError::SerializingReceipt(_) => None,
@@ -86,6 +108,11 @@ impl HasExpectedErrors for NixInstallerError {
             NixInstallerError::SemVer(_) => None,
             NixInstallerError::Planner(planner_error) => planner_error.expected(),
             NixInstallerError::InstallSettings(_) => None,
+            this @ NixInstallerError::InvalidVersionRequirement(_, _) => Some(Box::new(this)),
+            this @ NixInstallerError::InvalidCurrentVersion(_, _) => Some(Box::new(this)),
+            this @ NixInstallerError::IncompatibleVersion { binary: _, plan: _ } => {
+                Some(Box::new(this))
+            },
             #[cfg(feature = "diagnostics")]
             NixInstallerError::Diagnostic(_) => None,
         }
@@ -97,7 +124,12 @@ impl crate::diagnostics::ErrorDiagnostic for NixInstallerError {
     fn diagnostic(&self) -> String {
         let static_str: &'static str = (self).into();
         let context = match self {
-            Self::Action(action_error) => vec![action_error.action_tag().to_string()],
+            Self::SelfTest(self_test) => vec![self_test.diagnostic().to_string()],
+            Self::Action(action_error) => vec![action_error.diagnostic().to_string()],
+            Self::ActionRevert(action_errors) => action_errors
+                .iter()
+                .map(|action_error| action_error.diagnostic().to_string())
+                .collect(),
             _ => vec![],
         };
         return format!(
