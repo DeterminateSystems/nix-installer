@@ -39,6 +39,7 @@ impl PlaceNixConfiguration {
         #[cfg(not(feature = "nix-community"))]
         {
             use std::collections::hash_map::Entry;
+
             let experimental_features = ["nix-command", "flakes", "auto-allocate-uids"];
             match settings.entry("experimental-features".to_string()) {
                 Entry::Occupied(mut slot) => {
