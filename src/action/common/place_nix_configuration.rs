@@ -36,7 +36,9 @@ impl PlaceNixConfiguration {
 
         settings.insert("build-users-group".to_string(), nix_build_group_name);
 
-        #[cfg(not(feature = "nix-community"))] {
+        #[cfg(not(feature = "nix-community"))]
+        {
+            use std::collections::hash_map::Entry;
             let experimental_features = ["nix-command", "flakes", "auto-allocate-uids"];
             match settings.entry("experimental-features".to_string()) {
                 Entry::Occupied(mut slot) => {
