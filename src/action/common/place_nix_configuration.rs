@@ -35,7 +35,8 @@ impl PlaceNixConfiguration {
         let settings = nix_config.settings_mut();
 
         settings.insert("build-users-group".to_string(), nix_build_group_name);
-        if !cfg!(feature = "nix-community") {
+
+        #[cfg(not(feature = "nix-community"))] {
             let experimental_features = ["nix-command", "flakes", "auto-allocate-uids"];
             match settings.entry("experimental-features".to_string()) {
                 Entry::Occupied(mut slot) => {
