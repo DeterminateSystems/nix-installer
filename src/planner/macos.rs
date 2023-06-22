@@ -144,7 +144,7 @@ impl Planner for Macos {
                 .map_err(PlannerError::Action)?
                 .boxed(),
             // Auto-allocate uids is broken on Mac. Tools like `whoami` don't work.
-            CreateUsersAndGroups::plan(&self.settings.clone())
+            CreateUsersAndGroups::plan(self.settings.clone())
                 .await
                 .map_err(PlannerError::Action)?
                 .boxed(),
