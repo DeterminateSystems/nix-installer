@@ -58,7 +58,7 @@ So far, our explorations have been quite fruitful, so we wanted to share and kee
 Install Nix with the default planner and options:
 
 ```bash
-curl --proto '=https' --tlsv1.2 -sSf -L https://install.determinate.systems/nix | sh -s -- install
+curl --tlsv1.2 -sSf -L https://install.determinate.systems/nix | sh -s -- install
 ```
 
 Or, to download a platform specific Installer binary yourself:
