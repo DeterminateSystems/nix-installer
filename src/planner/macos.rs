@@ -9,7 +9,7 @@ use super::ShellProfileLocations;
 use crate::{
     action::{
         base::RemoveDirectory,
-        common::{ConfigureInitService, ConfigureNix, ProvisionNix},
+        common::{ConfigureInitService, ConfigureNix, CreateUsersAndGroups, ProvisionNix},
         macos::{CreateNixVolume, SetTmutilExclusions},
         StatefulAction,
     },
@@ -144,7 +144,7 @@ impl Planner for Macos {
                 .map_err(PlannerError::Action)?
                 .boxed(),
             // Auto-allocate uids is broken on Mac. Tools like `whoami` don't work.
-            CreateUsersAndGroups::plan(settings.clone())
+            CreateUsersAndGroups::plan(&self.settings.clone())
                 .await
                 .map_err(PlannerError::Action)?
                 .boxed(),
