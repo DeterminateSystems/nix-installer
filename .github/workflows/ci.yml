@@ -12,7 +12,7 @@ jobs:
     steps:
       - uses: actions/checkout@v3
       - name: Check Nixpkgs input
-        uses: DeterminateSystems/flake-checker-action@v3
+        uses: DeterminateSystems/flake-checker-action@v4
         with:
           fail-mode: true
       - name: Install Nix
