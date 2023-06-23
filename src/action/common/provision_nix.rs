@@ -1,10 +1,9 @@
-use nix::unistd::Group;
 use tracing::{span, Span};
 
-use super::{CreateNixTree, DeleteUsersInGroup};
+use super::CreateNixTree;
 use crate::{
     action::{
-        base::{CreateGroup, FetchAndUnpackNix, MoveUnpackedNix},
+        base::{FetchAndUnpackNix, MoveUnpackedNix},
         Action, ActionDescription, ActionError, ActionErrorKind, ActionTag, StatefulAction,
     },
     settings::{CommonSettings, SCRATCH_DIR},
