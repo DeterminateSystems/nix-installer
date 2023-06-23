@@ -107,11 +107,11 @@ jobs:
       - name: Test `nix` with `$GITHUB_PATH`
         if: success() || failure()
         run: |
-          nix run nixpkgs#fortune
-          nix profile install nixpkgs#fortune
-          fortune
+          nix run nixpkgs#hello
+          nix profile install nixpkgs#hello
+          hello
           nix store gc
-          nix run nixpkgs#fortune
+          nix run nixpkgs#hello
       - name: Test bash
         run: nix-instantiate -E 'builtins.currentTime' --eval
         if: success() || failure()
@@ -217,11 +217,11 @@ jobs:
       - name: Test `nix` with `$GITHUB_PATH`
         if: success() || failure()
         run: |
-          sudo -i nix run nixpkgs#fortune
-          sudo -i nix profile install nixpkgs#fortune
-          fortune
+          sudo -i nix run nixpkgs#hello
+          sudo -i nix profile install nixpkgs#hello
+          hello
           sudo -i nix store gc
-          sudo -i nix run nixpkgs#fortune
+          sudo -i nix run nixpkgs#hello
       - name: Test bash
         run: sudo -i nix-instantiate -E 'builtins.currentTime' --eval
         if: success() || failure()
@@ -335,11 +335,11 @@ jobs:
       - name: Test `nix` with `$GITHUB_PATH`
         if: success() || failure()
         run: |
-          nix run nixpkgs#fortune
-          nix profile install nixpkgs#fortune
-          fortune
+          nix run nixpkgs#hello
+          nix profile install nixpkgs#hello
+          hello
           nix store gc
-          nix run nixpkgs#fortune
+          nix run nixpkgs#hello
       - name: Test bash
         run: nix-instantiate -E 'builtins.currentTime' --eval
         if: success() || failure()
@@ -429,15 +429,14 @@ jobs:
           extra-conf: trusted-users = root runner
       - name: echo $PATH
         run: echo $PATH
-      # The Mac CI constantly fails here despite us setting the token....
-      # - name: Test `nix` with `$GITHUB_PATH`
-      #   if: success() || failure()
-      #   run: |
-      #     nix run nixpkgs#fortune
-      #     nix profile install nixpkgs#fortune
-      #     fortune
-      #     nix store gc
-      #     nix run nixpkgs#fortune
+      - name: Test `nix` with `$GITHUB_PATH`
+        if: success() || failure()
+        run: |
+          nix run nixpkgs#hello
+          nix profile install nixpkgs#hello
+          hello
+          nix store gc
+          nix run nixpkgs#hello
       - name: Test bash
         run: nix-instantiate -E 'builtins.currentTime' --eval
         if: success() || failure()
