@@ -46,6 +46,7 @@ impl ConfigureNix {
         };
         let place_nix_configuration = PlaceNixConfiguration::plan(
             settings.nix_build_group_name.clone(),
+            settings.ssl_cert_file.clone(),
             settings.extra_conf.clone(),
             settings.force,
         )

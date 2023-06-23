@@ -34,7 +34,6 @@ Configure the init to run the Nix daemon
 pub struct ConfigureInitService {
     init: InitSystem,
     start_daemon: bool,
-    ssl_cert_file: Option<PathBuf>,
 }
 
 impl ConfigureInitService {
@@ -72,18 +71,7 @@ impl ConfigureInitService {
     pub async fn plan(
         init: InitSystem,
         start_daemon: bool,
-        ssl_cert_file: Option<PathBuf>,
     ) -> Result<StatefulAction<Self>, ActionError> {
-        let ssl_cert_file_path = if let Some(ssl_cert_file) = ssl_cert_file {
-            Some(
-                ssl_cert_file
-                    .canonicalize()
-                    .map_err(|e| Self::error(ActionErrorKind::Canonicalize(ssl_cert_file, e)))?,
-            )
-        } else {
-            None
-        };
-
         match init {
             #[cfg(target_os = "macos")]
             InitSystem::Launchd => {
@@ -114,12 +102,7 @@ impl ConfigureInitService {
             },
         };
 
-        Ok(Self {
-            init,
-            start_daemon,
-            ssl_cert_file: ssl_cert_file_path,
-        }
-        .into())
+        Ok(Self { init, start_daemon }.into())
     }
 }
 
@@ -180,11 +163,7 @@ impl Action for ConfigureInitService {
 
     #[tracing::instrument(level = "debug", skip_all)]
     async fn execute(&mut self) -> Result<(), ActionError> {
-        let Self {
-            init,
-            start_daemon,
-            ssl_cert_file,
-        } = self;
+        let Self { init, start_daemon } = self;
 
         match init {
             #[cfg(target_os = "macos")]
@@ -209,19 +188,6 @@ impl Action for ConfigureInitService {
                 )
                 .await
                 .map_err(Self::error)?;
-
-                if let Some(ssl_cert_file) = ssl_cert_file {
-                    execute_command(
-                        Command::new("launchctl")
-                            .process_group(0)
-                            .arg("setenv")
-                            .arg("NIX_SSL_CERT_FILE")
-                            .arg(format!("{ssl_cert_file:?}"))
-                            .stdin(std::process::Stdio::null()),
-                    )
-                    .await
-                    .map_err(Self::error)?;
-                }
 
                 if *start_daemon {
                     execute_command(
@@ -347,30 +313,6 @@ impl Action for ConfigureInitService {
                             .stdin(std::process::Stdio::null()),
                     )
                     .await
-                    .map_err(Self::error)?;
-                }
-
-                if let Some(ssl_cert_file) = ssl_cert_file {
-                    let service_conf_dir_path = PathBuf::from(format!("{SERVICE_DEST}.d"));
-                    tokio::fs::create_dir(&service_conf_dir_path)
-                        .await
-                        .map_err(|e| {
-                            ActionErrorKind::CreateDirectory(service_conf_dir_path.clone(), e)
-                        })
-                        .map_err(Self::error)?;
-                    let service_conf_file_path =
-                        service_conf_dir_path.join("nix-ssl-cert-file.conf");
-                    tokio::fs::write(
-                        service_conf_file_path,
-                        format!(
-                            "\
-                        [Service]\n\
-                        Environment=\"NIX_SSL_CERT_FILE={ssl_cert_file:?}\"\n\
-                    "
-                        ),
-                    )
-                    .await
-                    .map_err(|e| ActionErrorKind::Write(ssl_cert_file.clone(), e))
                     .map_err(Self::error)?;
                 }
 
@@ -512,16 +454,6 @@ impl Action for ConfigureInitService {
                 .await
                 {
                     errors.push(err);
-                }
-
-                if self.ssl_cert_file.is_some() {
-                    let service_conf_dir_path = PathBuf::from(format!("{SERVICE_DEST}.d"));
-                    if let Err(err) = tokio::fs::remove_dir_all(&service_conf_dir_path)
-                        .await
-                        .map_err(|e| ActionErrorKind::Remove(service_conf_dir_path.clone(), e))
-                    {
-                        errors.push(err);
-                    }
                 }
 
                 if let Err(err) = tokio::fs::remove_file(TMPFILES_DEST)
