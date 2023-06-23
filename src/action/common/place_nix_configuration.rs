@@ -56,9 +56,12 @@ impl PlaceNixConfiguration {
             "(nix:$name)\\040".to_string(),
         );
         if let Some(ssl_cert_file) = ssl_cert_file {
+            let ssl_cert_file_canonical = ssl_cert_file
+                .canonicalize()
+                .map_err(|e| Self::error(ActionErrorKind::Canonicalize(ssl_cert_file, e)))?;
             settings.insert(
                 "ssl-cert-file".to_string(),
-                ssl_cert_file.display().to_string(),
+                ssl_cert_file_canonical.display().to_string(),
             );
         }
         settings.insert(
