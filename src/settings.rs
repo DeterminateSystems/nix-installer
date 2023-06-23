@@ -94,6 +94,55 @@ pub struct CommonSettings {
     )]
     pub nix_build_group_id: u32,
 
+    /// The Nix build user prefix (user numbers will be postfixed)
+    #[cfg_attr(
+        feature = "cli",
+        clap(long, env = "NIX_INSTALLER_NIX_BUILD_USER_PREFIX", global = true)
+    )]
+    #[cfg_attr(
+        all(target_os = "macos", feature = "cli"),
+        clap(default_value = "_nixbld")
+    )]
+    #[cfg_attr(
+        all(target_os = "linux", feature = "cli"),
+        clap(default_value = "nixbld")
+    )]
+    pub nix_build_user_prefix: String,
+
+    /// Number of build users to create
+    #[cfg_attr(
+        all(target_os = "linux", feature = "cli"),
+        doc = "On Linux, Nix's `auto-allocate-uids` feature will be enabled, so users don't need to be created."
+    )]
+    #[cfg_attr(
+        feature = "cli",
+        clap(
+            long,
+            alias = "daemon-user-count",
+            env = "NIX_INSTALLER_NIX_BUILD_USER_COUNT",
+            global = true
+        )
+    )]
+    #[cfg_attr(all(target_os = "macos", feature = "cli"), clap(default_value = "32"))]
+    #[cfg_attr(all(target_os = "linux", feature = "cli"), clap(default_value = "0"))]
+    pub nix_build_user_count: u32,
+
+    /// The Nix build user base UID (ascending)
+    #[cfg_attr(
+        feature = "cli",
+        clap(long, env = "NIX_INSTALLER_NIX_BUILD_USER_ID_BASE", global = true)
+    )]
+    #[cfg_attr(
+        all(target_os = "macos", feature = "cli"),
+        doc = "Service users on Mac should be between 200-400"
+    )]
+    #[cfg_attr(all(target_os = "macos", feature = "cli"), clap(default_value_t = 300))]
+    #[cfg_attr(
+        all(target_os = "linux", feature = "cli"),
+        clap(default_value_t = 30_000)
+    )]
+    pub nix_build_user_id_base: u32,
+
     /// The Nix package URL
     #[cfg_attr(
         feature = "cli",
@@ -189,30 +238,48 @@ impl CommonSettings {
     /// The default settings for the given Architecture & Operating System
     pub async fn default() -> Result<Self, InstallSettingsError> {
         let url;
+        let nix_build_user_prefix;
+        let nix_build_user_id_base;
+        let nix_build_user_count;
 
         use target_lexicon::{Architecture, OperatingSystem};
         match (Architecture::host(), OperatingSystem::host()) {
             #[cfg(target_os = "linux")]
             (Architecture::X86_64, OperatingSystem::Linux) => {
                 url = NIX_X64_64_LINUX_URL;
+                nix_build_user_prefix = "nixbld";
+                nix_build_user_id_base = 30000;
+                nix_build_user_count = 0;
             },
             #[cfg(target_os = "linux")]
             (Architecture::X86_32(_), OperatingSystem::Linux) => {
                 url = NIX_I686_LINUX_URL;
+                nix_build_user_prefix = "nixbld";
+                nix_build_user_id_base = 30000;
+                nix_build_user_count = 0;
             },
             #[cfg(target_os = "linux")]
             (Architecture::Aarch64(_), OperatingSystem::Linux) => {
                 url = NIX_AARCH64_LINUX_URL;
+                nix_build_user_prefix = "nixbld";
+                nix_build_user_id_base = 30000;
+                nix_build_user_count = 0;
             },
             #[cfg(target_os = "macos")]
             (Architecture::X86_64, OperatingSystem::MacOSX { .. })
             | (Architecture::X86_64, OperatingSystem::Darwin) => {
                 url = NIX_X64_64_DARWIN_URL;
+                nix_build_user_prefix = "_nixbld";
+                nix_build_user_id_base = 300;
+                nix_build_user_count = 32;
             },
             #[cfg(target_os = "macos")]
             (Architecture::Aarch64(_), OperatingSystem::MacOSX { .. })
             | (Architecture::Aarch64(_), OperatingSystem::Darwin) => {
                 url = NIX_AARCH64_DARWIN_URL;
+                nix_build_user_prefix = "_nixbld";
+                nix_build_user_id_base = 300;
+                nix_build_user_count = 32;
             },
             _ => {
                 return Err(InstallSettingsError::UnsupportedArchitecture(
@@ -225,6 +292,9 @@ impl CommonSettings {
             modify_profile: true,
             nix_build_group_name: String::from("nixbld"),
             nix_build_group_id: 30_000,
+            nix_build_user_id_base,
+            nix_build_user_count,
+            nix_build_user_prefix: nix_build_user_prefix.to_string(),
             nix_package_url: url.parse()?,
             proxy: Default::default(),
             extra_conf: Default::default(),
@@ -241,6 +311,9 @@ impl CommonSettings {
             modify_profile,
             nix_build_group_name,
             nix_build_group_id,
+            nix_build_user_prefix,
+            nix_build_user_id_base,
+            nix_build_user_count,
             nix_package_url,
             proxy,
             extra_conf,
@@ -262,6 +335,18 @@ impl CommonSettings {
         map.insert(
             "nix_build_group_id".into(),
             serde_json::to_value(nix_build_group_id)?,
+        );
+        map.insert(
+            "nix_build_user_prefix".into(),
+            serde_json::to_value(nix_build_user_prefix)?,
+        );
+        map.insert(
+            "nix_build_user_id_base".into(),
+            serde_json::to_value(nix_build_user_id_base)?,
+        );
+        map.insert(
+            "nix_build_user_count".into(),
+            serde_json::to_value(nix_build_user_count)?,
         );
         map.insert(
             "nix_package_url".into(),

@@ -103,7 +103,7 @@ use tokio::process::Command;
 use crate::{
     action::{
         base::{CreateDirectory, CreateFile, RemoveDirectory},
-        common::{ConfigureInitService, ConfigureNix, ProvisionNix},
+        common::{ConfigureInitService, ConfigureNix, CreateUsersAndGroups, ProvisionNix},
         linux::{
             EnsureSteamosNixDirectory, RevertCleanSteamosNixOffload, StartSystemdUnit,
             SystemctlDaemonReload,
@@ -322,6 +322,10 @@ impl Planner for SteamDeck {
 
         actions.append(&mut vec![
             ProvisionNix::plan(&self.settings.clone())
+                .await
+                .map_err(PlannerError::Action)?
+                .boxed(),
+            CreateUsersAndGroups::plan(self.settings.clone())
                 .await
                 .map_err(PlannerError::Action)?
                 .boxed(),

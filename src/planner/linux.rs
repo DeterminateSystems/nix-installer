@@ -1,7 +1,7 @@
 use crate::{
     action::{
         base::{CreateDirectory, RemoveDirectory},
-        common::{ConfigureInitService, ConfigureNix, ProvisionNix},
+        common::{ConfigureInitService, ConfigureNix, CreateUsersAndGroups, ProvisionNix},
         linux::ProvisionSelinux,
         StatefulAction,
     },
@@ -61,6 +61,12 @@ impl Planner for Linux {
 
         plan.push(
             ProvisionNix::plan(&self.settings.clone())
+                .await
+                .map_err(PlannerError::Action)?
+                .boxed(),
+        );
+        plan.push(
+            CreateUsersAndGroups::plan(self.settings.clone())
                 .await
                 .map_err(PlannerError::Action)?
                 .boxed(),
