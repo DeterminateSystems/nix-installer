@@ -59,6 +59,7 @@ impl PlaceNixConfiguration {
         );
 
         // Auto-allocate uids is broken on Mac. Tools like `whoami` don't work.
+        // e.g. https://github.com/NixOS/nix/issues/8444
         #[cfg(not(target_os = "macos"))]
         settings.insert("auto-allocate-uids".to_string(), "true".to_string());
 
