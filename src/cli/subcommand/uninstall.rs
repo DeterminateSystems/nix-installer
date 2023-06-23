@@ -61,6 +61,7 @@ impl CommandExecute for Uninstall {
             if should_be_root == Some(std::path::Component::RootDir)
                 && maybe_nix == Some(std::path::Component::Normal(std::ffi::OsStr::new("nix")))
             {
+                tracing::debug!("Changing current directory to be outside of `/nix`");
                 std::env::set_current_dir("/").wrap_err("Uninstall process was run from `/nix` folder, but could not change directory away from `/nix`, please change the current directory and try again.")?;
             }
         }
