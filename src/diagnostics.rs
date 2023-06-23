@@ -89,7 +89,7 @@ impl DiagnosticData {
             os_version,
             triple: target_lexicon::HOST.to_string(),
             is_ci,
-            ssl_cert_file,
+            ssl_cert_file: ssl_cert_file.and_then(|v| v.canonicalize().ok()),
             failure_chain: None,
         })
     }
