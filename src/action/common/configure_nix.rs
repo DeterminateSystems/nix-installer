@@ -34,12 +34,9 @@ impl ConfigureNix {
 
         let configure_shell_profile = if settings.modify_profile {
             Some(
-                ConfigureShellProfile::plan(
-                    shell_profile_locations,
-                    settings.ssl_cert_file.clone(),
-                )
-                .await
-                .map_err(Self::error)?,
+                ConfigureShellProfile::plan(shell_profile_locations)
+                    .await
+                    .map_err(Self::error)?,
             )
         } else {
             None
