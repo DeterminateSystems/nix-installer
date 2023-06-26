@@ -6,6 +6,7 @@ use crate::action::{
     Action, ActionDescription, ActionError, ActionErrorKind, ActionTag, StatefulAction,
 };
 use std::collections::hash_map::Entry;
+use std::path::PathBuf;
 
 const NIX_CONF_FOLDER: &str = "/etc/nix";
 const NIX_CONF: &str = "/etc/nix/nix.conf";
@@ -23,6 +24,7 @@ impl PlaceNixConfiguration {
     #[tracing::instrument(level = "debug", skip_all)]
     pub async fn plan(
         nix_build_group_name: String,
+        ssl_cert_file: Option<PathBuf>,
         extra_conf: Vec<String>,
         force: bool,
     ) -> Result<StatefulAction<Self>, ActionError> {
@@ -53,6 +55,15 @@ impl PlaceNixConfiguration {
             "bash-prompt-prefix".to_string(),
             "(nix:$name)\\040".to_string(),
         );
+        if let Some(ssl_cert_file) = ssl_cert_file {
+            let ssl_cert_file_canonical = ssl_cert_file
+                .canonicalize()
+                .map_err(|e| Self::error(ActionErrorKind::Canonicalize(ssl_cert_file, e)))?;
+            settings.insert(
+                "ssl-cert-file".to_string(),
+                ssl_cert_file_canonical.display().to_string(),
+            );
+        }
         settings.insert(
             "extra-nix-path".to_string(),
             "nixpkgs=flake:nixpkgs".to_string(),

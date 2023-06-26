@@ -334,14 +334,10 @@ impl Planner for SteamDeck {
                 .map_err(PlannerError::Action)?
                 .boxed(),
             // Init is required for the steam-deck archetype to make the `/nix` mount
-            ConfigureInitService::plan(
-                InitSystem::Systemd,
-                true,
-                self.settings.ssl_cert_file.clone(),
-            )
-            .await
-            .map_err(PlannerError::Action)?
-            .boxed(),
+            ConfigureInitService::plan(InitSystem::Systemd, true)
+                .await
+                .map_err(PlannerError::Action)?
+                .boxed(),
             StartSystemdUnit::plan("ensure-symlinked-units-resolve.service".to_string(), true)
                 .await
                 .map_err(PlannerError::Action)?
