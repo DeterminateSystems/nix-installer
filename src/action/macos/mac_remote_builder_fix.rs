@@ -41,7 +41,7 @@ impl MacRemoteBuilderFix {
 }
 
 #[async_trait::async_trait]
-#[typetag::serde(name = "remote_builder_fix")]
+#[typetag::serde(name = "mac_remote_builder_fix")]
 impl Action for MacRemoteBuilderFix {
     fn action_tag() -> ActionTag {
         ActionTag("mac_remote_builder_fix")
