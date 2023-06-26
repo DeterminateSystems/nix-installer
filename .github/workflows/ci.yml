@@ -18,8 +18,6 @@ jobs:
           check-outdated: false # PRs shouldn't fail because main's nixpkgs is out of date
       - name: Install Nix
         uses: DeterminateSystems/nix-installer-action@main
-        with:
-          github-token: ${{ secrets.GITHUB_TOKEN }}
       - uses: DeterminateSystems/magic-nix-cache-action@main
       - name: Check rustfmt
         run: nix develop --command check-rustfmt
