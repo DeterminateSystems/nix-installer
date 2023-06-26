@@ -18,22 +18,15 @@ jobs:
           check-outdated: false # PRs shouldn't fail because main's nixpkgs is out of date
       - name: Install Nix
         uses: DeterminateSystems/nix-installer-action@main
-        with:
-          github-token: ${{ secrets.GITHUB_TOKEN }}
-      - name: Cache lint store (x86_64-linux)
-        id: lint-store-x86_64-linux
-        uses: actions/cache@v3
-        with:
-          path: ~/.ci-store
-          key: lint-store-x86_64-linux-${{ hashFiles('**/Cargo.lock', '**/flake.lock') }}-v1
+      - uses: DeterminateSystems/magic-nix-cache-action@v1
       - name: Check rustfmt
-        run: nix develop --store ~/.ci-store --command check-rustfmt
+        run: nix develop --command check-rustfmt
       - name: Check Spelling
-        run: nix develop --store ~/.ci-store --command check-spelling
+        run: nix develop --command check-spelling
       - name: Check nixpkgs-fmt formatting
-        run: nix develop --store ~/.ci-store --command check-nixpkgs-fmt
+        run: nix develop --command check-nixpkgs-fmt
       - name: Check EditorConfig conformance
-        run: nix develop --store ~/.ci-store --command check-editorconfig
+        run: nix develop --command check-editorconfig
       - name: Download Buildkite Artifacts
         uses: EnricoMi/download-buildkite-artifact-action@v1.14
         with:
