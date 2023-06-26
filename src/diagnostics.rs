@@ -174,8 +174,10 @@ impl DiagnosticData {
                 tracing::debug!("Sending diagnostic to `{endpoint}`");
                 let mut buildable_client = reqwest::Client::builder();
                 if let Some(ssl_cert_file) = &self.ssl_cert_file {
-                    let ssl_cert = parse_ssl_cert(&ssl_cert_file).await?;
-                    buildable_client = buildable_client.add_root_certificate(ssl_cert);
+                    let ssl_cert = parse_ssl_cert(&ssl_cert_file).await.ok();
+                    if let Some(ssl_cert) = ssl_cert {
+                        buildable_client = buildable_client.add_root_certificate(ssl_cert);
+                    }
                 }
                 let client = buildable_client
                     .build()
