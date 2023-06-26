@@ -10,7 +10,7 @@ use crate::{
     action::{
         base::RemoveDirectory,
         common::{ConfigureInitService, ConfigureNix, CreateUsersAndGroups, ProvisionNix},
-        macos::{CreateNixVolume, SetTmutilExclusions},
+        macos::{CreateNixVolume, SetTmutilExclusions,MacRemoteBuilderFix},
         StatefulAction,
     },
     execute_command,
@@ -158,6 +158,10 @@ impl Planner for Macos {
                 .map_err(PlannerError::Action)?
                 .boxed(),
             ConfigureInitService::plan(InitSystem::Launchd, true)
+                .await
+                .map_err(PlannerError::Action)?
+                .boxed(),
+            MacRemoteBuilderFix::plan()
                 .await
                 .map_err(PlannerError::Action)?
                 .boxed(),

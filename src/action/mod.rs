@@ -409,6 +409,8 @@ pub enum ActionErrorKind {
     PathModeMismatch(std::path::PathBuf, u32, u32),
     #[error("Path `{0}` exists, but is not a file, consider removing it with `rm {0}`")]
     PathWasNotFile(std::path::PathBuf),
+    #[error("Path `{0}` exists, but is not a symlink, consider removing it with `rm {0}`")]
+    PathWasNotSymlink(std::path::PathBuf),
     #[error("Path `{0}` exists, but is not a directory, consider removing it with `rm {0}`")]
     PathWasNotDirectory(std::path::PathBuf),
     #[error("Getting metadata for {0}`")]
