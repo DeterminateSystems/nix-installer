@@ -123,8 +123,7 @@
       devShells = forAllSystems ({ system, pkgs, ... }:
         let
           toolchain = fenixToolchain system;
-          eclint = import ./nix/eclint.nix { inherit pkgs; };
-          check = import ./nix/check.nix { inherit pkgs eclint toolchain; };
+          check = import ./nix/check.nix { inherit pkgs toolchain; };
         in
         {
           default = pkgs.mkShell {
@@ -161,8 +160,7 @@
       checks = forAllSystems ({ system, pkgs, ... }:
         let
           toolchain = fenixToolchain system;
-          eclint = import ./nix/eclint.nix { inherit pkgs; };
-          check = import ./nix/check.nix { inherit pkgs eclint toolchain; };
+          check = import ./nix/check.nix { inherit pkgs toolchain; };
         in
         {
           check-rustfmt = pkgs.runCommand "check-rustfmt" { buildInputs = [ check.check-rustfmt ]; } ''
