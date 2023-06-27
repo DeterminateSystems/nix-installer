@@ -1,5 +1,5 @@
 {
-  "version": "0.9.2-unreleased",
+  "version": "0.10.0",
   "actions": [
     {
       "action": {
@@ -359,7 +359,7 @@
     }
   },
   "diagnostic_data": {
-    "version": "0.9.2-unreleased",
+    "version": "0.10.0",
     "planner": "linux",
     "configured_settings": [],
     "os_name": "Ubuntu",
