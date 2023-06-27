@@ -152,7 +152,6 @@
             ])
             ++ lib.optionals (pkgs.stdenv.isLinux) (with pkgs; [
               checkpolicy
-              podman
               semodule-utils
               /* users are expected to have a system docker, too */
             ]);
