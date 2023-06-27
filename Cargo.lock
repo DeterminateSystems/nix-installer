@@ -955,7 +955,7 @@ dependencies = [
 
 [[package]]
 name = "nix-installer"
-version = "0.10.0"
+version = "0.10.1-unreleased"
 dependencies = [
  "async-trait",
  "atty",
