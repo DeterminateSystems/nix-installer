@@ -270,11 +270,13 @@ impl Action for ConfigureInitService {
                     .await
                     .map_err(Self::error)?;
                 if Path::new(SERVICE_DEST).exists() {
+                    tracing::trace!(path = %SERVICE_DEST, "Removing");
                     tokio::fs::remove_file(SERVICE_DEST)
                         .await
                         .map_err(|e| ActionErrorKind::Remove(SERVICE_DEST.into(), e))
                         .map_err(Self::error)?;
                 }
+                tracing::trace!(src = %SERVICE_SRC, dest = %SERVICE_DEST, "Symlinking");
                 tokio::fs::symlink(SERVICE_SRC, SERVICE_DEST)
                     .await
                     .map_err(|e| {
@@ -289,11 +291,14 @@ impl Action for ConfigureInitService {
                     .await
                     .map_err(Self::error)?;
                 if Path::new(SOCKET_DEST).exists() {
+                    tracing::trace!(path = %SOCKET_DEST, "Removing");
                     tokio::fs::remove_file(SOCKET_DEST)
                         .await
                         .map_err(|e| ActionErrorKind::Remove(SOCKET_DEST.into(), e))
                         .map_err(Self::error)?;
                 }
+
+                tracing::trace!(src = %SOCKET_SRC, dest = %SOCKET_DEST, "Symlinking");
                 tokio::fs::symlink(SOCKET_SRC, SOCKET_DEST)
                     .await
                     .map_err(|e| {
