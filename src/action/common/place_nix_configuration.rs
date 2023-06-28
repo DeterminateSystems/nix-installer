@@ -50,7 +50,10 @@ impl PlaceNixConfiguration {
                 let _ = slot.insert(experimental_features.join(" ").to_string());
             },
         };
+
+        #[cfg(not(target_os = "macos"))]
         settings.insert("auto-optimise-store".to_string(), "true".to_string());
+        
         settings.insert(
             "bash-prompt-prefix".to_string(),
             "(nix:$name)\\040".to_string(),
