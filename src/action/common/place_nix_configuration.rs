@@ -51,6 +51,7 @@ impl PlaceNixConfiguration {
             },
         };
 
+        // https://github.com/DeterminateSystems/nix-installer/issues/449#issuecomment-1551782281
         #[cfg(not(target_os = "macos"))]
         settings.insert("auto-optimise-store".to_string(), "true".to_string());
         
