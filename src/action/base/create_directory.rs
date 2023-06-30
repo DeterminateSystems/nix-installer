@@ -4,10 +4,12 @@ use std::path::{Path, PathBuf};
 use nix::unistd::{chown, Group, User};
 
 use tokio::fs::{create_dir, remove_dir_all};
+use tokio::process::Command;
 use tracing::{span, Span};
 
 use crate::action::{Action, ActionDescription, ActionErrorKind, ActionState};
 use crate::action::{ActionError, StatefulAction};
+use crate::execute_command;
 
 /** Create a directory at the given location, optionally with an owning user, group, and mode.
 
@@ -84,8 +86,17 @@ impl CreateDirectory {
                 }
             }
 
-            tracing::debug!("Creating directory `{}` already complete", path.display(),);
-            ActionState::Completed
+            // Is it a mountpoint?
+            if path_is_mountpoint(&path).await.map_err(Self::error)? {
+                tracing::debug!(
+                    "Creating directory `{}` skipped, was a mountpoint",
+                    path.display(),
+                );
+                ActionState::Skipped
+            } else {
+                tracing::debug!("Creating directory `{}` already complete", path.display(),);
+                ActionState::Completed
+            }
         } else {
             ActionState::Uncompleted
         };
@@ -234,6 +245,36 @@ impl Action for CreateDirectory {
 
         Ok(())
     }
+}
+
+// There are cleaner ways of doing this (eg `systemctl status $PATH`) however we need a widely supported way.
+async fn path_is_mountpoint(path: &Path) -> Result<bool, ActionErrorKind> {
+    let path_str = match path.to_str() {
+        Some(path_str) => path_str,
+        None => return Ok(false),
+    };
+
+    let output = execute_command(Command::new("mount").process_group(0)).await?;
+    let output_string = String::from_utf8(output.stdout).map_err(ActionErrorKind::FromUtf8)?;
+
+    // Each line looks like `portal on /run/user/1000/doc type fuse.portal (rw,nosuid,nodev,relatime,user_id=1000,group_id=100)`
+    for line in output_string.lines() {
+        let mut line_splitter = line.split(" on ");
+        match line_splitter.next() {
+            Some(_device) => (),
+            None => continue,
+        }
+        let destination_and_options = match line_splitter.next() {
+            Some(destination_and_options) => destination_and_options,
+            None => continue,
+        };
+        let trimmed = destination_and_options.trim();
+        if trimmed.starts_with(path_str) {
+            return Ok(true);
+        }
+    }
+
+    Ok(false)
 }
 
 #[cfg(test)]
