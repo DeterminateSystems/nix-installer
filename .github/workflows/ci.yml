@@ -18,7 +18,7 @@ jobs:
           check-outdated: false # PRs shouldn't fail because main's nixpkgs is out of date
       - name: Install Nix
         uses: DeterminateSystems/nix-installer-action@main
-      - uses: DeterminateSystems/magic-nix-cache-action@v1
+      - uses: DeterminateSystems/magic-nix-cache-action@v2
       - name: Check rustfmt
         run: nix develop --command check-rustfmt
       - name: Check Spelling
