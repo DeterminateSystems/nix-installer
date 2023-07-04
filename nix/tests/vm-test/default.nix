@@ -96,8 +96,12 @@ let
           exit 1
         fi
 
-        if [ -d /nix ]; then
-          echo "/nix exists after uninstall"
+        if [ -d /nix/store ]; then
+          echo "/nix/store exists after uninstall"
+          exit 1
+        fi
+        if [ -d /nix/var ]; then
+          echo "/nix/store exists after uninstall"
           exit 1
         fi
 
@@ -170,6 +174,17 @@ let
 
         [[ $(cat $out) = foobar ]]
       '';
+      uninstall = installCases.install-default.uninstall;
+      uninstallCheck = installCases.install-default.uninstallCheck;
+    };
+    install-bind-mounted-nix = {
+      preinstall = ''
+        sudo mkdir -p /nix
+        sudo mkdir -p /bind-mount-for-nix
+        sudo mount --bind /bind-mount-for-nix /nix
+      '';
+      install = installCases.install-default.install;
+      check = installCases.install-default.check;
       uninstall = installCases.install-default.uninstall;
       uninstallCheck = installCases.install-default.uninstallCheck;
     };
