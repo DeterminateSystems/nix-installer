@@ -123,8 +123,7 @@ impl Action for BootstrapLaunchctlService {
                 Command::new("launchctl")
                     .process_group(0)
                     .arg("enable")
-                    .arg(&domain)
-                    .arg(&service)
+                    .arg(&format!("{domain}/{service}"))
                     .stdin(std::process::Stdio::null()),
             )
             .await

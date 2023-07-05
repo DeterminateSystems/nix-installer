@@ -93,6 +93,7 @@ pub(crate) async fn service_is_disabled(
     )
     .await?;
     let utf8_output = String::from_utf8_lossy(&output.stdout);
-
-    Ok(utf8_output.contains(&format!("\"{service}\" => disabled")))
+    let is_disabled = utf8_output.contains(&format!("\"{service}\" => disabled"));
+    tracing::trace!(is_disabled, "Service disabled status");
+    Ok(is_disabled)
 }
