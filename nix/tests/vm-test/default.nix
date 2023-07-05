@@ -101,7 +101,7 @@ let
           exit 1
         fi
         if [ -d /nix/var ]; then
-          echo "/nix/store exists after uninstall"
+          echo "/nix/var exists after uninstall"
           exit 1
         fi
 
