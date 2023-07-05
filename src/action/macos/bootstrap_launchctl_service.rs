@@ -16,6 +16,8 @@ pub struct BootstrapLaunchctlService {
     domain: String,
     service: String,
     path: PathBuf,
+    is_present: bool,
+    is_disabled: bool,
 }
 
 impl BootstrapLaunchctlService {
@@ -29,24 +31,50 @@ impl BootstrapLaunchctlService {
         let service = service.as_ref().to_string();
         let path = path.as_ref().to_path_buf();
 
-        let mut command = Command::new("launchctl");
-        command.process_group(0);
-        command.arg("print");
-        command.arg(format!("{domain}/{service}"));
-        command.arg("-plist");
-        command.stdin(std::process::Stdio::null());
-        command.stdout(std::process::Stdio::piped());
-        command.stderr(std::process::Stdio::piped());
-        let output = command
-            .output()
-            .await
-            .map_err(|e| Self::error(ActionErrorKind::command(&command, e)))?;
-        if output.status.success() || output.status.code() == Some(37) {
+        let is_present = {
+            let mut command = Command::new("launchctl");
+            command.process_group(0);
+            command.arg("print");
+            command.arg(format!("{domain}/{service}"));
+            command.arg("-plist");
+            command.stdin(std::process::Stdio::null());
+            command.stdout(std::process::Stdio::piped());
+            command.stderr(std::process::Stdio::piped());
+            let command_output = command
+                .output()
+                .await
+                .map_err(|e| Self::error(ActionErrorKind::command(&command, e)))?;
             // We presume that success means it's found
+            if command_output.status.success() || command_output.status.code() == Some(37) {
+                true
+            } else {
+                false
+            }
+        };
+
+        let is_disabled = {
+            let output = execute_command(
+                Command::new("launchctl")
+                    .arg("print-disabled")
+                    .arg(&domain)
+                    .stdin(std::process::Stdio::null())
+                    .stdout(std::process::Stdio::piped())
+                    .stderr(std::process::Stdio::piped()),
+            )
+            .await
+            .map_err(Self::error)?;
+            let utf8_output = String::from_utf8_lossy(&output.stdout);
+
+            utf8_output.contains(&format!("\"{service}\" => disabled"))
+        };
+
+        if is_present && !is_disabled {
             return Ok(StatefulAction::completed(Self {
                 service,
                 domain,
                 path,
+                is_present,
+                is_disabled,
             }));
         }
 
@@ -54,6 +82,8 @@ impl BootstrapLaunchctlService {
             domain,
             service,
             path,
+            is_present,
+            is_disabled,
         }))
     }
 }
@@ -79,6 +109,8 @@ impl Action for BootstrapLaunchctlService {
             "bootstrap_launchctl_service",
             domain = self.domain,
             path = %self.path.display(),
+            is_disabled = self.is_disabled,
+            is_present = self.is_present,
         )
     }
 
@@ -92,18 +124,35 @@ impl Action for BootstrapLaunchctlService {
             domain,
             service: _,
             path,
+            is_present,
+            is_disabled,
         } = self;
 
-        execute_command(
-            Command::new("launchctl")
-                .process_group(0)
-                .arg("bootstrap")
-                .arg(domain)
-                .arg(path)
-                .stdin(std::process::Stdio::null()),
-        )
-        .await
-        .map_err(Self::error)?;
+        if *is_disabled {
+            execute_command(
+                Command::new("launchctl")
+                    .process_group(0)
+                    .arg("enable")
+                    .arg(&domain)
+                    .arg(&path)
+                    .stdin(std::process::Stdio::null()),
+            )
+            .await
+            .map_err(Self::error)?;
+        }
+
+        if !*is_present {
+            execute_command(
+                Command::new("launchctl")
+                    .process_group(0)
+                    .arg("bootstrap")
+                    .arg(&domain)
+                    .arg(&path)
+                    .stdin(std::process::Stdio::null()),
+            )
+            .await
+            .map_err(Self::error)?;
+        }
 
         Ok(())
     }
