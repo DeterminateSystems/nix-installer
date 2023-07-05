@@ -190,7 +190,7 @@ impl Action for ConfigureInitService {
                 .map_err(Self::error)?;
 
                 let domain = "system";
-                let path = "org.nixos.nix-daemon";
+                let service = "org.nixos.nix-daemon";
 
                 let is_disabled = service_is_disabled(&domain, &service)
                     .await
