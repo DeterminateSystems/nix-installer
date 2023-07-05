@@ -292,7 +292,6 @@ jobs:
           backtrace: full
           github-token: ${{ secrets.GITHUB_TOKEN }}
           planner: steam-deck
-          extra-args: --persistence /home/runner/.ci-test-nix-home
       - name: Initial uninstall (without a `nix run` first)
         run: sudo -E /nix/nix-installer uninstall
         env:
@@ -327,7 +326,6 @@ jobs:
           backtrace: full
           github-token: ${{ secrets.GITHUB_TOKEN }}
           planner: steam-deck
-          extra-args: --persistence /home/runner/.ci-test-nix-home
       - name: echo $PATH
         run: echo $PATH
       - name: Test `nix` with `$GITHUB_PATH`
