@@ -72,12 +72,20 @@ impl Action for CreateUsersAndGroups {
         ActionTag("create_users_and_group")
     }
     fn tracing_synopsis(&self) -> String {
-        format!(
-            "Create build users (UID {}-{}) and group (GID {})",
-            self.nix_build_user_id_base,
-            self.nix_build_user_id_base + self.nix_build_user_count,
-            self.nix_build_group_id
-        )
+        if self.create_users.is_empty() {
+            format!(
+                "Create build group (GID {})",
+                self.nix_build_group_id
+            )
+        } else {
+            format!(
+                "Create build users (UID {}-{}) and group (GID {})",
+                self.nix_build_user_id_base,
+                self.nix_build_user_id_base + self.nix_build_user_count,
+                self.nix_build_group_id
+            )
+        }
+        
     }
 
     fn tracing_span(&self) -> Span {
@@ -239,10 +247,18 @@ impl Action for CreateUsersAndGroups {
         explanation.append(&mut create_users_descriptions);
         explanation.append(&mut add_user_to_group_descriptions);
 
-        vec![ActionDescription::new(
-            format!("Remove Nix users and group"),
-            explanation,
-        )]
+        if create_users.is_empty() {
+            vec![ActionDescription::new(
+                format!("Remove Nix group"),
+                explanation,
+            )]
+        } else {
+            vec![ActionDescription::new(
+                format!("Remove Nix users and group"),
+                explanation,
+            )]
+        }
+        
     }
 
     #[tracing::instrument(level = "debug", skip_all)]
