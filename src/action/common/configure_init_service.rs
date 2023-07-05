@@ -189,13 +189,32 @@ impl Action for ConfigureInitService {
                 .await
                 .map_err(Self::error)?;
 
+                let domain = "system";
+                let path = "org.nixos.nix-daemon";
+
+                let is_disabled = service_is_disabled(&domain, &service)
+                    .await
+                    .map_err(Self::error)?;
+                if *is_disabled {
+                    execute_command(
+                        Command::new("launchctl")
+                            .process_group(0)
+                            .arg("enable")
+                            .arg(&domain)
+                            .arg(&service)
+                            .stdin(std::process::Stdio::null()),
+                    )
+                    .await
+                    .map_err(Self::error)?;
+                }
+
                 if *start_daemon {
                     execute_command(
                         Command::new("launchctl")
                             .process_group(0)
                             .arg("kickstart")
                             .arg("-k")
-                            .arg("system/org.nixos.nix-daemon")
+                            .arg(&format!("{domain}/{service}"))
                             .stdin(std::process::Stdio::null()),
                     )
                     .await

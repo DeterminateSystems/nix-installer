@@ -29,6 +29,8 @@ use tokio::process::Command;
 pub use unmount_apfs_volume::UnmountApfsVolume;
 use uuid::Uuid;
 
+use crate::execute_command;
+
 use super::ActionErrorKind;
 
 async fn get_uuid_for_label(apfs_volume_label: &str) -> Result<Option<Uuid>, ActionErrorKind> {
@@ -74,4 +76,20 @@ struct DiskUtilApfsInfoOutput {
     error_message: Option<String>,
     #[serde(rename = "VolumeUUID")]
     volume_uuid: Option<Uuid>,
+}
+
+#[tracing::instrument]
+async fn service_is_disabled(domain: &str, service: &str) -> Result<bool, ActionErrorKind> {
+    let output = execute_command(
+        Command::new("launchctl")
+            .arg("print-disabled")
+            .arg(&domain)
+            .stdin(std::process::Stdio::null())
+            .stdout(std::process::Stdio::piped())
+            .stderr(std::process::Stdio::piped()),
+    )
+    .await?;
+    let utf8_output = String::from_utf8_lossy(&output.stdout);
+
+    Ok(utf8_output.contains(&format!("\"{service}\" => disabled")))
 }

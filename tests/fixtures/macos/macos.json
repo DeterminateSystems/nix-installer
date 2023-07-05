@@ -61,7 +61,9 @@
           "action": {
             "domain": "system",
             "service": "org.nixos.darwin-store",
-            "path": "/Library/LaunchDaemons/org.nixos.darwin-store.plist"
+            "path": "/Library/LaunchDaemons/org.nixos.darwin-store.plist",
+            "is_present": false,
+            "is_disabled": false
           },
           "state": "Uncompleted"
         },

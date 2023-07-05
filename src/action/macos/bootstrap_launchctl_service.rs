@@ -8,6 +8,8 @@ use crate::execute_command;
 
 use crate::action::{Action, ActionDescription};
 
+use super::service_is_disabled;
+
 /**
 Bootstrap and kickstart an APFS volume
 */
@@ -52,21 +54,9 @@ impl BootstrapLaunchctlService {
             }
         };
 
-        let is_disabled = {
-            let output = execute_command(
-                Command::new("launchctl")
-                    .arg("print-disabled")
-                    .arg(&domain)
-                    .stdin(std::process::Stdio::null())
-                    .stdout(std::process::Stdio::piped())
-                    .stderr(std::process::Stdio::piped()),
-            )
+        let is_disabled = service_is_disabled(&domain, &service)
             .await
             .map_err(Self::error)?;
-            let utf8_output = String::from_utf8_lossy(&output.stdout);
-
-            utf8_output.contains(&format!("\"{service}\" => disabled"))
-        };
 
         if is_present && !is_disabled {
             return Ok(StatefulAction::completed(Self {
@@ -122,7 +112,7 @@ impl Action for BootstrapLaunchctlService {
     async fn execute(&mut self) -> Result<(), ActionError> {
         let Self {
             domain,
-            service: _,
+            service,
             path,
             is_present,
             is_disabled,
@@ -134,7 +124,7 @@ impl Action for BootstrapLaunchctlService {
                     .process_group(0)
                     .arg("enable")
                     .arg(&domain)
-                    .arg(&path)
+                    .arg(&service)
                     .stdin(std::process::Stdio::null()),
             )
             .await
