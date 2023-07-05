@@ -195,7 +195,7 @@ impl Action for ConfigureInitService {
                 let is_disabled = crate::action::macos::service_is_disabled(&domain, &service)
                     .await
                     .map_err(Self::error)?;
-                if *is_disabled {
+                if is_disabled {
                     execute_command(
                         Command::new("launchctl")
                             .process_group(0)
