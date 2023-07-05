@@ -8,6 +8,7 @@
         "user": null,
         "group": null,
         "mode": 493,
+        "is_mountpoint": true,
         "force_prune_on_revert": true
       },
       "state": "Uncompleted"
@@ -85,6 +86,7 @@
                   "user": "root",
                   "group": null,
                   "mode": 493,
+                  "is_mountpoint": true,
                   "force_prune_on_revert": false
                 },
                 "state": "Uncompleted"
@@ -95,6 +97,7 @@
                   "user": "root",
                   "group": null,
                   "mode": 493,
+                  "is_mountpoint": true,
                   "force_prune_on_revert": false
                 },
                 "state": "Uncompleted"
@@ -105,6 +108,7 @@
                   "user": "root",
                   "group": null,
                   "mode": 493,
+                  "is_mountpoint": true,
                   "force_prune_on_revert": false
                 },
                 "state": "Uncompleted"
@@ -115,6 +119,7 @@
                   "user": "root",
                   "group": null,
                   "mode": 493,
+                  "is_mountpoint": true,
                   "force_prune_on_revert": false
                 },
                 "state": "Uncompleted"
@@ -125,6 +130,7 @@
                   "user": "root",
                   "group": null,
                   "mode": 493,
+                  "is_mountpoint": true,
                   "force_prune_on_revert": false
                 },
                 "state": "Uncompleted"
@@ -135,6 +141,7 @@
                   "user": "root",
                   "group": null,
                   "mode": 493,
+                  "is_mountpoint": true,
                   "force_prune_on_revert": false
                 },
                 "state": "Uncompleted"
@@ -145,6 +152,7 @@
                   "user": "root",
                   "group": null,
                   "mode": 493,
+                  "is_mountpoint": true,
                   "force_prune_on_revert": false
                 },
                 "state": "Uncompleted"
@@ -155,6 +163,7 @@
                   "user": "root",
                   "group": null,
                   "mode": 493,
+                  "is_mountpoint": true,
                   "force_prune_on_revert": false
                 },
                 "state": "Uncompleted"
@@ -165,6 +174,7 @@
                   "user": "root",
                   "group": null,
                   "mode": 493,
+                  "is_mountpoint": true,
                   "force_prune_on_revert": false
                 },
                 "state": "Uncompleted"
@@ -175,6 +185,7 @@
                   "user": "root",
                   "group": null,
                   "mode": 493,
+                  "is_mountpoint": true,
                   "force_prune_on_revert": false
                 },
                 "state": "Uncompleted"
@@ -185,6 +196,7 @@
                   "user": "root",
                   "group": null,
                   "mode": 493,
+                  "is_mountpoint": true,
                   "force_prune_on_revert": false
                 },
                 "state": "Uncompleted"
@@ -195,6 +207,7 @@
                   "user": "root",
                   "group": null,
                   "mode": 493,
+                  "is_mountpoint": true,
                   "force_prune_on_revert": false
                 },
                 "state": "Uncompleted"
@@ -205,6 +218,7 @@
                   "user": "root",
                   "group": null,
                   "mode": 493,
+                  "is_mountpoint": true,
                   "force_prune_on_revert": false
                 },
                 "state": "Uncompleted"
@@ -315,6 +329,7 @@
                 "user": null,
                 "group": null,
                 "mode": 493,
+                "is_mountpoint": true,
                 "force_prune_on_revert": false
               },
               "state": "Uncompleted"
