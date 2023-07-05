@@ -525,6 +525,8 @@ pub enum ActionErrorKind {
         #[from]
         std::string::FromUtf8Error,
     ),
+    #[error("Path `{}` could not be converted to valid UTF-8 string", .0.display())]
+    PathNoneString(std::path::PathBuf),
     /// A MacOS (Darwin) plist related error
     #[error(transparent)]
     Plist(#[from] plist::Error),
