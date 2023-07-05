@@ -16,7 +16,7 @@ build-inputs = ["darwin.apple_sdk.frameworks.Security"]
 
 [features]
 default = ["cli", "diagnostics"]
-cli = ["eyre", "color-eyre", "clap", "tracing-subscriber", "tracing-error", "atty"]
+cli = ["eyre", "color-eyre", "clap", "tracing-subscriber", "tracing-error"]
 diagnostics = ["is_ci"]
 
 [[bin]]
@@ -25,7 +25,6 @@ required-features = [ "cli" ]
 
 [dependencies]
 async-trait = { version = "0.1.57", default-features = false }
-atty = { version = "0.2.14", default-features = false, optional = true }
 bytes = { version = "1.2.1", default-features = false, features = ["std", "serde"] }
 clap = { version = "4", features = ["std", "color", "usage", "help", "error-context", "suggestions", "derive", "env"], optional = true }
 color-eyre = { version = "0.6.2", default-features = false, features = [ "track-caller", "issue-url", "tracing-error", "capture-spantrace", "color-spantrace" ], optional = true }
