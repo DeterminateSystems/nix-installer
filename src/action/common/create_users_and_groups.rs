@@ -73,10 +73,7 @@ impl Action for CreateUsersAndGroups {
     }
     fn tracing_synopsis(&self) -> String {
         if self.create_users.is_empty() {
-            format!(
-                "Create build group (GID {})",
-                self.nix_build_group_id
-            )
+            format!("Create build group (GID {})", self.nix_build_group_id)
         } else {
             format!(
                 "Create build users (UID {}-{}) and group (GID {})",
@@ -85,7 +82,6 @@ impl Action for CreateUsersAndGroups {
                 self.nix_build_group_id
             )
         }
-        
     }
 
     fn tracing_span(&self) -> Span {
@@ -258,7 +254,6 @@ impl Action for CreateUsersAndGroups {
                 explanation,
             )]
         }
-        
     }
 
     #[tracing::instrument(level = "debug", skip_all)]
