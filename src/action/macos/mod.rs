@@ -79,7 +79,10 @@ struct DiskUtilApfsInfoOutput {
 }
 
 #[tracing::instrument]
-async fn service_is_disabled(domain: &str, service: &str) -> Result<bool, ActionErrorKind> {
+pub(crate) async fn service_is_disabled(
+    domain: &str,
+    service: &str,
+) -> Result<bool, ActionErrorKind> {
     let output = execute_command(
         Command::new("launchctl")
             .arg("print-disabled")
