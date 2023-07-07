@@ -149,12 +149,21 @@ impl Shell {
 }
 
 #[tracing::instrument(skip_all)]
-pub async fn self_test() -> Result<(), SelfTestError> {
+pub async fn self_test() -> Result<(), Vec<SelfTestError>> {
     let shells = Shell::discover();
 
+    let mut failures = vec![];
+
     for shell in shells {
-        shell.self_test().await?;
+        match shell.self_test().await {
+            Ok(()) => (),
+            Err(err) => failures.push(err),
+        }
     }
 
-    Ok(())
+    if failures.is_empty() {
+        Ok(())
+    } else {
+        Err(failures)
+    }
 }

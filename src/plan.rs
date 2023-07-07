@@ -213,21 +213,21 @@ impl InstallPlan {
                     .await?;
             }
 
-            return Err(err);
-        }
+            Err(err)
+        } else {
+            #[cfg(feature = "diagnostics")]
+            if let Some(diagnostic_data) = &self.diagnostic_data {
+                diagnostic_data
+                    .clone()
+                    .send(
+                        crate::diagnostics::DiagnosticAction::Install,
+                        crate::diagnostics::DiagnosticStatus::Success,
+                    )
+                    .await?;
+            }
 
-        #[cfg(feature = "diagnostics")]
-        if let Some(diagnostic_data) = &self.diagnostic_data {
-            diagnostic_data
-                .clone()
-                .send(
-                    crate::diagnostics::DiagnosticAction::Install,
-                    crate::diagnostics::DiagnosticStatus::Success,
-                )
-                .await?;
+            Ok(())
         }
-
-        Ok(())
     }
 
     #[tracing::instrument(level = "debug", skip_all)]
