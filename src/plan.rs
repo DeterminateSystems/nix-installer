@@ -147,7 +147,7 @@ impl InstallPlan {
     ) -> Result<(), NixInstallerError> {
         self.check_compatible()?;
         self.planner.pre_install_check().await?;
-        
+
         let Self { actions, .. } = self;
         let mut cancel_channel = cancel_channel.into();
 

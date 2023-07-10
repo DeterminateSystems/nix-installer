@@ -242,15 +242,20 @@ async fn check_nix_darwin_not_installed() -> Result<(), PlannerError> {
     let has_darwin_rebuild = which("darwin-rebuild").is_ok();
     let has_darwin_option = which("darwin-option").is_ok();
 
-    let activate_system_present = Command::new("launchctl").arg("print").arg("system/org.nixos.activate-system")
+    let activate_system_present = Command::new("launchctl")
+        .arg("print")
+        .arg("system/org.nixos.activate-system")
         .process_group(0)
         .stdin(std::process::Stdio::null())
         .stdout(std::process::Stdio::null())
         .stderr(std::process::Stdio::null())
-        .status().await.map(|v| v.success()).unwrap_or(false);
+        .status()
+        .await
+        .map(|v| v.success())
+        .unwrap_or(false);
 
     if activate_system_present || has_darwin_rebuild || has_darwin_option {
-        return Err(MacosError::UninstallNixDarwin).map_err(|e| PlannerError::Custom(Box::new(e)))
+        return Err(MacosError::UninstallNixDarwin).map_err(|e| PlannerError::Custom(Box::new(e)));
     };
 
     Ok(())

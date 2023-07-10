@@ -154,7 +154,6 @@ impl Planner for Linux {
 
         Ok(())
     }
-
 }
 
 impl Into<BuiltinPlanner> for Linux {
