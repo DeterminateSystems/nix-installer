@@ -226,7 +226,6 @@ impl Planner for Macos {
     }
 
     async fn pre_install_check(&self) -> Result<(), PlannerError> {
-        check_nix_darwin_not_installed().await?;
         check_not_running_in_rosetta()?;
 
         Ok(())
@@ -251,7 +250,7 @@ async fn check_nix_darwin_not_installed() -> Result<(), PlannerError> {
         .status().await.map(|v| v.success()).unwrap_or(false);
 
     if activate_system_present || has_darwin_rebuild || has_darwin_option {
-        return Err(MacosError::NixDarwinInstalled).map_err(|e| PlannerError::Custom(Box::new(e)))
+        return Err(MacosError::UninstallNixDarwin).map_err(|e| PlannerError::Custom(Box::new(e)))
     };
 
     Ok(())
@@ -280,6 +279,6 @@ fn check_not_running_in_rosetta() -> Result<(), PlannerError> {
 #[non_exhaustive]
 #[derive(thiserror::Error, Debug)]
 pub enum MacosError {
-    #[error("`nix-darwin` installation detected, it be removed if you're also removing Nix. Please refer to https://github.com/LnL7/nix-darwin#uninstalling for instructions how to uninstall `nix-darwin`.")]
-    NixDarwinInstalled,
+    #[error("`nix-darwin` installation detected, it must be removed before uninstalling Nix. Please refer to https://github.com/LnL7/nix-darwin#uninstalling for instructions how to uninstall `nix-darwin`.")]
+    UninstallNixDarwin,
 }
