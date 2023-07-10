@@ -398,6 +398,28 @@ impl Planner for SteamDeck {
             self.settings.ssl_cert_file.clone(),
         )?)
     }
+
+    async fn pre_uninstall_check(&self) -> Result<(), PlannerError> {
+        super::linux::check_not_wsl1()?;
+
+        // Unlike the Linux planner, the steam deck planner requires systemd
+        super::linux::check_systemd_active()?;
+
+        Ok(())
+    }
+
+    async fn pre_install_check(&self) -> Result<(), PlannerError> {
+        super::linux::check_not_nixos()?;
+
+        super::linux::check_nix_not_already_installed().await?;
+
+        super::linux::check_not_wsl1()?;
+
+        // Unlike the Linux planner, the steam deck planner requires systemd
+        super::linux::check_systemd_active()?;
+
+        Ok(())
+    }
 }
 
 impl Into<BuiltinPlanner> for SteamDeck {

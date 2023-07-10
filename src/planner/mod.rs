@@ -144,6 +144,14 @@ pub trait Planner: std::fmt::Debug + Send + Sync + dyn_clone::DynClone {
         Box::new(self)
     }
 
+    async fn pre_uninstall_check(&self) -> Result<(), PlannerError> {
+        Ok(())
+    }
+
+    async fn pre_install_check(&self) -> Result<(), PlannerError> {
+        Ok(())
+    }
+
     #[cfg(feature = "diagnostics")]
     async fn diagnostic_data(&self) -> Result<crate::diagnostics::DiagnosticData, PlannerError>;
 }

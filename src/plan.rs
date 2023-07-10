@@ -53,6 +53,9 @@ impl InstallPlan {
         #[cfg(feature = "diagnostics")]
         let diagnostic_data = Some(planner.diagnostic_data().await?);
 
+        // Some Action `plan` calls may fail if we don't do these checks
+        planner.pre_install_check().await?;
+
         let actions = planner.plan().await?;
         Ok(Self {
             planner: planner.boxed(),
@@ -143,6 +146,8 @@ impl InstallPlan {
         cancel_channel: impl Into<Option<Receiver<()>>>,
     ) -> Result<(), NixInstallerError> {
         self.check_compatible()?;
+        self.planner.pre_install_check().await?;
+        
         let Self { actions, .. } = self;
         let mut cancel_channel = cancel_channel.into();
 
@@ -313,6 +318,8 @@ impl InstallPlan {
         cancel_channel: impl Into<Option<Receiver<()>>>,
     ) -> Result<(), NixInstallerError> {
         self.check_compatible()?;
+        self.planner.pre_uninstall_check().await?;
+
         let Self { actions, .. } = self;
         let mut cancel_channel = cancel_channel.into();
         let mut errors = vec![];
