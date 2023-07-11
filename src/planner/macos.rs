@@ -5,7 +5,7 @@ use clap::ArgAction;
 use tokio::process::Command;
 use which::which;
 
-use super::ShellProfileLocations;
+use super::{ShellProfileLocations, planner::HasExpectedErrors};
 
 use crate::{
     action::{
