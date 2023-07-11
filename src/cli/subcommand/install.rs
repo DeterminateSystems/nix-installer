@@ -199,6 +199,8 @@ impl CommandExecute for Install {
             (Some(_), Some(_)) => return Err(eyre!("`--plan` conflicts with passing a planner, a planner creates plans, so passing an existing plan doesn't make sense")),
         };
 
+        install_plan.pre_uninstall_check().await?;
+
         if !no_confirm {
             let mut currently_explaining = explain;
             loop {

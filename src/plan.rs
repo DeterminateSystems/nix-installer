@@ -65,6 +65,18 @@ impl InstallPlan {
             diagnostic_data,
         })
     }
+
+    pub async fn pre_uninstall_check(&self) -> Result<(), NixInstallerError> {
+        self.planner.pre_uninstall_check().await?;
+        Ok(())
+    }
+
+
+    pub async fn pre_install_check(&self) -> Result<(), NixInstallerError> {
+        self.planner.pre_install_check().await?;
+        Ok(())
+    }
+
     #[tracing::instrument(level = "debug", skip_all)]
     pub async fn describe_install(&self, explain: bool) -> Result<String, NixInstallerError> {
         let Self {
