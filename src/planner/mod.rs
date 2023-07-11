@@ -423,6 +423,10 @@ impl HasExpectedErrors for PlannerError {
                 if let Some(err) = _e.downcast_ref::<linux::LinuxErrorKind>() {
                     return err.expected();
                 }
+                #[cfg(target_os = "macos")]
+                if let Some(err) = _e.downcast_ref::<macos::MacosError>() {
+                    return err.expected();
+                }
                 None
             },
             this @ PlannerError::NixOs => Some(Box::new(this)),

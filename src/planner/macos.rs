@@ -287,3 +287,11 @@ pub enum MacosError {
     #[error("`nix-darwin` installation detected, it must be removed before uninstalling Nix. Please refer to https://github.com/LnL7/nix-darwin#uninstalling for instructions how to uninstall `nix-darwin`.")]
     UninstallNixDarwin,
 }
+
+impl HasExpectedErrors for MacosError {
+    fn expected<'a>(&'a self) -> Option<Box<dyn std::error::Error + 'a>> {
+        match self {
+            this @ MacosError::UninstallNixDarwin => Some(Box::new(this)),
+        }
+    }
+}
