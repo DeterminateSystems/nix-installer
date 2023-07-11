@@ -71,7 +71,6 @@ impl InstallPlan {
         Ok(())
     }
 
-
     pub async fn pre_install_check(&self) -> Result<(), NixInstallerError> {
         self.planner.pre_install_check().await?;
         Ok(())
