@@ -112,7 +112,14 @@ impl CommandExecute for Uninstall {
             .await
             .wrap_err("Reading receipt")?;
         let mut plan: InstallPlan = serde_json::from_str(&install_receipt_string)?;
-        plan.pre_uninstall_check().await?;
+
+        if let Err(err) = plan.pre_uninstall_check().await {
+            if let Some(expected) = err.expected() {
+                eprintln!("{}", expected.red());
+                return Ok(ExitCode::FAILURE);
+            }
+            Err(err)?
+        }
 
         if !no_confirm {
             let mut currently_explaining = explain;
