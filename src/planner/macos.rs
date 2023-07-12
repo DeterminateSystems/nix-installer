@@ -3,8 +3,10 @@ use std::{collections::HashMap, io::Cursor, path::PathBuf};
 #[cfg(feature = "cli")]
 use clap::ArgAction;
 use tokio::process::Command;
+use which::which;
 
 use super::ShellProfileLocations;
+use crate::planner::HasExpectedErrors;
 
 use crate::{
     action::{
@@ -89,8 +91,6 @@ impl Planner for Macos {
     }
 
     async fn plan(&self) -> Result<Vec<StatefulAction<Box<dyn Action>>>, PlannerError> {
-        ensure_not_running_in_rosetta().await?;
-
         let root_disk = match &self.root_disk {
             root_disk @ Some(_) => root_disk.clone(),
             None => {
@@ -219,6 +219,18 @@ impl Planner for Macos {
             self.settings.ssl_cert_file.clone(),
         )?)
     }
+
+    async fn pre_uninstall_check(&self) -> Result<(), PlannerError> {
+        check_nix_darwin_not_installed().await?;
+
+        Ok(())
+    }
+
+    async fn pre_install_check(&self) -> Result<(), PlannerError> {
+        check_not_running_in_rosetta()?;
+
+        Ok(())
+    }
 }
 
 impl Into<BuiltinPlanner> for Macos {
@@ -227,7 +239,30 @@ impl Into<BuiltinPlanner> for Macos {
     }
 }
 
-async fn ensure_not_running_in_rosetta() -> Result<(), PlannerError> {
+async fn check_nix_darwin_not_installed() -> Result<(), PlannerError> {
+    let has_darwin_rebuild = which("darwin-rebuild").is_ok();
+    let has_darwin_option = which("darwin-option").is_ok();
+
+    let activate_system_present = Command::new("launchctl")
+        .arg("print")
+        .arg("system/org.nixos.activate-system")
+        .process_group(0)
+        .stdin(std::process::Stdio::null())
+        .stdout(std::process::Stdio::null())
+        .stderr(std::process::Stdio::null())
+        .status()
+        .await
+        .map(|v| v.success())
+        .unwrap_or(false);
+
+    if activate_system_present || has_darwin_rebuild || has_darwin_option {
+        return Err(MacosError::UninstallNixDarwin).map_err(|e| PlannerError::Custom(Box::new(e)));
+    };
+
+    Ok(())
+}
+
+fn check_not_running_in_rosetta() -> Result<(), PlannerError> {
     use sysctl::{Ctl, Sysctl};
     const CTLNAME: &str = "sysctl.proc_translated";
 
@@ -245,4 +280,19 @@ async fn ensure_not_running_in_rosetta() -> Result<(), PlannerError> {
     }
 
     Ok(())
+}
+
+#[non_exhaustive]
+#[derive(thiserror::Error, Debug)]
+pub enum MacosError {
+    #[error("`nix-darwin` installation detected, it must be removed before uninstalling Nix. Please refer to https://github.com/LnL7/nix-darwin#uninstalling for instructions how to uninstall `nix-darwin`.")]
+    UninstallNixDarwin,
+}
+
+impl HasExpectedErrors for MacosError {
+    fn expected<'a>(&'a self) -> Option<Box<dyn std::error::Error + 'a>> {
+        match self {
+            this @ MacosError::UninstallNixDarwin => Some(Box::new(this)),
+        }
+    }
 }

@@ -38,17 +38,7 @@ impl Planner for Linux {
     }
 
     async fn plan(&self) -> Result<Vec<StatefulAction<Box<dyn Action>>>, PlannerError> {
-        check_not_nixos()?;
-
-        check_nix_not_already_installed().await?;
-
-        check_not_wsl1()?;
-
         let has_selinux = detect_selinux().await?;
-
-        if self.init.init == InitSystem::Systemd && self.init.start_daemon {
-            check_systemd_active()?;
-        }
 
         let mut plan = vec![];
 
@@ -141,6 +131,29 @@ impl Planner for Linux {
             self.settings.ssl_cert_file.clone(),
         )?)
     }
+    async fn pre_uninstall_check(&self) -> Result<(), PlannerError> {
+        check_not_wsl1()?;
+
+        if self.init.init == InitSystem::Systemd && self.init.start_daemon {
+            check_systemd_active()?;
+        }
+
+        Ok(())
+    }
+
+    async fn pre_install_check(&self) -> Result<(), PlannerError> {
+        check_not_nixos()?;
+
+        check_nix_not_already_installed().await?;
+
+        check_not_wsl1()?;
+
+        if self.init.init == InitSystem::Systemd && self.init.start_daemon {
+            check_systemd_active()?;
+        }
+
+        Ok(())
+    }
 }
 
 impl Into<BuiltinPlanner> for Linux {
@@ -150,7 +163,7 @@ impl Into<BuiltinPlanner> for Linux {
 }
 
 // If on NixOS, running `nix_installer` is pointless
-fn check_not_nixos() -> Result<(), PlannerError> {
+pub(crate) fn check_not_nixos() -> Result<(), PlannerError> {
     // NixOS always sets up this file as part of setting up /etc itself: https://github.com/NixOS/nixpkgs/blob/bdd39e5757d858bd6ea58ed65b4a2e52c8ed11ca/nixos/modules/system/etc/setup-etc.pl#L145
     if Path::new("/etc/NIXOS").exists() {
         return Err(PlannerError::NixOs);
@@ -158,7 +171,7 @@ fn check_not_nixos() -> Result<(), PlannerError> {
     Ok(())
 }
 
-fn check_not_wsl1() -> Result<(), PlannerError> {
+pub(crate) fn check_not_wsl1() -> Result<(), PlannerError> {
     // Detection strategies: https://patrickwu.space/wslconf/
     if std::env::var("WSL_DISTRO_NAME").is_ok() && std::env::var("WSL_INTEROP").is_err() {
         return Err(PlannerError::Wsl1);
@@ -166,7 +179,7 @@ fn check_not_wsl1() -> Result<(), PlannerError> {
     Ok(())
 }
 
-async fn detect_selinux() -> Result<bool, PlannerError> {
+pub(crate) async fn detect_selinux() -> Result<bool, PlannerError> {
     if Path::new("/sys/fs/selinux").exists() && which("sestatus").is_ok() {
         // We expect systems with SELinux to have the normal SELinux tools.
         let has_semodule = which("semodule").is_ok();
@@ -181,7 +194,7 @@ async fn detect_selinux() -> Result<bool, PlannerError> {
     }
 }
 
-async fn check_nix_not_already_installed() -> Result<(), PlannerError> {
+pub(crate) async fn check_nix_not_already_installed() -> Result<(), PlannerError> {
     // For now, we don't try to repair the user's Nix install or anything special.
     if let Ok(_) = Command::new("nix-env")
         .arg("--version")
@@ -195,7 +208,7 @@ async fn check_nix_not_already_installed() -> Result<(), PlannerError> {
     Ok(())
 }
 
-fn check_systemd_active() -> Result<(), PlannerError> {
+pub(crate) fn check_systemd_active() -> Result<(), PlannerError> {
     if !Path::new("/run/systemd/system").exists() {
         if std::env::var("WSL_DISTRO_NAME").is_ok() {
             return Err(LinuxErrorKind::Wsl2SystemdNotActive)?;

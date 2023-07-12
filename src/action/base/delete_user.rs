@@ -100,7 +100,7 @@ impl Action for DeleteUser {
                     Some(40) if stderr.contains("-14120") => {
                         // The user is on an ephemeral Mac, like detsys uses
                         // These Macs cannot always delete users, as sometimes there is no graphical login
-                        tracing::warn!("Encountered an exit code 40 with -14120 error while removing user, this is likely because the initial executing user did not have a secure token, or that there was no graphical login session. To delete the user, log in graphically, then run `/usr/bin/dscl . -delete /Users/{}", self.name);
+                        tracing::warn!("Encountered an exit code 40 with -14120 error while removing user, this is likely because the initial executing user did not have a secure token, or that there was no graphical login session. To delete the user, log in graphically, then run `/usr/bin/dscl . -delete /Users/{}`", self.name);
                     },
                     _ => {
                         // Something went wrong
