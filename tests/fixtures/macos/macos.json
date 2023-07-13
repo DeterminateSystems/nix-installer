@@ -377,7 +377,6 @@
                   "settings": {
                     "extra-nix-path": "nixpkgs=flake:nixpkgs",
                     "auto-allocate-uids": "true",
-                    "auto-optimise-store": "true",
                     "build-users-group": "nixbld",
                     "bash-prompt-prefix": "(nix:$name)\\040",
                     "experimental-features": "nix-command flakes auto-allocate-uids"
