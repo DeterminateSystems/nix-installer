@@ -2,7 +2,7 @@ use std::process::ExitCode;
 
 use clap::Parser;
 
-use crate::cli::CommandExecute;
+use crate::{cli::CommandExecute, NixInstallerError};
 
 /// Run a self test of Nix to ensure that the install worked.
 #[derive(Debug, Parser)]
@@ -12,7 +12,9 @@ pub struct SelfTest {}
 impl CommandExecute for SelfTest {
     #[tracing::instrument(level = "debug", skip_all, fields())]
     async fn execute(self) -> eyre::Result<ExitCode> {
-        crate::self_test::self_test().await?;
+        crate::self_test::self_test()
+            .await
+            .map_err(NixInstallerError::SelfTest)?;
 
         tracing::info!(
             shells = ?crate::self_test::Shell::discover()

@@ -53,6 +53,9 @@ impl InstallPlan {
         #[cfg(feature = "diagnostics")]
         let diagnostic_data = Some(planner.diagnostic_data().await?);
 
+        // Some Action `plan` calls may fail if we don't do these checks
+        planner.pre_install_check().await?;
+
         let actions = planner.plan().await?;
         Ok(Self {
             planner: planner.boxed(),
@@ -62,6 +65,17 @@ impl InstallPlan {
             diagnostic_data,
         })
     }
+
+    pub async fn pre_uninstall_check(&self) -> Result<(), NixInstallerError> {
+        self.planner.pre_uninstall_check().await?;
+        Ok(())
+    }
+
+    pub async fn pre_install_check(&self) -> Result<(), NixInstallerError> {
+        self.planner.pre_install_check().await?;
+        Ok(())
+    }
+
     #[tracing::instrument(level = "debug", skip_all)]
     pub async fn describe_install(&self, explain: bool) -> Result<String, NixInstallerError> {
         let Self {
@@ -143,6 +157,8 @@ impl InstallPlan {
         cancel_channel: impl Into<Option<Receiver<()>>>,
     ) -> Result<(), NixInstallerError> {
         self.check_compatible()?;
+        self.planner.pre_install_check().await?;
+
         let Self { actions, .. } = self;
         let mut cancel_channel = cancel_channel.into();
 
@@ -213,21 +229,21 @@ impl InstallPlan {
                     .await?;
             }
 
-            return Err(err);
-        }
+            Err(err)
+        } else {
+            #[cfg(feature = "diagnostics")]
+            if let Some(diagnostic_data) = &self.diagnostic_data {
+                diagnostic_data
+                    .clone()
+                    .send(
+                        crate::diagnostics::DiagnosticAction::Install,
+                        crate::diagnostics::DiagnosticStatus::Success,
+                    )
+                    .await?;
+            }
 
-        #[cfg(feature = "diagnostics")]
-        if let Some(diagnostic_data) = &self.diagnostic_data {
-            diagnostic_data
-                .clone()
-                .send(
-                    crate::diagnostics::DiagnosticAction::Install,
-                    crate::diagnostics::DiagnosticStatus::Success,
-                )
-                .await?;
+            Ok(())
         }
-
-        Ok(())
     }
 
     #[tracing::instrument(level = "debug", skip_all)]
@@ -313,6 +329,8 @@ impl InstallPlan {
         cancel_channel: impl Into<Option<Receiver<()>>>,
     ) -> Result<(), NixInstallerError> {
         self.check_compatible()?;
+        self.planner.pre_uninstall_check().await?;
+
         let Self { actions, .. } = self;
         let mut cancel_channel = cancel_channel.into();
         let mut errors = vec![];

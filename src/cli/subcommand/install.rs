@@ -199,6 +199,14 @@ impl CommandExecute for Install {
             (Some(_), Some(_)) => return Err(eyre!("`--plan` conflicts with passing a planner, a planner creates plans, so passing an existing plan doesn't make sense")),
         };
 
+        if let Err(err) = install_plan.pre_install_check().await {
+            if let Some(expected) = err.expected() {
+                eprintln!("{}", expected.red());
+                return Ok(ExitCode::FAILURE);
+            }
+            Err(err)?
+        }
+
         if !no_confirm {
             let mut currently_explaining = explain;
             loop {
@@ -225,10 +233,10 @@ impl CommandExecute for Install {
 
         match install_plan.install(rx1).await {
             Err(err) => {
-                if !no_confirm {
-                    // Attempt to copy self to the store if possible, but since the install failed, this might not work, that's ok.
-                    copy_self_to_nix_dir().await.ok();
+                // Attempt to copy self to the store if possible, but since the install failed, this might not work, that's ok.
+                copy_self_to_nix_dir().await.ok();
 
+                if !no_confirm {
                     let mut was_expected = false;
                     if let Some(expected) = err.expected() {
                         was_expected = true;
