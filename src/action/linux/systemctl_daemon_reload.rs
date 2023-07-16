@@ -36,7 +36,7 @@ impl Action for SystemctlDaemonReload {
         ActionTag("systemctl_daemon_reload")
     }
     fn tracing_synopsis(&self) -> String {
-        format!("Run `systemctl daemon-reload`")
+        "Run `systemctl daemon-reload`".to_string()
     }
 
     fn tracing_span(&self) -> Span {

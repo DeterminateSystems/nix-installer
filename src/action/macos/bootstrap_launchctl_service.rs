@@ -47,11 +47,7 @@ impl BootstrapLaunchctlService {
                 .await
                 .map_err(|e| Self::error(ActionErrorKind::command(&command, e)))?;
             // We presume that success means it's found
-            if command_output.status.success() || command_output.status.code() == Some(37) {
-                true
-            } else {
-                false
-            }
+            command_output.status.success() || command_output.status.code() == Some(37)
         };
 
         let is_disabled = service_is_disabled(&domain, &service)

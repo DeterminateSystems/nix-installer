@@ -78,7 +78,7 @@ impl Action for SetTmutilExclusions {
 
         let mut set_tmutil_exclusion_descriptions = Vec::new();
         for set_tmutil_exclusion in set_tmutil_exclusions {
-            if let Some(val) = set_tmutil_exclusion.describe_execute().iter().next() {
+            if let Some(val) = set_tmutil_exclusion.describe_execute().first() {
                 set_tmutil_exclusion_descriptions.push(val.description.clone())
             }
         }
@@ -103,7 +103,7 @@ impl Action for SetTmutilExclusions {
 
     fn revert_description(&self) -> Vec<ActionDescription> {
         vec![ActionDescription::new(
-            format!("Remove time machine exclusions"),
+            "Remove time machine exclusions".to_string(),
             vec![],
         )]
     }

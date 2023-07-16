@@ -42,7 +42,7 @@ impl Action for EnsureSteamosNixDirectory {
         ActionTag("ensure_steamos_nix_directory")
     }
     fn tracing_synopsis(&self) -> String {
-        format!("Ensure SteamOS's `/nix` directory exists")
+        "Ensure SteamOS's `/nix` directory exists".to_string()
     }
 
     fn tracing_span(&self) -> Span {
