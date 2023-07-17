@@ -47,7 +47,7 @@ impl PlaceNixConfiguration {
                 }
             },
             Entry::Vacant(slot) => {
-                let _ = slot.insert(experimental_features.join(" ").to_string());
+                let _ = slot.insert(experimental_features.join(" "));
             },
         };
 
@@ -113,7 +113,7 @@ impl Action for PlaceNixConfiguration {
                 .to_string(),
         ];
 
-        if let Some(val) = create_directory.describe_execute().iter().next() {
+        if let Some(val) = create_directory.describe_execute().first() {
             explanation.push(val.description.clone())
         }
         for val in create_or_merge_nix_config.describe_execute().iter() {

@@ -110,14 +110,14 @@ impl Action for CreateUsersAndGroups {
 
         let mut create_users_descriptions = Vec::new();
         for create_user in create_users {
-            if let Some(val) = create_user.describe_execute().iter().next() {
+            if let Some(val) = create_user.describe_execute().first() {
                 create_users_descriptions.push(val.description.clone())
             }
         }
 
         let mut add_user_to_group_descriptions = Vec::new();
         for add_user_to_group in add_users_to_groups {
-            if let Some(val) = add_user_to_group.describe_execute().iter().next() {
+            if let Some(val) = add_user_to_group.describe_execute().first() {
                 add_user_to_group_descriptions.push(val.description.clone())
             }
         }
@@ -125,7 +125,7 @@ impl Action for CreateUsersAndGroups {
         let mut explanation = vec![
             format!("The Nix daemon requires system users (and a group they share) which it can act as in order to build"),
         ];
-        if let Some(val) = create_group.describe_execute().iter().next() {
+        if let Some(val) = create_group.describe_execute().first() {
             explanation.push(val.description.clone())
         }
         explanation.append(&mut create_users_descriptions);
@@ -222,14 +222,14 @@ impl Action for CreateUsersAndGroups {
         } = &self;
         let mut create_users_descriptions = Vec::new();
         for create_user in create_users {
-            if let Some(val) = create_user.describe_revert().iter().next() {
+            if let Some(val) = create_user.describe_revert().first() {
                 create_users_descriptions.push(val.description.clone())
             }
         }
 
         let mut add_user_to_group_descriptions = Vec::new();
         for add_user_to_group in add_users_to_groups {
-            if let Some(val) = add_user_to_group.describe_revert().iter().next() {
+            if let Some(val) = add_user_to_group.describe_revert().first() {
                 add_user_to_group_descriptions.push(val.description.clone())
             }
         }
@@ -237,7 +237,7 @@ impl Action for CreateUsersAndGroups {
         let mut explanation = vec![
             format!("The Nix daemon requires system users (and a group they share) which it can act as in order to build"),
         ];
-        if let Some(val) = create_group.describe_revert().iter().next() {
+        if let Some(val) = create_group.describe_revert().first() {
             explanation.push(val.description.clone())
         }
         explanation.append(&mut create_users_descriptions);
@@ -245,12 +245,12 @@ impl Action for CreateUsersAndGroups {
 
         if create_users.is_empty() {
             vec![ActionDescription::new(
-                format!("Remove Nix group"),
+                "Remove Nix group".to_string(),
                 explanation,
             )]
         } else {
             vec![ActionDescription::new(
-                format!("Remove Nix users and group"),
+                "Remove Nix users and group".to_string(),
                 explanation,
             )]
         }

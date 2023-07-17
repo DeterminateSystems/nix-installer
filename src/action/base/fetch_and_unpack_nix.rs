@@ -44,7 +44,7 @@ impl FetchAndUnpackNix {
         }
 
         if let Some(ssl_cert_file) = &ssl_cert_file {
-            parse_ssl_cert(&ssl_cert_file).await.map_err(Self::error)?;
+            parse_ssl_cert(ssl_cert_file).await.map_err(Self::error)?;
         }
 
         Ok(Self {
@@ -105,7 +105,7 @@ impl Action for FetchAndUnpackNix {
                     )
                 }
                 if let Some(ssl_cert_file) = &self.ssl_cert_file {
-                    let ssl_cert = parse_ssl_cert(&ssl_cert_file).await.map_err(Self::error)?;
+                    let ssl_cert = parse_ssl_cert(ssl_cert_file).await.map_err(Self::error)?;
                     buildable_client = buildable_client.add_root_certificate(ssl_cert);
                 }
                 let client = buildable_client
@@ -181,8 +181,8 @@ pub enum FetchUrlError {
     UnknownProxyScheme,
 }
 
-impl Into<ActionErrorKind> for FetchUrlError {
-    fn into(self) -> ActionErrorKind {
-        ActionErrorKind::Custom(Box::new(self))
+impl From<FetchUrlError> for ActionErrorKind {
+    fn from(val: FetchUrlError) -> Self {
+        ActionErrorKind::Custom(Box::new(val))
     }
 }

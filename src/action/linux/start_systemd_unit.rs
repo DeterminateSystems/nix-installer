@@ -81,7 +81,7 @@ impl Action for StartSystemdUnit {
                         .process_group(0)
                         .arg("enable")
                         .arg("--now")
-                        .arg(format!("{unit}"))
+                        .arg(&unit)
                         .stdin(std::process::Stdio::null()),
                 )
                 .await
@@ -93,7 +93,7 @@ impl Action for StartSystemdUnit {
                     Command::new("systemctl")
                         .process_group(0)
                         .arg("start")
-                        .arg(format!("{unit}"))
+                        .arg(&unit)
                         .stdin(std::process::Stdio::null()),
                 )
                 .await
@@ -120,7 +120,7 @@ impl Action for StartSystemdUnit {
                 Command::new("systemctl")
                     .process_group(0)
                     .arg("disable")
-                    .arg(format!("{}", self.unit))
+                    .arg(&self.unit)
                     .stdin(std::process::Stdio::null()),
             )
             .await
@@ -135,7 +135,7 @@ impl Action for StartSystemdUnit {
             Command::new("systemctl")
                 .process_group(0)
                 .arg("stop")
-                .arg(format!("{}", self.unit))
+                .arg(&self.unit)
                 .stdin(std::process::Stdio::null()),
         )
         .await

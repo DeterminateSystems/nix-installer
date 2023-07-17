@@ -24,7 +24,7 @@ use color_eyre::{
 };
 use owo_colors::OwoColorize;
 
-const EXISTING_INCOMPATIBLE_PLAN_GUIDANCE: &'static str = "\
+const EXISTING_INCOMPATIBLE_PLAN_GUIDANCE: &str = "\
     If you are trying to upgrade Nix, try running `sudo -i nix upgrade-nix` instead.\n\
     If you are trying to install Nix over an existing install (from an incompatible `nix-installer` install), try running `/nix/nix-installer uninstall` then try to install again.\n\
     If you are using `nix-installer` in an automated curing process and seeing this message, consider pinning the version you use via https://github.com/DeterminateSystems/nix-installer#accessing-other-versions.\
@@ -199,6 +199,14 @@ impl CommandExecute for Install {
             (Some(_), Some(_)) => return Err(eyre!("`--plan` conflicts with passing a planner, a planner creates plans, so passing an existing plan doesn't make sense")),
         };
 
+        if let Err(err) = install_plan.pre_install_check().await {
+            if let Some(expected) = err.expected() {
+                eprintln!("{}", expected.red());
+                return Ok(ExitCode::FAILURE);
+            }
+            Err(err)?
+        }
+
         if !no_confirm {
             let mut currently_explaining = explain;
             loop {
@@ -225,10 +233,10 @@ impl CommandExecute for Install {
 
         match install_plan.install(rx1).await {
             Err(err) => {
-                if !no_confirm {
-                    // Attempt to copy self to the store if possible, but since the install failed, this might not work, that's ok.
-                    copy_self_to_nix_dir().await.ok();
+                // Attempt to copy self to the store if possible, but since the install failed, this might not work, that's ok.
+                copy_self_to_nix_dir().await.ok();
 
+                if !no_confirm {
                     let mut was_expected = false;
                     if let Some(expected) = err.expected() {
                         was_expected = true;

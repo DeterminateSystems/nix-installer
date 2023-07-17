@@ -35,7 +35,7 @@ impl crate::diagnostics::ErrorDiagnostic for SelfTestError {
             Self::Command { shell, .. } => vec![shell.to_string()],
             Self::SystemTime(_) => vec![],
         };
-        return format!(
+        format!(
             "{}({})",
             static_str,
             context
@@ -43,7 +43,7 @@ impl crate::diagnostics::ErrorDiagnostic for SelfTestError {
                 .map(|v| format!("\"{v}\""))
                 .collect::<Vec<_>>()
                 .join(", ")
-        );
+        )
     }
 }
 
@@ -149,12 +149,21 @@ impl Shell {
 }
 
 #[tracing::instrument(skip_all)]
-pub async fn self_test() -> Result<(), SelfTestError> {
+pub async fn self_test() -> Result<(), Vec<SelfTestError>> {
     let shells = Shell::discover();
 
+    let mut failures = vec![];
+
     for shell in shells {
-        shell.self_test().await?;
+        match shell.self_test().await {
+            Ok(()) => (),
+            Err(err) => failures.push(err),
+        }
     }
 
-    Ok(())
+    if failures.is_empty() {
+        Ok(())
+    } else {
+        Err(failures)
+    }
 }

@@ -402,18 +402,14 @@ impl Action for ConfigureInitService {
                 // We separate stop and disable (instead of using `--now`) to avoid cases where the service isn't started, but is enabled.
 
                 // These have to fail fast.
-                let socket_is_active = is_active("nix-daemon.socket")
-                    .await
-                    .map_err(|e| Self::error(e))?;
-                let socket_is_enabled = is_enabled("nix-daemon.socket")
-                    .await
-                    .map_err(|e| Self::error(e))?;
-                let service_is_active = is_active("nix-daemon.service")
-                    .await
-                    .map_err(|e| Self::error(e))?;
+                let socket_is_active = is_active("nix-daemon.socket").await.map_err(Self::error)?;
+                let socket_is_enabled =
+                    is_enabled("nix-daemon.socket").await.map_err(Self::error)?;
+                let service_is_active =
+                    is_active("nix-daemon.service").await.map_err(Self::error)?;
                 let service_is_enabled = is_enabled("nix-daemon.service")
                     .await
-                    .map_err(|e| Self::error(e))?;
+                    .map_err(Self::error)?;
 
                 if socket_is_active {
                     if let Err(err) = execute_command(
