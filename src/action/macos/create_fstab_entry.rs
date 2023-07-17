@@ -122,7 +122,7 @@ impl Action for CreateFstabEntry {
             existing_entry,
         } = self;
         let fstab_path = Path::new(FSTAB_PATH);
-        let uuid = match get_uuid_for_label(&apfs_volume_label)
+        let uuid = match get_uuid_for_label(apfs_volume_label)
             .await
             .map_err(Self::error)?
         {
@@ -158,7 +158,7 @@ impl Action for CreateFstabEntry {
                     .collect::<Vec<String>>();
                 let mut updated_line = false;
                 let mut saw_prelude = false;
-                let prelude = fstab_prelude_comment(&apfs_volume_label);
+                let prelude = fstab_prelude_comment(apfs_volume_label);
                 for line in current_fstab_lines.iter_mut() {
                     if line == &prelude {
                         saw_prelude = true;
@@ -306,8 +306,8 @@ pub enum CreateFstabEntryError {
     CannotDetermineFstabLine,
 }
 
-impl Into<ActionErrorKind> for CreateFstabEntryError {
-    fn into(self) -> ActionErrorKind {
-        ActionErrorKind::Custom(Box::new(self))
+impl From<CreateFstabEntryError> for ActionErrorKind {
+    fn from(val: CreateFstabEntryError) -> Self {
+        ActionErrorKind::Custom(Box::new(val))
     }
 }

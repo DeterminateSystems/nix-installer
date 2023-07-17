@@ -37,7 +37,7 @@ impl Action for ProvisionSelinux {
         ActionTag("provision_selinux")
     }
     fn tracing_synopsis(&self) -> String {
-        format!("Install an SELinux Policy for Nix")
+        "Install an SELinux Policy for Nix".to_string()
     }
 
     fn tracing_span(&self) -> Span {

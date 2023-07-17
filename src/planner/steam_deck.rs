@@ -179,8 +179,7 @@ impl Planner for SteamDeck {
                     .boxed(),
             );
 
-            let nix_directory_buf = format!(
-                "\
+            let nix_directory_buf = "\
                 [Unit]\n\
                 Description=Create a `/nix` directory to be used for bind mounting\n\
                 PropagatesStopTo=nix-daemon.service\n\
@@ -202,7 +201,7 @@ impl Planner for SteamDeck {
                 ExecStop=steamos-readonly enable\n\
                 RemainAfterExit=true\n\
             "
-            );
+            .to_string();
             let nix_directory_unit = CreateFile::plan(
                 "/etc/systemd/system/nix-directory.service",
                 None,
@@ -267,8 +266,7 @@ impl Planner for SteamDeck {
             actions.push(start_nix_mount.boxed());
         }
 
-        let ensure_symlinked_units_resolve_buf = format!(
-            "\
+        let ensure_symlinked_units_resolve_buf = "\
             [Unit]\n\
             Description=Ensure Nix related units which are symlinked resolve\n\
             After=nix.mount\n\
@@ -284,7 +282,7 @@ impl Planner for SteamDeck {
             [Install]\n\
             WantedBy=sysinit.target\n\
         "
-        );
+        .to_string();
         let ensure_symlinked_units_resolve_unit = CreateFile::plan(
             "/etc/systemd/system/ensure-symlinked-units-resolve.service",
             None,
@@ -398,11 +396,33 @@ impl Planner for SteamDeck {
             self.settings.ssl_cert_file.clone(),
         )?)
     }
+
+    async fn pre_uninstall_check(&self) -> Result<(), PlannerError> {
+        super::linux::check_not_wsl1()?;
+
+        // Unlike the Linux planner, the steam deck planner requires systemd
+        super::linux::check_systemd_active()?;
+
+        Ok(())
+    }
+
+    async fn pre_install_check(&self) -> Result<(), PlannerError> {
+        super::linux::check_not_nixos()?;
+
+        super::linux::check_nix_not_already_installed().await?;
+
+        super::linux::check_not_wsl1()?;
+
+        // Unlike the Linux planner, the steam deck planner requires systemd
+        super::linux::check_systemd_active()?;
+
+        Ok(())
+    }
 }
 
-impl Into<BuiltinPlanner> for SteamDeck {
-    fn into(self) -> BuiltinPlanner {
-        BuiltinPlanner::SteamDeck(self)
+impl From<SteamDeck> for BuiltinPlanner {
+    fn from(val: SteamDeck) -> Self {
+        BuiltinPlanner::SteamDeck(val)
     }
 }
 
@@ -423,8 +443,7 @@ pub(crate) async fn detect_requires_bind_mount() -> Result<bool, PlannerError> {
     let steamos_nix_mount_unit_path = "/usr/lib/systemd/system/nix.mount";
     let nix_mount_unit = tokio::fs::read_to_string(steamos_nix_mount_unit_path)
         .await
-        .map(|v| Some(v))
-        .unwrap_or_else(|_| None);
+        .ok();
 
     match nix_mount_unit {
         Some(nix_mount_unit) if nix_mount_unit.contains("What=/home/.steamos/offload/nix") => {

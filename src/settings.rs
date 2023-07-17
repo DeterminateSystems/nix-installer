@@ -372,7 +372,7 @@ async fn linux_detect_systemd_started() -> bool {
 
     let mut started = false;
     if std::path::Path::new("/run/systemd/system").exists() {
-        started = if tokio::process::Command::new("systemctl")
+        started = tokio::process::Command::new("systemctl")
             .arg("status")
             .stdin(Stdio::null())
             .stdout(Stdio::null())
@@ -382,11 +382,6 @@ async fn linux_detect_systemd_started() -> bool {
             .ok()
             .map(|exit| exit.success())
             .unwrap_or(false)
-        {
-            true
-        } else {
-            false
-        }
     }
 
     // TODO: Other inits
@@ -509,6 +504,6 @@ pub enum InstallSettingsError {
 impl crate::diagnostics::ErrorDiagnostic for InstallSettingsError {
     fn diagnostic(&self) -> String {
         let static_str: &'static str = (self).into();
-        return static_str.to_string();
+        static_str.to_string()
     }
 }

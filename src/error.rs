@@ -15,12 +15,14 @@ pub enum NixInstallerError {
     #[error("Error executing action")]
     Action(#[source] ActionError),
     /// An error originating from a [`self_test`](crate::self_test)
-    #[error("Self test")]
-    SelfTest(
-        #[source]
-        #[from]
-        SelfTestError,
-    ),
+    #[error("Self test error, install may be only partially functional\n{}", .0.iter().map(|err| {
+        if let Some(source) = err.source() {
+            format!("{err}\n{source}\n")
+        } else {
+            format!("{err}\n") 
+        }
+    }).collect::<Vec<_>>().join("\n"))]
+    SelfTest(Vec<SelfTestError>),
     /// An error originating from an [`Action`](crate::action::Action) while reverting
     #[error("Error reverting\n{}", .0.iter().map(|err| {
         if let Some(source) = err.source() {
@@ -100,7 +102,7 @@ impl HasExpectedErrors for NixInstallerError {
         match self {
             NixInstallerError::Action(action_error) => action_error.kind().expected(),
             NixInstallerError::ActionRevert(_) => None,
-            NixInstallerError::SelfTest(_) => None,
+            this @ NixInstallerError::SelfTest(_) => Some(Box::new(this)),
             NixInstallerError::RecordingReceipt(_, _) => None,
             NixInstallerError::CopyingSelf(_) => None,
             NixInstallerError::SerializingReceipt(_) => None,
@@ -124,15 +126,18 @@ impl crate::diagnostics::ErrorDiagnostic for NixInstallerError {
     fn diagnostic(&self) -> String {
         let static_str: &'static str = (self).into();
         let context = match self {
-            Self::SelfTest(self_test) => vec![self_test.diagnostic().to_string()],
-            Self::Action(action_error) => vec![action_error.diagnostic().to_string()],
+            Self::SelfTest(self_tests) => self_tests
+                .iter()
+                .map(|self_test| self_test.diagnostic())
+                .collect::<Vec<_>>(),
+            Self::Action(action_error) => vec![action_error.diagnostic()],
             Self::ActionRevert(action_errors) => action_errors
                 .iter()
-                .map(|action_error| action_error.diagnostic().to_string())
+                .map(|action_error| action_error.diagnostic())
                 .collect(),
             _ => vec![],
         };
-        return format!(
+        format!(
             "{}({})",
             static_str,
             context
@@ -140,6 +145,6 @@ impl crate::diagnostics::ErrorDiagnostic for NixInstallerError {
                 .map(|v| format!("\"{v}\""))
                 .collect::<Vec<_>>()
                 .join(", ")
-        );
+        )
     }
 }

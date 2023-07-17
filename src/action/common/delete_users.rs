@@ -58,7 +58,7 @@ impl Action for DeleteUsersInGroup {
     fn execute_description(&self) -> Vec<ActionDescription> {
         let mut delete_users_descriptions = Vec::new();
         for delete_user in self.delete_users.iter() {
-            if let Some(val) = delete_user.describe_execute().iter().next() {
+            if let Some(val) = delete_user.describe_execute().first() {
                 delete_users_descriptions.push(val.description.clone())
             }
         }
@@ -82,7 +82,7 @@ impl Action for DeleteUsersInGroup {
     fn revert_description(&self) -> Vec<ActionDescription> {
         let mut delete_users_descriptions = Vec::new();
         for delete_user in self.delete_users.iter() {
-            if let Some(val) = delete_user.describe_revert().iter().next() {
+            if let Some(val) = delete_user.describe_revert().first() {
                 delete_users_descriptions.push(val.description.clone())
             }
         }

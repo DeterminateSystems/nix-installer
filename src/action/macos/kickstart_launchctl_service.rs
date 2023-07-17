@@ -43,7 +43,7 @@ impl KickstartLaunchctlService {
         if output.status.success() {
             service_exists = true;
 
-            let output_string = String::from_utf8(output.stdout).map_err(|e| Self::error(e))?;
+            let output_string = String::from_utf8(output.stdout).map_err(Self::error)?;
             // We are looking for a line containing "state = " with some trailing content
             // The output is not a JSON or a plist
             // MacOS's man pages explicitly tell us not to try to parse this output

@@ -64,13 +64,11 @@ impl EncryptApfsVolume {
             return Err(Self::error(EncryptApfsVolumeError::ExistingPasswordFound(
                 name, disk,
             )));
-        } else {
-            if planned_create_apfs_volume.state == ActionState::Completed {
-                // The user has a volume already created, but a password not set. This means we probably can't decrypt the volume.
-                return Err(Self::error(
-                    EncryptApfsVolumeError::MissingPasswordForExistingVolume(name, disk),
-                ));
-            }
+        } else if planned_create_apfs_volume.state == ActionState::Completed {
+            // The user has a volume already created, but a password not set. This means we probably can't decrypt the volume.
+            return Err(Self::error(
+                EncryptApfsVolumeError::MissingPasswordForExistingVolume(name, disk),
+            ));
         }
 
         // Ensure if the disk already exists, that it's encrypted
@@ -84,15 +82,12 @@ impl EncryptApfsVolume {
         for container in parsed.containers {
             for volume in container.volumes {
                 if volume.name.as_ref() == Some(&name) {
-                    match volume.encryption == false {
-                        true => {
-                            return Ok(StatefulAction::completed(Self { disk, name }));
-                        },
-                        false => {
-                            return Err(Self::error(
-                                EncryptApfsVolumeError::ExistingVolumeNotEncrypted(name, disk),
-                            ));
-                        },
+                    if volume.encryption {
+                        return Err(Self::error(
+                            EncryptApfsVolumeError::ExistingVolumeNotEncrypted(name, disk),
+                        ));
+                    } else {
+                        return Ok(StatefulAction::completed(Self { disk, name }));
                     }
                 }
             }
@@ -265,8 +260,8 @@ pub enum EncryptApfsVolumeError {
     ExistingVolumeNotEncrypted(String, PathBuf),
 }
 
-impl Into<ActionErrorKind> for EncryptApfsVolumeError {
-    fn into(self) -> ActionErrorKind {
-        ActionErrorKind::Custom(Box::new(self))
+impl From<EncryptApfsVolumeError> for ActionErrorKind {
+    fn from(val: EncryptApfsVolumeError) -> Self {
+        ActionErrorKind::Custom(Box::new(val))
     }
 }

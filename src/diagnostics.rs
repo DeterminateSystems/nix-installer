@@ -174,14 +174,12 @@ impl DiagnosticData {
                 tracing::debug!("Sending diagnostic to `{endpoint}`");
                 let mut buildable_client = reqwest::Client::builder();
                 if let Some(ssl_cert_file) = &self.ssl_cert_file {
-                    let ssl_cert = parse_ssl_cert(&ssl_cert_file).await.ok();
+                    let ssl_cert = parse_ssl_cert(ssl_cert_file).await.ok();
                     if let Some(ssl_cert) = ssl_cert {
                         buildable_client = buildable_client.add_root_certificate(ssl_cert);
                     }
                 }
-                let client = buildable_client
-                    .build()
-                    .map_err(|e| DiagnosticError::Reqwest(e))?;
+                let client = buildable_client.build().map_err(DiagnosticError::Reqwest)?;
 
                 let res = client
                     .post(endpoint.clone())
@@ -247,7 +245,7 @@ pub trait ErrorDiagnostic {
 impl ErrorDiagnostic for DiagnosticError {
     fn diagnostic(&self) -> String {
         let static_str: &'static str = (self).into();
-        return static_str.to_string();
+        static_str.to_string()
     }
 }
 
