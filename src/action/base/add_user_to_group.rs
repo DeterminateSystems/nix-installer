@@ -111,7 +111,6 @@ impl AddUserToGroup {
                                 this.groupname
                             );
                             // The group will be created by the installer
-                            ()
                         },
                         _ => {
                             // Some other issue
@@ -131,7 +130,7 @@ impl AddUserToGroup {
                     .await
                     .map_err(Self::error)?;
                     let output_str = String::from_utf8(output.stdout).map_err(Self::error)?;
-                    let user_in_group = output_str.split(" ").any(|v| v == &this.groupname);
+                    let user_in_group = output_str.split(' ').any(|v| v == this.groupname);
 
                     if user_in_group {
                         tracing::debug!(

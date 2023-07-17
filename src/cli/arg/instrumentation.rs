@@ -139,7 +139,7 @@ impl<'a> Instrumentation {
                 }
                 EnvFilter::try_new(&format!(
                     "{}={}",
-                    env!("CARGO_PKG_NAME").replace("-", "_"),
+                    env!("CARGO_PKG_NAME").replace('-', "_"),
                     self.log_level()
                 ))?
             },

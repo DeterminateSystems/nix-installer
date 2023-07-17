@@ -145,14 +145,14 @@ where
         if self.state == ActionState::Completed {
             return vec![];
         }
-        return self.action.execute_description();
+        self.action.execute_description()
     }
     /// A description of what this action would do during revert
     pub fn describe_revert(&self) -> Vec<ActionDescription> {
         if self.state == ActionState::Uncompleted {
             return vec![];
         }
-        return self.action.revert_description();
+        self.action.revert_description()
     }
     /// Perform any execution steps
     ///

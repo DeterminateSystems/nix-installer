@@ -123,7 +123,7 @@ pub fn ensure_root() -> eyre::Result<()> {
         if is_ci::cached() {
             // Normally `sudo` would erase those envs, so we detect and pass that along specifically to avoid having to pass around
             // a bunch of environment variables
-            env_list.push(format!("NIX_INSTALLER_CI=1"));
+            env_list.push("NIX_INSTALLER_CI=1".to_string());
         }
 
         if !env_list.is_empty() {

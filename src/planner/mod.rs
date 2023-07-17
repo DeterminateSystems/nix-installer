@@ -443,6 +443,6 @@ impl HasExpectedErrors for PlannerError {
 impl crate::diagnostics::ErrorDiagnostic for PlannerError {
     fn diagnostic(&self) -> String {
         let static_str: &'static str = (self).into();
-        return static_str.to_string();
+        static_str.to_string()
     }
 }

@@ -50,7 +50,7 @@ impl Action for MoveUnpackedNix {
 
     fn execute_description(&self) -> Vec<ActionDescription> {
         vec![ActionDescription::new(
-            format!("Move the downloaded Nix into `/nix`"),
+            "Move the downloaded Nix into `/nix`".to_string(),
             vec![format!(
                 "Nix is being downloaded to `{}` and should be in `/nix`",
                 self.unpacked_path.display(),
@@ -107,9 +107,7 @@ impl Action for MoveUnpackedNix {
             tracing::trace!(src = %entry.path().display(), dest = %entry_dest.display(), "Renaming");
             tokio::fs::rename(&entry.path(), &entry_dest)
                 .await
-                .map_err(|e| {
-                    ActionErrorKind::Rename(entry.path().clone(), entry_dest.to_owned(), e)
-                })
+                .map_err(|e| ActionErrorKind::Rename(entry.path(), entry_dest.to_owned(), e))
                 .map_err(Self::error)?;
 
             let perms: Permissions = PermissionsExt::from_mode(0o555);
@@ -134,9 +132,7 @@ impl Action for MoveUnpackedNix {
             // eg, know which `nix` version we installed when curing a user with several versions installed
             tokio::fs::symlink(&entry_dest, entry.path())
                 .await
-                .map_err(|e| {
-                    ActionErrorKind::Symlink(entry_dest.to_owned(), entry.path().clone(), e)
-                })
+                .map_err(|e| ActionErrorKind::Symlink(entry_dest.to_owned(), entry.path(), e))
                 .map_err(Self::error)?;
         }
 
@@ -171,8 +167,8 @@ pub enum MoveUnpackedNixError {
     ),
 }
 
-impl Into<ActionErrorKind> for MoveUnpackedNixError {
-    fn into(self) -> ActionErrorKind {
-        ActionErrorKind::Custom(Box::new(self))
+impl From<MoveUnpackedNixError> for ActionErrorKind {
+    fn from(val: MoveUnpackedNixError) -> Self {
+        ActionErrorKind::Custom(Box::new(val))
     }
 }
