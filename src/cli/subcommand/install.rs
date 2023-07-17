@@ -24,7 +24,7 @@ use color_eyre::{
 };
 use owo_colors::OwoColorize;
 
-const EXISTING_INCOMPATIBLE_PLAN_GUIDANCE: &'static str = "\
+const EXISTING_INCOMPATIBLE_PLAN_GUIDANCE: &str = "\
     If you are trying to upgrade Nix, try running `sudo -i nix upgrade-nix` instead.\n\
     If you are trying to install Nix over an existing install (from an incompatible `nix-installer` install), try running `/nix/nix-installer uninstall` then try to install again.\n\
     If you are using `nix-installer` in an automated curing process and seeing this message, consider pinning the version you use via https://github.com/DeterminateSystems/nix-installer#accessing-other-versions.\

@@ -117,7 +117,7 @@ impl CreateVolumeService {
                             .await
                             .map_err(|e| Self::error(ActionErrorKind::Read(fstab, e)))?;
                         for line in contents.lines() {
-                            if line.starts_with("#") {
+                            if line.starts_with('#') {
                                 continue;
                             }
                             let split = line.split_whitespace();
@@ -204,7 +204,7 @@ impl Action for CreateVolumeService {
             }
         }
 
-        let uuid = match get_uuid_for_label(&apfs_volume_label)
+        let uuid = match get_uuid_for_label(apfs_volume_label)
             .await
             .map_err(Self::error)?
         {
@@ -216,8 +216,8 @@ impl Action for CreateVolumeService {
             },
         };
         let generated_plist = generate_mount_plist(
-            &mount_service_label,
-            &apfs_volume_label,
+            mount_service_label,
+            apfs_volume_label,
             uuid,
             mount_point,
             *encrypt,
@@ -315,8 +315,8 @@ pub enum CreateVolumeServiceError {
     VolumeDoesNotExistButVolumeServiceAndFstabEntryDoes(PathBuf, String),
 }
 
-impl Into<ActionErrorKind> for CreateVolumeServiceError {
-    fn into(self) -> ActionErrorKind {
-        ActionErrorKind::Custom(Box::new(self))
+impl From<CreateVolumeServiceError> for ActionErrorKind {
+    fn from(val: CreateVolumeServiceError) -> Self {
+        ActionErrorKind::Custom(Box::new(val))
     }
 }

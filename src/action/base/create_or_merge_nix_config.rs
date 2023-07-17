@@ -35,9 +35,9 @@ pub enum CreateOrMergeNixConfigError {
     UnmergeableConfig(Vec<String>, std::path::PathBuf),
 }
 
-impl Into<ActionErrorKind> for CreateOrMergeNixConfigError {
-    fn into(self) -> ActionErrorKind {
-        ActionErrorKind::Custom(Box::new(self))
+impl From<CreateOrMergeNixConfigError> for ActionErrorKind {
+    fn from(val: CreateOrMergeNixConfigError) -> Self {
+        ActionErrorKind::Custom(Box::new(val))
     }
 }
 
@@ -164,7 +164,7 @@ impl CreateOrMergeNixConfig {
             .map_err(Self::error)?;
 
         let (merged_nix_config, existing_nix_config) = Self::merge_pending_and_existing_nix_config(
-            &pending_nix_config,
+            pending_nix_config,
             &existing_nix_config,
             &path,
         )
@@ -273,7 +273,7 @@ impl Action for CreateOrMergeNixConfig {
 
         let (mut merged_nix_config, mut existing_nix_config) = if path.exists() {
             let (merged_nix_config, existing_nix_config) =
-                Self::validate_existing_nix_config(&pending_nix_config, &path)?;
+                Self::validate_existing_nix_config(pending_nix_config, path)?;
             (merged_nix_config, Some(existing_nix_config))
         } else {
             (pending_nix_config.clone(), None)
@@ -342,7 +342,7 @@ impl Action for CreateOrMergeNixConfig {
                 // standalone comments to preserve, but no settings with inline comments.
                 if setting_line.is_empty() {
                     for line in &line_group {
-                        new_config.push_str(&line);
+                        new_config.push_str(line);
                         new_config.push('\n');
                     }
 
@@ -624,20 +624,19 @@ mod test {
             .settings_mut()
             .insert("warn-dirty".into(), "false".into());
         match CreateOrMergeNixConfig::plan(&test_file, nix_config).await {
-            Err(err) => match err.kind() {
-                ActionErrorKind::Custom(e) => {
+            Err(err) => {
+                if let ActionErrorKind::Custom(e) = err.kind() {
                     match e.downcast_ref::<CreateOrMergeNixConfigError>() {
                         Some(CreateOrMergeNixConfigError::UnmergeableConfig(_, path)) => {
                             assert_eq!(path, test_file.as_path())
                         },
                         _ => {
                             return Err(eyre!(
-                            "Should have returned CreateOrMergeNixConfigError::UnmergeableConfig"
-                        ))
+                        "Should have returned CreateOrMergeNixConfigError::UnmergeableConfig"
+                    ))
                         },
                     }
-                },
-                _ => (),
+                }
             },
             _ => {
                 return Err(eyre!(

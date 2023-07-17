@@ -128,8 +128,7 @@ impl InstallPlan {
             },
             actions = actions
                 .iter()
-                .map(|v| v.describe_execute())
-                .flatten()
+                .flat_map(|v| v.describe_execute())
                 .map(|desc| {
                     let ActionDescription {
                         description,
@@ -300,8 +299,7 @@ impl InstallPlan {
             actions = actions
                 .iter()
                 .rev()
-                .map(|v| v.describe_revert())
-                .flatten()
+                .flat_map(|v| v.describe_revert())
                 .map(|desc| {
                     let ActionDescription {
                         description,
@@ -394,7 +392,7 @@ impl InstallPlan {
                     .await?;
             }
 
-            return Err(error);
+            Err(error)
         }
     }
 

@@ -156,9 +156,9 @@ impl Planner for Linux {
     }
 }
 
-impl Into<BuiltinPlanner> for Linux {
-    fn into(self) -> BuiltinPlanner {
-        BuiltinPlanner::Linux(self)
+impl From<Linux> for BuiltinPlanner {
+    fn from(val: Linux) -> Self {
+        BuiltinPlanner::Linux(val)
     }
 }
 
@@ -196,11 +196,12 @@ pub(crate) async fn detect_selinux() -> Result<bool, PlannerError> {
 
 pub(crate) async fn check_nix_not_already_installed() -> Result<(), PlannerError> {
     // For now, we don't try to repair the user's Nix install or anything special.
-    if let Ok(_) = Command::new("nix-env")
+    if Command::new("nix-env")
         .arg("--version")
         .stdin(std::process::Stdio::null())
         .status()
         .await
+        .is_ok()
     {
         return Err(PlannerError::NixExists);
     }

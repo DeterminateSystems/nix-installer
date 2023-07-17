@@ -128,16 +128,16 @@ impl crate::diagnostics::ErrorDiagnostic for NixInstallerError {
         let context = match self {
             Self::SelfTest(self_tests) => self_tests
                 .iter()
-                .map(|self_test| self_test.diagnostic().to_string())
+                .map(|self_test| self_test.diagnostic())
                 .collect::<Vec<_>>(),
-            Self::Action(action_error) => vec![action_error.diagnostic().to_string()],
+            Self::Action(action_error) => vec![action_error.diagnostic()],
             Self::ActionRevert(action_errors) => action_errors
                 .iter()
-                .map(|action_error| action_error.diagnostic().to_string())
+                .map(|action_error| action_error.diagnostic())
                 .collect(),
             _ => vec![],
         };
-        return format!(
+        format!(
             "{}({})",
             static_str,
             context
@@ -145,6 +145,6 @@ impl crate::diagnostics::ErrorDiagnostic for NixInstallerError {
                 .map(|v| format!("\"{v}\""))
                 .collect::<Vec<_>>()
                 .join(", ")
-        );
+        )
     }
 }

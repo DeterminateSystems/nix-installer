@@ -69,7 +69,7 @@ impl Action for UnmountApfsVolume {
             .map_err(Self::error)?
             .stdout;
             let the_plist: DiskUtilInfoOutput =
-                plist::from_reader(Cursor::new(buf)).map_err(|e| Self::error(e))?;
+                plist::from_reader(Cursor::new(buf)).map_err(Self::error)?;
 
             the_plist.mount_point.is_some()
         };
@@ -111,7 +111,7 @@ impl Action for UnmountApfsVolume {
             .map_err(Self::error)?
             .stdout;
             let the_plist: DiskUtilInfoOutput =
-                plist::from_reader(Cursor::new(buf)).map_err(|e| Self::error(e))?;
+                plist::from_reader(Cursor::new(buf)).map_err(Self::error)?;
 
             the_plist.mount_point.is_some()
         };

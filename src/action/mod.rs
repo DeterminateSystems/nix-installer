@@ -635,7 +635,7 @@ impl crate::diagnostics::ErrorDiagnostic for ActionErrorKind {
             },
             _ => vec![],
         };
-        return format!(
+        format!(
             "{}({})",
             static_str,
             context
@@ -643,6 +643,6 @@ impl crate::diagnostics::ErrorDiagnostic for ActionErrorKind {
                 .map(|v| format!("\"{v}\""))
                 .collect::<Vec<_>>()
                 .join(", ")
-        );
+        )
     }
 }

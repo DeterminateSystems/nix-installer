@@ -19,9 +19,7 @@ impl RemoveDirectory {
         let path = path.as_ref().to_path_buf();
 
         Ok(StatefulAction {
-            action: Self {
-                path: path.to_path_buf(),
-            },
+            action: Self { path },
             state: ActionState::Uncompleted,
         })
     }

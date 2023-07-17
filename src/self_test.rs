@@ -35,7 +35,7 @@ impl crate::diagnostics::ErrorDiagnostic for SelfTestError {
             Self::Command { shell, .. } => vec![shell.to_string()],
             Self::SystemTime(_) => vec![],
         };
-        return format!(
+        format!(
             "{}({})",
             static_str,
             context
@@ -43,7 +43,7 @@ impl crate::diagnostics::ErrorDiagnostic for SelfTestError {
                 .map(|v| format!("\"{v}\""))
                 .collect::<Vec<_>>()
                 .join(", ")
-        );
+        )
     }
 }
 

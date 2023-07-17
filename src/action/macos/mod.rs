@@ -55,12 +55,12 @@ async fn get_uuid_for_label(apfs_volume_label: &str) -> Result<Option<Uuid>, Act
     if let Some(error_message) = parsed.error_message {
         let expected_not_found = format!("Could not find disk: {apfs_volume_label}");
         if error_message.contains(&expected_not_found) {
-            return Ok(None);
+            Ok(None)
         } else {
-            return Err(ActionErrorKind::DiskUtilInfoError {
+            Err(ActionErrorKind::DiskUtilInfoError {
                 command: command_str,
                 message: error_message,
-            });
+            })
         }
     } else if let Some(uuid) = parsed.volume_uuid {
         Ok(Some(uuid))
@@ -86,7 +86,7 @@ pub(crate) async fn service_is_disabled(
     let output = execute_command(
         Command::new("launchctl")
             .arg("print-disabled")
-            .arg(&domain)
+            .arg(domain)
             .stdin(std::process::Stdio::null())
             .stdout(std::process::Stdio::piped())
             .stderr(std::process::Stdio::piped()),
