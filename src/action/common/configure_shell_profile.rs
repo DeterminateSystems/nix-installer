@@ -152,12 +152,14 @@ impl ConfigureShellProfile {
                     &github_path,
                     None,
                     None,
-                    None,
+                    // We want the `nix-installer-action` to not error if it writes here.
+                    // Prior to `v5` this was done in this crate, in `v5` and later, this is done in the action.
+                    0o777,
                     buf,
                     create_or_insert_into_file::Position::End,
                 )
                 .await?,
-            )
+            );
         }
 
         Ok(Self {
