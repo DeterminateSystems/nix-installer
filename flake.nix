@@ -144,6 +144,7 @@
               check.check-nixpkgs-fmt
               check.check-editorconfig
               check.check-semver
+              check.check-clippy
             ]
             ++ lib.optionals (pkgs.stdenv.isDarwin) (with pkgs; [
               libiconv

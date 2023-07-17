@@ -21,6 +21,8 @@ jobs:
       - uses: DeterminateSystems/magic-nix-cache-action@v1
       - name: Check rustfmt
         run: nix develop --command check-rustfmt
+      - name: Check Clippy
+        run: nix develop --command check-clippy
       - name: Check Spelling
         run: nix develop --command check-spelling
       - name: Check nixpkgs-fmt formatting

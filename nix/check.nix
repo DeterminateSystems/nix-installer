@@ -50,4 +50,13 @@ in
       cargo-semver-checks semver-checks check-release
     '';
   });
+  # Clippy
+  check-clippy = (writeShellApplication {
+    name = "check-clippy";
+    runtimeInputs = with pkgs; [ cargo clippy ];
+    text = ''
+      cargo clippy
+    '';
+  });
+
 }
