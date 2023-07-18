@@ -53,7 +53,7 @@ in
   # Clippy
   check-clippy = (writeShellApplication {
     name = "check-clippy";
-    runtimeInputs = with pkgs; [ cargo clippy ];
+    runtimeInputs = with pkgs; [ cargo clippy rustc ];
     text = ''
       cargo clippy
     '';
