@@ -12,13 +12,13 @@ jobs:
     steps:
       - uses: actions/checkout@v3
       - name: Check Nixpkgs input
-        uses: DeterminateSystems/flake-checker-action@v4
+        uses: DeterminateSystems/flake-checker-action@main
         with:
           fail-mode: true
           check-outdated: false # PRs shouldn't fail because main's nixpkgs is out of date
       - name: Install Nix
         uses: DeterminateSystems/nix-installer-action@main
-      - uses: DeterminateSystems/magic-nix-cache-action@v1
+      - uses: DeterminateSystems/magic-nix-cache-action@main
       - name: Check rustfmt
         run: nix develop --command check-rustfmt
       - name: Check Spelling
