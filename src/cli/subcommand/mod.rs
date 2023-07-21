@@ -7,6 +7,7 @@ use uninstall::Uninstall;
 mod self_test;
 use self_test::SelfTest;
 
+#[allow(clippy::large_enum_variant)]
 #[derive(Debug, clap::Subcommand)]
 pub enum NixInstallerSubcommand {
     Plan(Plan),
