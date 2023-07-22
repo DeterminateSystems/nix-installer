@@ -11,14 +11,15 @@ use crate::{
     settings::{InitSettings, InitSystem, InstallSettingsError},
     Action, BuiltinPlanner,
 };
-use std::{
-    collections::HashMap,
-    path::{Path, PathBuf},
-};
-use tokio::process::Command;
-use which::which;
+use std::{collections::HashMap, path::PathBuf};
 
-use super::ShellProfileLocations;
+use super::{
+    linux::{
+        check_nix_not_already_installed, check_not_nixos, check_not_wsl1, check_systemd_active,
+        detect_selinux,
+    },
+    ShellProfileLocations,
+};
 
 /// A planner for Linux installs
 #[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
@@ -304,65 +305,6 @@ impl From<Ostree> for BuiltinPlanner {
     fn from(val: Ostree) -> Self {
         BuiltinPlanner::Ostree(val)
     }
-}
-
-// If on NixOS, running `nix_installer` is pointless
-pub(crate) fn check_not_nixos() -> Result<(), PlannerError> {
-    // NixOS always sets up this file as part of setting up /etc itself: https://github.com/NixOS/nixpkgs/blob/bdd39e5757d858bd6ea58ed65b4a2e52c8ed11ca/nixos/modules/system/etc/setup-etc.pl#L145
-    if Path::new("/etc/NIXOS").exists() {
-        return Err(PlannerError::NixOs);
-    }
-    Ok(())
-}
-
-pub(crate) fn check_not_wsl1() -> Result<(), PlannerError> {
-    // Detection strategies: https://patrickwu.space/wslconf/
-    if std::env::var("WSL_DISTRO_NAME").is_ok() && std::env::var("WSL_INTEROP").is_err() {
-        return Err(PlannerError::Wsl1);
-    }
-    Ok(())
-}
-
-pub(crate) async fn detect_selinux() -> Result<bool, PlannerError> {
-    if Path::new("/sys/fs/selinux").exists() && which("sestatus").is_ok() {
-        // We expect systems with SELinux to have the normal SELinux tools.
-        let has_semodule = which("semodule").is_ok();
-        let has_restorecon = which("restorecon").is_ok();
-        if !(has_semodule && has_restorecon) {
-            Err(PlannerError::SelinuxRequirements)
-        } else {
-            Ok(true)
-        }
-    } else {
-        Ok(false)
-    }
-}
-
-pub(crate) async fn check_nix_not_already_installed() -> Result<(), PlannerError> {
-    // For now, we don't try to repair the user's Nix install or anything special.
-    if Command::new("nix-env")
-        .arg("--version")
-        .stdin(std::process::Stdio::null())
-        .status()
-        .await
-        .is_ok()
-    {
-        return Err(PlannerError::NixExists);
-    }
-
-    Ok(())
-}
-
-pub(crate) fn check_systemd_active() -> Result<(), PlannerError> {
-    if !Path::new("/run/systemd/system").exists() {
-        if std::env::var("WSL_DISTRO_NAME").is_ok() {
-            return Err(OstreeError::Wsl2SystemdNotActive)?;
-        } else {
-            return Err(OstreeError::SystemdNotActive)?;
-        }
-    }
-
-    Ok(())
 }
 
 #[non_exhaustive]
