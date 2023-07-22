@@ -8,7 +8,7 @@ use crate::{
     error::HasExpectedErrors,
     planner::{Planner, PlannerError},
     settings::CommonSettings,
-    settings::{InitSettings, InitSystem, InstallSettingsError},
+    settings::{InitSystem, InstallSettingsError},
     Action, BuiltinPlanner,
 };
 use std::{collections::HashMap, path::PathBuf};
@@ -30,8 +30,6 @@ pub struct Ostree {
     persistence: PathBuf,
     #[cfg_attr(feature = "cli", clap(flatten))]
     pub settings: CommonSettings,
-    #[cfg_attr(feature = "cli", clap(flatten))]
-    pub init: InitSettings,
 }
 
 #[async_trait::async_trait]
@@ -41,7 +39,6 @@ impl Planner for Ostree {
         Ok(Self {
             persistence: PathBuf::from("/var/home/nix"),
             settings: CommonSettings::default().await?,
-            init: InitSettings::default().await?,
         })
     }
 
@@ -203,7 +200,7 @@ impl Planner for Ostree {
         }
 
         plan.push(
-            ConfigureInitService::plan(self.init.init, self.init.start_daemon)
+            ConfigureInitService::plan(InitSystem::Systemd, true)
                 .await
                 .map_err(PlannerError::Action)?
                 .boxed(),
@@ -234,12 +231,10 @@ impl Planner for Ostree {
         let Self {
             persistence,
             settings,
-            init,
         } = self;
         let mut map = HashMap::default();
 
         map.extend(settings.settings()?.into_iter());
-        map.extend(init.settings()?.into_iter());
         map.insert(
             "persistence".to_string(),
             serde_json::to_value(persistence)?,
@@ -279,9 +274,7 @@ impl Planner for Ostree {
     async fn pre_uninstall_check(&self) -> Result<(), PlannerError> {
         check_not_wsl1()?;
 
-        if self.init.init == InitSystem::Systemd && self.init.start_daemon {
-            check_systemd_active()?;
-        }
+        check_systemd_active()?;
 
         Ok(())
     }
@@ -293,9 +286,7 @@ impl Planner for Ostree {
 
         check_not_wsl1()?;
 
-        if self.init.init == InitSystem::Systemd && self.init.start_daemon {
-            check_systemd_active()?;
-        }
+        check_systemd_active()?;
 
         Ok(())
     }
