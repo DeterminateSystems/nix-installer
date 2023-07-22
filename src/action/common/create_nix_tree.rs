@@ -36,7 +36,7 @@ impl CreateNixTree {
         for path in PATHS {
             // We use `create_dir` over `create_dir_all` to ensure we always set permissions right
             create_directories.push(
-                CreateDirectory::plan(path, String::from("root"), None, 0o0755, false)
+                CreateDirectory::plan(path, String::from("root"), None, 0o0755, true)
                     .await
                     .map_err(Self::error)?,
             )
@@ -65,7 +65,7 @@ impl Action for CreateNixTree {
 
         let mut create_directory_descriptions = Vec::new();
         for create_directory in create_directories {
-            if let Some(val) = create_directory.describe_execute().iter().next() {
+            if let Some(val) = create_directory.describe_execute().first() {
                 create_directory_descriptions.push(val.description.clone())
             }
         }
@@ -87,7 +87,7 @@ impl Action for CreateNixTree {
 
     fn revert_description(&self) -> Vec<ActionDescription> {
         vec![ActionDescription::new(
-            format!("Remove the directory tree in `/nix`"),
+            "Remove the directory tree in `/nix`".to_string(),
             vec![
                 format!(
                     "Nix and the Nix daemon require a Nix Store, which will be stored at `/nix`"

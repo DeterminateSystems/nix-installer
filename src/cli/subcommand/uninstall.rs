@@ -54,6 +54,18 @@ impl CommandExecute for Uninstall {
 
         ensure_root()?;
 
+        if let Ok(current_dir) = std::env::current_dir() {
+            let mut components = current_dir.components();
+            let should_be_root = components.next();
+            let maybe_nix = components.next();
+            if should_be_root == Some(std::path::Component::RootDir)
+                && maybe_nix == Some(std::path::Component::Normal(std::ffi::OsStr::new("nix")))
+            {
+                tracing::debug!("Changing current directory to be outside of `/nix`");
+                std::env::set_current_dir("/").wrap_err("Uninstall process was run from `/nix` folder, but could not change directory away from `/nix`, please change the current directory and try again.")?;
+            }
+        }
+
         // During install, `nix-installer` will store a copy of itself in `/nix/nix-installer`
         // If the user opted to run that particular copy of `nix-installer` to do this uninstall,
         // well, we have a problem, since the binary would delete itself.
@@ -100,6 +112,14 @@ impl CommandExecute for Uninstall {
             .await
             .wrap_err("Reading receipt")?;
         let mut plan: InstallPlan = serde_json::from_str(&install_receipt_string)?;
+
+        if let Err(err) = plan.pre_uninstall_check().await {
+            if let Some(expected) = err.expected() {
+                eprintln!("{}", expected.red());
+                return Ok(ExitCode::FAILURE);
+            }
+            Err(err)?
+        }
 
         if !no_confirm {
             let mut currently_explaining = explain;

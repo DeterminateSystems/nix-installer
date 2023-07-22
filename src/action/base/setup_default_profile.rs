@@ -54,7 +54,7 @@ impl Action for SetupDefaultProfile {
         // Find an `nix` package
         let nix_pkg_glob = format!("{}/nix-*/store/*-nix-*.*.*", self.unpacked_path.display());
         let mut found_nix_pkg = None;
-        for entry in glob(&nix_pkg_glob).map_err(|e| Self::error(e))? {
+        for entry in glob(&nix_pkg_glob).map_err(Self::error)? {
             match entry {
                 Ok(path) => {
                     // If we are curing, the user may have multiple of these installed
@@ -83,7 +83,7 @@ impl Action for SetupDefaultProfile {
             self.unpacked_path.display()
         );
         let mut found_nss_ca_cert_pkg = None;
-        for entry in glob(&nss_ca_cert_pkg_glob).map_err(|e| Self::error(e))? {
+        for entry in glob(&nss_ca_cert_pkg_glob).map_err(Self::error)? {
             match entry {
                 Ok(path) => {
                     // If we are curing, the user may have multiple of these installed
@@ -109,14 +109,14 @@ impl Action for SetupDefaultProfile {
         };
 
         let found_nix_paths = glob::glob(&format!("{}/nix-*", self.unpacked_path.display()))
-            .map_err(|e| Self::error(e))?
+            .map_err(Self::error)?
             .collect::<Result<Vec<_>, _>>()
-            .map_err(|e| Self::error(e))?;
+            .map_err(Self::error)?;
         if found_nix_paths.len() != 1 {
             return Err(Self::error(ActionErrorKind::MalformedBinaryTarball));
         }
         let found_nix_path = found_nix_paths.into_iter().next().unwrap();
-        let reginfo_path = PathBuf::from(found_nix_path).join(".reginfo");
+        let reginfo_path = found_nix_path.join(".reginfo");
         let reginfo = tokio::fs::read(&reginfo_path)
             .await
             .map_err(|e| ActionErrorKind::Read(reginfo_path.to_path_buf(), e))
@@ -248,8 +248,8 @@ pub enum SetupDefaultProfileError {
     MultipleNixPackages,
 }
 
-impl Into<ActionErrorKind> for SetupDefaultProfileError {
-    fn into(self) -> ActionErrorKind {
-        ActionErrorKind::Custom(Box::new(self))
+impl From<SetupDefaultProfileError> for ActionErrorKind {
+    fn from(val: SetupDefaultProfileError) -> Self {
+        ActionErrorKind::Custom(Box::new(val))
     }
 }

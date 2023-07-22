@@ -144,6 +144,14 @@ pub trait Planner: std::fmt::Debug + Send + Sync + dyn_clone::DynClone {
         Box::new(self)
     }
 
+    async fn pre_uninstall_check(&self) -> Result<(), PlannerError> {
+        Ok(())
+    }
+
+    async fn pre_install_check(&self) -> Result<(), PlannerError> {
+        Ok(())
+    }
+
     #[cfg(feature = "diagnostics")]
     async fn diagnostic_data(&self) -> Result<crate::diagnostics::DiagnosticData, PlannerError>;
 }
@@ -415,6 +423,10 @@ impl HasExpectedErrors for PlannerError {
                 if let Some(err) = _e.downcast_ref::<linux::LinuxErrorKind>() {
                     return err.expected();
                 }
+                #[cfg(target_os = "macos")]
+                if let Some(err) = _e.downcast_ref::<macos::MacosError>() {
+                    return err.expected();
+                }
                 None
             },
             this @ PlannerError::NixOs => Some(Box::new(this)),
@@ -431,6 +443,6 @@ impl HasExpectedErrors for PlannerError {
 impl crate::diagnostics::ErrorDiagnostic for PlannerError {
     fn diagnostic(&self) -> String {
         let static_str: &'static str = (self).into();
-        return static_str.to_string();
+        static_str.to_string()
     }
 }

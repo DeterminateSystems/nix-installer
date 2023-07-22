@@ -104,8 +104,8 @@ pub enum EnableOwnershipError {
     Command(#[source] std::io::Error),
 }
 
-impl Into<ActionErrorKind> for EnableOwnershipError {
-    fn into(self) -> ActionErrorKind {
-        ActionErrorKind::Custom(Box::new(self))
+impl From<EnableOwnershipError> for ActionErrorKind {
+    fn from(val: EnableOwnershipError) -> Self {
+        ActionErrorKind::Custom(Box::new(val))
     }
 }

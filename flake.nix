@@ -66,7 +66,7 @@
           };
           sharedAttrs = {
             pname = "nix-installer";
-            version = "0.9.2-unreleased";
+            version = "0.10.1-unreleased";
             src = builtins.path {
               name = "nix-installer-source";
               path = self;
@@ -123,8 +123,7 @@
       devShells = forAllSystems ({ system, pkgs, ... }:
         let
           toolchain = fenixToolchain system;
-          eclint = import ./nix/eclint.nix { inherit pkgs; };
-          check = import ./nix/check.nix { inherit pkgs eclint toolchain; };
+          check = import ./nix/check.nix { inherit pkgs toolchain; };
         in
         {
           default = pkgs.mkShell {
@@ -152,7 +151,6 @@
             ])
             ++ lib.optionals (pkgs.stdenv.isLinux) (with pkgs; [
               checkpolicy
-              podman
               semodule-utils
               /* users are expected to have a system docker, too */
             ]);
@@ -162,8 +160,7 @@
       checks = forAllSystems ({ system, pkgs, ... }:
         let
           toolchain = fenixToolchain system;
-          eclint = import ./nix/eclint.nix { inherit pkgs; };
-          check = import ./nix/check.nix { inherit pkgs eclint toolchain; };
+          check = import ./nix/check.nix { inherit pkgs toolchain; };
         in
         {
           check-rustfmt = pkgs.runCommand "check-rustfmt" { buildInputs = [ check.check-rustfmt ]; } ''

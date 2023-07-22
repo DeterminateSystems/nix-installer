@@ -34,7 +34,6 @@ Configure the init to run the Nix daemon
 pub struct ConfigureInitService {
     init: InitSystem,
     start_daemon: bool,
-    ssl_cert_file: Option<PathBuf>,
 }
 
 impl ConfigureInitService {
@@ -72,18 +71,7 @@ impl ConfigureInitService {
     pub async fn plan(
         init: InitSystem,
         start_daemon: bool,
-        ssl_cert_file: Option<PathBuf>,
     ) -> Result<StatefulAction<Self>, ActionError> {
-        let ssl_cert_file_path = if let Some(ssl_cert_file) = ssl_cert_file {
-            Some(
-                ssl_cert_file
-                    .canonicalize()
-                    .map_err(|e| Self::error(ActionErrorKind::Canonicalize(ssl_cert_file, e)))?,
-            )
-        } else {
-            None
-        };
-
         match init {
             #[cfg(target_os = "macos")]
             InitSystem::Launchd => {
@@ -114,12 +102,7 @@ impl ConfigureInitService {
             },
         };
 
-        Ok(Self {
-            init,
-            start_daemon,
-            ssl_cert_file: ssl_cert_file_path,
-        }
-        .into())
+        Ok(Self { init, start_daemon }.into())
     }
 }
 
@@ -180,11 +163,7 @@ impl Action for ConfigureInitService {
 
     #[tracing::instrument(level = "debug", skip_all)]
     async fn execute(&mut self) -> Result<(), ActionError> {
-        let Self {
-            init,
-            start_daemon,
-            ssl_cert_file,
-        } = self;
+        let Self { init, start_daemon } = self;
 
         match init {
             #[cfg(target_os = "macos")]
@@ -210,13 +189,18 @@ impl Action for ConfigureInitService {
                 .await
                 .map_err(Self::error)?;
 
-                if let Some(ssl_cert_file) = ssl_cert_file {
+                let domain = "system";
+                let service = "org.nixos.nix-daemon";
+
+                let is_disabled = crate::action::macos::service_is_disabled(&domain, &service)
+                    .await
+                    .map_err(Self::error)?;
+                if is_disabled {
                     execute_command(
                         Command::new("launchctl")
                             .process_group(0)
-                            .arg("setenv")
-                            .arg("NIX_SSL_CERT_FILE")
-                            .arg(format!("{ssl_cert_file:?}"))
+                            .arg("enable")
+                            .arg(&format!("{domain}/{service}"))
                             .stdin(std::process::Stdio::null()),
                     )
                     .await
@@ -229,7 +213,7 @@ impl Action for ConfigureInitService {
                             .process_group(0)
                             .arg("kickstart")
                             .arg("-k")
-                            .arg("system/org.nixos.nix-daemon")
+                            .arg(&format!("{domain}/{service}"))
                             .stdin(std::process::Stdio::null()),
                     )
                     .await
@@ -304,11 +288,13 @@ impl Action for ConfigureInitService {
                     .await
                     .map_err(Self::error)?;
                 if Path::new(SERVICE_DEST).exists() {
+                    tracing::trace!(path = %SERVICE_DEST, "Removing");
                     tokio::fs::remove_file(SERVICE_DEST)
                         .await
                         .map_err(|e| ActionErrorKind::Remove(SERVICE_DEST.into(), e))
                         .map_err(Self::error)?;
                 }
+                tracing::trace!(src = %SERVICE_SRC, dest = %SERVICE_DEST, "Symlinking");
                 tokio::fs::symlink(SERVICE_SRC, SERVICE_DEST)
                     .await
                     .map_err(|e| {
@@ -323,11 +309,14 @@ impl Action for ConfigureInitService {
                     .await
                     .map_err(Self::error)?;
                 if Path::new(SOCKET_DEST).exists() {
+                    tracing::trace!(path = %SOCKET_DEST, "Removing");
                     tokio::fs::remove_file(SOCKET_DEST)
                         .await
                         .map_err(|e| ActionErrorKind::Remove(SOCKET_DEST.into(), e))
                         .map_err(Self::error)?;
                 }
+
+                tracing::trace!(src = %SOCKET_SRC, dest = %SOCKET_DEST, "Symlinking");
                 tokio::fs::symlink(SOCKET_SRC, SOCKET_DEST)
                     .await
                     .map_err(|e| {
@@ -347,30 +336,6 @@ impl Action for ConfigureInitService {
                             .stdin(std::process::Stdio::null()),
                     )
                     .await
-                    .map_err(Self::error)?;
-                }
-
-                if let Some(ssl_cert_file) = ssl_cert_file {
-                    let service_conf_dir_path = PathBuf::from(format!("{SERVICE_DEST}.d"));
-                    tokio::fs::create_dir(&service_conf_dir_path)
-                        .await
-                        .map_err(|e| {
-                            ActionErrorKind::CreateDirectory(service_conf_dir_path.clone(), e)
-                        })
-                        .map_err(Self::error)?;
-                    let service_conf_file_path =
-                        service_conf_dir_path.join("nix-ssl-cert-file.conf");
-                    tokio::fs::write(
-                        service_conf_file_path,
-                        format!(
-                            "\
-                        [Service]\n\
-                        Environment=\"NIX_SSL_CERT_FILE={ssl_cert_file:?}\"\n\
-                    "
-                        ),
-                    )
-                    .await
-                    .map_err(|e| ActionErrorKind::Write(ssl_cert_file.clone(), e))
                     .map_err(Self::error)?;
                 }
 
@@ -437,18 +402,14 @@ impl Action for ConfigureInitService {
                 // We separate stop and disable (instead of using `--now`) to avoid cases where the service isn't started, but is enabled.
 
                 // These have to fail fast.
-                let socket_is_active = is_active("nix-daemon.socket")
-                    .await
-                    .map_err(|e| Self::error(e))?;
-                let socket_is_enabled = is_enabled("nix-daemon.socket")
-                    .await
-                    .map_err(|e| Self::error(e))?;
-                let service_is_active = is_active("nix-daemon.service")
-                    .await
-                    .map_err(|e| Self::error(e))?;
+                let socket_is_active = is_active("nix-daemon.socket").await.map_err(Self::error)?;
+                let socket_is_enabled =
+                    is_enabled("nix-daemon.socket").await.map_err(Self::error)?;
+                let service_is_active =
+                    is_active("nix-daemon.service").await.map_err(Self::error)?;
                 let service_is_enabled = is_enabled("nix-daemon.service")
                     .await
-                    .map_err(|e| Self::error(e))?;
+                    .map_err(Self::error)?;
 
                 if socket_is_active {
                     if let Err(err) = execute_command(
@@ -512,16 +473,6 @@ impl Action for ConfigureInitService {
                 .await
                 {
                     errors.push(err);
-                }
-
-                if self.ssl_cert_file.is_some() {
-                    let service_conf_dir_path = PathBuf::from(format!("{SERVICE_DEST}.d"));
-                    if let Err(err) = tokio::fs::remove_dir_all(&service_conf_dir_path)
-                        .await
-                        .map_err(|e| ActionErrorKind::Remove(service_conf_dir_path.clone(), e))
-                    {
-                        errors.push(err);
-                    }
                 }
 
                 if let Err(err) = tokio::fs::remove_file(TMPFILES_DEST)

@@ -6,6 +6,7 @@ use crate::action::{
     Action, ActionDescription, ActionError, ActionErrorKind, ActionTag, StatefulAction,
 };
 use std::collections::hash_map::Entry;
+use std::path::PathBuf;
 
 const NIX_CONF_FOLDER: &str = "/etc/nix";
 const NIX_CONF: &str = "/etc/nix/nix.conf";
@@ -23,6 +24,7 @@ impl PlaceNixConfiguration {
     #[tracing::instrument(level = "debug", skip_all)]
     pub async fn plan(
         nix_build_group_name: String,
+        ssl_cert_file: Option<PathBuf>,
         extra_conf: Vec<String>,
         force: bool,
     ) -> Result<StatefulAction<Self>, ActionError> {
@@ -45,18 +47,35 @@ impl PlaceNixConfiguration {
                 }
             },
             Entry::Vacant(slot) => {
-                let _ = slot.insert(experimental_features.join(" ").to_string());
+                let _ = slot.insert(experimental_features.join(" "));
             },
         };
+
+        // https://github.com/DeterminateSystems/nix-installer/issues/449#issuecomment-1551782281
+        #[cfg(not(target_os = "macos"))]
         settings.insert("auto-optimise-store".to_string(), "true".to_string());
+
         settings.insert(
             "bash-prompt-prefix".to_string(),
             "(nix:$name)\\040".to_string(),
         );
+        if let Some(ssl_cert_file) = ssl_cert_file {
+            let ssl_cert_file_canonical = ssl_cert_file
+                .canonicalize()
+                .map_err(|e| Self::error(ActionErrorKind::Canonicalize(ssl_cert_file, e)))?;
+            settings.insert(
+                "ssl-cert-file".to_string(),
+                ssl_cert_file_canonical.display().to_string(),
+            );
+        }
         settings.insert(
             "extra-nix-path".to_string(),
             "nixpkgs=flake:nixpkgs".to_string(),
         );
+
+        // Auto-allocate uids is broken on Mac. Tools like `whoami` don't work.
+        // e.g. https://github.com/NixOS/nix/issues/8444
+        #[cfg(not(target_os = "macos"))]
         settings.insert("auto-allocate-uids".to_string(), "true".to_string());
 
         let create_directory = CreateDirectory::plan(NIX_CONF_FOLDER, None, None, 0o0755, force)
@@ -98,7 +117,7 @@ impl Action for PlaceNixConfiguration {
                 .to_string(),
         ];
 
-        if let Some(val) = create_directory.describe_execute().iter().next() {
+        if let Some(val) = create_directory.describe_execute().first() {
             explanation.push(val.description.clone())
         }
         for val in create_or_merge_nix_config.describe_execute().iter() {

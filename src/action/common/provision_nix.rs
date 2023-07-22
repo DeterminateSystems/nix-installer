@@ -1,10 +1,9 @@
-use nix::unistd::Group;
 use tracing::{span, Span};
 
-use super::{CreateNixTree, DeleteUsersInGroup};
+use super::CreateNixTree;
 use crate::{
     action::{
-        base::{CreateGroup, FetchAndUnpackNix, MoveUnpackedNix},
+        base::{FetchAndUnpackNix, MoveUnpackedNix},
         Action, ActionDescription, ActionError, ActionErrorKind, ActionTag, StatefulAction,
     },
     settings::{CommonSettings, SCRATCH_DIR},
@@ -17,8 +16,6 @@ Place Nix and it's requirements onto the target
 #[derive(Debug, serde::Deserialize, serde::Serialize, Clone)]
 pub struct ProvisionNix {
     fetch_nix: StatefulAction<FetchAndUnpackNix>,
-    delete_users_in_group: Option<StatefulAction<DeleteUsersInGroup>>,
-    create_group: StatefulAction<CreateGroup>,
     create_nix_tree: StatefulAction<CreateNixTree>,
     move_unpacked_nix: StatefulAction<MoveUnpackedNix>,
 }
@@ -34,49 +31,12 @@ impl ProvisionNix {
         )
         .await?;
 
-        let delete_users_in_group = if let Some(group) =
-            Group::from_name(settings.nix_build_group_name.as_str())
-                .map_err(|e| {
-                    ActionErrorKind::GettingGroupId(settings.nix_build_group_name.clone(), e)
-                })
-                .map_err(Self::error)?
-        {
-            if group.gid.as_raw() != settings.nix_build_group_id {
-                return Err(Self::error(ActionErrorKind::GroupGidMismatch(
-                    settings.nix_build_group_name.clone(),
-                    group.gid.as_raw(),
-                    settings.nix_build_group_id,
-                )));
-            }
-            if group.mem.is_empty() {
-                None
-            } else {
-                Some(
-                    DeleteUsersInGroup::plan(
-                        settings.nix_build_group_name.clone(),
-                        settings.nix_build_group_id,
-                        group.mem,
-                    )
-                    .await?,
-                )
-            }
-        } else {
-            None
-        };
-
-        let create_group = CreateGroup::plan(
-            settings.nix_build_group_name.clone(),
-            settings.nix_build_group_id,
-        )
-        .map_err(Self::error)?;
         let create_nix_tree = CreateNixTree::plan().await.map_err(Self::error)?;
         let move_unpacked_nix = MoveUnpackedNix::plan(PathBuf::from(SCRATCH_DIR))
             .await
             .map_err(Self::error)?;
         Ok(Self {
             fetch_nix,
-            delete_users_in_group,
-            create_group,
             create_nix_tree,
             move_unpacked_nix,
         }
@@ -101,8 +61,6 @@ impl Action for ProvisionNix {
     fn execute_description(&self) -> Vec<ActionDescription> {
         let Self {
             fetch_nix,
-            delete_users_in_group,
-            create_group,
             create_nix_tree,
             move_unpacked_nix,
         } = &self;
@@ -110,11 +68,6 @@ impl Action for ProvisionNix {
         let mut buf = Vec::default();
         buf.append(&mut fetch_nix.describe_execute());
 
-        if let Some(delete_users_in_group) = delete_users_in_group {
-            buf.append(&mut delete_users_in_group.describe_execute());
-        }
-
-        buf.append(&mut create_group.describe_execute());
         buf.append(&mut create_nix_tree.describe_execute());
         buf.append(&mut move_unpacked_nix.describe_execute());
 
@@ -130,14 +83,6 @@ impl Action for ProvisionNix {
             Result::<_, ActionError>::Ok(fetch_nix_clone)
         });
 
-        if let Some(delete_users_in_group) = &mut self.delete_users_in_group {
-            delete_users_in_group
-                .try_execute()
-                .await
-                .map_err(Self::error)?;
-        }
-
-        self.create_group.try_execute().await.map_err(Self::error)?;
         self.create_nix_tree
             .try_execute()
             .await
@@ -158,8 +103,6 @@ impl Action for ProvisionNix {
     fn revert_description(&self) -> Vec<ActionDescription> {
         let Self {
             fetch_nix,
-            delete_users_in_group,
-            create_group,
             create_nix_tree,
             move_unpacked_nix,
         } = &self;
@@ -167,11 +110,6 @@ impl Action for ProvisionNix {
         let mut buf = Vec::default();
         buf.append(&mut move_unpacked_nix.describe_revert());
         buf.append(&mut create_nix_tree.describe_revert());
-        buf.append(&mut create_group.describe_revert());
-
-        if let Some(delete_users_in_group) = delete_users_in_group {
-            buf.append(&mut delete_users_in_group.describe_execute());
-        }
 
         buf.append(&mut fetch_nix.describe_revert());
         buf
@@ -185,16 +123,6 @@ impl Action for ProvisionNix {
             errors.push(err)
         }
 
-        if let Some(delete_users_in_group) = &mut self.delete_users_in_group {
-            delete_users_in_group
-                .try_revert()
-                .await
-                .map_err(Self::error)?;
-        }
-
-        if let Err(err) = self.create_group.try_revert().await {
-            errors.push(err)
-        }
         if let Err(err) = self.create_nix_tree.try_revert().await {
             errors.push(err)
         }

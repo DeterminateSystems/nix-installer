@@ -3,13 +3,15 @@ use std::{collections::HashMap, io::Cursor, path::PathBuf};
 #[cfg(feature = "cli")]
 use clap::ArgAction;
 use tokio::process::Command;
+use which::which;
 
 use super::ShellProfileLocations;
+use crate::planner::HasExpectedErrors;
 
 use crate::{
     action::{
         base::RemoveDirectory,
-        common::{ConfigureInitService, ConfigureNix, ProvisionNix},
+        common::{ConfigureInitService, ConfigureNix, CreateUsersAndGroups, ProvisionNix},
         macos::{CreateNixVolume, SetTmutilExclusions},
         StatefulAction,
     },
@@ -89,8 +91,6 @@ impl Planner for Macos {
     }
 
     async fn plan(&self) -> Result<Vec<StatefulAction<Box<dyn Action>>>, PlannerError> {
-        ensure_not_running_in_rosetta().await?;
-
         let root_disk = match &self.root_disk {
             root_disk @ Some(_) => root_disk.clone(),
             None => {
@@ -108,25 +108,26 @@ impl Planner for Macos {
             },
         };
 
-        let encrypt = if self.encrypt == None {
-            let output = Command::new("/usr/bin/fdesetup")
-                .arg("isactive")
-                .stdout(std::process::Stdio::null())
-                .stderr(std::process::Stdio::null())
-                .process_group(0)
-                .output()
-                .await
-                .map_err(|e| PlannerError::Custom(Box::new(e)))?;
+        let encrypt = match self.encrypt {
+            Some(choice) => choice,
+            None => {
+                let output = Command::new("/usr/bin/fdesetup")
+                    .arg("isactive")
+                    .stdout(std::process::Stdio::null())
+                    .stderr(std::process::Stdio::null())
+                    .process_group(0)
+                    .output()
+                    .await
+                    .map_err(|e| PlannerError::Custom(Box::new(e)))?;
 
-            let stdout = String::from_utf8_lossy(&output.stdout);
-            let stdout_trimmed = stdout.trim();
-            if stdout_trimmed == "true" {
-                true
-            } else {
-                false
-            }
-        } else {
-            false
+                let stdout = String::from_utf8_lossy(&output.stdout);
+                let stdout_trimmed = stdout.trim();
+                if stdout_trimmed == "true" {
+                    true
+                } else {
+                    false
+                }
+            },
         };
 
         Ok(vec![
@@ -143,6 +144,12 @@ impl Planner for Macos {
                 .await
                 .map_err(PlannerError::Action)?
                 .boxed(),
+            // Auto-allocate uids is broken on Mac. Tools like `whoami` don't work.
+            // e.g. https://github.com/NixOS/nix/issues/8444
+            CreateUsersAndGroups::plan(self.settings.clone())
+                .await
+                .map_err(PlannerError::Action)?
+                .boxed(),
             SetTmutilExclusions::plan(vec![PathBuf::from("/nix/store"), PathBuf::from("/nix/var")])
                 .await
                 .map_err(PlannerError::Action)?
@@ -151,14 +158,10 @@ impl Planner for Macos {
                 .await
                 .map_err(PlannerError::Action)?
                 .boxed(),
-            ConfigureInitService::plan(
-                InitSystem::Launchd,
-                true,
-                self.settings.ssl_cert_file.clone(),
-            )
-            .await
-            .map_err(PlannerError::Action)?
-            .boxed(),
+            ConfigureInitService::plan(InitSystem::Launchd, true)
+                .await
+                .map_err(PlannerError::Action)?
+                .boxed(),
             RemoveDirectory::plan(crate::settings::SCRATCH_DIR)
                 .await
                 .map_err(PlannerError::Action)?
@@ -216,6 +219,18 @@ impl Planner for Macos {
             self.settings.ssl_cert_file.clone(),
         )?)
     }
+
+    async fn pre_uninstall_check(&self) -> Result<(), PlannerError> {
+        check_nix_darwin_not_installed().await?;
+
+        Ok(())
+    }
+
+    async fn pre_install_check(&self) -> Result<(), PlannerError> {
+        check_not_running_in_rosetta()?;
+
+        Ok(())
+    }
 }
 
 impl Into<BuiltinPlanner> for Macos {
@@ -224,7 +239,30 @@ impl Into<BuiltinPlanner> for Macos {
     }
 }
 
-async fn ensure_not_running_in_rosetta() -> Result<(), PlannerError> {
+async fn check_nix_darwin_not_installed() -> Result<(), PlannerError> {
+    let has_darwin_rebuild = which("darwin-rebuild").is_ok();
+    let has_darwin_option = which("darwin-option").is_ok();
+
+    let activate_system_present = Command::new("launchctl")
+        .arg("print")
+        .arg("system/org.nixos.activate-system")
+        .process_group(0)
+        .stdin(std::process::Stdio::null())
+        .stdout(std::process::Stdio::null())
+        .stderr(std::process::Stdio::null())
+        .status()
+        .await
+        .map(|v| v.success())
+        .unwrap_or(false);
+
+    if activate_system_present || has_darwin_rebuild || has_darwin_option {
+        return Err(MacosError::UninstallNixDarwin).map_err(|e| PlannerError::Custom(Box::new(e)));
+    };
+
+    Ok(())
+}
+
+fn check_not_running_in_rosetta() -> Result<(), PlannerError> {
     use sysctl::{Ctl, Sysctl};
     const CTLNAME: &str = "sysctl.proc_translated";
 
@@ -242,4 +280,19 @@ async fn ensure_not_running_in_rosetta() -> Result<(), PlannerError> {
     }
 
     Ok(())
+}
+
+#[non_exhaustive]
+#[derive(thiserror::Error, Debug)]
+pub enum MacosError {
+    #[error("`nix-darwin` installation detected, it must be removed before uninstalling Nix. Please refer to https://github.com/LnL7/nix-darwin#uninstalling for instructions how to uninstall `nix-darwin`.")]
+    UninstallNixDarwin,
+}
+
+impl HasExpectedErrors for MacosError {
+    fn expected<'a>(&'a self) -> Option<Box<dyn std::error::Error + 'a>> {
+        match self {
+            this @ MacosError::UninstallNixDarwin => Some(Box::new(this)),
+        }
+    }
 }

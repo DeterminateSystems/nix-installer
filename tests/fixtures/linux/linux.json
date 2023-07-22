@@ -1,5 +1,5 @@
 {
-  "version": "0.9.2-unreleased",
+  "version": "0.10.1-unreleased",
   "actions": [
     {
       "action": {
@@ -8,6 +8,7 @@
         "user": null,
         "group": null,
         "mode": 493,
+        "is_mountpoint": true,
         "force_prune_on_revert": true
       },
       "state": "Uncompleted"
@@ -41,6 +42,7 @@
                   "user": "root",
                   "group": null,
                   "mode": 493,
+                  "is_mountpoint": true,
                   "force_prune_on_revert": false
                 },
                 "state": "Uncompleted"
@@ -51,6 +53,7 @@
                   "user": "root",
                   "group": null,
                   "mode": 493,
+                  "is_mountpoint": true,
                   "force_prune_on_revert": false
                 },
                 "state": "Uncompleted"
@@ -61,6 +64,7 @@
                   "user": "root",
                   "group": null,
                   "mode": 493,
+                  "is_mountpoint": true,
                   "force_prune_on_revert": false
                 },
                 "state": "Uncompleted"
@@ -71,6 +75,7 @@
                   "user": "root",
                   "group": null,
                   "mode": 493,
+                  "is_mountpoint": true,
                   "force_prune_on_revert": false
                 },
                 "state": "Uncompleted"
@@ -81,6 +86,7 @@
                   "user": "root",
                   "group": null,
                   "mode": 493,
+                  "is_mountpoint": true,
                   "force_prune_on_revert": false
                 },
                 "state": "Uncompleted"
@@ -91,6 +97,7 @@
                   "user": "root",
                   "group": null,
                   "mode": 493,
+                  "is_mountpoint": true,
                   "force_prune_on_revert": false
                 },
                 "state": "Uncompleted"
@@ -101,6 +108,7 @@
                   "user": "root",
                   "group": null,
                   "mode": 493,
+                  "is_mountpoint": true,
                   "force_prune_on_revert": false
                 },
                 "state": "Uncompleted"
@@ -111,6 +119,7 @@
                   "user": "root",
                   "group": null,
                   "mode": 493,
+                  "is_mountpoint": true,
                   "force_prune_on_revert": false
                 },
                 "state": "Uncompleted"
@@ -121,6 +130,7 @@
                   "user": "root",
                   "group": null,
                   "mode": 493,
+                  "is_mountpoint": true,
                   "force_prune_on_revert": false
                 },
                 "state": "Uncompleted"
@@ -131,6 +141,7 @@
                   "user": "root",
                   "group": null,
                   "mode": 493,
+                  "is_mountpoint": true,
                   "force_prune_on_revert": false
                 },
                 "state": "Uncompleted"
@@ -141,6 +152,7 @@
                   "user": "root",
                   "group": null,
                   "mode": 493,
+                  "is_mountpoint": true,
                   "force_prune_on_revert": false
                 },
                 "state": "Uncompleted"
@@ -151,6 +163,7 @@
                   "user": "root",
                   "group": null,
                   "mode": 493,
+                  "is_mountpoint": true,
                   "force_prune_on_revert": false
                 },
                 "state": "Uncompleted"
@@ -161,6 +174,7 @@
                   "user": "root",
                   "group": null,
                   "mode": 493,
+                  "is_mountpoint": true,
                   "force_prune_on_revert": false
                 },
                 "state": "Uncompleted"
@@ -221,6 +235,7 @@
                   "user": null,
                   "group": null,
                   "mode": 493,
+                  "is_mountpoint": true,
                   "force_prune_on_revert": false
                 },
                 "state": "Completed"
@@ -294,6 +309,7 @@
                 "user": null,
                 "group": null,
                 "mode": 493,
+                "is_mountpoint": true,
                 "force_prune_on_revert": false
               },
               "state": "Uncompleted"
@@ -343,6 +359,9 @@
       "modify_profile": true,
       "nix_build_group_name": "nixbld",
       "nix_build_group_id": 30000,
+      "nix_build_user_count": 0,
+      "nix_build_user_prefix": "nixbld",
+      "nix_build_user_id_base": 30000,
       "nix_package_url": "https://releases.nixos.org/nix/nix-2.15.0/nix-2.15.0-x86_64-linux.tar.xz",
       "proxy": null,
       "ssl_cert_file": null,
@@ -356,7 +375,7 @@
     }
   },
   "diagnostic_data": {
-    "version": "0.9.2-unreleased",
+    "version": "0.10.1-unreleased",
     "planner": "linux",
     "configured_settings": [],
     "os_name": "Ubuntu",

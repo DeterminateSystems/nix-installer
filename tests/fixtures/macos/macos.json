@@ -1,5 +1,5 @@
 {
-  "version": "0.9.2-unreleased",
+  "version": "0.10.1-unreleased",
   "actions": [
     {
       "action": {
@@ -61,7 +61,9 @@
           "action": {
             "domain": "system",
             "service": "org.nixos.darwin-store",
-            "path": "/Library/LaunchDaemons/org.nixos.darwin-store.plist"
+            "path": "/Library/LaunchDaemons/org.nixos.darwin-store.plist",
+            "is_present": false,
+            "is_disabled": false
           },
           "state": "Uncompleted"
         },
@@ -110,6 +112,7 @@
                   "user": "root",
                   "group": null,
                   "mode": 493,
+                  "is_mountpoint": true,
                   "force_prune_on_revert": false
                 },
                 "state": "Uncompleted"
@@ -120,6 +123,7 @@
                   "user": "root",
                   "group": null,
                   "mode": 493,
+                  "is_mountpoint": true,
                   "force_prune_on_revert": false
                 },
                 "state": "Uncompleted"
@@ -130,6 +134,7 @@
                   "user": "root",
                   "group": null,
                   "mode": 493,
+                  "is_mountpoint": true,
                   "force_prune_on_revert": false
                 },
                 "state": "Uncompleted"
@@ -140,6 +145,7 @@
                   "user": "root",
                   "group": null,
                   "mode": 493,
+                  "is_mountpoint": true,
                   "force_prune_on_revert": false
                 },
                 "state": "Uncompleted"
@@ -150,6 +156,7 @@
                   "user": "root",
                   "group": null,
                   "mode": 493,
+                  "is_mountpoint": true,
                   "force_prune_on_revert": false
                 },
                 "state": "Uncompleted"
@@ -160,6 +167,7 @@
                   "user": "root",
                   "group": null,
                   "mode": 493,
+                  "is_mountpoint": true,
                   "force_prune_on_revert": false
                 },
                 "state": "Uncompleted"
@@ -170,6 +178,7 @@
                   "user": "root",
                   "group": null,
                   "mode": 493,
+                  "is_mountpoint": true,
                   "force_prune_on_revert": false
                 },
                 "state": "Uncompleted"
@@ -180,6 +189,7 @@
                   "user": "root",
                   "group": null,
                   "mode": 493,
+                  "is_mountpoint": true,
                   "force_prune_on_revert": false
                 },
                 "state": "Uncompleted"
@@ -190,6 +200,7 @@
                   "user": "root",
                   "group": null,
                   "mode": 493,
+                  "is_mountpoint": true,
                   "force_prune_on_revert": false
                 },
                 "state": "Uncompleted"
@@ -200,6 +211,7 @@
                   "user": "root",
                   "group": null,
                   "mode": 493,
+                  "is_mountpoint": true,
                   "force_prune_on_revert": false
                 },
                 "state": "Uncompleted"
@@ -210,6 +222,7 @@
                   "user": "root",
                   "group": null,
                   "mode": 493,
+                  "is_mountpoint": true,
                   "force_prune_on_revert": false
                 },
                 "state": "Uncompleted"
@@ -220,6 +233,7 @@
                   "user": "root",
                   "group": null,
                   "mode": 493,
+                  "is_mountpoint": true,
                   "force_prune_on_revert": false
                 },
                 "state": "Uncompleted"
@@ -230,6 +244,7 @@
                   "user": "root",
                   "group": null,
                   "mode": 493,
+                  "is_mountpoint": true,
                   "force_prune_on_revert": false
                 },
                 "state": "Uncompleted"
@@ -350,6 +365,7 @@
                 "user": null,
                 "group": null,
                 "mode": 493,
+                "is_mountpoint": true,
                 "force_prune_on_revert": false
               },
               "state": "Uncompleted"
@@ -399,6 +415,9 @@
       "modify_profile": true,
       "nix_build_group_name": "nixbld",
       "nix_build_group_id": 30000,
+      "nix_build_user_count": 32,
+      "nix_build_user_prefix": "_nixbld",
+      "nix_build_user_id_base": 300,
       "nix_package_url": "https://releases.nixos.org/nix/nix-2.15.0/nix-2.15.0-aarch64-darwin.tar.xz",
       "proxy": null,
       "ssl_cert_file": null,
@@ -412,7 +431,7 @@
     "root_disk": "disk3"
   },
   "diagnostic_data": {
-    "version": "0.9.2-unreleased",
+    "version": "0.10.1-unreleased",
     "planner": "macos",
     "configured_settings": [],
     "os_name": "unknown",

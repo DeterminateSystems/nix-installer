@@ -1,4 +1,4 @@
-{ pkgs, eclint, toolchain }:
+{ pkgs, toolchain }:
 
 let
   inherit (pkgs) writeShellApplication;
