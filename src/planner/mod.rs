@@ -207,6 +207,7 @@ impl BuiltinPlanner {
         }
     }
 
+    #[cfg(target_os = "linux")]
     async fn detect_linux_distro() -> Result<Self, PlannerError> {
         let is_steam_deck =
             os_release::OsRelease::new().is_ok_and(|os_release| os_release.id == "steamos");
