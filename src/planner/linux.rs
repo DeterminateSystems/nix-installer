@@ -78,6 +78,13 @@ impl Planner for Linux {
         }
 
         plan.push(
+            CreateDirectory::plan("/etc/tmpfiles.d", None, None, 0o0755, false)
+                .await
+                .map_err(PlannerError::Action)?
+                .boxed(),
+        );
+
+        plan.push(
             ConfigureInitService::plan(self.init.init, self.init.start_daemon)
                 .await
                 .map_err(PlannerError::Action)?
