@@ -228,7 +228,7 @@ impl InstallPlan {
                     .await?;
             }
 
-            Err(err)
+            tracing::warn!("{err:?}")
         } else {
             #[cfg(feature = "diagnostics")]
             if let Some(diagnostic_data) = &self.diagnostic_data {
@@ -240,9 +240,9 @@ impl InstallPlan {
                     )
                     .await?;
             }
-
-            Ok(())
         }
+
+        Ok(())
     }
 
     #[tracing::instrument(level = "debug", skip_all)]
