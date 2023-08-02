@@ -111,10 +111,6 @@ pub struct CommonSettings {
 
     /// Number of build users to create
     #[cfg_attr(
-        all(target_os = "linux", feature = "cli"),
-        doc = "On Linux, Nix's `auto-allocate-uids` feature will be enabled, so users don't need to be created."
-    )]
-    #[cfg_attr(
         feature = "cli",
         clap(
             long,
@@ -124,7 +120,7 @@ pub struct CommonSettings {
         )
     )]
     #[cfg_attr(all(target_os = "macos", feature = "cli"), clap(default_value = "32"))]
-    #[cfg_attr(all(target_os = "linux", feature = "cli"), clap(default_value = "0"))]
+    #[cfg_attr(all(target_os = "linux", feature = "cli"), clap(default_value = "32"))]
     pub nix_build_user_count: u32,
 
     /// The Nix build user base UID (ascending)
@@ -249,21 +245,21 @@ impl CommonSettings {
                 url = NIX_X64_64_LINUX_URL;
                 nix_build_user_prefix = "nixbld";
                 nix_build_user_id_base = 30000;
-                nix_build_user_count = 0;
+                nix_build_user_count = 32;
             },
             #[cfg(target_os = "linux")]
             (Architecture::X86_32(_), OperatingSystem::Linux) => {
                 url = NIX_I686_LINUX_URL;
                 nix_build_user_prefix = "nixbld";
                 nix_build_user_id_base = 30000;
-                nix_build_user_count = 0;
+                nix_build_user_count = 32;
             },
             #[cfg(target_os = "linux")]
             (Architecture::Aarch64(_), OperatingSystem::Linux) => {
                 url = NIX_AARCH64_LINUX_URL;
                 nix_build_user_prefix = "nixbld";
                 nix_build_user_id_base = 30000;
-                nix_build_user_count = 0;
+                nix_build_user_count = 32;
             },
             #[cfg(target_os = "macos")]
             (Architecture::X86_64, OperatingSystem::MacOSX { .. })
