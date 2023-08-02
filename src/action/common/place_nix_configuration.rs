@@ -5,7 +5,6 @@ use crate::action::base::{CreateDirectory, CreateOrMergeNixConfig};
 use crate::action::{
     Action, ActionDescription, ActionError, ActionErrorKind, ActionTag, StatefulAction,
 };
-use std::collections::hash_map::Entry;
 use std::path::PathBuf;
 
 const NIX_CONF_FOLDER: &str = "/etc/nix";
@@ -64,15 +63,6 @@ impl PlaceNixConfiguration {
                 "bash-prompt-prefix".to_string(),
                 "(nix:$name)\\040".to_string(),
             );
-            if let Some(ssl_cert_file) = ssl_cert_file {
-                let ssl_cert_file_canonical = ssl_cert_file
-                    .canonicalize()
-                    .map_err(|e| Self::error(ActionErrorKind::Canonicalize(ssl_cert_file, e)))?;
-                settings.insert(
-                    "ssl-cert-file".to_string(),
-                    ssl_cert_file_canonical.display().to_string(),
-                );
-            }
             settings.insert(
                 "extra-nix-path".to_string(),
                 "nixpkgs=flake:nixpkgs".to_string(),
@@ -82,6 +72,16 @@ impl PlaceNixConfiguration {
             // e.g. https://github.com/NixOS/nix/issues/8444
             #[cfg(not(target_os = "macos"))]
             settings.insert("auto-allocate-uids".to_string(), "true".to_string());
+        }
+
+        if let Some(ssl_cert_file) = ssl_cert_file {
+            let ssl_cert_file_canonical = ssl_cert_file
+                .canonicalize()
+                .map_err(|e| Self::error(ActionErrorKind::Canonicalize(ssl_cert_file, e)))?;
+            settings.insert(
+                "ssl-cert-file".to_string(),
+                ssl_cert_file_canonical.display().to_string(),
+            );
         }
 
         let create_directory = CreateDirectory::plan(NIX_CONF_FOLDER, None, None, 0o0755, force)
