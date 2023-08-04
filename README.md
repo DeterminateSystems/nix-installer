@@ -133,7 +133,7 @@ nix upgrade-nix
 ```
 
 > **Note**
-> Might require sudo (e.g. on **MacOS**).
+> Requires sudo.
 
 Alternatively, you can [uninstall](#uninstalling) and [reinstall](#usage).
 
