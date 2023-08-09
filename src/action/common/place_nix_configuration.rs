@@ -5,7 +5,6 @@ use crate::action::base::{CreateDirectory, CreateOrMergeNixConfig};
 use crate::action::{
     Action, ActionDescription, ActionError, ActionErrorKind, ActionTag, StatefulAction,
 };
-use std::collections::hash_map::Entry;
 use std::path::PathBuf;
 
 const NIX_CONF_FOLDER: &str = "/etc/nix";
@@ -35,30 +34,46 @@ impl PlaceNixConfiguration {
         let settings = nix_config.settings_mut();
 
         settings.insert("build-users-group".to_string(), nix_build_group_name);
-        let experimental_features = ["nix-command", "flakes", "auto-allocate-uids"];
-        match settings.entry("experimental-features".to_string()) {
-            Entry::Occupied(mut slot) => {
-                let slot_mut = slot.get_mut();
-                for experimental_feature in experimental_features {
-                    if !slot_mut.contains(experimental_feature) {
-                        *slot_mut += " ";
-                        *slot_mut += experimental_feature;
+
+        #[cfg(not(feature = "nix-community"))]
+        {
+            use std::collections::hash_map::Entry;
+
+            let experimental_features = ["nix-command", "flakes", "auto-allocate-uids"];
+            match settings.entry("experimental-features".to_string()) {
+                Entry::Occupied(mut slot) => {
+                    let slot_mut = slot.get_mut();
+                    for experimental_feature in experimental_features {
+                        if !slot_mut.contains(experimental_feature) {
+                            *slot_mut += " ";
+                            *slot_mut += experimental_feature;
+                        }
                     }
-                }
-            },
-            Entry::Vacant(slot) => {
-                let _ = slot.insert(experimental_features.join(" "));
-            },
-        };
+                },
+                Entry::Vacant(slot) => {
+                    let _ = slot.insert(experimental_features.join(" "));
+                },
+            };
 
-        // https://github.com/DeterminateSystems/nix-installer/issues/449#issuecomment-1551782281
-        #[cfg(not(target_os = "macos"))]
-        settings.insert("auto-optimise-store".to_string(), "true".to_string());
+            // https://github.com/DeterminateSystems/nix-installer/issues/449#issuecomment-1551782281
+            #[cfg(not(target_os = "macos"))]
+            settings.insert("auto-optimise-store".to_string(), "true".to_string());
 
-        settings.insert(
-            "bash-prompt-prefix".to_string(),
-            "(nix:$name)\\040".to_string(),
-        );
+            settings.insert(
+                "bash-prompt-prefix".to_string(),
+                "(nix:$name)\\040".to_string(),
+            );
+            settings.insert(
+                "extra-nix-path".to_string(),
+                "nixpkgs=flake:nixpkgs".to_string(),
+            );
+
+            // Auto-allocate uids is broken on Mac. Tools like `whoami` don't work.
+            // e.g. https://github.com/NixOS/nix/issues/8444
+            #[cfg(not(target_os = "macos"))]
+            settings.insert("auto-allocate-uids".to_string(), "true".to_string());
+        }
+
         if let Some(ssl_cert_file) = ssl_cert_file {
             let ssl_cert_file_canonical = ssl_cert_file
                 .canonicalize()
@@ -68,15 +83,6 @@ impl PlaceNixConfiguration {
                 ssl_cert_file_canonical.display().to_string(),
             );
         }
-        settings.insert(
-            "extra-nix-path".to_string(),
-            "nixpkgs=flake:nixpkgs".to_string(),
-        );
-
-        // Auto-allocate uids is broken on Mac. Tools like `whoami` don't work.
-        // e.g. https://github.com/NixOS/nix/issues/8444
-        #[cfg(not(target_os = "macos"))]
-        settings.insert("auto-allocate-uids".to_string(), "true".to_string());
 
         let create_directory = CreateDirectory::plan(NIX_CONF_FOLDER, None, None, 0o0755, force)
             .await
