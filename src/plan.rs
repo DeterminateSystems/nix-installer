@@ -425,7 +425,7 @@ async fn write_receipt(plan: InstallPlan) -> Result<(), NixInstallerError> {
     Result::<(), NixInstallerError>::Ok(())
 }
 
-fn current_version() -> Result<Version, NixInstallerError> {
+pub fn current_version() -> Result<Version, NixInstallerError> {
     let nix_installer_version_str = env!("CARGO_PKG_VERSION");
     Version::from_str(nix_installer_version_str).map_err(|e| {
         NixInstallerError::InvalidCurrentVersion(nix_installer_version_str.to_string(), e)
