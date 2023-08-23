@@ -43,7 +43,7 @@ Differing from the upstream [Nix](https://github.com/NixOS/nix) installer script
 
 ## Motivations
 
-The current Nix install scripts do a good job, however they are difficult to maintain.
+The upstream scripts do a good job, however they are difficult to maintain.
 Subtle differences in the shell implementations and certain characteristics of Bash scripts make it difficult to make meaningful changes to the installer.
 
 The Determinate Nix installer has numerous advantages:
