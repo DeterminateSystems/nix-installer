@@ -3,7 +3,7 @@
 [![Crates.io](https://img.shields.io/crates/v/nix-installer)](https://crates.io/crates/nix-installer)
 [![Docs.rs](https://img.shields.io/docsrs/nix-installer)](https://docs.rs/nix-installer/latest/nix_installer/)
 
-`nix-installer` is an opinionated alternative to the [official Nix install scripts](https://nixos.org/download.html).
+`nix-installer`, the fast and reliable Nix installer.
 
 
 ```bash
@@ -27,7 +27,7 @@ The `nix-installer` tool is ready to use in a number of environments:
 
 ## Installation Differences
 
-Differing from the current official [Nix](https://github.com/NixOS/nix) installer scripts:
+Differing from the upstream [Nix](https://github.com/NixOS/nix) installer scripts:
 
 * In `nix.conf`:
   + the `auto-allocate-uids`, `nix-command` and `flakes` features are enabled
@@ -41,17 +41,16 @@ Differing from the current official [Nix](https://github.com/NixOS/nix) installe
 
 ## Motivations
 
-The current Nix install scripts do an excellent job, however they are difficult to maintain. Subtle differences in the shell implementations and certain characteristics of bash scripts make it difficult to make meaningful changes to the installer.
+The current Nix install scripts do a good job, however they are difficult to maintain.
+Subtle differences in the shell implementations and certain characteristics of bash scripts make it difficult to make meaningful changes to the installer.
 
-Our team wishes to experiment with the idea of an installer in a more structured language and see if this is a worthwhile alternative. Along the way, we are also exploring a few other ideas, such as:
+The Determinate Nix installer has numerous advantages:
 
+* keeping an installation receipt for easy uninstallation
 * offering users a chance to review an accurate, calculated install plan
-* having 'planners' which can create appropriate install plans
-* keeping an installation receipt for uninstallation
+* having 'planners' which can create appropriate install plans for complicated targets
 * offering users with a failing install the chance to do a best-effort revert
-* doing whatever tasks we can in parallel
-
-So far, our explorations have been quite fruitful, so we wanted to share and keep exploring.
+* improving performance by maximizing parallel operations
 
 ## Usage
 
@@ -69,7 +68,8 @@ $ chmod +x nix-installer
 ```
 
 > **Note**
-> `nix-installer` will elevate itself if needed using `sudo`. If you use `doas` or `please` you may need to elevate `nix-installer` yourself.
+> `nix-installer` will elevate itself if needed using `sudo`.
+> If you use `doas` or `please` you may need to elevate `nix-installer` yourself.
 
 `nix-installer` installs Nix by following a *plan* made by a *planner*. Review the available planners:
 
