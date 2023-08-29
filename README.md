@@ -1,4 +1,4 @@
-# The Determinate Nix Installer
+# Install Nix with flakes using the Determinate Nix Installer
 
 _🎉 Celebrating over 500,000 successful installations! 🎉_
 
