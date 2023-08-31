@@ -39,11 +39,8 @@ Or, to download a platform specific Installer binary yourself:
 ```bash
 $ curl -sL -o nix-installer https://install.determinate.systems/nix/nix-installer-x86_64-linux
 $ chmod +x nix-installer
+$ ./nix-installer
 ```
-
-> **Note**
-> `nix-installer` will elevate itself if needed using `sudo`.
-> If you use `doas` or `please` you may need to elevate `nix-installer` yourself.
 
 `nix-installer` installs Nix by following a *plan* made by a *planner*. Review the available planners:
 
@@ -210,13 +207,27 @@ On some container tools, such as `docker`, `sandbox = false` can be omitted. Omi
 
 ### In WSL2
 
-If [systemd is enabled](https://ubuntu.com/blog/ubuntu-wsl-enable-systemd) it's possible to install Nix as normal using the command at the top of this document:
+We **strongly recommend** [enabling systemd](https://ubuntu.com/blog/ubuntu-wsl-enable-systemd), then installing Nix as normal:
+
 
 ```bash
 curl --proto '=https' --tlsv1.2 -sSf -L https://install.determinate.systems/nix | sh -s -- install
 ```
 
-If systemd is not enabled, pass `--init none` at the end of the command:
+If [WSLg][wslg] is enabled, you can do things like open a Linux Firefox from Windows on Powershell:
+
+```powershell
+wsl nix run nixpkgs#firefox
+```
+
+To use some OpenGL applications, you can use [`nixGL`][nixgl] (note that some applications, such as `blender`, may not work):
+
+```powershell
+wsl nix run --impure github:guibou/nixGL nix run nixpkgs#obs-studio
+```
+
+
+If enabling system is not an option, pass `--init none` at the end of the command:
 
 > **Warning**
 > When `--init none` is used, _only_ `root` or users who can elevate to `root` privileges can run Nix:
@@ -229,20 +240,6 @@ If systemd is not enabled, pass `--init none` at the end of the command:
 ```bash
 curl --proto '=https' --tlsv1.2 -sSf -L https://install.determinate.systems/nix | sh -s -- install linux --init none
 ```
-
-If [WSLg][wslg] is enabled, you can do things like open a Linux Firefox from Windows on Powershell:
-
-```powershell
-wsl nix run nixpkgs#firefox
-```
-
-To use some OpenGL applications, such as OBS you can use [`nixGL`][nixgl]:
-
-```powershell
-wsl nix run --impure github:guibou/nixGL nix run nixpkgs#obs-studio
-```
-
-Note that some applications, such as `blender` don't work at this time.
 
 ### Skip confirmation
 
