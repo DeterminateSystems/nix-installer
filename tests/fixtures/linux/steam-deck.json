@@ -3,12 +3,18 @@
   "actions": [
     {
       "action": {
+        "action": "systemctl_daemon_reload"
+      },
+      "state": "Uncompleted"
+    },
+    {
+      "action": {
         "action": "create_directory",
         "path": "/home/nix",
         "user": null,
         "group": null,
         "mode": 493,
-        "is_mountpoint": true,
+        "is_mountpoint": false,
         "force_prune_on_revert": true
       },
       "state": "Uncompleted"
@@ -21,7 +27,7 @@
         "group": null,
         "mode": 420,
         "buf": "[Unit]\nDescription=Create a `/nix` directory to be used for bind mounting\nPropagatesStopTo=nix-daemon.service\nPropagatesStopTo=nix.mount\nDefaultDependencies=no\nAfter=grub-recordfail.service\nAfter=steamos-finish-oobe-migration.service\n\n[Service]\nType=oneshot\nExecStart=steamos-readonly disable\nExecStart=mkdir -vp /nix\nExecStart=chmod -v 0755 /nix\nExecStart=chown -v root /nix\nExecStart=chgrp -v root /nix\nExecStart=steamos-readonly enable\nExecStop=steamos-readonly disable\nExecStop=rmdir /nix\nExecStop=steamos-readonly enable\nRemainAfterExit=true\n",
-        "force": false
+        "replace": false
       },
       "state": "Uncompleted"
     },
@@ -32,8 +38,8 @@
         "user": null,
         "group": null,
         "mode": 420,
-        "buf": "[Unit]\nDescription=Mount `/home/nix` on `/nix`\nPropagatesStopTo=nix-daemon.service\nPropagatesStopTo=nix-directory.service\nAfter=nix-directory.service\nRequires=nix-directory.service\nConditionPathIsDirectory=/nix\nDefaultDependencies=no\nRequiredBy=nix-daemon.service\nRequiredBy=nix-daemon.socket\n\n[Mount]\nWhat=/home/nix\nWhere=/nix\nType=none\nDirectoryMode=0755\nOptions=bind\n",
-        "force": false
+        "buf": "[Unit]\nDescription=Mount `/home/nix` on `/nix`\nPropagatesStopTo=nix-daemon.service\nPropagatesStopTo=nix-directory.service\nAfter=nix-directory.service\nRequires=nix-directory.service\nConditionPathIsDirectory=/nix\nDefaultDependencies=no\n\n[Mount]\nWhat=/home/nix\nWhere=/nix\nType=none\nDirectoryMode=0755\nOptions=bind\n\n[Install]\nRequiredBy=nix-daemon.service\nRequiredBy=nix-daemon.socket\n\n            ",
+        "replace": false
       },
       "state": "Uncompleted"
     },
@@ -44,8 +50,8 @@
         "user": null,
         "group": null,
         "mode": 420,
-        "buf": "[Unit]\nDescription=Ensure Nix related units which are symlinked resolve\nAfter=nix.mount\nRequires=nix-directory.service\nRequires=nix.mount\nDefaultDependencies=no\n\n[Service]\nType=oneshot\nRemainAfterExit=yes\nExecStart=/usr/bin/systemctl daemon-reload\nExecStart=/usr/bin/systemctl restart --no-block nix-daemon.socket\n\n[Install]\nWantedBy=sysinit.target\n",
-        "force": false
+        "buf": "[Unit]\nDescription=Ensure Nix related units which are symlinked resolve\nAfter=nix.mount\nRequires=nix.mount\nDefaultDependencies=no\n\n[Service]\nType=oneshot\nRemainAfterExit=yes\nExecStart=/usr/bin/systemctl daemon-reload\nExecStart=/usr/bin/systemctl restart --no-block nix-daemon.socket\n\n[Install]\nWantedBy=sysinit.target\n",
+        "replace": false
       },
       "state": "Uncompleted"
     },
@@ -62,18 +68,10 @@
         "action": "provision_nix",
         "fetch_nix": {
           "action": {
-            "url": "https://releases.nixos.org/nix/nix-2.15.0/nix-2.15.0-x86_64-linux.tar.xz",
+            "url": "https://releases.nixos.org/nix/nix-2.17.0/nix-2.17.0-x86_64-linux.tar.xz",
             "dest": "/nix/temp-install-dir",
             "proxy": null,
             "ssl_cert_file": null
-          },
-          "state": "Uncompleted"
-        },
-        "delete_users": [],
-        "create_group": {
-          "action": {
-            "name": "nixbld",
-            "gid": 30000
           },
           "state": "Uncompleted"
         },
@@ -86,8 +84,8 @@
                   "user": "root",
                   "group": null,
                   "mode": 493,
-                  "is_mountpoint": true,
-                  "force_prune_on_revert": false
+                  "is_mountpoint": false,
+                  "force_prune_on_revert": true
                 },
                 "state": "Uncompleted"
               },
@@ -97,8 +95,8 @@
                   "user": "root",
                   "group": null,
                   "mode": 493,
-                  "is_mountpoint": true,
-                  "force_prune_on_revert": false
+                  "is_mountpoint": false,
+                  "force_prune_on_revert": true
                 },
                 "state": "Uncompleted"
               },
@@ -108,8 +106,8 @@
                   "user": "root",
                   "group": null,
                   "mode": 493,
-                  "is_mountpoint": true,
-                  "force_prune_on_revert": false
+                  "is_mountpoint": false,
+                  "force_prune_on_revert": true
                 },
                 "state": "Uncompleted"
               },
@@ -119,8 +117,8 @@
                   "user": "root",
                   "group": null,
                   "mode": 493,
-                  "is_mountpoint": true,
-                  "force_prune_on_revert": false
+                  "is_mountpoint": false,
+                  "force_prune_on_revert": true
                 },
                 "state": "Uncompleted"
               },
@@ -130,8 +128,8 @@
                   "user": "root",
                   "group": null,
                   "mode": 493,
-                  "is_mountpoint": true,
-                  "force_prune_on_revert": false
+                  "is_mountpoint": false,
+                  "force_prune_on_revert": true
                 },
                 "state": "Uncompleted"
               },
@@ -141,8 +139,8 @@
                   "user": "root",
                   "group": null,
                   "mode": 493,
-                  "is_mountpoint": true,
-                  "force_prune_on_revert": false
+                  "is_mountpoint": false,
+                  "force_prune_on_revert": true
                 },
                 "state": "Uncompleted"
               },
@@ -152,8 +150,8 @@
                   "user": "root",
                   "group": null,
                   "mode": 493,
-                  "is_mountpoint": true,
-                  "force_prune_on_revert": false
+                  "is_mountpoint": false,
+                  "force_prune_on_revert": true
                 },
                 "state": "Uncompleted"
               },
@@ -163,8 +161,8 @@
                   "user": "root",
                   "group": null,
                   "mode": 493,
-                  "is_mountpoint": true,
-                  "force_prune_on_revert": false
+                  "is_mountpoint": false,
+                  "force_prune_on_revert": true
                 },
                 "state": "Uncompleted"
               },
@@ -174,8 +172,8 @@
                   "user": "root",
                   "group": null,
                   "mode": 493,
-                  "is_mountpoint": true,
-                  "force_prune_on_revert": false
+                  "is_mountpoint": false,
+                  "force_prune_on_revert": true
                 },
                 "state": "Uncompleted"
               },
@@ -185,8 +183,8 @@
                   "user": "root",
                   "group": null,
                   "mode": 493,
-                  "is_mountpoint": true,
-                  "force_prune_on_revert": false
+                  "is_mountpoint": false,
+                  "force_prune_on_revert": true
                 },
                 "state": "Uncompleted"
               },
@@ -196,8 +194,8 @@
                   "user": "root",
                   "group": null,
                   "mode": 493,
-                  "is_mountpoint": true,
-                  "force_prune_on_revert": false
+                  "is_mountpoint": false,
+                  "force_prune_on_revert": true
                 },
                 "state": "Uncompleted"
               },
@@ -207,8 +205,8 @@
                   "user": "root",
                   "group": null,
                   "mode": 493,
-                  "is_mountpoint": true,
-                  "force_prune_on_revert": false
+                  "is_mountpoint": false,
+                  "force_prune_on_revert": true
                 },
                 "state": "Uncompleted"
               },
@@ -218,8 +216,8 @@
                   "user": "root",
                   "group": null,
                   "mode": 493,
-                  "is_mountpoint": true,
-                  "force_prune_on_revert": false
+                  "is_mountpoint": false,
+                  "force_prune_on_revert": true
                 },
                 "state": "Uncompleted"
               }
@@ -233,6 +231,26 @@
           },
           "state": "Uncompleted"
         }
+      },
+      "state": "Uncompleted"
+    },
+    {
+      "action": {
+        "action": "create_users_and_group",
+        "nix_build_user_count": 0,
+        "nix_build_group_name": "nixbld",
+        "nix_build_group_id": 30000,
+        "nix_build_user_prefix": "nixbld",
+        "nix_build_user_id_base": 30000,
+        "create_group": {
+          "action": {
+            "name": "nixbld",
+            "gid": 30000
+          },
+          "state": "Uncompleted"
+        },
+        "create_users": [],
+        "add_users_to_groups": []
       },
       "state": "Uncompleted"
     },
@@ -271,7 +289,19 @@
                 "/etc/zsh/zshrc"
               ]
             },
-            "create_directories": [],
+            "create_directories": [
+              {
+                "action": {
+                  "path": "/etc/zsh",
+                  "user": null,
+                  "group": null,
+                  "mode": 493,
+                  "is_mountpoint": false,
+                  "force_prune_on_revert": false
+                },
+                "state": "Uncompleted"
+              }
+            ],
             "create_or_insert_into_files": [
               {
                 "action": {
@@ -316,6 +346,17 @@
                   "position": "Beginning"
                 },
                 "state": "Uncompleted"
+              },
+              {
+                "action": {
+                  "path": "/etc/zsh/zshrc",
+                  "user": null,
+                  "group": null,
+                  "mode": 420,
+                  "buf": "\n# Nix\nif [ -e '/nix/var/nix/profiles/default/etc/profile.d/nix-daemon.sh' ]; then\n    . '/nix/var/nix/profiles/default/etc/profile.d/nix-daemon.sh'\nfi\n# End Nix\n\n        \n",
+                  "position": "Beginning"
+                },
+                "state": "Uncompleted"
               }
             ]
           },
@@ -329,24 +370,30 @@
                 "user": null,
                 "group": null,
                 "mode": 493,
-                "is_mountpoint": true,
+                "is_mountpoint": false,
                 "force_prune_on_revert": false
               },
               "state": "Uncompleted"
             },
-            "create_or_merge_nix_config": {
+            "create_or_insert_nix_conf": {
               "action": {
                 "path": "/etc/nix/nix.conf",
-                "pending_nix_config": {
-                  "settings": {
-                    "auto-optimise-store": "true",
-                    "bash-prompt-prefix": "(nix:$name)\\040",
-                    "build-users-group": "nixbld",
-                    "experimental-features": "nix-command flakes auto-allocate-uids",
-                    "extra-nix-path": "nixpkgs=flake:nixpkgs",
-                    "auto-allocate-uids": "true"
-                  }
-                }
+                "user": null,
+                "group": null,
+                "mode": null,
+                "buf": "!include ./nix-installer-defaults.conf",
+                "position": "Beginning"
+              },
+              "state": "Uncompleted"
+            },
+            "create_defaults_conf": {
+              "action": {
+                "path": "/etc/nix/defaults.conf",
+                "user": null,
+                "group": null,
+                "mode": null,
+                "buf": "build-users-group = nixbld\nexperimental-features = nix-command flakes auto-allocate-uids\nbash-prompt-prefix = (nix:$name)\\040\nextra-nix-path = nixpkgs=flake:nixpkgs\nauto-optimise-store = true\nauto-allocate-uids = true",
+                "replace": true
               },
               "state": "Uncompleted"
             }
@@ -360,8 +407,7 @@
       "action": {
         "action": "configure_init_service",
         "init": "Systemd",
-        "start_daemon": true,
-        "ssl_cert_file": null
+        "start_daemon": true
       },
       "state": "Uncompleted"
     },
@@ -379,6 +425,12 @@
         "path": "/nix/temp-install-dir"
       },
       "state": "Uncompleted"
+    },
+    {
+      "action": {
+        "action": "systemctl_daemon_reload"
+      },
+      "state": "Uncompleted"
     }
   ],
   "planner": {
@@ -388,10 +440,10 @@
       "modify_profile": true,
       "nix_build_group_name": "nixbld",
       "nix_build_group_id": 30000,
-      "nix_build_user_count": 0,
       "nix_build_user_prefix": "nixbld",
+      "nix_build_user_count": 0,
       "nix_build_user_id_base": 30000,
-      "nix_package_url": "https://releases.nixos.org/nix/nix-2.15.0/nix-2.15.0-x86_64-linux.tar.xz",
+      "nix_package_url": "https://releases.nixos.org/nix/nix-2.17.0/nix-2.17.0-x86_64-linux.tar.xz",
       "proxy": null,
       "ssl_cert_file": null,
       "extra_conf": [],

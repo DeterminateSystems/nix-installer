@@ -200,6 +200,8 @@ use tracing::Span;
 
 use crate::{error::HasExpectedErrors, CertificateError};
 
+use self::base::create_or_insert_into_file::Position;
+
 /// An action which can be reverted or completed, with an action state
 ///
 /// This trait interacts with [`StatefulAction`] which does the [`ActionState`] manipulation and provides some tracing facilities.
@@ -390,6 +392,11 @@ pub enum ActionErrorKind {
         "`{0}` exists with different content than planned, consider removing it with `rm {0}`"
     )]
     DifferentContent(std::path::PathBuf),
+    /// The path already exists with a different line content that expected
+    #[error(
+        "`{0}` exists with different line content than planned, the line may have changed since read"
+    )]
+    DifferentLineContent(std::path::PathBuf, Position),
     /// The file already exists
     #[error("`{0}` already exists, consider removing it with `rm {0}`")]
     FileExists(std::path::PathBuf),

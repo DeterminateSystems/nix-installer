@@ -56,7 +56,6 @@ uuid = { version = "1.2.2", features = ["serde"] }
 os-release = { version = "0.1.0", default-features = false }
 is_ci = { version = "1.1.1", default-features = false, optional = true }
 strum = { version = "0.25.0", features = ["derive"] }
-nix-config-parser = { version = "0.1.2", features = ["serde"] }
 which = "4.4.0"
 sysctl = "0.5.4"
 walkdir = "2.3.3"
