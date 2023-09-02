@@ -34,7 +34,6 @@ Differing from the upstream [Nix](https://github.com/NixOS/nix) installer script
 * In `nix.conf`:
   + the `auto-allocate-uids`, `nix-command` and `flakes` features are enabled
   + `bash-prompt-prefix` is set
-  + `auto-optimise-store` is set to `true` (On Linux only)
   * `extra-nix-path` is set to `nixpkgs=flake:nixpkgs`
   * `auto-allocate-uids` is set to `true`.  (On Linux only)
 * an installation receipt (for uninstalling) is stored at `/nix/receipt.json` as well as a copy of the install binary at `/nix/nix-installer`
