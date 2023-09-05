@@ -37,12 +37,13 @@ impl PlaceNixConfiguration {
         nix_conf_insert_settings.extend(extra_conf);
         let nix_conf_insert_fragment = nix_conf_insert_settings.join("\n");
 
-        let mut defaults_conf_settings = Vec::default();
-        defaults_conf_settings.push(("build-users-group", nix_build_group_name));
-        defaults_conf_settings.push((
-            "experimental-features",
-            "nix-command flakes auto-allocate-uids".into(),
-        ));
+        let mut defaults_conf_settings = vec![
+            ("build-users-group", nix_build_group_name),
+            (
+                "experimental-features",
+                "nix-command flakes auto-allocate-uids".into(),
+            ),
+        ];
         // https://github.com/DeterminateSystems/nix-installer/issues/449#issuecomment-1551782281
         defaults_conf_settings.push(("bash-prompt-prefix", "(nix:$name)\\040".into()));
         defaults_conf_settings.push(("extra-nix-path", "nixpkgs=flake:nixpkgs".into()));
@@ -81,9 +82,7 @@ impl PlaceNixConfiguration {
 
             for (index, line) in existing_nix_conf.lines().enumerate() {
                 let line = line.trim();
-                if line.is_empty() {
-                    continue;
-                } else if line.starts_with("#") {
+                if line.is_empty() || line.starts_with('#') {
                     continue;
                 } else {
                     chosen_insert_after = Some(Position::Before {
@@ -109,7 +108,7 @@ impl PlaceNixConfiguration {
                     if let Some(existing_included_conf) = existing_included_conf {
                         let lines = existing_included_conf.lines();
                         for line in lines {
-                            let mut split = line.split("=");
+                            let mut split = line.split('=');
                             let setting_name = split.next().map(|v| v.trim());
                             let setting_value = split.next().map(|v| v.trim());
                             if let (Some(setting_name), Some(setting_value)) =
@@ -121,7 +120,7 @@ impl PlaceNixConfiguration {
                         }
                     }
                 } else {
-                    let mut split = line.split("=");
+                    let mut split = line.split('=');
                     let setting_name = split.next().map(|v| v.trim());
                     let setting_value = split.next().map(|v| v.trim());
                     if let (Some(setting_name), Some(setting_value)) = (setting_name, setting_value)

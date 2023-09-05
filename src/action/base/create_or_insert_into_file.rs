@@ -144,21 +144,18 @@ impl CreateOrInsertIntoFile {
                 return Ok(StatefulAction::completed(this));
             }
 
-            match &this.position {
-                Position::Before {
-                    index,
-                    expected_content,
-                } => {
-                    if discovered_buf.lines().skip(*index).next() != Some(expected_content.as_str())
-                    {
-                        return Err(ActionErrorKind::DifferentLineContent(
-                            this.path.clone(),
-                            this.position.clone(),
-                        ))
-                        .map_err(Self::error);
-                    }
-                },
-                _ => (),
+            if let Position::Before {
+                index,
+                expected_content,
+            } = &this.position
+            {
+                if discovered_buf.lines().nth(*index) != Some(expected_content.as_str()) {
+                    return Err(ActionErrorKind::DifferentLineContent(
+                        this.path.clone(),
+                        this.position.clone(),
+                    ))
+                    .map_err(Self::error);
+                }
             }
 
             // If not, we can't skip this, so we still do it
@@ -293,8 +290,7 @@ impl Action for CreateOrInsertIntoFile {
                     .map_err(Self::error)?;
                 let mut original_content_lines = original_content.lines().collect::<Vec<_>>();
                 // The last line should match expected
-                if original_content_lines.get(*index).map(|v| *v) != Some(expected_content.as_str())
-                {
+                if original_content_lines.get(*index).copied() != Some(expected_content.as_str()) {
                     return Err(ActionErrorKind::DifferentLineContent(
                         path.clone(),
                         position.clone(),
