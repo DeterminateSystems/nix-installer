@@ -441,7 +441,7 @@ impl HasExpectedErrors for PlannerError {
     fn expected<'a>(&'a self) -> Option<Box<dyn std::error::Error + 'a>> {
         match self {
             this @ PlannerError::UnsupportedArchitecture(_) => Some(Box::new(this)),
-            PlannerError::Action(_) => None,
+            PlannerError::Action(action_error) => action_error.kind().expected(),
             PlannerError::InstallSettings(_) => None,
             PlannerError::Plist(_) => None,
             PlannerError::Sysctl(_) => None,
