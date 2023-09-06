@@ -409,7 +409,12 @@ pub enum ActionErrorKind {
     DifferentContent(std::path::PathBuf),
     /// The path already exists with a different line content that expected
     #[error(
-        "`{0}` exists with different line content than planned, the line may have changed since read"
+        "`{0}` exists with different line content than planned, {position} may have changed since read",
+        position = match .1 {
+            Position::Beginning => "the line at the start of the file".to_string(),
+            Position::End => "the line at the end of the file".to_string(),
+            Position::Before { index, .. } => format!("line {index} of the file"),
+        }
     )]
     DifferentLineContent(std::path::PathBuf, Position),
     /// The file already exists

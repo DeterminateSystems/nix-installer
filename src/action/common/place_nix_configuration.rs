@@ -33,7 +33,7 @@ impl PlaceNixConfiguration {
             .map_err(Self::error)?;
 
         let mut nix_conf_insert_settings = Vec::default();
-        nix_conf_insert_settings.push("!include ./defaults.conf".into());
+        nix_conf_insert_settings.push("include ./nix-installer-defaults.conf".into());
         nix_conf_insert_settings.extend(extra_conf);
         let nix_conf_insert_fragment = nix_conf_insert_settings.join("\n");
 
@@ -82,7 +82,7 @@ impl PlaceNixConfiguration {
 
             for (index, line) in existing_nix_conf.lines().enumerate() {
                 let line = line.trim();
-                if line.is_empty() || line.starts_with('#') {
+                if line.starts_with('#') {
                     continue;
                 } else {
                     chosen_insert_after = Some(Position::Before {
@@ -93,38 +93,44 @@ impl PlaceNixConfiguration {
 
                 // We only scan one include of depth -- we should make this any depth, make sure to guard for loops
                 if line.starts_with("include") || line.starts_with("!include") {
+                    let allow_not_existing = line.starts_with("!");
                     // Need to read it in if it exists for settings
                     let path = line
                         .trim_start_matches("include")
                         .trim_start_matches("!include")
                         .trim();
-                    let relative_path = Path::new("/etc/nix/").join(path);
-                    let canonical_path = relative_path.canonicalize().map_err(|e| {
-                        Self::error(ActionErrorKind::Canonicalize(relative_path, e))
-                    })?;
-                    tracing::trace!(path = %canonical_path.display(), "Reading included nix.conf");
-                    let existing_included_conf =
-                        tokio::fs::read_to_string(canonical_path).await.ok(); // If it doesn't exist, ignore it.
+                    let path = Path::new(path);
+                    let path = if path.is_relative() {
+                        Path::new("/etc/nix/").join(path)
+                    } else {
+                        path.into()
+                    };
+                    
+                    tracing::trace!(path = %path.display(), "Reading included nix.conf");
+                    let existing_included_conf = match tokio::fs::read_to_string(&path).await {
+                        Ok(v) => Some(v),
+                        Err(_e) if allow_not_existing => None,
+                        Err(e) => return Err(ActionErrorKind::Read(path, e)).map_err(Self::error)?,
+                    };
                     if let Some(existing_included_conf) = existing_included_conf {
                         let lines = existing_included_conf.lines();
                         for line in lines {
-                            let mut split = line.split('=');
-                            let setting_name = split.next().map(|v| v.trim());
-                            let setting_value = split.next().map(|v| v.trim());
-                            if let (Some(setting_name), Some(setting_value)) =
-                                (setting_name, setting_value)
+                            let split = line.split_once('=');
+                            if let Some((setting_name, setting_value)) = split
                             {
+                                let setting_name = setting_name.trim();
+                                let setting_value = setting_value.trim();
                                 existing_conf_settings
                                     .push((setting_name.to_string(), setting_value.to_string()));
                             }
                         }
                     }
                 } else {
-                    let mut split = line.split('=');
-                    let setting_name = split.next().map(|v| v.trim());
-                    let setting_value = split.next().map(|v| v.trim());
-                    if let (Some(setting_name), Some(setting_value)) = (setting_name, setting_value)
+                    let split = line.split_once('=');
+                    if let Some((setting_name, setting_value)) = split
                     {
+                        let setting_name = setting_name.trim();
+                        let setting_value = setting_value.trim();
                         existing_conf_settings
                             .push((setting_name.to_string(), setting_value.to_string()));
                     }
@@ -199,7 +205,7 @@ impl PlaceNixConfiguration {
         .map_err(Self::error)?;
 
         let create_defaults_conf = CreateFile::plan(
-            PathBuf::from("/etc/nix/defaults.conf"),
+            PathBuf::from("/etc/nix/nix-installer-defaults.conf"),
             None,
             None,
             0o755,
