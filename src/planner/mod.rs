@@ -1,105 +1,10 @@
-/*! [`BuiltinPlanner`]s and traits to create new types which can be used to plan out an [`InstallPlan`]
+/*! [`KnownPlanner`]s and traits to create new types which can be used to plan out an [`InstallPlan`]
 
 It's a [`Planner`]s job to construct (if possible) a valid [`InstallPlan`] for the host. Some planners are operating system specific, others are device specific.
 
 [`Planner`]s contain their planner specific settings, typically alongside a [`CommonSettings`][crate::settings::CommonSettings].
 
-[`BuiltinPlanner::default()`] offers a way to get the default builtin planner for a given host.
-
-Custom Planners can also be used to create a platform, project, or organization specific install.
-
-A custom [`Planner`] can be created:
-
-```rust,no_run
-use std::{error::Error, collections::HashMap};
-use nix_installer::{
-    InstallPlan,
-    settings::{CommonSettings, InstallSettingsError},
-    planner::{Planner, PlannerError},
-    action::{Action, StatefulAction, base::CreateFile},
-};
-
-#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
-pub struct MyPlanner {
-    pub common: CommonSettings,
-}
-
-
-#[async_trait::async_trait]
-#[typetag::serde(name = "my-planner")]
-impl Planner for MyPlanner {
-    async fn default() -> Result<Self, PlannerError> {
-        Ok(Self {
-            common: CommonSettings::default().await?,
-        })
-    }
-
-    async fn plan(&self) -> Result<Vec<StatefulAction<Box<dyn Action>>>, PlannerError> {
-        Ok(vec![
-            // ...
-
-                CreateFile::plan("/example", None, None, None, "Example".to_string(), false)
-                    .await
-                    .map_err(PlannerError::Action)?.boxed(),
-        ])
-    }
-
-    fn settings(&self) -> Result<HashMap<String, serde_json::Value>, InstallSettingsError> {
-        let Self { common } = self;
-        let mut map = std::collections::HashMap::default();
-
-        map.extend(common.settings()?.into_iter());
-
-        Ok(map)
-    }
-
-    async fn configured_settings(
-        &self,
-    ) -> Result<HashMap<String, serde_json::Value>, PlannerError> {
-        let default = Self::default().await?.settings()?;
-        let configured = self.settings()?;
-
-        let mut settings: HashMap<String, serde_json::Value> = HashMap::new();
-        for (key, value) in configured.iter() {
-            if default.get(key) != Some(value) {
-                settings.insert(key.clone(), value.clone());
-            }
-        }
-
-        Ok(settings)
-    }
-
-    #[cfg(feature = "diagnostics")]
-    async fn diagnostic_data(&self) -> Result<nix_installer::diagnostics::DiagnosticData, PlannerError> {
-        Ok(nix_installer::diagnostics::DiagnosticData::new(
-            self.common.diagnostic_endpoint.clone(),
-            self.typetag_name().into(),
-            self.configured_settings()
-                .await?
-                .into_keys()
-                .collect::<Vec<_>>(),
-            self.common.ssl_cert_file.clone(),
-        )?)
-    }
-}
-
-# async fn custom_planner_install() -> color_eyre::Result<()> {
-let planner = MyPlanner::default().await?;
-let mut plan = InstallPlan::plan(planner).await?;
-match plan.install(None).await {
-    Ok(()) => tracing::info!("Done"),
-    Err(e) => {
-        match e.source() {
-            Some(source) => tracing::error!("{e}: {}", source),
-            None => tracing::error!("{e}"),
-        };
-        plan.uninstall(None).await?;
-    },
-};
-
-#    Ok(())
-# }
-```
+[`KnownPlanner::default()`] offers a way to get the default builtin planner for a given host.
 
 */
 #[cfg(target_os = "linux")]
@@ -119,13 +24,16 @@ use crate::{
     action::{ActionError, StatefulAction},
     error::HasExpectedErrors,
     settings::{CommonSettings, InstallSettingsError},
-    Action, InstallPlan, NixInstallerError,
+    Action,
+    planner::{steam_deck::SteamDeck, ostree::Ostree, linux::Linux, }
 };
+#[cfg(target_os = "macos")]
+use crate::planner::Macos;
 
 /// Something which can be used to plan out an [`InstallPlan`]
 #[async_trait::async_trait]
-#[typetag::serde(tag = "planner")]
-pub trait Planner: std::fmt::Debug + Send + Sync + dyn_clone::DynClone {
+pub trait Planner: std::fmt::Debug + Send + Sync {
+    const NAME: &'static str;
     /// Instantiate the planner with default settings, if possible
     async fn default() -> Result<Self, PlannerError>
     where
@@ -137,14 +45,6 @@ pub trait Planner: std::fmt::Debug + Send + Sync + dyn_clone::DynClone {
 
     async fn configured_settings(&self)
         -> Result<HashMap<String, serde_json::Value>, PlannerError>;
-
-    /// A boxed, type erased planner
-    fn boxed(self) -> Box<dyn Planner>
-    where
-        Self: Sized + 'static,
-    {
-        Box::new(self)
-    }
 
     async fn pre_uninstall_check(&self) -> Result<(), PlannerError> {
         Ok(())
@@ -158,12 +58,10 @@ pub trait Planner: std::fmt::Debug + Send + Sync + dyn_clone::DynClone {
     async fn diagnostic_data(&self) -> Result<crate::diagnostics::DiagnosticData, PlannerError>;
 }
 
-dyn_clone::clone_trait_object!(Planner);
-
 /// Planners built into this crate
 #[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
 #[cfg_attr(feature = "cli", derive(clap::Subcommand))]
-pub enum BuiltinPlanner {
+pub enum KnownPlanner {
     #[cfg(target_os = "linux")]
     /// A planner for Linux installs
     Linux(linux::Linux),
@@ -178,7 +76,7 @@ pub enum BuiltinPlanner {
     Ostree(ostree::Ostree),
 }
 
-impl BuiltinPlanner {
+impl KnownPlanner {
     /// Heuristically determine the default planner for the target system
     pub async fn default() -> Result<Self, PlannerError> {
         use target_lexicon::{Architecture, OperatingSystem};
@@ -231,13 +129,13 @@ impl BuiltinPlanner {
         let mut built = Self::default().await?;
         match &mut built {
             #[cfg(target_os = "linux")]
-            BuiltinPlanner::Linux(inner) => inner.settings = settings,
+            KnownPlanner::Linux(inner) => inner.settings = settings,
             #[cfg(target_os = "linux")]
-            BuiltinPlanner::SteamDeck(inner) => inner.settings = settings,
+            KnownPlanner::SteamDeck(inner) => inner.settings = settings,
             #[cfg(target_os = "linux")]
-            BuiltinPlanner::Ostree(inner) => inner.settings = settings,
+            KnownPlanner::Ostree(inner) => inner.settings = settings,
             #[cfg(target_os = "macos")]
-            BuiltinPlanner::Macos(inner) => inner.settings = settings,
+            KnownPlanner::Macos(inner) => inner.settings = settings,
         }
         Ok(built)
     }
@@ -247,64 +145,78 @@ impl BuiltinPlanner {
     ) -> Result<HashMap<String, serde_json::Value>, PlannerError> {
         match self {
             #[cfg(target_os = "linux")]
-            BuiltinPlanner::Linux(inner) => inner.configured_settings().await,
+            KnownPlanner::Linux(inner) => inner.configured_settings().await,
             #[cfg(target_os = "linux")]
-            BuiltinPlanner::SteamDeck(inner) => inner.configured_settings().await,
+            KnownPlanner::SteamDeck(inner) => inner.configured_settings().await,
             #[cfg(target_os = "linux")]
-            BuiltinPlanner::Ostree(inner) => inner.configured_settings().await,
+            KnownPlanner::Ostree(inner) => inner.configured_settings().await,
             #[cfg(target_os = "macos")]
-            BuiltinPlanner::Macos(inner) => inner.configured_settings().await,
+            KnownPlanner::Macos(inner) => inner.configured_settings().await,
         }
     }
 
-    pub async fn plan(self) -> Result<InstallPlan, NixInstallerError> {
+    pub async fn plan(&self) -> Result<Vec<StatefulAction<Box<dyn Action>>>, PlannerError> {
         match self {
             #[cfg(target_os = "linux")]
-            BuiltinPlanner::Linux(planner) => InstallPlan::plan(planner).await,
+            KnownPlanner::Linux(planner) => planner.plan().await,
             #[cfg(target_os = "linux")]
-            BuiltinPlanner::SteamDeck(planner) => InstallPlan::plan(planner).await,
+            KnownPlanner::SteamDeck(planner) => planner.plan().await,
             #[cfg(target_os = "linux")]
-            BuiltinPlanner::Ostree(planner) => InstallPlan::plan(planner).await,
+            KnownPlanner::Ostree(planner) => planner.plan().await,
             #[cfg(target_os = "macos")]
-            BuiltinPlanner::Macos(planner) => InstallPlan::plan(planner).await,
-        }
-    }
-    pub fn boxed(self) -> Box<dyn Planner> {
-        match self {
-            #[cfg(target_os = "linux")]
-            BuiltinPlanner::Linux(i) => i.boxed(),
-            #[cfg(target_os = "linux")]
-            BuiltinPlanner::SteamDeck(i) => i.boxed(),
-            #[cfg(target_os = "linux")]
-            BuiltinPlanner::Ostree(i) => i.boxed(),
-            #[cfg(target_os = "macos")]
-            BuiltinPlanner::Macos(i) => i.boxed(),
+            KnownPlanner::Macos(planner) => planner.plan().await,
         }
     }
 
-    pub fn typetag_name(&self) -> &'static str {
+    pub async fn pre_uninstall_check(&self) -> Result<(), PlannerError> {
         match self {
             #[cfg(target_os = "linux")]
-            BuiltinPlanner::Linux(i) => i.typetag_name(),
+            KnownPlanner::Linux(planner) => planner.pre_uninstall_check().await,
             #[cfg(target_os = "linux")]
-            BuiltinPlanner::SteamDeck(i) => i.typetag_name(),
+            KnownPlanner::SteamDeck(planner) => planner.pre_uninstall_check().await,
             #[cfg(target_os = "linux")]
-            BuiltinPlanner::Ostree(i) => i.typetag_name(),
+            KnownPlanner::Ostree(planner) => planner.pre_uninstall_check().await,
             #[cfg(target_os = "macos")]
-            BuiltinPlanner::Macos(i) => i.typetag_name(),
+            KnownPlanner::Macos(planner) => planner.pre_uninstall_check().await,
+        }
+    }
+
+    pub async fn pre_install_check(&self) -> Result<(), PlannerError> {
+        match self {
+            #[cfg(target_os = "linux")]
+            KnownPlanner::Linux(planner) => planner.pre_install_check().await,
+            #[cfg(target_os = "linux")]
+            KnownPlanner::SteamDeck(planner) => planner.pre_install_check().await,
+            #[cfg(target_os = "linux")]
+            KnownPlanner::Ostree(planner) => planner.pre_install_check().await,
+            #[cfg(target_os = "macos")]
+            KnownPlanner::Macos(planner) => planner.pre_install_check().await,
+        }
+    }
+
+    pub fn name(&self) -> &'static str {
+        match self {
+            #[cfg(target_os = "linux")]
+            KnownPlanner::Linux(_) => Linux::NAME,
+            #[cfg(target_os = "linux")]
+            KnownPlanner::SteamDeck(_) => SteamDeck::NAME,
+            #[cfg(target_os = "linux")]
+            KnownPlanner::Ostree(_) => Ostree::NAME,
+            #[cfg(target_os = "macos")]
+            KnownPlanner::Macos(_) => Macos::NAME,
         }
     }
 
     pub fn settings(&self) -> Result<HashMap<String, serde_json::Value>, InstallSettingsError> {
         match self {
             #[cfg(target_os = "linux")]
-            BuiltinPlanner::Linux(i) => i.settings(),
+            KnownPlanner::Linux(i) => i.settings(),
             #[cfg(target_os = "linux")]
-            BuiltinPlanner::SteamDeck(i) => i.settings(),
+            KnownPlanner::SteamDeck(i) => i.settings(),
             #[cfg(target_os = "linux")]
-            BuiltinPlanner::Ostree(i) => i.settings(),
+            KnownPlanner::Ostree(i) => i.settings(),
             #[cfg(target_os = "macos")]
-            BuiltinPlanner::Macos(i) => i.settings(),
+            KnownPlanner::Macos(i) => i.settings(),
         }
     }
 
@@ -314,13 +226,13 @@ impl BuiltinPlanner {
     ) -> Result<crate::diagnostics::DiagnosticData, PlannerError> {
         match self {
             #[cfg(target_os = "linux")]
-            BuiltinPlanner::Linux(i) => i.diagnostic_data().await,
+            KnownPlanner::Linux(i) => i.diagnostic_data().await,
             #[cfg(target_os = "linux")]
-            BuiltinPlanner::SteamDeck(i) => i.diagnostic_data().await,
+            KnownPlanner::SteamDeck(i) => i.diagnostic_data().await,
             #[cfg(target_os = "linux")]
-            BuiltinPlanner::Ostree(i) => i.diagnostic_data().await,
+            KnownPlanner::Ostree(i) => i.diagnostic_data().await,
             #[cfg(target_os = "macos")]
-            BuiltinPlanner::Macos(i) => i.diagnostic_data().await,
+            KnownPlanner::Macos(i) => i.diagnostic_data().await,
         }
     }
 }

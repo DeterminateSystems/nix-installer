@@ -1,6 +1,6 @@
 use std::{path::PathBuf, process::ExitCode};
 
-use crate::{error::HasExpectedErrors, BuiltinPlanner};
+use crate::{error::HasExpectedErrors, KnownPlanner};
 use clap::Parser;
 
 use eyre::WrapErr;
@@ -12,7 +12,7 @@ use crate::cli::CommandExecute;
 #[derive(Debug, Parser)]
 pub struct Plan {
     #[clap(subcommand)]
-    pub planner: Option<BuiltinPlanner>,
+    pub planner: Option<KnownPlanner>,
     /// Where to write the generated plan (in JSON format)
     #[clap(
         long = "out-file",
@@ -30,7 +30,7 @@ impl CommandExecute for Plan {
 
         let planner = match planner {
             Some(planner) => planner,
-            None => BuiltinPlanner::default().await?,
+            None => KnownPlanner::default().await?,
         };
 
         let res = planner.plan().await;

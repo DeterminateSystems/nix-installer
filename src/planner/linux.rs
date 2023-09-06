@@ -9,7 +9,7 @@ use crate::{
     planner::{Planner, PlannerError},
     settings::CommonSettings,
     settings::{InitSettings, InitSystem, InstallSettingsError},
-    Action, BuiltinPlanner,
+    Action, KnownPlanner,
 };
 use std::{collections::HashMap, path::Path};
 use tokio::process::Command;
@@ -28,8 +28,8 @@ pub struct Linux {
 }
 
 #[async_trait::async_trait]
-#[typetag::serde(name = "linux")]
 impl Planner for Linux {
+    const NAME: &'static str = "linux";
     async fn default() -> Result<Self, PlannerError> {
         Ok(Self {
             settings: CommonSettings::default().await?,
@@ -130,7 +130,7 @@ impl Planner for Linux {
     async fn diagnostic_data(&self) -> Result<crate::diagnostics::DiagnosticData, PlannerError> {
         Ok(crate::diagnostics::DiagnosticData::new(
             self.settings.diagnostic_endpoint.clone(),
-            self.typetag_name().into(),
+            Self::NAME.into(),
             self.configured_settings()
                 .await?
                 .into_keys()
@@ -163,9 +163,9 @@ impl Planner for Linux {
     }
 }
 
-impl From<Linux> for BuiltinPlanner {
+impl From<Linux> for KnownPlanner {
     fn from(val: Linux) -> Self {
-        BuiltinPlanner::Linux(val)
+        KnownPlanner::Linux(val)
     }
 }
 

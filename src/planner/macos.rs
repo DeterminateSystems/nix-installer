@@ -78,8 +78,8 @@ async fn default_root_disk() -> Result<String, PlannerError> {
 }
 
 #[async_trait::async_trait]
-#[typetag::serde(name = "macos")]
 impl Planner for Macos {
+    const NAME: &'static str = "macos";
     async fn default() -> Result<Self, PlannerError> {
         Ok(Self {
             settings: CommonSettings::default().await?,
@@ -211,7 +211,7 @@ impl Planner for Macos {
     async fn diagnostic_data(&self) -> Result<crate::diagnostics::DiagnosticData, PlannerError> {
         Ok(crate::diagnostics::DiagnosticData::new(
             self.settings.diagnostic_endpoint.clone(),
-            self.typetag_name().into(),
+            Self::NAME.into(),
             self.configured_settings()
                 .await?
                 .into_keys()

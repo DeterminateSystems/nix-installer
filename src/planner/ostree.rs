@@ -9,7 +9,7 @@ use crate::{
     planner::{Planner, PlannerError},
     settings::CommonSettings,
     settings::{InitSystem, InstallSettingsError},
-    Action, BuiltinPlanner,
+    Action, KnownPlanner,
 };
 use std::{collections::HashMap, path::PathBuf};
 
@@ -33,8 +33,8 @@ pub struct Ostree {
 }
 
 #[async_trait::async_trait]
-#[typetag::serde(name = "ostree")]
 impl Planner for Ostree {
+    const NAME: &'static str = "ostree";
     async fn default() -> Result<Self, PlannerError> {
         Ok(Self {
             persistence: PathBuf::from("/var/home/nix"),
@@ -263,7 +263,7 @@ impl Planner for Ostree {
     async fn diagnostic_data(&self) -> Result<crate::diagnostics::DiagnosticData, PlannerError> {
         Ok(crate::diagnostics::DiagnosticData::new(
             self.settings.diagnostic_endpoint.clone(),
-            self.typetag_name().into(),
+            Self::NAME.into(),
             self.configured_settings()
                 .await?
                 .into_keys()
@@ -292,9 +292,9 @@ impl Planner for Ostree {
     }
 }
 
-impl From<Ostree> for BuiltinPlanner {
+impl From<Ostree> for KnownPlanner {
     fn from(val: Ostree) -> Self {
-        BuiltinPlanner::Ostree(val)
+        KnownPlanner::Ostree(val)
     }
 }
 

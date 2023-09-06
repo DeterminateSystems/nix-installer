@@ -13,9 +13,8 @@ use crate::{
     },
     error::HasExpectedErrors,
     plan::RECEIPT_LOCATION,
-    planner::Planner,
     settings::CommonSettings,
-    BuiltinPlanner, InstallPlan, NixInstallerError,
+    KnownPlanner, InstallPlan, NixInstallerError,
 };
 use clap::{ArgAction, Parser};
 use color_eyre::{
@@ -61,7 +60,7 @@ pub struct Install {
     pub plan: Option<PathBuf>,
 
     #[clap(subcommand)]
-    pub planner: Option<BuiltinPlanner>,
+    pub planner: Option<KnownPlanner>,
 }
 
 #[async_trait::async_trait]
@@ -100,7 +99,7 @@ impl CommandExecute for Install {
 
         let mut install_plan = match (planner, plan) {
             (Some(planner), None) => {
-                let chosen_planner: Box<dyn Planner> = planner.clone().boxed();
+                let chosen_planner = planner.clone();
 
                 match existing_receipt {
                     Some(existing_receipt) => {
@@ -116,7 +115,7 @@ impl CommandExecute for Install {
                             );
                             return Ok(ExitCode::FAILURE)
                         }
-                        if existing_receipt.planner.typetag_name() != chosen_planner.typetag_name() {
+                        if existing_receipt.planner.name() != chosen_planner.name() {
                             eprintln!("{}", format!("Found existing plan in `{RECEIPT_LOCATION}` which used a different planner, try uninstalling the existing install with `{uninstall_command}`").red());
                             return Ok(ExitCode::FAILURE)
                         }
@@ -128,7 +127,7 @@ impl CommandExecute for Install {
                         return Ok(ExitCode::FAILURE)
                     },
                     None => {
-                        let res = planner.plan().await;
+                        let res = InstallPlan::plan(planner).await;
                         match res {
                             Ok(plan) => plan,
                             Err(err) => {
@@ -144,12 +143,12 @@ impl CommandExecute for Install {
             },
             (None, Some(plan_path)) => {
                 let install_plan_string = tokio::fs::read_to_string(&plan_path)
-                .await
-                .wrap_err("Reading plan")?;
+                    .await
+                    .wrap_err("Reading plan")?;
                 serde_json::from_str(&install_plan_string)?
             },
             (None, None) => {
-                let builtin_planner = BuiltinPlanner::from_common_settings(settings.clone())
+                let builtin_planner = KnownPlanner::from_common_settings(settings.clone())
                     .await
                     .map_err(|e| eyre::eyre!(e))?;
 
@@ -167,7 +166,7 @@ impl CommandExecute for Install {
                             );
                             return Ok(ExitCode::FAILURE)
                         }
-                        if existing_receipt.planner.typetag_name() != builtin_planner.typetag_name() {
+                        if existing_receipt.planner.name() != builtin_planner.name() {
                             eprintln!("{}", format!("Found existing plan in `{RECEIPT_LOCATION}` which used a different planner, try uninstalling the existing install with `{uninstall_command}`").red());
                             return Ok(ExitCode::FAILURE)
                         }
@@ -182,7 +181,7 @@ impl CommandExecute for Install {
                         existing_receipt
                     },
                     None => {
-                        let res = builtin_planner.plan().await;
+                        let res = InstallPlan::plan(builtin_planner).await;
                         match res {
                             Ok(plan) => plan,
                             Err(err) => {

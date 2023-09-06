@@ -112,7 +112,7 @@ use crate::{
     },
     planner::{Planner, PlannerError},
     settings::{CommonSettings, InitSystem, InstallSettingsError},
-    BuiltinPlanner,
+    KnownPlanner,
 };
 
 use super::ShellProfileLocations;
@@ -135,8 +135,8 @@ pub struct SteamDeck {
 }
 
 #[async_trait::async_trait]
-#[typetag::serde(name = "steam-deck")]
 impl Planner for SteamDeck {
+    const NAME: &'static str = "steam-deck";
     async fn default() -> Result<Self, PlannerError> {
         Ok(Self {
             persistence: PathBuf::from("/home/nix"),
@@ -388,7 +388,7 @@ impl Planner for SteamDeck {
     async fn diagnostic_data(&self) -> Result<crate::diagnostics::DiagnosticData, PlannerError> {
         Ok(crate::diagnostics::DiagnosticData::new(
             self.settings.diagnostic_endpoint.clone(),
-            self.typetag_name().into(),
+            Self::NAME.into(),
             self.configured_settings()
                 .await?
                 .into_keys()
@@ -420,9 +420,9 @@ impl Planner for SteamDeck {
     }
 }
 
-impl From<SteamDeck> for BuiltinPlanner {
+impl From<SteamDeck> for KnownPlanner {
     fn from(val: SteamDeck) -> Self {
-        BuiltinPlanner::SteamDeck(val)
+        KnownPlanner::SteamDeck(val)
     }
 }
 

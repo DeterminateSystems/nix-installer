@@ -2,7 +2,7 @@ use std::{path::PathBuf, str::FromStr};
 
 use crate::{
     action::{Action, ActionDescription, StatefulAction},
-    planner::{BuiltinPlanner, Planner},
+    planner::KnownPlanner,
     NixInstallerError,
 };
 use owo_colors::OwoColorize;
@@ -21,7 +21,7 @@ pub struct InstallPlan {
 
     pub(crate) actions: Vec<StatefulAction<Box<dyn Action>>>,
 
-    pub(crate) planner: Box<dyn Planner>,
+    pub(crate) planner: KnownPlanner,
 
     #[cfg(feature = "diagnostics")]
     pub(crate) diagnostic_data: Option<crate::diagnostics::DiagnosticData>,
@@ -29,12 +29,11 @@ pub struct InstallPlan {
 
 impl InstallPlan {
     pub async fn default() -> Result<Self, NixInstallerError> {
-        let planner = BuiltinPlanner::default().await?;
+        let planner = KnownPlanner::default().await?;
 
         #[cfg(feature = "diagnostics")]
         let diagnostic_data = Some(planner.diagnostic_data().await?);
 
-        let planner = planner.boxed();
         let actions = planner.plan().await?;
 
         Ok(Self {
@@ -46,9 +45,7 @@ impl InstallPlan {
         })
     }
 
-    pub async fn plan<P>(planner: P) -> Result<Self, NixInstallerError>
-    where
-        P: Planner + 'static,
+    pub async fn plan(planner: KnownPlanner) -> Result<Self, NixInstallerError>
     {
         #[cfg(feature = "diagnostics")]
         let diagnostic_data = Some(planner.diagnostic_data().await?);
@@ -57,8 +54,9 @@ impl InstallPlan {
         planner.pre_install_check().await?;
 
         let actions = planner.plan().await?;
+
         Ok(Self {
-            planner: planner.boxed(),
+            planner,
             actions,
             version: current_version()?,
             #[cfg(feature = "diagnostics")]
@@ -108,7 +106,7 @@ impl InstallPlan {
             Planned actions:\n\
             {actions}\n\
         ",
-            planner = planner.typetag_name(),
+            planner = planner.name(),
             maybe_default_setting_note = if plan_settings.is_empty() {
                 String::from(" (with default settings)")
             } else {
@@ -278,7 +276,7 @@ impl InstallPlan {
             Planned actions:\n\
             {actions}\n\
         ",
-            planner = planner.typetag_name(),
+            planner = planner.name(),
             maybe_default_setting_note = if plan_settings.is_empty() {
                 String::from(" (with default settings)")
             } else {
@@ -436,14 +434,14 @@ pub fn current_version() -> Result<Version, NixInstallerError> {
 mod test {
     use semver::Version;
 
-    use crate::{planner::BuiltinPlanner, InstallPlan, NixInstallerError};
+    use crate::{planner::KnownPlanner, InstallPlan, NixInstallerError};
 
     #[tokio::test]
     async fn ensure_version_allows_compatible() -> Result<(), NixInstallerError> {
-        let planner = BuiltinPlanner::default().await?;
+        let planner = KnownPlanner::default().await?;
         let good_version = Version::parse(env!("CARGO_PKG_VERSION"))?;
         let value = serde_json::json!({
-            "planner": planner.boxed(),
+            "planner": planner,
             "version": good_version,
             "actions": [],
         });
@@ -454,10 +452,10 @@ mod test {
 
     #[tokio::test]
     async fn ensure_version_denies_incompatible() -> Result<(), NixInstallerError> {
-        let planner = BuiltinPlanner::default().await?;
+        let planner = KnownPlanner::default().await?;
         let bad_version = Version::parse("9999999999999.9999999999.99999999")?;
         let value = serde_json::json!({
-            "planner": planner.boxed(),
+            "planner": planner,
             "version": bad_version,
             "actions": [],
         });
