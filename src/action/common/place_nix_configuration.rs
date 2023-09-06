@@ -105,19 +105,20 @@ impl PlaceNixConfiguration {
                     } else {
                         path.into()
                     };
-                    
+
                     tracing::trace!(path = %path.display(), "Reading included nix.conf");
                     let existing_included_conf = match tokio::fs::read_to_string(&path).await {
                         Ok(v) => Some(v),
                         Err(_e) if allow_not_existing => None,
-                        Err(e) => return Err(ActionErrorKind::Read(path, e)).map_err(Self::error)?,
+                        Err(e) => {
+                            return Err(ActionErrorKind::Read(path, e)).map_err(Self::error)?
+                        },
                     };
                     if let Some(existing_included_conf) = existing_included_conf {
                         let lines = existing_included_conf.lines();
                         for line in lines {
                             let split = line.split_once('=');
-                            if let Some((setting_name, setting_value)) = split
-                            {
+                            if let Some((setting_name, setting_value)) = split {
                                 let setting_name = setting_name.trim();
                                 let setting_value = setting_value.trim();
                                 existing_conf_settings
@@ -127,8 +128,7 @@ impl PlaceNixConfiguration {
                     }
                 } else {
                     let split = line.split_once('=');
-                    if let Some((setting_name, setting_value)) = split
-                    {
+                    if let Some((setting_name, setting_value)) = split {
                         let setting_name = setting_name.trim();
                         let setting_value = setting_value.trim();
                         existing_conf_settings
