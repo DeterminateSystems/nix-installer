@@ -103,7 +103,7 @@ You can upgrade Nix (to the version specified [here](https://raw.githubuserconte
 sudo nix upgrade-nix
 ```
 
-Alternatively, you can [uninstall](#uninstalling) and [reinstall](#usage). This method will install the version which was pinned in `src/settings.rs` at the time of compilation of the nix-installer.
+Alternatively, you can [uninstall](#uninstalling) and [reinstall](#usage) with a different version of the `nix-installer`.
 
 ### Uninstalling
 
