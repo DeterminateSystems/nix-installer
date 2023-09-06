@@ -95,7 +95,7 @@ $ curl --proto '=https' --tlsv1.2 -sSf -L https://install.determinate.systems/ni
 $ NIX_BUILD_GROUP_NAME=nixbuilder ./nix-installer install linux-multi --nix-build-group-id 4000
 ```
 
-## Upgrading Nix
+### Upgrading Nix
 
 You can upgrade Nix (to the version specified [here](https://raw.githubusercontent.com/NixOS/nixpkgs/master/nixos/modules/installer/tools/nix-fallback-paths.nix)) by running:
 
