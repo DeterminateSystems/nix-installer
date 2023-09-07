@@ -1,7 +1,7 @@
 use std::path::PathBuf;
 
 use crate::{
-    action::{ActionError, ActionErrorKind, ActionTag, StatefulAction},
+    action::{ActionError, ActionErrorKind,StatefulAction},
     execute_command, set_env,
 };
 
@@ -11,6 +11,8 @@ use tokio::{io::AsyncWriteExt, process::Command};
 use tracing::{span, Span};
 
 use crate::action::{Action, ActionDescription};
+
+use super::BaseAction;
 
 /**
 Setup the default Nix profile with `nss-cacert` and `nix` itself.
@@ -28,11 +30,9 @@ impl SetupDefaultProfile {
 }
 
 #[async_trait::async_trait]
-#[typetag::serde(name = "setup_default_profile")]
 impl Action for SetupDefaultProfile {
-    fn action_tag() -> ActionTag {
-        ActionTag("setup_default_profile")
-    }
+    const NAME: &'static str = "setup_default_profile";
+    
     fn tracing_synopsis(&self) -> String {
         "Setup the default Nix profile".to_string()
     }
@@ -230,6 +230,12 @@ impl Action for SetupDefaultProfile {
         std::env::remove_var("NIX_SSL_CERT_FILE");
 
         Ok(())
+    }
+}
+
+impl Into<BaseAction> for SetupDefaultProfile {
+    fn into(self) -> BaseAction {
+        BaseAction::SetupDefaultProfile(self)
     }
 }
 

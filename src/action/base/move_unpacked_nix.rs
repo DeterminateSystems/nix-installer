@@ -8,8 +8,10 @@ use tracing::{span, Span};
 use walkdir::WalkDir;
 
 use crate::action::{
-    Action, ActionDescription, ActionError, ActionErrorKind, ActionTag, StatefulAction,
+    Action, ActionDescription, ActionError, ActionErrorKind,StatefulAction,
 };
+
+use super::BaseAction;
 
 pub(crate) const DEST: &str = "/nix/";
 
@@ -30,11 +32,9 @@ impl MoveUnpackedNix {
 }
 
 #[async_trait::async_trait]
-#[typetag::serde(name = "mount_unpacked_nix")]
 impl Action for MoveUnpackedNix {
-    fn action_tag() -> ActionTag {
-        ActionTag("move_unpacked_nix")
-    }
+    const NAME: &'static str = "move_unpacked_nix";
+
     fn tracing_synopsis(&self) -> String {
         "Move the downloaded Nix into `/nix`".to_string()
     }
@@ -147,6 +147,12 @@ impl Action for MoveUnpackedNix {
     async fn revert(&mut self) -> Result<(), ActionError> {
         // Noop
         Ok(())
+    }
+}
+
+impl Into<BaseAction> for MoveUnpackedNix {
+    fn into(self) -> BaseAction {
+        BaseAction::MoveUnpackedNix(self)
     }
 }
 

@@ -1,7 +1,7 @@
 use std::{path::PathBuf, str::FromStr};
 
 use crate::{
-    action::{Action, ActionDescription, StatefulAction},
+    action::{Action, ActionDescription, StatefulAction, KnownAction},
     planner::KnownPlanner,
     NixInstallerError,
 };
@@ -19,7 +19,7 @@ revert
 pub struct InstallPlan {
     pub(crate) version: Version,
 
-    pub(crate) actions: Vec<StatefulAction<Box<dyn Action>>>,
+    pub(crate) actions: Vec<StatefulAction<KnownAction>>,
 
     pub(crate) planner: KnownPlanner,
 

@@ -2,7 +2,7 @@ use uuid::Uuid;
 
 use super::{get_uuid_for_label, CreateApfsVolume};
 use crate::action::{
-    Action, ActionDescription, ActionError, ActionErrorKind, ActionState, ActionTag, StatefulAction,
+    Action, ActionDescription, ActionError, ActionErrorKind, ActionState,StatefulAction,
 };
 use std::{io::SeekFrom, path::Path};
 use tokio::{
@@ -82,11 +82,8 @@ impl CreateFstabEntry {
 }
 
 #[async_trait::async_trait]
-#[typetag::serde(name = "create_fstab_entry")]
 impl Action for CreateFstabEntry {
-    fn action_tag() -> ActionTag {
-        ActionTag("create_fstab_entry")
-    }
+    const NAME: &'static str = "create_fstab_entry";
     fn tracing_synopsis(&self) -> String {
         match self.existing_entry {
             ExistingFstabEntry::NixInstallerEntry | ExistingFstabEntry::Foreign => format!(

@@ -9,7 +9,7 @@ use tokio::{
 };
 
 use crate::action::{
-    Action, ActionDescription, ActionError, ActionErrorKind, ActionTag, StatefulAction,
+    Action, ActionDescription, ActionError, ActionErrorKind,StatefulAction,
 };
 
 use super::get_uuid_for_label;
@@ -137,11 +137,9 @@ impl CreateVolumeService {
 }
 
 #[async_trait::async_trait]
-#[typetag::serde(name = "create_volume_service")]
 impl Action for CreateVolumeService {
-    fn action_tag() -> ActionTag {
-        ActionTag("create_volume_service")
-    }
+    const NAME: &'static str = "create_volume_service";
+    
     fn tracing_synopsis(&self) -> String {
         format!(
             "{maybe_unload} a `launchctl` plist to mount the APFS volume `{path}`",

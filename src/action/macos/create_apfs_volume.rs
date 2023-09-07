@@ -3,7 +3,7 @@ use std::path::{Path, PathBuf};
 use tokio::process::Command;
 use tracing::{span, Span};
 
-use crate::action::{ActionError, ActionTag, StatefulAction};
+use crate::action::{ActionError,StatefulAction};
 use crate::execute_command;
 
 use crate::action::{Action, ActionDescription};
@@ -51,11 +51,8 @@ impl CreateApfsVolume {
 }
 
 #[async_trait::async_trait]
-#[typetag::serde(name = "create_volume")]
 impl Action for CreateApfsVolume {
-    fn action_tag() -> ActionTag {
-        ActionTag("create_apfs_volume")
-    }
+    const NAME: &'static str = "create_apfs_volume";
     fn tracing_synopsis(&self) -> String {
         format!(
             "Create an APFS volume on `{}` named `{}`",

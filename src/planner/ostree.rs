@@ -3,7 +3,7 @@ use crate::{
         base::{CreateDirectory, CreateFile, RemoveDirectory},
         common::{ConfigureInitService, ConfigureNix, CreateUsersAndGroups, ProvisionNix},
         linux::{ProvisionSelinux, StartSystemdUnit, SystemctlDaemonReload},
-        StatefulAction,
+        StatefulAction, KnownAction,
     },
     error::HasExpectedErrors,
     planner::{Planner, PlannerError},
@@ -42,21 +42,21 @@ impl Planner for Ostree {
         })
     }
 
-    async fn plan(&self) -> Result<Vec<StatefulAction<Box<dyn Action>>>, PlannerError> {
+    async fn plan(&self) -> Result<Vec<StatefulAction<KnownAction>>, PlannerError> {
         let has_selinux = detect_selinux().await?;
         let mut plan = vec![
             // Primarily for uninstall
             SystemctlDaemonReload::plan()
                 .await
                 .map_err(PlannerError::Action)?
-                .boxed(),
+                .into(),
         ];
 
         plan.push(
             CreateDirectory::plan(&self.persistence, None, None, 0o0755, true)
                 .await
                 .map_err(PlannerError::Action)?
-                .boxed(),
+                .into(),
         );
 
         let nix_directory_buf = "\
@@ -83,7 +83,7 @@ impl Planner for Ostree {
         )
         .await
         .map_err(PlannerError::Action)?;
-        plan.push(nix_directory_unit.boxed());
+        plan.push(nix_directory_unit.into());
 
         let create_bind_mount_buf = format!(
             "\
@@ -119,7 +119,7 @@ impl Planner for Ostree {
         )
         .await
         .map_err(PlannerError::Action)?;
-        plan.push(create_bind_mount_unit.boxed());
+        plan.push(create_bind_mount_unit.into());
 
         let ensure_symlinked_units_resolve_buf = "\
         [Unit]\n\
@@ -148,7 +148,7 @@ impl Planner for Ostree {
         )
         .await
         .map_err(PlannerError::Action)?;
-        plan.push(ensure_symlinked_units_resolve_unit.boxed());
+        plan.push(ensure_symlinked_units_resolve_unit.into());
 
         // We need to remove this path since it's part of the read-only install.
         let mut shell_profile_locations = ShellProfileLocations::default();
@@ -168,26 +168,26 @@ impl Planner for Ostree {
             StartSystemdUnit::plan("nix.mount".to_string(), false)
                 .await
                 .map_err(PlannerError::Action)?
-                .boxed(),
+                .into(),
         );
 
         plan.push(
             ProvisionNix::plan(&self.settings.clone())
                 .await
                 .map_err(PlannerError::Action)?
-                .boxed(),
+                .into(),
         );
         plan.push(
             CreateUsersAndGroups::plan(self.settings.clone())
                 .await
                 .map_err(PlannerError::Action)?
-                .boxed(),
+                .into(),
         );
         plan.push(
             ConfigureNix::plan(shell_profile_locations, &self.settings)
                 .await
                 .map_err(PlannerError::Action)?
-                .boxed(),
+                .into(),
         );
 
         if has_selinux {
@@ -195,7 +195,7 @@ impl Planner for Ostree {
                 ProvisionSelinux::plan("/etc/nix-installer/selinux/packages/nix.pp".into())
                     .await
                     .map_err(PlannerError::Action)?
-                    .boxed(),
+                    .into(),
             );
         }
 
@@ -203,25 +203,25 @@ impl Planner for Ostree {
             ConfigureInitService::plan(InitSystem::Systemd, true)
                 .await
                 .map_err(PlannerError::Action)?
-                .boxed(),
+                .into(),
         );
         plan.push(
             StartSystemdUnit::plan("ensure-symlinked-units-resolve.service".to_string(), true)
                 .await
                 .map_err(PlannerError::Action)?
-                .boxed(),
+                .into(),
         );
         plan.push(
             RemoveDirectory::plan(crate::settings::SCRATCH_DIR)
                 .await
                 .map_err(PlannerError::Action)?
-                .boxed(),
+                .into(),
         );
         plan.push(
             SystemctlDaemonReload::plan()
                 .await
                 .map_err(PlannerError::Action)?
-                .boxed(),
+                .into(),
         );
 
         Ok(plan)

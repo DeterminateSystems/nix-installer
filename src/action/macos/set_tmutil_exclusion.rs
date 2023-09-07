@@ -3,7 +3,7 @@ use std::path::{Path, PathBuf};
 use tokio::process::Command;
 use tracing::{span, Span};
 
-use crate::action::{ActionError, ActionTag, StatefulAction};
+use crate::action::{ActionError,StatefulAction};
 use crate::execute_command;
 
 use crate::action::{Action, ActionDescription};
@@ -40,11 +40,8 @@ impl SetTmutilExclusion {
 }
 
 #[async_trait::async_trait]
-#[typetag::serde(name = "set_tmutil_exclusion")]
 impl Action for SetTmutilExclusion {
-    fn action_tag() -> ActionTag {
-        ActionTag("set_tmutil_exclusion")
-    }
+    const NAME: &'static str = "set_tmutil_exclusion";
     fn tracing_synopsis(&self) -> String {
         format!(
             "Configure Time Machine exclusion on `{}`",

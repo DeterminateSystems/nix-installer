@@ -3,7 +3,7 @@ use std::path::PathBuf;
 use tracing::{span, Span};
 
 use crate::action::{
-    Action, ActionDescription, ActionError, ActionErrorKind, ActionTag, StatefulAction,
+    Action, ActionDescription, ActionError, ActionErrorKind,StatefulAction,
 };
 
 use super::SetTmutilExclusion;
@@ -58,11 +58,8 @@ impl SetTmutilExclusions {
 }
 
 #[async_trait::async_trait]
-#[typetag::serde(name = "set_tmutil_exclusions")]
 impl Action for SetTmutilExclusions {
-    fn action_tag() -> ActionTag {
-        ActionTag("set_tmutil_exclusions")
-    }
+    const NAME: &'static str = "set_tmutil_exclusions";
     fn tracing_synopsis(&self) -> String {
         String::from("Configure Time Machine exclusions")
     }

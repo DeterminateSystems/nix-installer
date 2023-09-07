@@ -2,8 +2,10 @@ use tracing::{span, Span};
 
 use crate::action::base::CreateDirectory;
 use crate::action::{
-    Action, ActionDescription, ActionError, ActionErrorKind, ActionTag, StatefulAction,
+    Action, ActionDescription, ActionError, ActionErrorKind,StatefulAction,
 };
+
+use super::CommonAction;
 
 const PATHS: &[&str] = &[
     "/nix/var",
@@ -47,11 +49,8 @@ impl CreateNixTree {
 }
 
 #[async_trait::async_trait]
-#[typetag::serde(name = "create_nix_tree")]
 impl Action for CreateNixTree {
-    fn action_tag() -> ActionTag {
-        ActionTag("create_nix_tree")
-    }
+    const NAME: &'static str = "create_nix_tree";
     fn tracing_synopsis(&self) -> String {
         "Create a directory tree in `/nix`".to_string()
     }
@@ -125,5 +124,11 @@ impl Action for CreateNixTree {
         } else {
             Err(Self::error(ActionErrorKind::MultipleChildren(errors)))
         }
+    }
+}
+
+impl Into<CommonAction> for CreateNixTree {
+    fn into(self) -> CommonAction {
+        CommonAction::CreateNixTree(self)
     }
 }

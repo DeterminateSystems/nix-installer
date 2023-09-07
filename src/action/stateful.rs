@@ -1,7 +1,7 @@
 use serde::{Deserialize, Serialize};
 use tracing::{Instrument, Span};
 
-use super::{Action, ActionDescription, ActionError, ActionTag};
+use super::{Action, ActionDescription, ActionError, KnownAction};
 
 /// A wrapper around an [`Action`](crate::action::Action) which tracks the [`ActionState`] and
 /// handles some tracing output
@@ -23,100 +23,12 @@ where
     }
 }
 
-impl StatefulAction<Box<dyn Action>> {
-    pub fn inner_typetag_name(&self) -> &'static str {
-        self.action.typetag_name()
-    }
-    pub fn tracing_synopsis(&self) -> String {
-        self.action.tracing_synopsis()
-    }
-    /// A tracing span suitable for the action
-    pub fn tracing_span(&self) -> Span {
-        self.action.tracing_span()
-    }
-    /// A description of what this action would do during execution
-    pub fn describe_execute(&self) -> Vec<ActionDescription> {
-        match self.state {
-            ActionState::Completed | ActionState::Skipped => {
-                vec![]
-            },
-            _ => self.action.execute_description(),
-        }
-    }
-    /// A description of what this action would do during revert
-    pub fn describe_revert(&self) -> Vec<ActionDescription> {
-        match self.state {
-            ActionState::Uncompleted | ActionState::Skipped => {
-                vec![]
-            },
-            _ => self.action.revert_description(),
-        }
-    }
-    /// Perform any execution steps
-    ///
-    /// You should prefer this ([`try_execute`][StatefulAction::try_execute]) over [`execute`][Action::execute] as it handles [`ActionState`] and does tracing
-    #[tracing::instrument(level = "debug", skip_all)]
-    pub async fn try_execute(&mut self) -> Result<(), ActionError> {
-        match self.state {
-            ActionState::Completed => {
-                tracing::trace!(
-                    "Completed: (Already done) {}",
-                    self.action.tracing_synopsis()
-                );
-                Ok(())
-            },
-            ActionState::Skipped => {
-                tracing::trace!("Skipped: {}", self.action.tracing_synopsis());
-                Ok(())
-            },
-            _ => {
-                self.state = ActionState::Progress;
-                tracing::debug!("Executing: {}", self.action.tracing_synopsis());
-                self.action.execute().await?;
-                self.state = ActionState::Completed;
-                tracing::debug!("Completed: {}", self.action.tracing_synopsis());
-                Ok(())
-            },
-        }
-    }
-    /// Perform any revert steps
-    ///
-    /// You should prefer this ([`try_revert`][StatefulAction::try_revert]) over [`revert`][Action::revert] as it handles [`ActionState`] and does tracing
-    #[tracing::instrument(level = "debug", skip_all)]
-    pub async fn try_revert(&mut self) -> Result<(), ActionError> {
-        match self.state {
-            ActionState::Uncompleted => {
-                tracing::trace!(
-                    "Reverted: (Already done) {}",
-                    self.action.tracing_synopsis()
-                );
-                Ok(())
-            },
-            ActionState::Skipped => {
-                tracing::trace!("Skipped: {}", self.action.tracing_synopsis());
-                Ok(())
-            },
-            _ => {
-                self.state = ActionState::Progress;
-                tracing::debug!("Reverting: {}", self.action.tracing_synopsis());
-                self.action.revert().await?;
-                tracing::debug!("Reverted: {}", self.action.tracing_synopsis());
-                self.state = ActionState::Uncompleted;
-                Ok(())
-            },
-        }
-    }
-}
-
 impl<A> StatefulAction<A>
 where
     A: Action,
 {
-    pub fn tag() -> ActionTag {
-        A::action_tag()
-    }
-    pub fn action_tag(&self) -> ActionTag {
-        A::action_tag()
+    pub fn name() -> &'static str {
+        A::NAME
     }
     pub fn tracing_synopsis(&self) -> String {
         self.action.tracing_synopsis()
@@ -131,15 +43,6 @@ where
         &self.action
     }
 
-    pub fn boxed(self) -> StatefulAction<Box<dyn Action>>
-    where
-        Self: 'static,
-    {
-        StatefulAction {
-            action: Box::new(self.action),
-            state: self.state,
-        }
-    }
     /// A description of what this action would do during execution
     pub fn describe_execute(&self) -> Vec<ActionDescription> {
         if self.state == ActionState::Completed {

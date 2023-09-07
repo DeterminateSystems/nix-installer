@@ -3,7 +3,7 @@ use std::path::{Path, PathBuf};
 use tokio::process::Command;
 use tracing::{span, Span};
 
-use crate::action::{ActionError, ActionErrorKind, ActionTag, StatefulAction};
+use crate::action::{ActionError, ActionErrorKind,StatefulAction};
 use crate::execute_command;
 
 use crate::action::{Action, ActionDescription};
@@ -75,11 +75,9 @@ impl BootstrapLaunchctlService {
 }
 
 #[async_trait::async_trait]
-#[typetag::serde(name = "bootstrap_launchctl_service")]
 impl Action for BootstrapLaunchctlService {
-    fn action_tag() -> ActionTag {
-        ActionTag("bootstrap_launchctl_service")
-    }
+    const NAME: &'static str = "bootstrap_launchctl_service";
+    
     fn tracing_synopsis(&self) -> String {
         format!(
             "Bootstrap the `{}` service via `launchctl bootstrap {} {}`",

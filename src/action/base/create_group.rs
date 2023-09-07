@@ -3,10 +3,12 @@ use target_lexicon::OperatingSystem;
 use tokio::process::Command;
 use tracing::{span, Span};
 
-use crate::action::{ActionError, ActionErrorKind, ActionTag};
+use crate::action::{ActionError, ActionErrorKind};
 use crate::execute_command;
 
 use crate::action::{Action, ActionDescription, StatefulAction};
+
+use super::BaseAction;
 
 /**
 Create an operating system level user group
@@ -58,11 +60,8 @@ impl CreateGroup {
 }
 
 #[async_trait::async_trait]
-#[typetag::serde(name = "create_group")]
 impl Action for CreateGroup {
-    fn action_tag() -> ActionTag {
-        ActionTag("create_group")
-    }
+    const NAME: &'static str = "create_group";
     fn tracing_synopsis(&self) -> String {
         format!("Create group `{}` (GID {})", self.name, self.gid)
     }
@@ -198,5 +197,11 @@ impl Action for CreateGroup {
         };
 
         Ok(())
+    }
+}
+
+impl Into<BaseAction> for CreateGroup {
+    fn into(self) -> BaseAction {
+        BaseAction::CreateGroup(self)
     }
 }

@@ -1,8 +1,10 @@
 use crate::action::{
-    base::DeleteUser, Action, ActionDescription, ActionError, ActionErrorKind, ActionTag,
+    base::DeleteUser, Action, ActionDescription, ActionError, ActionErrorKind,
     StatefulAction,
 };
 use tracing::{span, Span};
+
+use super::CommonAction;
 
 #[derive(Debug, serde::Deserialize, serde::Serialize, Clone)]
 pub struct DeleteUsersInGroup {
@@ -33,11 +35,8 @@ impl DeleteUsersInGroup {
 }
 
 #[async_trait::async_trait]
-#[typetag::serde(name = "delete_users_in_group")]
 impl Action for DeleteUsersInGroup {
-    fn action_tag() -> ActionTag {
-        ActionTag("delete_users_in_group")
-    }
+    const NAME: &'static str = "delete_users_in_group";
     fn tracing_synopsis(&self) -> String {
         format!(
             "Delete users part of group `{}` (GID {}), they are part of a previous install and are no longer required with `auto-allocate-uids = true` in nix.conf",
@@ -114,5 +113,11 @@ impl Action for DeleteUsersInGroup {
         } else {
             Err(Self::error(ActionErrorKind::MultipleChildren(errors)))
         }
+    }
+}
+
+impl Into<CommonAction> for DeleteUsersInGroup {
+    fn into(self) -> CommonAction {
+        CommonAction::DeleteUsersInGroup(self)
     }
 }

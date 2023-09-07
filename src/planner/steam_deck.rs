@@ -108,7 +108,7 @@ use crate::{
             EnsureSteamosNixDirectory, RevertCleanSteamosNixOffload, StartSystemdUnit,
             SystemctlDaemonReload,
         },
-        Action, StatefulAction,
+        Action, StatefulAction, KnownAction,
     },
     planner::{Planner, PlannerError},
     settings::{CommonSettings, InitSystem, InstallSettingsError},
@@ -144,7 +144,7 @@ impl Planner for SteamDeck {
         })
     }
 
-    async fn plan(&self) -> Result<Vec<StatefulAction<Box<dyn Action>>>, PlannerError> {
+    async fn plan(&self) -> Result<Vec<StatefulAction<KnownAction>>, PlannerError> {
         // Starting in roughly build ID `20230522.1000`, the Steam Deck has a `/home/.steamos/offload/nix` directory and `nix.mount` unit we can use instead of creating a mountpoint.
         let requires_nix_bind_mount = detect_requires_bind_mount().await?;
 

@@ -11,8 +11,10 @@ use tokio::{
 };
 
 use crate::action::{
-    Action, ActionDescription, ActionError, ActionErrorKind, ActionTag, StatefulAction,
+    Action, ActionDescription, ActionError, ActionErrorKind,StatefulAction,
 };
+
+use super::BaseAction;
 
 /** Create a file at the given location with the provided `buf`,
 optionally with an owning user, group, and mode.
@@ -143,11 +145,9 @@ impl CreateFile {
 }
 
 #[async_trait::async_trait]
-#[typetag::serde(name = "create_file")]
 impl Action for CreateFile {
-    fn action_tag() -> ActionTag {
-        ActionTag("create_file")
-    }
+    const NAME: &'static str = "create_file";
+    
     fn tracing_synopsis(&self) -> String {
         format!("Create or overwrite file `{}`", self.path.display())
     }
@@ -273,6 +273,12 @@ impl Action for CreateFile {
             .map_err(Self::error)?;
 
         Ok(())
+    }
+}
+
+impl Into<BaseAction> for CreateFile {
+    fn into(self) -> BaseAction {
+        BaseAction::CreateFile(self)
     }
 }
 

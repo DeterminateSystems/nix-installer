@@ -3,10 +3,12 @@ use target_lexicon::OperatingSystem;
 use tokio::process::Command;
 use tracing::{span, Span};
 
-use crate::action::{ActionError, ActionErrorKind, ActionTag};
+use crate::action::{ActionError, ActionErrorKind};
 use crate::execute_command;
 
 use crate::action::{Action, ActionDescription, StatefulAction};
+
+use super::BaseAction;
 
 /**
 Delete an operating system level user
@@ -45,11 +47,8 @@ impl DeleteUser {
 }
 
 #[async_trait::async_trait]
-#[typetag::serde(name = "delete_user")]
 impl Action for DeleteUser {
-    fn action_tag() -> ActionTag {
-        ActionTag("delete_user")
-    }
+    const NAME: &'static str = "delete_user";
     fn tracing_synopsis(&self) -> String {
         format!(
             "Delete user `{}`, which exists due to a previous install, but is no longer required",
@@ -147,3 +146,9 @@ impl Action for DeleteUser {
         Ok(())
     }
 }
+impl Into<BaseAction> for DeleteUser {
+    fn into(self) -> BaseAction {
+        BaseAction::DeleteUser(self)
+    }
+}
+

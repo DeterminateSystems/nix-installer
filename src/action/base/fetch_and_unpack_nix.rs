@@ -5,9 +5,11 @@ use reqwest::Url;
 use tracing::{span, Span};
 
 use crate::{
-    action::{Action, ActionDescription, ActionError, ActionErrorKind, ActionTag, StatefulAction},
+    action::{Action, ActionDescription, ActionError, ActionErrorKind,StatefulAction},
     parse_ssl_cert,
 };
+
+use super::BaseAction;
 
 /**
 Fetch a URL to the given path
@@ -58,11 +60,8 @@ impl FetchAndUnpackNix {
 }
 
 #[async_trait::async_trait]
-#[typetag::serde(name = "fetch_and_unpack_nix")]
 impl Action for FetchAndUnpackNix {
-    fn action_tag() -> ActionTag {
-        ActionTag("fetch_and_unpack_nix")
-    }
+    const NAME: &'static str = "fetch_and_unpack_nix";
     fn tracing_synopsis(&self) -> String {
         format!("Fetch `{}` to `{}`", self.url, self.dest.display())
     }
@@ -163,6 +162,12 @@ impl Action for FetchAndUnpackNix {
         Ok(())
     }
 }
+impl Into<BaseAction> for FetchAndUnpackNix {
+    fn into(self) -> BaseAction {
+        BaseAction::FetchAndUnpackNix(self)
+    }
+}
+
 
 #[non_exhaustive]
 #[derive(Debug, thiserror::Error)]

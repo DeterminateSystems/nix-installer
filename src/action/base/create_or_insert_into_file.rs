@@ -1,7 +1,7 @@
 use nix::unistd::{chown, Group, User};
 
 use crate::action::{
-    Action, ActionDescription, ActionError, ActionErrorKind, ActionTag, StatefulAction,
+    Action, ActionDescription, ActionError, ActionErrorKind,StatefulAction,
 };
 use rand::Rng;
 use std::{
@@ -14,6 +14,8 @@ use tokio::{
     io::{AsyncReadExt, AsyncSeekExt, AsyncWriteExt},
 };
 use tracing::{span, Span};
+
+use super::BaseAction;
 
 #[derive(Debug, serde::Deserialize, serde::Serialize, Clone, PartialEq, Eq)]
 pub enum Position {
@@ -148,11 +150,8 @@ impl CreateOrInsertIntoFile {
 }
 
 #[async_trait::async_trait]
-#[typetag::serde(name = "create_or_insert_into_file")]
 impl Action for CreateOrInsertIntoFile {
-    fn action_tag() -> ActionTag {
-        ActionTag("create_or_insert_into_file")
-    }
+    const NAME: &'static str = "create_or_insert_into_file";
     fn tracing_synopsis(&self) -> String {
         format!("Create or insert file `{}`", self.path.display())
     }
@@ -385,6 +384,13 @@ impl Action for CreateOrInsertIntoFile {
         Ok(())
     }
 }
+
+impl Into<BaseAction> for CreateOrInsertIntoFile {
+    fn into(self) -> BaseAction {
+        BaseAction::CreateOrInsertIntoFile(self)
+    }
+}
+
 
 #[cfg(test)]
 mod test {

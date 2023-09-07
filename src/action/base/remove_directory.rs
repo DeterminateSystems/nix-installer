@@ -6,6 +6,8 @@ use tracing::{span, Span};
 use crate::action::{Action, ActionDescription, ActionErrorKind, ActionState};
 use crate::action::{ActionError, StatefulAction};
 
+use super::BaseAction;
+
 /** Remove a directory, does nothing on revert.
 */
 #[derive(Debug, serde::Deserialize, serde::Serialize, Clone)]
@@ -26,11 +28,8 @@ impl RemoveDirectory {
 }
 
 #[async_trait::async_trait]
-#[typetag::serde(name = "remove_directory")]
 impl Action for RemoveDirectory {
-    fn action_tag() -> crate::action::ActionTag {
-        crate::action::ActionTag("remove_directory")
-    }
+    const NAME: &'static str = "remove_directory";
     fn tracing_synopsis(&self) -> String {
         format!("Remove directory `{}`", self.path.display())
     }
@@ -72,5 +71,11 @@ impl Action for RemoveDirectory {
     #[tracing::instrument(level = "debug", skip_all)]
     async fn revert(&mut self) -> Result<(), ActionError> {
         Ok(())
+    }
+}
+
+impl Into<BaseAction> for RemoveDirectory {
+    fn into(self) -> BaseAction {
+        BaseAction::RemoveDirectory(self)
     }
 }

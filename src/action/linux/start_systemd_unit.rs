@@ -1,7 +1,7 @@
 use tokio::process::Command;
 use tracing::{span, Span};
 
-use crate::action::{ActionError, ActionErrorKind, ActionState, ActionTag, StatefulAction};
+use crate::action::{ActionError, ActionErrorKind, ActionState, StatefulAction};
 use crate::execute_command;
 
 use crate::action::{Action, ActionDescription};
@@ -48,11 +48,8 @@ impl StartSystemdUnit {
 }
 
 #[async_trait::async_trait]
-#[typetag::serde(name = "start_systemd_unit")]
 impl Action for StartSystemdUnit {
-    fn action_tag() -> ActionTag {
-        ActionTag("start_systemd_unit")
-    }
+    const NAME: &'static str = "start_systemd_unit";
     fn tracing_synopsis(&self) -> String {
         format!("Enable (and start) the systemd unit `{}`", self.unit)
     }

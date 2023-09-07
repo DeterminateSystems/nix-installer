@@ -4,7 +4,7 @@ use tokio::fs::create_dir;
 use tokio::process::Command;
 use tracing::{span, Span};
 
-use crate::action::{ActionError, ActionErrorKind, ActionTag};
+use crate::action::{ActionError, ActionErrorKind};
 use crate::execute_command;
 
 use crate::action::{Action, ActionDescription, StatefulAction};
@@ -36,11 +36,8 @@ impl EnsureSteamosNixDirectory {
 }
 
 #[async_trait::async_trait]
-#[typetag::serde(name = "ensure_steamos_nix_directory")]
 impl Action for EnsureSteamosNixDirectory {
-    fn action_tag() -> ActionTag {
-        ActionTag("ensure_steamos_nix_directory")
-    }
+    const NAME: &'static str = "ensure_steamos_nix_directory";
     fn tracing_synopsis(&self) -> String {
         "Ensure SteamOS's `/nix` directory exists".to_string()
     }

@@ -4,11 +4,13 @@ use std::path::PathBuf;
 use tokio::process::Command;
 use tracing::{span, Span};
 
-use crate::action::{ActionError, ActionErrorKind, ActionTag, StatefulAction};
+use crate::action::{ActionError, ActionErrorKind,StatefulAction};
 use crate::execute_command;
 
 use crate::action::{Action, ActionDescription};
 use crate::settings::InitSystem;
+
+use super::CommonAction;
 
 #[cfg(target_os = "linux")]
 const SERVICE_SRC: &str = "/nix/var/nix/profiles/default/lib/systemd/system/nix-daemon.service";
@@ -107,11 +109,9 @@ impl ConfigureInitService {
 }
 
 #[async_trait::async_trait]
-#[typetag::serde(name = "configure_init_service")]
 impl Action for ConfigureInitService {
-    fn action_tag() -> ActionTag {
-        ActionTag("configure_init_service")
-    }
+    const NAME: &'static str = "configure_init_service";
+    
     fn tracing_synopsis(&self) -> String {
         match self.init {
             #[cfg(target_os = "linux")]
@@ -511,6 +511,12 @@ impl Action for ConfigureInitService {
         } else {
             Err(Self::error(ActionErrorKind::Multiple(errors)))
         }
+    }
+}
+
+impl Into<CommonAction> for ConfigureInitService {
+    fn into(self) -> CommonAction {
+        CommonAction::ConfigureInitService(self)
     }
 }
 

@@ -21,7 +21,7 @@ use std::{collections::HashMap, path::PathBuf, string::FromUtf8Error};
 use serde::{Deserialize, Serialize};
 
 use crate::{
-    action::{ActionError, StatefulAction},
+    action::{ActionError, StatefulAction, KnownAction},
     error::HasExpectedErrors,
     settings::{CommonSettings, InstallSettingsError},
     Action,
@@ -39,7 +39,7 @@ pub trait Planner: std::fmt::Debug + Send + Sync {
     where
         Self: Sized;
     /// Plan out the [`Action`]s for an [`InstallPlan`]
-    async fn plan(&self) -> Result<Vec<StatefulAction<Box<dyn Action>>>, PlannerError>;
+    async fn plan(&self) -> Result<Vec<StatefulAction<KnownAction>>, PlannerError>;
     /// The settings being used by the planner
     fn settings(&self) -> Result<HashMap<String, serde_json::Value>, InstallSettingsError>;
 
@@ -155,7 +155,7 @@ impl KnownPlanner {
         }
     }
 
-    pub async fn plan(&self) -> Result<Vec<StatefulAction<Box<dyn Action>>>, PlannerError> {
+    pub async fn plan(&self) -> Result<Vec<StatefulAction<KnownAction>>, PlannerError> {
         match self {
             #[cfg(target_os = "linux")]
             KnownPlanner::Linux(planner) => planner.plan().await,

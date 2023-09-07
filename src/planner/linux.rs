@@ -3,7 +3,7 @@ use crate::{
         base::{CreateDirectory, RemoveDirectory},
         common::{ConfigureInitService, ConfigureNix, CreateUsersAndGroups, ProvisionNix},
         linux::ProvisionSelinux,
-        StatefulAction,
+        StatefulAction, KnownAction,
     },
     error::HasExpectedErrors,
     planner::{Planner, PlannerError},
@@ -37,7 +37,7 @@ impl Planner for Linux {
         })
     }
 
-    async fn plan(&self) -> Result<Vec<StatefulAction<Box<dyn Action>>>, PlannerError> {
+    async fn plan(&self) -> Result<Vec<StatefulAction<KnownAction>>, PlannerError> {
         let has_selinux = detect_selinux().await?;
 
         let mut plan = vec![];
@@ -46,26 +46,26 @@ impl Planner for Linux {
             CreateDirectory::plan("/nix", None, None, 0o0755, true)
                 .await
                 .map_err(PlannerError::Action)?
-                .boxed(),
+                .into(),
         );
 
         plan.push(
             ProvisionNix::plan(&self.settings.clone())
                 .await
                 .map_err(PlannerError::Action)?
-                .boxed(),
+                .into(),
         );
         plan.push(
             CreateUsersAndGroups::plan(self.settings.clone())
                 .await
                 .map_err(PlannerError::Action)?
-                .boxed(),
+                .into(),
         );
         plan.push(
             ConfigureNix::plan(ShellProfileLocations::default(), &self.settings)
                 .await
                 .map_err(PlannerError::Action)?
-                .boxed(),
+                .into(),
         );
 
         if has_selinux {
@@ -73,7 +73,7 @@ impl Planner for Linux {
                 ProvisionSelinux::plan("/usr/share/selinux/packages/nix.pp".into())
                     .await
                     .map_err(PlannerError::Action)?
-                    .boxed(),
+                    .into(),
             );
         }
 
@@ -81,20 +81,20 @@ impl Planner for Linux {
             CreateDirectory::plan("/etc/tmpfiles.d", None, None, 0o0755, false)
                 .await
                 .map_err(PlannerError::Action)?
-                .boxed(),
+                .into(),
         );
 
         plan.push(
             ConfigureInitService::plan(self.init.init, self.init.start_daemon)
                 .await
                 .map_err(PlannerError::Action)?
-                .boxed(),
+                .into(),
         );
         plan.push(
             RemoveDirectory::plan(crate::settings::SCRATCH_DIR)
                 .await
                 .map_err(PlannerError::Action)?
-                .boxed(),
+                .into(),
         );
 
         Ok(plan)

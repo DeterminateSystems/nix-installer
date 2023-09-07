@@ -3,7 +3,7 @@ use std::path::Path;
 use tokio::process::Command;
 use tracing::{span, Span};
 
-use crate::action::{ActionError, ActionErrorKind, ActionTag};
+use crate::action::{ActionError, ActionErrorKind};
 use crate::execute_command;
 
 use crate::action::{Action, ActionDescription, StatefulAction};
@@ -30,11 +30,8 @@ impl SystemctlDaemonReload {
 }
 
 #[async_trait::async_trait]
-#[typetag::serde(name = "systemctl_daemon_reload")]
 impl Action for SystemctlDaemonReload {
-    fn action_tag() -> ActionTag {
-        ActionTag("systemctl_daemon_reload")
-    }
+    const NAME: &'static str = "systemctl_daemon_reload";
     fn tracing_synopsis(&self) -> String {
         "Run `systemctl daemon-reload`".to_string()
     }

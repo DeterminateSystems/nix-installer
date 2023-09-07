@@ -3,10 +3,12 @@ use tracing::{span, Span};
 use crate::action::base::create_or_merge_nix_config::CreateOrMergeNixConfigError;
 use crate::action::base::{CreateDirectory, CreateOrMergeNixConfig};
 use crate::action::{
-    Action, ActionDescription, ActionError, ActionErrorKind, ActionTag, StatefulAction,
+    Action, ActionDescription, ActionError, ActionErrorKind,StatefulAction,
 };
 use std::collections::hash_map::Entry;
 use std::path::PathBuf;
+
+use super::CommonAction;
 
 const NIX_CONF_FOLDER: &str = "/etc/nix";
 const NIX_CONF: &str = "/etc/nix/nix.conf";
@@ -93,11 +95,8 @@ impl PlaceNixConfiguration {
 }
 
 #[async_trait::async_trait]
-#[typetag::serde(name = "place_nix_configuration")]
 impl Action for PlaceNixConfiguration {
-    fn action_tag() -> ActionTag {
-        ActionTag("place_nix_configuration")
-    }
+    const NAME: &'static str = "place_nix_configuration";
     fn tracing_synopsis(&self) -> String {
         format!("Place the Nix configuration in `{NIX_CONF}`")
     }
@@ -171,5 +170,12 @@ impl Action for PlaceNixConfiguration {
         } else {
             Err(Self::error(ActionErrorKind::MultipleChildren(errors)))
         }
+    }
+}
+
+
+impl Into<CommonAction> for PlaceNixConfiguration {
+    fn into(self) -> CommonAction {
+        CommonAction::PlaceNixConfiguration(self)
     }
 }

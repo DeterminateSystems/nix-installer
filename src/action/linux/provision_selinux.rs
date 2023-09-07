@@ -4,7 +4,7 @@ use tokio::fs::{create_dir_all, remove_file};
 use tokio::process::Command;
 use tracing::{span, Span};
 
-use crate::action::{ActionError, ActionErrorKind, ActionTag};
+use crate::action::{ActionError, ActionErrorKind};
 use crate::execute_command;
 
 use crate::action::{Action, ActionDescription, StatefulAction};
@@ -31,11 +31,8 @@ impl ProvisionSelinux {
 }
 
 #[async_trait::async_trait]
-#[typetag::serde(name = "provision_selinux")]
 impl Action for ProvisionSelinux {
-    fn action_tag() -> ActionTag {
-        ActionTag("provision_selinux")
-    }
+    const NAME: &'static str = "provision_selinux";
     fn tracing_synopsis(&self) -> String {
         "Install an SELinux Policy for Nix".to_string()
     }

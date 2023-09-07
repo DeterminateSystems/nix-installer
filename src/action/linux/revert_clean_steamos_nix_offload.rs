@@ -2,7 +2,7 @@ use std::path::Path;
 
 use tracing::{span, Span};
 
-use crate::action::{ActionError, ActionErrorKind, ActionTag};
+use crate::action::{ActionError, ActionErrorKind};
 
 use crate::action::{Action, ActionDescription, StatefulAction};
 
@@ -29,11 +29,8 @@ impl RevertCleanSteamosNixOffload {
 }
 
 #[async_trait::async_trait]
-#[typetag::serde(name = "revert_clean_steamos_nix_offload")]
 impl Action for RevertCleanSteamosNixOffload {
-    fn action_tag() -> ActionTag {
-        ActionTag("revert_clean_steamos_nix_offload")
-    }
+    const NAME: &'static str = "revert_clean_steamos_nix_offload";
     fn tracing_synopsis(&self) -> String {
         format!("Clean the `{OFFLOAD_PATH}` directory")
     }

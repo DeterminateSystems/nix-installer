@@ -5,10 +5,12 @@ use target_lexicon::OperatingSystem;
 use tokio::process::Command;
 use tracing::{span, Span};
 
-use crate::action::{ActionError, ActionErrorKind};
+use crate::action::{ActionError, ActionErrorKind, KnownAction};
 use crate::execute_command;
 
 use crate::action::{Action, ActionDescription, StatefulAction};
+
+use super::BaseAction;
 
 /**
 Create an operating system level user in the given group
@@ -149,11 +151,9 @@ impl AddUserToGroup {
 }
 
 #[async_trait::async_trait]
-#[typetag::serde(name = "add_user_to_group")]
 impl Action for AddUserToGroup {
-    fn action_tag() -> crate::action::ActionTag {
-        crate::action::ActionTag("add_user_to_group")
-    }
+    const NAME: &'static str = "add_user_to_group";
+    
     fn tracing_synopsis(&self) -> String {
         format!(
             "Add user `{}` (UID {}) to group `{}` (GID {})",
@@ -325,5 +325,11 @@ impl Action for AddUserToGroup {
         };
 
         Ok(())
+    }
+}
+
+impl Into<BaseAction> for AddUserToGroup {
+    fn into(self) -> BaseAction {
+        BaseAction::AddUserToGroup(self)
     }
 }

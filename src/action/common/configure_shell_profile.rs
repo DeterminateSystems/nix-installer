@@ -1,6 +1,6 @@
 use crate::action::base::{create_or_insert_into_file, CreateDirectory, CreateOrInsertIntoFile};
 use crate::action::{
-    Action, ActionDescription, ActionError, ActionErrorKind, ActionTag, StatefulAction,
+    Action, ActionDescription, ActionError, ActionErrorKind,StatefulAction,
 };
 use crate::planner::ShellProfileLocations;
 
@@ -8,6 +8,8 @@ use nix::unistd::User;
 use std::path::{Path, PathBuf};
 use tokio::task::JoinSet;
 use tracing::{span, Instrument, Span};
+
+use super::CommonAction;
 
 const PROFILE_NIX_FILE_SHELL: &str = "/nix/var/nix/profiles/default/etc/profile.d/nix-daemon.sh";
 const PROFILE_NIX_FILE_FISH: &str = "/nix/var/nix/profiles/default/etc/profile.d/nix-daemon.fish";
@@ -173,11 +175,8 @@ impl ConfigureShellProfile {
 }
 
 #[async_trait::async_trait]
-#[typetag::serde(name = "configure_shell_profile")]
 impl Action for ConfigureShellProfile {
-    fn action_tag() -> ActionTag {
-        ActionTag("configure_shell_profile")
-    }
+    const NAME: &'static str = "configure_shell_profile";
     fn tracing_synopsis(&self) -> String {
         "Configure the shell profiles".to_string()
     }
@@ -289,5 +288,11 @@ impl Action for ConfigureShellProfile {
         } else {
             Err(Self::error(ActionErrorKind::MultipleChildren(errors)))
         }
+    }
+}
+
+impl Into<CommonAction> for ConfigureShellProfile {
+    fn into(self) -> CommonAction {
+        CommonAction::ConfigureShellProfile(self)
     }
 }

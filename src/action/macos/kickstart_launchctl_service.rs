@@ -3,7 +3,7 @@ use std::process::Output;
 use tokio::process::Command;
 use tracing::{span, Span};
 
-use crate::action::{ActionError, ActionErrorKind, ActionTag, StatefulAction};
+use crate::action::{ActionError, ActionErrorKind,StatefulAction};
 use crate::execute_command;
 
 use crate::action::{Action, ActionDescription};
@@ -70,11 +70,8 @@ impl KickstartLaunchctlService {
 }
 
 #[async_trait::async_trait]
-#[typetag::serde(name = "kickstart_launchctl_service")]
 impl Action for KickstartLaunchctlService {
-    fn action_tag() -> ActionTag {
-        ActionTag("kickstart_launchctl_service")
-    }
+    const NAME: &'static str = "kickstart_launchctl_service";
     fn tracing_synopsis(&self) -> String {
         format!(
             "Run `launchctl kickstart -k {}/{}`",

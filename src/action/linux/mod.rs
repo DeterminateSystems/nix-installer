@@ -9,3 +9,12 @@ pub use provision_selinux::ProvisionSelinux;
 pub use revert_clean_steamos_nix_offload::RevertCleanSteamosNixOffload;
 pub use start_systemd_unit::{StartSystemdUnit, StartSystemdUnitError};
 pub use systemctl_daemon_reload::SystemctlDaemonReload;
+
+#[derive(Debug, serde::Deserialize, serde::Serialize, Clone)]
+pub enum LinuxAction {
+    EnsureSteamosNixDirectory(EnsureSteamosNixDirectory),
+    ProvisionSelinux(ProvisionSelinux),
+    RevertCleanSteamosNixOffload(RevertCleanSteamosNixOffload),
+    StartSystemdUnit(StartSystemdUnit),
+    SystemctlDaemonReload(SystemctlDaemonReload),
+}

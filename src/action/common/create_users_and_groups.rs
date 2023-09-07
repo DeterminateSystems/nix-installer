@@ -1,11 +1,13 @@
 use crate::{
     action::{
         base::{AddUserToGroup, CreateGroup, CreateUser},
-        Action, ActionDescription, ActionError, ActionErrorKind, ActionTag, StatefulAction,
+        Action, ActionDescription, ActionError, ActionErrorKind,StatefulAction,
     },
     settings::CommonSettings,
 };
 use tracing::{span, Span};
+
+use super::CommonAction;
 
 #[derive(Debug, serde::Deserialize, serde::Serialize, Clone)]
 pub struct CreateUsersAndGroups {
@@ -66,11 +68,9 @@ impl CreateUsersAndGroups {
 }
 
 #[async_trait::async_trait]
-#[typetag::serde(name = "create_users_and_group")]
 impl Action for CreateUsersAndGroups {
-    fn action_tag() -> ActionTag {
-        ActionTag("create_users_and_group")
-    }
+    const NAME: &'static str = "create_users_and_group";
+    
     fn tracing_synopsis(&self) -> String {
         if self.create_users.is_empty() {
             format!("Create build group (GID {})", self.nix_build_group_id)
@@ -285,5 +285,11 @@ impl Action for CreateUsersAndGroups {
         } else {
             Err(Self::error(ActionErrorKind::MultipleChildren(errors)))
         }
+    }
+}
+
+impl Into<CommonAction> for CreateUsersAndGroups {
+    fn into(self) -> CommonAction {
+        CommonAction::CreateUsersAndGroups(self)
     }
 }

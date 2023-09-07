@@ -4,13 +4,15 @@ use crate::{
     action::{
         base::SetupDefaultProfile,
         common::{ConfigureShellProfile, PlaceNixConfiguration},
-        Action, ActionDescription, ActionError, ActionErrorKind, ActionTag, StatefulAction,
+        Action, ActionDescription, ActionError, ActionErrorKind,StatefulAction,
     },
     planner::ShellProfileLocations,
     settings::{CommonSettings, SCRATCH_DIR},
 };
 
 use tracing::{span, Instrument, Span};
+
+use super::CommonAction;
 
 /**
 Configure Nix and start it
@@ -60,11 +62,8 @@ impl ConfigureNix {
 }
 
 #[async_trait::async_trait]
-#[typetag::serde(name = "configure_nix")]
 impl Action for ConfigureNix {
-    fn action_tag() -> ActionTag {
-        ActionTag("configure_nix")
-    }
+    const NAME: &'static str = "configure_nix";
     fn tracing_synopsis(&self) -> String {
         "Configure Nix".to_string()
     }
@@ -191,5 +190,11 @@ impl Action for ConfigureNix {
         } else {
             Err(Self::error(ActionErrorKind::MultipleChildren(errors)))
         }
+    }
+}
+
+impl Into<CommonAction> for ConfigureNix {
+    fn into(self) -> CommonAction {
+        CommonAction::ConfigureNix(self)
     }
 }

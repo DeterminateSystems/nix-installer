@@ -4,7 +4,7 @@ use crate::action::{
         BootstrapLaunchctlService, CreateApfsVolume, CreateSyntheticObjects, EnableOwnership,
         EncryptApfsVolume, UnmountApfsVolume,
     },
-    Action, ActionDescription, ActionError, ActionErrorKind, ActionTag, StatefulAction,
+    Action, ActionDescription, ActionError, ActionErrorKind,StatefulAction,
 };
 use std::{
     path::{Path, PathBuf},
@@ -120,11 +120,8 @@ impl CreateNixVolume {
 }
 
 #[async_trait::async_trait]
-#[typetag::serde(name = "create_apfs_volume")]
 impl Action for CreateNixVolume {
-    fn action_tag() -> ActionTag {
-        ActionTag("create_nix_volume")
-    }
+    const NAME: &'static str = "create_nix_volume";
     fn tracing_synopsis(&self) -> String {
         format!(
             "Create an{maybe_encrypted} APFS volume `{name}` for Nix on `{disk}` and add it to `/etc/fstab` mounting on `/nix`",

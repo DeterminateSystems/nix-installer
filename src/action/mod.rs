@@ -200,17 +200,22 @@ use tracing::Span;
 
 use crate::{error::HasExpectedErrors, CertificateError};
 
+#[derive(Debug, serde::Deserialize, serde::Serialize, Clone)]
+pub enum KnownAction {
+    Base(base::BaseAction),
+    Common(common::CommonAction),
+    Linux(linux::LinuxAction),
+    Macos(macos::MacosAction),
+}
+
 /// An action which can be reverted or completed, with an action state
 ///
 /// This trait interacts with [`StatefulAction`] which does the [`ActionState`] manipulation and provides some tracing facilities.
 ///
 /// Instead of calling [`execute`][Action::execute] or [`revert`][Action::revert], you should prefer [`try_execute`][StatefulAction::try_execute] and [`try_revert`][StatefulAction::try_revert]
 #[async_trait::async_trait]
-#[typetag::serde(tag = "action")]
-pub trait Action: Send + Sync + std::fmt::Debug + dyn_clone::DynClone {
-    fn action_tag() -> ActionTag
-    where
-        Self: Sized;
+pub trait Action: Send + Sync + std::fmt::Debug {
+    const NAME: &'static str;
     /// A synopsis of the action for tracing purposes
     fn tracing_synopsis(&self) -> String;
     /// A tracing span suitable for the action
@@ -260,13 +265,11 @@ pub trait Action: Send + Sync + std::fmt::Debug + dyn_clone::DynClone {
     where
         Self: Sized,
     {
-        ActionError::new(Self::action_tag(), kind)
+        ActionError::new(Self::name(), kind)
     }
 
     // They should also have an `async fn plan(args...) -> Result<StatefulAction<Self>, ActionError>;`
 }
-
-dyn_clone::clone_trait_object!(Action);
 
 /**
 A description of an [`Action`](crate::action::Action), intended for humans to review
@@ -286,37 +289,16 @@ impl ActionDescription {
     }
 }
 
-/// A 'tag' name an action has that corresponds to the one we serialize in [`typetag]`
-pub struct ActionTag(&'static str);
-
-impl std::fmt::Display for ActionTag {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        f.write_str(self.0)
-    }
-}
-
-impl std::fmt::Debug for ActionTag {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        f.write_str(self.0)
-    }
-}
-
-impl From<&'static str> for ActionTag {
-    fn from(value: &'static str) -> Self {
-        Self(value)
-    }
-}
-
 #[derive(Debug)]
 pub struct ActionError {
-    action_tag: ActionTag,
+    name: &'static str,
     kind: ActionErrorKind,
 }
 
 impl ActionError {
-    pub fn new(action_tag: ActionTag, kind: impl Into<ActionErrorKind>) -> Self {
+    pub fn new(name: &'static str, kind: impl Into<ActionErrorKind>) -> Self {
         Self {
-            action_tag,
+            name,
             kind: kind.into(),
         }
     }
@@ -325,8 +307,8 @@ impl ActionError {
         &self.kind
     }
 
-    pub fn action_tag(&self) -> &ActionTag {
-        &self.action_tag
+    pub fn name(&self) -> &'static str {
+        &self.name
     }
 
     #[cfg(feature = "diagnostics")]
@@ -338,7 +320,7 @@ impl ActionError {
 
 impl std::fmt::Display for ActionError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        f.write_fmt(format_args!("Action `{}` errored", self.action_tag))
+        f.write_fmt(format_args!("Action `{}` errored", self.name))
     }
 }
 

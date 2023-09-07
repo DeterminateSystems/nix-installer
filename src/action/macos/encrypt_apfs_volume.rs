@@ -1,7 +1,7 @@
 use crate::{
     action::{
         macos::NIX_VOLUME_MOUNTD_DEST, Action, ActionDescription, ActionError, ActionErrorKind,
-        ActionState, ActionTag, StatefulAction,
+        ActionState,StatefulAction,
     },
     execute_command,
     os::darwin::DiskUtilApfsListOutput,
@@ -98,11 +98,8 @@ impl EncryptApfsVolume {
 }
 
 #[async_trait::async_trait]
-#[typetag::serde(name = "encrypt_volume")]
 impl Action for EncryptApfsVolume {
-    fn action_tag() -> ActionTag {
-        ActionTag("encrypt_apfs_volume")
-    }
+    const NAME: &'static str = "encrypt_apfs_volume";
     fn tracing_synopsis(&self) -> String {
         format!(
             "Encrypt volume `{}` on disk `{}`",

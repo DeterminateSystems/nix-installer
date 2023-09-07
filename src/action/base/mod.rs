@@ -25,3 +25,27 @@ pub use fetch_and_unpack_nix::{FetchAndUnpackNix, FetchUrlError};
 pub use move_unpacked_nix::{MoveUnpackedNix, MoveUnpackedNixError};
 pub use remove_directory::RemoveDirectory;
 pub use setup_default_profile::{SetupDefaultProfile, SetupDefaultProfileError};
+
+use super::KnownAction;
+
+#[derive(Debug, serde::Deserialize, serde::Serialize, Clone)]
+pub enum BaseAction {
+    AddUserToGroup(AddUserToGroup),
+    CreateDirectory(CreateDirectory),
+    CreateFile(CreateFile),
+    CreateGroup(CreateGroup),
+    CreateOrInsertIntoFile(CreateOrInsertIntoFile),
+    CreateOrMergeNixConfig(CreateOrMergeNixConfig),
+    CreateUser(CreateUser),
+    DeleteUser(DeleteUser),
+    FetchAndUnpackNix(FetchAndUnpackNix),
+    MoveUnpackedNix(MoveUnpackedNix),
+    RemoveDirectory(RemoveDirectory),
+    SetupDefaultProfile(SetupDefaultProfile),
+}
+
+impl Into<KnownAction> for BaseAction {
+    fn into(self) -> KnownAction {
+        KnownAction::Base(self)
+    }
+}

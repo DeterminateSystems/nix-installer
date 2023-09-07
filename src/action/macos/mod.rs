@@ -33,6 +33,20 @@ use crate::execute_command;
 
 use super::ActionErrorKind;
 
+#[derive(Debug, serde::Deserialize, serde::Serialize, Clone)]
+pub enum MacosAction {
+    BootstrapLaunchctlService(BootstrapLaunchctlService),
+    CreateApfsVolume(CreateApfsVolume),
+    CreateNixVolume(CreateNixVolume),
+    CreateSyntheticObjects(CreateSyntheticObjects),
+    CreateVolumeService(CreateVolumeService),
+    EnableOwnership(EnableOwnership),
+    EncryptApfsVolume(EncryptApfsVolume),
+    KickstartLaunchctlService(KickstartLaunchctlService),
+    SetTmutilExclusion(SetTmutilExclusion),
+    SetTmutilExclusions(SetTmutilExclusions),
+}
+
 async fn get_uuid_for_label(apfs_volume_label: &str) -> Result<Option<Uuid>, ActionErrorKind> {
     let mut command = Command::new("/usr/sbin/diskutil");
     command.process_group(0);

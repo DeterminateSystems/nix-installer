@@ -1,10 +1,10 @@
 use tracing::{span, Span};
 
-use super::CreateNixTree;
+use super::{CreateNixTree, CommonAction};
 use crate::{
     action::{
         base::{FetchAndUnpackNix, MoveUnpackedNix},
-        Action, ActionDescription, ActionError, ActionErrorKind, ActionTag, StatefulAction,
+        Action, ActionDescription, ActionError, ActionErrorKind,StatefulAction,
     },
     settings::{CommonSettings, SCRATCH_DIR},
 };
@@ -45,11 +45,9 @@ impl ProvisionNix {
 }
 
 #[async_trait::async_trait]
-#[typetag::serde(name = "provision_nix")]
 impl Action for ProvisionNix {
-    fn action_tag() -> ActionTag {
-        ActionTag("provision_nix")
-    }
+    const NAME: &'static str = "provision_nix";
+    
     fn tracing_synopsis(&self) -> String {
         "Provision Nix".to_string()
     }
@@ -141,5 +139,11 @@ impl Action for ProvisionNix {
         } else {
             Err(Self::error(ActionErrorKind::MultipleChildren(errors)))
         }
+    }
+}
+
+impl Into<CommonAction> for ProvisionNix {
+    fn into(self) -> CommonAction {
+        CommonAction::ProvisionNix(self)
     }
 }

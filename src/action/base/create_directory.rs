@@ -11,6 +11,8 @@ use crate::action::{Action, ActionDescription, ActionErrorKind, ActionState};
 use crate::action::{ActionError, StatefulAction};
 use crate::execute_command;
 
+use super::BaseAction;
+
 /** Create a directory at the given location, optionally with an owning user, group, and mode.
 
 If `force_prune_on_revert` is set, the folder will always be deleted on
@@ -115,11 +117,9 @@ impl CreateDirectory {
 }
 
 #[async_trait::async_trait]
-#[typetag::serde(name = "create_directory")]
 impl Action for CreateDirectory {
-    fn action_tag() -> crate::action::ActionTag {
-        crate::action::ActionTag("create_directory")
-    }
+    const NAME: &'static str = "create_directory";
+    
     fn tracing_synopsis(&self) -> String {
         format!("Create directory `{}`", self.path.display())
     }
@@ -394,5 +394,11 @@ mod test {
         assert!(stub_file.exists(), "Folder should not have been deleted");
 
         Ok(())
+    }
+}
+
+impl Into<BaseAction> for CreateDirectory {
+    fn into(self) -> BaseAction {
+        BaseAction::CreateDirectory(self)
     }
 }
