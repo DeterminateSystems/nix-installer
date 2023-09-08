@@ -339,6 +339,11 @@ impl Action for CreateOrInsertIntoFile {
             buf,
             position: _,
         } = self;
+        // The user already deleted it
+        if !path.exists() {
+            return Ok(())
+        }
+
         let mut file = OpenOptions::new()
             .create(false)
             .write(true)

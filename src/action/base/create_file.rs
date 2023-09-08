@@ -266,6 +266,10 @@ impl Action for CreateFile {
             buf: _,
             force: _,
         } = self;
+        // The user already deleted it
+        if !path.exists() {
+            return Ok(())
+        }
 
         remove_file(&path)
             .await
