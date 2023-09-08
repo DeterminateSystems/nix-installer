@@ -117,6 +117,7 @@ use crate::{
 
 use super::ShellProfileLocations;
 
+/// A planner for the Valve Steam Deck running SteamOS
 #[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
 #[cfg_attr(feature = "cli", derive(clap::Parser))]
 pub struct SteamDeck {

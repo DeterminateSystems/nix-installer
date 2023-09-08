@@ -10,8 +10,8 @@ use self_test::SelfTest;
 #[allow(clippy::large_enum_variant)]
 #[derive(Debug, clap::Subcommand)]
 pub enum NixInstallerSubcommand {
-    Plan(Plan),
     Install(Install),
     Uninstall(Uninstall),
     SelfTest(SelfTest),
+    Plan(Plan),
 }

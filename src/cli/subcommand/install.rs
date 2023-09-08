@@ -30,9 +30,13 @@ const EXISTING_INCOMPATIBLE_PLAN_GUIDANCE: &str = "\
     If you are using `nix-installer` in an automated curing process and seeing this message, consider pinning the version you use via https://github.com/DeterminateSystems/nix-installer#accessing-other-versions.\
 ";
 
-/// Execute an install (possibly using an existing plan)
-///
-/// To pass custom options, select a planner, for example `nix-installer install linux-multi --help`
+/**
+Install Nix using a planner
+
+By default, an appropriate planner is heuristically determined based on the system.
+
+Some planners have additional options which can be set from the planner's subcommand.
+*/
 #[derive(Debug, Parser)]
 #[command(args_conflicts_with_subcommands = true)]
 pub struct Install {

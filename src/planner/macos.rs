@@ -23,7 +23,7 @@ use crate::{
     Action, BuiltinPlanner,
 };
 
-/// A planner for MacOS (Darwin) installs
+/// A planner for MacOS (Darwin) systems
 #[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
 #[cfg_attr(feature = "cli", derive(clap::Parser))]
 pub struct Macos {

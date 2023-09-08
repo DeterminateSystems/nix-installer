@@ -21,7 +21,7 @@ use super::{
     ShellProfileLocations,
 };
 
-/// A planner for Linux installs
+/// A planner suitable for immutable systems using ostree, such as Fedora Silverblue
 #[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
 #[cfg_attr(feature = "cli", derive(clap::Parser))]
 pub struct Ostree {

@@ -17,7 +17,7 @@ use which::which;
 
 use super::ShellProfileLocations;
 
-/// A planner for Linux installs
+/// A planner for traditional, mutable Linux systems like Debian, RHEL, or Arch
 #[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
 #[cfg_attr(feature = "cli", derive(clap::Parser))]
 pub struct Linux {
