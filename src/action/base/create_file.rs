@@ -268,7 +268,7 @@ impl Action for CreateFile {
         } = self;
         // The user already deleted it
         if !path.exists() {
-            return Ok(())
+            return Ok(());
         }
 
         remove_file(&path)

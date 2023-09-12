@@ -359,7 +359,7 @@ impl Planner for SteamDeck {
         } = self;
         let mut map = HashMap::default();
 
-        map.extend(settings.settings()?.into_iter());
+        map.extend(settings.settings()?);
         map.insert(
             "persistence".to_string(),
             serde_json::to_value(persistence)?,
