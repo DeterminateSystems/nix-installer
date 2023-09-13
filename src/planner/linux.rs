@@ -104,8 +104,8 @@ impl Planner for Linux {
         let Self { settings, init } = self;
         let mut map = HashMap::default();
 
-        map.extend(settings.settings()?.into_iter());
-        map.extend(init.settings()?.into_iter());
+        map.extend(settings.settings()?);
+        map.extend(init.settings()?);
 
         Ok(map)
     }
