@@ -200,6 +200,8 @@ use tracing::Span;
 
 use crate::{error::HasExpectedErrors, CertificateError};
 
+use self::base::create_or_insert_into_file::Position;
+
 /// An action which can be reverted or completed, with an action state
 ///
 /// This trait interacts with [`StatefulAction`] which does the [`ActionState`] manipulation and provides some tracing facilities.
@@ -361,6 +363,21 @@ pub enum ActionErrorKind {
     /// A custom error
     #[error(transparent)]
     Custom(Box<dyn std::error::Error + Send + Sync>),
+    /// An error to do with the `nix.conf` configuration having a conflict
+    #[error("\
+        A configuration conflict in `/etc/nix/nix.conf` exists.\n\
+        The installer would set a default:\n\
+        {indent}{setting} = {planned_value}\n\
+        However, this setting is already set in the `nix.conf`:\n\
+        {indent}{setting} = {existing_value}\n\
+        \n\
+        Consider unsetting the value. For lists like `experimental-features` you can append with `extra-experimental-features`.\
+    ", indent = "    ")]
+    ConfigurationConflict {
+        setting: String,
+        existing_value: String,
+        planned_value: String,
+    },
     /// An error to do with certificates
     #[error(transparent)]
     Certificate(#[from] CertificateError),
@@ -390,6 +407,16 @@ pub enum ActionErrorKind {
         "`{0}` exists with different content than planned, consider removing it with `rm {0}`"
     )]
     DifferentContent(std::path::PathBuf),
+    /// The path already exists with a different line content that expected
+    #[error(
+        "`{0}` exists with different line content than planned, {position} may have changed since read",
+        position = match .1 {
+            Position::Beginning => "the line at the start of the file".to_string(),
+            Position::End => "the line at the end of the file".to_string(),
+            Position::Before { index, .. } => format!("line {index}"),
+        }
+    )]
+    DifferentLineContent(std::path::PathBuf, Position),
     /// The file already exists
     #[error("`{0}` already exists, consider removing it with `rm {0}`")]
     FileExists(std::path::PathBuf),
@@ -583,8 +610,10 @@ impl HasExpectedErrors for ActionErrorKind {
         match self {
             Self::PathUserMismatch(_, _, _)
             | Self::PathGroupMismatch(_, _, _)
-            | Self::PathModeMismatch(_, _, _) => Some(Box::new(self)),
+            | Self::PathModeMismatch(_, _, _)
+            | Self::ConfigurationConflict { .. } => Some(Box::new(self)),
             Self::SystemdMissing => Some(Box::new(self)),
+            Self::Child(child) => child.kind().expected(),
             _ => None,
         }
     }

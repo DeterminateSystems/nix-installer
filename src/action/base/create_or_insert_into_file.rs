@@ -19,6 +19,10 @@ use tracing::{span, Span};
 pub enum Position {
     Beginning,
     End,
+    Before {
+        index: usize,
+        expected_content: String,
+    },
 }
 
 /** Create a file at the given location with the provided `buf` as
@@ -140,6 +144,20 @@ impl CreateOrInsertIntoFile {
                 return Ok(StatefulAction::completed(this));
             }
 
+            if let Position::Before {
+                index,
+                expected_content,
+            } = &this.position
+            {
+                if discovered_buf.lines().nth(*index) != Some(expected_content.as_str()) {
+                    return Err(ActionErrorKind::DifferentLineContent(
+                        this.path.clone(),
+                        this.position.clone(),
+                    ))
+                    .map_err(Self::error);
+                }
+            }
+
             // If not, we can't skip this, so we still do it
         }
 
@@ -221,33 +239,75 @@ impl Action for CreateOrInsertIntoFile {
                 ActionErrorKind::Open(temp_file_path.clone(), e)
             }).map_err(Self::error)?;
 
-        if *position == Position::End {
-            if let Some(ref mut orig_file) = orig_file {
-                tokio::io::copy(orig_file, &mut temp_file)
-                    .await
-                    .map_err(|e| {
-                        ActionErrorKind::Copy(path.to_owned(), temp_file_path.to_owned(), e)
-                    })
-                    .map_err(Self::error)?;
-            }
-        }
+        match position {
+            Position::End => {
+                if let Some(ref mut orig_file) = orig_file {
+                    tokio::io::copy(orig_file, &mut temp_file)
+                        .await
+                        .map_err(|e| {
+                            ActionErrorKind::Copy(path.to_owned(), temp_file_path.to_owned(), e)
+                        })
+                        .map_err(Self::error)?;
+                }
 
-        temp_file
-            .write_all(buf.as_bytes())
-            .await
-            .map_err(|e| ActionErrorKind::Write(temp_file_path.clone(), e))
-            .map_err(Self::error)?;
-
-        if *position == Position::Beginning {
-            if let Some(ref mut orig_file) = orig_file {
-                tokio::io::copy(orig_file, &mut temp_file)
+                temp_file
+                    .write_all(buf.as_bytes())
                     .await
-                    .map_err(|e| {
-                        ActionErrorKind::Copy(path.to_owned(), temp_file_path.to_owned(), e)
-                    })
+                    .map_err(|e| ActionErrorKind::Write(temp_file_path.clone(), e))
                     .map_err(Self::error)?;
-            }
-        }
+            },
+            Position::Beginning => {
+                temp_file
+                    .write_all(buf.as_bytes())
+                    .await
+                    .map_err(|e| ActionErrorKind::Write(temp_file_path.clone(), e))
+                    .map_err(Self::error)?;
+
+                if let Some(ref mut orig_file) = orig_file {
+                    tokio::io::copy(orig_file, &mut temp_file)
+                        .await
+                        .map_err(|e| {
+                            ActionErrorKind::Copy(path.to_owned(), temp_file_path.to_owned(), e)
+                        })
+                        .map_err(Self::error)?;
+                }
+            },
+            Position::Before {
+                index,
+                expected_content,
+            } => {
+                let mut original_content_buf = Vec::new();
+                if let Some(ref mut orig_file) = orig_file {
+                    tokio::io::copy(orig_file, &mut original_content_buf)
+                        .await
+                        .map_err(|e| {
+                            ActionErrorKind::Copy(path.to_owned(), temp_file_path.to_owned(), e)
+                        })
+                        .map_err(Self::error)?;
+                }
+                let original_content = String::from_utf8(original_content_buf)
+                    .map_err(ActionErrorKind::FromUtf8)
+                    .map_err(Self::error)?;
+                let mut original_content_lines = original_content.lines().collect::<Vec<_>>();
+                // The last line should match expected
+                if original_content_lines.get(*index).copied() != Some(expected_content.as_str()) {
+                    return Err(ActionErrorKind::DifferentLineContent(
+                        path.clone(),
+                        position.clone(),
+                    ))
+                    .map_err(Self::error);
+                }
+
+                original_content_lines.insert(*index, buf);
+                let new_content = original_content_lines.join("\n");
+
+                temp_file
+                    .write_all(new_content.as_bytes())
+                    .await
+                    .map_err(|e| ActionErrorKind::Write(temp_file_path.clone(), e))
+                    .map_err(Self::error)?;
+            },
+        };
 
         let gid = if let Some(group) = group {
             Some(
