@@ -47,6 +47,7 @@ impl PlaceNixConfiguration {
 
         defaults_conf_settings.push(("bash-prompt-prefix", "(nix:$name)\\040".into()));
         defaults_conf_settings.push(("extra-nix-path", "nixpkgs=flake:nixpkgs".into()));
+        defaults_conf_settings.push(("max-jobs", "auto".to_string()));
         if let Some(ssl_cert_file) = ssl_cert_file {
             let ssl_cert_file_canonical = ssl_cert_file
                 .canonicalize()
