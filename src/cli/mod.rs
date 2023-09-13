@@ -19,9 +19,11 @@ pub trait CommandExecute {
     async fn execute(self) -> eyre::Result<ExitCode>;
 }
 
-/// The Determinate Nix installer
-///
-/// Plans a Nix install, prompts for confirmation, then executes it
+/**
+The Determinate Nix installer
+
+A fast, friendly, and reliable tool to help you use Nix with Flakes everywhere.
+*/
 #[derive(Debug, Parser)]
 #[clap(version)]
 pub struct NixInstallerCli {

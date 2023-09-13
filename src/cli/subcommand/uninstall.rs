@@ -17,7 +17,7 @@ use rand::Rng;
 
 use crate::cli::{interaction, CommandExecute};
 
-/// Uninstall a previously installed Nix (only `nix-installer` done installs supported)
+/// Uninstall a previously `nix-installer` installed Nix
 #[derive(Debug, Parser)]
 pub struct Uninstall {
     #[clap(

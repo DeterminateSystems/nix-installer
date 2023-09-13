@@ -165,17 +165,17 @@ dyn_clone::clone_trait_object!(Planner);
 #[cfg_attr(feature = "cli", derive(clap::Subcommand))]
 pub enum BuiltinPlanner {
     #[cfg(target_os = "linux")]
-    /// A planner for Linux installs
+    /// A planner for traditional, mutable Linux systems like Debian, RHEL, or Arch
     Linux(linux::Linux),
-    /// A planner MacOS (Darwin) for installs
-    #[cfg(target_os = "macos")]
-    Macos(macos::Macos),
-    /// A planner suitable for the Valve Steam Deck running SteamOS
+    /// A planner for the Valve Steam Deck running SteamOS
     #[cfg(target_os = "linux")]
     SteamDeck(steam_deck::SteamDeck),
-    /// A planner suitable for immutable distributions using ostree
+    /// A planner suitable for immutable systems using ostree, such as Fedora Silverblue
     #[cfg(target_os = "linux")]
     Ostree(ostree::Ostree),
+    /// A planner for MacOS (Darwin) systems
+    #[cfg(target_os = "macos")]
+    Macos(macos::Macos),
 }
 
 impl BuiltinPlanner {

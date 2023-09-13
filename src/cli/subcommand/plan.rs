@@ -8,7 +8,11 @@ use owo_colors::OwoColorize;
 
 use crate::cli::CommandExecute;
 
-/// Plan an install that can be repeated on an identical host later
+/**
+Emit a JSON install plan that can be manually edited before execution
+
+Primarily intended for development, debugging, and handling install cases.
+*/
 #[derive(Debug, Parser)]
 pub struct Plan {
     #[clap(subcommand)]
