@@ -413,7 +413,7 @@ pub enum ActionErrorKind {
         position = match .1 {
             Position::Beginning => "the line at the start of the file".to_string(),
             Position::End => "the line at the end of the file".to_string(),
-            Position::Before { index, .. } => format!("line {index} of the file"),
+            Position::Before { index, .. } => format!("line {index}"),
         }
     )]
     DifferentLineContent(std::path::PathBuf, Position),

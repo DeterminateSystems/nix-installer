@@ -44,7 +44,7 @@ impl PlaceNixConfiguration {
                 "nix-command flakes auto-allocate-uids".into(),
             ),
         ];
-        // https://github.com/DeterminateSystems/nix-installer/issues/449#issuecomment-1551782281
+
         defaults_conf_settings.push(("bash-prompt-prefix", "(nix:$name)\\040".into()));
         defaults_conf_settings.push(("extra-nix-path", "nixpkgs=flake:nixpkgs".into()));
         if let Some(ssl_cert_file) = ssl_cert_file {
@@ -52,10 +52,11 @@ impl PlaceNixConfiguration {
                 .canonicalize()
                 .map_err(|e| Self::error(ActionErrorKind::Canonicalize(ssl_cert_file, e)))?;
             defaults_conf_settings.push((
-                "ssl-cert-file = {}",
+                "ssl-cert-file",
                 ssl_cert_file_canonical.display().to_string(),
             ));
         }
+        // https://github.com/DeterminateSystems/nix-installer/issues/449#issuecomment-1551782281
         #[cfg(not(target_os = "macos"))]
         defaults_conf_settings.push(("auto-optimise-store", "true".into()));
         // Auto-allocate uids is broken on Mac. Tools like `whoami` don't work.
