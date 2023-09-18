@@ -3,7 +3,10 @@
 use std::{collections::HashMap, fmt::Display, path::PathBuf, str::FromStr};
 
 #[cfg(feature = "cli")]
-use clap::{ArgAction, error::{ContextKind, ContextValue}};
+use clap::{
+    error::{ContextKind, ContextValue},
+    ArgAction,
+};
 use url::Url;
 
 pub const SCRATCH_DIR: &str = "/nix/temp-install-dir";

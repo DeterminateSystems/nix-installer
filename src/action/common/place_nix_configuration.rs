@@ -39,56 +39,50 @@ impl PlaceNixConfiguration {
         let mut extra_conf_text = vec![];
         for extra in extra_conf {
             let buf = match &extra {
-                UrlOrPathOrString::Url(url) => {
-                    match url.scheme() {
-                        "https" | "http" => {
-                            let mut buildable_client = reqwest::Client::builder();
-                            if let Some(proxy) = &proxy {
-                                buildable_client = buildable_client.proxy(
-                                    reqwest::Proxy::all(proxy.clone())
-                                        .map_err(ActionErrorKind::Reqwest)
-                                        .map_err(Self::error)?,
-                                )
-                            }
-                            if let Some(ssl_cert_file) = &ssl_cert_file {
-                                let ssl_cert =
-                                    parse_ssl_cert(ssl_cert_file).await.map_err(Self::error)?;
-                                buildable_client = buildable_client.add_root_certificate(ssl_cert);
-                            }
-                            let client = buildable_client
-                                .build()
-                                .map_err(ActionErrorKind::Reqwest)
-                                .map_err(Self::error)?;
-                            let req = client
-                                .get(url.clone())
-                                .build()
-                                .map_err(ActionErrorKind::Reqwest)
-                                .map_err(Self::error)?;
-                            let res = client
-                                .execute(req)
-                                .await
-                                .map_err(ActionErrorKind::Reqwest)
-                                .map_err(Self::error)?;
-                            res.text()
-                                .await
-                                .map_err(ActionErrorKind::Reqwest)
-                                .map_err(Self::error)?
-                        },
-                        "file" => {
-                            tokio::fs::read_to_string(url.path())
-                                .await
-                                .map_err(|e| ActionErrorKind::Read(PathBuf::from(url.path()), e))
-                                .map_err(Self::error)?
-                        },
-                        _ => return Err(Self::error(ActionErrorKind::UnknownUrlScheme)),
-                    }
-                },
-                UrlOrPathOrString::Path(path) => {
-                    tokio::fs::read_to_string(path)
+                UrlOrPathOrString::Url(url) => match url.scheme() {
+                    "https" | "http" => {
+                        let mut buildable_client = reqwest::Client::builder();
+                        if let Some(proxy) = &proxy {
+                            buildable_client = buildable_client.proxy(
+                                reqwest::Proxy::all(proxy.clone())
+                                    .map_err(ActionErrorKind::Reqwest)
+                                    .map_err(Self::error)?,
+                            )
+                        }
+                        if let Some(ssl_cert_file) = &ssl_cert_file {
+                            let ssl_cert =
+                                parse_ssl_cert(ssl_cert_file).await.map_err(Self::error)?;
+                            buildable_client = buildable_client.add_root_certificate(ssl_cert);
+                        }
+                        let client = buildable_client
+                            .build()
+                            .map_err(ActionErrorKind::Reqwest)
+                            .map_err(Self::error)?;
+                        let req = client
+                            .get(url.clone())
+                            .build()
+                            .map_err(ActionErrorKind::Reqwest)
+                            .map_err(Self::error)?;
+                        let res = client
+                            .execute(req)
+                            .await
+                            .map_err(ActionErrorKind::Reqwest)
+                            .map_err(Self::error)?;
+                        res.text()
+                            .await
+                            .map_err(ActionErrorKind::Reqwest)
+                            .map_err(Self::error)?
+                    },
+                    "file" => tokio::fs::read_to_string(url.path())
                         .await
-                        .map_err(|e| ActionErrorKind::Read(PathBuf::from(path), e))
-                        .map_err(Self::error)?
+                        .map_err(|e| ActionErrorKind::Read(PathBuf::from(url.path()), e))
+                        .map_err(Self::error)?,
+                    _ => return Err(Self::error(ActionErrorKind::UnknownUrlScheme)),
                 },
+                UrlOrPathOrString::Path(path) => tokio::fs::read_to_string(path)
+                    .await
+                    .map_err(|e| ActionErrorKind::Read(PathBuf::from(path), e))
+                    .map_err(Self::error)?,
                 UrlOrPathOrString::String(string) => string.clone(),
             };
             extra_conf_text.push(buf)
