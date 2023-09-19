@@ -2,10 +2,10 @@
   description = "The Determinate Nix Installer";
 
   inputs = {
-    nixpkgs.url = "github:nixos/nixpkgs/nixpkgs-unstable";
+    nixpkgs.url = "https://flakehub.com/f/NixOS/nixpkgs/0.1.0.tar.gz";
 
     fenix = {
-      url = "github:nix-community/fenix";
+      url = "https://flakehub.com/f/nix-community/fenix/0.1.1584.tar.gz";
       inputs.nixpkgs.follows = "nixpkgs";
     };
 
@@ -15,7 +15,7 @@
     };
 
     nix = {
-      url = "github:nixos/nix/2.13.2";
+      url = "https://flakehub.com/f/NixOS/nix/2.17.0.tar.gz";
       # Omitting `inputs.nixpkgs.follows = "nixpkgs";` on purpose
     };
 
