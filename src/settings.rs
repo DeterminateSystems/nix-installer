@@ -57,6 +57,18 @@ Settings which only apply to certain [`Planner`](crate::planner::Planner)s shoul
 #[derive(Debug, serde::Deserialize, serde::Serialize, Clone)]
 #[cfg_attr(feature = "cli", derive(clap::Parser))]
 pub struct CommonSettings {
+    /// Attribute the diagnostics of this run to a specific usage category
+    #[cfg_attr(
+        feature = "cli",
+        clap(
+            long,
+            default_value = None,
+            env = "NIX_INSTALLER_ATTRIBUTION",
+            global = true
+        )
+    )]
+    pub attribution: Option<String>,
+
     /// Modify the user profile to automatically load nix
     #[cfg_attr(
         feature = "cli",
@@ -289,6 +301,7 @@ impl CommonSettings {
         };
 
         Ok(Self {
+            attribution: None,
             modify_profile: true,
             nix_build_group_name: String::from("nixbld"),
             nix_build_group_id: 30_000,
@@ -308,6 +321,7 @@ impl CommonSettings {
     /// A listing of the settings, suitable for [`Planner::settings`](crate::planner::Planner::settings)
     pub fn settings(&self) -> Result<HashMap<String, serde_json::Value>, InstallSettingsError> {
         let Self {
+            attribution: _,
             modify_profile,
             nix_build_group_name,
             nix_build_group_id,

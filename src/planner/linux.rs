@@ -129,6 +129,7 @@ impl Planner for Linux {
     #[cfg(feature = "diagnostics")]
     async fn diagnostic_data(&self) -> Result<crate::diagnostics::DiagnosticData, PlannerError> {
         Ok(crate::diagnostics::DiagnosticData::new(
+            self.settings.attribution.clone(),
             self.settings.diagnostic_endpoint.clone(),
             self.typetag_name().into(),
             self.configured_settings()

@@ -72,6 +72,7 @@ impl Planner for MyPlanner {
     #[cfg(feature = "diagnostics")]
     async fn diagnostic_data(&self) -> Result<nix_installer::diagnostics::DiagnosticData, PlannerError> {
         Ok(nix_installer::diagnostics::DiagnosticData::new(
+            self.common.attribution.clone(),
             self.common.diagnostic_endpoint.clone(),
             self.typetag_name().into(),
             self.configured_settings()
