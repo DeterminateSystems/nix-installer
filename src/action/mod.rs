@@ -199,7 +199,7 @@ use std::{error::Error, process::Output};
 use tokio::task::JoinError;
 use tracing::Span;
 
-use crate::{error::HasExpectedErrors, CertificateError};
+use crate::{error::HasExpectedErrors, settings::UrlOrPathError, CertificateError};
 
 use self::base::create_or_insert_into_file::Position;
 
@@ -585,6 +585,16 @@ pub enum ActionErrorKind {
     SystemdMissing,
     #[error("`{command}` failed, message: {message}")]
     DiskUtilInfoError { command: String, message: String },
+    #[error(transparent)]
+    UrlOrPathError(#[from] UrlOrPathError),
+    #[error("Request error")]
+    Reqwest(
+        #[from]
+        #[source]
+        reqwest::Error,
+    ),
+    #[error("Unknown url scheme")]
+    UnknownUrlScheme,
 }
 
 impl ActionErrorKind {

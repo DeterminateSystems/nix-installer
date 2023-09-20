@@ -18,7 +18,9 @@
         "action": "provision_nix",
         "fetch_nix": {
           "action": {
-            "url": "https://releases.nixos.org/nix/nix-2.17.0/nix-2.17.0-x86_64-linux.tar.xz",
+            "url_or_path": {
+              "Url": "https://releases.nixos.org/nix/nix-2.17.0/nix-2.17.0-x86_64-linux.tar.xz"
+            },
             "dest": "/nix/temp-install-dir",
             "proxy": null,
             "ssl_cert_file": null
@@ -243,14 +245,14 @@
             "create_directories": [
               {
                 "action": {
-                  "path": "/etc/zsh",
+                  "path": "/etc/fish/conf.d",
                   "user": null,
                   "group": null,
                   "mode": 493,
                   "is_mountpoint": false,
                   "force_prune_on_revert": false
                 },
-                "state": "Uncompleted"
+                "state": "Completed"
               },
               {
                 "action": {
@@ -322,6 +324,17 @@
               },
               {
                 "action": {
+                  "path": "/etc/fish/conf.d/nix.fish",
+                  "user": null,
+                  "group": null,
+                  "mode": 420,
+                  "buf": "\n# Nix\nif test -e '/nix/var/nix/profiles/default/etc/profile.d/nix-daemon.fish'\n    . '/nix/var/nix/profiles/default/etc/profile.d/nix-daemon.fish'\nend\n# End Nix\n\n",
+                  "position": "Beginning"
+                },
+                "state": "Uncompleted"
+              },
+              {
+                "action": {
                   "path": "/usr/share/fish/vendor_conf.d/nix.fish",
                   "user": null,
                   "group": null,
@@ -353,19 +366,19 @@
                 "path": "/etc/nix/nix.conf",
                 "user": null,
                 "group": null,
-                "mode": null,
-                "buf": "!include ./nix-installer-defaults.conf",
+                "mode": 493,
+                "buf": "include ./nix-installer-defaults.conf\n",
                 "position": "Beginning"
               },
               "state": "Uncompleted"
             },
             "create_defaults_conf": {
               "action": {
-                "path": "/etc/nix/defaults.conf",
+                "path": "/etc/nix/nix-installer-defaults.conf",
                 "user": null,
                 "group": null,
-                "mode": null,
-                "buf": "build-users-group = nixbld\nexperimental-features = nix-command flakes auto-allocate-uids\nbash-prompt-prefix = (nix:$name)\\040\nextra-nix-path = nixpkgs=flake:nixpkgs\nauto-optimise-store = true\nauto-allocate-uids = true",
+                "mode": 493,
+                "buf": "build-users-group = nixbld\nexperimental-features = nix-command flakes auto-allocate-uids\nbash-prompt-prefix = (nix:$name)\\040\nextra-nix-path = nixpkgs=flake:nixpkgs\nmax-jobs = auto\nauto-optimise-store = true\nauto-allocate-uids = true\n",
                 "replace": true
               },
               "state": "Uncompleted"
@@ -386,7 +399,7 @@
         "is_mountpoint": false,
         "force_prune_on_revert": false
       },
-      "state": "Completed"
+      "state": "Uncompleted"
     },
     {
       "action": {
@@ -413,7 +426,9 @@
       "nix_build_user_prefix": "nixbld",
       "nix_build_user_count": 0,
       "nix_build_user_id_base": 30000,
-      "nix_package_url": "https://releases.nixos.org/nix/nix-2.17.0/nix-2.17.0-x86_64-linux.tar.xz",
+      "nix_package_url": {
+        "Url": "https://releases.nixos.org/nix/nix-2.17.0/nix-2.17.0-x86_64-linux.tar.xz"
+      },
       "proxy": null,
       "ssl_cert_file": null,
       "extra_conf": [],
