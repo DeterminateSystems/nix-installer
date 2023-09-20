@@ -588,24 +588,6 @@ impl clap::builder::TypedValueParser for UrlOrPath {
     }
 }
 
-#[test]
-fn url_or_path_parses() -> Result<(), Box<dyn std::error::Error>> {
-    assert_eq!(
-        UrlOrPath::from_str("https://boop.bleat")?,
-        UrlOrPath::Url(Url::from_str("https://boop.bleat")?),
-    );
-    assert_eq!(
-        UrlOrPath::from_str("file:///boop/bleat")?,
-        UrlOrPath::Url(Url::from_str("file:///boop/bleat")?),
-    );
-    // The file *must* exist!
-    assert_eq!(
-        UrlOrPath::from_str(file!())?,
-        UrlOrPath::Path(PathBuf::from_str(file!())?),
-    );
-    Ok(())
-}
-
 #[derive(Debug, PartialEq, Eq, PartialOrd, Ord, serde::Serialize, serde::Deserialize, Clone)]
 pub enum UrlOrPathOrString {
     Url(Url),
@@ -669,32 +651,55 @@ impl clap::builder::TypedValueParser for UrlOrPathOrString {
     }
 }
 
-#[test]
-fn url_or_path_or_string_parses() -> Result<(), Box<dyn std::error::Error>> {
-    assert_eq!(
-        UrlOrPathOrString::from_str("https://boop.bleat")?,
-        UrlOrPathOrString::Url(Url::from_str("https://boop.bleat")?),
-    );
-    assert_eq!(
-        UrlOrPathOrString::from_str("file:///boop/bleat")?,
-        UrlOrPathOrString::Url(Url::from_str("file:///boop/bleat")?),
-    );
-    // The file *must* exist!
-    assert_eq!(
-        UrlOrPathOrString::from_str(file!())?,
-        UrlOrPathOrString::Path(PathBuf::from_str(file!())?),
-    );
-    assert_eq!(
-        UrlOrPathOrString::from_str("Boop")?,
-        UrlOrPathOrString::String(String::from("Boop")),
-    );
-    Ok(())
-}
-
 #[cfg(feature = "diagnostics")]
 impl crate::diagnostics::ErrorDiagnostic for InstallSettingsError {
     fn diagnostic(&self) -> String {
         let static_str: &'static str = (self).into();
         static_str.to_string()
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::{FromStr, PathBuf, Url, UrlOrPath, UrlOrPathOrString};
+
+    #[test]
+    fn url_or_path_or_string_parses() -> Result<(), Box<dyn std::error::Error>> {
+        assert_eq!(
+            UrlOrPathOrString::from_str("https://boop.bleat")?,
+            UrlOrPathOrString::Url(Url::from_str("https://boop.bleat")?),
+        );
+        assert_eq!(
+            UrlOrPathOrString::from_str("file:///boop/bleat")?,
+            UrlOrPathOrString::Url(Url::from_str("file:///boop/bleat")?),
+        );
+        // The file *must* exist!
+        assert_eq!(
+            UrlOrPathOrString::from_str(file!())?,
+            UrlOrPathOrString::Path(PathBuf::from_str(file!())?),
+        );
+        assert_eq!(
+            UrlOrPathOrString::from_str("Boop")?,
+            UrlOrPathOrString::String(String::from("Boop")),
+        );
+        Ok(())
+    }
+
+    #[test]
+    fn url_or_path_parses() -> Result<(), Box<dyn std::error::Error>> {
+        assert_eq!(
+            UrlOrPath::from_str("https://boop.bleat")?,
+            UrlOrPath::Url(Url::from_str("https://boop.bleat")?),
+        );
+        assert_eq!(
+            UrlOrPath::from_str("file:///boop/bleat")?,
+            UrlOrPath::Url(Url::from_str("file:///boop/bleat")?),
+        );
+        // The file *must* exist!
+        assert_eq!(
+            UrlOrPath::from_str(file!())?,
+            UrlOrPath::Path(PathBuf::from_str(file!())?),
+        );
+        Ok(())
     }
 }
