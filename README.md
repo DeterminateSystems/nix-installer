@@ -465,6 +465,7 @@ Here is a table of the [diagnostic data we collect][diagnosticdata]:
 | `is_ci`               | Whether the installer is being used in CI (e.g. GitHub Actions).                                      |
 | `action`              | Either `Install` or `Uninstall`.                                                                      |
 | `status`              | One of `Success`, `Failure`, `Pending`, or `Cancelled`.                                               |
+| `attribution`         | Optionally defined by the user, associate the diagnostics of this run to the provided value.          |
 | `failure_chain`     | A high level description of what the failure was, if any. For example: `Command("diskutil")` if the command `diskutil list` failed. |
 
 To disable diagnostic reporting, set the diagnostics URL to an empty string by passing `--diagnostic-endpoint=""` or setting `NIX_INSTALLER_DIAGNOSTIC_ENDPOINT=""`.

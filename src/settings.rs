@@ -209,11 +209,25 @@ pub struct CommonSettings {
     pub force: bool,
 
     #[cfg(feature = "diagnostics")]
+    /// Relate the install diagnostic to a specific value
+    #[cfg_attr(
+        feature = "cli",
+        clap(
+            long,
+            default_value = None,
+            env = "NIX_INSTALLER_DIAGNOSTIC_ATTRIBUTION",
+            global = true
+        )
+    )]
+    pub diagnostic_attribution: Option<String>,
+
+    #[cfg(feature = "diagnostics")]
     /// The URL or file path for an installation diagnostic to be sent
     ///
     /// Sample of the data sent:
     ///
     /// {
+    ///     "attribution": null,
     ///     "version": "0.4.0",
     ///     "planner": "linux",
     ///     "configured_settings": [ "modify_profile" ],
@@ -304,6 +318,8 @@ impl CommonSettings {
             force: false,
             ssl_cert_file: Default::default(),
             #[cfg(feature = "diagnostics")]
+            diagnostic_attribution: None,
+            #[cfg(feature = "diagnostics")]
             diagnostic_endpoint: Some("https://install.determinate.systems/nix/diagnostic".into()),
         })
     }
@@ -322,6 +338,8 @@ impl CommonSettings {
             extra_conf,
             force,
             ssl_cert_file,
+            #[cfg(feature = "diagnostics")]
+                diagnostic_attribution: _,
             #[cfg(feature = "diagnostics")]
             diagnostic_endpoint,
         } = self;
