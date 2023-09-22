@@ -39,10 +39,7 @@ impl PlaceNixConfiguration {
 
         let mut defaults_conf_settings = vec![
             ("build-users-group", nix_build_group_name),
-            (
-                "experimental-features",
-                "nix-command flakes".into(),
-            ),
+            ("experimental-features", "nix-command flakes".into()),
         ];
 
         defaults_conf_settings.push(("bash-prompt-prefix", "(nix:$name)\\040".into()));
@@ -91,7 +88,7 @@ impl PlaceNixConfiguration {
 
                 // We only scan one include of depth -- we should make this any depth, make sure to guard for loops
                 if line.starts_with("include") || line.starts_with("!include") {
-                    let allow_not_existing = line.starts_with("!");
+                    let allow_not_existing = line.starts_with('!');
                     // Need to read it in if it exists for settings
                     let path = line
                         .trim_start_matches("include")
