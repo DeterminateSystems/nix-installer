@@ -1,6 +1,6 @@
 use std::{path::PathBuf, process::ExitCode};
 
-use crate::{error::HasExpectedErrors, BuiltinPlanner};
+use crate::{cli::ensure_root, error::HasExpectedErrors, BuiltinPlanner};
 use clap::Parser;
 
 use eyre::WrapErr;
@@ -31,6 +31,8 @@ impl CommandExecute for Plan {
     #[tracing::instrument(level = "debug", skip_all, fields())]
     async fn execute(self) -> eyre::Result<ExitCode> {
         let Self { planner, output } = self;
+
+        ensure_root()?;
 
         let planner = match planner {
             Some(planner) => planner,
