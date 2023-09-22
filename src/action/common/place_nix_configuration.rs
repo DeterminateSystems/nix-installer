@@ -95,7 +95,7 @@ impl PlaceNixConfiguration {
 
         let mut defaults_conf_settings = vec![
             ("build-users-group", nix_build_group_name),
-            ("experimental-features", "nix-command flakes".into()),
+            ("experimental-features", "nix-command flakes repl-flake".into()),
         ];
 
         defaults_conf_settings.push(("bash-prompt-prefix", "(nix:$name)\\040".into()));
