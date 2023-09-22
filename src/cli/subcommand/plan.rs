@@ -1,6 +1,6 @@
 use std::{path::PathBuf, process::ExitCode};
 
-use crate::{error::HasExpectedErrors, BuiltinPlanner, cli::ensure_root};
+use crate::{cli::ensure_root, error::HasExpectedErrors, BuiltinPlanner};
 use clap::Parser;
 
 use eyre::WrapErr;

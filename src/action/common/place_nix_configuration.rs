@@ -95,7 +95,7 @@ impl PlaceNixConfiguration {
 
                 // We only scan one include of depth -- we should make this any depth, make sure to guard for loops
                 if line.starts_with("include") || line.starts_with("!include") {
-                    let allow_not_existing = line.starts_with("!");
+                    let allow_not_existing = line.starts_with('!');
                     // Need to read it in if it exists for settings
                     let path = line
                         .trim_start_matches("include")
