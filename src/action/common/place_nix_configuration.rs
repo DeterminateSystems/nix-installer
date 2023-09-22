@@ -95,10 +95,7 @@ impl PlaceNixConfiguration {
 
         let mut defaults_conf_settings = vec![
             ("build-users-group", nix_build_group_name),
-            (
-                "experimental-features",
-                "nix-command flakes auto-allocate-uids".into(),
-            ),
+            ("experimental-features", "nix-command flakes".into()),
         ];
 
         defaults_conf_settings.push(("bash-prompt-prefix", "(nix:$name)\\040".into()));
@@ -116,10 +113,6 @@ impl PlaceNixConfiguration {
         // https://github.com/DeterminateSystems/nix-installer/issues/449#issuecomment-1551782281
         #[cfg(not(target_os = "macos"))]
         defaults_conf_settings.push(("auto-optimise-store", "true".into()));
-        // Auto-allocate uids is broken on Mac. Tools like `whoami` don't work.
-        // e.g. https://github.com/NixOS/nix/issues/8444
-        #[cfg(not(target_os = "macos"))]
-        defaults_conf_settings.push(("auto-allocate-uids", "true".into()));
         let defaults_conf_insert_fragment = defaults_conf_settings
             .iter()
             .map(|(s, v)| format!("{s} = {v}"))
@@ -204,9 +197,7 @@ impl PlaceNixConfiguration {
             );
 
             // Some settings (eg `experimental-features`) we must be able to set it.
-            let mut required_settings = vec!["experimental-features"];
-            #[cfg(not(target_os = "macos"))]
-            required_settings.push("auto-allocate-uids");
+            let required_settings = vec!["experimental-features"];
             for required_setting in required_settings {
                 if let Some((existing_setting, existing_value)) = existing_conf_settings
                     .iter()
