@@ -418,11 +418,10 @@ curl -sSf -L https://github.com/DeterminateSystems/nix-installer/releases/downlo
 Differing from the upstream [Nix](https://github.com/NixOS/nix) installer scripts:
 
 * In `nix.conf`:
-  + the `auto-allocate-uids`, `nix-command` and `flakes` features are enabled
+  + the `nix-command` and `flakes` features are enabled
   + `bash-prompt-prefix` is set
   + `auto-optimise-store` is set to `true` (On Linux only)
   * `extra-nix-path` is set to `nixpkgs=flake:nixpkgs`
-  * `auto-allocate-uids` is set to `true`.  (On Linux only)
 * an installation receipt (for uninstalling) is stored at `/nix/receipt.json` as well as a copy of the install binary at `/nix/nix-installer`
 * `nix-channel --update` is not run, `~/.nix-channels` is not provisioned
 * `NIX_SSL_CERT_FILE` is set in the various shell profiles if the `ssl-cert-file` argument is used.
