@@ -74,11 +74,11 @@
         ]
       },
       "locked": {
-        "lastModified": 1692351612,
-        "narHash": "sha256-KTGonidcdaLadRnv9KFgwSMh1ZbXoR/OBmPjeNMhFwU=",
+        "lastModified": 1694081375,
+        "narHash": "sha256-vzJXOUnmkMCm3xw8yfPP5m8kypQ3BhAIRe4RRCWpzy8=",
         "owner": "nix-community",
         "repo": "naersk",
-        "rev": "78789c30d64dea2396c9da516bbcc8db3a475207",
+        "rev": "3f976d822b7b37fc6fb8e6f157c2dd05e7e94e89",
         "type": "github"
       },
       "original": {
@@ -95,29 +95,29 @@
         "nixpkgs-regression": "nixpkgs-regression"
       },
       "locked": {
-        "narHash": "sha256-QMYAkdtU+g9HlZKtoJ+AI6TbWzzovKGnPZJHfZdclc8=",
-        "rev": "a212300a1d9f9c7b0daf19c00c87fc50480f54f4",
-        "revCount": 14727,
+        "narHash": "sha256-ggISAuGpTkKp6JXt1BbcLtLDYOPECWqrVnPVgQEFHYc=",
+        "rev": "44fb1192185cdd03343da7faa08a1c605f773419",
+        "revCount": 14891,
         "type": "tarball",
-        "url": "https://api.flakehub.com/f/pinned/NixOS/nix/2.17.0/018a1daf-2c87-7730-8fc0-4885c5d8eff7/source.tar.gz"
+        "url": "https://api.flakehub.com/f/pinned/NixOS/nix/2.18.0/018ab3a7-90e6-72bd-bc62-6b1b2f4112d5/source.tar.gz"
       },
       "original": {
         "type": "tarball",
-        "url": "https://flakehub.com/f/NixOS/nix/2.17.0.tar.gz"
+        "url": "https://flakehub.com/f/NixOS/nix/2.18.0.tar.gz"
       }
     },
     "nixpkgs": {
       "locked": {
-        "lastModified": 1670461440,
-        "narHash": "sha256-jy1LB8HOMKGJEGXgzFRLDU1CBGL0/LlkolgnqIsF0D8=",
-        "owner": "NixOS",
+        "lastModified": 1695124524,
+        "narHash": "sha256-trXDytVCqf3KryQQQrHOZKUabu1/lB8/ndOAuZKQrOE=",
+        "owner": "edolstra",
         "repo": "nixpkgs",
-        "rev": "04a75b2eecc0acf6239acf9dd04485ff8d14f425",
+        "rev": "a3d30b525535e3158221abc1a957ce798ab159fe",
         "type": "github"
       },
       "original": {
-        "owner": "NixOS",
-        "ref": "nixos-22.11-small",
+        "owner": "edolstra",
+        "ref": "fix-aws-sdk-cpp",
         "repo": "nixpkgs",
         "type": "github"
       }
@@ -140,11 +140,11 @@
     },
     "nixpkgs_2": {
       "locked": {
-        "narHash": "sha256-CXQ2MuledDVlVM5dLC4pB41cFlBWxRw4tCBsFrq3cRk=",
-        "rev": "970a59bd19eff3752ce552935687100c46e820a5",
-        "revCount": 526521,
+        "narHash": "sha256-Eoe9IHbvmo5wEDeJXKFOpKUwxYJIOxKUesounVccNYk=",
+        "rev": "5ba549eafcf3e33405e5f66decd1a72356632b96",
+        "revCount": 527133,
         "type": "tarball",
-        "url": "https://api.flakehub.com/f/pinned/NixOS/nixpkgs/0.1.526521%2Brev-970a59bd19eff3752ce552935687100c46e820a5/018aabed-d05c-7478-b3db-bed61902efec/source.tar.gz"
+        "url": "https://api.flakehub.com/f/pinned/NixOS/nixpkgs/0.1.527133%2Brev-5ba549eafcf3e33405e5f66decd1a72356632b96/018ab8cd-cfca-7844-b541-87460903f5ea/source.tar.gz"
       },
       "original": {
         "type": "tarball",
