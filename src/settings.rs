@@ -262,21 +262,21 @@ impl CommonSettings {
                 url = NIX_X64_64_LINUX_URL;
                 nix_build_user_prefix = "nixbld";
                 nix_build_user_id_base = 30000;
-                nix_build_user_count = 0;
+                nix_build_user_count = 32;
             },
             #[cfg(target_os = "linux")]
             (Architecture::X86_32(_), OperatingSystem::Linux) => {
                 url = NIX_I686_LINUX_URL;
                 nix_build_user_prefix = "nixbld";
                 nix_build_user_id_base = 30000;
-                nix_build_user_count = 0;
+                nix_build_user_count = 32;
             },
             #[cfg(target_os = "linux")]
             (Architecture::Aarch64(_), OperatingSystem::Linux) => {
                 url = NIX_AARCH64_LINUX_URL;
                 nix_build_user_prefix = "nixbld";
                 nix_build_user_id_base = 30000;
-                nix_build_user_count = 0;
+                nix_build_user_count = 32;
             },
             #[cfg(target_os = "macos")]
             (Architecture::X86_64, OperatingSystem::MacOSX { .. })
