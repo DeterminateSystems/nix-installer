@@ -130,11 +130,6 @@ impl PlaceNixConfiguration {
             "nixpkgs=flake:nixpkgs".to_string(),
         );
 
-        // Auto-allocate uids is broken on Mac. Tools like `whoami` don't work.
-        // e.g. https://github.com/NixOS/nix/issues/8444
-        #[cfg(not(target_os = "macos"))]
-        settings.insert("auto-allocate-uids".to_string(), "true".to_string());
-
         let create_directory = CreateDirectory::plan(NIX_CONF_FOLDER, None, None, 0o0755, force)
             .await
             .map_err(Self::error)?;
