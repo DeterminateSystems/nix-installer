@@ -115,10 +115,7 @@ impl PlaceNixConfiguration {
             "bash-prompt-prefix".to_string(),
             "(nix:$name)\\040".to_string(),
         );
-        settings.insert(
-            "max-jobs".to_string(),
-            "auto".to_string(),
-        );
+        settings.insert("max-jobs".to_string(), "auto".to_string());
         if let Some(ssl_cert_file) = ssl_cert_file {
             let ssl_cert_file_canonical = ssl_cert_file
                 .canonicalize()
