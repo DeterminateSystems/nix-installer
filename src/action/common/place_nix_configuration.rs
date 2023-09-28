@@ -91,7 +91,7 @@ impl PlaceNixConfiguration {
         let settings = nix_config.settings_mut();
 
         settings.insert("build-users-group".to_string(), nix_build_group_name);
-        let experimental_features = ["nix-command", "flakes", "auto-allocate-uids"];
+        let experimental_features = ["nix-command", "flakes", "repl-flake"];
         match settings.entry("experimental-features".to_string()) {
             Entry::Occupied(mut slot) => {
                 let slot_mut = slot.get_mut();
@@ -115,6 +115,7 @@ impl PlaceNixConfiguration {
             "bash-prompt-prefix".to_string(),
             "(nix:$name)\\040".to_string(),
         );
+        settings.insert("max-jobs".to_string(), "auto".to_string());
         if let Some(ssl_cert_file) = ssl_cert_file {
             let ssl_cert_file_canonical = ssl_cert_file
                 .canonicalize()
@@ -128,11 +129,6 @@ impl PlaceNixConfiguration {
             "extra-nix-path".to_string(),
             "nixpkgs=flake:nixpkgs".to_string(),
         );
-
-        // Auto-allocate uids is broken on Mac. Tools like `whoami` don't work.
-        // e.g. https://github.com/NixOS/nix/issues/8444
-        #[cfg(not(target_os = "macos"))]
-        settings.insert("auto-allocate-uids".to_string(), "true".to_string());
 
         let create_directory = CreateDirectory::plan(NIX_CONF_FOLDER, None, None, 0o0755, force)
             .await
