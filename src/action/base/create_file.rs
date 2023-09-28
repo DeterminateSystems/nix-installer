@@ -27,7 +27,7 @@ pub struct CreateFile {
     group: Option<String>,
     mode: Option<u32>,
     buf: String,
-    replace: bool,
+    force: bool,
 }
 
 impl CreateFile {
@@ -38,7 +38,7 @@ impl CreateFile {
         group: impl Into<Option<String>>,
         mode: impl Into<Option<u32>>,
         buf: String,
-        replace: bool,
+        force: bool,
     ) -> Result<StatefulAction<Self>, ActionError> {
         let path = path.as_ref().to_path_buf();
         let mode = mode.into();
@@ -50,7 +50,7 @@ impl CreateFile {
             group,
             mode,
             buf,
-            replace,
+            force,
         };
 
         if this.path.exists() {
@@ -128,7 +128,7 @@ impl CreateFile {
                 .map_err(|e| ActionErrorKind::Read(this.path.clone(), e))
                 .map_err(Self::error)?;
 
-            if discovered_buf != this.buf && !this.replace {
+            if discovered_buf != this.buf {
                 return Err(Self::error(ActionErrorKind::DifferentContent(
                     this.path.clone(),
                 )));
@@ -183,8 +183,7 @@ impl Action for CreateFile {
             group,
             mode,
             buf,
-            // If `replace` was not set, and the file existed, the `plan` step would have errored
-            replace: _,
+            force: _,
         } = self;
 
         if tracing::enabled!(tracing::Level::TRACE) {
@@ -248,7 +247,7 @@ impl Action for CreateFile {
             group: _,
             mode: _,
             buf: _,
-            replace: _,
+            force: _,
         } = &self;
 
         vec![ActionDescription::new(
@@ -265,7 +264,7 @@ impl Action for CreateFile {
             group: _,
             mode: _,
             buf: _,
-            replace: _,
+            force: _,
         } = self;
         // The user already deleted it
         if !path.exists() {
