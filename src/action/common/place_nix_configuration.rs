@@ -91,7 +91,7 @@ impl PlaceNixConfiguration {
         let settings = nix_config.settings_mut();
 
         settings.insert("build-users-group".to_string(), nix_build_group_name);
-        let experimental_features = ["nix-command", "flakes", "auto-allocate-uids"];
+        let experimental_features = ["nix-command", "flakes", "repl-flake"];
         match settings.entry("experimental-features".to_string()) {
             Entry::Occupied(mut slot) => {
                 let slot_mut = slot.get_mut();
@@ -114,6 +114,10 @@ impl PlaceNixConfiguration {
         settings.insert(
             "bash-prompt-prefix".to_string(),
             "(nix:$name)\\040".to_string(),
+        );
+        settings.insert(
+            "max-jobs".to_string(),
+            "auto".to_string(),
         );
         if let Some(ssl_cert_file) = ssl_cert_file {
             let ssl_cert_file_canonical = ssl_cert_file
