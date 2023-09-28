@@ -32,7 +32,6 @@ impl PlaceNixConfiguration {
         extra_conf: Vec<UrlOrPathOrString>,
         force: bool,
     ) -> Result<StatefulAction<Self>, ActionError> {
-
         let mut extra_conf_text = vec![];
         for extra in extra_conf {
             let buf = match &extra {
