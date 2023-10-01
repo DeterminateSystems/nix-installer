@@ -14,7 +14,7 @@ jobs:
       id-token: write # In order to request a JWT for AWS auth
     steps:
       - name: Checkout
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
       - name: Download Buildkite Artifacts
         uses: EnricoMi/download-buildkite-artifact-action@v1.14
         with:
