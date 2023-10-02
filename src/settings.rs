@@ -13,19 +13,19 @@ pub const SCRATCH_DIR: &str = "/nix/temp-install-dir";
 
 /// Default [`nix_package_url`](CommonSettings::nix_package_url) for Linux x86_64
 pub const NIX_X64_64_LINUX_URL: &str =
-    "https://releases.nixos.org/nix/nix-2.18.0/nix-2.18.0-x86_64-linux.tar.xz";
+    "https://releases.nixos.org/nix/nix-2.18.1/nix-2.18.1-x86_64-linux.tar.xz";
 /// Default [`nix_package_url`](CommonSettings::nix_package_url) for Linux x86 (32 bit)
 pub const NIX_I686_LINUX_URL: &str =
-    "https://releases.nixos.org/nix/nix-2.18.0/nix-2.18.0-i686-linux.tar.xz";
+    "https://releases.nixos.org/nix/nix-2.18.1/nix-2.18.1-i686-linux.tar.xz";
 /// Default [`nix_package_url`](CommonSettings::nix_package_url) for Linux aarch64
 pub const NIX_AARCH64_LINUX_URL: &str =
-    "https://releases.nixos.org/nix/nix-2.18.0/nix-2.18.0-aarch64-linux.tar.xz";
+    "https://releases.nixos.org/nix/nix-2.18.1/nix-2.18.1-aarch64-linux.tar.xz";
 /// Default [`nix_package_url`](CommonSettings::nix_package_url) for Darwin x86_64
 pub const NIX_X64_64_DARWIN_URL: &str =
-    "https://releases.nixos.org/nix/nix-2.18.0/nix-2.18.0-x86_64-darwin.tar.xz";
+    "https://releases.nixos.org/nix/nix-2.18.1/nix-2.18.1-x86_64-darwin.tar.xz";
 /// Default [`nix_package_url`](CommonSettings::nix_package_url) for Darwin aarch64
 pub const NIX_AARCH64_DARWIN_URL: &str =
-    "https://releases.nixos.org/nix/nix-2.18.0/nix-2.18.0-aarch64-darwin.tar.xz";
+    "https://releases.nixos.org/nix/nix-2.18.1/nix-2.18.1-aarch64-darwin.tar.xz";
 
 #[derive(Debug, serde::Deserialize, serde::Serialize, Clone, Copy, PartialEq, Eq)]
 #[cfg_attr(feature = "cli", derive(clap::ValueEnum))]
