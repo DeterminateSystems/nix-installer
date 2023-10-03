@@ -8,7 +8,7 @@ use crate::action::{
 };
 use crate::parse_ssl_cert;
 use crate::settings::UrlOrPathOrString;
-use std::collections::hash_map::Entry;
+use indexmap::map::Entry;
 use std::path::PathBuf;
 
 const NIX_CONF_FOLDER: &str = "/etc/nix";
