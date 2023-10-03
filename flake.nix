@@ -19,7 +19,7 @@
       # Omitting `inputs.nixpkgs.follows = "nixpkgs";` on purpose
     };
 
-    flake-compat = { url = "github:edolstra/flake-compat"; flake = false; };
+    flake-compat.url = "https://flakehub.com/f/edolstra/flake-compat/1.0.0.tar.gz";
   };
 
   outputs =
