@@ -183,7 +183,7 @@ pub struct CommonSettings {
     #[cfg_attr(feature = "cli", clap(long, env = "NIX_INSTALLER_PROXY"))]
     pub proxy: Option<Url>,
 
-    /// An SSL cert to use (if any), used for fetching Nix and sets `NIX_SSL_CERT_FILE` for Nix
+    /// An SSL cert to use (if any), used for fetching Nix and sets `ssl-cert-file` in `/etc/nix/nix.conf`
     #[cfg_attr(feature = "cli", clap(long, env = "NIX_INSTALLER_SSL_CERT_FILE"))]
     pub ssl_cert_file: Option<PathBuf>,
 
