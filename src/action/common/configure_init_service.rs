@@ -182,7 +182,7 @@ impl Action for ConfigureInitService {
                 execute_command(
                     Command::new("launchctl")
                         .process_group(0)
-                        .args(&["load", "-w"])
+                        .args(["load", "-w"])
                         .arg(DARWIN_NIX_DAEMON_DEST)
                         .stdin(std::process::Stdio::null()),
                 )
