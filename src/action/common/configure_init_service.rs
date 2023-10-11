@@ -395,7 +395,7 @@ impl Action for ConfigureInitService {
                         .arg(DARWIN_NIX_DAEMON_DEST),
                 )
                 .await
-                .map_err(|e| Self::error(e))?;
+                .map_err(Self::error)?;
             },
             #[cfg(target_os = "linux")]
             InitSystem::Systemd => {
