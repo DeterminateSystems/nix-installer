@@ -192,7 +192,7 @@ impl Action for ConfigureInitService {
                 let domain = "system";
                 let service = "org.nixos.nix-daemon";
 
-                let is_disabled = crate::action::macos::service_is_disabled(&domain, &service)
+                let is_disabled = crate::action::macos::service_is_disabled(domain, service)
                     .await
                     .map_err(Self::error)?;
                 if is_disabled {
