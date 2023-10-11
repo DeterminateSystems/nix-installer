@@ -182,7 +182,9 @@ impl Action for CreateNixHookService {
 /// This function must be able to operate at both plan and execute time.
 async fn generate_plist(service_label: &str) -> Result<LaunchctlHookPlist, ActionErrorKind> {
     let plist = LaunchctlHookPlist {
-        run_at_load: true,
+        keep_alive: KeepAliveOpts {
+            successful_exit: false,
+        },
         label: service_label.into(),
         program_arguments: vec![
             "/bin/sh".into(),
@@ -201,9 +203,15 @@ async fn generate_plist(service_label: &str) -> Result<LaunchctlHookPlist, Actio
 pub struct LaunchctlHookPlist {
     label: String,
     program_arguments: Vec<String>,
-    run_at_load: bool,
+    keep_alive: KeepAliveOpts,
     standard_error_path: String,
     standard_out_path: String,
+}
+
+#[derive(Deserialize, Clone, Debug, Serialize, PartialEq)]
+#[serde(rename_all = "PascalCase")]
+pub struct KeepAliveOpts {
+    successful_exit: bool,
 }
 
 #[non_exhaustive]
