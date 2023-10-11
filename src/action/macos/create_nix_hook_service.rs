@@ -182,9 +182,15 @@ impl Action for CreateNixHookService {
 /// This function must be able to operate at both plan and execute time.
 async fn generate_plist(service_label: &str) -> Result<LaunchctlHookPlist, ActionErrorKind> {
     let plist = LaunchctlHookPlist {
-        run_at_load: true,
+        keep_alive: KeepAliveOpts {
+            successful_exit: false,
+        },
         label: service_label.into(),
-        program_arguments: vec!["/nix/nix-installer".into(), "restore-shell".into()],
+        program_arguments: vec![
+            "/bin/sh".into(),
+            "-c".into(),
+            "/bin/wait4path /nix/nix-installer && /nix/nix-installer restore-shell".into(),
+        ],
         standard_error_path: "/nix/.nix-installer-hook.err.log".into(),
         standard_out_path: "/nix/.nix-installer-hook.out.log".into(),
     };
@@ -195,11 +201,17 @@ async fn generate_plist(service_label: &str) -> Result<LaunchctlHookPlist, Actio
 #[derive(Deserialize, Clone, Debug, Serialize, PartialEq)]
 #[serde(rename_all = "PascalCase")]
 pub struct LaunchctlHookPlist {
-    run_at_load: bool,
     label: String,
     program_arguments: Vec<String>,
+    keep_alive: KeepAliveOpts,
     standard_error_path: String,
     standard_out_path: String,
+}
+
+#[derive(Deserialize, Clone, Debug, Serialize, PartialEq)]
+#[serde(rename_all = "PascalCase")]
+pub struct KeepAliveOpts {
+    successful_exit: bool,
 }
 
 #[non_exhaustive]
