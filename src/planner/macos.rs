@@ -176,7 +176,7 @@ impl Planner for Macos {
         } = self;
         let mut map = HashMap::default();
 
-        map.extend(settings.settings()?.into_iter());
+        map.extend(settings.settings()?);
         map.insert("volume_encrypt".into(), serde_json::to_value(encrypt)?);
         map.insert("volume_label".into(), serde_json::to_value(volume_label)?);
         map.insert("root_disk".into(), serde_json::to_value(root_disk)?);
