@@ -138,6 +138,7 @@
               cargo-outdated
               cacert
               cargo-audit
+              cargo-watch
               nixpkgs-fmt
               check.check-rustfmt
               check.check-spelling
