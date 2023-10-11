@@ -231,9 +231,9 @@ impl Planner for Macos {
     }
 }
 
-impl Into<BuiltinPlanner> for Macos {
-    fn into(self) -> BuiltinPlanner {
-        BuiltinPlanner::Macos(self)
+impl From<Macos> for BuiltinPlanner {
+    fn from(val: Macos) -> Self {
+        BuiltinPlanner::Macos(val)
     }
 }
 
