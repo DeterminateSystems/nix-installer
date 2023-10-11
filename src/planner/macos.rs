@@ -122,11 +122,8 @@ impl Planner for Macos {
 
                 let stdout = String::from_utf8_lossy(&output.stdout);
                 let stdout_trimmed = stdout.trim();
-                if stdout_trimmed == "true" {
-                    true
-                } else {
-                    false
-                }
+
+                stdout_trimmed == "true"
             },
         };
 
