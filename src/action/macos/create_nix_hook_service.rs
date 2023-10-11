@@ -184,7 +184,7 @@ async fn generate_plist(service_label: &str) -> Result<LaunchctlHookPlist, Actio
     let plist = LaunchctlHookPlist {
         run_at_load: true,
         label: service_label.into(),
-        program_arguments: vec!["/nix/nix-installer".into(), "restore-rc".into()],
+        program_arguments: vec!["/nix/nix-installer".into(), "restore-shell".into()],
         standard_error_path: "/nix/.nix-installer-hook.err.log".into(),
         standard_out_path: "/nix/.nix-installer-hook.out.log".into(),
     };
