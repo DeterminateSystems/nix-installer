@@ -177,7 +177,7 @@ async fn generate_plist(service_label: &str) -> Result<LaunchctlHookPlist, Actio
         program_arguments: vec![
             "/bin/sh".into(),
             "-c".into(),
-            "/bin/wait4path /nix/nix-installer && /nix/nix-installer restore-shell".into(),
+            "/bin/wait4path /nix/nix-installer && /nix/nix-installer repair".into(),
         ],
         standard_error_path: "/nix/.nix-installer-hook.err.log".into(),
         standard_out_path: "/nix/.nix-installer-hook.out.log".into(),

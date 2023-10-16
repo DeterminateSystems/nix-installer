@@ -1,4 +1,4 @@
-use std::{os::unix::prelude::PermissionsExt, process::ExitCode};
+use std::process::ExitCode;
 
 use crate::{
     action::common::ConfigureShellProfile,
@@ -8,11 +8,11 @@ use crate::{
 use clap::{ArgAction, Parser};
 
 /**
-Update the macOS startup files to make Nix usable after system upgrades.
+Update the shell profiles to make Nix usable after system upgrades.
 */
 #[derive(Debug, Parser)]
 #[command(args_conflicts_with_subcommands = true)]
-pub struct RestoreShell {
+pub struct Repair {
     #[clap(
         long,
         env = "NIX_INSTALLER_NO_CONFIRM",
@@ -24,7 +24,7 @@ pub struct RestoreShell {
 }
 
 #[async_trait::async_trait]
-impl CommandExecute for RestoreShell {
+impl CommandExecute for Repair {
     #[tracing::instrument(level = "trace", skip_all)]
     async fn execute(self) -> eyre::Result<ExitCode> {
         let Self {
