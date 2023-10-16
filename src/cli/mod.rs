@@ -47,6 +47,7 @@ impl CommandExecute for NixInstallerCli {
             NixInstallerSubcommand::Plan(plan) => plan.execute().await,
             NixInstallerSubcommand::SelfTest(self_test) => self_test.execute().await,
             NixInstallerSubcommand::Install(install) => install.execute().await,
+            NixInstallerSubcommand::Repair(restore_shell) => restore_shell.execute().await,
             NixInstallerSubcommand::Uninstall(revert) => revert.execute().await,
         }
     }
