@@ -8,9 +8,9 @@ use tokio::{
     process::Command,
 };
 
-use crate::action::{
+use crate::{action::{
     Action, ActionDescription, ActionError, ActionErrorKind, ActionTag, StatefulAction,
-};
+}, execute_command};
 
 /** Create a plist for a `launchctl` service to re-add Nix to the zshrc after upgrades.
  */
@@ -35,6 +35,7 @@ impl CreateNixHookService {
         // If the service is currently loaded or running, we need to unload it during execute (since we will then recreate it and reload it)
         // This `launchctl` command may fail if the service isn't loaded
         let mut check_loaded_command = Command::new("launchctl");
+        check_loaded_command.process_group(0);
         check_loaded_command.arg("print");
         check_loaded_command.arg(format!("system/{}", this.service_label));
         tracing::trace!(
@@ -123,24 +124,11 @@ impl Action for CreateNixHookService {
         } = self;
 
         if *needs_bootout {
-            let mut unload_command = Command::new("launchctl");
-            unload_command.arg("bootout");
-            unload_command.arg(format!("system/{service_label}"));
-            tracing::trace!(
-                command = format!("{:?}", unload_command.as_std()),
-                "Executing"
-            );
-            let unload_output = unload_command
-                .output()
-                .await
-                .map_err(|e| ActionErrorKind::command(&unload_command, e))
-                .map_err(Self::error)?;
-            if !unload_output.status.success() {
-                return Err(Self::error(ActionErrorKind::command_output(
-                    &unload_command,
-                    unload_output,
-                )));
-            }
+            execute_command(Command::new("launchctl")
+                .process_group(0)
+                .arg("bootout")
+                .arg(format!("system/{service_label}"))
+            ).await.map_err(Self::error)?;
         }
 
         let generated_plist = generate_plist(service_label).await.map_err(Self::error)?;
@@ -217,7 +205,7 @@ pub struct KeepAliveOpts {
 #[non_exhaustive]
 #[derive(Debug, thiserror::Error)]
 pub enum CreateNixHookServiceError {
-    #[error("`{path}` contents differs, planned `{expected:?}`, discovered `{discovered:?}`")]
+    #[error("`{path}` exists and contains content different than expected. Consider removing the file.")]
     DifferentPlist {
         expected: LaunchctlHookPlist,
         discovered: LaunchctlHookPlist,
