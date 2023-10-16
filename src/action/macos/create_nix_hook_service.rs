@@ -8,9 +8,10 @@ use tokio::{
     process::Command,
 };
 
-use crate::{action::{
-    Action, ActionDescription, ActionError, ActionErrorKind, ActionTag, StatefulAction,
-}, execute_command};
+use crate::{
+    action::{Action, ActionDescription, ActionError, ActionErrorKind, ActionTag, StatefulAction},
+    execute_command,
+};
 
 /** Create a plist for a `launchctl` service to re-add Nix to the zshrc after upgrades.
  */
@@ -124,11 +125,14 @@ impl Action for CreateNixHookService {
         } = self;
 
         if *needs_bootout {
-            execute_command(Command::new("launchctl")
-                .process_group(0)
-                .arg("bootout")
-                .arg(format!("system/{service_label}"))
-            ).await.map_err(Self::error)?;
+            execute_command(
+                Command::new("launchctl")
+                    .process_group(0)
+                    .arg("bootout")
+                    .arg(format!("system/{service_label}")),
+            )
+            .await
+            .map_err(Self::error)?;
         }
 
         let generated_plist = generate_plist(service_label).await.map_err(Self::error)?;
@@ -205,7 +209,9 @@ pub struct KeepAliveOpts {
 #[non_exhaustive]
 #[derive(Debug, thiserror::Error)]
 pub enum CreateNixHookServiceError {
-    #[error("`{path}` exists and contains content different than expected. Consider removing the file.")]
+    #[error(
+        "`{path}` exists and contains content different than expected. Consider removing the file."
+    )]
     DifferentPlist {
         expected: LaunchctlHookPlist,
         discovered: LaunchctlHookPlist,

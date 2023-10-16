@@ -27,9 +27,7 @@ pub struct Repair {
 impl CommandExecute for Repair {
     #[tracing::instrument(level = "trace", skip_all)]
     async fn execute(self) -> eyre::Result<ExitCode> {
-        let Self {
-            no_confirm: _,
-        } = self;
+        let Self { no_confirm: _ } = self;
 
         ensure_root()?;
 
