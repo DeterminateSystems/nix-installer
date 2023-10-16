@@ -127,47 +127,61 @@ impl Planner for Macos {
             },
         };
 
-        Ok(vec![
-            CreateNixVolume::plan(
-                root_disk.unwrap(), /* We just ensured it was populated */
-                self.volume_label.clone(),
-                false,
-                encrypt,
-            )
+        let mut plan = vec![];
+
+        plan.push(CreateNixVolume::plan(
+            root_disk.unwrap(), /* We just ensured it was populated */
+            self.volume_label.clone(),
+            false,
+            encrypt,
+        )
+        .await
+        .map_err(PlannerError::Action)?
+        .boxed(),
+        );
+        plan.push(ProvisionNix::plan(&self.settings)
             .await
             .map_err(PlannerError::Action)?
-            .boxed(),
-            ProvisionNix::plan(&self.settings)
+            .boxed()
+        );
+        // Auto-allocate uids is broken on Mac. Tools like `whoami` don't work.
+        // e.g. https://github.com/NixOS/nix/issues/8444
+        plan.push(CreateUsersAndGroups::plan(self.settings.clone())
+            .await
+            .map_err(PlannerError::Action)?
+            .boxed()
+        );
+        plan.push(SetTmutilExclusions::plan(vec![PathBuf::from("/nix/store"), PathBuf::from("/nix/var")])
+            .await
+            .map_err(PlannerError::Action)?
+            .boxed()
+        );
+        plan.push(ConfigureNix::plan(ShellProfileLocations::default(), &self.settings)
+            .await
+            .map_err(PlannerError::Action)?
+            .boxed()
+        );
+
+        if self.settings.modify_profile {
+            plan.push(CreateNixHookService::plan()
                 .await
                 .map_err(PlannerError::Action)?
-                .boxed(),
-            // Auto-allocate uids is broken on Mac. Tools like `whoami` don't work.
-            // e.g. https://github.com/NixOS/nix/issues/8444
-            CreateUsersAndGroups::plan(self.settings.clone())
-                .await
-                .map_err(PlannerError::Action)?
-                .boxed(),
-            SetTmutilExclusions::plan(vec![PathBuf::from("/nix/store"), PathBuf::from("/nix/var")])
-                .await
-                .map_err(PlannerError::Action)?
-                .boxed(),
-            ConfigureNix::plan(ShellProfileLocations::default(), &self.settings)
-                .await
-                .map_err(PlannerError::Action)?
-                .boxed(),
-            CreateNixHookService::plan()
-                .await
-                .map_err(PlannerError::Action)?
-                .boxed(),
-            ConfigureInitService::plan(InitSystem::Launchd, true)
-                .await
-                .map_err(PlannerError::Action)?
-                .boxed(),
-            RemoveDirectory::plan(crate::settings::SCRATCH_DIR)
-                .await
-                .map_err(PlannerError::Action)?
-                .boxed(),
-        ])
+                .boxed()
+            );
+        }
+        
+        plan.push(ConfigureInitService::plan(InitSystem::Launchd, true)
+            .await
+            .map_err(PlannerError::Action)?
+            .boxed()
+        );
+        plan.push(RemoveDirectory::plan(crate::settings::SCRATCH_DIR)
+            .await
+            .map_err(PlannerError::Action)?
+            .boxed()
+        );
+        
+        Ok(plan)
     }
 
     fn settings(&self) -> Result<HashMap<String, serde_json::Value>, InstallSettingsError> {
