@@ -66,7 +66,7 @@
           };
           sharedAttrs = {
             pname = "nix-installer";
-            version = "0.13.1";
+            version = "0.14.0";
             src = builtins.path {
               name = "nix-installer-source";
               path = self;
