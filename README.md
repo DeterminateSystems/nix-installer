@@ -75,13 +75,13 @@ Options:
 # ...
       --nix-build-group-name <NIX_BUILD_GROUP_NAME>
           The Nix build group name
-          
+
           [env: NIX_INSTALLER_NIX_BUILD_GROUP_NAME=]
           [default: nixbld]
 
       --nix-build-group-id <NIX_BUILD_GROUP_ID>
           The Nix build group GID
-          
+
           [env: NIX_INSTALLER_NIX_BUILD_GROUP_ID=]
           [default: 3000]
 # ...
@@ -422,6 +422,13 @@ curl -sSf -L https://github.com/DeterminateSystems/nix-installer/releases/downlo
 ./nix-installer install
 ```
 
+Each installer version has an [associated supported nix version](src/settings.rs) -- if you pin the installer version, you'll also indirectly pin to the associated nix version.
+
+You can also override the `nix` version via `--nix-package-url` or `NIX_INSTALLER_NIX_PACKAGE_URL=` but doing so is not recommended since we haven't tested that combination.
+Here are some example `nix` package URLs including nix version, OS and architecture:
+
+* https://releases.nixos.org/nix/nix-2.18.1/nix-2.18.1-x86_64-linux.tar.xz
+* https://releases.nixos.org/nix/nix-2.18.1/nix-2.18.1-aarch64-darwin.tar.xz
 
 ## Installation Differences
 
