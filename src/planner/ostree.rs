@@ -200,6 +200,13 @@ impl Planner for Ostree {
         }
 
         plan.push(
+            CreateDirectory::plan("/etc/tmpfiles.d", None, None, 0o0755, false)
+                .await
+                .map_err(PlannerError::Action)?
+                .boxed(),
+        );
+
+        plan.push(
             ConfigureInitService::plan(InitSystem::Systemd, true)
                 .await
                 .map_err(PlannerError::Action)?
