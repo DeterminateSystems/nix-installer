@@ -310,7 +310,7 @@ There are two possible workarounds for this:
 
 ### Using MacOS after removing `nix` while `nix-darwin` was still installed, network requests fail
 
-If `nix` was previously uninstalled without uninstalling `nix-darwin first`, users may experience errors similar to this:
+If `nix` was previously uninstalled without uninstalling `nix-darwin` first, users may experience errors similar to this:
 
 ```bash
 $ nix shell nixpkgs#curl
