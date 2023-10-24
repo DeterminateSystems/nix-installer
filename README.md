@@ -308,6 +308,42 @@ There are two possible workarounds for this:
 
   </details>
 
+### Using MacOS after removing `nix` while `nix-darwin` was still installed, network requests fail
+
+If `nix` was previously uninstalled (using the [reference documentation](https://nixos.org/manual/nix/stable/installation/uninstall))
+but `nix-darwin` was not uninstalled beforehand, users may experience errors similar to this:
+
+```bash
+$ nix profile install nixpkgs#curl
+error: unable to download 'https://cache.nixos.org/g8bqlgmpa4yg601w561qy2n576i6g0vh.narinfo': Problem with the SSL CA cert (path? access rights?) (77)
+```
+
+This occurs because `nix-darwin` provisions an `org.nixos.activate-system` service which remains after Nix is uninstalled.
+The `org.nixos.activate-system` service in this state interacts with the newly installed Nix and changes the SSL certificates it uses to be a broken symlink.
+
+```bash
+$ ls -lah /etc/ssl/certs
+total 0
+drwxr-xr-x  3 root  wheel    96B Oct 17 08:26 .
+drwxr-xr-x  6 root  wheel   192B Sep 16 06:28 ..
+lrwxr-xr-x  1 root  wheel    41B Oct 17 08:26 ca-certificates.crt -> /etc/static/ssl/certs/ca-certificates.crt
+```
+
+The problem is compounded by the matter that the [`nix-darwin` uninstaller](https://github.com/LnL7/nix-darwin#uninstalling) will not work, since it requires Nix to exist and have network connectivity.
+
+It's possible to resolve this situation by removing the `org.nixos.activate-system` service and the `ca-certificates`:
+
+```bash
+$ sudo rm /Library/LaunchDaemons/org.nixos.activate-system.plist
+$ sudo launchctl bootout system/org.nixos.activate-system
+$ /nix/nix-installer uninstall
+$ sudo rm /etc/ssl/certs/ca-certificates.crt
+```
+
+Then run the `nix-installer` again, and it should work.
+
+Up-to-date versions of the `nix-installer` will refuse to uninstall until `nix-darwin` is uninstalled first, helping mitigate this problem.
+
 ## Building a binary
 
 Since you'll be using `nix-installer` to install Nix on systems without Nix, the default build is a static binary.
