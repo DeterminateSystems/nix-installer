@@ -8,7 +8,7 @@ on:
 jobs:
   lints:
     name: Lints
-    runs-on: ubuntu-22.04
+    runs-on: nscloud-ubuntu-22.04-amd64-4x16
     steps:
       - uses: actions/checkout@v3
       - name: Check Nixpkgs input
@@ -48,7 +48,7 @@ jobs:
 
   run-x86_64-linux:
     name: Run x86_64 Linux
-    runs-on: ubuntu-22.04
+    runs-on: nscloud-ubuntu-22.04-amd64-4x16
     needs: [lints]
     steps:
       - uses: actions/checkout@v3
@@ -152,7 +152,7 @@ jobs:
 
   run-x86_64-linux-no-init:
     name: Run x86_64 Linux (No init)
-    runs-on: ubuntu-22.04
+    runs-on: nscloud-ubuntu-22.04-amd64-4x16
     needs: [lints]
     steps:
       - uses: actions/checkout@v3
