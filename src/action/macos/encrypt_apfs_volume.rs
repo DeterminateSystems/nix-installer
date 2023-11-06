@@ -254,9 +254,9 @@ impl Action for EncryptApfsVolume {
 pub enum EncryptApfsVolumeError {
     #[error("The keychain has an existing password for a non-existing \"{0}\" volume on disk `{1}`, consider removing the password with `sudo security delete-generic-password  -a \"{0}\" -s \"Nix Store\" -l \"{1} encryption password\" -D \"Encrypted volume password\"`. Note that it's possible to have several passwords stored, so you may need to run this command several times until receiving the message `The specified item could not be found in the keychain.`")]
     ExistingPasswordFound(String, PathBuf),
-    #[error("The keychain lacks a password for the already existing \"{0}\" volume on disk `{1}`, consider removing the volume with `diskutil apfs deleteVolume \"{0}\"` (if you receive error -69888, you may need to run `launchctl bootout system/org.nixos.darwin-store` and `launchctl bootout system/org.nixos.nix-daemon` first)")]
+    #[error("The keychain lacks a password for the already existing \"{0}\" volume on disk `{1}`, consider removing the volume with `diskutil apfs deleteVolume \"{0}\"` (if you receive error -69888, you may need to run `sudo launchctl bootout system/org.nixos.darwin-store` and `sudo launchctl bootout system/org.nixos.nix-daemon` first)")]
     MissingPasswordForExistingVolume(String, PathBuf),
-    #[error("The existing APFS volume \"{0}\" on disk `{1}` is not encrypted but it should be, consider removing the volume with `diskutil apfs deleteVolume \"{0}\"` (if you receive error -69888, you may need to run `launchctl bootout system/org.nixos.darwin-store` and `launchctl bootout system/org.nixos.nix-daemon` first)")]
+    #[error("The existing APFS volume \"{0}\" on disk `{1}` is not encrypted but it should be, consider removing the volume with `diskutil apfs deleteVolume \"{0}\"` (if you receive error -69888, you may need to run `sudo launchctl bootout system/org.nixos.darwin-store` and `sudo launchctl bootout system/org.nixos.nix-daemon` first)")]
     ExistingVolumeNotEncrypted(String, PathBuf),
 }
 
