@@ -11,7 +11,10 @@ use crate::{
     settings::{InitSystem, InstallSettingsError},
     Action, BuiltinPlanner,
 };
-use std::{collections::HashMap, path::PathBuf};
+use std::{
+    collections::HashMap,
+    path::{Path, PathBuf},
+};
 
 use super::{
     linux::{
@@ -172,7 +175,7 @@ impl Planner for Ostree {
             .position(|v| *v == PathBuf::from("/usr/share/fish/"))
         {
             shell_profile_locations.fish.vendor_confd_prefixes =
-                &[OSTREE_FISH_PROFILE_LOCATION.into()];
+                vec![OSTREE_FISH_PROFILE_LOCATION.into()];
         }
 
         plan.push(
