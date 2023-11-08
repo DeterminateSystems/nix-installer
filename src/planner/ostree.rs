@@ -31,7 +31,7 @@ use super::{
 // This may not be suitable for all possible ostree based distros, but it'll fix
 // a good number of selftest failures we're seeing.
 //
-// See: #707
+// See: https://github.com/DeterminateSystems/nix-installer/issues/707
 pub const OSTREE_FISH_PROFILE_LOCATION: &str = "/usr/local/share/fish/";
 
 /// A planner suitable for immutable systems using ostree, such as Fedora Silverblue
@@ -171,10 +171,8 @@ impl Planner for Ostree {
             .iter()
             .position(|v| *v == PathBuf::from("/usr/share/fish/"))
         {
-            shell_profile_locations
-                .fish
-                .vendor_confd_prefixes
-                .remove(index);
+            shell_profile_locations.fish.vendor_confd_prefixes =
+                &[OSTREE_FISH_PROFILE_LOCATION.into()];
         }
 
         plan.push(
