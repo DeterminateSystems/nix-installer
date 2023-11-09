@@ -198,7 +198,7 @@ impl Planner for Ostree {
                 .boxed(),
         );
 
-        if Path::new("/etc/fish").is_directory() {
+        if Path::new("/etc/fish").is_dir() {
             plan.push(
                 CreateDirectory::plan(&OSTREE_FISH_PROFILE_LOCATION, None, None, 0o0755, true)
                     .await
