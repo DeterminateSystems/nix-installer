@@ -1,5 +1,5 @@
 {
-  "version": "0.10.1-unreleased",
+  "version": "0.14.0",
   "actions": [
     {
       "action": {
@@ -62,7 +62,9 @@
         "action": "provision_nix",
         "fetch_nix": {
           "action": {
-            "url": "https://releases.nixos.org/nix/nix-2.15.0/nix-2.15.0-x86_64-linux.tar.xz",
+            "url_or_path": {
+              "Url": "https://releases.nixos.org/nix/nix-2.17.0/nix-2.17.0-x86_64-linux.tar.xz"
+            },
             "dest": "/nix/temp-install-dir",
             "proxy": null,
             "ssl_cert_file": null
@@ -391,7 +393,9 @@
       "nix_build_user_count": 0,
       "nix_build_user_prefix": "nixbld",
       "nix_build_user_id_base": 30000,
-      "nix_package_url": "https://releases.nixos.org/nix/nix-2.15.0/nix-2.15.0-x86_64-linux.tar.xz",
+      "nix_package_url": {
+        "Url": "https://releases.nixos.org/nix/nix-2.17.0/nix-2.17.0-x86_64-linux.tar.xz"
+      },
       "proxy": null,
       "ssl_cert_file": null,
       "extra_conf": [],
@@ -400,7 +404,7 @@
     }
   },
   "diagnostic_data": {
-    "version": "0.10.1-unreleased",
+    "version": "0.14.0",
     "planner": "steam-deck",
     "configured_settings": [],
     "os_name": "Ubuntu",

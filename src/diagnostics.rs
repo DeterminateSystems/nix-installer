@@ -34,6 +34,7 @@ pub enum DiagnosticAction {
 /// A report sent to an endpoint
 #[derive(Debug, serde::Deserialize, serde::Serialize, Clone)]
 pub struct DiagnosticReport {
+    pub attribution: Option<String>,
     pub version: String,
     pub planner: String,
     pub configured_settings: Vec<String>,
@@ -50,6 +51,7 @@ pub struct DiagnosticReport {
 /// A preparation of data to be sent to the `endpoint`.
 #[derive(Debug, serde::Deserialize, serde::Serialize, Clone, Default)]
 pub struct DiagnosticData {
+    attribution: Option<String>,
     version: String,
     planner: String,
     configured_settings: Vec<String>,
@@ -65,6 +67,7 @@ pub struct DiagnosticData {
 
 impl DiagnosticData {
     pub fn new(
+        attribution: Option<String>,
         endpoint: Option<String>,
         planner: String,
         configured_settings: Vec<String>,
@@ -81,6 +84,7 @@ impl DiagnosticData {
         let is_ci = is_ci::cached()
             || std::env::var("NIX_INSTALLER_CI").unwrap_or_else(|_| "0".into()) == "1";
         Ok(Self {
+            attribution,
             endpoint,
             version: env!("CARGO_PKG_VERSION").into(),
             planner,
@@ -131,6 +135,7 @@ impl DiagnosticData {
 
     pub fn report(&self, action: DiagnosticAction, status: DiagnosticStatus) -> DiagnosticReport {
         let Self {
+            attribution,
             version,
             planner,
             configured_settings,
@@ -143,6 +148,7 @@ impl DiagnosticData {
             failure_chain,
         } = self;
         DiagnosticReport {
+            attribution: attribution.clone(),
             version: version.clone(),
             planner: planner.clone(),
             configured_settings: configured_settings.clone(),

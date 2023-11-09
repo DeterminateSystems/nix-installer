@@ -68,7 +68,7 @@ impl Action for EnableOwnership {
             let the_plist: DiskUtilInfoOutput =
                 plist::from_reader(Cursor::new(buf)).map_err(Self::error)?;
 
-            the_plist.global_permissions_enabled
+            !the_plist.global_permissions_enabled
         };
 
         if should_enable_ownership {

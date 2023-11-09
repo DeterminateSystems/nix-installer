@@ -13,14 +13,14 @@ If you used the **Determinate Nix Installer**, report issues at https://github.c
 [![Crates.io](https://img.shields.io/crates/v/nix-installer)](https://crates.io/crates/nix-installer)
 [![Docs.rs](https://img.shields.io/docsrs/nix-installer)](https://docs.rs/nix-installer/latest/nix_installer/)
 
-`nix-installer` is an opinionated alternative to the [official Nix install scripts](https://nixos.org/download.html).
+A fast, friendly, and reliable tool to help you use Nix with Flakes everywhere.
 
 
 ```bash
 curl --proto '=https' --tlsv1.2 -sSf -L https://install.determinate.systems/nix | sh -s -- install
 ```
 
-The `nix-installer` tool is ready to use in a number of environments:
+The `nix-installer` has successfully completed over 500,000 installs in a number of environments, including [Github Actions](#as-a-github-action):
 
 | Platform                     | Multi User         | `root` only | Maturity          |
 |------------------------------|:------------------:|:-----------:|:-----------------:|
@@ -35,27 +35,6 @@ The `nix-installer` tool is ready to use in a number of environments:
 > **Note**
 > On **MacOS only**, removing users and/or groups may fail if there are no users who are logged in graphically.
 
-## Installation Differences
-
-Differing from the current official [Nix](https://github.com/NixOS/nix) installer scripts:
-
-* an installation receipt (for uninstalling) is stored at `/nix/receipt.json` as well as a copy of the install binary at `/nix/nix-installer`
-* `nix-channel --update` is not run, `~/.nix-channels` is not provisioned
-* `NIX_SSL_CERT_FILE` is set in the various shell profiles if the `ssl-cert-file` argument is used.
-
-## Motivations
-
-The current Nix install scripts do an excellent job, however they are difficult to maintain. Subtle differences in the shell implementations and certain characteristics of bash scripts make it difficult to make meaningful changes to the installer.
-
-Our team wishes to experiment with the idea of an installer in a more structured language and see if this is a worthwhile alternative. Along the way, we are also exploring a few other ideas, such as:
-
-* offering users a chance to review an accurate, calculated install plan
-* having 'planners' which can create appropriate install plans
-* keeping an installation receipt for uninstallation
-* offering users with a failing install the chance to do a best-effort revert
-* doing whatever tasks we can in parallel
-
-So far, our explorations have been quite fruitful, so we wanted to share and keep exploring.
 
 ## Usage
 
@@ -70,10 +49,8 @@ Or, to download a platform specific Installer binary yourself:
 ```bash
 $ curl -sL -o nix-installer https://install.determinate.systems/nix/nix-installer-x86_64-linux
 $ chmod +x nix-installer
+$ ./nix-installer
 ```
-
-> **Note**
-> `nix-installer` will elevate itself if needed using `sudo`. If you use `doas` or `please` you may need to elevate `nix-installer` yourself.
 
 `nix-installer` installs Nix by following a *plan* made by a *planner*. Review the available planners:
 
@@ -128,8 +105,17 @@ $ curl --proto '=https' --tlsv1.2 -sSf -L https://install.determinate.systems/ni
 $ NIX_BUILD_GROUP_NAME=nixbuilder ./nix-installer install linux-multi --nix-build-group-id 4000
 ```
 
+### Upgrading Nix
 
-## Uninstalling
+You can upgrade Nix (to the version specified [here](https://raw.githubusercontent.com/NixOS/nixpkgs/master/nixos/modules/installer/tools/nix-fallback-paths.nix)) by running:
+
+```
+sudo -i nix upgrade-nix
+```
+
+Alternatively, you can [uninstall](#uninstalling) and [reinstall](#usage) with a different version of the `nix-installer`.
+
+### Uninstalling
 
 You can remove a `nix-installer`-installed Nix by running
 
@@ -138,7 +124,7 @@ You can remove a `nix-installer`-installed Nix by running
 ```
 
 
-## As a Github Action
+### As a Github Action
 
 You can use the [`nix-installer-action`](https://github.com/DeterminateSystems/nix-installer-action) Github Action like so:
 
@@ -160,7 +146,7 @@ jobs:
       run: nix build .
 ```
 
-## Without systemd (Linux only)
+### Without systemd (Linux only)
 
 > **Warning**
 > When `--init none` is used, _only_ `root` or users who can elevate to `root` privileges can run Nix:
@@ -175,7 +161,7 @@ If you don't use [systemd], you can still install Nix by explicitly specifying t
 curl --proto '=https' --tlsv1.2 -sSf -L https://install.determinate.systems/nix | sh -s -- install linux --init none
 ```
 
-## In a container
+### In a container
 
 In Docker/Podman containers or WSL2 instances where an init (like `systemd`) is not present, pass `--init none`.
 
@@ -238,15 +224,29 @@ podman rmi $IMAGE
 
 On some container tools, such as `docker`, `sandbox = false` can be omitted. Omitting it will negatively impact compatibility with container tools like `podman`.
 
-## In WSL2
+### In WSL2
 
-If [systemd is enabled](https://ubuntu.com/blog/ubuntu-wsl-enable-systemd) it's possible to install Nix as normal using the command at the top of this document:
+We **strongly recommend** [enabling systemd](https://ubuntu.com/blog/ubuntu-wsl-enable-systemd), then installing Nix as normal:
+
 
 ```bash
 curl --proto '=https' --tlsv1.2 -sSf -L https://install.determinate.systems/nix | sh -s -- install
 ```
 
-If systemd is not enabled, pass `--init none` at the end of the command:
+If [WSLg][wslg] is enabled, you can do things like open a Linux Firefox from Windows on Powershell:
+
+```powershell
+wsl nix run nixpkgs#firefox
+```
+
+To use some OpenGL applications, you can use [`nixGL`][nixgl] (note that some applications, such as `blender`, may not work):
+
+```powershell
+wsl nix run --impure github:guibou/nixGL nix run nixpkgs#obs-studio
+```
+
+
+If enabling system is not an option, pass `--init none` at the end of the command:
 
 > **Warning**
 > When `--init none` is used, _only_ `root` or users who can elevate to `root` privileges can run Nix:
@@ -260,7 +260,7 @@ If systemd is not enabled, pass `--init none` at the end of the command:
 curl --proto '=https' --tlsv1.2 -sSf -L https://install.determinate.systems/nix | sh -s -- install linux --init none
 ```
 
-## Skip confirmation
+### Skip confirmation
 
 If you'd like to bypass the confirmation step, you can apply the `--no-confirm` flag:
 
@@ -269,6 +269,89 @@ curl --proto '=https' --tlsv1.2 -sSf -L https://install.determinate.systems/nix 
 ```
 
 This is especially useful when using the installer in non-interactive scripts.
+
+
+## Quirks
+
+While `nix-installer` tries to provide a comprehensive and unquirky experience, there are unfortunately some issues which may require manual intervention or operator choices.
+
+### Using MacOS remote SSH builders, Nix binaries are not on `$PATH`
+
+When connecting to a Mac remote SSH builder users may sometimes see this error:
+
+```bash
+$ nix store ping --store "ssh://$USER@$HOST"
+Store URL: ssh://$USER@$HOST
+zsh:1: command not found: nix-store
+error: cannot connect to '$USER@$HOST'
+```
+
+The way MacOS populates the `PATH` environment differs from other environments. ([Some background](https://gist.github.com/Linerre/f11ad4a6a934dcf01ee8415c9457e7b2))
+
+There are two possible workarounds for this:
+
+* **(Preferred)** Update the remote builder URL to include the `remote-program` parameter pointing to `nix-store`. For example:
+  ```bash
+  nix store ping --store "ssh://$USER@$HOST?remote-program=/nix/var/nix/profiles/default/bin/nix-store"
+  ```
+  If you are unsure where the `nix-store` binary is located, run `which nix-store` on the remote.
+* Update `/etc/zshenv` on the remote so that `zsh` populates the Nix path for every shell, even those that are neither *interactive* or *login*:
+  ```bash
+  # Nix
+  if [ -e '/nix/var/nix/profiles/default/etc/profile.d/nix-daemon.sh' ]; then
+      . '/nix/var/nix/profiles/default/etc/profile.d/nix-daemon.sh'
+  fi
+  # End Nix
+  ```
+  <details>
+    <summary>This strategy has some behavioral caveats, namely, <code>$PATH</code> may have unexpected contents</summary>
+
+    For example, if `$PATH` gets unset then a script invoked, `$PATH` may not be as empty as expected:
+    ```bash
+    $ cat example.sh     
+    #! /bin/zsh
+    echo $PATH
+    $ PATH= ./example.sh 
+    /Users/ephemeraladmin/.nix-profile/bin:/nix/var/nix/profiles/default/bin:
+    ```
+    This strategy results in Nix's paths being present on `$PATH` twice and may have a minor impact on performance.
+
+  </details>
+
+### Using MacOS after removing `nix` while `nix-darwin` was still installed, network requests fail
+
+If `nix` was previously uninstalled without uninstalling `nix-darwin` first, users may experience errors similar to this:
+
+```bash
+$ nix shell nixpkgs#curl
+error: unable to download 'https://cache.nixos.org/g8bqlgmpa4yg601w561qy2n576i6g0vh.narinfo': Problem with the SSL CA cert (path? access rights?) (77)
+```
+
+This occurs because `nix-darwin` provisions an `org.nixos.activate-system` service which remains after Nix is uninstalled.
+The `org.nixos.activate-system` service in this state interacts with the newly installed Nix and changes the SSL certificates it uses to be a broken symlink.
+
+```bash
+$ ls -lah /etc/ssl/certs
+total 0
+drwxr-xr-x  3 root  wheel    96B Oct 17 08:26 .
+drwxr-xr-x  6 root  wheel   192B Sep 16 06:28 ..
+lrwxr-xr-x  1 root  wheel    41B Oct 17 08:26 ca-certificates.crt -> /etc/static/ssl/certs/ca-certificates.crt
+```
+
+The problem is compounded by the matter that the [`nix-darwin` uninstaller](https://github.com/LnL7/nix-darwin#uninstalling) will not work after uninstalling Nix, since it uses Nix and requires network connectivity.
+
+It's possible to resolve this situation by removing the `org.nixos.activate-system` service and the `ca-certificates`:
+
+```bash
+$ sudo rm /Library/LaunchDaemons/org.nixos.activate-system.plist
+$ sudo launchctl bootout system/org.nixos.activate-system
+$ /nix/nix-installer uninstall
+$ sudo rm /etc/ssl/certs/ca-certificates.crt
+```
+
+Then run the `nix-installer` again, and it should work.
+
+Up-to-date versions of the `nix-installer` will refuse to uninstall until `nix-darwin` is uninstalled first, helping mitigate this problem.
 
 ## Building a binary
 
@@ -300,7 +383,7 @@ nix build -L "github:determinatesystems/nix-installer/$NIX_INSTALLER_TAG#nix-ins
 
 Then copy the `result/bin/nix-installer` to the machine you wish to run it on.
 
-You can also add `nix-installer` to a system without Nix via `cargo`:
+You can also add `nix-installer` to a system without Nix via `cargo`, there are no system dependencies to worry about:
 
 ```bash
 # to build and run a local copy
@@ -323,7 +406,7 @@ To make this build portable, pass ` --target x86_64-unknown-linux-musl`.
 ## As a library
 
 > **Warning**
-> Use as a library is still experimental, if you're using this, please let us know and we can make a path to stablization.
+> Use as a library is still experimental. This feature is likely to be removed in the future without an advocate. If you're using this, please let us know and we can make a path to stablization.
 
 Add `nix-installer` to your dependencies:
 
@@ -374,52 +457,39 @@ curl -sSf -L https://github.com/DeterminateSystems/nix-installer/releases/downlo
 ./nix-installer install
 ```
 
-## Quirks
 
-While `nix-installer` tries to provide a comprehensive and unquirky experience, there are unfortunately some issues which may require manual intervention or operator choices.
+## Installation Differences
 
-### Using MacOS remote SSH builders, Nix binaries are not on `$PATH`
+Differing from the upstream [Nix](https://github.com/NixOS/nix) installer scripts:
 
-When connecting to a Mac remote SSH builder users may sometimes see this error:
+* In `nix.conf`:
+  + the `nix-command` and `flakes` features are enabled
+  + `bash-prompt-prefix` is set
+  + `auto-optimise-store` is set to `true` (On Linux only)
+  * `extra-nix-path` is set to `nixpkgs=flake:nixpkgs`
+* an installation receipt (for uninstalling) is stored at `/nix/receipt.json` as well as a copy of the install binary at `/nix/nix-installer`
+* `nix-channel --update` is not run, `~/.nix-channels` is not provisioned
+* `ssl-cert-file` is set in `/etc/nix/nix.conf` if the `ssl-cert-file` argument is used.
 
-```bash
-$ nix store ping --store "ssh://$USER@$HOST"
-Store URL: ssh://$USER@$HOST
-zsh:1: command not found: nix-store
-error: cannot connect to '$USER@$HOST'
-```
+## Motivations
 
-The way MacOS populates the `PATH` environment differs from other environments. ([Some background](https://gist.github.com/Linerre/f11ad4a6a934dcf01ee8415c9457e7b2))
+The existing upstream scripts do a good job, however they are difficult to maintain.
 
-There are two possible workarounds for this:
+Subtle differences in the shell implementations and tool used in the scripts make it difficult to make meaningful changes to the installer.
 
-* **(Preferred)** Update the remote builder URL to include the `remote-program` parameter pointing to `nix-store`. For example:
-  ```bash
-  nix store ping --store "ssh://$USER@$HOST?remote-program=/nix/var/nix/profiles/default/bin/nix-store"
-  ```
-  If you are unsure where the `nix-store` binary is located, run `which nix-store` on the remote.
-* Update `/etc/zshenv` on the remote so that `zsh` populates the Nix path for every shell, even those that are neither *interactive* or *login*:
-  ```bash
-  # Nix
-  if [ -e '/nix/var/nix/profiles/default/etc/profile.d/nix-daemon.sh' ]; then
-      . '/nix/var/nix/profiles/default/etc/profile.d/nix-daemon.sh'
-  fi
-  # End Nix
-  ```
-  <details>
-    <summary>This strategy has some behavioral caveats, namely, <code>$PATH</code> may have unexpected contents</summary>
+The Determinate Nix installer has numerous advantages:
 
-    For example, if `$PATH` gets unset then a script invoked, `$PATH` may not be as empty as expected:
-    ```bash
-    $ cat example.sh     
-    #! /bin/zsh
-    echo $PATH
-    $ PATH= ./example.sh 
-    /Users/ephemeraladmin/.nix-profile/bin:/nix/var/nix/profiles/default/bin:
-    ```
-    This strategy results in Nix's paths being present on `$PATH` twice and may have a minor impact on performance.
+* keeping an installation receipt for easy uninstallation
+* offering users a chance to review an accurate, calculated install plan
+* having 'planners' which can create appropriate install plans for complicated targets
+* offering users with a failing install the chance to do a best-effort revert
+* improving performance by maximizing parallel operations
+* supporting a expanded test suite including 'curing' cases
+* supporting SELinux and OSTree based distributions without asking users to make compromises
+* operating as a single, static binary with external dependencies such as `openssl`, only calling existing system tools (like `useradd`) where necessary
 
-  </details>
+It has been wonderful to collaborate with other participants in the Nix Installer Working Group and members of the broader community. The working group maintains a [foundation owned fork of the installer](https://github.com/nixos/experimental-nix-installer/).
+
 
 ## Diagnostics
 
@@ -439,6 +509,7 @@ Here is a table of the [diagnostic data we collect][diagnosticdata]:
 | `is_ci`               | Whether the installer is being used in CI (e.g. GitHub Actions).                                      |
 | `action`              | Either `Install` or `Uninstall`.                                                                      |
 | `status`              | One of `Success`, `Failure`, `Pending`, or `Cancelled`.                                               |
+| `attribution`         | Optionally defined by the user, associate the diagnostics of this run to the provided value.          |
 | `failure_chain`     | A high level description of what the failure was, if any. For example: `Command("diskutil")` if the command `diskutil list` failed. |
 
 To disable diagnostic reporting, set the diagnostics URL to an empty string by passing `--diagnostic-endpoint=""` or setting `NIX_INSTALLER_DIAGNOSTIC_ENDPOINT=""`.
@@ -449,3 +520,5 @@ You can read the full privacy policy for [Determinate Systems][detsys], the crea
 [diagnosticdata]: https://github.com/DeterminateSystems/nix-installer/blob/f9f927840d532b71f41670382a30cfcbea2d8a35/src/diagnostics.rs#L29-L43
 [privacy]: https://determinate.systems/privacy
 [systemd]: https://systemd.io
+[wslg]: https://github.com/microsoft/wslg
+[nixgl]: https://github.com/guibou/nixGL

@@ -12,7 +12,7 @@ use crate::{
     action::{
         base::RemoveDirectory,
         common::{ConfigureInitService, ConfigureNix, CreateUsersAndGroups, ProvisionNix},
-        macos::{CreateNixVolume, SetTmutilExclusions},
+        macos::{CreateNixHookService, CreateNixVolume, SetTmutilExclusions},
         StatefulAction,
     },
     execute_command,
@@ -23,7 +23,7 @@ use crate::{
     Action, BuiltinPlanner,
 };
 
-/// A planner for MacOS (Darwin) installs
+/// A planner for MacOS (Darwin) systems
 #[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
 #[cfg_attr(feature = "cli", derive(clap::Parser))]
 pub struct Macos {
@@ -122,15 +122,14 @@ impl Planner for Macos {
 
                 let stdout = String::from_utf8_lossy(&output.stdout);
                 let stdout_trimmed = stdout.trim();
-                if stdout_trimmed == "true" {
-                    true
-                } else {
-                    false
-                }
+
+                stdout_trimmed == "true"
             },
         };
 
-        Ok(vec![
+        let mut plan = vec![];
+
+        plan.push(
             CreateNixVolume::plan(
                 root_disk.unwrap(), /* We just ensured it was populated */
                 self.volume_label.clone(),
@@ -140,33 +139,57 @@ impl Planner for Macos {
             .await
             .map_err(PlannerError::Action)?
             .boxed(),
+        );
+        plan.push(
             ProvisionNix::plan(&self.settings)
                 .await
                 .map_err(PlannerError::Action)?
                 .boxed(),
-            // Auto-allocate uids is broken on Mac. Tools like `whoami` don't work.
-            // e.g. https://github.com/NixOS/nix/issues/8444
+        );
+        // Auto-allocate uids is broken on Mac. Tools like `whoami` don't work.
+        // e.g. https://github.com/NixOS/nix/issues/8444
+        plan.push(
             CreateUsersAndGroups::plan(self.settings.clone())
                 .await
                 .map_err(PlannerError::Action)?
                 .boxed(),
+        );
+        plan.push(
             SetTmutilExclusions::plan(vec![PathBuf::from("/nix/store"), PathBuf::from("/nix/var")])
                 .await
                 .map_err(PlannerError::Action)?
                 .boxed(),
+        );
+        plan.push(
             ConfigureNix::plan(ShellProfileLocations::default(), &self.settings)
                 .await
                 .map_err(PlannerError::Action)?
                 .boxed(),
+        );
+
+        if self.settings.modify_profile {
+            plan.push(
+                CreateNixHookService::plan()
+                    .await
+                    .map_err(PlannerError::Action)?
+                    .boxed(),
+            );
+        }
+
+        plan.push(
             ConfigureInitService::plan(InitSystem::Launchd, true)
                 .await
                 .map_err(PlannerError::Action)?
                 .boxed(),
+        );
+        plan.push(
             RemoveDirectory::plan(crate::settings::SCRATCH_DIR)
                 .await
                 .map_err(PlannerError::Action)?
                 .boxed(),
-        ])
+        );
+
+        Ok(plan)
     }
 
     fn settings(&self) -> Result<HashMap<String, serde_json::Value>, InstallSettingsError> {
@@ -179,7 +202,7 @@ impl Planner for Macos {
         } = self;
         let mut map = HashMap::default();
 
-        map.extend(settings.settings()?.into_iter());
+        map.extend(settings.settings()?);
         map.insert("volume_encrypt".into(), serde_json::to_value(encrypt)?);
         map.insert("volume_label".into(), serde_json::to_value(volume_label)?);
         map.insert("root_disk".into(), serde_json::to_value(root_disk)?);
@@ -210,6 +233,7 @@ impl Planner for Macos {
     #[cfg(feature = "diagnostics")]
     async fn diagnostic_data(&self) -> Result<crate::diagnostics::DiagnosticData, PlannerError> {
         Ok(crate::diagnostics::DiagnosticData::new(
+            self.settings.diagnostic_attribution.clone(),
             self.settings.diagnostic_endpoint.clone(),
             self.typetag_name().into(),
             self.configured_settings()
@@ -233,9 +257,9 @@ impl Planner for Macos {
     }
 }
 
-impl Into<BuiltinPlanner> for Macos {
-    fn into(self) -> BuiltinPlanner {
-        BuiltinPlanner::Macos(self)
+impl From<Macos> for BuiltinPlanner {
+    fn from(val: Macos) -> Self {
+        BuiltinPlanner::Macos(val)
     }
 }
 

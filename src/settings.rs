@@ -1,28 +1,31 @@
 /*! Configurable knobs and their related errors
 */
-use std::{collections::HashMap, path::PathBuf};
+use std::{collections::HashMap, fmt::Display, path::PathBuf, str::FromStr};
 
 #[cfg(feature = "cli")]
-use clap::ArgAction;
+use clap::{
+    error::{ContextKind, ContextValue},
+    ArgAction,
+};
 use url::Url;
 
 pub const SCRATCH_DIR: &str = "/nix/temp-install-dir";
 
 /// Default [`nix_package_url`](CommonSettings::nix_package_url) for Linux x86_64
 pub const NIX_X64_64_LINUX_URL: &str =
-    "https://releases.nixos.org/nix/nix-2.15.0/nix-2.15.0-x86_64-linux.tar.xz";
+    "https://releases.nixos.org/nix/nix-2.18.1/nix-2.18.1-x86_64-linux.tar.xz";
 /// Default [`nix_package_url`](CommonSettings::nix_package_url) for Linux x86 (32 bit)
 pub const NIX_I686_LINUX_URL: &str =
-    "https://releases.nixos.org/nix/nix-2.15.0/nix-2.15.0-i686-linux.tar.xz";
+    "https://releases.nixos.org/nix/nix-2.18.1/nix-2.18.1-i686-linux.tar.xz";
 /// Default [`nix_package_url`](CommonSettings::nix_package_url) for Linux aarch64
 pub const NIX_AARCH64_LINUX_URL: &str =
-    "https://releases.nixos.org/nix/nix-2.15.0/nix-2.15.0-aarch64-linux.tar.xz";
+    "https://releases.nixos.org/nix/nix-2.18.1/nix-2.18.1-aarch64-linux.tar.xz";
 /// Default [`nix_package_url`](CommonSettings::nix_package_url) for Darwin x86_64
 pub const NIX_X64_64_DARWIN_URL: &str =
-    "https://releases.nixos.org/nix/nix-2.15.0/nix-2.15.0-x86_64-darwin.tar.xz";
+    "https://releases.nixos.org/nix/nix-2.18.1/nix-2.18.1-x86_64-darwin.tar.xz";
 /// Default [`nix_package_url`](CommonSettings::nix_package_url) for Darwin aarch64
 pub const NIX_AARCH64_DARWIN_URL: &str =
-    "https://releases.nixos.org/nix/nix-2.15.0/nix-2.15.0-aarch64-darwin.tar.xz";
+    "https://releases.nixos.org/nix/nix-2.18.1/nix-2.18.1-aarch64-darwin.tar.xz";
 
 #[derive(Debug, serde::Deserialize, serde::Serialize, Clone, Copy, PartialEq, Eq)]
 #[cfg_attr(feature = "cli", derive(clap::ValueEnum))]
@@ -142,7 +145,7 @@ pub struct CommonSettings {
     /// The Nix package URL
     #[cfg_attr(
         feature = "cli",
-        clap(long, env = "NIX_INSTALLER_NIX_PACKAGE_URL", global = true)
+        clap(long, env = "NIX_INSTALLER_NIX_PACKAGE_URL", global = true, value_parser = clap::value_parser!(UrlOrPath))
     )]
     #[cfg_attr(
         all(target_os = "macos", target_arch = "x86_64", feature = "cli"),
@@ -174,19 +177,19 @@ pub struct CommonSettings {
             default_value = NIX_AARCH64_LINUX_URL,
         )
     )]
-    pub nix_package_url: Url,
+    pub nix_package_url: UrlOrPath,
 
     /// The proxy to use (if any), valid proxy bases are `https://$URL`, `http://$URL` and `socks5://$URL`
     #[cfg_attr(feature = "cli", clap(long, env = "NIX_INSTALLER_PROXY"))]
     pub proxy: Option<Url>,
 
-    /// An SSL cert to use (if any), used for fetching Nix and sets `NIX_SSL_CERT_FILE` for Nix
+    /// An SSL cert to use (if any), used for fetching Nix and sets `ssl-cert-file` in `/etc/nix/nix.conf`
     #[cfg_attr(feature = "cli", clap(long, env = "NIX_INSTALLER_SSL_CERT_FILE"))]
     pub ssl_cert_file: Option<PathBuf>,
 
     /// Extra configuration lines for `/etc/nix.conf`
     #[cfg_attr(feature = "cli", clap(long, action = ArgAction::Append, num_args = 0.., env = "NIX_INSTALLER_EXTRA_CONF", global = true))]
-    pub extra_conf: Vec<String>,
+    pub extra_conf: Vec<UrlOrPathOrString>,
 
     /// If `nix-installer` should forcibly recreate files it finds existing
     #[cfg_attr(
@@ -202,11 +205,25 @@ pub struct CommonSettings {
     pub force: bool,
 
     #[cfg(feature = "diagnostics")]
+    /// Relate the install diagnostic to a specific value
+    #[cfg_attr(
+        feature = "cli",
+        clap(
+            long,
+            default_value = None,
+            env = "NIX_INSTALLER_DIAGNOSTIC_ATTRIBUTION",
+            global = true
+        )
+    )]
+    pub diagnostic_attribution: Option<String>,
+
+    #[cfg(feature = "diagnostics")]
     /// The URL or file path for an installation diagnostic to be sent
     ///
     /// Sample of the data sent:
     ///
     /// {
+    ///     "attribution": null,
     ///     "version": "0.4.0",
     ///     "planner": "linux",
     ///     "configured_settings": [ "modify_profile" ],
@@ -297,6 +314,8 @@ impl CommonSettings {
             force: false,
             ssl_cert_file: Default::default(),
             #[cfg(feature = "diagnostics")]
+            diagnostic_attribution: None,
+            #[cfg(feature = "diagnostics")]
             diagnostic_endpoint: Some("https://install.determinate.systems/nix/diagnostic".into()),
         })
     }
@@ -315,6 +334,8 @@ impl CommonSettings {
             extra_conf,
             force,
             ssl_cert_file,
+            #[cfg(feature = "diagnostics")]
+                diagnostic_attribution: _,
             #[cfg(feature = "diagnostics")]
             diagnostic_endpoint,
         } = self;
@@ -362,6 +383,7 @@ impl CommonSettings {
         Ok(map)
     }
 }
+
 #[cfg(target_os = "linux")]
 async fn linux_detect_systemd_started() -> bool {
     use std::process::Stdio;
@@ -494,6 +516,153 @@ pub enum InstallSettingsError {
     ),
     #[error("No supported init system found")]
     InitNotSupported,
+    #[error(transparent)]
+    UrlOrPath(#[from] UrlOrPathError),
+}
+
+#[derive(Debug, thiserror::Error)]
+pub enum UrlOrPathError {
+    #[error("Error parsing URL `{0}`")]
+    Url(String, #[source] url::ParseError),
+    #[error("The specified path `{0}` does not exist")]
+    PathDoesNotExist(PathBuf),
+    #[error("Error fetching URL `{0}`")]
+    Reqwest(Url, #[source] reqwest::Error),
+    #[error("I/O error when accessing `{0}`")]
+    Io(PathBuf, #[source] std::io::Error),
+}
+
+#[derive(Debug, PartialEq, Eq, PartialOrd, Ord, serde::Serialize, serde::Deserialize, Clone)]
+pub enum UrlOrPath {
+    Url(Url),
+    Path(PathBuf),
+}
+
+impl Display for UrlOrPath {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            UrlOrPath::Url(url) => f.write_fmt(format_args!("{url}")),
+            UrlOrPath::Path(path) => f.write_fmt(format_args!("{}", path.display())),
+        }
+    }
+}
+
+impl FromStr for UrlOrPath {
+    type Err = UrlOrPathError;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        match Url::parse(s) {
+            Ok(url) => Ok(UrlOrPath::Url(url)),
+            Err(url::ParseError::RelativeUrlWithoutBase) => {
+                // This is most likely a relative path (`./boop` or `boop`)
+                // or an absolute path (`/boop`)
+                //
+                // So we'll see if such a path exists, and if so, use it
+                let path = PathBuf::from(s);
+                if path.exists() {
+                    Ok(UrlOrPath::Path(path))
+                } else {
+                    Err(UrlOrPathError::PathDoesNotExist(path))
+                }
+            },
+            Err(e) => Err(UrlOrPathError::Url(s.to_string(), e)),
+        }
+    }
+}
+
+#[cfg(feature = "cli")]
+impl clap::builder::TypedValueParser for UrlOrPath {
+    type Value = UrlOrPath;
+
+    fn parse_ref(
+        &self,
+        cmd: &clap::Command,
+        _arg: Option<&clap::Arg>,
+        value: &std::ffi::OsStr,
+    ) -> Result<Self::Value, clap::Error> {
+        let value_str = value.to_str().ok_or_else(|| {
+            let mut err = clap::Error::new(clap::error::ErrorKind::InvalidValue);
+            err.insert(
+                ContextKind::InvalidValue,
+                ContextValue::String(format!("`{value:?}` not a UTF-8 string")),
+            );
+            err
+        })?;
+        match UrlOrPath::from_str(value_str) {
+            Ok(v) => Ok(v),
+            Err(from_str_error) => {
+                let mut err = clap::Error::new(clap::error::ErrorKind::InvalidValue).with_cmd(cmd);
+                err.insert(
+                    clap::error::ContextKind::Custom,
+                    clap::error::ContextValue::String(from_str_error.to_string()),
+                );
+                Err(err)
+            },
+        }
+    }
+}
+
+#[derive(Debug, PartialEq, Eq, PartialOrd, Ord, serde::Serialize, serde::Deserialize, Clone)]
+pub enum UrlOrPathOrString {
+    Url(Url),
+    Path(PathBuf),
+    String(String),
+}
+
+impl FromStr for UrlOrPathOrString {
+    type Err = url::ParseError;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        match Url::parse(s) {
+            Ok(url) => Ok(UrlOrPathOrString::Url(url)),
+            Err(url::ParseError::RelativeUrlWithoutBase) => {
+                // This is most likely a relative path (`./boop` or `boop`)
+                // or an absolute path (`/boop`)
+                //
+                // So we'll see if such a path exists, and if so, use it
+                let path = PathBuf::from(s);
+                if path.exists() {
+                    Ok(UrlOrPathOrString::Path(path))
+                } else {
+                    // The path doesn't exist, so the user is providing us with a string
+                    Ok(UrlOrPathOrString::String(s.into()))
+                }
+            },
+            Err(e) => Err(e),
+        }
+    }
+}
+
+#[cfg(feature = "cli")]
+impl clap::builder::TypedValueParser for UrlOrPathOrString {
+    type Value = UrlOrPathOrString;
+
+    fn parse_ref(
+        &self,
+        cmd: &clap::Command,
+        _arg: Option<&clap::Arg>,
+        value: &std::ffi::OsStr,
+    ) -> Result<Self::Value, clap::Error> {
+        let value_str = value.to_str().ok_or_else(|| {
+            let mut err = clap::Error::new(clap::error::ErrorKind::InvalidValue);
+            err.insert(
+                ContextKind::InvalidValue,
+                ContextValue::String(format!("`{value:?}` not a UTF-8 string")),
+            );
+            err
+        })?;
+        match UrlOrPathOrString::from_str(value_str) {
+            Ok(v) => Ok(v),
+            Err(from_str_error) => {
+                let mut err = clap::Error::new(clap::error::ErrorKind::InvalidValue).with_cmd(cmd);
+                err.insert(
+                    clap::error::ContextKind::Custom,
+                    clap::error::ContextValue::String(from_str_error.to_string()),
+                );
+                Err(err)
+            },
+        }
+    }
 }
 
 #[cfg(feature = "diagnostics")]
@@ -501,5 +670,50 @@ impl crate::diagnostics::ErrorDiagnostic for InstallSettingsError {
     fn diagnostic(&self) -> String {
         let static_str: &'static str = (self).into();
         static_str.to_string()
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::{FromStr, PathBuf, Url, UrlOrPath, UrlOrPathOrString};
+
+    #[test]
+    fn url_or_path_or_string_parses() -> Result<(), Box<dyn std::error::Error>> {
+        assert_eq!(
+            UrlOrPathOrString::from_str("https://boop.bleat")?,
+            UrlOrPathOrString::Url(Url::from_str("https://boop.bleat")?),
+        );
+        assert_eq!(
+            UrlOrPathOrString::from_str("file:///boop/bleat")?,
+            UrlOrPathOrString::Url(Url::from_str("file:///boop/bleat")?),
+        );
+        // The file *must* exist!
+        assert_eq!(
+            UrlOrPathOrString::from_str(file!())?,
+            UrlOrPathOrString::Path(PathBuf::from_str(file!())?),
+        );
+        assert_eq!(
+            UrlOrPathOrString::from_str("Boop")?,
+            UrlOrPathOrString::String(String::from("Boop")),
+        );
+        Ok(())
+    }
+
+    #[test]
+    fn url_or_path_parses() -> Result<(), Box<dyn std::error::Error>> {
+        assert_eq!(
+            UrlOrPath::from_str("https://boop.bleat")?,
+            UrlOrPath::Url(Url::from_str("https://boop.bleat")?),
+        );
+        assert_eq!(
+            UrlOrPath::from_str("file:///boop/bleat")?,
+            UrlOrPath::Url(Url::from_str("file:///boop/bleat")?),
+        );
+        // The file *must* exist!
+        assert_eq!(
+            UrlOrPath::from_str(file!())?,
+            UrlOrPath::Path(PathBuf::from_str(file!())?),
+        );
+        Ok(())
     }
 }

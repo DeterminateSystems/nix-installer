@@ -1,5 +1,5 @@
 {
-  "version": "0.10.1-unreleased",
+  "version": "0.14.0",
   "actions": [
     {
       "action": {
@@ -18,7 +18,9 @@
         "action": "provision_nix",
         "fetch_nix": {
           "action": {
-            "url": "https://releases.nixos.org/nix/nix-2.15.0/nix-2.15.0-x86_64-linux.tar.xz",
+            "url_or_path": {
+              "Url": "https://releases.nixos.org/nix/nix-2.17.0/nix-2.17.0-x86_64-linux.tar.xz"
+            },
             "dest": "/nix/temp-install-dir",
             "proxy": null,
             "ssl_cert_file": null
@@ -231,6 +233,17 @@
             "create_directories": [
               {
                 "action": {
+                  "path": "/etc/fish/conf.d",
+                  "user": null,
+                  "group": null,
+                  "mode": 493,
+                  "is_mountpoint": false,
+                  "force_prune_on_revert": false
+                },
+                "state": "Completed"
+              },
+              {
+                "action": {
                   "path": "/usr/share/fish/vendor_conf.d",
                   "user": null,
                   "group": null,
@@ -288,6 +301,28 @@
               },
               {
                 "action": {
+                  "path": "/etc/zsh/zshrc",
+                  "user": null,
+                  "group": null,
+                  "mode": 420,
+                  "buf": "\n# Nix\nif [ -e '/nix/var/nix/profiles/default/etc/profile.d/nix-daemon.sh' ]; then\n    . '/nix/var/nix/profiles/default/etc/profile.d/nix-daemon.sh'\nfi\n# End Nix\n\n        \n",
+                  "position": "Beginning"
+                },
+                "state": "Uncompleted"
+              },
+              {
+                "action": {
+                  "path": "/etc/fish/conf.d/nix.fish",
+                  "user": null,
+                  "group": null,
+                  "mode": 420,
+                  "buf": "\n# Nix\nif test -e '/nix/var/nix/profiles/default/etc/profile.d/nix-daemon.fish'\n    . '/nix/var/nix/profiles/default/etc/profile.d/nix-daemon.fish'\nend\n# End Nix\n\n",
+                  "position": "Beginning"
+                },
+                "state": "Uncompleted"
+              },
+              {
+                "action": {
                   "path": "/usr/share/fish/vendor_conf.d/nix.fish",
                   "user": null,
                   "group": null,
@@ -338,6 +373,18 @@
     },
     {
       "action": {
+        "action": "create_directory",
+        "path": "/etc/tmpfiles.d",
+        "user": null,
+        "group": null,
+        "mode": 493,
+        "is_mountpoint": false,
+        "force_prune_on_revert": false
+      },
+      "state": "Uncompleted"
+    },
+    {
+      "action": {
         "action": "configure_init_service",
         "init": "Systemd",
         "start_daemon": true,
@@ -362,7 +409,9 @@
       "nix_build_user_count": 0,
       "nix_build_user_prefix": "nixbld",
       "nix_build_user_id_base": 30000,
-      "nix_package_url": "https://releases.nixos.org/nix/nix-2.15.0/nix-2.15.0-x86_64-linux.tar.xz",
+      "nix_package_url": {
+        "Url": "https://releases.nixos.org/nix/nix-2.17.0/nix-2.17.0-x86_64-linux.tar.xz"
+      },
       "proxy": null,
       "ssl_cert_file": null,
       "extra_conf": [],
@@ -375,7 +424,7 @@
     }
   },
   "diagnostic_data": {
-    "version": "0.10.1-unreleased",
+    "version": "0.14.0",
     "planner": "linux",
     "configured_settings": [],
     "os_name": "Ubuntu",

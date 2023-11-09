@@ -117,6 +117,7 @@ use crate::{
 
 use super::ShellProfileLocations;
 
+/// A planner for the Valve Steam Deck running SteamOS
 #[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
 #[cfg_attr(feature = "cli", derive(clap::Parser))]
 pub struct SteamDeck {
@@ -359,7 +360,7 @@ impl Planner for SteamDeck {
         } = self;
         let mut map = HashMap::default();
 
-        map.extend(settings.settings()?.into_iter());
+        map.extend(settings.settings()?);
         map.insert(
             "persistence".to_string(),
             serde_json::to_value(persistence)?,
@@ -387,6 +388,7 @@ impl Planner for SteamDeck {
     #[cfg(feature = "diagnostics")]
     async fn diagnostic_data(&self) -> Result<crate::diagnostics::DiagnosticData, PlannerError> {
         Ok(crate::diagnostics::DiagnosticData::new(
+            self.settings.diagnostic_attribution.clone(),
             self.settings.diagnostic_endpoint.clone(),
             self.typetag_name().into(),
             self.configured_settings()

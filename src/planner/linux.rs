@@ -17,7 +17,7 @@ use which::which;
 
 use super::ShellProfileLocations;
 
-/// A planner for Linux installs
+/// A planner for traditional, mutable Linux systems like Debian, RHEL, or Arch
 #[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
 #[cfg_attr(feature = "cli", derive(clap::Parser))]
 pub struct Linux {
@@ -78,6 +78,13 @@ impl Planner for Linux {
         }
 
         plan.push(
+            CreateDirectory::plan("/etc/tmpfiles.d", None, None, 0o0755, false)
+                .await
+                .map_err(PlannerError::Action)?
+                .boxed(),
+        );
+
+        plan.push(
             ConfigureInitService::plan(self.init.init, self.init.start_daemon)
                 .await
                 .map_err(PlannerError::Action)?
@@ -97,8 +104,8 @@ impl Planner for Linux {
         let Self { settings, init } = self;
         let mut map = HashMap::default();
 
-        map.extend(settings.settings()?.into_iter());
-        map.extend(init.settings()?.into_iter());
+        map.extend(settings.settings()?);
+        map.extend(init.settings()?);
 
         Ok(map)
     }
@@ -122,6 +129,7 @@ impl Planner for Linux {
     #[cfg(feature = "diagnostics")]
     async fn diagnostic_data(&self) -> Result<crate::diagnostics::DiagnosticData, PlannerError> {
         Ok(crate::diagnostics::DiagnosticData::new(
+            self.settings.diagnostic_attribution.clone(),
             self.settings.diagnostic_endpoint.clone(),
             self.typetag_name().into(),
             self.configured_settings()

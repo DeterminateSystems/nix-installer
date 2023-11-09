@@ -311,7 +311,7 @@ pub enum CreateVolumeServiceError {
     },
     #[error("UUID for APFS volume labelled `{0}` was not found")]
     CannotDetermineUuid(String),
-    #[error("An APFS volume labelled `{1}` does not exist, but there exists an fstab entry for that volume, as well as a service file at `{0}`. Consider removing the line containing `/nix` from the `/etc/fstab` and running `rm {0}`")]
+    #[error("An APFS volume labelled `{1}` does not exist, but there exists an fstab entry for that volume, as well as a service file at `{0}`. Consider removing the line containing `/nix` from the `/etc/fstab` and running `sudo rm {0}`")]
     VolumeDoesNotExistButVolumeServiceAndFstabEntryDoes(PathBuf, String),
 }
 

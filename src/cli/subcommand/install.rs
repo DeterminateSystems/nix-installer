@@ -30,9 +30,13 @@ const EXISTING_INCOMPATIBLE_PLAN_GUIDANCE: &str = "\
     If you are using `nix-installer` in an automated curing process and seeing this message, consider pinning the version you use via https://github.com/DeterminateSystems/nix-installer#accessing-other-versions.\
 ";
 
-/// Execute an install (possibly using an existing plan)
-///
-/// To pass custom options, select a planner, for example `nix-installer install linux-multi --help`
+/**
+Install Nix using a planner
+
+By default, an appropriate planner is heuristically determined based on the system.
+
+Some planners have additional options which can be set from the planner's subcommand.
+*/
 #[derive(Debug, Parser)]
 #[command(args_conflicts_with_subcommands = true)]
 pub struct Install {
@@ -124,8 +128,8 @@ impl CommandExecute for Install {
                             eprintln!("{}", format!("Found existing plan in `{RECEIPT_LOCATION}` which used different planner settings, try uninstalling the existing install with `{uninstall_command}`").red());
                             return Ok(ExitCode::FAILURE)
                         }
-                        eprintln!("{}", format!("Found existing plan in `{RECEIPT_LOCATION}`, with the same settings, already completed, try uninstalling (`{uninstall_command}`) and reinstalling if Nix isn't working").red());
-                        return Ok(ExitCode::FAILURE)
+                        eprintln!("{}", format!("Found existing plan in `{RECEIPT_LOCATION}`, with the same settings, already completed. Try uninstalling (`{uninstall_command}`) and reinstalling if Nix isn't working").red());
+                        return Ok(ExitCode::SUCCESS)
                     },
                     None => {
                         let res = planner.plan().await;
@@ -176,7 +180,7 @@ impl CommandExecute for Install {
                             return Ok(ExitCode::FAILURE)
                         }
                         if existing_receipt.actions.iter().all(|v| v.state == ActionState::Completed) {
-                            eprintln!("{}", format!("Found existing plan in `{RECEIPT_LOCATION}`, with the same settings, already completed, try uninstalling (`{uninstall_command}`) and reinstalling if Nix isn't working").yellow());
+                            eprintln!("{}", format!("Found existing plan in `{RECEIPT_LOCATION}`, with the same settings, already completed. Try uninstalling (`{uninstall_command}`) and reinstalling if Nix isn't working").yellow());
                             return Ok(ExitCode::SUCCESS)
                         }
                         existing_receipt

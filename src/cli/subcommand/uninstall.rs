@@ -7,7 +7,7 @@ use std::{
 use crate::{
     cli::{ensure_root, interaction::PromptChoice, signal_channel},
     error::HasExpectedErrors,
-    plan::RECEIPT_LOCATION,
+    plan::{current_version, RECEIPT_LOCATION},
     InstallPlan, NixInstallerError,
 };
 use clap::{ArgAction, Parser};
@@ -17,7 +17,7 @@ use rand::Rng;
 
 use crate::cli::{interaction, CommandExecute};
 
-/// Uninstall a previously installed Nix (only `nix-installer` done installs supported)
+/// Uninstall a previously `nix-installer` installed Nix
 #[derive(Debug, Parser)]
 pub struct Uninstall {
     #[clap(
@@ -111,7 +111,48 @@ impl CommandExecute for Uninstall {
         let install_receipt_string = tokio::fs::read_to_string(receipt)
             .await
             .wrap_err("Reading receipt")?;
-        let mut plan: InstallPlan = serde_json::from_str(&install_receipt_string)?;
+
+        let mut plan: InstallPlan = match serde_json::from_str(&install_receipt_string) {
+            Ok(plan) => plan,
+            Err(plan_err) => {
+                #[derive(serde::Deserialize)]
+                struct MinimalPlan {
+                    version: semver::Version,
+                }
+                let minimal_plan: Result<MinimalPlan, _> =
+                    serde_json::from_str(&install_receipt_string);
+                match minimal_plan {
+                    Ok(minimal_plan) => {
+                        return Err(plan_err).wrap_err_with(|| {
+                            let plan_version = minimal_plan.version;
+                            let current_version = current_version().map(|v| v.to_string()).unwrap_or_else(|_| env!("CARGO_PKG_VERSION").to_string());
+                            format!(
+                            "\
+                            Unable to parse plan, this plan was created by `nix-installer` version `{plan_version}`, this is `nix-installer` version `{current_version}`\n\
+                            To uninstall, either run  `/nix/nix-installer uninstall` or `curl --proto '=https' --tlsv1.2 -sSf -L https://install.determinate.systems/nix/tag/{plan_version} | sh -s -- uninstall`\
+                            ").red().to_string()
+                        });
+                    },
+                    Err(_minimal_plan_err) => return Err(plan_err)?,
+                }
+            },
+        };
+
+        if let Err(e) = plan.check_compatible() {
+            let version = plan.version;
+            eprintln!(
+                "{}", 
+                format!("\
+                    {e}\n\
+                    \n\
+                    Found existing plan in `{RECEIPT_LOCATION}` which was created by a version incompatible `nix-installer`.\n\
+                    \n
+                    To uninstall, either run `/nix/nix-installer uninstall` or `curl --proto '=https' --tlsv1.2 -sSf -L https://install.determinate.systems/nix/tag/${version} | sh -s -- uninstall`\n\
+                    \n\
+                ").red()
+            );
+            return Ok(ExitCode::FAILURE);
+        }
 
         if let Err(err) = plan.pre_uninstall_check().await {
             if let Some(expected) = err.expected() {

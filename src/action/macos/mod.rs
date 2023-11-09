@@ -4,6 +4,7 @@
 pub(crate) mod bootstrap_launchctl_service;
 pub(crate) mod create_apfs_volume;
 pub(crate) mod create_fstab_entry;
+pub(crate) mod create_nix_hook_service;
 pub(crate) mod create_nix_volume;
 pub(crate) mod create_synthetic_objects;
 pub(crate) mod create_volume_service;
@@ -16,6 +17,7 @@ pub(crate) mod unmount_apfs_volume;
 
 pub use bootstrap_launchctl_service::BootstrapLaunchctlService;
 pub use create_apfs_volume::CreateApfsVolume;
+pub use create_nix_hook_service::CreateNixHookService;
 pub use create_nix_volume::{CreateNixVolume, NIX_VOLUME_MOUNTD_DEST};
 pub use create_synthetic_objects::CreateSyntheticObjects;
 pub use create_volume_service::CreateVolumeService;

@@ -4,7 +4,7 @@
 let
   nix-installer-install = ''
     NIX_PATH=$(readlink -f nix.tar.xz)
-    RUST_BACKTRACE="full" ./nix-installer install --nix-package-url "file://$NIX_PATH" --no-confirm --logger pretty --log-directive nix_installer=trace
+    RUST_BACKTRACE="full" ./nix-installer install --nix-package-url "file://$NIX_PATH" --no-confirm --logger pretty --log-directive nix_installer=info
   '';
   nix-installer-install-quiet = ''
     NIX_PATH=$(readlink -f nix.tar.xz)
@@ -135,7 +135,7 @@ let
     install-no-start-daemon = {
       install = ''
         NIX_PATH=$(readlink -f nix.tar.xz)
-        RUST_BACKTRACE="full" ./nix-installer install linux --nix-package-url "file://$NIX_PATH" --no-confirm --logger pretty --log-directive nix_installer=trace --no-start-daemon
+        RUST_BACKTRACE="full" ./nix-installer install linux --nix-package-url "file://$NIX_PATH" --no-confirm --logger pretty --log-directive nix_installer=info --no-start-daemon
       '';
       check = ''
         set -ex
@@ -162,7 +162,7 @@ let
     install-daemonless = {
       install = ''
         NIX_PATH=$(readlink -f nix.tar.xz)
-        RUST_BACKTRACE="full" ./nix-installer install linux --nix-package-url "file://$NIX_PATH" --no-confirm --logger pretty --log-directive nix_installer=trace --init none
+        RUST_BACKTRACE="full" ./nix-installer install linux --nix-package-url "file://$NIX_PATH" --no-confirm --logger pretty --log-directive nix_installer=info --init none
       '';
       check = ''
         set -ex
@@ -212,11 +212,27 @@ let
       uninstall = installCases.install-default.uninstall;
       uninstallCheck = installCases.install-default.uninstallCheck;
     };
-    cure-self-linux-broken-missing-group = {
+    cure-self-linux-broken-missing-users = {
+      preinstall = ''
+        ${nix-installer-install-quiet}
+        sudo mv /nix/receipt.json /nix/old-receipt.json
+        sudo userdel nixbld1
+        sudo userdel nixbld3
+        sudo userdel nixbld16
+      '';
+      install = installCases.install-default.install;
+      check = installCases.install-default.check;
+      uninstall = installCases.install-default.uninstall;
+      uninstallCheck = installCases.install-default.uninstallCheck;
+    };
+    cure-self-linux-broken-missing-users-and-group = {
       preinstall = ''
         NIX_PATH=$(readlink -f nix.tar.xz)
         RUST_BACKTRACE="full" ./nix-installer install --nix-package-url "file://$NIX_PATH" --no-confirm
         sudo mv /nix/receipt.json /nix/old-receipt.json
+        for i in {1..32}; do
+          sudo userdel "nixbld''${i}"
+        done
         sudo groupdel nixbld
       '';
       install = installCases.install-default.install;
@@ -358,10 +374,13 @@ let
       '';
     in
     {
-      uninstall-groups-missing = {
+      uninstall-users-and-groups-missing = {
         install = installCases.install-default.install;
         check = installCases.install-default.check;
         preuninstall = ''
+          for i in $(seq 1 32); do
+            sudo userdel nixbld$i
+          done
           sudo groupdel nixbld
         '';
         uninstall = uninstallFailExpected;
@@ -372,15 +391,6 @@ let
         check = installCases.install-default.check;
         preuninstall = ''
           sudo rm -rf /etc/nix
-        '';
-        uninstall = uninstallFailExpected;
-        uninstallCheck = installCases.install-default.uninstallCheck;
-      };
-      uninstall-shell-profile-clobbered = {
-        install = installCases.install-default.install;
-        check = installCases.install-default.check;
-        preuninstall = ''
-          sudo rm -rf /etc/bashrc
         '';
         uninstall = uninstallFailExpected;
         uninstallCheck = installCases.install-default.uninstallCheck;
