@@ -1,10 +1,7 @@
 use crate::action::base::{create_or_insert_into_file, CreateOrInsertIntoFile};
-use crate::action::{
-    Action, ActionDescription, ActionError, ActionErrorKind, ActionTag, StatefulAction,
-};
+use crate::action::{Action, ActionDescription, ActionError, ActionTag, StatefulAction};
 
 use std::path::Path;
-use tokio::task::JoinSet;
 use tracing::{span, Instrument, Span};
 
 const PROFILE_NIX_FILE_SHELL: &str = "/nix/var/nix/profiles/default/etc/profile.d/nix-daemon.sh";
@@ -15,14 +12,12 @@ This enables remote building, which requires `ssh host nix` to work.
  */
 #[derive(Debug, serde::Deserialize, serde::Serialize, Clone)]
 pub struct ConfigureRemoteBuilding {
-    create_or_insert_into_files: Vec<StatefulAction<CreateOrInsertIntoFile>>,
+    create_or_insert_into_file: StatefulAction<CreateOrInsertIntoFile>,
 }
 
 impl ConfigureRemoteBuilding {
     #[tracing::instrument(level = "debug", skip_all)]
     pub async fn plan() -> Result<StatefulAction<Self>, ActionError> {
-        let mut create_or_insert_into_files = Vec::default();
-
         let shell_buf = format!(
             r#"
 # Set up Nix only on SSH connections
@@ -34,22 +29,19 @@ fi
 "#
         );
 
-        let profile_target_path = Path::new("/etc/zshenv");
-        create_or_insert_into_files.push(
-            CreateOrInsertIntoFile::plan(
-                profile_target_path,
-                None,
-                None,
-                0o644,
-                shell_buf.to_string(),
-                create_or_insert_into_file::Position::Beginning,
-            )
-            .await
-            .map_err(Self::error)?,
-        );
+        let create_or_insert_into_file = CreateOrInsertIntoFile::plan(
+            Path::new("/etc/zshenv"),
+            None,
+            None,
+            0o644,
+            shell_buf.to_string(),
+            create_or_insert_into_file::Position::Beginning,
+        )
+        .await
+        .map_err(Self::error)?;
 
         Ok(Self {
-            create_or_insert_into_files,
+            create_or_insert_into_file,
         }
         .into())
     }
@@ -78,43 +70,12 @@ impl Action for ConfigureRemoteBuilding {
 
     #[tracing::instrument(level = "debug", skip_all)]
     async fn execute(&mut self) -> Result<(), ActionError> {
-        let mut set = JoinSet::new();
-        let mut errors = vec![];
-
-        for (idx, create_or_insert_into_file) in
-            self.create_or_insert_into_files.iter_mut().enumerate()
-        {
-            let span = tracing::Span::current().clone();
-            let mut create_or_insert_into_file_clone = create_or_insert_into_file.clone();
-            let _abort_handle = set.spawn(async move {
-                create_or_insert_into_file_clone
-                    .try_execute()
-                    .instrument(span)
-                    .await
-                    .map_err(Self::error)?;
-                Result::<_, ActionError>::Ok((idx, create_or_insert_into_file_clone))
-            });
-        }
-
-        while let Some(result) = set.join_next().await {
-            match result {
-                Ok(Ok((idx, create_or_insert_into_file))) => {
-                    self.create_or_insert_into_files[idx] = create_or_insert_into_file
-                },
-                Ok(Err(e)) => errors.push(e),
-                Err(e) => return Err(Self::error(e))?,
-            };
-        }
-
-        if !errors.is_empty() {
-            if errors.len() == 1 {
-                return Err(Self::error(errors.into_iter().next().unwrap()))?;
-            } else {
-                return Err(Self::error(ActionErrorKind::MultipleChildren(
-                    errors.into_iter().collect(),
-                )));
-            }
-        }
+        let span = tracing::Span::current().clone();
+        self.create_or_insert_into_file
+            .try_execute()
+            .instrument(span)
+            .await
+            .map_err(Self::error)?;
 
         Ok(())
     }
@@ -128,39 +89,8 @@ impl Action for ConfigureRemoteBuilding {
 
     #[tracing::instrument(level = "debug", skip_all)]
     async fn revert(&mut self) -> Result<(), ActionError> {
-        let mut set = JoinSet::new();
-        let mut errors = vec![];
+        self.create_or_insert_into_file.try_revert().await?;
 
-        for (idx, create_or_insert_into_file) in
-            self.create_or_insert_into_files.iter_mut().enumerate()
-        {
-            let mut create_or_insert_file_clone = create_or_insert_into_file.clone();
-            let _abort_handle = set.spawn(async move {
-                create_or_insert_file_clone.try_revert().await?;
-                Result::<_, _>::Ok((idx, create_or_insert_file_clone))
-            });
-        }
-
-        while let Some(result) = set.join_next().await {
-            match result {
-                Ok(Ok((idx, create_or_insert_into_file))) => {
-                    self.create_or_insert_into_files[idx] = create_or_insert_into_file
-                },
-                Ok(Err(e)) => errors.push(e),
-                // This is quite rare and generally a very bad sign.
-                Err(e) => return Err(e).map_err(|e| Self::error(ActionErrorKind::from(e)))?,
-            };
-        }
-
-        if errors.is_empty() {
-            Ok(())
-        } else if errors.len() == 1 {
-            Err(errors
-                .into_iter()
-                .next()
-                .expect("Expected 1 len Vec to have at least 1 item"))
-        } else {
-            Err(Self::error(ActionErrorKind::MultipleChildren(errors)))
-        }
+        Ok(())
     }
 }
