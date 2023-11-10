@@ -265,37 +265,6 @@ This is especially useful when using the installer in non-interactive scripts.
 
 While `nix-installer` tries to provide a comprehensive and unquirky experience, there are unfortunately some issues which may require manual intervention or operator choices.
 
-### Using MacOS remote SSH builders, Nix binaries are not on `$PATH`
-
-*For Nix installations before Determinate Nix Installer version 0.14.1.*
-
-When connecting to a Mac remote SSH builder users may sometimes see this error:
-
-```bash
-$ nix store ping --store "ssh://$USER@$HOST"
-Store URL: ssh://$USER@$HOST
-zsh:1: command not found: nix-store
-error: cannot connect to '$USER@$HOST'
-```
-
-The way MacOS populates the `PATH` environment differs from other environments. ([Some background](https://gist.github.com/Linerre/f11ad4a6a934dcf01ee8415c9457e7b2))
-
-There are two possible workarounds for this:
-
-* **(Preferred)** Update the remote builder URL to include the `remote-program` parameter pointing to `nix-store`. For example:
-  ```bash
-  nix store ping --store "ssh://$USER@$HOST?remote-program=/nix/var/nix/profiles/default/bin/nix-store"
-  ```
-  If you are unsure where the `nix-store` binary is located, run `which nix-store` on the remote.
-* Update `/etc/zshenv` on the remote so that `zsh` populates the Nix path for every shell, even those that are neither *interactive* or *login*:
-  ```bash
-  # Nix
-  if [ -e '/nix/var/nix/profiles/default/etc/profile.d/nix-daemon.sh' ] && [ -n "${SSH_CONNECTION}" ] && [ "${SHLVL}" -eq 1 ]; then
-      . '/nix/var/nix/profiles/default/etc/profile.d/nix-daemon.sh'
-  fi
-  # End Nix
-  ```
-
 ### Using MacOS after removing `nix` while `nix-darwin` was still installed, network requests fail
 
 If `nix` was previously uninstalled without uninstalling `nix-darwin` first, users may experience errors similar to this:
