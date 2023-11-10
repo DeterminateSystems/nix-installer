@@ -435,7 +435,7 @@ The Determinate Nix installer has numerous advantages:
 * supporting a expanded test suite including 'curing' cases
 * supporting SELinux and OSTree based distributions without asking users to make compromises
 * operating as a single, static binary with external dependencies such as `openssl`, only calling existing system tools (like `useradd`) where necessary
-* supports remote building out of the box
+* As a MacOS remote build target, ensures `nix` is not absent from path
 
 It has been wonderful to collaborate with other participants in the Nix Installer Working Group and members of the broader community. The working group maintains a [foundation owned fork of the installer](https://github.com/nixos/experimental-nix-installer/).
 
