@@ -12,7 +12,9 @@ use crate::{
     action::{
         base::RemoveDirectory,
         common::{ConfigureInitService, ConfigureNix, CreateUsersAndGroups, ProvisionNix},
-        macos::{CreateNixHookService, CreateNixVolume, SetTmutilExclusions},
+        macos::{
+            ConfigureRemoteBuilding, CreateNixHookService, CreateNixVolume, SetTmutilExclusions,
+        },
         StatefulAction,
     },
     execute_command,
@@ -162,6 +164,12 @@ impl Planner for Macos {
         );
         plan.push(
             ConfigureNix::plan(ShellProfileLocations::default(), &self.settings)
+                .await
+                .map_err(PlannerError::Action)?
+                .boxed(),
+        );
+        plan.push(
+            ConfigureRemoteBuilding::plan()
                 .await
                 .map_err(PlannerError::Action)?
                 .boxed(),

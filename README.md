@@ -267,6 +267,8 @@ While `nix-installer` tries to provide a comprehensive and unquirky experience, 
 
 ### Using MacOS remote SSH builders, Nix binaries are not on `$PATH`
 
+*For Nix installations before Determinate Nix Installer version 0.14.1.*
+
 When connecting to a Mac remote SSH builder users may sometimes see this error:
 
 ```bash
@@ -288,25 +290,11 @@ There are two possible workarounds for this:
 * Update `/etc/zshenv` on the remote so that `zsh` populates the Nix path for every shell, even those that are neither *interactive* or *login*:
   ```bash
   # Nix
-  if [ -e '/nix/var/nix/profiles/default/etc/profile.d/nix-daemon.sh' ]; then
+  if [ -e '/nix/var/nix/profiles/default/etc/profile.d/nix-daemon.sh' ] && [ -n "${SSH_CONNECTION}" ] && [ "${SHLVL}" -eq 1 ]; then
       . '/nix/var/nix/profiles/default/etc/profile.d/nix-daemon.sh'
   fi
   # End Nix
   ```
-  <details>
-    <summary>This strategy has some behavioral caveats, namely, <code>$PATH</code> may have unexpected contents</summary>
-
-    For example, if `$PATH` gets unset then a script invoked, `$PATH` may not be as empty as expected:
-    ```bash
-    $ cat example.sh     
-    #! /bin/zsh
-    echo $PATH
-    $ PATH= ./example.sh 
-    /Users/ephemeraladmin/.nix-profile/bin:/nix/var/nix/profiles/default/bin:
-    ```
-    This strategy results in Nix's paths being present on `$PATH` twice and may have a minor impact on performance.
-
-  </details>
 
 ### Using MacOS after removing `nix` while `nix-darwin` was still installed, network requests fail
 

@@ -38,9 +38,22 @@ impl CommandExecute for Repair {
 
         if let Err(err) = reconfigure.try_execute().await {
             println!("{:#?}", err);
-            Ok(ExitCode::FAILURE)
-        } else {
-            Ok(ExitCode::SUCCESS)
+            return Ok(ExitCode::FAILURE)
         }
+
+        #[cfg(target_os = "macos")]
+        {
+            let mut reconfigure = crate::action::macos::ConfigureRemoteBuilding::plan()
+                .await
+                .map_err(PlannerError::Action)?
+                .boxed();
+
+            if let Err(err) = reconfigure.try_execute().await {
+                println!("{:#?}", err);
+                return Ok(ExitCode::FAILURE)
+            }
+        }
+
+        Ok(ExitCode::SUCCESS)
     }
 }
