@@ -10,7 +10,7 @@ A fast, friendly, and reliable tool to help you use Nix with Flakes everywhere.
 curl --proto '=https' --tlsv1.2 -sSf -L https://install.determinate.systems/nix | sh -s -- install
 ```
 
-The `nix-installer` has successfully completed over 500,000 installs in a number of environments, including [Github Actions](#as-a-github-action):
+The `nix-installer` has successfully completed over 1,000,000 installs in a number of environments, including [Github Actions](#as-a-github-action):
 
 | Platform                     | Multi User         | `root` only | Maturity          |
 |------------------------------|:------------------:|:-----------:|:-----------------:|
