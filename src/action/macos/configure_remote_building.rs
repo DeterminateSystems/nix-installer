@@ -25,7 +25,7 @@ impl ConfigureRemoteBuilding {
 
         let shell_buf = format!(
             r#"
-# Nix, only on remote SSH connections -- for remote building.
+# Set up Nix only on SSH connections
 # See: https://github.com/DeterminateSystems/nix-installer/pull/714
 if [ -e '{PROFILE_NIX_FILE_SHELL}' ] && [ -n "${{SSH_CONNECTION}}" ] && [ "${{SHLVL}}" -eq 1 ]; then
     . '{PROFILE_NIX_FILE_SHELL}'
