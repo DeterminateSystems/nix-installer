@@ -40,7 +40,8 @@ impl CommandExecute for Repair {
             println!("{:#?}", err);
             return Ok(ExitCode::FAILURE);
         }
-
+// TODO: Using `cfg` based on OS is not a long term solution.
+// Make this read the planner from the `/nix/receipt.json` to determine which tasks to run.
         #[cfg(target_os = "macos")]
         {
             let mut reconfigure = crate::action::macos::ConfigureRemoteBuilding::plan()
