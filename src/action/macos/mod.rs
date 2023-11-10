@@ -2,6 +2,7 @@
 */
 
 pub(crate) mod bootstrap_launchctl_service;
+pub(crate) mod configure_remote_building;
 pub(crate) mod create_apfs_volume;
 pub(crate) mod create_fstab_entry;
 pub(crate) mod create_nix_hook_service;
@@ -16,6 +17,7 @@ pub(crate) mod set_tmutil_exclusions;
 pub(crate) mod unmount_apfs_volume;
 
 pub use bootstrap_launchctl_service::BootstrapLaunchctlService;
+pub use configure_remote_building::ConfigureRemoteBuilding;
 pub use create_apfs_volume::CreateApfsVolume;
 pub use create_nix_hook_service::CreateNixHookService;
 pub use create_nix_volume::{CreateNixVolume, NIX_VOLUME_MOUNTD_DEST};
