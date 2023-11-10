@@ -426,6 +426,7 @@ Subtle differences in the shell implementations and tool used in the scripts mak
 
 The Determinate Nix installer has numerous advantages:
 
+* survives macOS upgrades
 * keeping an installation receipt for easy uninstallation
 * offering users a chance to review an accurate, calculated install plan
 * having 'planners' which can create appropriate install plans for complicated targets
@@ -434,6 +435,7 @@ The Determinate Nix installer has numerous advantages:
 * supporting a expanded test suite including 'curing' cases
 * supporting SELinux and OSTree based distributions without asking users to make compromises
 * operating as a single, static binary with external dependencies such as `openssl`, only calling existing system tools (like `useradd`) where necessary
+* supports remote building out of the box
 
 It has been wonderful to collaborate with other participants in the Nix Installer Working Group and members of the broader community. The working group maintains a [foundation owned fork of the installer](https://github.com/nixos/experimental-nix-installer/).
 
