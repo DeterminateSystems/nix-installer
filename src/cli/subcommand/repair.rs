@@ -38,7 +38,7 @@ impl CommandExecute for Repair {
 
         if let Err(err) = reconfigure.try_execute().await {
             println!("{:#?}", err);
-            return Ok(ExitCode::FAILURE)
+            return Ok(ExitCode::FAILURE);
         }
 
         #[cfg(target_os = "macos")]
@@ -50,7 +50,7 @@ impl CommandExecute for Repair {
 
             if let Err(err) = reconfigure.try_execute().await {
                 println!("{:#?}", err);
-                return Ok(ExitCode::FAILURE)
+                return Ok(ExitCode::FAILURE);
             }
         }
 
