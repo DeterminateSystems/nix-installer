@@ -72,7 +72,7 @@ impl Action for ConfigureRemoteBuilding {
     fn execute_description(&self) -> Vec<ActionDescription> {
         vec![ActionDescription::new(
             self.tracing_synopsis(),
-            vec!["Update zshenv to import Nix".to_string()],
+            vec!["Update `/etc/zshenv` to import Nix".to_string()],
         )]
     }
 
@@ -122,7 +122,7 @@ impl Action for ConfigureRemoteBuilding {
     fn revert_description(&self) -> Vec<ActionDescription> {
         vec![ActionDescription::new(
             "Remove the Nix configuration from zsh's non-login shells".to_string(),
-            vec!["Update zshenv to no longer import Nix".to_string()],
+            vec!["Update `/etc/zshenv` to no longer import Nix".to_string()],
         )]
     }
 
