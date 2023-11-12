@@ -108,9 +108,10 @@
             RUSTFLAGS = "--cfg tokio_unstable";
             cargoTestOptions = f: f ++ [ "--all" ];
 
+            NIX_INSTALLER_TARBALL = inputs."nix_tar_${final.stdenv.system}";
+
             override = { preBuild ? "", ... }: {
               preBuild = preBuild + ''
-                NIX_INSTALLER_TARBALL=${inputs."nix_tar_${final.stdenv.system}"}
                 # logRun "cargo clippy --all-targets --all-features -- -D warnings"
               '';
             };
