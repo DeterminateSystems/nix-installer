@@ -20,6 +20,27 @@
     };
 
     flake-compat.url = "https://flakehub.com/f/edolstra/flake-compat/1.0.0.tar.gz";
+
+    nix_tar_x86_64-linux = {
+      url = "file+https://releases.nixos.org/nix/nix-2.18.1/nix-2.18.1-x86_64-linux.tar.xz";
+      flake = false;
+    };
+    nix_tar_i686-linux = {
+      url = "file+https://releases.nixos.org/nix/nix-2.18.1/nix-2.18.1-i686-linux.tar.xz";
+      flake = false;
+    };
+    nix_tar_aarch64-linux = {
+      url = "file+https://releases.nixos.org/nix/nix-2.18.1/nix-2.18.1-aarch64-linux.tar.xz";
+      flake = false;
+    };
+    nix_tar_x86_64-darwin = {
+      url = "file+https://releases.nixos.org/nix/nix-2.18.1/nix-2.18.1-x86_64-darwin.tar.xz";
+      flake = false;
+    };
+    nix_tar_aarch64-darwin = {
+      url = "file+https://releases.nixos.org/nix/nix-2.18.1/nix-2.18.1-aarch64-darwin.tar.xz";
+      flake = false;
+    };
   };
 
   outputs =
@@ -89,6 +110,7 @@
 
             override = { preBuild ? "", ... }: {
               preBuild = preBuild + ''
+                NIX_INSTALLER_TARBALL=${inputs."nix_tar_${final.stdenv.system}"}
                 # logRun "cargo clippy --all-targets --all-features -- -D warnings"
               '';
             };
@@ -130,6 +152,7 @@
             name = "nix-install-shell";
 
             RUST_SRC_PATH = "${toolchain}/lib/rustlib/src/rust/library";
+            NIX_INSTALLER_TARBALL = inputs."nix_tar_${system}";
 
             nativeBuildInputs = with pkgs; [ ];
             buildInputs = with pkgs; [

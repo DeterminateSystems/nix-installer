@@ -103,6 +103,66 @@
         "url": "https://flakehub.com/f/NixOS/nix/2.18.0.tar.gz"
       }
     },
+    "nix_tar_aarch64-darwin": {
+      "flake": false,
+      "locked": {
+        "narHash": "sha256-ry+/834XrHJV7VEtFZV1nZGtalfnHlhGQZK7o5f6fUo=",
+        "type": "file",
+        "url": "https://releases.nixos.org/nix/nix-2.18.1/nix-2.18.1-aarch64-darwin.tar.xz"
+      },
+      "original": {
+        "type": "file",
+        "url": "https://releases.nixos.org/nix/nix-2.18.1/nix-2.18.1-aarch64-darwin.tar.xz"
+      }
+    },
+    "nix_tar_aarch64-linux": {
+      "flake": false,
+      "locked": {
+        "narHash": "sha256-vDOZhjRXCrbncgJ8qxaJhTQ0jWhHI/iGo9eLd8L08Oc=",
+        "type": "file",
+        "url": "https://releases.nixos.org/nix/nix-2.18.1/nix-2.18.1-aarch64-linux.tar.xz"
+      },
+      "original": {
+        "type": "file",
+        "url": "https://releases.nixos.org/nix/nix-2.18.1/nix-2.18.1-aarch64-linux.tar.xz"
+      }
+    },
+    "nix_tar_i686-linux": {
+      "flake": false,
+      "locked": {
+        "narHash": "sha256-j7dZNFdF9dXl/L7gZFFukQlE4uNqLDhPivabaw33u4o=",
+        "type": "file",
+        "url": "https://releases.nixos.org/nix/nix-2.18.1/nix-2.18.1-i686-linux.tar.xz"
+      },
+      "original": {
+        "type": "file",
+        "url": "https://releases.nixos.org/nix/nix-2.18.1/nix-2.18.1-i686-linux.tar.xz"
+      }
+    },
+    "nix_tar_x86_64-darwin": {
+      "flake": false,
+      "locked": {
+        "narHash": "sha256-bTgXHZSa6dqeH92kfTXfH15Aas2PbT5trwweCD9qqug=",
+        "type": "file",
+        "url": "https://releases.nixos.org/nix/nix-2.18.1/nix-2.18.1-x86_64-darwin.tar.xz"
+      },
+      "original": {
+        "type": "file",
+        "url": "https://releases.nixos.org/nix/nix-2.18.1/nix-2.18.1-x86_64-darwin.tar.xz"
+      }
+    },
+    "nix_tar_x86_64-linux": {
+      "flake": false,
+      "locked": {
+        "narHash": "sha256-vAfcV2ISMJBZ9dstj3hejHM7XYrIXByIjw6bHxre774=",
+        "type": "file",
+        "url": "https://releases.nixos.org/nix/nix-2.18.1/nix-2.18.1-x86_64-linux.tar.xz"
+      },
+      "original": {
+        "type": "file",
+        "url": "https://releases.nixos.org/nix/nix-2.18.1/nix-2.18.1-x86_64-linux.tar.xz"
+      }
+    },
     "nixpkgs": {
       "locked": {
         "lastModified": 1695283060,
@@ -154,6 +214,11 @@
         "flake-compat": "flake-compat",
         "naersk": "naersk",
         "nix": "nix",
+        "nix_tar_aarch64-darwin": "nix_tar_aarch64-darwin",
+        "nix_tar_aarch64-linux": "nix_tar_aarch64-linux",
+        "nix_tar_i686-linux": "nix_tar_i686-linux",
+        "nix_tar_x86_64-darwin": "nix_tar_x86_64-darwin",
+        "nix_tar_x86_64-linux": "nix_tar_x86_64-linux",
         "nixpkgs": "nixpkgs_2"
       }
     },
