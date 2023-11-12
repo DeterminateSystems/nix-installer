@@ -1,5 +1,4 @@
 use std::{
-    fs::Permissions,
     os::unix::prelude::PermissionsExt,
     path::{Path, PathBuf},
 };
@@ -110,13 +109,21 @@ impl Action for MoveUnpackedNix {
                 .map_err(|e| ActionErrorKind::Rename(entry.path(), entry_dest.to_owned(), e))
                 .map_err(Self::error)?;
 
-            let perms: Permissions = PermissionsExt::from_mode(0o555);
             for entry_item in WalkDir::new(&entry_dest)
                 .into_iter()
                 .filter_map(Result::ok)
                 .filter(|e| !e.file_type().is_symlink())
             {
-                tokio::fs::set_permissions(&entry_item.path(), perms.clone())
+                let path = entry_item.path();
+
+                let mut perms = path
+                    .metadata()
+                    .map_err(|e| ActionErrorKind::GetMetadata(path.to_owned(), e))
+                    .map_err(Self::error)?
+                    .permissions();
+                perms.set_readonly(true);
+
+                tokio::fs::set_permissions(path, perms.clone())
                     .await
                     .map_err(|e| {
                         ActionErrorKind::SetPermissions(
