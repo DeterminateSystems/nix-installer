@@ -1,6 +1,6 @@
 use std::{path::PathBuf, process::ExitCode};
 
-use crate::{error::HasExpectedErrors, BuiltinPlanner};
+use crate::{cli::ensure_root, error::HasExpectedErrors, BuiltinPlanner};
 use clap::Parser;
 
 use eyre::WrapErr;
@@ -8,7 +8,11 @@ use owo_colors::OwoColorize;
 
 use crate::cli::CommandExecute;
 
-/// Plan an install that can be repeated on an identical host later
+/**
+Emit a JSON install plan that can be manually edited before execution
+
+Primarily intended for development, debugging, and handling install cases.
+*/
 #[derive(Debug, Parser)]
 pub struct Plan {
     #[clap(subcommand)]
@@ -27,6 +31,8 @@ impl CommandExecute for Plan {
     #[tracing::instrument(level = "debug", skip_all, fields())]
     async fn execute(self) -> eyre::Result<ExitCode> {
         let Self { planner, output } = self;
+
+        ensure_root()?;
 
         let planner = match planner {
             Some(planner) => planner,

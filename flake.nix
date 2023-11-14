@@ -2,10 +2,10 @@
   description = "The Determinate Nix Installer";
 
   inputs = {
-    nixpkgs.url = "github:nixos/nixpkgs/nixpkgs-unstable";
+    nixpkgs.url = "https://flakehub.com/f/NixOS/nixpkgs/0.1.0.tar.gz";
 
     fenix = {
-      url = "github:nix-community/fenix";
+      url = "https://flakehub.com/f/nix-community/fenix/0.1.1584.tar.gz";
       inputs.nixpkgs.follows = "nixpkgs";
     };
 
@@ -15,11 +15,11 @@
     };
 
     nix = {
-      url = "github:nixos/nix/2.13.2";
+      url = "https://flakehub.com/f/NixOS/nix/2.18.0.tar.gz";
       # Omitting `inputs.nixpkgs.follows = "nixpkgs";` on purpose
     };
 
-    flake-compat = { url = "github:edolstra/flake-compat"; flake = false; };
+    flake-compat.url = "https://flakehub.com/f/edolstra/flake-compat/1.0.0.tar.gz";
   };
 
   outputs =
@@ -66,7 +66,7 @@
           };
           sharedAttrs = {
             pname = "nix-installer";
-            version = "0.10.1-unreleased";
+            version = "0.14.0";
             src = builtins.path {
               name = "nix-installer-source";
               path = self;
@@ -138,16 +138,19 @@
               cargo-outdated
               cacert
               cargo-audit
+              cargo-watch
               nixpkgs-fmt
               check.check-rustfmt
               check.check-spelling
               check.check-nixpkgs-fmt
               check.check-editorconfig
               check.check-semver
+              check.check-clippy
             ]
             ++ lib.optionals (pkgs.stdenv.isDarwin) (with pkgs; [
               libiconv
               darwin.apple_sdk.frameworks.Security
+              darwin.apple_sdk.frameworks.SystemConfiguration
             ])
             ++ lib.optionals (pkgs.stdenv.isLinux) (with pkgs; [
               checkpolicy

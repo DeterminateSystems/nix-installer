@@ -182,7 +182,7 @@ impl Action for ConfigureInitService {
                 execute_command(
                     Command::new("launchctl")
                         .process_group(0)
-                        .args(&["load", "-w"])
+                        .args(["load", "-w"])
                         .arg(DARWIN_NIX_DAEMON_DEST)
                         .stdin(std::process::Stdio::null()),
                 )
@@ -192,7 +192,7 @@ impl Action for ConfigureInitService {
                 let domain = "system";
                 let service = "org.nixos.nix-daemon";
 
-                let is_disabled = crate::action::macos::service_is_disabled(&domain, &service)
+                let is_disabled = crate::action::macos::service_is_disabled(domain, service)
                     .await
                     .map_err(Self::error)?;
                 if is_disabled {
@@ -395,7 +395,7 @@ impl Action for ConfigureInitService {
                         .arg(DARWIN_NIX_DAEMON_DEST),
                 )
                 .await
-                .map_err(|e| Self::error(e))?;
+                .map_err(Self::error)?;
             },
             #[cfg(target_os = "linux")]
             InitSystem::Systemd => {

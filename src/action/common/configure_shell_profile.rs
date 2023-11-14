@@ -45,11 +45,11 @@ impl ConfigureShellProfile {
             let profile_target_path = Path::new(profile_target);
             if let Some(parent) = profile_target_path.parent() {
                 if !parent.exists() {
-                    tracing::trace!(
-                        "Did not plan to edit `{}` as its parent folder does not exist.",
-                        profile_target.display(),
+                    create_directories.push(
+                        CreateDirectory::plan(parent, None, None, 0o0755, false)
+                            .await
+                            .map_err(Self::error)?,
                     );
-                    continue;
                 }
                 create_or_insert_files.push(
                     CreateOrInsertIntoFile::plan(
@@ -60,7 +60,8 @@ impl ConfigureShellProfile {
                         shell_buf.to_string(),
                         create_or_insert_into_file::Position::Beginning,
                     )
-                    .await?,
+                    .await
+                    .map_err(Self::error)?,
                 );
             }
         }

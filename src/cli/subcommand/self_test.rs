@@ -4,7 +4,7 @@ use clap::Parser;
 
 use crate::{cli::CommandExecute, NixInstallerError};
 
-/// Run a self test of Nix to ensure that the install worked.
+/// Run a self test of Nix to ensure that an install is working
 #[derive(Debug, Parser)]
 pub struct SelfTest {}
 

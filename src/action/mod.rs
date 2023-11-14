@@ -156,6 +156,7 @@ impl Planner for MyPlanner {
     #[cfg(feature = "diagnostics")]
     async fn diagnostic_data(&self) -> Result<nix_installer::diagnostics::DiagnosticData, PlannerError> {
         Ok(nix_installer::diagnostics::DiagnosticData::new(
+            self.common.diagnostic_attribution.clone(),
             self.common.diagnostic_endpoint.clone(),
             self.typetag_name().into(),
             self.configured_settings()
@@ -198,7 +199,7 @@ use std::{error::Error, process::Output};
 use tokio::task::JoinError;
 use tracing::Span;
 
-use crate::{error::HasExpectedErrors, CertificateError};
+use crate::{error::HasExpectedErrors, settings::UrlOrPathError, CertificateError};
 
 /// An action which can be reverted or completed, with an action state
 ///
@@ -421,6 +422,8 @@ pub enum ActionErrorKind {
         std::path::PathBuf,
         #[source] std::io::Error,
     ),
+    #[error("Getting filesystem metadata for `{0}` on `{1}`")]
+    GetMetadata(std::path::PathBuf, #[source] std::io::Error),
     #[error("Set mode `{0:#o}` on `{1}`")]
     SetPermissions(u32, std::path::PathBuf, #[source] std::io::Error),
     #[error("Remove file `{0}`")]
@@ -557,6 +560,16 @@ pub enum ActionErrorKind {
     SystemdMissing,
     #[error("`{command}` failed, message: {message}")]
     DiskUtilInfoError { command: String, message: String },
+    #[error(transparent)]
+    UrlOrPathError(#[from] UrlOrPathError),
+    #[error("Request error")]
+    Reqwest(
+        #[from]
+        #[source]
+        reqwest::Error,
+    ),
+    #[error("Unknown url scheme")]
+    UnknownUrlScheme,
 }
 
 impl ActionErrorKind {
