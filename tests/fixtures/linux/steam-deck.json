@@ -1,5 +1,5 @@
 {
-  "version": "0.14.0",
+  "version": "0.15.0",
   "actions": [
     {
       "action": {
@@ -404,7 +404,7 @@
     }
   },
   "diagnostic_data": {
-    "version": "0.14.0",
+    "version": "0.15.0",
     "planner": "steam-deck",
     "configured_settings": [],
     "os_name": "Ubuntu",
