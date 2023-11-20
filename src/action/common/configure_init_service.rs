@@ -169,7 +169,7 @@ impl Action for ConfigureInitService {
             #[cfg(target_os = "macos")]
             InitSystem::Launchd => {
                 let src = std::path::Path::new(DARWIN_NIX_DAEMON_SOURCE);
-                tokio::fs::copy(src.clone(), DARWIN_NIX_DAEMON_DEST)
+                tokio::fs::copy(src, DARWIN_NIX_DAEMON_DEST)
                     .await
                     .map_err(|e| {
                         Self::error(ActionErrorKind::Copy(
