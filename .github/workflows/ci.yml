@@ -107,25 +107,26 @@ jobs:
       - name: Test `nix` with `$GITHUB_PATH`
         if: success() || failure()
         run: |
+          env
           nix run nixpkgs#hello
           nix profile install nixpkgs#hello
           hello
           nix store gc
           nix run nixpkgs#hello
       - name: Test bash
-        run: nix-instantiate -E 'builtins.currentTime' --eval
+        run: env && nix-instantiate -E 'builtins.currentTime' --eval
         if: success() || failure()
         shell: bash --login {0}
       - name: Test sh
-        run: nix-instantiate -E 'builtins.currentTime' --eval
+        run: env && nix-instantiate -E 'builtins.currentTime' --eval
         if: success() || failure()
         shell: sh -l {0}
       - name: Test zsh
-        run: nix-instantiate -E 'builtins.currentTime' --eval
+        run: env && nix-instantiate -E 'builtins.currentTime' --eval
         if: success() || failure()
         shell: zsh --login --interactive {0}
       - name: Test fish
-        run: nix-instantiate -E 'builtins.currentTime' --eval
+        run: env && nix-instantiate -E 'builtins.currentTime' --eval
         if: success() || failure()
         shell: fish --login {0}
       - name: Repeated uninstall
@@ -217,25 +218,26 @@ jobs:
       - name: Test `nix` with `$GITHUB_PATH`
         if: success() || failure()
         run: |
+          env
           sudo -i nix run nixpkgs#hello
           sudo -i nix profile install nixpkgs#hello
           hello
           sudo -i nix store gc
           sudo -i nix run nixpkgs#hello
       - name: Test bash
-        run: sudo -i nix-instantiate -E 'builtins.currentTime' --eval
+        run: sudo -i env && sudo -i nix-instantiate -E 'builtins.currentTime' --eval
         if: success() || failure()
         shell: bash --login {0}
       - name: Test sh
-        run: sudo -i nix-instantiate -E 'builtins.currentTime' --eval
+        run: sudo -i env && sudo -i nix-instantiate -E 'builtins.currentTime' --eval
         if: success() || failure()
         shell: sh -l {0}
       - name: Test zsh
-        run: sudo -i nix-instantiate -E 'builtins.currentTime' --eval
+        run: sudo -i env && sudo -i nix-instantiate -E 'builtins.currentTime' --eval
         if: success() || failure()
         shell: zsh --login --interactive {0}
       - name: Test fish
-        run: sudo -i nix-instantiate -E 'builtins.currentTime' --eval
+        run: sudo -i env && sudo -i nix-instantiate -E 'builtins.currentTime' --eval
         if: success() || failure()
         shell: fish --login {0}
       - name: Repeated uninstall
@@ -310,25 +312,26 @@ jobs:
       - name: Test `nix` with `$GITHUB_PATH`
         if: success() || failure()
         run: |
+          env
           nix run nixpkgs#hello
           nix profile install nixpkgs#hello
           hello
           nix store gc
           nix run nixpkgs#hello
       - name: Test bash
-        run: nix-instantiate -E 'builtins.currentTime' --eval
+        run: env && nix-instantiate -E 'builtins.currentTime' --eval
         if: success() || failure()
         shell: bash --login {0}
       - name: Test sh
-        run: nix-instantiate -E 'builtins.currentTime' --eval
+        run: env && nix-instantiate -E 'builtins.currentTime' --eval
         if: success() || failure()
         shell: sh -l {0}
       - name: Test zsh
-        run: nix-instantiate -E 'builtins.currentTime' --eval
+        run: env && nix-instantiate -E 'builtins.currentTime' --eval
         if: success() || failure()
         shell: zsh --login --interactive {0}
       - name: Test fish
-        run: nix-instantiate -E 'builtins.currentTime' --eval
+        run: env && nix-instantiate -E 'builtins.currentTime' --eval
         if: success() || failure()
         shell: fish --login {0}
       - name: Repeated uninstall
