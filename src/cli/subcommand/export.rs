@@ -40,7 +40,7 @@ handling.
 
 In `space-newline-separated` mode, `nix-installer` guarantees it will:
 
-  * only emit keys that are alpha-numeric with underscores,
+  * only emit keys that are alphanumeric with underscores,
   * only emit values without newlines
 
 and will refuse to emit any output to stdout if the variables and values
