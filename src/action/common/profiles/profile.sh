@@ -7,7 +7,5 @@ if [ -f /nix/nix-installer ] && [ -x /nix/nix-installer ] && [ -z "${__ETC_PROFI
 $NIX_INSTALLER_EXPORT_DATA
 DATA_INPUT
 
-    unset NIX_INSTALLER_EXPORT_DATA
-else
-    echo "not running import" >&2
+    unset NIX_INSTALLER_EXPORT_DATA nix_installer_export_key nix_installer_export_value
 fi
