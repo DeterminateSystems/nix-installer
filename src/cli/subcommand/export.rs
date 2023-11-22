@@ -268,7 +268,7 @@ pub fn calculate_environment() -> Result<HashMap<&'static str, OsString>, Error>
         }
     }
 
-    {
+    if let Some(old_path) = env_path("MANPATH") {
         let mut path = vec![
             nix_link.join("share/man"),
             // Note: This is typically only used in single-user installs, but I chose to do it in both for simplicity.
@@ -276,9 +276,7 @@ pub fn calculate_environment() -> Result<HashMap<&'static str, OsString>, Error>
             PathBuf::from(LOCAL_STATE_DIR).join("nix/profiles/default/share/man"),
         ];
 
-        if let Some(old_path) = env_path("MANPATH") {
-            path.extend(old_path);
-        }
+        path.extend(old_path);
 
         if let Ok(dirs) = env::join_paths(&path) {
             envs.insert("MANPATH", dirs);
