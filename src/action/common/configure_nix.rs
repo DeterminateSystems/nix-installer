@@ -1,4 +1,4 @@
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 
 use crate::{
     action::{
@@ -9,6 +9,9 @@ use crate::{
     planner::ShellProfileLocations,
     settings::{CommonSettings, SCRATCH_DIR},
 };
+use glob::glob;
+
+use crate::action::common::SetupChannels;
 
 use tracing::{span, Instrument, Span};
 
@@ -20,6 +23,7 @@ pub struct ConfigureNix {
     setup_default_profile: StatefulAction<SetupDefaultProfile>,
     configure_shell_profile: Option<StatefulAction<ConfigureShellProfile>>,
     place_nix_configuration: StatefulAction<PlaceNixConfiguration>,
+    setup_channels: Option<StatefulAction<SetupChannels>>,
 }
 
 impl ConfigureNix {
@@ -51,12 +55,82 @@ impl ConfigureNix {
         .await
         .map_err(Self::error)?;
 
+        let setup_channels = if settings.no_channel_add {
+            None
+        } else {
+            Some(
+                SetupChannels::plan(PathBuf::from(SCRATCH_DIR))
+                    .await
+                    .map_err(Self::error)?,
+            )
+        };
+
         Ok(Self {
             place_nix_configuration,
             setup_default_profile,
             configure_shell_profile,
+            setup_channels,
         }
         .into())
+    }
+
+    pub async fn find_nix_and_ca_cert(
+        unpacked_path: &Path,
+    ) -> Result<(PathBuf, PathBuf), ActionError> {
+        // Find a `nix` package
+        let nix_pkg_glob = format!("{}/nix-*/store/*-nix-*.*.*", unpacked_path.display());
+        let mut found_nix_pkg = None;
+        for entry in glob(&nix_pkg_glob).map_err(Self::error)? {
+            match entry {
+                Ok(path) => {
+                    // If we are curing, the user may have multiple of these installed
+                    if let Some(_existing) = found_nix_pkg {
+                        return Err(Self::error(ConfigureNixError::MultipleNixPackages))?;
+                    } else {
+                        found_nix_pkg = Some(path);
+                    }
+                    break;
+                },
+                Err(_) => continue, /* Ignore it */
+            };
+        }
+        let nix_pkg = if let Some(nix_pkg) = found_nix_pkg {
+            tokio::fs::read_link(&nix_pkg)
+                .await
+                .map_err(|e| ActionErrorKind::ReadSymlink(nix_pkg, e))
+                .map_err(Self::error)?
+        } else {
+            return Err(Self::error(ConfigureNixError::NoNix));
+        };
+
+        // Find an `nss-cacert` package
+        let nss_ca_cert_pkg_glob =
+            format!("{}/nix-*/store/*-nss-cacert-*.*", unpacked_path.display());
+        let mut found_nss_ca_cert_pkg = None;
+        for entry in glob(&nss_ca_cert_pkg_glob).map_err(Self::error)? {
+            match entry {
+                Ok(path) => {
+                    // If we are curing, the user may have multiple of these installed
+                    if let Some(_existing) = found_nss_ca_cert_pkg {
+                        return Err(Self::error(ConfigureNixError::MultipleNssCaCertPackages))?;
+                    } else {
+                        found_nss_ca_cert_pkg = Some(path);
+                    }
+                    break;
+                },
+                Err(_) => continue, /* Ignore it */
+            };
+        }
+        let nss_ca_cert_pkg = if let Some(nss_ca_cert_pkg) = found_nss_ca_cert_pkg {
+            tokio::fs::read_link(&nss_ca_cert_pkg)
+                .await
+                .map_err(|e| ActionErrorKind::ReadSymlink(nss_ca_cert_pkg, e))
+                .map_err(Self::error)?
+        } else {
+            return Err(Self::error(ConfigureNixError::NoNssCacert));
+        };
+
+        Ok((nix_pkg, nss_ca_cert_pkg))
     }
 }
 
@@ -79,10 +153,14 @@ impl Action for ConfigureNix {
             setup_default_profile,
             place_nix_configuration,
             configure_shell_profile,
+            setup_channels,
         } = &self;
 
         let mut buf = setup_default_profile.describe_execute();
         buf.append(&mut place_nix_configuration.describe_execute());
+        if let Some(setup_channels) = setup_channels {
+            buf.append(&mut setup_channels.describe_execute());
+        }
         if let Some(configure_shell_profile) = configure_shell_profile {
             buf.append(&mut configure_shell_profile.describe_execute());
         }
@@ -95,10 +173,15 @@ impl Action for ConfigureNix {
             setup_default_profile,
             place_nix_configuration,
             configure_shell_profile,
+            setup_channels,
         } = self;
 
+        let setup_default_profile_span = tracing::Span::current().clone();
+        let setup_channels_span = setup_channels
+            .is_some()
+            .then(|| setup_default_profile_span.clone());
+
         if let Some(configure_shell_profile) = configure_shell_profile {
-            let setup_default_profile_span = tracing::Span::current().clone();
             let (place_nix_configuration_span, configure_shell_profile_span) = (
                 setup_default_profile_span.clone(),
                 setup_default_profile_span.clone(),
@@ -127,7 +210,6 @@ impl Action for ConfigureNix {
                 },
             )?;
         } else {
-            let setup_default_profile_span = tracing::Span::current().clone();
             let place_nix_configuration_span = setup_default_profile_span.clone();
             tokio::try_join!(
                 async move {
@@ -147,6 +229,18 @@ impl Action for ConfigureNix {
             )?;
         };
 
+        // Keep setup_channels outside try_join to avoid the error:
+        // SQLite database '/nix/var/nix/db/db.sqlite' is busy
+        // Presumably there are conflicts with nix commands run in
+        // setup_default_profile.
+        if let Some(setup_channels) = setup_channels {
+            setup_channels
+                .try_execute()
+                .instrument(setup_channels_span.unwrap())
+                .await
+                .map_err(Self::error)?
+        }
+
         Ok(())
     }
 
@@ -155,6 +249,7 @@ impl Action for ConfigureNix {
             setup_default_profile,
             place_nix_configuration,
             configure_shell_profile,
+            setup_channels,
         } = &self;
 
         let mut buf = Vec::default();
@@ -163,6 +258,9 @@ impl Action for ConfigureNix {
         }
         buf.append(&mut place_nix_configuration.describe_revert());
         buf.append(&mut setup_default_profile.describe_revert());
+        if let Some(setup_channels) = setup_channels {
+            buf.append(&mut setup_channels.describe_revert());
+        }
 
         buf
     }
@@ -181,6 +279,11 @@ impl Action for ConfigureNix {
         if let Err(err) = self.setup_default_profile.try_revert().await {
             errors.push(err);
         }
+        if let Some(setup_channels) = &mut self.setup_channels {
+            if let Err(err) = setup_channels.try_revert().await {
+                errors.push(err);
+            }
+        }
 
         if errors.is_empty() {
             Ok(())
@@ -192,5 +295,24 @@ impl Action for ConfigureNix {
         } else {
             Err(Self::error(ActionErrorKind::MultipleChildren(errors)))
         }
+    }
+}
+
+#[non_exhaustive]
+#[derive(Debug, thiserror::Error)]
+pub enum ConfigureNixError {
+    #[error("Unarchived Nix store did not appear to include a `nss-cacert` location")]
+    NoNssCacert,
+    #[error("Unarchived Nix store did not appear to include a `nix` location")]
+    NoNix,
+    #[error("Unarchived Nix store appears to contain multiple `nss-ca-cert` packages, cannot select one")]
+    MultipleNssCaCertPackages,
+    #[error("Unarchived Nix store appears to contain multiple `nix` packages, cannot select one")]
+    MultipleNixPackages,
+}
+
+impl From<ConfigureNixError> for ActionErrorKind {
+    fn from(val: ConfigureNixError) -> Self {
+        ActionErrorKind::Custom(Box::new(val))
     }
 }
