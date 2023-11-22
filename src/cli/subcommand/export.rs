@@ -34,28 +34,6 @@ pub enum Error {
 /**
 Emit all the environment variables that should be set to use Nix.
 
-In POSIX shell:
-
-    nix-installer export --format space-newline-separated \
-      | while IFS=' ' read key value; do
-        export "$key"="$value"
-    done
-
-In Bash / non-POSIX shell:
-
-    nix-installer export --format null-separated \
-      | while IFS= read -r -d $'\0' key && IFS= read -r -d $'\0' value; do
-        export "$key"="$value"
-    done
-
-In Fish shell:
-
-    nix-installer export --format null-separated \
-      | while read --null key
-        read --export --null "$key"
-    end
-
-
 Safety note: environment variables and values can contain any bytes except
 for a null byte. This includes newlines and spaces, which requires careful
 handling.
