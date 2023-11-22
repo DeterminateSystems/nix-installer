@@ -1,10 +1,10 @@
-use crate::action::base::{create_or_insert_into_file, CreateOrInsertIntoFile};
-use crate::action::{Action, ActionDescription, ActionError, ActionTag, StatefulAction};
-
 use std::path::Path;
+
 use tracing::{span, Instrument, Span};
 
-const PROFILE_NIX_FILE_SHELL: &str = "/nix/var/nix/profiles/default/etc/profile.d/nix-daemon.sh";
+use crate::action::base::{create_or_insert_into_file, CreateOrInsertIntoFile};
+use crate::action::common::configure_shell_profile::PROFILE_NIX_FILE_SHELL;
+use crate::action::{Action, ActionDescription, ActionError, ActionTag, StatefulAction};
 
 /**
 Configure macOS's zshenv to load the Nix environment when ForceCommand is used.
@@ -20,12 +20,14 @@ impl ConfigureRemoteBuilding {
     pub async fn plan() -> Result<StatefulAction<Self>, ActionError> {
         let shell_buf = format!(
             r#"
+
 # Set up Nix only on SSH connections
 # See: https://github.com/DeterminateSystems/nix-installer/pull/714
-if [ -e '{PROFILE_NIX_FILE_SHELL}' ] && [ -n "${{SSH_CONNECTION}}" ] && [ "${{SHLVL}}" -eq 1 ]; then
+if [ -n "${{SSH_CONNECTION}}" ] && [ "${{SHLVL}}" -eq 1 ] && [ -f '{PROFILE_NIX_FILE_SHELL}' ]; then
     . '{PROFILE_NIX_FILE_SHELL}'
 fi
 # End Nix
+
 "#
         );
 

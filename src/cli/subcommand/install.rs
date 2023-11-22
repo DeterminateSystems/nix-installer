@@ -1,5 +1,4 @@
 use std::{
-    os::unix::prelude::PermissionsExt,
     path::{Path, PathBuf},
     process::ExitCode,
 };
@@ -12,7 +11,7 @@ use crate::{
         signal_channel, CommandExecute,
     },
     error::HasExpectedErrors,
-    plan::RECEIPT_LOCATION,
+    plan::{copy_self_to_nix_dir, RECEIPT_LOCATION},
     planner::Planner,
     settings::CommonSettings,
     BuiltinPlanner, InstallPlan, NixInstallerError,
@@ -313,9 +312,6 @@ impl CommandExecute for Install {
                 }
             },
             Ok(_) => {
-                copy_self_to_nix_dir()
-                    .await
-                    .wrap_err("Copying `nix-installer` to `/nix/nix-installer`")?;
                 println!(
                     "\
                     {success}\n\
@@ -334,12 +330,4 @@ impl CommandExecute for Install {
 
         Ok(ExitCode::SUCCESS)
     }
-}
-
-#[tracing::instrument(level = "debug")]
-async fn copy_self_to_nix_dir() -> Result<(), std::io::Error> {
-    let path = std::env::current_exe()?;
-    tokio::fs::copy(path, "/nix/nix-installer").await?;
-    tokio::fs::set_permissions("/nix/nix-installer", PermissionsExt::from_mode(0o0755)).await?;
-    Ok(())
 }

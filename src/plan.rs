@@ -1,13 +1,15 @@
+use std::os::unix::prelude::PermissionsExt;
 use std::{path::PathBuf, str::FromStr};
+
+use owo_colors::OwoColorize;
+use semver::{Version, VersionReq};
+use tokio::sync::broadcast::Receiver;
 
 use crate::{
     action::{Action, ActionDescription, StatefulAction},
     planner::{BuiltinPlanner, Planner},
     NixInstallerError,
 };
-use owo_colors::OwoColorize;
-use semver::{Version, VersionReq};
-use tokio::sync::broadcast::Receiver;
 
 pub const RECEIPT_LOCATION: &str = "/nix/receipt.json";
 
@@ -211,6 +213,7 @@ impl InstallPlan {
         }
 
         write_receipt(self.clone()).await?;
+        copy_self_to_nix_dir().await.ok();
 
         if let Err(err) = crate::self_test::self_test()
             .await
@@ -423,6 +426,14 @@ async fn write_receipt(plan: InstallPlan) -> Result<(), NixInstallerError> {
         .await
         .map_err(|e| NixInstallerError::RecordingReceipt(install_receipt_path, e))?;
     Result::<(), NixInstallerError>::Ok(())
+}
+
+#[tracing::instrument(level = "debug")]
+pub(crate) async fn copy_self_to_nix_dir() -> Result<(), std::io::Error> {
+    let path = std::env::current_exe()?;
+    tokio::fs::copy(path, "/nix/nix-installer").await?;
+    tokio::fs::set_permissions("/nix/nix-installer", PermissionsExt::from_mode(0o0755)).await?;
+    Ok(())
 }
 
 pub fn current_version() -> Result<Version, NixInstallerError> {

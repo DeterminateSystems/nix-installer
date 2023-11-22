@@ -9,8 +9,8 @@ use std::path::{Path, PathBuf};
 use tokio::task::JoinSet;
 use tracing::{span, Instrument, Span};
 
-const PROFILE_NIX_FILE_SHELL: &str = "/nix/var/nix/profiles/default/etc/profile.d/nix-daemon.sh";
-const PROFILE_NIX_FILE_FISH: &str = "/nix/var/nix/profiles/default/etc/profile.d/nix-daemon.fish";
+pub(crate) const PROFILE_NIX_FILE_SHELL: &str = "/nix/nix-installer.d/profile.sh";
+pub(crate) const PROFILE_NIX_FILE_FISH: &str = "/nix/nix-installer.d/profile.fish";
 
 /**
 Configure any detected shell profiles to include Nix support
@@ -31,14 +31,47 @@ impl ConfigureShellProfile {
         let mut create_directories = Vec::default();
 
         let shell_buf = format!(
-            "\n\
-            # Nix\n\
-            if [ -e '{PROFILE_NIX_FILE_SHELL}' ]; then\n\
-            {inde}. '{PROFILE_NIX_FILE_SHELL}'\n\
-            fi\n\
-            # End Nix\n
-        \n",
-            inde = "    ", // indent
+            r#"
+
+# Begin Nix
+if [ -f '{PROFILE_NIX_FILE_SHELL}' ]; then
+    . '{PROFILE_NIX_FILE_SHELL}'
+fi
+# End Nix
+
+"#
+        );
+
+        create_directories.push(
+            CreateDirectory::plan("/nix/nix-installer.d", None, None, 0o0755, false)
+                .await
+                .map_err(Self::error)?,
+        );
+
+        create_or_insert_files.push(
+            CreateOrInsertIntoFile::plan(
+                PROFILE_NIX_FILE_SHELL,
+                None,
+                None,
+                0o644,
+                include_str!("./profiles/profile.sh").to_string(),
+                create_or_insert_into_file::Position::Beginning,
+            )
+            .await
+            .map_err(Self::error)?,
+        );
+
+        create_or_insert_files.push(
+            CreateOrInsertIntoFile::plan(
+                PROFILE_NIX_FILE_FISH,
+                None,
+                None,
+                0o644,
+                include_str!("./profiles/profile.fish").to_string(),
+                create_or_insert_into_file::Position::Beginning,
+            )
+            .await
+            .map_err(Self::error)?,
         );
 
         for profile_target in locations.bash.iter().chain(locations.zsh.iter()) {
@@ -67,14 +100,15 @@ impl ConfigureShellProfile {
         }
 
         let fish_buf = format!(
-            "\n\
-            # Nix\n\
-            if test -e '{PROFILE_NIX_FILE_FISH}'\n\
-            {inde}. '{PROFILE_NIX_FILE_FISH}'\n\
-            end\n\
-            # End Nix\n\
-        \n",
-            inde = "    ", // indent
+            r#"
+
+# Begin Nix
+if [ -f {PROFILE_NIX_FILE_FISH} ]; then
+    . {PROFILE_NIX_FILE_FISH}
+fi
+# End Nix
+
+"#
         );
 
         for fish_prefix in &locations.fish.confd_prefixes {
