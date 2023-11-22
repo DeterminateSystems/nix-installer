@@ -3,4 +3,4 @@ if [ -f /nix/nix-installer ] && [ -x /nix/nix-installer ] && [ -z "${__ETC_PROFI
         | while read --null key
             read --export --null "$key"
         end
-fi
+end
