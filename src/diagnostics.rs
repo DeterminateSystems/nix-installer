@@ -261,7 +261,7 @@ pub fn diagnostic_endpoint_parser(input: &str) -> Result<Option<Url>, Diagnostic
             "https" | "http" | "file" => Ok(Some(v)),
             _ => Err(DiagnosticError::UnknownUrlScheme),
         },
-        Err(url_error) if url_error == url::ParseError::RelativeUrlWithoutBase => {
+        Err(url::ParseError::RelativeUrlWithoutBase) => {
             match Url::parse(&format!("file://{input}")) {
                 Ok(v) => Ok(Some(v)),
                 Err(file_error) => Err(file_error)?,
