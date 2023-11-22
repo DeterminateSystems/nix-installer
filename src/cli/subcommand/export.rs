@@ -229,12 +229,15 @@ pub fn calculate_environment() -> Result<HashMap<&'static str, OsString>, Error>
             PathBuf::from("/etc/ssl/ca-bundle.pem"),             // openSUSE Tumbleweed
             PathBuf::from("/etc/ssl/certs/ca-bundle.crt"),       // Old NixOS
             PathBuf::from("/etc/pki/tls/certs/ca-bundle.crt"),   // Fedora, CentOS
-            nix_link.join("etc/ssl/certs/ca-bundle.crt"), // fall back to cacert in Nix profile
-            nix_link.join("etc/ca-bundle.crt"),           // old cacert in Nix profile
         ];
 
         // Add the various profiles, preferring the last profile, ie: most global profile (matches upstream behavior)
-        candidate_locations.extend(nix_profiles.iter().rev().cloned());
+        for profile in nix_profiles.iter().rev() {
+            candidate_locations.extend([
+                profile.join("etc/ssl/certs/ca-bundle.crt"), // fall back to cacert in Nix profile
+                profile.join("etc/ca-bundle.crt"),           // old cacert in Nix profile
+            ]);
+        }
 
         if let Some(cert) = candidate_locations.iter().find(|path| path.is_file()) {
             envs.insert("NIX_SSL_CERT_FILE", cert.into());
