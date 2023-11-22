@@ -136,6 +136,20 @@ impl CommandExecute for Export {
     }
 }
 
+fn nonempty_var_os(key: &str) -> Option<OsString> {
+    env::var_os(key).and_then(|val| if val.is_empty() { Some(val) } else { None })
+}
+
+fn env_path(key: &str) -> Option<Vec<PathBuf>> {
+    let path = env::var_os(key)?;
+
+    if path.is_empty() {
+        return Some(vec![]);
+    }
+
+    Some(env::split_paths(&path).collect())
+}
+
 pub fn calculate_environment() -> Result<HashMap<&'static str, OsString>, Error> {
     let mut envs: HashMap<&'static str, OsString> = HashMap::new();
 
@@ -143,7 +157,7 @@ pub fn calculate_environment() -> Result<HashMap<&'static str, OsString>, Error>
     // @PORT-NOTE nix-profile-daemon.sh.in and nix-profile-daemon.fish.in implemented
     // this behavior, but it was not implemented in nix-profile.sh.in and nix-profile.fish.in
     // even though I believe it is desirable in both cases.
-    if env::var_os("__ETC_PROFILE_NIX_SOURCED").is_some() {
+    if nonempty_var_os("__ETC_PROFILE_NIX_SOURCED") == Some("1".into()) {
         return Err(Error::AlreadyRun);
     }
 
@@ -151,7 +165,7 @@ pub fn calculate_environment() -> Result<HashMap<&'static str, OsString>, Error>
     // but not nix-profile-daemon.sh.in and nix-profile-daemon.fish.in.
     // The -daemon variants appear to just assume the values are set, which is probably
     // not safe, so we check it in all cases.
-    let home = if let Some(home) = env::var_os("HOME") {
+    let home = if let Some(home) = nonempty_var_os("HOME") {
         PathBuf::from(home)
     } else {
         return Err(Error::HomeNotSet);
@@ -161,7 +175,7 @@ pub fn calculate_environment() -> Result<HashMap<&'static str, OsString>, Error>
 
     let nix_link: PathBuf = {
         let legacy_location = home.join(".nix-profile");
-        let xdg_location = env::var_os("XDG_STATE_HOME")
+        let xdg_location = nonempty_var_os("XDG_STATE_HOME")
             .map(PathBuf::from)
             .unwrap_or_else(|| home.join(".local/state"))
             .join("nix/profile");
@@ -190,37 +204,26 @@ pub fn calculate_environment() -> Result<HashMap<&'static str, OsString>, Error>
     );
 
     {
-        let xdg_data_dirs: Vec<PathBuf> = env::var_os("XDG_DATA_DIRS")
-            .as_ref()
-            .map(|s| env::split_paths(s))
-            .map(|paths| paths.collect::<Vec<PathBuf>>())
-            .unwrap_or_else(|| {
-                vec![
-                    PathBuf::from("/usr/local/share"),
-                    PathBuf::from("/usr/share"),
-                ]
-            });
+        let mut xdg_data_dirs: Vec<PathBuf> = env_path("XDG_DATA_DIRS").unwrap_or_else(|| {
+            vec![
+                PathBuf::from("/usr/local/share"),
+                PathBuf::from("/usr/share"),
+            ]
+        });
 
-        let nix_xdg_data_dirs = vec![
+        xdg_data_dirs.extend(vec![
             nix_link.join("share"),
             PathBuf::from(LOCAL_STATE_DIR).join("nix/profiles/default/share"),
-        ];
+        ]);
 
-        let extended_xdg_dirs: Vec<&PathBuf> = xdg_data_dirs
-            .iter()
-            .chain(nix_xdg_data_dirs.iter())
-            .collect::<Vec<_>>();
-
-        if let Ok(dirs) = env::join_paths(&extended_xdg_dirs) {
+        if let Ok(dirs) = env::join_paths(&xdg_data_dirs) {
             envs.insert("XDG_DATA_DIRS", dirs);
         } else {
-            return Err(Error::InvalidXdgDataDirs(
-                extended_xdg_dirs.into_iter().cloned().collect(),
-            ));
+            return Err(Error::InvalidXdgDataDirs(xdg_data_dirs));
         }
     }
 
-    if env::var_os("NIX_SSL_CERT_FILE").is_none() {
+    if nonempty_var_os("NIX_SSL_CERT_FILE").is_none() {
         let mut candidate_locations = vec![
             PathBuf::from("/etc/ssl/certs/ca-certificates.crt"), // NixOS, Ubuntu, Debian, Gentoo, Arch
             PathBuf::from("/etc/ssl/ca-bundle.pem"),             // openSUSE Tumbleweed
@@ -244,48 +247,40 @@ pub fn calculate_environment() -> Result<HashMap<&'static str, OsString>, Error>
     };
 
     {
-        let nix_path_parts = [
+        let mut path = vec![
             nix_link.join("bin"),
             // Note: This is typically only used in single-user installs, but I chose to do it in both for simplicity.
             // If there is good reason, we can make it fancier.
             PathBuf::from(LOCAL_STATE_DIR).join("nix/profiles/default/bin"),
         ];
 
-        let current_path = env::var_os("PATH").unwrap_or(OsString::from(""));
-        let existing_path_parts = env::split_paths(&current_path);
+        if let Some(old_path) = env_path("PATH") {
+            path.extend(old_path);
+        }
 
-        let all_paths: Vec<PathBuf> = nix_path_parts
-            .into_iter()
-            .chain(existing_path_parts)
-            .collect();
-
-        if let Ok(dirs) = env::join_paths(&all_paths) {
+        if let Ok(dirs) = env::join_paths(&path) {
             envs.insert("PATH", dirs);
         } else {
-            return Err(Error::InvalidPathDirs(all_paths));
+            return Err(Error::InvalidPathDirs(path));
         }
     }
 
     {
-        let man_path_parts = [
+        let mut path = vec![
             nix_link.join("share/man"),
             // Note: This is typically only used in single-user installs, but I chose to do it in both for simplicity.
             // If there is good reason, we can make it fancier.
             PathBuf::from(LOCAL_STATE_DIR).join("nix/profiles/default/share/man"),
         ];
 
-        let current_man_path = env::var_os("MANPATH").unwrap_or(OsString::from(""));
-        let existing_path_parts = env::split_paths(&current_man_path);
+        if let Some(old_path) = env_path("MANPATH") {
+            path.extend(old_path);
+        }
 
-        let all_paths: Vec<PathBuf> = man_path_parts
-            .into_iter()
-            .chain(existing_path_parts)
-            .collect();
-
-        if let Ok(dirs) = env::join_paths(&all_paths) {
+        if let Ok(dirs) = env::join_paths(&path) {
             envs.insert("MANPATH", dirs);
         } else {
-            return Err(Error::InvalidManPathDirs(all_paths));
+            return Err(Error::InvalidManPathDirs(path));
         }
     }
 
