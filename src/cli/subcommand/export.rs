@@ -21,13 +21,13 @@ pub enum Error {
     #[error("__ETC_PROFILE_NIX_SOURCED is set, indicating the relevant environment variables have already been set.")]
     AlreadyRun,
 
-    #[error("Some of the paths for XDG_DATA_DIR are not valid, due to an illegal character, like a space or colon.")]
+    #[error("Some of the paths from Nix for XDG_DATA_DIR are not valid, due to an illegal character, like a colon.")]
     InvalidXdgDataDirs(Vec<PathBuf>),
 
-    #[error("Some of the paths for PATH are not valid, due to an illegal character, like a space or colon.")]
+    #[error("Some of the paths from Nix for PATH are not valid, due to an illegal character, like a colon.")]
     InvalidPathDirs(Vec<PathBuf>),
 
-    #[error("Some of the paths for MANPATH are not valid, due to an illegal character, like a space or colon.")]
+    #[error("Some of the paths from Nix for MANPATH are not valid, due to an illegal character, like a colon.")]
     InvalidManPathDirs(Vec<PathBuf>),
 }
 
@@ -69,8 +69,8 @@ impl CommandExecute for Export {
     #[tracing::instrument(level = "trace", skip_all)]
     async fn execute(self) -> eyre::Result<ExitCode> {
         let env = match calculate_environment() {
-            Err(Error::AlreadyRun) => {
-                debug!("Already set the environment vars, not doing it again.");
+            e @ Err(Error::AlreadyRun | Error::HomeNotSet) => {
+                debug!("Ignored error: {:?}", e);
                 return Ok(ExitCode::SUCCESS);
             },
             Err(e) => {
