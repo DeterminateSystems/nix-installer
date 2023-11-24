@@ -203,14 +203,7 @@ pub(crate) async fn detect_selinux() -> Result<bool, PlannerError> {
 }
 
 pub(crate) async fn check_nix_not_already_installed() -> Result<(), PlannerError> {
-    // For now, we don't try to repair the user's Nix install or anything special.
-    if Command::new("nix-env")
-        .arg("--version")
-        .stdin(std::process::Stdio::null())
-        .status()
-        .await
-        .is_ok()
-    {
+    if Path::from("/nix/var/nix/profiles/default/bin/nix").exists() {
         return Err(PlannerError::NixExists);
     }
 
