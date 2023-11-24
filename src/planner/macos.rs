@@ -317,7 +317,7 @@ fn check_not_running_in_rosetta() -> Result<(), PlannerError> {
 #[non_exhaustive]
 #[derive(thiserror::Error, Debug)]
 pub enum MacosError {
-    #[error("`nix-darwin` installation detected, it must be removed before uninstalling Nix. Please refer to https://github.com/LnL7/nix-darwin#uninstalling for instructions how to uninstall `nix-darwin`.")]
+    #[error("`nix-darwin` installation detected, it must be removed before uninstalling Nix. Run `darwin-uninstall` or refer to https://github.com/LnL7/nix-darwin#uninstalling for instructions how to uninstall.")]
     UninstallNixDarwin,
 }
 
