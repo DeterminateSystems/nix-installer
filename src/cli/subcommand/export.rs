@@ -132,7 +132,7 @@ impl CommandExecute for Export {
 }
 
 fn nonempty_var_os(key: &str) -> Option<OsString> {
-    env::var_os(key).and_then(|val| if val.is_empty() { None } else { Some(val) })
+    env::var_os(key).filter(|val| !val.is_empty())
 }
 
 fn env_path(key: &str) -> Option<Vec<PathBuf>> {
