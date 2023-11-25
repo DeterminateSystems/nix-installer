@@ -69,18 +69,15 @@ impl CommandExecute for Export {
     #[tracing::instrument(level = "trace", skip_all)]
     async fn execute(self) -> eyre::Result<ExitCode> {
         let env = match calculate_environment() {
-            e @ Err(Error::AlreadyRun | Error::HomeNotSet) => {
+            e @ Err(Error::AlreadyRun) => {
                 debug!("Ignored error: {:?}", e);
                 return Ok(ExitCode::SUCCESS);
             },
             Err(e) => {
-                tracing::info!(
-                    "Error calculating the environment variables required to enable Nix: {:?}",
-                    e
-                );
-                return Err(e.into());
+                tracing::warn!("Error setting up the environment for Nix: {:?}", e);
+                // Don't return an Err, because we don't want to suggest bug reports for predictable problems.
+                return Ok(ExitCode::FAILURE);
             },
-
             Ok(env) => env,
         };
 
@@ -106,7 +103,7 @@ impl CommandExecute for Export {
                         "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789_"
                             .contains(char)
                     }) {
-                        warn!("Key {} has an invalid character that isn't a-zA-Z_", key);
+                        warn!("Key {} has an invalid character that isn't a-zA-Z0-9_", key);
                         return Ok(ExitCode::FAILURE);
                     }
 
@@ -114,7 +111,7 @@ impl CommandExecute for Export {
 
                     if value_bytes.contains(&b'\n') {
                         warn!(
-                            "Value for key {} has an a newline, which is prohibited",
+                            "Value for key {} has a newline, which is prohibited",
                             key
                         );
                         return Ok(ExitCode::FAILURE);
