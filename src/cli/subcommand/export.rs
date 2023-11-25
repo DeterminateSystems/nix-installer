@@ -9,8 +9,6 @@ use std::process::ExitCode;
 use crate::cli::CommandExecute;
 use clap::Parser;
 
-use tracing::{debug, warn};
-
 const LOCAL_STATE_DIR: &str = "/nix/var";
 
 #[derive(Debug, thiserror::Error)]
@@ -70,7 +68,7 @@ impl CommandExecute for Export {
     async fn execute(self) -> eyre::Result<ExitCode> {
         let env = match calculate_environment() {
             e @ Err(Error::AlreadyRun) => {
-                debug!("Ignored error: {:?}", e);
+                tracing::debug!("Ignored error: {:?}", e);
                 return Ok(ExitCode::SUCCESS);
             },
             Err(e) => {
@@ -85,7 +83,7 @@ impl CommandExecute for Export {
 
         match self.format {
             ExportFormat::NullSeparated => {
-                debug!("Emitting null separated fields");
+                tracing::debug!("Emitting null separated fields");
 
                 for (key, value) in env.into_iter() {
                     out.write_all(key.as_bytes())?;
@@ -95,7 +93,7 @@ impl CommandExecute for Export {
                 }
             },
             ExportFormat::SpaceNewlineSeparated => {
-                debug!("Emitting space/newline separated fields");
+                tracing::debug!("Emitting space/newline separated fields");
 
                 let mut validated_envs = HashMap::new();
                 for (key, value) in env.into_iter() {
@@ -103,17 +101,17 @@ impl CommandExecute for Export {
                         "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789_"
                             .contains(char)
                     }) {
-                        warn!("Key {} has an invalid character that isn't a-zA-Z0-9_", key);
+                        tracing::warn!(
+                            "Key {} has an invalid character that isn't a-zA-Z0-9_",
+                            key
+                        );
                         return Ok(ExitCode::FAILURE);
                     }
 
                     let value_bytes = value.into_vec();
 
                     if value_bytes.contains(&b'\n') {
-                        warn!(
-                            "Value for key {} has a newline, which is prohibited",
-                            key
-                        );
+                        tracing::warn!("Value for key {} has a newline, which is prohibited", key);
                         return Ok(ExitCode::FAILURE);
                     }
 
@@ -239,7 +237,7 @@ pub fn calculate_environment() -> Result<HashMap<&'static str, OsString>, Error>
         if let Some(cert) = candidate_locations.iter().find(|path| path.is_file()) {
             envs.insert("NIX_SSL_CERT_FILE", cert.into());
         } else {
-            warn!(
+            tracing::warn!(
                 "Could not identify any SSL certificates out of these candidates: {:?}",
                 candidate_locations
             )
@@ -282,7 +280,7 @@ pub fn calculate_environment() -> Result<HashMap<&'static str, OsString>, Error>
         }
     }
 
-    debug!("Calculated environment: {:#?}", envs);
+    tracing::debug!("Calculated environment: {:#?}", envs);
 
     Ok(envs)
 }
