@@ -1,8 +1,8 @@
 use std::collections::HashMap;
 use std::env;
 use std::ffi::{OsStr, OsString};
-use std::io::{stdout, BufWriter, Write};
-use std::os::unix::ffi::OsStringExt;
+use std::io::{stdout, Write};
+use std::os::unix::ffi::OsStrExt;
 use std::path::PathBuf;
 use std::process::ExitCode;
 
@@ -54,78 +54,62 @@ In `null-separated` mode, `nix-installer` emits data in this format:
 pub struct Export {
     #[clap(long)]
     format: ExportFormat,
+
+    #[clap(long)]
+    sample_output: Option<PathBuf>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, clap::ValueEnum)]
 enum ExportFormat {
-    NullSeparated,
-    SpaceNewlineSeparated,
+    Fish,
+    Sh,
 }
 
 #[async_trait::async_trait]
 impl CommandExecute for Export {
     #[tracing::instrument(level = "trace", skip_all)]
     async fn execute(self) -> eyre::Result<ExitCode> {
-        let env = match calculate_environment() {
-            e @ Err(Error::AlreadyRun) => {
-                tracing::debug!("Ignored error: {:?}", e);
-                return Ok(ExitCode::SUCCESS);
+        let env: HashMap<String, OsString> = match self.sample_output {
+            Some(filename) => {
+                // Note: not tokio File b/c I don't think serde_json has fancy async support?
+                let file = std::fs::File::open(filename)?;
+                let intermediate: HashMap<String, String> = serde_json::from_reader(file)?;
+                intermediate
+                    .into_iter()
+                    .map(|(k, v)| (k, v.into()))
+                    .collect()
             },
-            Err(e) => {
-                tracing::warn!("Error setting up the environment for Nix: {:?}", e);
-                // Don't return an Err, because we don't want to suggest bug reports for predictable problems.
-                return Ok(ExitCode::FAILURE);
+            None => {
+                match calculate_environment() {
+                    e @ Err(Error::AlreadyRun) => {
+                        tracing::debug!("Ignored error: {:?}", e);
+                        return Ok(ExitCode::SUCCESS);
+                    },
+                    Err(e) => {
+                        tracing::warn!("Error setting up the environment for Nix: {:?}", e);
+                        // Don't return an Err, because we don't want to suggest bug reports for predictable problems.
+                        return Ok(ExitCode::FAILURE);
+                    },
+                    Ok(env) => env,
+                }
             },
-            Ok(env) => env,
         };
 
-        let mut out = BufWriter::new(stdout());
-
-        match self.format {
-            ExportFormat::NullSeparated => {
-                tracing::debug!("Emitting null separated fields");
-
-                for (key, value) in env.into_iter() {
-                    out.write_all(key.as_bytes())?;
-                    out.write_all(&[b'\0'])?;
-                    out.write_all(&value.into_vec())?;
-                    out.write_all(&[b'\0'])?;
-                }
-            },
-            ExportFormat::SpaceNewlineSeparated => {
-                tracing::debug!("Emitting space/newline separated fields");
-
-                let mut validated_envs = HashMap::new();
-                for (key, value) in env.into_iter() {
-                    if !key.chars().all(|char| {
-                        "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789_"
-                            .contains(char)
-                    }) {
-                        tracing::warn!(
-                            "Key {} has an invalid character that isn't a-zA-Z0-9_",
-                            key
-                        );
-                        return Ok(ExitCode::FAILURE);
-                    }
-
-                    let value_bytes = value.into_vec();
-
-                    if value_bytes.contains(&b'\n') {
-                        tracing::warn!("Value for key {} has a newline, which is prohibited", key);
-                        return Ok(ExitCode::FAILURE);
-                    }
-
-                    validated_envs.insert(key, value_bytes);
-                }
-
-                for (key, value) in validated_envs.into_iter() {
-                    out.write_all(key.as_bytes())?;
-                    out.write_all(b" ")?;
-                    out.write_all(&value)?;
-                    out.write_all(b"\n")?;
-                }
-            },
+        let mut export_env: HashMap<export::VariableName, OsString> = HashMap::new();
+        for (k, v) in env.into_iter() {
+            export_env.insert(k.try_into()?, v);
         }
+
+        stdout().write_all(
+            export::escape(
+                match self.format {
+                    ExportFormat::Fish => export::Encoding::Fish,
+                    ExportFormat::Sh => export::Encoding::PosixShell,
+                },
+                export_env,
+            )?
+            .as_bytes(),
+        )?;
 
         Ok(ExitCode::SUCCESS)
     }
@@ -145,8 +129,8 @@ fn env_path(key: &str) -> Option<Vec<PathBuf>> {
     Some(env::split_paths(&path).collect())
 }
 
-pub fn calculate_environment() -> Result<HashMap<&'static str, OsString>, Error> {
-    let mut envs: HashMap<&'static str, OsString> = HashMap::new();
+pub fn calculate_environment() -> Result<HashMap<String, OsString>, Error> {
+    let mut envs: HashMap<String, OsString> = HashMap::new();
 
     // Don't export variables twice.
     // @PORT-NOTE nix-profile-daemon.sh.in and nix-profile-daemon.fish.in implemented
@@ -166,7 +150,7 @@ pub fn calculate_environment() -> Result<HashMap<&'static str, OsString>, Error>
         return Err(Error::HomeNotSet);
     };
 
-    envs.insert("__ETC_PROFILE_NIX_SOURCED", "1".into());
+    envs.insert("__ETC_PROFILE_NIX_SOURCED".into(), "1".into());
 
     let nix_link: PathBuf = {
         let legacy_location = home.join(".nix-profile");
@@ -190,7 +174,7 @@ pub fn calculate_environment() -> Result<HashMap<&'static str, OsString>, Error>
         nix_link.clone(),
     ];
     envs.insert(
-        "NIX_PROFILES",
+        "NIX_PROFILES".into(),
         nix_profiles
             .iter()
             .map(|path| path.as_os_str())
@@ -212,7 +196,7 @@ pub fn calculate_environment() -> Result<HashMap<&'static str, OsString>, Error>
         ]);
 
         if let Ok(dirs) = env::join_paths(&xdg_data_dirs) {
-            envs.insert("XDG_DATA_DIRS", dirs);
+            envs.insert("XDG_DATA_DIRS".into(), dirs);
         } else {
             return Err(Error::InvalidXdgDataDirs(xdg_data_dirs));
         }
@@ -235,7 +219,7 @@ pub fn calculate_environment() -> Result<HashMap<&'static str, OsString>, Error>
         }
 
         if let Some(cert) = candidate_locations.iter().find(|path| path.is_file()) {
-            envs.insert("NIX_SSL_CERT_FILE", cert.into());
+            envs.insert("NIX_SSL_CERT_FILE".into(), cert.into());
         } else {
             tracing::warn!(
                 "Could not identify any SSL certificates out of these candidates: {:?}",
@@ -257,7 +241,7 @@ pub fn calculate_environment() -> Result<HashMap<&'static str, OsString>, Error>
         }
 
         if let Ok(dirs) = env::join_paths(&path) {
-            envs.insert("PATH", dirs);
+            envs.insert("PATH".into(), dirs);
         } else {
             return Err(Error::InvalidPathDirs(path));
         }
@@ -274,7 +258,7 @@ pub fn calculate_environment() -> Result<HashMap<&'static str, OsString>, Error>
         path.extend(old_path);
 
         if let Ok(dirs) = env::join_paths(&path) {
-            envs.insert("MANPATH", dirs);
+            envs.insert("MANPATH".into(), dirs);
         } else {
             return Err(Error::InvalidManPathDirs(path));
         }
