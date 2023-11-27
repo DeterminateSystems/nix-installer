@@ -4,7 +4,10 @@ use std::{
 };
 
 use crate::{
-    action::ActionState,
+    action::{
+        common::configure_shell_profile::PROFILE_NIX_FILE_FISH,
+        common::configure_shell_profile::PROFILE_NIX_FILE_SHELL, ActionState,
+    },
     cli::{
         ensure_root,
         interaction::{self, PromptChoice},
@@ -312,6 +315,8 @@ impl CommandExecute for Install {
                 }
             },
             Ok(_) => {
+                let load_fish = format!(". {}", PROFILE_NIX_FILE_FISH);
+                let load_shell = format!(". {}", PROFILE_NIX_FILE_SHELL);
                 println!(
                     "\
                     {success}\n\
@@ -319,10 +324,12 @@ impl CommandExecute for Install {
                     ",
                     success = "Nix was installed successfully!".green().bold(),
                     shell_reminder = match std::env::var("SHELL") {
-                        Ok(val) if val.contains("fish") =>
-                            ". /nix/var/nix/profiles/default/etc/profile.d/nix-daemon.fish".bold(),
-                        Ok(_) | Err(_) =>
-                            ". /nix/var/nix/profiles/default/etc/profile.d/nix-daemon.sh".bold(),
+                        Ok(val) if val.contains("fish") => {
+                            load_fish.bold()
+                        },
+                        Ok(_) | Err(_) => {
+                            load_shell.bold()
+                        },
                     },
                 );
             },
