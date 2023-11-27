@@ -445,6 +445,14 @@ dependencies = [
 ]
 
 [[package]]
+name = "export"
+version = "0.1.0"
+source = "git+https://github.com/DeterminateSystems/export#cf859216f9b4b9e27ef0aa0bcb2f52ca8a4e1c02"
+dependencies = [
+ "thiserror",
+]
+
+[[package]]
 name = "eyre"
 version = "0.6.8"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -963,6 +971,7 @@ dependencies = [
  "color-eyre",
  "dirs",
  "dyn-clone",
+ "export",
  "eyre",
  "glob",
  "indexmap 2.1.0",
