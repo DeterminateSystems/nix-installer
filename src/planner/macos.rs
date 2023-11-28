@@ -135,7 +135,7 @@ impl Planner for Macos {
             CreateNixVolume::plan(
                 root_disk.unwrap(), /* We just ensured it was populated */
                 self.volume_label.clone(),
-                false,
+                self.case_sensitive,
                 encrypt,
             )
             .await
