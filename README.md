@@ -353,7 +353,7 @@ To make this build portable, pass ` --target x86_64-unknown-linux-musl`.
 ## As a library
 
 > **Warning**
-> Use as a library is still experimental. This feature is likely to be removed in the future without an advocate. If you're using this, please let us know and we can make a path to stablization.
+> Use as a library is still experimental. This feature is likely to be removed in the future without an advocate. If you're using this, please let us know and we can make a path to stabilization.
 
 Add `nix-installer` to your dependencies:
 
