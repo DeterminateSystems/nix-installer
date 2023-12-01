@@ -28,7 +28,7 @@ async-trait = { version = "0.1.57", default-features = false }
 bytes = { version = "1.2.1", default-features = false, features = ["std", "serde"] }
 clap = { version = "4", features = ["std", "color", "usage", "help", "error-context", "suggestions", "derive", "env"], optional = true }
 color-eyre = { version = "0.6.2", default-features = false, features = [ "track-caller", "issue-url", "tracing-error", "capture-spantrace", "color-spantrace" ], optional = true }
-eyre = { version = "0.6.8", default-features = false, features = [ "track-caller" ], optional = true }
+eyre = { version = "0.6.9", default-features = false, features = [ "track-caller" ], optional = true }
 glob = { version = "0.3.0", default-features = false }
 nix = { version = "0.27.0", default-features = false, features = ["user", "fs", "process", "term"] }
 owo-colors = { version = "3.5.0", default-features = false, features = [ "supports-colors" ] }
@@ -63,7 +63,7 @@ walkdir = "2.3.3"
 indexmap = { version = "2.0.2", features = ["serde"] }
 
 [dev-dependencies]
-eyre = { version = "0.6.8", default-features = false, features = [ "track-caller" ] }
+eyre = { version = "0.6.9", default-features = false, features = [ "track-caller" ] }
 tempfile = "3.3.0"
 
 [profile.release]
