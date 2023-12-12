@@ -143,14 +143,29 @@ get_architecture() {
         fi
     fi
 
-    # Darwin `uname -m` lies
+    # Copied this logic from https://github.com/rust-lang/rustup/blob/6f34807b14a811f2673d4bc639abcff58e40e0e4/rustup-init.sh#L314-L339
     if [ "$_ostype" = Darwin ]; then
+        # Darwin `uname -m` can lie due to Rosetta shenanigans. If you manage to
+        # invoke a native shell binary and then a native uname binary, you can
+        # get the real answer, but that's hard to ensure, so instead we use
+        # `sysctl` (which doesn't lie) to check for the actual architecture.
         if [ "$_cputype" = i386 ]; then
-            if sysctl hw.optional.x86_64 | grep -q ': 1'; then
+            # Handling i386 compatibility mode in older macOS versions (<10.15)
+            # running on x86_64-based Macs.
+            # Starting from 10.15, macOS explicitly bans all i386 binaries from running.
+            # See: <https://support.apple.com/en-us/HT208436>
+
+            # Avoid `sysctl: unknown oid` stderr output and/or non-zero exit code.
+            if sysctl hw.optional.x86_64 2> /dev/null || true | grep -q ': 1'; then
                 _cputype=x86_64
             fi
         elif [ "$_cputype" = x86_64 ]; then
-            if sysctl hw.optional.arm64 | grep -q ': 1'; then
+            # Handling x86-64 compatibility mode (a.k.a. Rosetta 2)
+            # in newer macOS versions (>=11) running on arm64-based Macs.
+            # Rosetta 2 is built exclusively for x86-64 and cannot run i386 binaries.
+
+            # Avoid `sysctl: unknown oid` stderr output and/or non-zero exit code.
+            if sysctl hw.optional.arm64 2> /dev/null || true | grep -q ': 1'; then
                 _cputype=arm64
             fi
         fi
