@@ -11,7 +11,7 @@
 # It runs on Unix shells like {a,ba,da,k,z}sh. It uses the common `local`
 # extension. Note: Most shells limit `local` to 1 var per line, contra bash.
 
-# This script is based off https://github.com/rust-lang/rustup/blob/8f6b53628ad996ad86f9c6225fa500cddf860905/rustup-init.sh
+# This script is based off https://github.com/rust-lang/rustup/blob/f8d7b3baba7a63237cb2b82ef49a68a37dd0633c/rustup-init.sh
 
 if [ "$KSH_VERSION" = 'Version JM 93t+ 2010-03-05' ]; then
     # The version of ksh93 that ships with many illumos systems does not
@@ -143,7 +143,6 @@ get_architecture() {
         fi
     fi
 
-    # Copied this logic from https://github.com/rust-lang/rustup/blob/6f34807b14a811f2673d4bc639abcff58e40e0e4/rustup-init.sh#L314-L339
     if [ "$_ostype" = Darwin ]; then
         # Darwin `uname -m` can lie due to Rosetta shenanigans. If you manage to
         # invoke a native shell binary and then a native uname binary, you can
