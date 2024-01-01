@@ -38,7 +38,7 @@ serde_json = { version = "1.0.85", default-features = false, features = [ "std" 
 serde_with = { version = "3", default-features = false, features = [ "std", "macros" ] }
 tar = { version = "0.4.38", default-features = false, features = [ "xattr" ] }
 target-lexicon = { version = "0.12.4", default-features = false, features = [ "std" ] }
-thiserror = { version = "1.0.33", default-features = false }
+thiserror = { version = "1.0.53", default-features = false }
 tokio = { version = "1.21.0", default-features = false, features = ["time", "io-std", "process", "fs", "signal", "tracing", "rt-multi-thread", "macros", "io-util", "parking_lot" ] }
 tracing = { version = "0.1.36", default-features = false, features = [ "std", "attributes" ] }
 tracing-error = { version = "0.2.0", default-features = false, optional = true, features = ["traced-error"] }
