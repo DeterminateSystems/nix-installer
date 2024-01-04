@@ -8,12 +8,12 @@
         "rust-analyzer-src": "rust-analyzer-src"
       },
       "locked": {
-        "lastModified": 1701411808,
-        "narHash": "sha256-K8QDx8UgbvGdENuvPvcsCXcd8brd55OkRDFLBT7xUVY=",
-        "rev": "3776d0e2a30184cc6a0ba20fb86dc6df5b41fccd",
-        "revCount": 1694,
+        "lastModified": 1704090261,
+        "narHash": "sha256-Vti1mv4WhmXHPNcFgUiJyt4OKLvsvLzM2eKS4bEegf0=",
+        "rev": "66fc1883c34c42df188b83272445aedb26bb64b5",
+        "revCount": 1727,
         "type": "tarball",
-        "url": "https://api.flakehub.com/f/pinned/nix-community/fenix/0.1.1694%2Brev-3776d0e2a30184cc6a0ba20fb86dc6df5b41fccd/018c2471-ae06-7cb3-a542-c80f7a549d7b/source.tar.gz"
+        "url": "https://api.flakehub.com/f/pinned/nix-community/fenix/0.1.1727%2Brev-66fc1883c34c42df188b83272445aedb26bb64b5/018cc416-f0ae-724d-989f-aa4ded05d885/source.tar.gz"
       },
       "original": {
         "type": "tarball",
@@ -140,12 +140,12 @@
     },
     "nixpkgs_2": {
       "locked": {
-        "lastModified": 1701436327,
-        "narHash": "sha256-tRHbnoNI8SIM5O5xuxOmtSLnswEByzmnQcGGyNRjxsE=",
-        "rev": "91050ea1e57e50388fa87a3302ba12d188ef723a",
-        "revCount": 555097,
+        "lastModified": 1703961334,
+        "narHash": "sha256-M1mV/Cq+pgjk0rt6VxoyyD+O8cOUiai8t9Q6Yyq4noY=",
+        "rev": "b0d36bd0a420ecee3bc916c91886caca87c894e9",
+        "revCount": 564493,
         "type": "tarball",
-        "url": "https://api.flakehub.com/f/pinned/NixOS/nixpkgs/0.1.555097%2Brev-91050ea1e57e50388fa87a3302ba12d188ef723a/018c3450-2363-7c34-883b-4ba70b1eb7ae/source.tar.gz"
+        "url": "https://api.flakehub.com/f/pinned/NixOS/nixpkgs/0.1.564493%2Brev-b0d36bd0a420ecee3bc916c91886caca87c894e9/018cc6b0-680d-7f16-b194-dbf948b62871/source.tar.gz"
       },
       "original": {
         "type": "tarball",
@@ -164,11 +164,11 @@
     "rust-analyzer-src": {
       "flake": false,
       "locked": {
-        "lastModified": 1701372675,
-        "narHash": "sha256-MSHhnAoLjJuoPxzsTzBOzNhjhlCTHPs4nvkPAZVV1eY=",
+        "lastModified": 1704034202,
+        "narHash": "sha256-OFBXLWm+aIqG+jNAz8BmB+QpepI11SGLtSY6qEs6EmY=",
         "owner": "rust-lang",
         "repo": "rust-analyzer",
-        "rev": "c9d189d1375e59a6c9b4d62fdede94ade001f6ee",
+        "rev": "cf52c4b2b3367ae7355ef23393e2eae1d37de723",
         "type": "github"
       },
       "original": {
