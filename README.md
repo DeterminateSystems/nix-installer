@@ -415,6 +415,7 @@ Differing from the upstream [Nix](https://github.com/NixOS/nix) installer script
   + `auto-optimise-store` is set to `true` (On Linux only)
   * `extra-nix-path` is set to `nixpkgs=flake:nixpkgs`
   * `max-jobs` is set to `auto`
+  * `upgrade-nix-store-path-url` is set to `https://install.determinate.systems/nix-upgrade/stable/universal`
 * an installation receipt (for uninstalling) is stored at `/nix/receipt.json` as well as a copy of the install binary at `/nix/nix-installer`
 * `nix-channel --update` is not run, `~/.nix-channels` is not provisioned
 * `ssl-cert-file` is set in `/etc/nix/nix.conf` if the `ssl-cert-file` argument is used.
