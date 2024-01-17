@@ -254,7 +254,7 @@ wsl nix run --impure github:guibou/nixGL nix run nixpkgs#obs-studio
 ```
 
 
-If enabling system is not an option, pass `--init none` at the end of the command:
+If enabling systemd is not an option, pass `--init none` at the end of the command:
 
 > **Warning**
 > When `--init none` is used, _only_ `root` or users who can elevate to `root` privileges can run Nix:
