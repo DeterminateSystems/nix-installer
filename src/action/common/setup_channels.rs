@@ -96,7 +96,8 @@ impl Action for SetupChannels {
                 .env(
                     "NIX_SSL_CERT_FILE",
                     nss_ca_cert_pkg.join("etc/ssl/certs/ca-bundle.crt"),
-                ), /* This is apparently load bearing... */
+                ), /* We could rely on setup_default_profile setting this
+                   environment variable, but add this just to be explicit. */
         )
         .await
         .map_err(Self::error)?;
