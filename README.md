@@ -3,7 +3,7 @@
 [![Crates.io](https://img.shields.io/crates/v/nix-installer)](https://crates.io/crates/nix-installer)
 [![Docs.rs](https://img.shields.io/docsrs/nix-installer)](https://docs.rs/nix-installer/latest/nix_installer/)
 
-A fast, friendly, and reliable tool to help you use Nix with Flakes everywhere.
+A fast, friendly, and reliable tool to help you use [Nix](https://en.wikipedia.org/wiki/Nix_(package_manager)) with Flakes everywhere.
 
 
 ```bash
