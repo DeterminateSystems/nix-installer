@@ -1,5 +1,5 @@
 {
-  "version": "0.16.1-unreleased",
+  "version": "0.16.1",
   "actions": [
     {
       "action": {
@@ -435,7 +435,7 @@
     "root_disk": "disk3"
   },
   "diagnostic_data": {
-    "version": "0.16.1-unreleased",
+    "version": "0.16.1",
     "planner": "macos",
     "configured_settings": [],
     "os_name": "unknown",
