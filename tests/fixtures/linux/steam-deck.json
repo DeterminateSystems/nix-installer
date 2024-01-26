@@ -1,5 +1,5 @@
 {
-  "version": "0.16.1",
+  "version": "0.16.2-unreleased",
   "actions": [
     {
       "action": {
@@ -404,7 +404,7 @@
     }
   },
   "diagnostic_data": {
-    "version": "0.16.1",
+    "version": "0.16.2-unreleased",
     "planner": "steam-deck",
     "configured_settings": [],
     "os_name": "Ubuntu",
