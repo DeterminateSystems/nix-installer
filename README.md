@@ -10,7 +10,7 @@ A fast, friendly, and reliable tool to help you use Nix with Flakes everywhere.
 curl --proto '=https' --tlsv1.2 -sSf -L https://install.determinate.systems/nix | sh -s -- install
 ```
 
-The `nix-installer` has successfully completed over 1,000,000 installs in a number of environments, including [Github Actions](#as-a-github-action):
+The `nix-installer` has successfully completed over 2,000,000 installs in a number of environments, including [Github Actions](#as-a-github-action) and [GitLab](#on-gitlab):
 
 | Platform                     | Multi User         | `root` only | Maturity          |
 |------------------------------|:------------------:|:-----------:|:-----------------:|
@@ -135,6 +135,24 @@ jobs:
     - name: Run `nix build`
       run: nix build .
 ```
+
+### On GitLab
+
+GitLab CI runners are typically Docker based and run as the `root` user. This means `systemd` is not present, so the `--init none` option needs to be passed to the Linux planner. 
+
+On the default [GitLab.com](https://gitlab.com/) runners, `nix` can be installed and used like so:
+
+```yaml
+test:
+  script:
+  - curl --proto '=https' --tlsv1.2 -sSf -L https://install.determinate.systems/nix | sh -s -- install linux --no-confirm --init none
+  - . /nix/var/nix/profiles/default/etc/profile.d/nix-daemon.sh
+  - nix run nixpkgs#hello
+  - nix profile install nixpkgs#hello
+  - hello
+```
+
+If you are using different runners, the above example may need to be adjusted.
 
 ### Without systemd (Linux only)
 
