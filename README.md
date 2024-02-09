@@ -138,7 +138,7 @@ jobs:
 
 ### On GitLab
 
-GitLab CI runners are typically Docker based and run as the `root` user. This means means `systemd` is not present, so the `--init none` option needs to be passed to the Linux planner. 
+GitLab CI runners are typically Docker based and run as the `root` user. This means `systemd` is not present, so the `--init none` option needs to be passed to the Linux planner. 
 
 On the default [GitLab.com](https://gitlab.com/) runners, `nix` can be installed and used like so:
 
@@ -152,7 +152,7 @@ test:
   - hello
 ```
 
-If you are using different runners the above example may need to be adjusted.
+If you are using different runners, the above example may need to be adjusted.
 
 ### Without systemd (Linux only)
 
