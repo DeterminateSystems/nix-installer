@@ -2,10 +2,10 @@
   description = "The Determinate Nix Installer";
 
   inputs = {
-    nixpkgs.url = "https://flakehub.com/f/NixOS/nixpkgs/0.1.0.tar.gz";
+    nixpkgs.url = "github:NixOS/nixpkgs/5e4c2ada4fcd54b99d56d7bd62f384511a7e2593";
 
     fenix = {
-      url = "https://flakehub.com/f/nix-community/fenix/0.1.1584.tar.gz";
+      url = "github:nix-community/fenix/9ccae1754eec0341b640d5705302ac0923d22875";
       inputs.nixpkgs.follows = "nixpkgs";
     };
 
@@ -15,11 +15,11 @@
     };
 
     nix = {
-      url = "https://flakehub.com/f/NixOS/nix/2.18.0.tar.gz";
+      url = "github:NixOS/nix/f5f4de6a550327b4b1a06123c2e450f1b92c73b6";
       # Omitting `inputs.nixpkgs.follows = "nixpkgs";` on purpose
     };
 
-    flake-compat.url = "https://flakehub.com/f/edolstra/flake-compat/1.0.0.tar.gz";
+    flake-compat.url = "github:edolstra/flake-compat/v1.0.0";
   };
 
   outputs =
