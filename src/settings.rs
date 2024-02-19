@@ -250,13 +250,14 @@ pub struct CommonSettings {
     #[cfg_attr(
         feature = "cli",
         clap(
-            long,
-            default_value = "false",
-            env = "NIX_INSTALLER_NO_CHANNEL_ADD",
-            global = true
+            action(ArgAction::SetFalse),
+            default_value = "true",
+            global = true,
+            env = "NIX_INSTALLER_ADD_CHANNEL",
+            long("no-add-channel"),
         )
     )]
-    pub no_channel_add: bool,
+    pub add_channel: bool,
 }
 
 impl CommonSettings {
@@ -329,7 +330,7 @@ impl CommonSettings {
             diagnostic_attribution: None,
             #[cfg(feature = "diagnostics")]
             diagnostic_endpoint: Some("https://install.determinate.systems/nix/diagnostic".into()),
-            no_channel_add: false,
+            add_channel: false,
         })
     }
 
@@ -351,7 +352,7 @@ impl CommonSettings {
                 diagnostic_attribution: _,
             #[cfg(feature = "diagnostics")]
             diagnostic_endpoint,
-            no_channel_add,
+            add_channel,
         } = self;
         let mut map = HashMap::default();
 
@@ -395,8 +396,8 @@ impl CommonSettings {
         );
 
         map.insert(
-            "no_channel_add".into(),
-            serde_json::to_value(no_channel_add)?,
+            "add_channel".into(),
+            serde_json::to_value(add_channel)?,
         );
 
         Ok(map)

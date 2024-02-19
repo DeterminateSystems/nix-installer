@@ -55,14 +55,14 @@ impl ConfigureNix {
         .await
         .map_err(Self::error)?;
 
-        let setup_channels = if settings.no_channel_add {
-            None
-        } else {
+        let setup_channels = if settings.add_channel {
             Some(
                 SetupChannels::plan(PathBuf::from(SCRATCH_DIR))
                     .await
                     .map_err(Self::error)?,
             )
+        } else {
+            None
         };
 
         Ok(Self {
