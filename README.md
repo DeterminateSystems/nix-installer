@@ -420,7 +420,6 @@ curl -sSf -L https://github.com/DeterminateSystems/nix-installer/releases/downlo
 Differing from the upstream [Nix](https://github.com/NixOS/nix) installer scripts:
 
 * an installation receipt (for uninstalling) is stored at `/nix/receipt.json` as well as a copy of the install binary at `/nix/nix-installer`
-* `nix-channel --update` is not run, `~/.nix-channels` is not provisioned
 * `ssl-cert-file` is set in `/etc/nix/nix.conf` if the `ssl-cert-file` argument is used.
 
 ## Motivations
