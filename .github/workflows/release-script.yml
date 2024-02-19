@@ -1,0 +1,20 @@
+name: Generate Installer Script
+
+on:
+  schedule:
+    - cron: '10 * * * *'
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v4
+    - uses: cachix/install-nix-action@v25
+    - name: Download Installer
+      run: nix-shell -p python3Packages.requests --run "python assemble_installer.py" -I nixpkgs=channel:nixos-23.11
+    - uses: stefanzweifel/git-auto-commit-action@v5
+      with:
+        commit_message: "Update installer script"
+        commit_user_name: "GitHub Actions"
+        branch: prerelease
