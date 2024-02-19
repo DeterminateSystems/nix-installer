@@ -140,10 +140,6 @@ jobs:
       - name: Test `nix` with `$GITHUB_PATH`
         if: success() || failure()
         run: |
-          # TODO this should be part of the installation process
-          echo "https://nixos.org/channels/nixpkgs-unstable nixpkgs" > "$HOME/.nix-channels"
-          nix-channel --update nixpkgs
-
           nix-shell -p hello --command hello
           nix-env --install hello
           hello
@@ -251,10 +247,6 @@ jobs:
       - name: Test `nix` with `$GITHUB_PATH`
         if: success() || failure()
         run: |
-          # TODO this should be part of the installation process
-          sudo -i sh -c 'echo "https://nixos.org/channels/nixpkgs-unstable nixpkgs" > "$HOME/.nix-channels"'
-          sudo -i nix-channel --update nixpkgs
-
           sudo -i nix-shell -p hello --command hello
           sudo -i nix-env --install hello
           sudo -i hello
@@ -370,10 +362,6 @@ jobs:
       - name: Test `nix` with `$GITHUB_PATH`
         if: success() || failure()
         run: |
-          # TODO this should be part of the installation process
-          echo "https://nixos.org/channels/nixpkgs-unstable nixpkgs" > "$HOME/.nix-channels"
-          nix-channel --update nixpkgs
-
           nix-shell -p hello --command hello
           nix-env --install hello
           hello
@@ -487,10 +475,6 @@ jobs:
       - name: Test `nix` with `$GITHUB_PATH`
         if: success() || failure()
         run: |
-          # TODO this should be part of the installation process
-          echo "https://nixos.org/channels/nixpkgs-unstable nixpkgs" > "$HOME/.nix-channels"
-          nix-channel --update nixpkgs
-
           nix-shell -p hello --command hello
           nix-env --install hello
           hello

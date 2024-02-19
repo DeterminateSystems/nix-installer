@@ -8,6 +8,7 @@ pub(crate) mod create_users_and_groups;
 pub(crate) mod delete_users;
 pub(crate) mod place_nix_configuration;
 pub(crate) mod provision_nix;
+pub(crate) mod setup_channels;
 
 pub use configure_init_service::{ConfigureInitService, ConfigureNixDaemonServiceError};
 pub use configure_nix::ConfigureNix;
@@ -17,3 +18,4 @@ pub use create_users_and_groups::CreateUsersAndGroups;
 pub use delete_users::DeleteUsersInGroup;
 pub use place_nix_configuration::PlaceNixConfiguration;
 pub use provision_nix::ProvisionNix;
+pub use setup_channels::SetupChannels;

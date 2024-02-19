@@ -390,6 +390,23 @@
             }
           },
           "state": "Uncompleted"
+        },
+        "setup_channels": {
+          "action": {
+            "create_file": {
+              "action": {
+                "path": "/var/root/.nix-channels",
+                "user": null,
+                "group": null,
+                "mode": 436,
+                "buf": "https://nixos.org/channels/nixpkgs-unstable nixpkgs\n",
+                "force": false
+              },
+              "state": "Uncompleted"
+            },
+            "unpacked_path": "/nix/temp-install-dir"
+          },
+          "state": "Uncompleted"
         }
       },
       "state": "Uncompleted"
@@ -427,6 +444,7 @@
       "ssl_cert_file": null,
       "extra_conf": [],
       "force": false,
+      "add_channel": true,
       "diagnostic_endpoint": "https://install.determinate.systems/nix/diagnostic"
     },
     "encrypt": null,
