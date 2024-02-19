@@ -395,10 +395,7 @@ impl CommonSettings {
             serde_json::to_value(diagnostic_endpoint)?,
         );
 
-        map.insert(
-            "add_channel".into(),
-            serde_json::to_value(add_channel)?,
-        );
+        map.insert("add_channel".into(), serde_json::to_value(add_channel)?);
 
         Ok(map)
     }
