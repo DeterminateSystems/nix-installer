@@ -3,7 +3,7 @@
 [![Crates.io](https://img.shields.io/crates/v/nix-installer)](https://crates.io/crates/nix-installer)
 [![Docs.rs](https://img.shields.io/docsrs/nix-installer)](https://docs.rs/nix-installer/latest/nix_installer/)
 
-A fast, friendly, and reliable tool to help you use Nix with Flakes everywhere.
+A fast, friendly, and reliable tool to help you use [Nix] with Flakes everywhere.
 
 
 ```bash
@@ -75,13 +75,13 @@ Options:
 # ...
       --nix-build-group-name <NIX_BUILD_GROUP_NAME>
           The Nix build group name
-          
+
           [env: NIX_INSTALLER_NIX_BUILD_GROUP_NAME=]
           [default: nixbld]
 
       --nix-build-group-id <NIX_BUILD_GROUP_ID>
           The Nix build group GID
-          
+
           [env: NIX_INSTALLER_NIX_BUILD_GROUP_ID=]
           [default: 3000]
 # ...
@@ -97,7 +97,7 @@ $ NIX_BUILD_GROUP_NAME=nixbuilder ./nix-installer install linux-multi --nix-buil
 
 ### Upgrading Nix
 
-You can upgrade Nix (to the version specified [here](https://raw.githubusercontent.com/NixOS/nixpkgs/master/nixos/modules/installer/tools/nix-fallback-paths.nix)) by running:
+You can upgrade Nix to the version described in [`DeterminateSystems/nix-upgrade`][nix-upgrade] by running:
 
 ```
 sudo -i nix upgrade-nix
@@ -254,7 +254,7 @@ wsl nix run --impure github:guibou/nixGL nix run nixpkgs#obs-studio
 ```
 
 
-If enabling system is not an option, pass `--init none` at the end of the command:
+If enabling systemd is not an option, pass `--init none` at the end of the command:
 
 > **Warning**
 > When `--init none` is used, _only_ `root` or users who can elevate to `root` privileges can run Nix:
@@ -422,6 +422,13 @@ curl -sSf -L https://github.com/DeterminateSystems/nix-installer/releases/downlo
 ./nix-installer install
 ```
 
+Each installer version has an [associated supported nix version](src/settings.rs) -- if you pin the installer version, you'll also indirectly pin to the associated nix version.
+
+You can also override the `nix` version via `--nix-package-url` or `NIX_INSTALLER_NIX_PACKAGE_URL=` but doing so is not recommended since we haven't tested that combination.
+Here are some example `nix` package URLs including nix version, OS and architecture:
+
+* https://releases.nixos.org/nix/nix-2.18.1/nix-2.18.1-x86_64-linux.tar.xz
+* https://releases.nixos.org/nix/nix-2.18.1/nix-2.18.1-aarch64-darwin.tar.xz
 
 ## Installation Differences
 
@@ -491,3 +498,5 @@ You can read the full privacy policy for [Determinate Systems][detsys], the crea
 [systemd]: https://systemd.io
 [wslg]: https://github.com/microsoft/wslg
 [nixgl]: https://github.com/guibou/nixGL
+[Nix]: https://nixos.org
+[nix-upgrade]: https://github.com/DeterminateSystems/nix-upgrade/blob/main/versions.nix
