@@ -15,7 +15,7 @@
     };
 
     nix = {
-      url = "https://flakehub.com/f/NixOS/nix/2.19.2.tar.gz";
+      url = "https://flakehub.com/f/NixOS/nix/=2.20.3.tar.gz";
       # Omitting `inputs.nixpkgs.follows = "nixpkgs";` on purpose
     };
 
