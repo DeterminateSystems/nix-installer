@@ -50,19 +50,19 @@
         "type": "github"
       }
     },
-    "lowdown-src": {
+    "libgit2": {
       "flake": false,
       "locked": {
-        "lastModified": 1633514407,
-        "narHash": "sha256-Dw32tiMjdK9t3ETl5fzGrutQTzh2rufgZV4A/BbxuD4=",
-        "owner": "kristapsdz",
-        "repo": "lowdown",
-        "rev": "d2c2b44ff6c27b936ec27358a2653caaef8f73b8",
+        "lastModified": 1708609159,
+        "narHash": "sha256-sx2/FTDfM/wctWV8zFuliIc7YGzHghtmhqcvmYQVKnc=",
+        "owner": "libgit2",
+        "repo": "libgit2",
+        "rev": "8fd4f83e8acf5ee813191f08c3433e77200ea38b",
         "type": "github"
       },
       "original": {
-        "owner": "kristapsdz",
-        "repo": "lowdown",
+        "owner": "libgit2",
+        "repo": "libgit2",
         "type": "github"
       }
     },
@@ -89,35 +89,35 @@
     "nix": {
       "inputs": {
         "flake-compat": "flake-compat_2",
-        "lowdown-src": "lowdown-src",
+        "libgit2": "libgit2",
         "nixpkgs": "nixpkgs",
         "nixpkgs-regression": "nixpkgs-regression"
       },
       "locked": {
-        "lastModified": 1701122567,
-        "narHash": "sha256-iA8DqS+W2fWTfR+nNJSvMHqQ+4NpYMRT3b+2zS6JTvE=",
-        "rev": "50f8f1c8bc019a4c0fd098b9ac674b94cfc6af0d",
-        "revCount": 15434,
+        "lastModified": 1708517151,
+        "narHash": "sha256-s7QTMxLzVA5UF80sFCv8jwaTMBLA8/110YFkZNkNsCk=",
+        "rev": "8a8172cd2b5ef2f6dd2d9673a6379447d780ff17",
+        "revCount": 16129,
         "type": "tarball",
-        "url": "https://api.flakehub.com/f/pinned/NixOS/nix/2.19.2/018c1be0-1b88-7682-b3bf-948ec82d0a0b/source.tar.gz"
+        "url": "https://api.flakehub.com/f/pinned/NixOS/nix/2.20.3/018dcc43-c784-772a-8da1-64165044e9cd/source.tar.gz"
       },
       "original": {
         "type": "tarball",
-        "url": "https://flakehub.com/f/NixOS/nix/2.19.2.tar.gz"
+        "url": "https://flakehub.com/f/NixOS/nix/%3D2.20.3.tar.gz"
       }
     },
     "nixpkgs": {
       "locked": {
-        "lastModified": 1698876495,
-        "narHash": "sha256-nsQo2/mkDUFeAjuu92p0dEqhRvHHiENhkKVIV1y0/Oo=",
+        "lastModified": 1705033721,
+        "narHash": "sha256-K5eJHmL1/kev6WuqyqqbS1cdNnSidIZ3jeqJ7GbrYnQ=",
         "owner": "NixOS",
         "repo": "nixpkgs",
-        "rev": "9eb24edd6a0027fed010ccfe300a9734d029983c",
+        "rev": "a1982c92d8980a0114372973cbdfe0a307f1bdea",
         "type": "github"
       },
       "original": {
         "owner": "NixOS",
-        "ref": "release-23.05",
+        "ref": "nixos-23.05-small",
         "repo": "nixpkgs",
         "type": "github"
       }
