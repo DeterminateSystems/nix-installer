@@ -369,7 +369,7 @@ impl Action for CreateOrMergeNixConfig {
                     new_config.push_str(name);
                     new_config.push_str(" = ");
 
-                    if let Some(merged_value) = merged_nix_config.settings_mut().remove(name) {
+                    if let Some(merged_value) = merged_nix_config.settings_mut().swap_remove(name) {
                         new_config.push_str(&merged_value);
                         new_config.push(' ');
                     } else {
@@ -390,7 +390,7 @@ impl Action for CreateOrMergeNixConfig {
                 };
 
                 if let Some(to_remove) = to_remove {
-                    existing_nix_config.settings_mut().remove(&to_remove);
+                    existing_nix_config.settings_mut().swap_remove(&to_remove);
                 }
             }
 
