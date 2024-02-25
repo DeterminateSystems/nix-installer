@@ -494,7 +494,7 @@ You can read the full privacy policy for [Determinate Systems][detsys], the crea
 
 [detsys]: https://determinate.systems/
 [diagnosticdata]: https://github.com/DeterminateSystems/nix-installer/blob/f9f927840d532b71f41670382a30cfcbea2d8a35/src/diagnostics.rs#L29-L43
-[privacy]: https://determinate.systems/privacy
+[privacy]: https://determinate.systems/policies/privacy
 [systemd]: https://systemd.io
 [wslg]: https://github.com/microsoft/wslg
 [nixgl]: https://github.com/guibou/nixGL
