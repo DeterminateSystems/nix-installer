@@ -139,7 +139,7 @@ impl Action for ConfigureInitService {
             #[cfg(target_os = "linux")]
             InitSystem::Systemd => {
                 let mut explanation = vec![
-                    "Run `systemd-tempfiles --create --prefix=/nix/var/nix`".to_string(),
+                    "Run `systemd-tmpfiles --create --prefix=/nix/var/nix`".to_string(),
                     format!("Symlink `{SERVICE_SRC}` to `{SERVICE_DEST}`"),
                     format!("Symlink `{SOCKET_SRC}` to `{SOCKET_DEST}`"),
                     "Run `systemctl daemon-reload`".to_string(),
