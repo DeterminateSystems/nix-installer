@@ -64,7 +64,7 @@ indexmap = { version = "2.0.2", features = ["serde"] }
 
 [dev-dependencies]
 eyre = { version = "0.6.8", default-features = false, features = [ "track-caller" ] }
-tempfile = "3.3.0"
+tempfile = "3.10.1"
 
 [profile.release]
 strip = true  # Automatically strip symbols from the binary.
