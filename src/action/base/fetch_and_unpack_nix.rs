@@ -15,7 +15,7 @@ Fetch a URL to the given path
 */
 #[derive(Debug, serde::Deserialize, serde::Serialize, Clone)]
 pub struct FetchAndUnpackNix {
-    url_or_path: UrlOrPath,
+    url_or_path: Option<UrlOrPath>,
     dest: PathBuf,
     proxy: Option<Url>,
     ssl_cert_file: Option<PathBuf>,
@@ -24,7 +24,7 @@ pub struct FetchAndUnpackNix {
 impl FetchAndUnpackNix {
     #[tracing::instrument(level = "debug", skip_all)]
     pub async fn plan(
-        url_or_path: UrlOrPath,
+        url_or_path: Option<UrlOrPath>,
         dest: PathBuf,
         proxy: Option<Url>,
         ssl_cert_file: Option<PathBuf>,
@@ -32,7 +32,7 @@ impl FetchAndUnpackNix {
         // TODO(@hoverbear): Check URL exists?
         // TODO(@hoverbear): Check tempdir exists
 
-        if let UrlOrPath::Url(url) = &url_or_path {
+        if let Some(UrlOrPath::Url(url)) = &url_or_path {
             match url.scheme() {
                 "https" | "http" | "file" => (),
                 _ => return Err(Self::error(ActionErrorKind::UnknownUrlScheme)),
@@ -67,14 +67,18 @@ impl Action for FetchAndUnpackNix {
         ActionTag("fetch_and_unpack_nix")
     }
     fn tracing_synopsis(&self) -> String {
-        format!("Fetch `{}` to `{}`", self.url_or_path, self.dest.display())
+        if let Some(ref url_or_path) = self.url_or_path {
+            format!("Fetch `{}` to `{}`", url_or_path, self.dest.display())
+        } else {
+            "Extract the bundled Nix".to_string()
+        }
     }
 
     fn tracing_span(&self) -> Span {
         let span = span!(
             tracing::Level::DEBUG,
             "fetch_and_unpack_nix",
-            url_or_path = tracing::field::display(&self.url_or_path),
+            url_or_path = self.url_or_path.as_ref().map(tracing::field::display),
             proxy = tracing::field::Empty,
             ssl_cert_file = tracing::field::Empty,
             dest = tracing::field::display(self.dest.display()),
@@ -98,7 +102,8 @@ impl Action for FetchAndUnpackNix {
     #[tracing::instrument(level = "debug", skip_all)]
     async fn execute(&mut self) -> Result<(), ActionError> {
         let bytes = match &self.url_or_path {
-            UrlOrPath::Url(url) => {
+            &None => Bytes::from(crate::settings::NIX_TARBALL),
+            Some(UrlOrPath::Url(url)) => {
                 let bytes = match url.scheme() {
                     "https" | "http" => {
                         let mut buildable_client = reqwest::Client::builder();
@@ -144,7 +149,7 @@ impl Action for FetchAndUnpackNix {
                 };
                 bytes
             },
-            UrlOrPath::Path(path) => {
+            Some(UrlOrPath::Path(path)) => {
                 let buf = tokio::fs::read(path)
                     .await
                     .map_err(|e| ActionErrorKind::Read(PathBuf::from(path), e))

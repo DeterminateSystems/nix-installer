@@ -15,7 +15,7 @@
     };
 
     nix = {
-      url = "https://flakehub.com/f/NixOS/nix/=2.21.2.tar.gz";
+      url = "https://flakehub.com/f/DeterminateSystems/nix/=2.21.2.tar.gz";
       # Omitting `inputs.nixpkgs.follows = "nixpkgs";` on purpose
     };
 
@@ -87,6 +87,8 @@
             RUSTFLAGS = "--cfg tokio_unstable";
             cargoTestOptions = f: f ++ [ "--all" ];
 
+            NIX_INSTALLER_TARBALL = inputs.nix.tarballs_direct.${final.stdenv.system};
+
             override = { preBuild ? "", ... }: {
               preBuild = preBuild + ''
                 # logRun "cargo clippy --all-targets --all-features -- -D warnings"
@@ -130,6 +132,7 @@
             name = "nix-install-shell";
 
             RUST_SRC_PATH = "${toolchain}/lib/rustlib/src/rust/library";
+            NIX_INSTALLER_TARBALL = inputs.nix.tarballs_direct.${system};
 
             nativeBuildInputs = with pkgs; [ ];
             buildInputs = with pkgs; [
