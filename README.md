@@ -97,7 +97,7 @@ $ NIX_BUILD_GROUP_NAME=nixbuilder ./nix-installer install linux-multi --nix-buil
 
 ### Upgrading Nix
 
-You can upgrade Nix to the version described in [`DeterminateSystems/nix-upgrade`][nix-upgrade] by running:
+You can upgrade Nix to the current recommended version of Nix by running:
 
 ```
 sudo -i nix upgrade-nix
@@ -499,4 +499,3 @@ You can read the full privacy policy for [Determinate Systems][detsys], the crea
 [wslg]: https://github.com/microsoft/wslg
 [nixgl]: https://github.com/guibou/nixGL
 [Nix]: https://nixos.org
-[nix-upgrade]: https://github.com/DeterminateSystems/nix-upgrade/blob/main/versions.nix
