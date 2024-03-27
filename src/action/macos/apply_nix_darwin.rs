@@ -119,6 +119,18 @@ impl Action for ApplyNixDarwin {
 
     #[tracing::instrument(level = "debug", skip_all)]
     async fn revert(&mut self) -> Result<(), ActionError> {
+        // TODO: deal with shell rc files
+
+        execute_command(
+            Command::new("nix")
+                .process_group(0)
+                // TODO: make the Git ref configurable
+                .args(["run", "github:lnL7/nix-darwin/bcc8afd06e237df060c85bad6af7128e05fd61a3#darwin-uninstaller"])
+                .stdin(std::process::Stdio::null()),
+        )
+        .await
+        .map_err(Self::error)?;
+
         Ok(())
     }
 }
