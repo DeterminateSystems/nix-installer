@@ -60,26 +60,21 @@ impl Action for ApplyNixDarwin {
         .await
         .map_err(Self::error)?;
 
-        // Build a local `darwin-rebuild`
-        // TODO: pin to a specific commit
+        // Build the flake ref into a local result symlink
         execute_command(
             Command::new("nix")
                 .process_group(0)
-                .args([
-                    "build",
-                    // TODO: make the Git ref configurable
-                    "github:lnL7/nix-darwin/bcc8afd06e237df060c85bad6af7128e05fd61a3",
-                ])
+                .args(["build", &self.nix_darwin_flake_ref])
                 .stdin(std::process::Stdio::null()),
         )
         .await
         .map_err(Self::error)?;
 
-        // Run `darwin-rebuild switch` against the provided flake reference
+        // Run the built activation script
         execute_command(
-            Command::new("./result/bin/darwin-rebuild")
+            Command::new("./result/sw/bin/darwin-rebuild")
                 .process_group(0)
-                .args(["switch", "--flake", &self.nix_darwin_flake_ref])
+                .arg("activate")
                 .stdin(std::process::Stdio::null()),
         )
         .await
