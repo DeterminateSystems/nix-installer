@@ -245,6 +245,18 @@ pub struct CommonSettings {
         default_value = "https://install.determinate.systems/nix/diagnostic"
     )]
     pub diagnostic_endpoint: Option<String>,
+
+    #[cfg_attr(
+        all(target_os = "macos", feature = "nix-darwin"),
+        clap(
+            long,
+            default_value = None,
+            env = "NIX_INSTALLER_NIX_DARWIN_FLAKE_REF",
+            global = true,
+        )
+    )]
+    /// nix-darwin flake reference for bootstrapping a macOS machine to a full configuration
+    pub nix_darwin_flake_ref: Option<String>,
 }
 
 impl CommonSettings {
@@ -317,6 +329,7 @@ impl CommonSettings {
             diagnostic_attribution: None,
             #[cfg(feature = "diagnostics")]
             diagnostic_endpoint: Some("https://install.determinate.systems/nix/diagnostic".into()),
+            nix_darwin_flake_ref: None,
         })
     }
 
@@ -338,6 +351,8 @@ impl CommonSettings {
                 diagnostic_attribution: _,
             #[cfg(feature = "diagnostics")]
             diagnostic_endpoint,
+            #[cfg(feature = "nix-darwin")]
+            nix_darwin_flake_ref,
         } = self;
         let mut map = HashMap::default();
 
@@ -379,6 +394,14 @@ impl CommonSettings {
             "diagnostic_endpoint".into(),
             serde_json::to_value(diagnostic_endpoint)?,
         );
+
+        #[cfg(feature = "nix-darwin")]
+        if let Some(nix_darwin_flake_ref) = &nix_darwin_flake_ref {
+            map.insert(
+                "nix_darwin_flake_ref".into(),
+                serde_json::to_value(nix_darwin_flake_ref)?,
+            );
+        }
 
         Ok(map)
     }
