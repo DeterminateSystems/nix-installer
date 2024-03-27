@@ -470,6 +470,8 @@ pub enum ActionErrorKind {
     NoUser(String),
     #[error("Getting gid for group `{0}`")]
     GettingGroupId(String, #[source] nix::errno::Errno),
+    #[error("could not get home directory")]
+    NoHomeDirectory,
     #[error("Group `{0}` existed but had a different gid ({1}) than planned ({2})")]
     GroupGidMismatch(String, u32, u32),
     #[error("Getting group `{0}`")]

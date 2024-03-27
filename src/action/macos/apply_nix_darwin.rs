@@ -1,6 +1,10 @@
+use tokio::process::Command;
 use tracing::{span, Span};
 
-use crate::action::{Action, ActionDescription, ActionError, ActionTag, StatefulAction};
+use crate::{
+    action::{Action, ActionDescription, ActionError, ActionErrorKind, ActionTag, StatefulAction},
+    execute_command,
+};
 
 /// TODO
 #[derive(Debug, serde::Deserialize, serde::Serialize, Clone)]
@@ -11,7 +15,7 @@ pub struct ApplyNixDarwin {
 impl ApplyNixDarwin {
     #[tracing::instrument(level = "debug", skip_all)]
     pub async fn plan(nix_darwin_flake_ref: String) -> Result<StatefulAction<Self>, ActionError> {
-        Ok(StatefulAction::completed(Self {
+        Ok(StatefulAction::uncompleted(Self {
             nix_darwin_flake_ref,
         }))
     }
@@ -45,6 +49,66 @@ impl Action for ApplyNixDarwin {
 
     #[tracing::instrument(level = "debug", skip_all)]
     async fn execute(&mut self) -> Result<(), ActionError> {
+        // Create and cd into a temporary directory
+        let temp_dir = std::env::temp_dir().to_string_lossy().to_string();
+        execute_command(
+            Command::new("cd")
+                .process_group(0)
+                .arg(&temp_dir)
+                .stdin(std::process::Stdio::null()),
+        )
+        .await
+        .map_err(Self::error)?;
+
+        // Build a local `darwin-rebuild`
+        // TODO: pin to a specific commit
+        execute_command(
+            Command::new("nix")
+                .process_group(0)
+                .args([
+                    "build",
+                    // TODO: make the Git ref configurable
+                    "github:lnL7/nix-darwin/bcc8afd06e237df060c85bad6af7128e05fd61a3",
+                ])
+                .stdin(std::process::Stdio::null()),
+        )
+        .await
+        .map_err(Self::error)?;
+
+        // Run `darwin-rebuild switch` against the provided flake reference
+        execute_command(
+            Command::new("./result/bin/darwin-rebuild")
+                .process_group(0)
+                .args(["switch", "--flake", &self.nix_darwin_flake_ref])
+                .stdin(std::process::Stdio::null()),
+        )
+        .await
+        .map_err(Self::error)?;
+
+        // cd into $HOME
+        let home = dirs::home_dir().ok_or_else(|| Self::error(ActionErrorKind::NoHomeDirectory))?;
+
+        execute_command(
+            Command::new("cd")
+                .process_group(0)
+                .arg(home)
+                .stdin(std::process::Stdio::null()),
+        )
+        .await
+        .map_err(Self::error)?;
+
+        // delete previously created temporary directory
+        execute_command(
+            Command::new("rm")
+                .process_group(0)
+                .args(["-rf", &temp_dir])
+                .stdin(std::process::Stdio::null()),
+        )
+        .await
+        .map_err(Self::error)?;
+
+        // TODO: source shell rc file
+
         Ok(())
     }
 
