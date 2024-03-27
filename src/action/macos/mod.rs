@@ -1,6 +1,7 @@
 /*!  [`Action`](crate::action::Action)s for Darwin based systems
 */
 
+pub(crate) mod apply_nix_darwin;
 pub(crate) mod bootstrap_launchctl_service;
 pub(crate) mod configure_remote_building;
 pub(crate) mod create_apfs_volume;
@@ -16,6 +17,7 @@ pub(crate) mod set_tmutil_exclusion;
 pub(crate) mod set_tmutil_exclusions;
 pub(crate) mod unmount_apfs_volume;
 
+pub use apply_nix_darwin::ApplyNixDarwin;
 pub use bootstrap_launchctl_service::BootstrapLaunchctlService;
 pub use configure_remote_building::ConfigureRemoteBuilding;
 pub use create_apfs_volume::CreateApfsVolume;

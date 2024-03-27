@@ -13,7 +13,8 @@ use crate::{
         base::RemoveDirectory,
         common::{ConfigureInitService, ConfigureNix, CreateUsersAndGroups, ProvisionNix},
         macos::{
-            ConfigureRemoteBuilding, CreateNixHookService, CreateNixVolume, SetTmutilExclusions,
+            ApplyNixDarwin, ConfigureRemoteBuilding, CreateNixHookService, CreateNixVolume,
+            SetTmutilExclusions,
         },
         StatefulAction,
     },
@@ -196,6 +197,15 @@ impl Planner for Macos {
                 .map_err(PlannerError::Action)?
                 .boxed(),
         );
+
+        if let Some(nix_darwin_flake_ref) = self.settings.clone().nix_darwin_flake_ref {
+            plan.push(
+                ApplyNixDarwin::plan(nix_darwin_flake_ref)
+                    .await
+                    .map_err(PlannerError::Action)?
+                    .boxed(),
+            )
+        }
 
         Ok(plan)
     }
