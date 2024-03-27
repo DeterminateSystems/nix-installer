@@ -198,6 +198,7 @@ impl Planner for Macos {
                 .boxed(),
         );
 
+        #[cfg(feature = "nix-darwin")]
         if let Some(nix_darwin_flake_ref) = self.settings.clone().nix_darwin_flake_ref {
             plan.push(
                 ApplyNixDarwin::plan(nix_darwin_flake_ref)

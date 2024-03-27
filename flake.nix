@@ -236,6 +236,8 @@
             inherit system;
             modules = [
               ({ ... }: {
+		nix.useDaemon = true;
+
                 nixpkgs.config.allowUnfree = true;
 
                 users.users.${username} = {
