@@ -19,6 +19,11 @@
       # Omitting `inputs.nixpkgs.follows = "nixpkgs";` on purpose
     };
 
+    nix-darwin = {
+      url = "github:lnL7/nix-darwin";
+      inputs.nixpkgs.follows = "nixpkgs";
+    };
+
     flake-compat.url = "https://flakehub.com/f/edolstra/flake-compat/1.0.0.tar.gz";
   };
 
@@ -28,18 +33,24 @@
     , fenix
     , naersk
     , nix
+    , nix-darwin
     , ...
     } @ inputs:
     let
-      supportedSystems = [ "i686-linux" "x86_64-linux" "aarch64-linux" "x86_64-darwin" "aarch64-darwin" ];
-
-      forAllSystems = f: nixpkgs.lib.genAttrs supportedSystems (system: (forSystem system f));
+      macOsSystems = [ "x86_64-darwin" "aarch64-darwin" ];
+      supportedSystems = [ "i686-linux" "x86_64-linux" "aarch64-linux" ] ++ macOsSystems;
 
       forSystem = system: f: f rec {
         inherit system;
         pkgs = import nixpkgs { inherit system; overlays = [ self.overlays.default ]; };
         lib = pkgs.lib;
       };
+
+      forSystems = systems: f: nixpkgs.lib.genAttrs systems (system: (forSystem system f));
+
+      forAllSystems = forSystems supportedSystems;
+
+      forMacOsSystems = forSystems macOsSystems;
 
       fenixToolchain = system: with fenix.packages.${system};
         combine ([
@@ -215,5 +226,25 @@
           inherit (nix.hydraJobs) binaryTarball;
         };
       };
+
+      darwinConfigurations = forMacOsSystems ({ system, ... }: {
+        default =
+          let
+            username = "testuser";
+          in
+          nix-darwin.lib.darwinSystem {
+            inherit system;
+            modules = [
+              ({ ... }: {
+                nixpkgs.config.allowUnfree = true;
+
+                users.users.${username} = {
+                  name = username;
+                  home = "/Users/${username}";
+                };
+              })
+            ];
+          };
+      });
     };
 }
