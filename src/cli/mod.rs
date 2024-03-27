@@ -97,10 +97,13 @@ pub fn ensure_root() -> eyre::Result<()> {
                 .dimmed()
         );
         let sudo_cstring = CString::new("sudo").wrap_err("Making C string of `sudo`")?;
+        let set_home_cstring =
+            CString::new("--set-home").wrap_err("Making C string of `--set-home`")?;
 
         let args = std::env::args();
         let mut arg_vec_cstring = vec![];
         arg_vec_cstring.push(sudo_cstring.clone());
+        arg_vec_cstring.push(set_home_cstring);
 
         let mut env_list = vec![];
         for (key, value) in std::env::vars() {
