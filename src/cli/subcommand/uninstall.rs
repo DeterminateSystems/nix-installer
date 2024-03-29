@@ -90,7 +90,7 @@ impl CommandExecute for Uninstall {
                         })
                         .collect()
                 };
-                let temp_exe = temp.join(&format!("nix-installer-{random_trailer}"));
+                let temp_exe = temp.join(format!("nix-installer-{random_trailer}"));
                 tokio::fs::copy(&current_exe, &temp_exe)
                     .await
                     .wrap_err("Copying nix-installer to tempdir")?;
