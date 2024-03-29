@@ -8,12 +8,6 @@ license = "LGPL-2.1"
 repository = "https://github.com/DeterminateSystems/nix-installer"
 documentation = "https://docs.rs/nix-installer/latest/nix_installer"
 
-[package.metadata.riff.targets.aarch64-apple-darwin]
-build-inputs = ["darwin.apple_sdk.frameworks.Security"]
-
-[package.metadata.riff.targets.x86_64-apple-darwin]
-build-inputs = ["darwin.apple_sdk.frameworks.Security"]
-
 [features]
 default = ["cli", "diagnostics"]
 cli = ["eyre", "color-eyre", "clap", "tracing-subscriber", "tracing-error"]
