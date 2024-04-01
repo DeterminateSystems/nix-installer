@@ -30,9 +30,9 @@ pub struct CreateNixVolume {
     create_volume: StatefulAction<CreateApfsVolume>,
     create_fstab_entry: StatefulAction<CreateFstabEntry>,
     encrypt_volume: Option<StatefulAction<EncryptApfsVolume>>,
-    setup_volume_daemon: StatefulAction<CreateVolumeService>,
-    bootstrap_volume: StatefulAction<BootstrapLaunchctlService>,
-    kickstart_launchctl_service: StatefulAction<KickstartLaunchctlService>,
+    setup_volume_daemon: Option<StatefulAction<CreateVolumeService>>,
+    bootstrap_volume: Option<StatefulAction<BootstrapLaunchctlService>>,
+    kickstart_launchctl_service: Option<StatefulAction<KickstartLaunchctlService>>,
     enable_ownership: StatefulAction<EnableOwnership>,
 }
 
@@ -77,27 +77,42 @@ impl CreateNixVolume {
             None
         };
 
-        let setup_volume_daemon = CreateVolumeService::plan(
-            NIX_VOLUME_MOUNTD_DEST,
-            "org.nixos.darwin-store",
-            name.clone(),
-            "/nix",
-            encrypt,
-        )
-        .await
-        .map_err(Self::error)?;
+        let setup_volume_daemon: Option<StatefulAction<CreateVolumeService>>;
+        let bootstrap_volume: Option<StatefulAction<BootstrapLaunchctlService>>;
+        let kickstart_launchctl_service: Option<StatefulAction<KickstartLaunchctlService>>;
 
-        let bootstrap_volume = BootstrapLaunchctlService::plan(
-            "system",
-            "org.nixos.darwin-store",
-            NIX_VOLUME_MOUNTD_DEST,
-        )
-        .await
-        .map_err(Self::error)?;
-        let kickstart_launchctl_service =
-            KickstartLaunchctlService::plan("system", "org.nixos.darwin-store")
+        if !nix_enterprise {
+            setup_volume_daemon = Some(
+                CreateVolumeService::plan(
+                    NIX_VOLUME_MOUNTD_DEST,
+                    "org.nixos.darwin-store",
+                    name.clone(),
+                    "/nix",
+                    encrypt,
+                )
                 .await
-                .map_err(Self::error)?;
+                .map_err(Self::error)?,
+            );
+
+            bootstrap_volume = Some(
+                BootstrapLaunchctlService::plan(
+                    "system",
+                    "org.nixos.darwin-store",
+                    NIX_VOLUME_MOUNTD_DEST,
+                )
+                .await
+                .map_err(Self::error)?,
+            );
+            kickstart_launchctl_service = Some(
+                KickstartLaunchctlService::plan("system", "org.nixos.darwin-store")
+                    .await
+                    .map_err(Self::error)?,
+            );
+        } else {
+            setup_volume_daemon = None;
+            bootstrap_volume = None;
+            kickstart_launchctl_service = None;
+        }
         let enable_ownership = EnableOwnership::plan("/nix").await.map_err(Self::error)?;
 
         Ok(Self {
@@ -155,11 +170,14 @@ impl Action for CreateNixVolume {
         if let Some(encrypt_volume) = &self.encrypt_volume {
             explanation.push(encrypt_volume.tracing_synopsis());
         }
-        explanation.append(&mut vec![
-            self.setup_volume_daemon.tracing_synopsis(),
-            self.bootstrap_volume.tracing_synopsis(),
-            self.enable_ownership.tracing_synopsis(),
-        ]);
+        if let Some(setup_volume_daemon) = &self.setup_volume_daemon {
+            explanation.push(setup_volume_daemon.tracing_synopsis());
+        }
+        if let Some(bootstrap_volume) = &self.bootstrap_volume {
+            explanation.push(bootstrap_volume.tracing_synopsis());
+        }
+
+        explanation.push(self.enable_ownership.tracing_synopsis());
 
         vec![ActionDescription::new(self.tracing_synopsis(), explanation)]
     }
@@ -212,19 +230,23 @@ impl Action for CreateNixVolume {
         if let Some(encrypt_volume) = &mut self.encrypt_volume {
             encrypt_volume.try_execute().await.map_err(Self::error)?
         }
-        self.setup_volume_daemon
-            .try_execute()
-            .await
-            .map_err(Self::error)?;
+        if let Some(setup_volume_daemon) = &mut self.setup_volume_daemon {
+            setup_volume_daemon
+                .try_execute()
+                .await
+                .map_err(Self::error)?;
+        }
 
-        self.bootstrap_volume
-            .try_execute()
-            .await
-            .map_err(Self::error)?;
-        self.kickstart_launchctl_service
-            .try_execute()
-            .await
-            .map_err(Self::error)?;
+        if let Some(bootstrap_volume) = &mut self.bootstrap_volume {
+            bootstrap_volume.try_execute().await.map_err(Self::error)?;
+        }
+
+        if let Some(kickstart_launchctl_service) = &mut self.kickstart_launchctl_service {
+            kickstart_launchctl_service
+                .try_execute()
+                .await
+                .map_err(Self::error)?;
+        }
 
         let mut retry_tokens: usize = 50;
         loop {
@@ -269,11 +291,13 @@ impl Action for CreateNixVolume {
         if let Some(encrypt_volume) = &self.encrypt_volume {
             explanation.push(encrypt_volume.tracing_synopsis());
         }
-        explanation.append(&mut vec![
-            self.setup_volume_daemon.tracing_synopsis(),
-            self.bootstrap_volume.tracing_synopsis(),
-            self.enable_ownership.tracing_synopsis(),
-        ]);
+        if let Some(setup_volume_daemon) = &self.setup_volume_daemon {
+            explanation.push(setup_volume_daemon.tracing_synopsis());
+        }
+        if let Some(bootstrap_volume) = &self.bootstrap_volume {
+            explanation.push(bootstrap_volume.tracing_synopsis());
+        }
+        explanation.push(self.enable_ownership.tracing_synopsis());
 
         vec![ActionDescription::new(
             format!(
@@ -292,15 +316,21 @@ impl Action for CreateNixVolume {
         if let Err(err) = self.enable_ownership.try_revert().await {
             errors.push(err)
         };
-        if let Err(err) = self.kickstart_launchctl_service.try_revert().await {
-            errors.push(err)
-        };
-        if let Err(err) = self.bootstrap_volume.try_revert().await {
-            errors.push(err)
-        };
-        if let Err(err) = self.setup_volume_daemon.try_revert().await {
-            errors.push(err)
-        };
+        if let Some(kickstart_launchctl_service) = &mut self.kickstart_launchctl_service {
+            if let Err(err) = kickstart_launchctl_service.try_revert().await {
+                errors.push(err)
+            }
+        }
+        if let Some(bootstrap_volume) = &mut self.bootstrap_volume {
+            if let Err(err) = bootstrap_volume.try_revert().await {
+                errors.push(err)
+            }
+        }
+        if let Some(ref mut setup_volume_daemon) = &mut self.setup_volume_daemon {
+            if let Err(err) = setup_volume_daemon.try_revert().await {
+                errors.push(err)
+            }
+        }
         if let Some(encrypt_volume) = &mut self.encrypt_volume {
             if let Err(err) = encrypt_volume.try_revert().await {
                 errors.push(err)
