@@ -31,7 +31,7 @@ jobs:
         run: |
           ./upload_s3.sh "$GITHUB_REF_NAME" "$GITHUB_SHA" "https://install.determinate.systems/nix/tag/$GITHUB_REF_NAME"
       - name: Publish Release to GitHub (Tag)
-        uses: softprops/action-gh-release@v1
+        uses: softprops/action-gh-release@v2
         with:
           fail_on_unmatched_files: true
           draft: true
