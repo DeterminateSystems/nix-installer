@@ -2,7 +2,9 @@
 use std::path::Path;
 use std::path::PathBuf;
 
+#[cfg(target_os = "macos")]
 use serde::{Deserialize, Serialize};
+#[cfg(target_os = "macos")]
 use tokio::io::AsyncWriteExt;
 use tokio::process::Command;
 use tracing::{span, Span};
@@ -182,7 +184,7 @@ impl Action for ConfigureInitService {
     async fn execute(&mut self) -> Result<(), ActionError> {
         let Self {
             init,
-            nix_enterprise,
+            nix_enterprise: _,
             start_daemon,
         } = self;
 
@@ -193,7 +195,7 @@ impl Action for ConfigureInitService {
                 let domain = "system";
                 let service: &str;
 
-                if *nix_enterprise {
+                if self.nix_enterprise {
                     daemon_file = DARWIN_NIX_ENTERPRISE_DEST;
                     service = "systems.determinate.nix-daemon";
 

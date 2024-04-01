@@ -85,10 +85,14 @@ impl Planner for Linux {
         );
 
         plan.push(
-            ConfigureInitService::plan(self.init.init, self.init.start_daemon)
-                .await
-                .map_err(PlannerError::Action)?
-                .boxed(),
+            ConfigureInitService::plan(
+                self.init.init,
+                self.settings.nix_enterprise,
+                self.init.start_daemon,
+            )
+            .await
+            .map_err(PlannerError::Action)?
+            .boxed(),
         );
         plan.push(
             RemoveDirectory::plan(crate::settings::SCRATCH_DIR)
