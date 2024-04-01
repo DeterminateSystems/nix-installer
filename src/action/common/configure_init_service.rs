@@ -1,6 +1,9 @@
 #[cfg(target_os = "linux")]
 use std::path::Path;
 use std::path::PathBuf;
+
+use serde::{Deserialize, Serialize};
+use tokio::io::AsyncWriteExt;
 use tokio::process::Command;
 use tracing::{span, Span};
 
@@ -23,6 +26,9 @@ const TMPFILES_SRC: &str = "/nix/var/nix/profiles/default/lib/tmpfiles.d/nix-dae
 #[cfg(target_os = "linux")]
 const TMPFILES_DEST: &str = "/etc/tmpfiles.d/nix-daemon.conf";
 #[cfg(target_os = "macos")]
+const DARWIN_NIX_ENTERPRISE_DEST: &str =
+    "/Library/LaunchDaemons/systems.determinate.nix-daemon.plist";
+#[cfg(target_os = "macos")]
 const DARWIN_NIX_DAEMON_DEST: &str = "/Library/LaunchDaemons/org.nixos.nix-daemon.plist";
 #[cfg(target_os = "macos")]
 const DARWIN_NIX_DAEMON_SOURCE: &str =
@@ -33,6 +39,7 @@ Configure the init to run the Nix daemon
 #[derive(Debug, serde::Deserialize, serde::Serialize, Clone)]
 pub struct ConfigureInitService {
     init: InitSystem,
+    nix_enterprise: bool,
     start_daemon: bool,
 }
 
@@ -70,6 +77,7 @@ impl ConfigureInitService {
     #[tracing::instrument(level = "debug", skip_all)]
     pub async fn plan(
         init: InitSystem,
+        nix_enterprise: bool,
         start_daemon: bool,
     ) -> Result<StatefulAction<Self>, ActionError> {
         match init {
@@ -106,7 +114,12 @@ impl ConfigureInitService {
             },
         };
 
-        Ok(Self { init, start_daemon }.into())
+        Ok(Self {
+            init,
+            nix_enterprise,
+            start_daemon,
+        }
+        .into())
     }
 }
 
@@ -167,34 +180,59 @@ impl Action for ConfigureInitService {
 
     #[tracing::instrument(level = "debug", skip_all)]
     async fn execute(&mut self) -> Result<(), ActionError> {
-        let Self { init, start_daemon } = self;
+        let Self {
+            init,
+            nix_enterprise,
+            start_daemon,
+        } = self;
 
         match init {
             #[cfg(target_os = "macos")]
             InitSystem::Launchd => {
-                let src = std::path::Path::new(DARWIN_NIX_DAEMON_SOURCE);
-                tokio::fs::copy(src, DARWIN_NIX_DAEMON_DEST)
-                    .await
-                    .map_err(|e| {
+                let daemon_file: &str;
+                let domain = "system";
+                let service: &str;
+
+                if *nix_enterprise {
+                    daemon_file = DARWIN_NIX_ENTERPRISE_DEST;
+                    service = "systems.determinate.nix-daemon";
+
+                    let generated_plist = generate_plist();
+
+                    let mut options = tokio::fs::OpenOptions::new();
+                    options.create(true).write(true).read(true);
+
+                    let mut file = options.open(&daemon_file).await.map_err(|e| {
+                        Self::error(ActionErrorKind::Open(PathBuf::from(daemon_file), e))
+                    })?;
+
+                    let mut buf = Vec::new();
+                    plist::to_writer_xml(&mut buf, &generated_plist).map_err(Self::error)?;
+                    file.write_all(&buf).await.map_err(|e| {
+                        Self::error(ActionErrorKind::Write(PathBuf::from(daemon_file), e))
+                    })?;
+                } else {
+                    let src = std::path::Path::new(DARWIN_NIX_DAEMON_SOURCE);
+                    daemon_file = DARWIN_NIX_DAEMON_DEST;
+                    service = "org.nixos.nix-daemon";
+                    tokio::fs::copy(src, daemon_file).await.map_err(|e| {
                         Self::error(ActionErrorKind::Copy(
                             src.to_path_buf(),
-                            PathBuf::from(DARWIN_NIX_DAEMON_DEST),
+                            PathBuf::from(daemon_file),
                             e,
                         ))
                     })?;
+                }
 
                 execute_command(
                     Command::new("launchctl")
                         .process_group(0)
                         .args(["load", "-w"])
-                        .arg(DARWIN_NIX_DAEMON_DEST)
+                        .arg(daemon_file)
                         .stdin(std::process::Stdio::null()),
                 )
                 .await
                 .map_err(Self::error)?;
-
-                let domain = "system";
-                let service = "org.nixos.nix-daemon";
 
                 let is_disabled = crate::action::macos::service_is_disabled(domain, service)
                     .await
@@ -523,6 +561,42 @@ impl Action for ConfigureInitService {
 pub enum ConfigureNixDaemonServiceError {
     #[error("No supported init system found")]
     InitNotSupported,
+}
+
+#[cfg(target_os = "macos")]
+#[derive(Deserialize, Clone, Debug, Serialize, PartialEq)]
+#[serde(rename_all = "PascalCase")]
+pub struct DeterminateNixDaemonPlist {
+    label: String,
+    program: String,
+    keep_alive: bool,
+    run_at_load: bool,
+    standard_error_path: String,
+    standard_out_path: String,
+    soft_resource_limits: ResourceLimits,
+}
+
+#[cfg(target_os = "macos")]
+#[derive(Deserialize, Clone, Debug, Serialize, PartialEq)]
+#[serde(rename_all = "PascalCase")]
+pub struct ResourceLimits {
+    number_of_files: usize,
+}
+
+/// This function must be able to operate at both plan and execute time.
+#[cfg(target_os = "macos")]
+fn generate_plist() -> DeterminateNixDaemonPlist {
+    DeterminateNixDaemonPlist {
+        keep_alive: true,
+        run_at_load: true,
+        label: "systems.determinate.nix-daemon".into(),
+        program: "/usr/local/bin/determinate-nix-for-macos".into(),
+        standard_error_path: "/var/log/determinate-nix-daemon.log".into(),
+        standard_out_path: "/var/log/determinate-nix-daemon.log".into(),
+        soft_resource_limits: ResourceLimits {
+            number_of_files: 1048576,
+        },
+    }
 }
 
 #[cfg(target_os = "linux")]

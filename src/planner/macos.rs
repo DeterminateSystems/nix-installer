@@ -186,7 +186,7 @@ impl Planner for Macos {
         }
 
         plan.push(
-            ConfigureInitService::plan(InitSystem::Launchd, true)
+            ConfigureInitService::plan(InitSystem::Launchd, self.settings.nix_enterprise, true)
                 .await
                 .map_err(PlannerError::Action)?
                 .boxed(),
