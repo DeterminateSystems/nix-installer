@@ -399,7 +399,8 @@
         "action": "configure_init_service",
         "init": "Launchd",
         "start_daemon": true,
-        "ssl_cert_file": null
+        "ssl_cert_file": null,
+        "nix_enterprise": false
       },
       "state": "Uncompleted"
     },
@@ -427,7 +428,8 @@
       "ssl_cert_file": null,
       "extra_conf": [],
       "force": false,
-      "diagnostic_endpoint": "https://install.determinate.systems/nix/diagnostic"
+      "diagnostic_endpoint": "https://install.determinate.systems/nix/diagnostic",
+      "nix_enterprise": false
     },
     "encrypt": null,
     "case_sensitive": false,
