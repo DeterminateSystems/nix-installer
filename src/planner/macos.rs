@@ -133,6 +133,7 @@ impl Planner for Macos {
 
         plan.push(
             CreateNixVolume::plan(
+                self.settings.nix_enterprise,
                 root_disk.unwrap(), /* We just ensured it was populated */
                 self.volume_label.clone(),
                 self.case_sensitive,

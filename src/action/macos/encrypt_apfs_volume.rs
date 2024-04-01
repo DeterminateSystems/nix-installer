@@ -21,6 +21,7 @@ Encrypt an APFS volume
  */
 #[derive(Debug, serde::Deserialize, serde::Serialize, Clone)]
 pub struct EncryptApfsVolume {
+    nix_enterprise: bool,
     disk: PathBuf,
     name: String,
 }
@@ -28,6 +29,7 @@ pub struct EncryptApfsVolume {
 impl EncryptApfsVolume {
     #[tracing::instrument(level = "debug", skip_all)]
     pub async fn plan(
+        nix_enterprise: bool,
         disk: impl AsRef<Path>,
         name: impl AsRef<str>,
         planned_create_apfs_volume: &StatefulAction<CreateApfsVolume>,
@@ -57,7 +59,11 @@ impl EncryptApfsVolume {
             // The user has a password matching what we would create.
             if planned_create_apfs_volume.state == ActionState::Completed {
                 // We detected a created volume already, and a password exists, so we can keep using that and skip doing anything
-                return Ok(StatefulAction::completed(Self { name, disk }));
+                return Ok(StatefulAction::completed(Self {
+                    nix_enterprise,
+                    name,
+                    disk,
+                }));
             }
 
             // Ask the user to remove it
@@ -87,13 +93,21 @@ impl EncryptApfsVolume {
                             EncryptApfsVolumeError::ExistingVolumeNotEncrypted(name, disk),
                         ));
                     } else {
-                        return Ok(StatefulAction::completed(Self { disk, name }));
+                        return Ok(StatefulAction::completed(Self {
+                            nix_enterprise,
+                            disk,
+                            name,
+                        }));
                     }
                 }
             }
         }
 
-        Ok(StatefulAction::uncompleted(Self { name, disk }))
+        Ok(StatefulAction::uncompleted(Self {
+            nix_enterprise,
+            name,
+            disk,
+        }))
     }
 }
 
@@ -127,7 +141,11 @@ impl Action for EncryptApfsVolume {
         disk = %self.disk.display(),
     ))]
     async fn execute(&mut self) -> Result<(), ActionError> {
-        let Self { disk, name } = self;
+        let Self {
+            nix_enterprise,
+            disk,
+            name,
+        } = self;
 
         // Generate a random password.
         let password: String = {
@@ -152,35 +170,38 @@ impl Action for EncryptApfsVolume {
             .map_err(Self::error)?;
 
         // Add the password to the user keychain so they can unlock it later.
-        execute_command(
-            Command::new("/usr/bin/security").process_group(0).args([
-                "add-generic-password",
-                "-a",
-                name.as_str(),
-                "-s",
-                "Nix Store",
-                "-l",
-                format!("{} encryption password", disk_str).as_str(),
-                "-D",
-                "Encrypted volume password",
-                "-j",
-                format!(
-                    "Added automatically by the Nix installer for use by {NIX_VOLUME_MOUNTD_DEST}"
-                )
+        let mut cmd = Command::new("/usr/bin/security");
+        cmd.process_group(0).args([
+            "add-generic-password",
+            "-a",
+            name.as_str(),
+            "-s",
+            "Nix Store",
+            "-l",
+            format!("{} encryption password", disk_str).as_str(),
+            "-D",
+            "Encrypted volume password",
+            "-j",
+            format!("Added automatically by the Nix installer for use by {NIX_VOLUME_MOUNTD_DEST}")
                 .as_str(),
-                "-w",
-                password.as_str(),
-                "-T",
-                "/System/Library/CoreServices/APFSUserAgent",
-                "-T",
-                "/System/Library/CoreServices/CSUserAgent",
-                "-T",
-                "/usr/bin/security",
-                "/Library/Keychains/System.keychain",
-            ]),
-        )
-        .await
-        .map_err(Self::error)?;
+            "-w",
+            password.as_str(),
+            "-T",
+            "/System/Library/CoreServices/APFSUserAgent",
+            "-T",
+            "/System/Library/CoreServices/CSUserAgent",
+            "-T",
+            "/usr/bin/security",
+        ]);
+
+        if *nix_enterprise {
+            cmd.args(["-T", "/usr/local/bin/determinate-nix-for-macos"]);
+        }
+
+        cmd.arg("/Library/Keychains/System.keychain");
+
+        // Add the password to the user keychain so they can unlock it later.
+        execute_command(&mut cmd).await.map_err(Self::error)?;
 
         // Encrypt the mounted volume
         execute_command(Command::new("/usr/sbin/diskutil").process_group(0).args([

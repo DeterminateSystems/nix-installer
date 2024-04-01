@@ -39,6 +39,7 @@ pub struct CreateNixVolume {
 impl CreateNixVolume {
     #[tracing::instrument(level = "debug", skip_all)]
     pub async fn plan(
+        nix_enterprise: bool,
         disk: impl AsRef<Path>,
         name: String,
         case_sensitive: bool,
@@ -71,7 +72,7 @@ impl CreateNixVolume {
             .map_err(Self::error)?;
 
         let encrypt_volume = if encrypt {
-            Some(EncryptApfsVolume::plan(disk, &name, &create_volume).await?)
+            Some(EncryptApfsVolume::plan(nix_enterprise, disk, &name, &create_volume).await?)
         } else {
             None
         };
