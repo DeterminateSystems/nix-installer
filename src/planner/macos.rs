@@ -114,22 +114,23 @@ impl Planner for Macos {
             true
         } else {
             match self.encrypt {
-            Some(choice) => choice,
-            None => {
-                let output = Command::new("/usr/bin/fdesetup")
-                    .arg("isactive")
-                    .stdout(std::process::Stdio::null())
-                    .stderr(std::process::Stdio::null())
-                    .process_group(0)
-                    .output()
-                    .await
-                    .map_err(|e| PlannerError::Custom(Box::new(e)))?;
+                Some(choice) => choice,
+                None => {
+                    let output = Command::new("/usr/bin/fdesetup")
+                        .arg("isactive")
+                        .stdout(std::process::Stdio::null())
+                        .stderr(std::process::Stdio::null())
+                        .process_group(0)
+                        .output()
+                        .await
+                        .map_err(|e| PlannerError::Custom(Box::new(e)))?;
 
-                let stdout = String::from_utf8_lossy(&output.stdout);
-                let stdout_trimmed = stdout.trim();
+                    let stdout = String::from_utf8_lossy(&output.stdout);
+                    let stdout_trimmed = stdout.trim();
 
-                stdout_trimmed == "true"
-            },
+                    stdout_trimmed == "true"
+                },
+            }
         };
 
         let mut plan = vec![];
