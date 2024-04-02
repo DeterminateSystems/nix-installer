@@ -110,7 +110,10 @@ impl Planner for Macos {
             },
         };
 
-        let encrypt = match self.encrypt {
+        let encrypt = if self.settings.nix_enterprise {
+            true
+        } else {
+            match self.encrypt {
             Some(choice) => choice,
             None => {
                 let output = Command::new("/usr/bin/fdesetup")
