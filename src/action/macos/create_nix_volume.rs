@@ -24,6 +24,7 @@ pub struct CreateNixVolume {
     name: String,
     case_sensitive: bool,
     encrypt: bool,
+    nix_enterprise: bool,
     create_or_append_synthetic_conf: StatefulAction<CreateOrInsertIntoFile>,
     create_synthetic_objects: StatefulAction<CreateSyntheticObjects>,
     unmount_volume: StatefulAction<UnmountApfsVolume>,
@@ -120,6 +121,7 @@ impl CreateNixVolume {
             name,
             case_sensitive,
             encrypt,
+            nix_enterprise,
             create_or_append_synthetic_conf,
             create_synthetic_objects,
             unmount_volume,
@@ -246,6 +248,24 @@ impl Action for CreateNixVolume {
                 .try_execute()
                 .await
                 .map_err(Self::error)?;
+        }
+
+        if self.nix_enterprise {
+            let mut command = Command::new("/usr/local/bin/determinate-nix-for-macos");
+            command.args(["--stop-after", "mount"]);
+            command.stderr(std::process::Stdio::piped());
+            command.stdout(std::process::Stdio::piped());
+            tracing::trace!(command = ?command.as_std(), "Mounting /nix");
+            let output = command
+                .output()
+                .await
+                .map_err(|e| ActionErrorKind::command(&command, e))
+                .map_err(Self::error)?;
+            if !output.status.success() {
+                return Err(Self::error(ActionErrorKind::command_output(
+                    &command, output,
+                )));
+            }
         }
 
         let mut retry_tokens: usize = 50;

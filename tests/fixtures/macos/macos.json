@@ -8,6 +8,7 @@
         "name": "Nix Store",
         "case_sensitive": false,
         "encrypt": false,
+        "nix_enterprise": true,
         "create_or_append_synthetic_conf": {
           "action": {
             "path": "/etc/synthetic.conf",
