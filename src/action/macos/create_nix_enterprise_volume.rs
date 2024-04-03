@@ -1,8 +1,8 @@
 use crate::action::{
     base::{create_or_insert_into_file, CreateOrInsertIntoFile},
     macos::{
-        BootstrapLaunchctlService, CreateApfsVolume, CreateSyntheticObjects, EnableOwnership,
-        EncryptApfsVolume, UnmountApfsVolume,
+        CreateApfsVolume, CreateSyntheticObjects, EnableOwnership, EncryptApfsVolume,
+        UnmountApfsVolume,
     },
     Action, ActionDescription, ActionError, ActionErrorKind, ActionTag, StatefulAction,
 };
@@ -13,36 +13,29 @@ use std::{
 use tokio::process::Command;
 use tracing::{span, Span};
 
-use super::{create_fstab_entry::CreateFstabEntry, CreateVolumeService, KickstartLaunchctlService};
-
-pub const NIX_VOLUME_MOUNTD_DEST: &str = "/Library/LaunchDaemons/org.nixos.darwin-store.plist";
+use super::create_fstab_entry::CreateFstabEntry;
 
 /// Create an APFS volume
 #[derive(Debug, serde::Deserialize, serde::Serialize, Clone)]
-pub struct CreateNixVolume {
+pub struct CreateNixEnterpriseVolume {
     disk: PathBuf,
     name: String,
     case_sensitive: bool,
-    encrypt: bool,
     create_or_append_synthetic_conf: StatefulAction<CreateOrInsertIntoFile>,
     create_synthetic_objects: StatefulAction<CreateSyntheticObjects>,
     unmount_volume: StatefulAction<UnmountApfsVolume>,
     create_volume: StatefulAction<CreateApfsVolume>,
     create_fstab_entry: StatefulAction<CreateFstabEntry>,
-    encrypt_volume: Option<StatefulAction<EncryptApfsVolume>>,
-    setup_volume_daemon: StatefulAction<CreateVolumeService>,
-    bootstrap_volume: StatefulAction<BootstrapLaunchctlService>,
-    kickstart_launchctl_service: StatefulAction<KickstartLaunchctlService>,
+    encrypt_volume: StatefulAction<EncryptApfsVolume>,
     enable_ownership: StatefulAction<EnableOwnership>,
 }
 
-impl CreateNixVolume {
+impl CreateNixEnterpriseVolume {
     #[tracing::instrument(level = "debug", skip_all)]
     pub async fn plan(
         disk: impl AsRef<Path>,
         name: String,
         case_sensitive: bool,
-        encrypt: bool,
     ) -> Result<StatefulAction<Self>, ActionError> {
         let disk = disk.as_ref();
         let create_or_append_synthetic_conf = CreateOrInsertIntoFile::plan(
@@ -70,49 +63,20 @@ impl CreateNixVolume {
             .await
             .map_err(Self::error)?;
 
-        let encrypt_volume = if encrypt {
-            Some(EncryptApfsVolume::plan(false, disk, &name, &create_volume).await?)
-        } else {
-            None
-        };
+        let encrypt_volume = EncryptApfsVolume::plan(true, disk, &name, &create_volume).await?;
 
-        let setup_volume_daemon = CreateVolumeService::plan(
-            NIX_VOLUME_MOUNTD_DEST,
-            "org.nixos.darwin-store",
-            name.clone(),
-            "/nix",
-            encrypt,
-        )
-        .await
-        .map_err(Self::error)?;
-
-        let bootstrap_volume = BootstrapLaunchctlService::plan(
-            "system",
-            "org.nixos.darwin-store",
-            NIX_VOLUME_MOUNTD_DEST,
-        )
-        .await
-        .map_err(Self::error)?;
-        let kickstart_launchctl_service =
-            KickstartLaunchctlService::plan("system", "org.nixos.darwin-store")
-                .await
-                .map_err(Self::error)?;
         let enable_ownership = EnableOwnership::plan("/nix").await.map_err(Self::error)?;
 
         Ok(Self {
             disk: disk.to_path_buf(),
             name,
             case_sensitive,
-            encrypt,
             create_or_append_synthetic_conf,
             create_synthetic_objects,
             unmount_volume,
             create_volume,
             create_fstab_entry,
             encrypt_volume,
-            setup_volume_daemon,
-            bootstrap_volume,
-            kickstart_launchctl_service,
             enable_ownership,
         }
         .into())
@@ -120,15 +84,14 @@ impl CreateNixVolume {
 }
 
 #[async_trait::async_trait]
-#[typetag::serde(name = "create_apfs_volume")]
-impl Action for CreateNixVolume {
+#[typetag::serde(name = "create_apfs_enterprise_volume")]
+impl Action for CreateNixEnterpriseVolume {
     fn action_tag() -> ActionTag {
-        ActionTag("create_nix_volume")
+        ActionTag("create_nix_enterprise_volume")
     }
     fn tracing_synopsis(&self) -> String {
         format!(
-            "Create an{maybe_encrypted} APFS volume `{name}` for Nix on `{disk}` and add it to `/etc/fstab` mounting on `/nix`",
-            maybe_encrypted = if self.encrypt { " encrypted" } else { "" }, 
+            "Create an encrypted APFS volume `{name}` for Nix on `{disk}` and add it to `/etc/fstab` mounting on `/nix`",
             name = self.name,
             disk = self.disk.display(),
         )
@@ -144,19 +107,15 @@ impl Action for CreateNixVolume {
     }
 
     fn execute_description(&self) -> Vec<ActionDescription> {
-        let mut explanation = vec![
+        let explanation = vec![
             self.create_or_append_synthetic_conf.tracing_synopsis(),
             self.create_synthetic_objects.tracing_synopsis(),
             self.unmount_volume.tracing_synopsis(),
             self.create_volume.tracing_synopsis(),
             self.create_fstab_entry.tracing_synopsis(),
+            self.encrypt_volume.tracing_synopsis(),
+            self.enable_ownership.tracing_synopsis(),
         ];
-        if let Some(encrypt_volume) = &self.encrypt_volume {
-            explanation.push(encrypt_volume.tracing_synopsis());
-        }
-        explanation.push(self.setup_volume_daemon.tracing_synopsis());
-        explanation.push(self.bootstrap_volume.tracing_synopsis());
-        explanation.push(self.enable_ownership.tracing_synopsis());
 
         vec![ActionDescription::new(self.tracing_synopsis(), explanation)]
     }
@@ -206,23 +165,27 @@ impl Action for CreateNixVolume {
             .try_execute()
             .await
             .map_err(Self::error)?;
-        if let Some(encrypt_volume) = &mut self.encrypt_volume {
-            encrypt_volume.try_execute().await.map_err(Self::error)?
+
+        self.encrypt_volume
+            .try_execute()
+            .await
+            .map_err(Self::error)?;
+
+        let mut command = Command::new("/usr/local/bin/determinate-nix-for-macos");
+        command.args(["--stop-after", "mount"]);
+        command.stderr(std::process::Stdio::piped());
+        command.stdout(std::process::Stdio::piped());
+        tracing::trace!(command = ?command.as_std(), "Mounting /nix");
+        let output = command
+            .output()
+            .await
+            .map_err(|e| ActionErrorKind::command(&command, e))
+            .map_err(Self::error)?;
+        if !output.status.success() {
+            return Err(Self::error(ActionErrorKind::command_output(
+                &command, output,
+            )));
         }
-        self.setup_volume_daemon
-            .try_execute()
-            .await
-            .map_err(Self::error)?;
-
-        self.bootstrap_volume
-            .try_execute()
-            .await
-            .map_err(Self::error)?;
-
-        self.kickstart_launchctl_service
-            .try_execute()
-            .await
-            .map_err(Self::error)?;
 
         let mut retry_tokens: usize = 50;
         loop {
@@ -257,19 +220,15 @@ impl Action for CreateNixVolume {
     }
 
     fn revert_description(&self) -> Vec<ActionDescription> {
-        let mut explanation = vec![
+        let explanation = vec![
             self.create_or_append_synthetic_conf.tracing_synopsis(),
             self.create_synthetic_objects.tracing_synopsis(),
             self.unmount_volume.tracing_synopsis(),
             self.create_volume.tracing_synopsis(),
             self.create_fstab_entry.tracing_synopsis(),
+            self.encrypt_volume.tracing_synopsis(),
+            self.enable_ownership.tracing_synopsis(),
         ];
-        if let Some(encrypt_volume) = &self.encrypt_volume {
-            explanation.push(encrypt_volume.tracing_synopsis());
-        }
-        explanation.push(self.setup_volume_daemon.tracing_synopsis());
-        explanation.push(self.bootstrap_volume.tracing_synopsis());
-        explanation.push(self.enable_ownership.tracing_synopsis());
 
         vec![ActionDescription::new(
             format!(
@@ -288,20 +247,8 @@ impl Action for CreateNixVolume {
         if let Err(err) = self.enable_ownership.try_revert().await {
             errors.push(err)
         };
-        if let Err(err) = self.kickstart_launchctl_service.try_revert().await {
+        if let Err(err) = self.encrypt_volume.try_revert().await {
             errors.push(err)
-        }
-        if let Err(err) = self.bootstrap_volume.try_revert().await {
-            errors.push(err)
-        }
-        if let Err(err) = self.setup_volume_daemon.try_revert().await {
-            errors.push(err)
-        }
-
-        if let Some(encrypt_volume) = &mut self.encrypt_volume {
-            if let Err(err) = encrypt_volume.try_revert().await {
-                errors.push(err)
-            }
         }
         if let Err(err) = self.create_fstab_entry.try_revert().await {
             errors.push(err)

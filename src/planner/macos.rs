@@ -13,7 +13,8 @@ use crate::{
         base::RemoveDirectory,
         common::{ConfigureInitService, ConfigureNix, CreateUsersAndGroups, ProvisionNix},
         macos::{
-            ConfigureRemoteBuilding, CreateNixHookService, CreateNixVolume, SetTmutilExclusions,
+            ConfigureRemoteBuilding, CreateNixEnterpriseVolume, CreateNixHookService,
+            CreateNixVolume, SetTmutilExclusions,
         },
         StatefulAction,
     },
@@ -135,18 +136,31 @@ impl Planner for Macos {
 
         let mut plan = vec![];
 
-        plan.push(
-            CreateNixVolume::plan(
-                self.settings.nix_enterprise,
-                root_disk.unwrap(), /* We just ensured it was populated */
-                self.volume_label.clone(),
-                self.case_sensitive,
-                encrypt,
-            )
-            .await
-            .map_err(PlannerError::Action)?
-            .boxed(),
-        );
+        if self.settings.nix_enterprise {
+            plan.push(
+                CreateNixEnterpriseVolume::plan(
+                    root_disk.unwrap(), /* We just ensured it was populated */
+                    self.volume_label.clone(),
+                    self.case_sensitive,
+                )
+                .await
+                .map_err(PlannerError::Action)?
+                .boxed(),
+            );
+        } else {
+            plan.push(
+                CreateNixVolume::plan(
+                    root_disk.unwrap(), /* We just ensured it was populated */
+                    self.volume_label.clone(),
+                    self.case_sensitive,
+                    encrypt,
+                )
+                .await
+                .map_err(PlannerError::Action)?
+                .boxed(),
+            );
+        }
+
         plan.push(
             ProvisionNix::plan(&self.settings)
                 .await
