@@ -585,7 +585,6 @@ pub struct ResourceLimits {
     number_of_files: usize,
 }
 
-/// This function must be able to operate at both plan and execute time.
 #[cfg(target_os = "macos")]
 fn generate_plist() -> DeterminateNixDaemonPlist {
     DeterminateNixDaemonPlist {
