@@ -288,6 +288,9 @@ impl Planner for Macos {
 
     async fn pre_install_check(&self) -> Result<(), PlannerError> {
         check_not_running_in_rosetta()?;
+        if self.nix_enterprise {
+            check_nix_enterprise_available().await?;
+        }
 
         Ok(())
     }
@@ -338,6 +341,14 @@ fn check_not_running_in_rosetta() -> Result<(), PlannerError> {
             }
         },
     }
+
+    Ok(())
+}
+
+async fn check_nix_enterprise_available() -> Result<(), PlannerError> {
+    tokio::fs::metadata("/usr/local/bin/determinate-nix-for-macos")
+        .await
+        .map_err(|_| PlannerError::NixEnterpriseUnavailable)?;
 
     Ok(())
 }
