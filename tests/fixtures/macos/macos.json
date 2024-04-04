@@ -429,9 +429,9 @@
       "ssl_cert_file": null,
       "extra_conf": [],
       "force": false,
-      "diagnostic_endpoint": "https://install.determinate.systems/nix/diagnostic",
-      "nix_enterprise": false
+      "diagnostic_endpoint": "https://install.determinate.systems/nix/diagnostic"
     },
+    "nix_enterprise": false,
     "encrypt": null,
     "case_sensitive": false,
     "volume_label": "Nix Store",

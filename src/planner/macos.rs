@@ -55,6 +55,12 @@ pub struct Macos {
         )
     )]
     pub case_sensitive: bool,
+    /// Enable Nix Enterprise, by Determinate Systems. See: https://determinate.systems/enterprise
+    #[cfg_attr(
+        feature = "cli",
+        clap(long, env = "NIX_INSTALLER_NIX_ENTERPRISE", default_value = "false")
+    )]
+    pub nix_enterprise: bool,
     /// The label for the created APFS volume
     #[cfg_attr(
         feature = "cli",
@@ -89,6 +95,7 @@ impl Planner for Macos {
             root_disk: Some(default_root_disk().await?),
             case_sensitive: false,
             encrypt: None,
+            nix_enterprise: false,
             volume_label: "Nix Store".into(),
         })
     }
@@ -111,32 +118,29 @@ impl Planner for Macos {
             },
         };
 
-        let encrypt = if self.settings.nix_enterprise {
-            true
-        } else {
-            match self.encrypt {
-                Some(choice) => choice,
-                None => {
-                    let output = Command::new("/usr/bin/fdesetup")
-                        .arg("isactive")
-                        .stdout(std::process::Stdio::null())
-                        .stderr(std::process::Stdio::null())
-                        .process_group(0)
-                        .output()
-                        .await
-                        .map_err(|e| PlannerError::Custom(Box::new(e)))?;
+        let encrypt = match (self.nix_enterprise, self.encrypt) {
+            (true, _) => true,
+            (false, Some(choice)) => choice,
+            (false, None) => {
+                let output = Command::new("/usr/bin/fdesetup")
+                    .arg("isactive")
+                    .stdout(std::process::Stdio::null())
+                    .stderr(std::process::Stdio::null())
+                    .process_group(0)
+                    .output()
+                    .await
+                    .map_err(|e| PlannerError::Custom(Box::new(e)))?;
 
-                    let stdout = String::from_utf8_lossy(&output.stdout);
-                    let stdout_trimmed = stdout.trim();
+                let stdout = String::from_utf8_lossy(&output.stdout);
+                let stdout_trimmed = stdout.trim();
 
-                    stdout_trimmed == "true"
-                },
-            }
+                stdout_trimmed == "true"
+            },
         };
 
         let mut plan = vec![];
 
-        if self.settings.nix_enterprise {
+        if self.nix_enterprise {
             plan.push(
                 CreateNixEnterpriseVolume::plan(
                     root_disk.unwrap(), /* We just ensured it was populated */
@@ -204,7 +208,7 @@ impl Planner for Macos {
         }
 
         plan.push(
-            ConfigureInitService::plan(InitSystem::Launchd, self.settings.nix_enterprise, true)
+            ConfigureInitService::plan(InitSystem::Launchd, self.nix_enterprise, true)
                 .await
                 .map_err(PlannerError::Action)?
                 .boxed(),
@@ -223,6 +227,7 @@ impl Planner for Macos {
         let Self {
             settings,
             encrypt,
+            nix_enterprise,
             volume_label,
             case_sensitive,
             root_disk,
@@ -230,6 +235,10 @@ impl Planner for Macos {
         let mut map = HashMap::default();
 
         map.extend(settings.settings()?);
+        map.insert(
+            "nix_enterprise".into(),
+            serde_json::to_value(nix_enterprise)?,
+        );
         map.insert("volume_encrypt".into(), serde_json::to_value(encrypt)?);
         map.insert("volume_label".into(), serde_json::to_value(volume_label)?);
         map.insert("root_disk".into(), serde_json::to_value(root_disk)?);

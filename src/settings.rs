@@ -142,13 +142,6 @@ pub struct CommonSettings {
     )]
     pub nix_build_user_id_base: u32,
 
-    /// Enable Nix Enterprise, by Determinate Systems. See: https://determinate.systems/enterprise
-    #[cfg_attr(
-        feature = "cli",
-        clap(long, env = "NIX_INSTALLER_NIX_ENTERPRISE", default_value = "false")
-    )]
-    pub nix_enterprise: bool,
-
     /// The Nix package URL
     #[cfg_attr(
         feature = "cli",
@@ -315,7 +308,6 @@ impl CommonSettings {
             nix_build_user_id_base,
             nix_build_user_count,
             nix_build_user_prefix: nix_build_user_prefix.to_string(),
-            nix_enterprise: false,
             nix_package_url: url.parse()?,
             proxy: Default::default(),
             extra_conf: Default::default(),
@@ -337,7 +329,6 @@ impl CommonSettings {
             nix_build_user_prefix,
             nix_build_user_id_base,
             nix_build_user_count,
-            nix_enterprise,
             nix_package_url,
             proxy,
             extra_conf,
@@ -373,10 +364,6 @@ impl CommonSettings {
         map.insert(
             "nix_build_user_count".into(),
             serde_json::to_value(nix_build_user_count)?,
-        );
-        map.insert(
-            "nix_enterprise".into(),
-            serde_json::to_value(nix_enterprise)?,
         );
         map.insert(
             "nix_package_url".into(),

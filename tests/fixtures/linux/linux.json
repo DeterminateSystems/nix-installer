@@ -418,7 +418,6 @@
       "extra_conf": [],
       "force": false,
       "diagnostic_endpoint": "https://install.determinate.systems/nix/diagnostic",
-      "nix_enterprise": false
     },
     "init": {
       "init": "Systemd",
