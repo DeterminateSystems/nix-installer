@@ -37,15 +37,15 @@ curl --proto '=https' --tlsv1.2 -sSf -L https://install.determinate.systems/nix 
 Or, to download a platform specific Installer binary yourself:
 
 ```bash
-$ curl -sL -o nix-installer https://install.determinate.systems/nix/nix-installer-x86_64-linux
-$ chmod +x nix-installer
-$ ./nix-installer
+curl -sL -o nix-installer https://install.determinate.systems/nix/nix-installer-x86_64-linux &&
+chmod +x nix-installer &&
+./nix-installer
 ```
 
 `nix-installer` installs Nix by following a *plan* made by a *planner*. Review the available planners:
 
 ```bash
-$ ./nix-installer install --help
+./nix-installer install --help
 Execute an install (possibly using an existing plan)
 
 To pass custom options, select a planner, for example `nix-installer install linux-multi --help`
@@ -66,7 +66,7 @@ Commands:
 Planners have their own options and defaults, sharing most of them in common:
 
 ```bash
-$ ./nix-installer install linux --help
+./nix-installer install linux --help
 A planner for Linux installs
 
 Usage: nix-installer install linux [OPTIONS]
@@ -90,9 +90,11 @@ Options:
 Planners can be configured via environment variable or command arguments:
 
 ```bash
-$ curl --proto '=https' --tlsv1.2 -sSf -L https://install.determinate.systems/nix | NIX_BUILD_GROUP_NAME=nixbuilder sh -s -- install linux-multi --nix-build-group-id 4000
-# Or...
-$ NIX_BUILD_GROUP_NAME=nixbuilder ./nix-installer install linux-multi --nix-build-group-id 4000
+curl --proto '=https' --tlsv1.2 -sSf -L https://install.determinate.systems/nix | NIX_BUILD_GROUP_NAME=nixbuilder sh -s -- install linux-multi --nix-build-group-id 4000
+```
+Or:
+```bash
+NIX_BUILD_GROUP_NAME=nixbuilder ./nix-installer install linux-multi --nix-build-group-id 4000
 ```
 
 ### Upgrading Nix
@@ -196,12 +198,15 @@ RUN nix run nixpkgs#hello
 ```
 
 ```bash
-docker build -t ubuntu-with-nix .
-docker run --rm -ti ubuntu-with-nix
+docker build -t ubuntu-with-nix . &&
+docker run --rm -ti ubuntu-with-nix &&
 docker rmi ubuntu-with-nix
-# or
-podman build -t ubuntu-with-nix .
-podman run --rm -ti ubuntu-with-nix
+```
+Or:
+
+```bash
+podman build -t ubuntu-with-nix . &&
+podman run --rm -ti ubuntu-with-nix &&
 podman rmi ubuntu-with-nix
 ```
 
@@ -222,11 +227,11 @@ CMD [ "/bin/systemd" ]
 ```
 
 ```bash
-podman build -t ubuntu-systemd-with-nix .
-IMAGE=$(podman create ubuntu-systemd-with-nix)
-CONTAINER=$(podman start $IMAGE)
-podman exec -ti $CONTAINER /bin/bash
-podman rm -f $CONTAINER
+podman build -t ubuntu-systemd-with-nix . &&
+IMAGE=$(podman create ubuntu-systemd-with-nix) &&
+CONTAINER=$(podman start $IMAGE) &&
+podman exec -ti $CONTAINER /bin/bash &&
+podman rm -f $CONTAINER &&
 podman rmi $IMAGE
 ```
 
@@ -288,7 +293,7 @@ While `nix-installer` tries to provide a comprehensive and unquirky experience, 
 If `nix` was previously uninstalled without uninstalling `nix-darwin` first, users may experience errors similar to this:
 
 ```bash
-$ nix shell nixpkgs#curl
+nix shell nixpkgs#curl
 error: unable to download 'https://cache.nixos.org/g8bqlgmpa4yg601w561qy2n576i6g0vh.narinfo': Problem with the SSL CA cert (path? access rights?) (77)
 ```
 
@@ -296,7 +301,7 @@ This occurs because `nix-darwin` provisions an `org.nixos.activate-system` servi
 The `org.nixos.activate-system` service in this state interacts with the newly installed Nix and changes the SSL certificates it uses to be a broken symlink.
 
 ```bash
-$ ls -lah /etc/ssl/certs
+ls -lah /etc/ssl/certs
 total 0
 drwxr-xr-x  3 root  wheel    96B Oct 17 08:26 .
 drwxr-xr-x  6 root  wheel   192B Sep 16 06:28 ..
@@ -308,10 +313,10 @@ The problem is compounded by the matter that the [`nix-darwin` uninstaller](http
 It's possible to resolve this situation by removing the `org.nixos.activate-system` service and the `ca-certificates`:
 
 ```bash
-$ sudo rm /Library/LaunchDaemons/org.nixos.activate-system.plist
-$ sudo launchctl bootout system/org.nixos.activate-system
-$ /nix/nix-installer uninstall
-$ sudo rm /etc/ssl/certs/ca-certificates.crt
+sudo rm /Library/LaunchDaemons/org.nixos.activate-system.plist &&
+sudo launchctl bootout system/org.nixos.activate-system &&
+/nix/nix-installer uninstall &&
+sudo rm /etc/ssl/certs/ca-certificates.crt
 ```
 
 Then run the `nix-installer` again, and it should work.
