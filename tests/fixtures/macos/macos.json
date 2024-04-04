@@ -8,7 +8,7 @@
         "name": "Nix Store",
         "case_sensitive": false,
         "encrypt": false,
-        "nix_enterprise": true,
+        "enterprise_edition": true,
         "create_or_append_synthetic_conf": {
           "action": {
             "path": "/etc/synthetic.conf",
@@ -401,7 +401,7 @@
         "init": "Launchd",
         "start_daemon": true,
         "ssl_cert_file": null,
-        "nix_enterprise": false
+        "enterprise_edition": false
       },
       "state": "Uncompleted"
     },
@@ -431,7 +431,7 @@
       "force": false,
       "diagnostic_endpoint": "https://install.determinate.systems/nix/diagnostic"
     },
-    "nix_enterprise": false,
+    "enterprise_edition": false,
     "encrypt": null,
     "case_sensitive": false,
     "volume_label": "Nix Store",

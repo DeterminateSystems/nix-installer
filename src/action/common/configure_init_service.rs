@@ -28,7 +28,7 @@ const TMPFILES_SRC: &str = "/nix/var/nix/profiles/default/lib/tmpfiles.d/nix-dae
 #[cfg(target_os = "linux")]
 const TMPFILES_DEST: &str = "/etc/tmpfiles.d/nix-daemon.conf";
 #[cfg(target_os = "macos")]
-const DARWIN_NIX_ENTERPRISE_DEST: &str =
+const DARWIN_ENTERPRISE_EDITION_DAEMON_DEST: &str =
     "/Library/LaunchDaemons/systems.determinate.nix-daemon.plist";
 #[cfg(target_os = "macos")]
 const DARWIN_NIX_DAEMON_DEST: &str = "/Library/LaunchDaemons/org.nixos.nix-daemon.plist";
@@ -41,7 +41,7 @@ Configure the init to run the Nix daemon
 #[derive(Debug, serde::Deserialize, serde::Serialize, Clone)]
 pub struct ConfigureInitService {
     init: InitSystem,
-    nix_enterprise: bool,
+    enterprise_edition: bool,
     start_daemon: bool,
 }
 
@@ -79,7 +79,7 @@ impl ConfigureInitService {
     #[tracing::instrument(level = "debug", skip_all)]
     pub async fn plan(
         init: InitSystem,
-        nix_enterprise: bool,
+        enterprise_edition: bool,
         start_daemon: bool,
     ) -> Result<StatefulAction<Self>, ActionError> {
         match init {
@@ -118,7 +118,7 @@ impl ConfigureInitService {
 
         Ok(Self {
             init,
-            nix_enterprise,
+            enterprise_edition,
             start_daemon,
         }
         .into())
@@ -184,7 +184,7 @@ impl Action for ConfigureInitService {
     async fn execute(&mut self) -> Result<(), ActionError> {
         let Self {
             init,
-            nix_enterprise,
+            enterprise_edition,
             start_daemon,
         } = self;
 
@@ -195,8 +195,8 @@ impl Action for ConfigureInitService {
                 let domain = "system";
                 let service: &str;
 
-                if *nix_enterprise {
-                    daemon_file = DARWIN_NIX_ENTERPRISE_DEST;
+                if *enterprise_edition {
+                    daemon_file = DARWIN_ENTERPRISE_EDITION_DAEMON_DEST;
                     service = "systems.determinate.nix-daemon";
 
                     let generated_plist = generate_plist();
@@ -591,7 +591,7 @@ fn generate_plist() -> DeterminateNixDaemonPlist {
         keep_alive: true,
         run_at_load: true,
         label: "systems.determinate.nix-daemon".into(),
-        program: "/usr/local/bin/determinate-nix-for-macos".into(),
+        program: "/usr/local/bin/determinate-nix-ee".into(),
         standard_error_path: "/var/log/determinate-nix-daemon.log".into(),
         standard_out_path: "/var/log/determinate-nix-daemon.log".into(),
         soft_resource_limits: ResourceLimits {

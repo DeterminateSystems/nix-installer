@@ -13,7 +13,7 @@ use crate::{
         base::RemoveDirectory,
         common::{ConfigureInitService, ConfigureNix, CreateUsersAndGroups, ProvisionNix},
         macos::{
-            ConfigureRemoteBuilding, CreateNixEnterpriseVolume, CreateNixHookService,
+            ConfigureRemoteBuilding, CreateEnterpriseEditionVolume, CreateNixHookService,
             CreateNixVolume, SetTmutilExclusions,
         },
         StatefulAction,
@@ -55,12 +55,16 @@ pub struct Macos {
         )
     )]
     pub case_sensitive: bool,
-    /// Enable Nix Enterprise, by Determinate Systems. See: https://determinate.systems/enterprise
+    /// Enable Determinate Nix Enterprise Edition. See: https://determinate.systems/enterprise
     #[cfg_attr(
         feature = "cli",
-        clap(long, env = "NIX_INSTALLER_NIX_ENTERPRISE", default_value = "false")
+        clap(
+            long,
+            env = "NIX_INSTALLER_ENTERPRISE_EDITION",
+            default_value = "false"
+        )
     )]
-    pub nix_enterprise: bool,
+    pub enterprise_edition: bool,
     /// The label for the created APFS volume
     #[cfg_attr(
         feature = "cli",
@@ -95,7 +99,7 @@ impl Planner for Macos {
             root_disk: Some(default_root_disk().await?),
             case_sensitive: false,
             encrypt: None,
-            nix_enterprise: false,
+            enterprise_edition: false,
             volume_label: "Nix Store".into(),
         })
     }
@@ -118,7 +122,7 @@ impl Planner for Macos {
             },
         };
 
-        let encrypt = match (self.nix_enterprise, self.encrypt) {
+        let encrypt = match (self.enterprise_edition, self.encrypt) {
             (true, _) => true,
             (false, Some(choice)) => choice,
             (false, None) => {
@@ -140,9 +144,9 @@ impl Planner for Macos {
 
         let mut plan = vec![];
 
-        if self.nix_enterprise {
+        if self.enterprise_edition {
             plan.push(
-                CreateNixEnterpriseVolume::plan(
+                CreateEnterpriseEditionVolume::plan(
                     root_disk.unwrap(), /* We just ensured it was populated */
                     self.volume_label.clone(),
                     self.case_sensitive,
@@ -208,7 +212,7 @@ impl Planner for Macos {
         }
 
         plan.push(
-            ConfigureInitService::plan(InitSystem::Launchd, self.nix_enterprise, true)
+            ConfigureInitService::plan(InitSystem::Launchd, self.enterprise_edition, true)
                 .await
                 .map_err(PlannerError::Action)?
                 .boxed(),
@@ -227,7 +231,7 @@ impl Planner for Macos {
         let Self {
             settings,
             encrypt,
-            nix_enterprise,
+            enterprise_edition,
             volume_label,
             case_sensitive,
             root_disk,
@@ -236,8 +240,8 @@ impl Planner for Macos {
 
         map.extend(settings.settings()?);
         map.insert(
-            "nix_enterprise".into(),
-            serde_json::to_value(nix_enterprise)?,
+            "enterprise_edition".into(),
+            serde_json::to_value(enterprise_edition)?,
         );
         map.insert("volume_encrypt".into(), serde_json::to_value(encrypt)?);
         map.insert("volume_label".into(), serde_json::to_value(volume_label)?);
@@ -288,8 +292,8 @@ impl Planner for Macos {
 
     async fn pre_install_check(&self) -> Result<(), PlannerError> {
         check_not_running_in_rosetta()?;
-        if self.nix_enterprise {
-            check_nix_enterprise_available().await?;
+        if self.enterprise_edition {
+            check_enterprise_edition_available().await?;
         }
 
         Ok(())
@@ -345,10 +349,10 @@ fn check_not_running_in_rosetta() -> Result<(), PlannerError> {
     Ok(())
 }
 
-async fn check_nix_enterprise_available() -> Result<(), PlannerError> {
-    tokio::fs::metadata("/usr/local/bin/determinate-nix-for-macos")
+async fn check_enterprise_edition_available() -> Result<(), PlannerError> {
+    tokio::fs::metadata("/usr/local/bin/determinate-nix-ee")
         .await
-        .map_err(|_| PlannerError::NixEnterpriseUnavailable)?;
+        .map_err(|_| PlannerError::EnterpriseEditionUnavailable)?;
 
     Ok(())
 }

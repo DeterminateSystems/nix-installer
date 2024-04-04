@@ -17,7 +17,7 @@ use super::create_fstab_entry::CreateFstabEntry;
 
 /// Create an APFS volume
 #[derive(Debug, serde::Deserialize, serde::Serialize, Clone)]
-pub struct CreateNixEnterpriseVolume {
+pub struct CreateEnterpriseEditionVolume {
     disk: PathBuf,
     name: String,
     case_sensitive: bool,
@@ -30,7 +30,7 @@ pub struct CreateNixEnterpriseVolume {
     enable_ownership: StatefulAction<EnableOwnership>,
 }
 
-impl CreateNixEnterpriseVolume {
+impl CreateEnterpriseEditionVolume {
     #[tracing::instrument(level = "debug", skip_all)]
     pub async fn plan(
         disk: impl AsRef<Path>,
@@ -85,9 +85,9 @@ impl CreateNixEnterpriseVolume {
 
 #[async_trait::async_trait]
 #[typetag::serde(name = "create_apfs_enterprise_volume")]
-impl Action for CreateNixEnterpriseVolume {
+impl Action for CreateEnterpriseEditionVolume {
     fn action_tag() -> ActionTag {
-        ActionTag("create_nix_enterprise_volume")
+        ActionTag("create_enterprise_edition_volume")
     }
     fn tracing_synopsis(&self) -> String {
         format!(
@@ -171,7 +171,7 @@ impl Action for CreateNixEnterpriseVolume {
             .await
             .map_err(Self::error)?;
 
-        let mut command = Command::new("/usr/local/bin/determinate-nix-for-macos");
+        let mut command = Command::new("/usr/local/bin/determinate-nix-ee");
         command.args(["--stop-after", "mount"]);
         command.stderr(std::process::Stdio::piped());
         command.stdout(std::process::Stdio::piped());

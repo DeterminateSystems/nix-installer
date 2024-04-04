@@ -389,7 +389,7 @@
         "init": "Systemd",
         "start_daemon": true,
         "ssl_cert_file": null,
-        "nix_enterprise": false
+        "enterprise_edition": false
       },
       "state": "Uncompleted"
     },
