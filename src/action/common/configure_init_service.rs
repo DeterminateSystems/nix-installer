@@ -184,7 +184,7 @@ impl Action for ConfigureInitService {
     async fn execute(&mut self) -> Result<(), ActionError> {
         let Self {
             init,
-            nix_enterprise: _,
+            nix_enterprise,
             start_daemon,
         } = self;
 
@@ -195,7 +195,7 @@ impl Action for ConfigureInitService {
                 let domain = "system";
                 let service: &str;
 
-                if self.nix_enterprise {
+                if *nix_enterprise {
                     daemon_file = DARWIN_NIX_ENTERPRISE_DEST;
                     service = "systems.determinate.nix-daemon";
 
