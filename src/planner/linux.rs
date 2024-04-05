@@ -85,7 +85,7 @@ impl Planner for Linux {
         );
 
         plan.push(
-            ConfigureInitService::plan(self.init.init, false, self.init.start_daemon)
+            ConfigureInitService::plan(self.init.init, self.init.start_daemon)
                 .await
                 .map_err(PlannerError::Action)?
                 .boxed(),

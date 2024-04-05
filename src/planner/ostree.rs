@@ -207,7 +207,7 @@ impl Planner for Ostree {
         );
 
         plan.push(
-            ConfigureInitService::plan(InitSystem::Systemd, false, true)
+            ConfigureInitService::plan(InitSystem::Systemd, true)
                 .await
                 .map_err(PlannerError::Action)?
                 .boxed(),

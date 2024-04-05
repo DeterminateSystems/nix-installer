@@ -333,7 +333,7 @@ impl Planner for SteamDeck {
                 .map_err(PlannerError::Action)?
                 .boxed(),
             // Init is required for the steam-deck archetype to make the `/nix` mount
-            ConfigureInitService::plan(InitSystem::Systemd, false, true)
+            ConfigureInitService::plan(InitSystem::Systemd, true)
                 .await
                 .map_err(PlannerError::Action)?
                 .boxed(),
