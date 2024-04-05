@@ -4,7 +4,6 @@ use std::path::PathBuf;
 
 #[cfg(target_os = "macos")]
 use serde::{Deserialize, Serialize};
-#[cfg(target_os = "macos")]
 use tokio::process::Command;
 use tracing::{span, Span};
 
