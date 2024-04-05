@@ -122,6 +122,9 @@ impl Planner for Macos {
             },
         };
 
+        // The encrypt variable isn't used in the enterprise edition since we have our own plan step for it,
+        // however this match accounts for enterprise edition so the receipt indicates encrypt: true.
+        // This is a goofy thing to do, but it is in an attempt to make a more globally coherent plan / receipt.
         let encrypt = match (self.enterprise_edition, self.encrypt) {
             (true, _) => true,
             (false, Some(choice)) => choice,
