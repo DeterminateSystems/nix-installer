@@ -11,10 +11,7 @@ use crate::planner::HasExpectedErrors;
 use crate::{
     action::{
         base::RemoveDirectory,
-        common::{
-            ConfigureEnterpriseEditionInitService, ConfigureInitService, ConfigureNix,
-            CreateUsersAndGroups, ProvisionNix,
-        },
+        common::{ConfigureInitService, ConfigureNix, CreateUsersAndGroups, ProvisionNix},
         macos::{
             ConfigureRemoteBuilding, CreateEnterpriseEditionVolume, CreateNixHookService,
             CreateNixVolume, SetTmutilExclusions,
@@ -28,6 +25,9 @@ use crate::{
     settings::{CommonSettings, InitSystem},
     Action, BuiltinPlanner,
 };
+
+#[cfg(target_os = "macos")]
+use crate::action::common::ConfigureEnterpriseEditionInitService;
 
 /// A planner for MacOS (Darwin) systems
 #[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]

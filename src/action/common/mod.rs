@@ -1,5 +1,6 @@
 //! [`Action`](crate::action::Action)s which only call other base plugins
 
+#[cfg(target_os = "macos")]
 pub(crate) mod configure_enterprise_edition_init_service;
 pub(crate) mod configure_init_service;
 pub(crate) mod configure_nix;
@@ -10,6 +11,7 @@ pub(crate) mod delete_users;
 pub(crate) mod place_nix_configuration;
 pub(crate) mod provision_nix;
 
+#[cfg(target_os = "macos")]
 pub use configure_enterprise_edition_init_service::ConfigureEnterpriseEditionInitService;
 pub use configure_init_service::{ConfigureInitService, ConfigureNixDaemonServiceError};
 pub use configure_nix::ConfigureNix;
