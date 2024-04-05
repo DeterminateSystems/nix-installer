@@ -11,7 +11,10 @@ use crate::planner::HasExpectedErrors;
 use crate::{
     action::{
         base::RemoveDirectory,
-        common::{ConfigureInitService, ConfigureNix, CreateUsersAndGroups, ProvisionNix},
+        common::{
+            ConfigureEnterpriseEditionInitService, ConfigureInitService, ConfigureNix,
+            CreateUsersAndGroups, ProvisionNix,
+        },
         macos::{
             ConfigureRemoteBuilding, CreateEnterpriseEditionVolume, CreateNixHookService,
             CreateNixVolume, SetTmutilExclusions,
@@ -214,12 +217,21 @@ impl Planner for Macos {
             );
         }
 
-        plan.push(
-            ConfigureInitService::plan(InitSystem::Launchd, self.enterprise_edition, true)
-                .await
-                .map_err(PlannerError::Action)?
-                .boxed(),
-        );
+        if self.enterprise_edition {
+            plan.push(
+                ConfigureInitService::plan(InitSystem::Launchd, true)
+                    .await
+                    .map_err(PlannerError::Action)?
+                    .boxed(),
+            );
+        } else {
+            plan.push(
+                ConfigureEnterpriseEditionInitService::plan(true)
+                    .await
+                    .map_err(PlannerError::Action)?
+                    .boxed(),
+            );
+        }
         plan.push(
             RemoveDirectory::plan(crate::settings::SCRATCH_DIR)
                 .await
