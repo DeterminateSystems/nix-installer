@@ -1,111 +1,15 @@
-# Contributing to `nix-installer`
+# Contributing to `experimental-nix-installer`
 
-We're excited to see what you'd like to contribute to `nix-installer`!
+Most contributions should be made upstream; see the
+[upstream contributing guide](https://github.com/DeterminateSystems/nix-installer/blob/main/CONTRIBUTING.md)
+for guidelines.
 
-Regardless of what (or how much) you contribute to `nix-installer`, we value your time
-and energy trying to improve the tool.
+In general, bugs should also be opened in the
+[upstream issue tracker](https://github.com/DeterminateSystems/nix-installer/issues).
 
-In order to ensure we all have a good experience, please review this document
-if you have any questions about the process.
-
-**Regular Rust committer?** Contributing to `nix-installer` should feel similar to
-contributing to other serious Rust ecosystem projects. You may already know
-the process and expectations of you, this document shouldn't contain any
-surprises.
-
-
-# What kinds of contributions are needed?
-
-`nix-installer` can benefit from all kinds of contributions:
-
-* Bug reports
-* Code improvements
-* Registry additions
-* Dependency updates or dependency feature trimming
-* New features (Please create an issue first!)
-* Documentation
-* Graphical/visual asset improvement
-* Kind words or recommendation on your own site, repo, stream, or social media
-  account
-* Onboarding others to using `nix-installer`
-
-
-# What are the expectations you can have of the maintainers?
-
-You can expect us to:
-
-* Follow the [Contributor Covenant](CODE_OF_CONDUCT.md), just like you
-* Help diagnose bug reports (for supported platforms using supported
-  languages)
-* Give constructive feedback on pull requests
-* Merge pull requests which:
-    + Have been approved of by at least 1 maintainer
-    + Pass all tests
-    + Have no complex conflicts with in-flight high priority work
-
-The maintainers of this project use a separate issue tracker for some internal
-tasks. Unfortunately, the contents of this tracker is not publicly visible as
-it may contain sensitive or confidential data. Our maintainers will endeavor to
-ensure you are not 'left out' of the discussion about your contributions.
-
-
-# What kind of expectations do the maintainers have from you?
-
-We expect you to:
-
-* Follow the [Contributor Covenant](CODE_OF_CONDUCT.md), just like them
-* Make an earnest attempt to follow the contribution process described in this
-  document
-* Update bug reports with a solution, if you find one before we do
-* Do your best to follow existing conventions
-* Reflect maintainer feedback if you are able
-* Declare if you need to abandon a PR so someone else can shepherd it
-
-
-# How exactly does the contribution process work?
-
-Here are how to do various kinds of contributions.
-
-
-## Bug Reports
-
-Create an issue on [the issue page](https://github.com/DeterminateSystems/nix-installer/issues).
-
-It should contain:
-
-1. Your OS (Linux, Mac) and architecture (x86_64, aarch64)
-2. Your `nix-installer` version (`/nix/nix-installer --version`)
-3. The thing you tried to run (eg `nix-installer`)
-4. What happened (the output of the command, please)
-5. What you expected to happen
-6. If you tried to fix it, what did you try?
-
-
-## Code/Documentation improvement
-
-For **minor** fixes, documentation, or changes which **do not** have a
-tangible impact on user experience, feel free to open a
-[pull request](https://github.com/DeterminateSystems/nix-installer/pulls) directly.
-
-If the code improvement is not minor, such as new features or user facing
-changes, an [issue](https://github.com/DeterminateSystems/nix-installer/issues)
-proposing the change is **required** for non-maintainers.
-
-Please:
-
-* Write civil commit messages, it's ok if they are simple like `fmt`
-  or `formatting`
-* Follow existing conventions and style within the code the best you can
-* Describe in your PR the problem and solution so reviewers don't need to
-  rebuild much context
-* Run `nix flake check` and `nix build`
-
-
-## Non-code contributions
-
-Please open an [issue](https://github.com/DeterminateSystems/nix-installer/issues)
-to chat about your contribution and figure out how to best integrate it into
-the project.
+In some cases the Determinate Systems installer has made decisions that do not
+align with decisions of the official Nix installer, and in those cases, a
+contribution to this repo is appropriate.
 
 # Development
 
@@ -130,7 +34,7 @@ If using an editor, it may be preferable to adopt an addon to enter the environm
 
 ## Testing Installs
 
-If you're hacking on `nix-installer`, you likely already have Nix and cannot test locally.
+If you're hacking on `experimental-nix-installer`, you likely already have Nix and cannot test locally.
 
 > That's probably a good thing! You should test in a sandbox.
 
@@ -204,7 +108,7 @@ nix build .#hydraJobs.vm-test.rhel-v7.x86_64-linux.all -L -j 4
 For PR review, you can also test arbitrary branches or checkouts like so:
 
 ```bash
-nix build github:determinatesystems/nix-installer/${BRANCH}#hydraJobs.vm-test.ubuntu-v22_04.x86_64-linux.install-default -L
+nix build github:NixOS/experimental-nix-installer/${BRANCH}#hydraJobs.vm-test.ubuntu-v22_04.x86_64-linux.install-default -L
 ```
 
 <details>
@@ -294,7 +198,7 @@ nix build .#hydraJobs.container-test.ubuntu-v22_04.x86_64-linux.docker -L
 For PR review, you can also test arbitrary branches or checkouts like so:
 
 ```bash
-nix build github:determinatesystems/nix-installer/${BRANCH}#hydraJobs.container-test.ubuntu-v22_04.x86_64-linux.podman -L
+nix build github:NixOS/experimental-nix-installer/${BRANCH}#hydraJobs.container-test.ubuntu-v22_04.x86_64-linux.podman -L
 ```
 
 <details>
@@ -392,7 +296,9 @@ To cut a release:
 
 # Who maintains `nix-installer` and why?
 
-`nix-installer` is maintained by [Determinate Systems](https://determinate.systems/) in
+This fork is maintained by the community.
+
+The upstream `nix-installer` is maintained by [Determinate Systems](https://determinate.systems/) in
 an effort to explore Nix installer ideas.
 
 Determinate Systems has no plans to monetize or relicense `nix-installer`. If your

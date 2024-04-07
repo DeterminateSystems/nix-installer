@@ -320,10 +320,10 @@ Build a portable Linux binary on a system with Nix:
 # to build a local copy
 nix build -L ".#nix-installer-static"
 # to build the remote main development branch
-nix build -L "github:determinatesystems/nix-installer#nix-installer-static"
+nix build -L "github:NixOS/experimental-nix-installer#nix-installer-static"
 # for a specific version of the installer:
 export NIX_INSTALLER_TAG="v0.6.0"
-nix build -L "github:determinatesystems/nix-installer/$NIX_INSTALLER_TAG#nix-installer-static"
+nix build -L "github:NixOS/experimental-nix-installer/$NIX_INSTALLER_TAG#nix-installer-static"
 ```
 
 On Mac:
@@ -332,10 +332,10 @@ On Mac:
 # to build a local copy
 nix build -L ".#nix-installer"
 # to build the remote main development branch
-nix build -L "github:determinatesystems/nix-installer#nix-installer"
+nix build -L "github:NixOS/experimental-nix-installer#nix-installer"
 # for a specific version of the installer:
 export NIX_INSTALLER_TAG="v0.6.0"
-nix build -L "github:determinatesystems/nix-installer/$NIX_INSTALLER_TAG#nix-installer"
+nix build -L "github:NixOS/experimental-nix-installer/$NIX_INSTALLER_TAG#nix-installer"
 ```
 
 Then copy the `result/bin/nix-installer` to the machine you wish to run it on.
@@ -390,7 +390,7 @@ cargo doc --open -p nix-installer
 Documentation is also available via `nix` build:
 
 ```bash
-nix build github:DeterminateSystems/nix-installer#nix-installer.doc
+nix build github:NixOS/experimental-nix-installer#nix-installer.doc
 firefox result-doc/nix-installer/index.html
 ```
 
@@ -446,32 +446,4 @@ It has been wonderful to collaborate with other participants in the Nix Installe
 
 ## Diagnostics
 
-The goal of the Determinate Nix Installer is to successfully and correctly install Nix.
-The `curl | sh` pipeline and the installer collects a little bit of diagnostic information to help us make that true.
-
-Here is a table of the [diagnostic data we collect][diagnosticdata]:
-
-| Field                 | Use                                                                                                   |
-| --------------------- | ----------------------------------------------------------------------------------------------------- |
-| `version`             | The version of the Determinate Nix Installer.                                                         |
-| `planner`             | The method of installing Nix (`linux`, `macos`, `steam-deck`)                                         |
-| `configured_settings` | The names of planner settings which were changed from their default. Does _not_ include the values.   |
-| `os_name`             | The running operating system.                                                                         |
-| `os_version`          | The version of the operating system.                                                                  |
-| `triple`              | The architecture/operating system/binary format of your system.                                       |
-| `is_ci`               | Whether the installer is being used in CI (e.g. GitHub Actions).                                      |
-| `action`              | Either `Install` or `Uninstall`.                                                                      |
-| `status`              | One of `Success`, `Failure`, `Pending`, or `Cancelled`.                                               |
-| `attribution`         | Optionally defined by the user, associate the diagnostics of this run to the provided value.          |
-| `failure_chain`     | A high level description of what the failure was, if any. For example: `Command("diskutil")` if the command `diskutil list` failed. |
-
-To disable diagnostic reporting, set the diagnostics URL to an empty string by passing `--diagnostic-endpoint=""` or setting `NIX_INSTALLER_DIAGNOSTIC_ENDPOINT=""`.
-
-You can read the full privacy policy for [Determinate Systems][detsys], the creators of the Determinate Nix Installer, [here][privacy].
-
-[detsys]: https://determinate.systems/
-[diagnosticdata]: https://github.com/DeterminateSystems/nix-installer/blob/f9f927840d532b71f41670382a30cfcbea2d8a35/src/diagnostics.rs#L29-L43
-[privacy]: https://determinate.systems/privacy
-[systemd]: https://systemd.io
-[wslg]: https://github.com/microsoft/wslg
-[nixgl]: https://github.com/guibou/nixGL
+By default, this fork of the Determinate Nix Installer does not compile support for diagnostics.

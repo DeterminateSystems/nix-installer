@@ -555,7 +555,7 @@ pub enum ActionErrorKind {
     MissingRemoveUserFromGroupCommand,
     #[error("\
         Could not detect systemd; you may be able to get up and running without systemd with `nix-installer install linux --init none`.\n\
-        See https://github.com/DeterminateSystems/nix-installer#without-systemd-linux-only for documentation on usage and drawbacks.\
+        See https://github.com/NixOS/experimental-nix-installer#without-systemd-linux-only for documentation on usage and drawbacks.\
         ")]
     SystemdMissing,
     #[error("`{command}` failed, message: {message}")]

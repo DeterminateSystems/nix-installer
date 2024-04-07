@@ -5,8 +5,7 @@ version = "0.14.0"
 edition = "2021"
 resolver = "2"
 license = "LGPL-2.1"
-repository = "https://github.com/NixOS/experimental-nix-installer/issues/9"
-documentation = "https://docs.rs/nix-installer/latest/nix_installer"
+repository = "https://github.com/NixOS/experimental-nix-installer"
 
 [package.metadata.riff.targets.aarch64-apple-darwin]
 build-inputs = ["darwin.apple_sdk.frameworks.Security"]

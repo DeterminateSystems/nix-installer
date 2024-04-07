@@ -1,5 +1,5 @@
 {
-  description = "The Determinate Nix Installer";
+  description = "Experimental Nix Installer";
 
   inputs = {
     nixpkgs.url = "github:NixOS/nixpkgs/5e4c2ada4fcd54b99d56d7bd62f384511a7e2593";
