@@ -1,12 +1,18 @@
 name: Build aarch64 Linux (static)
-concurrency: aarch64-linux-${{ github.sha }}
+
 on: 
   workflow_call:
+    inputs:
+      cache-key:
+        type: string
+        required: false
+        default: aarch64-linux-artifacts-${{ github.sha }}
 
 jobs:
   build-aarch64-linux:
     name: Build aarch64 Linux (static)
     runs-on: namespace-profile-default-arm64
+    concurrency: ${{ inputs.cache-key }}
     steps:
       - uses: actions/checkout@v3
       - name: Install Nix
@@ -20,4 +26,4 @@ jobs:
         uses: actions/cache/save@v3
         with:
           path: nix-installer
-          key: aarch64-linux-artifacts-${{ github.sha }}
+          key: ${{ inputs.cache-key }}

@@ -1,12 +1,18 @@
 name: Build x86_64 Darwin
-concurrency: x86_64-darwin-${{ github.sha }}
+
 on: 
   workflow_call:
+    inputs:
+      cache-key:
+        type: string
+        required: false
+        default: x86_64-darwin-artifacts-${{ github.sha }}
 
 jobs:
   build-x86_64-darwin:
     name: Build x86_64 Darwin
     runs-on: macos-latest-large
+    concurrency: ${{ inputs.cache-key }}
     steps:
       - uses: actions/checkout@v3
       - name: Install Nix
@@ -20,4 +26,4 @@ jobs:
         uses: actions/cache/save@v3
         with:
           path: nix-installer
-          key: x86_64-darwin-artifacts-${{ github.sha }}
+          key: ${{ inputs.cache-key }}

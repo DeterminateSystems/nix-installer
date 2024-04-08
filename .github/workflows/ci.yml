@@ -6,6 +6,12 @@ on:
     branches: [main]
 
 jobs:
+  build-x86_64-linux:
+    uses: ./.github/workflows/build-x86_64-linux.yml
+
+  build-x86_64-darwin:
+    uses: ./.github/workflows/build-x86_64-darwin.yml
+
   lints:
     name: Lints
     runs-on: ubuntu-latest
@@ -29,9 +35,6 @@ jobs:
         run: nix develop --command check-nixpkgs-fmt
       - name: Check EditorConfig conformance
         run: nix develop --command check-editorconfig
-
-  build-x86_64-linux:
-    uses: ./.github/workflows/build-x86_64-linux.yml
 
   run-x86_64-linux:
     name: Run x86_64 Linux
@@ -244,9 +247,6 @@ jobs:
             echo "/nix exists"
             exit 1
           fi
-
-  build-x86_64-darwin:
-    uses: ./.github/workflows/build-x86_64-darwin.yml
 
   run-x86_64-darwin:
     name: Run x86_64 Darwin
