@@ -31,22 +31,7 @@ jobs:
         run: nix develop --command check-editorconfig
 
   build-x86_64-linux:
-    name: Build x86_64 Linux
-    runs-on: UbuntuLatest32Cores128G
-    steps:
-      - uses: actions/checkout@v3
-      - name: Install Nix
-        uses: DeterminateSystems/nix-installer-action@main
-      - uses: DeterminateSystems/magic-nix-cache-action@main
-      - name: Build the installer
-        run: |
-          nix build .#packages.x86_64-linux.nix-installer-static -L
-          cp result/bin/nix-installer .
-      - name: Create GitHub cache from build artifacts
-        uses: actions/cache/save@v3
-        with:
-          path: nix-installer
-          key: x86_64-linux-artifacts-${{ github.sha }}
+    uses: ./.github/workflows/build-x86_64-linux.yml
 
   run-x86_64-linux:
     name: Run x86_64 Linux
@@ -261,22 +246,7 @@ jobs:
           fi
 
   build-x86_64-darwin:
-    name: Build x86_64 Darwin
-    runs-on: macos-latest-large
-    steps:
-      - uses: actions/checkout@v3
-      - name: Install Nix
-        uses: DeterminateSystems/nix-installer-action@main
-      - uses: DeterminateSystems/magic-nix-cache-action@main
-      - name: Build the installer
-        run: |
-          nix build .#packages.x86_64-darwin.nix-installer -L
-          cp result/bin/nix-installer .
-      - name: Create GitHub cache from build artifacts
-        uses: actions/cache/save@v3
-        with:
-          path: nix-installer
-          key: x86_64-darwin-artifacts-${{ github.sha }}
+    uses: ./.github/workflows/build-x86_64-darwin.yml
 
   run-x86_64-darwin:
     name: Run x86_64 Darwin
