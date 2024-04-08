@@ -83,7 +83,6 @@ jobs:
         env:
           AWS_BUCKET: ${{ secrets.AWS_S3_UPLOAD_BUCKET }}
         run: |
-          exit 1
           ./upload_s3.sh "$GITHUB_REF_NAME" "$GITHUB_SHA" "https://install.determinate.systems/nix/tag/$GITHUB_REF_NAME"
       - name: Publish Release to GitHub (Tag)
         uses: softprops/action-gh-release@v1
