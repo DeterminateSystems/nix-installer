@@ -93,7 +93,7 @@ jobs:
         uses: actions/cache/restore@v3
         with:
           path: nix-installer
-          key: x86_64-linux-artifacts-${{ github.sha }}
+          key: release-x86_64-linux-artifacts-${{ github.sha }}
       - name: Move artifact to artifacts directory
         run: mv ./nix-installer ./artifacts/nix-installer-x86_64-linux
 
@@ -101,7 +101,7 @@ jobs:
         uses: actions/cache/restore@v3
         with:
           path: nix-installer
-          key: aarch64-linux-artifacts-${{ github.sha }}
+          key: release-aarch64-linux-artifacts-${{ github.sha }}
       - name: Move artifact to artifacts directory
         run: mv ./nix-installer ./artifacts/nix-installer-aarch64-linux
 
@@ -109,7 +109,7 @@ jobs:
         uses: actions/cache/restore@v3
         with:
           path: nix-installer
-          key: x86_64-darwin-artifacts-${{ github.sha }}
+          key: release-x86_64-darwin-artifacts-${{ github.sha }}
       - name: Move artifact to artifacts directory
         run: mv ./nix-installer ./artifacts/nix-installer-x86_64-darwin
 
@@ -117,7 +117,7 @@ jobs:
         uses: actions/cache/restore@v3
         with:
           path: nix-installer
-          key: aarch64-darwin-artifacts-${{ github.sha }}
+          key: release-aarch64-darwin-artifacts-${{ github.sha }}
       - name: Move artifact to artifacts directory
         run: mv ./nix-installer ./artifacts/nix-installer-aarch64-darwin
 
