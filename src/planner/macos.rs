@@ -219,14 +219,14 @@ impl Planner for Macos {
 
         if self.enterprise_edition {
             plan.push(
-                ConfigureInitService::plan(InitSystem::Launchd, true)
+                ConfigureEnterpriseEditionInitService::plan(true)
                     .await
                     .map_err(PlannerError::Action)?
                     .boxed(),
             );
         } else {
             plan.push(
-                ConfigureEnterpriseEditionInitService::plan(true)
+                ConfigureInitService::plan(InitSystem::Launchd, true)
                     .await
                     .map_err(PlannerError::Action)?
                     .boxed(),
