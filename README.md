@@ -38,7 +38,7 @@ Or, to download a platform specific Installer binary yourself:
 
 ```bash
 curl -sL -o nix-installer https://install.determinate.systems/nix/nix-installer-x86_64-linux &&
-chmod +x nix-installer &&
+chmod +x nix-installer-x86_64-linux &&
 ./nix-installer
 ```
 
