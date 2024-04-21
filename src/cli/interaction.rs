@@ -1,3 +1,4 @@
+use std::collections::HashMap;
 use std::io::{stdin, stdout, BufRead, Write};
 
 use eyre::{eyre, WrapErr};
@@ -20,8 +21,16 @@ pub(crate) async fn prompt(
     currently_explaining: bool,
 ) -> eyre::Result<PromptChoice> {
     let stdout = stdout();
-    let mut term =
-        term::terminfo::TerminfoTerminal::new(stdout).ok_or(eyre!("Couldn't get terminal"))?;
+    let terminfo = term::terminfo::TermInfo::from_env().unwrap_or_else(|_| {
+        tracing::warn!("Couldn't find terminfo, using empty fallback terminfo");
+        term::terminfo::TermInfo {
+            names: vec![],
+            bools: HashMap::new(),
+            numbers: HashMap::new(),
+            strings: HashMap::new(),
+        }
+    });
+    let mut term = term::terminfo::TerminfoTerminal::new_with_terminfo(stdout, terminfo);
     let with_confirm = format!(
         "\
         {question}\n\

@@ -1,4 +1,4 @@
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 
 use crate::{
     action::{
@@ -9,6 +9,7 @@ use crate::{
     planner::ShellProfileLocations,
     settings::{CommonSettings, SCRATCH_DIR},
 };
+use glob::glob;
 
 use tracing::{span, Instrument, Span};
 
@@ -57,6 +58,65 @@ impl ConfigureNix {
             configure_shell_profile,
         }
         .into())
+    }
+
+    pub async fn find_nix_and_ca_cert(
+        unpacked_path: &Path,
+    ) -> Result<(PathBuf, PathBuf), ActionError> {
+        // Find a `nix` package
+        let nix_pkg_glob = format!("{}/nix-*/store/*-nix-*.*.*", unpacked_path.display());
+        let mut found_nix_pkg = None;
+        for entry in glob(&nix_pkg_glob).map_err(Self::error)? {
+            match entry {
+                Ok(path) => {
+                    // If we are curing, the user may have multiple of these installed
+                    if let Some(_existing) = found_nix_pkg {
+                        return Err(Self::error(ConfigureNixError::MultipleNixPackages))?;
+                    } else {
+                        found_nix_pkg = Some(path);
+                    }
+                    break;
+                },
+                Err(_) => continue, /* Ignore it */
+            };
+        }
+        let nix_pkg = if let Some(nix_pkg) = found_nix_pkg {
+            tokio::fs::read_link(&nix_pkg)
+                .await
+                .map_err(|e| ActionErrorKind::ReadSymlink(nix_pkg, e))
+                .map_err(Self::error)?
+        } else {
+            return Err(Self::error(ConfigureNixError::NoNix));
+        };
+
+        // Find an `nss-cacert` package
+        let nss_ca_cert_pkg_glob =
+            format!("{}/nix-*/store/*-nss-cacert-*.*", unpacked_path.display());
+        let mut found_nss_ca_cert_pkg = None;
+        for entry in glob(&nss_ca_cert_pkg_glob).map_err(Self::error)? {
+            match entry {
+                Ok(path) => {
+                    // If we are curing, the user may have multiple of these installed
+                    if let Some(_existing) = found_nss_ca_cert_pkg {
+                        return Err(Self::error(ConfigureNixError::MultipleNssCaCertPackages))?;
+                    } else {
+                        found_nss_ca_cert_pkg = Some(path);
+                    }
+                    break;
+                },
+                Err(_) => continue, /* Ignore it */
+            };
+        }
+        let nss_ca_cert_pkg = if let Some(nss_ca_cert_pkg) = found_nss_ca_cert_pkg {
+            tokio::fs::read_link(&nss_ca_cert_pkg)
+                .await
+                .map_err(|e| ActionErrorKind::ReadSymlink(nss_ca_cert_pkg, e))
+                .map_err(Self::error)?
+        } else {
+            return Err(Self::error(ConfigureNixError::NoNssCacert));
+        };
+
+        Ok((nix_pkg, nss_ca_cert_pkg))
     }
 }
 
@@ -192,5 +252,24 @@ impl Action for ConfigureNix {
         } else {
             Err(Self::error(ActionErrorKind::MultipleChildren(errors)))
         }
+    }
+}
+
+#[non_exhaustive]
+#[derive(Debug, thiserror::Error)]
+pub enum ConfigureNixError {
+    #[error("Unarchived Nix store did not appear to include a `nss-cacert` location")]
+    NoNssCacert,
+    #[error("Unarchived Nix store did not appear to include a `nix` location")]
+    NoNix,
+    #[error("Unarchived Nix store appears to contain multiple `nss-ca-cert` packages, cannot select one")]
+    MultipleNssCaCertPackages,
+    #[error("Unarchived Nix store appears to contain multiple `nix` packages, cannot select one")]
+    MultipleNixPackages,
+}
+
+impl From<ConfigureNixError> for ActionErrorKind {
+    fn from(val: ConfigureNixError) -> Self {
+        ActionErrorKind::Custom(Box::new(val))
     }
 }

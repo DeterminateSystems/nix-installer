@@ -1,0 +1,29 @@
+name: Build aarch64 Darwin
+
+on: 
+  workflow_call:
+    inputs:
+      cache-key:
+        type: string
+        required: false
+        default: aarch64-darwin-artifacts-${{ github.sha }}
+
+jobs:
+  build-aarch64-darwin:
+    name: Build aarch64 Darwin
+    runs-on: macos-latest-xlarge
+    concurrency: ${{ inputs.cache-key }}
+    steps:
+      - uses: actions/checkout@v3
+      - name: Install Nix
+        uses: DeterminateSystems/nix-installer-action@main
+      - uses: DeterminateSystems/magic-nix-cache-action@main
+      - name: Build the installer
+        run: |
+          nix build .#packages.aarch64-darwin.nix-installer -L
+          cp result/bin/nix-installer .
+      - name: Create GitHub cache from build artifacts
+        uses: actions/cache/save@v3
+        with:
+          path: nix-installer
+          key: ${{ inputs.cache-key }}

@@ -15,7 +15,7 @@
     };
 
     nix = {
-      url = "https://flakehub.com/f/NixOS/nix/=2.20.5.tar.gz";
+      url = "https://flakehub.com/f/NixOS/nix/=2.21.2.tar.gz";
       # Omitting `inputs.nixpkgs.follows = "nixpkgs";` on purpose
     };
 
@@ -66,7 +66,7 @@
           };
           sharedAttrs = {
             pname = "nix-installer";
-            version = "0.17.1";
+            version = "0.18.0";
             src = builtins.path {
               name = "nix-installer-source";
               path = self;
