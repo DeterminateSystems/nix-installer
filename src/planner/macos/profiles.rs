@@ -14,7 +14,7 @@ pub enum LoadError {
 pub async fn load() -> Result<Policies, LoadError> {
     let buf = execute_command(
         tokio::process::Command::new("/usr/bin/profiles")
-            .args(["show", "-output", "stdout-xml"])
+            .args(["-P", "-o", "stdout-xml"])
             .stdin(std::process::Stdio::null()),
     )
     .await?
