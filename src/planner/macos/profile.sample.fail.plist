@@ -1,0 +1,58 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<!-- The user's username OR the string literal _computerlevel -->
+	<key>_computerlevel</key>
+	<array>
+		<dict>
+			<!-- Show the following data (if set, they're not required) to contextualize the issue: -->
+			<key>ProfileDescription</key>
+			<string></string>
+			<key>ProfileDisplayName</key>
+			<string>Don't allow mounting internal devices</string>
+			<key>ProfileIdentifier</key>
+			<string>MyProfile.6F6670A3-65AC-4EA4-8665-91F8FCE289AB</string>
+			<key>ProfileInstallDate</key>
+			<string>2024-04-22 14:12:42 +0000</string>
+			<key>ProfileType</key>
+			<string>Configuration</string>
+			<key>ProfileUUID</key>
+			<string>6F6670A3-65AC-4EA4-8665-91F8FCE289AB</string>
+			<key>ProfileVersion</key>
+			<integer>1</integer>
+
+
+			<key>ProfileItems</key>
+			<array>
+				<dict>
+					<!-- Look for an entry which has PayloadType as follows ... -->
+					<key>PayloadType</key>
+					<string>com.apple.systemuiserver</string>
+
+					<key>PayloadContent</key>
+					<dict>
+						<key>mount-controls</key>
+						<dict>
+							<key>harddisk-internal</key>
+							<array>
+							 	<!--
+									This could be one of the following:
+
+									authenticate: The user is authenticated before the media is mounted.
+									read-only: The media is mounted as read-only; this action cannot be combined with unmount controls.
+									deny: The media isn't mounted.
+									eject: The media isn't mounted and is ejected, if possible. Note that some volumes aren't defined as ejectable, so using the deny key may be the best solution. This action cannot be combined with unmount controls.
+
+									We should fail ahead of time if this list contains read-only, deny, or eject.
+								 -->
+								<string>deny</string>
+							</array>
+						</dict>
+					</dict>
+				</dict>
+			</array>
+		</dict>
+	</array>
+</dict>
+</plist>

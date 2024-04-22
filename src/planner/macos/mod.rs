@@ -8,6 +8,8 @@ use which::which;
 use super::ShellProfileLocations;
 use crate::planner::HasExpectedErrors;
 
+mod profiles;
+
 use crate::{
     action::{
         base::RemoveDirectory,
