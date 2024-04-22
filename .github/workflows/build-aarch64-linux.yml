@@ -13,10 +13,15 @@ jobs:
     name: Build aarch64 Linux (static)
     runs-on: namespace-profile-default-arm64
     concurrency: ${{ inputs.cache-key }}
+    permissions:
+      id-token: "write"
+      contents: "read"
     steps:
       - uses: actions/checkout@v3
       - name: Install Nix
         uses: DeterminateSystems/nix-installer-action@main
+        with:
+          flakehub: true
       - uses: DeterminateSystems/magic-nix-cache-action@main
       - name: Build the installer
         run: |
