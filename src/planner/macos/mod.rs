@@ -8,6 +8,7 @@ use which::which;
 use super::ShellProfileLocations;
 use crate::planner::HasExpectedErrors;
 
+mod profile_queries;
 mod profiles;
 
 use crate::{
@@ -308,6 +309,7 @@ impl Planner for Macos {
     }
 
     async fn pre_install_check(&self) -> Result<(), PlannerError> {
+        check_suis().await?;
         check_not_running_in_rosetta()?;
         if self.enterprise_edition {
             check_enterprise_edition_available().await?;
@@ -366,6 +368,40 @@ fn check_not_running_in_rosetta() -> Result<(), PlannerError> {
     Ok(())
 }
 
+async fn check_suis() -> Result<(), PlannerError> {
+    let policies: profiles::Policies = match profiles::load().await {
+        Ok(pol) => pol,
+        Err(e) => {
+            tracing::info!(
+                "Error loading profile data: {:?}, skipping SystemUIServer checks.",
+                e
+            );
+            return Ok(());
+        },
+    };
+
+    let blocks: Vec<_> = profile_queries::blocks_internal_mounting(&policies)
+        .into_iter()
+        .map(|tpopt| tpopt.display())
+        .collect();
+
+    let error: String = match &blocks[..] {
+        [] => {
+            return Ok(());
+        },
+        [block] => format!(
+            "The following policy blocks mounting internal disks:\n\n{}",
+            block
+        ),
+        blocks => {
+            todo!("{:?}", blocks);
+        },
+    };
+
+    Err(MacosError::BlockedBySystemUIServerPolicy(error))
+        .map_err(|e| PlannerError::Custom(Box::new(e)))
+}
+
 async fn check_enterprise_edition_available() -> Result<(), PlannerError> {
     tokio::fs::metadata("/usr/local/bin/determinate-nix-ee")
         .await
@@ -379,12 +415,16 @@ async fn check_enterprise_edition_available() -> Result<(), PlannerError> {
 pub enum MacosError {
     #[error("`nix-darwin` installation detected, it must be removed before uninstalling Nix. Please refer to https://github.com/LnL7/nix-darwin#uninstalling for instructions how to uninstall `nix-darwin`.")]
     UninstallNixDarwin,
+
+    #[error("A macOS profile blocks internal hard disk mounting through SystemUIServer: {0}")]
+    BlockedBySystemUIServerPolicy(String),
 }
 
 impl HasExpectedErrors for MacosError {
     fn expected<'a>(&'a self) -> Option<Box<dyn std::error::Error + 'a>> {
         match self {
             this @ MacosError::UninstallNixDarwin => Some(Box::new(this)),
+            this @ MacosError::BlockedBySystemUIServerPolicy(_) => Some(Box::new(this)),
         }
     }
 }

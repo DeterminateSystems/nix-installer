@@ -3,7 +3,7 @@
 <plist version="1.0">
 <dict>
 	<!-- The user's username OR the string literal _computerlevel -->
-	<key>_computerlevel</key>
+	<key>foo</key>
 	<array>
 		<dict>
 			<!-- Show the following data (if set, they're not required) to contextualize the issue: -->

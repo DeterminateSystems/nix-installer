@@ -1,6 +1,29 @@
 use std::collections::HashMap;
 
-type Policies = HashMap<Target, Vec<Profile>>;
+use crate::execute_command;
+
+#[derive(thiserror::Error, Debug)]
+pub enum LoadError {
+    #[error("Profile plist parsing error: {0}")]
+    Parse(#[from] plist::Error),
+
+    #[error("Profile discovery error: {0}")]
+    ProfileListing(#[from] crate::ActionErrorKind),
+}
+
+pub async fn load() -> Result<Policies, LoadError> {
+    let buf = execute_command(
+        tokio::process::Command::new("/usr/bin/profiles")
+            .args(["show", "-output", "stdout-xml"])
+            .stdin(std::process::Stdio::null()),
+    )
+    .await?
+    .stdout;
+
+    Ok(plist::from_reader(std::io::Cursor::new(buf))?)
+}
+
+pub type Policies = HashMap<Target, Vec<Profile>>;
 
 #[derive(serde::Deserialize, serde::Serialize, Clone, Debug, Eq, PartialEq, Hash)]
 pub enum Target {
@@ -17,7 +40,6 @@ pub struct Profile {
     pub profile_display_name: Option<String>,
     pub profile_identifier: Option<String>,
     pub profile_install_date: Option<String>,
-    pub profile_type: Option<String>,
     #[serde(rename = "ProfileUUID")]
     pub profile_uuid: Option<String>,
     pub profile_version: Option<usize>,
@@ -87,7 +109,6 @@ mod tests {
                         "MyProfile.6F6670A3-65AC-4EA4-8665-91F8FCE289AB".into()
                     ),
                     profile_install_date: Some("2024-04-22 14:12:42 +0000".into()),
-                    profile_type: Some("Configuration".into()),
                     profile_uuid: Some("6F6670A3-65AC-4EA4-8665-91F8FCE289AB".into()),
                     profile_version: Some(1),
                     profile_items: vec![ProfileItem::SystemUIServer(SystemUIServer {
@@ -118,7 +139,6 @@ mod tests {
                     ),
                     profile_identifier: Some("com.example".into()),
                     profile_install_date: Some("2024-04-22 00:00:00 +0000".into()),
-                    profile_type: Some("Configuration".into()),
                     profile_uuid: Some("F7972F85-2A4D-4609-A4BB-02CB0C34A3F8".into()),
                     profile_version: Some(1),
                     profile_items: vec![ProfileItem::Unknown(UnknownProfileItem {
