@@ -390,11 +390,14 @@ async fn check_suis() -> Result<(), PlannerError> {
             return Ok(());
         },
         [block] => format!(
-            "The following policy blocks mounting internal disks:\n\n{}",
+            "The following macOS profile policy prevents mounting internal hard disks:\n\n{}",
             block
         ),
         blocks => {
-            todo!("{:?}", blocks);
+            format!(
+                "The following macOS profile policies prevent mounting internal hard disks:\n\n{}",
+                block
+            )
         },
     };
 
@@ -416,7 +419,7 @@ pub enum MacosError {
     #[error("`nix-darwin` installation detected, it must be removed before uninstalling Nix. Please refer to https://github.com/LnL7/nix-darwin#uninstalling for instructions how to uninstall `nix-darwin`.")]
     UninstallNixDarwin,
 
-    #[error("A macOS profile blocks internal hard disk mounting through SystemUIServer: {0}")]
+    #[error("{0}")]
     BlockedBySystemUIServerPolicy(String),
 }
 
