@@ -10,6 +10,10 @@ on:
       # otherwise creating the directory and uploading to s3 will fail
       - 'main'
 
+permissions:
+  id-token: "write"
+  contents: "read"
+
 jobs:
   build-x86_64-linux:
     uses: ./.github/workflows/build-x86_64-linux.yml

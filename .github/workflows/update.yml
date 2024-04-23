@@ -7,11 +7,16 @@ on:
 jobs:
   lockfile:
     runs-on: ubuntu-22.04
+    permissions:
+      id-token: "write"
+      contents: "read"
     steps:
       - name: Checkout
         uses: actions/checkout@v3
       - name: Install Nix
         uses: DeterminateSystems/nix-installer-action@main
+        with:
+          flakehub: true
       - name: Enable magic Nix cache
         uses: DeterminateSystems/magic-nix-cache-action@main
       - name: Check flake
