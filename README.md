@@ -198,15 +198,15 @@ RUN nix run nixpkgs#hello
 ```
 
 ```bash
-docker build -t ubuntu-with-nix . 
-docker run --rm -ti ubuntu-with-nix 
+docker build -t ubuntu-with-nix .
+docker run --rm -ti ubuntu-with-nix
 docker rmi ubuntu-with-nix
 ```
 Or:
 
 ```bash
-podman build -t ubuntu-with-nix . 
-podman run --rm -ti ubuntu-with-nix 
+podman build -t ubuntu-with-nix .
+podman run --rm -ti ubuntu-with-nix
 podman rmi ubuntu-with-nix
 ```
 
@@ -227,11 +227,11 @@ CMD [ "/bin/systemd" ]
 ```
 
 ```bash
-podman build -t ubuntu-systemd-with-nix . 
-IMAGE=$(podman create ubuntu-systemd-with-nix) 
-CONTAINER=$(podman start $IMAGE) 
-podman exec -ti $CONTAINER /bin/bash 
-podman rm -f $CONTAINER 
+podman build -t ubuntu-systemd-with-nix .
+IMAGE=$(podman create ubuntu-systemd-with-nix)
+CONTAINER=$(podman start $IMAGE)
+podman exec -ti $CONTAINER /bin/bash
+podman rm -f $CONTAINER
 podman rmi $IMAGE
 ```
 
@@ -313,9 +313,9 @@ The problem is compounded by the matter that the [`nix-darwin` uninstaller](http
 It's possible to resolve this situation by removing the `org.nixos.activate-system` service and the `ca-certificates`:
 
 ```bash
-sudo rm /Library/LaunchDaemons/org.nixos.activate-system.plist 
-sudo launchctl bootout system/org.nixos.activate-system 
-/nix/nix-installer uninstall 
+sudo rm /Library/LaunchDaemons/org.nixos.activate-system.plist
+sudo launchctl bootout system/org.nixos.activate-system
+/nix/nix-installer uninstall
 sudo rm /etc/ssl/certs/ca-certificates.crt
 ```
 
