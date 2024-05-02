@@ -8,6 +8,10 @@ on:
     tags:
       - "v*.*.*"
 
+permissions:
+  contents: write # In order to upload artifacts to GitHub releases
+  id-token: write # In order to request a JWT for AWS auth
+
 jobs:
   build-x86_64-linux:
     uses: ./.github/workflows/build-x86_64-linux.yml
@@ -32,9 +36,6 @@ jobs:
 
   release:
     runs-on: ubuntu-latest
-    permissions:
-      contents: write # In order to upload artifacts to GitHub releases
-      id-token: write # In order to request a JWT for AWS auth
     needs:
       - build-x86_64-linux
       - build-i686-linux
