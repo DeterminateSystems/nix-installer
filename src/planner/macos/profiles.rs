@@ -96,7 +96,7 @@ mod tests {
     #[test]
     fn try_parse_blocking_policy() {
         let parsed: Policies = plist::from_reader(std::io::Cursor::new(include_str!(
-            "./profile.sample.fail.plist"
+            "./profile.sample.block.plist"
         )))
         .unwrap();
         assert_eq!(

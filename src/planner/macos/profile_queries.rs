@@ -103,7 +103,7 @@ mod tests {
     #[test]
     fn generate_error() {
         let parsed: Policies = plist::from_reader(std::io::Cursor::new(include_str!(
-            "./profile.sample.fail.plist"
+            "./profile.sample.block.plist"
         )))
         .unwrap();
 
