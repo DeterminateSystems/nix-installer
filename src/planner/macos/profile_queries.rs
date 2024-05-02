@@ -123,4 +123,15 @@ mod tests {
             err.display().trim()
         );
     }
+
+    #[test]
+    fn no_error() {
+        let parsed: Policies = plist::from_reader(std::io::Cursor::new(include_str!(
+            "./profile.sample.unknown.plist"
+        )))
+        .unwrap();
+
+        let blocks = blocks_internal_mounting(&parsed);
+        assert!(blocks.is_empty());
+    }
 }
