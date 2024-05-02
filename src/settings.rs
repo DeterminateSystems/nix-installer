@@ -11,7 +11,7 @@ use url::Url;
 
 pub const SCRATCH_DIR: &str = "/nix/temp-install-dir";
 
-pub const NIX_TARBALL_PATH: env!("NIX_INSTALLER_TARBALL_PATH");
+pub const NIX_TARBALL_PATH: &str = env!("NIX_INSTALLER_TARBALL_PATH");
 /// The NIX_INSTALLER_TARBALL_PATH environment variable should point to a target-appropriate
 /// Nix installation tarball, like nix-2.21.2-aarch64-darwin.tar.xz. The contents are embedded
 /// in the resulting binary.

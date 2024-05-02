@@ -70,7 +70,10 @@ impl Action for FetchAndUnpackNix {
         if let Some(ref url_or_path) = self.url_or_path {
             format!("Fetch `{}` to `{}`", url_or_path, self.dest.display())
         } else {
-            format!("Extract the bundled Nix (originally from {})", crate::settings::NIX_TARBALL_PATH);
+            format!(
+                "Extract the bundled Nix (originally from {})",
+                crate::settings::NIX_TARBALL_PATH
+            )
         }
     }
 
