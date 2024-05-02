@@ -372,8 +372,8 @@ async fn check_suis() -> Result<(), PlannerError> {
     let policies: profiles::Policies = match profiles::load().await {
         Ok(pol) => pol,
         Err(e) => {
-            tracing::info!(
-                "Error loading profile data: {:?}, skipping SystemUIServer checks.",
+            tracing::warn!(
+                "Skipping SystemUIServer checks: failed to load profile data: {:?}",
                 e
             );
             return Ok(());
