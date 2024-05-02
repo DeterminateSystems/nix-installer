@@ -1,6 +1,6 @@
 name: Build x86_64 Darwin
 
-on: 
+on:
   workflow_call:
     inputs:
       cache-key:
@@ -11,7 +11,7 @@ on:
 jobs:
   build-x86_64-darwin:
     name: Build x86_64 Darwin
-    runs-on: macos-latest-large
+    runs-on: macos-13-large
     concurrency: ${{ inputs.cache-key }}
     permissions:
       id-token: "write"

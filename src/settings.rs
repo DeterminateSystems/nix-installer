@@ -11,21 +11,11 @@ use url::Url;
 
 pub const SCRATCH_DIR: &str = "/nix/temp-install-dir";
 
-/// Default [`nix_package_url`](CommonSettings::nix_package_url) for Linux x86_64
-pub const NIX_X64_64_LINUX_URL: &str =
-    "https://releases.nixos.org/nix/nix-2.21.2/nix-2.21.2-x86_64-linux.tar.xz";
-/// Default [`nix_package_url`](CommonSettings::nix_package_url) for Linux x86 (32 bit)
-pub const NIX_I686_LINUX_URL: &str =
-    "https://releases.nixos.org/nix/nix-2.21.2/nix-2.21.2-i686-linux.tar.xz";
-/// Default [`nix_package_url`](CommonSettings::nix_package_url) for Linux aarch64
-pub const NIX_AARCH64_LINUX_URL: &str =
-    "https://releases.nixos.org/nix/nix-2.21.2/nix-2.21.2-aarch64-linux.tar.xz";
-/// Default [`nix_package_url`](CommonSettings::nix_package_url) for Darwin x86_64
-pub const NIX_X64_64_DARWIN_URL: &str =
-    "https://releases.nixos.org/nix/nix-2.21.2/nix-2.21.2-x86_64-darwin.tar.xz";
-/// Default [`nix_package_url`](CommonSettings::nix_package_url) for Darwin aarch64
-pub const NIX_AARCH64_DARWIN_URL: &str =
-    "https://releases.nixos.org/nix/nix-2.21.2/nix-2.21.2-aarch64-darwin.tar.xz";
+pub const NIX_TARBALL_PATH: &str = env!("NIX_INSTALLER_TARBALL_PATH");
+/// The NIX_INSTALLER_TARBALL_PATH environment variable should point to a target-appropriate
+/// Nix installation tarball, like nix-2.21.2-aarch64-darwin.tar.xz. The contents are embedded
+/// in the resulting binary.
+pub const NIX_TARBALL: &[u8] = include_bytes!(env!("NIX_INSTALLER_TARBALL_PATH"));
 
 #[derive(Debug, serde::Deserialize, serde::Serialize, Clone, Copy, PartialEq, Eq)]
 #[cfg_attr(feature = "cli", derive(clap::ValueEnum))]
@@ -145,39 +135,9 @@ pub struct CommonSettings {
     /// The Nix package URL
     #[cfg_attr(
         feature = "cli",
-        clap(long, env = "NIX_INSTALLER_NIX_PACKAGE_URL", global = true, value_parser = clap::value_parser!(UrlOrPath))
+        clap(long, env = "NIX_INSTALLER_NIX_PACKAGE_URL", global = true, value_parser = clap::value_parser!(UrlOrPath), default_value = None)
     )]
-    #[cfg_attr(
-        all(target_os = "macos", target_arch = "x86_64", feature = "cli"),
-        clap(
-            default_value = NIX_X64_64_DARWIN_URL,
-        )
-    )]
-    #[cfg_attr(
-        all(target_os = "macos", target_arch = "aarch64", feature = "cli"),
-        clap(
-            default_value = NIX_AARCH64_DARWIN_URL,
-        )
-    )]
-    #[cfg_attr(
-        all(target_os = "linux", target_arch = "x86_64", feature = "cli"),
-        clap(
-            default_value = NIX_X64_64_LINUX_URL,
-        )
-    )]
-    #[cfg_attr(
-        all(target_os = "linux", target_arch = "x86", feature = "cli"),
-        clap(
-            default_value = NIX_I686_LINUX_URL,
-        )
-    )]
-    #[cfg_attr(
-        all(target_os = "linux", target_arch = "aarch64", feature = "cli"),
-        clap(
-            default_value = NIX_AARCH64_LINUX_URL,
-        )
-    )]
-    pub nix_package_url: UrlOrPath,
+    pub nix_package_url: Option<UrlOrPath>,
 
     /// The proxy to use (if any), valid proxy bases are `https://$URL`, `http://$URL` and `socks5://$URL`
     #[cfg_attr(feature = "cli", clap(long, env = "NIX_INSTALLER_PROXY"))]
@@ -250,7 +210,6 @@ pub struct CommonSettings {
 impl CommonSettings {
     /// The default settings for the given Architecture & Operating System
     pub async fn default() -> Result<Self, InstallSettingsError> {
-        let url;
         let nix_build_user_prefix;
         let nix_build_user_id_base;
         let nix_build_user_count;
@@ -259,21 +218,18 @@ impl CommonSettings {
         match (Architecture::host(), OperatingSystem::host()) {
             #[cfg(target_os = "linux")]
             (Architecture::X86_64, OperatingSystem::Linux) => {
-                url = NIX_X64_64_LINUX_URL;
                 nix_build_user_prefix = "nixbld";
                 nix_build_user_id_base = 30000;
                 nix_build_user_count = 32;
             },
             #[cfg(target_os = "linux")]
             (Architecture::X86_32(_), OperatingSystem::Linux) => {
-                url = NIX_I686_LINUX_URL;
                 nix_build_user_prefix = "nixbld";
                 nix_build_user_id_base = 30000;
                 nix_build_user_count = 32;
             },
             #[cfg(target_os = "linux")]
             (Architecture::Aarch64(_), OperatingSystem::Linux) => {
-                url = NIX_AARCH64_LINUX_URL;
                 nix_build_user_prefix = "nixbld";
                 nix_build_user_id_base = 30000;
                 nix_build_user_count = 32;
@@ -281,7 +237,6 @@ impl CommonSettings {
             #[cfg(target_os = "macos")]
             (Architecture::X86_64, OperatingSystem::MacOSX { .. })
             | (Architecture::X86_64, OperatingSystem::Darwin) => {
-                url = NIX_X64_64_DARWIN_URL;
                 nix_build_user_prefix = "_nixbld";
                 nix_build_user_id_base = 300;
                 nix_build_user_count = 32;
@@ -289,7 +244,6 @@ impl CommonSettings {
             #[cfg(target_os = "macos")]
             (Architecture::Aarch64(_), OperatingSystem::MacOSX { .. })
             | (Architecture::Aarch64(_), OperatingSystem::Darwin) => {
-                url = NIX_AARCH64_DARWIN_URL;
                 nix_build_user_prefix = "_nixbld";
                 nix_build_user_id_base = 300;
                 nix_build_user_count = 32;
@@ -308,7 +262,7 @@ impl CommonSettings {
             nix_build_user_id_base,
             nix_build_user_count,
             nix_build_user_prefix: nix_build_user_prefix.to_string(),
-            nix_package_url: url.parse()?,
+            nix_package_url: None,
             proxy: Default::default(),
             extra_conf: Default::default(),
             force: false,

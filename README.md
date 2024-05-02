@@ -97,7 +97,7 @@ $ NIX_BUILD_GROUP_NAME=nixbuilder ./nix-installer install linux-multi --nix-buil
 
 ### Upgrading Nix
 
-You can upgrade Nix to the version described in [`DeterminateSystems/nix-upgrade`][nix-upgrade] by running:
+You can upgrade Nix to [our currently recommended version of Nix][recommended-nix] by running:
 
 ```
 sudo -i nix upgrade-nix
@@ -389,6 +389,9 @@ You'll also need to edit your `.cargo/config.toml` to use `tokio_unstable` as we
 rustflags=["--cfg", "tokio_unstable"]
 ```
 
+You'll also need to set the `NIX_INSTALLER_TARBALL_PATH` environment variable to point to a target-appropriate Nix installation tarball, like nix-2.21.2-aarch64-darwin.tar.xz.
+The contents are embedded in the resulting binary instead of downloaded at installation time.
+
 Then it's possible to review the [documentation](https://docs.rs/nix-installer/latest/nix_installer/):
 
 ```bash
@@ -440,7 +443,7 @@ Differing from the upstream [Nix](https://github.com/NixOS/nix) installer script
   + `auto-optimise-store` is set to `true` (On Linux only)
   * `extra-nix-path` is set to `nixpkgs=flake:nixpkgs`
   * `max-jobs` is set to `auto`
-  * `upgrade-nix-store-path-url` is set to `https://install.determinate.systems/nix-upgrade/stable/universal`
+  * `upgrade-nix-store-path-url` is set to `https://install.determinate.systems/nix-upgrade/stable/universal`, to prevent unintentional downgrades.
 * an installation receipt (for uninstalling) is stored at `/nix/receipt.json` as well as a copy of the install binary at `/nix/nix-installer`
 * `nix-channel --update` is not run, `~/.nix-channels` is not provisioned
 * `ssl-cert-file` is set in `/etc/nix/nix.conf` if the `ssl-cert-file` argument is used.
@@ -495,8 +498,8 @@ You can read the full privacy policy for [Determinate Systems][detsys], the crea
 [detsys]: https://determinate.systems/
 [diagnosticdata]: https://github.com/DeterminateSystems/nix-installer/blob/f9f927840d532b71f41670382a30cfcbea2d8a35/src/diagnostics.rs#L29-L43
 [privacy]: https://determinate.systems/policies/privacy
+[recommended-nix]: https://github.com/DeterminateSystems/nix/releases/latest
 [systemd]: https://systemd.io
 [wslg]: https://github.com/microsoft/wslg
 [nixgl]: https://github.com/guibou/nixGL
 [Nix]: https://nixos.org
-[nix-upgrade]: https://github.com/DeterminateSystems/nix-upgrade/blob/main/versions.nix

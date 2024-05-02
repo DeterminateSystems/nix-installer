@@ -11,6 +11,10 @@ on:
       - synchronize
       - labeled
 
+permissions:
+  id-token: "write"
+  contents: "read"
+
 jobs:
   build-x86_64-linux:
     # Only intra-repo PRs are allowed to have PR artifacts uploaded
@@ -89,8 +93,6 @@ jobs:
         || (github.event.action != 'labeled' && contains(github.event.pull_request.labels.*.name, 'upload to s3'))
       )
     runs-on: ubuntu-latest
-    permissions:
-      id-token: write # In order to request a JWT for AWS auth
     needs:
       - build-x86_64-linux
       - build-i686-linux

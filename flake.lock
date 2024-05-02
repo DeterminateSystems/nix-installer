@@ -88,6 +88,24 @@
     },
     "nix": {
       "inputs": {
+        "nix": "nix_2",
+        "nixpkgs": "nixpkgs_2"
+      },
+      "locked": {
+        "lastModified": 1713457987,
+        "narHash": "sha256-HNt+ocnqVlwGzYx+3DQRlfv06iSv2I7Ch5kuRH7W7m4=",
+        "rev": "f59b936e273bc761648b45a9f822693f0424da4d",
+        "revCount": 56,
+        "type": "tarball",
+        "url": "https://api.flakehub.com/f/pinned/DeterminateSystems/nix/2.21.2/018ef218-45b2-731b-8c3b-a9fc57c55fd1/source.tar.gz"
+      },
+      "original": {
+        "type": "tarball",
+        "url": "https://flakehub.com/f/DeterminateSystems/nix/%3D2.21.2.tar.gz"
+      }
+    },
+    "nix_2": {
+      "inputs": {
         "flake-compat": "flake-compat_2",
         "libgit2": "libgit2",
         "nixpkgs": "nixpkgs",
@@ -103,7 +121,7 @@
       },
       "original": {
         "type": "tarball",
-        "url": "https://flakehub.com/f/NixOS/nix/%3D2.21.2.tar.gz"
+        "url": "https://flakehub.com/f/NixOS/nix/%3D2.21.2"
       }
     },
     "nixpkgs": {
@@ -140,12 +158,26 @@
     },
     "nixpkgs_2": {
       "locked": {
-        "lastModified": 1712963716,
-        "narHash": "sha256-WKm9CvgCldeIVvRz87iOMi8CFVB1apJlkUT4GGvA0iM=",
-        "rev": "cfd6b5fc90b15709b780a5a1619695a88505a176",
-        "revCount": 611350,
+        "lastModified": 1714531828,
+        "narHash": "sha256-ILsf3bdY/hNNI/Hu5bSt2/KbmHaAVhBbNUOdGztTHEg=",
+        "rev": "0638fe2715d998fa81d173aad264eb671ce2ebc1",
+        "revCount": 558121,
         "type": "tarball",
-        "url": "https://api.flakehub.com/f/pinned/NixOS/nixpkgs/0.1.611350%2Brev-cfd6b5fc90b15709b780a5a1619695a88505a176/018eddfc-e6d9-74bb-a823-20f2ae60079b/source.tar.gz"
+        "url": "https://api.flakehub.com/f/pinned/NixOS/nixpkgs/0.2311.558121%2Brev-0638fe2715d998fa81d173aad264eb671ce2ebc1/018f3583-6e0d-7f3d-9871-ca7b6c8c73df/source.tar.gz"
+      },
+      "original": {
+        "type": "tarball",
+        "url": "https://flakehub.com/f/NixOS/nixpkgs/%2A"
+      }
+    },
+    "nixpkgs_3": {
+      "locked": {
+        "lastModified": 1710806803,
+        "narHash": "sha256-qrxvLS888pNJFwJdK+hf1wpRCSQcqA6W5+Ox202NDa0=",
+        "rev": "b06025f1533a1e07b6db3e75151caa155d1c7eb3",
+        "revCount": 598982,
+        "type": "tarball",
+        "url": "https://api.flakehub.com/f/pinned/NixOS/nixpkgs/0.1.598982%2Brev-b06025f1533a1e07b6db3e75151caa155d1c7eb3/018e577a-86bd-7b2f-b434-442e9ada5378/source.tar.gz"
       },
       "original": {
         "type": "tarball",
@@ -158,7 +190,7 @@
         "flake-compat": "flake-compat",
         "naersk": "naersk",
         "nix": "nix",
-        "nixpkgs": "nixpkgs_2"
+        "nixpkgs": "nixpkgs_3"
       }
     },
     "rust-analyzer-src": {
