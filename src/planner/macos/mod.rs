@@ -390,7 +390,7 @@ async fn check_suis() -> Result<(), PlannerError> {
             return Ok(());
         },
         [block] => format!(
-            "The following macOS configuration profile includes a 'Restrictions - Media' policy, which interferes with the Nix Store volume:\n\n{}",
+            "The following macOS configuration profile includes a 'Restrictions - Media' policy, which interferes with the Nix Store volume:\n\n{}\n\nSee https://determinate.systems/solutions/macos-internal-disk-policy",
             block
         ),
         blocks => {
