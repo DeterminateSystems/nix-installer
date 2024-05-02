@@ -382,7 +382,7 @@ async fn check_suis() -> Result<(), PlannerError> {
 
     let blocks: Vec<_> = profile_queries::blocks_internal_mounting(&policies)
         .into_iter()
-        .map(|tpopt| tpopt.display())
+        .map(|blocking_policy| blocking_policy.display())
         .collect();
 
     let error: String = match &blocks[..] {
