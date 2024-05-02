@@ -269,7 +269,7 @@ jobs:
 
   run-x86_64-darwin:
     name: Run x86_64 Darwin
-    runs-on: macos-latest
+    runs-on: macos-13
     needs: [lints, build-x86_64-darwin]
     permissions:
       id-token: "write"
