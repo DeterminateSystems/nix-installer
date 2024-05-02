@@ -14,7 +14,11 @@ pub enum LoadError {
 pub async fn load() -> Result<Policies, LoadError> {
     let buf = execute_command(
         tokio::process::Command::new("/usr/bin/profiles")
-            .args(["-P", "-o", "stdout-xml"])
+            // "prints all configuration profiles to console"
+            .arg("-P")
+            // "path to output XML plist file (for -P, -L, -C).  Use 'stdout' to send information to the console."
+            // NOTE(grahamc): `stdout` doesn't output XML formatting, but `stdout-xml` does
+            .args(["-o", "stdout-xml"])
             .stdin(std::process::Stdio::null()),
     )
     .await?
