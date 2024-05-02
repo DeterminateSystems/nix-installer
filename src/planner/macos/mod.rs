@@ -396,7 +396,7 @@ async fn check_suis() -> Result<(), PlannerError> {
         blocks => {
             format!(
                 "The following macOS profile policies prevent mounting internal hard disks:\n\n{}",
-                block
+                blocks.join("\n\n")
             )
         },
     };
