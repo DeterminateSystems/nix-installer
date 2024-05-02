@@ -1,6 +1,6 @@
 name: Build aarch64 Linux (static)
 
-on: 
+on:
   workflow_call:
     inputs:
       cache-key:
@@ -23,6 +23,8 @@ jobs:
         with:
           flakehub: true
       - uses: DeterminateSystems/magic-nix-cache-action@main
+        with:
+          use-gha-cache: false
       - name: Build the installer
         run: |
           nix build .#packages.aarch64-linux.nix-installer-static -L

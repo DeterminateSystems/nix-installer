@@ -2,7 +2,7 @@ name: update-flake-lock
 on:
   workflow_dispatch:
   schedule:
-    - cron: '0 0 * * 0'
+    - cron: "0 0 * * 0"
 
 jobs:
   lockfile:
@@ -17,8 +17,10 @@ jobs:
         uses: DeterminateSystems/nix-installer-action@main
         with:
           flakehub: true
-      - name: Enable magic Nix cache
+      - name: Enable Magic Nix Cache
         uses: DeterminateSystems/magic-nix-cache-action@main
+        with:
+          use-gha-cache: false
       - name: Check flake
         uses: DeterminateSystems/flake-checker-action@main
       - name: Update flake.lock
