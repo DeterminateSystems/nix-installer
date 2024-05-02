@@ -8,7 +8,7 @@
 		<dict>
 			<!-- Show the following data (if set, they're not required) to contextualize the issue: -->
 			<key>ProfileDescription</key>
-			<string></string>
+			<string>The description</string>
 			<key>ProfileDisplayName</key>
 			<string>Don't allow mounting internal devices</string>
 			<key>ProfileIdentifier</key>

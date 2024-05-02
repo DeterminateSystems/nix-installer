@@ -103,7 +103,7 @@ mod tests {
             Policies::from([(
                 Target::User("foo".into()),
                 vec![Profile {
-                    profile_description: Some("".into()),
+                    profile_description: Some("The description".into()),
                     profile_display_name: Some("Don't allow mounting internal devices".into()),
                     profile_identifier: Some(
                         "MyProfile.6F6670A3-65AC-4EA4-8665-91F8FCE289AB".into()

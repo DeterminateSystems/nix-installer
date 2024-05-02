@@ -111,7 +111,7 @@ mod tests {
             r#"A profile owned by foo:
  * Name: Don't allow mounting internal devices
  * Version: 1
- * Description: 
+ * Description: The description
  * ID: MyProfile.6F6670A3-65AC-4EA4-8665-91F8FCE289AB
  * UUID: 6F6670A3-65AC-4EA4-8665-91F8FCE289AB
  * Installation Date: 2024-04-22 14:12:42 +0000"#
