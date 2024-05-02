@@ -390,12 +390,12 @@ async fn check_suis() -> Result<(), PlannerError> {
             return Ok(());
         },
         [block] => format!(
-            "The following macOS configuration profile includes a 'Restrictions - Media' payload, which interferes with the Nix Store volume:\n\n{}",
+            "The following macOS configuration profile includes a 'Restrictions - Media' policy, which interferes with the Nix Store volume:\n\n{}",
             block
         ),
         blocks => {
             format!(
-                "The following macOS configuration profiles include a 'Restrictions - Media' payload, which interferes with the Nix Store volume:\n\n{}",
+                "The following macOS configuration profiles include a 'Restrictions - Media' policy, which interferes with the Nix Store volume:\n\n{}",
                 blocks.join("\n\n")
             )
         },
