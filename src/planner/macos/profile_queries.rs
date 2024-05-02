@@ -11,7 +11,7 @@ struct TargetProfileItem<'a> {
 pub struct TargetProfileHardDiskInternalOpts<'a> {
     pub target: &'a Target,
     pub profile: &'a Profile,
-    pub opts: &'a Vec<HardDiskInternalOpts>,
+    pub opts: &'a [HardDiskInternalOpts],
 }
 
 impl TargetProfileHardDiskInternalOpts<'_> {
