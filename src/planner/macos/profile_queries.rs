@@ -64,32 +64,31 @@ fn flatten(policies: &Policies) -> impl Iterator<Item = TargetProfileItem> {
 
 pub fn blocks_internal_mounting(policies: &Policies) -> Vec<TargetProfileHardDiskInternalOpts> {
     flatten(policies)
-        .filter_map(
-            move |TargetProfileItem {
-                      target,
-                      profile,
-                      item,
-                  }| match item {
-                ProfileItem::SystemUIServer(SystemUIServer {
-                    mount_controls: Some(MountControls { harddisk_internal }),
-                }) if harddisk_internal.iter().any(|x| {
-                    [
-                        HardDiskInternalOpts::ReadOnly,
-                        HardDiskInternalOpts::Deny,
-                        HardDiskInternalOpts::Eject,
-                    ]
-                    .contains(x)
-                }) =>
-                {
-                    Some(TargetProfileHardDiskInternalOpts {
-                        target,
-                        profile,
-                        opts: harddisk_internal,
-                    })
-                },
-                _ => None,
-            },
-        )
+        .filter_map(move |targetprofileitem| match targetprofileitem {
+            TargetProfileItem {
+                target,
+                profile,
+                item:
+                    ProfileItem::SystemUIServer(SystemUIServer {
+                        mount_controls: Some(MountControls { harddisk_internal }),
+                    }),
+            } => Some(TargetProfileHardDiskInternalOpts {
+                target,
+                profile,
+                opts: harddisk_internal,
+            }),
+            _ => None,
+        })
+        .filter(|TargetProfileHardDiskInternalOpts { opts, .. }| {
+            opts.iter().any(|x| {
+                [
+                    HardDiskInternalOpts::ReadOnly,
+                    HardDiskInternalOpts::Deny,
+                    HardDiskInternalOpts::Eject,
+                ]
+                .contains(x)
+            })
+        })
         .collect()
 }
 
