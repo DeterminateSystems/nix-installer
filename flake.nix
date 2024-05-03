@@ -66,7 +66,7 @@
           };
           sharedAttrs = {
             pname = "nix-installer";
-            version = "0.18.0";
+            version = "0.19.0";
             src = builtins.path {
               name = "nix-installer-source";
               path = self;
@@ -210,12 +210,14 @@
       hydraJobs = {
         vm-test = import ./nix/tests/vm-test {
           inherit forSystem;
-          inherit (nix.hydraJobs) binaryTarball;
           inherit (nixpkgs) lib;
+
+          binaryTarball = nix.tarballs_indirect;
         };
         container-test = import ./nix/tests/container-test {
           inherit forSystem;
-          inherit (nix.hydraJobs) binaryTarball;
+
+          binaryTarball = nix.tarballs_indirect;
         };
       };
     };
