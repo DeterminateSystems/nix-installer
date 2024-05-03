@@ -1,0 +1,49 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>_computerlevel</key>
+	<array>
+		<dict>
+			<key>ProfileDescription</key>
+			<string></string>
+			<key>ProfileDisplayName</key>
+			<string>macOS Software Update Policy: Mandatory Minor Upgrades</string>
+			<key>ProfileIdentifier</key>
+			<string>com.example</string>
+			<key>ProfileInstallDate</key>
+			<string>2024-04-22 00:00:00 +0000</string>
+			<key>ProfileItems</key>
+			<array>
+				<dict>
+					<key>PayloadContent</key>
+					<dict>
+						<key>AllowPreReleaseInstallation</key>
+						<false/>
+						<key>AutomaticCheckEnabled</key>
+						<true/>
+					</dict>
+					<key>PayloadIdentifier</key>
+					<string>abc123</string>
+					<key>PayloadType</key>
+					<string>com.apple.SoftwareUpdate</string>
+					<key>PayloadUUID</key>
+					<string>def456</string>
+					<key>PayloadVersion</key>
+					<integer>1</integer>
+				</dict>
+			</array>
+			<key>ProfileRemovalDisallowed</key>
+			<string>true</string>
+			<key>ProfileType</key>
+			<string>Configuration</string>
+			<key>ProfileUUID</key>
+			<string>F7972F85-2A4D-4609-A4BB-02CB0C34A3F8</string>
+			<key>ProfileVerificationState</key>
+			<string>verified</string>
+			<key>ProfileVersion</key>
+			<integer>1</integer>			
+		</dict>
+	</array>
+</dict>
+</plist>
