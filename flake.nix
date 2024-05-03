@@ -210,12 +210,14 @@
       hydraJobs = {
         vm-test = import ./nix/tests/vm-test {
           inherit forSystem;
-          inherit (nix.hydraJobs) binaryTarball;
           inherit (nixpkgs) lib;
+
+          binaryTarball = nix.tarballs_indirect;
         };
         container-test = import ./nix/tests/container-test {
           inherit forSystem;
-          inherit (nix.hydraJobs) binaryTarball;
+
+          binaryTarball = nix.tarballs_indirect;
         };
       };
     };
