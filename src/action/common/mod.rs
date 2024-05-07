@@ -1,5 +1,7 @@
 //! [`Action`](crate::action::Action)s which only call other base plugins
 
+#[cfg(all(target_os = "macos", not(feature = "nix-community")))]
+pub(crate) mod configure_enterprise_edition_init_service;
 pub(crate) mod configure_init_service;
 pub(crate) mod configure_nix;
 pub(crate) mod configure_shell_profile;
@@ -10,6 +12,8 @@ pub(crate) mod place_nix_configuration;
 pub(crate) mod provision_nix;
 pub(crate) mod setup_channels;
 
+#[cfg(all(target_os = "macos", not(feature = "nix-community")))]
+pub use configure_enterprise_edition_init_service::ConfigureEnterpriseEditionInitService;
 pub use configure_init_service::{ConfigureInitService, ConfigureNixDaemonServiceError};
 pub use configure_nix::ConfigureNix;
 pub use configure_shell_profile::ConfigureShellProfile;

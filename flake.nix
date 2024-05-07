@@ -2,10 +2,10 @@
   description = "Experimental Nix Installer";
 
   inputs = {
-    nixpkgs.url = "github:NixOS/nixpkgs/5e4c2ada4fcd54b99d56d7bd62f384511a7e2593";
+    nixpkgs.url = "github:NixOS/nixpkgs/63c3a29ca82437c87573e4c6919b09a24ea61b0f";
 
     fenix = {
-      url = "github:nix-community/fenix/9ccae1754eec0341b640d5705302ac0923d22875";
+      url = "github:nix-community/fenix/73124e1356bde9411b163d636b39fe4804b7ca45";
       inputs.nixpkgs.follows = "nixpkgs";
     };
 
@@ -15,7 +15,7 @@
     };
 
     nix = {
-      url = "github:NixOS/nix/f5f4de6a550327b4b1a06123c2e450f1b92c73b6";
+      url = "github:NixOS/nix/2.21.2";
       # Omitting `inputs.nixpkgs.follows = "nixpkgs";` on purpose
     };
 
@@ -55,6 +55,11 @@
         ] ++ nixpkgs.lib.optionals (system == "aarch64-linux") [
           targets.aarch64-unknown-linux-musl.stable.rust-std
         ]);
+
+    nixTarballForSystem = system: let
+      version = inputs.nix.packages.${system}.nix.version;
+    in "${inputs.nix.hydraJobs.binaryTarball.${system}}/nix-${version}-${system}.tar.xz";
+
     in
     {
       overlays.default = final: prev:
@@ -66,7 +71,7 @@
           };
           sharedAttrs = {
             pname = "nix-installer";
-            version = "0.14.0";
+            version = "0.19.0";
             src = builtins.path {
               name = "nix-installer-source";
               path = self;
@@ -86,6 +91,8 @@
             doDocFail = true;
             RUSTFLAGS = "--cfg tokio_unstable";
             cargoTestOptions = f: f ++ [ "--all" ];
+
+            NIX_INSTALLER_TARBALL_PATH = nixTarballForSystem final.stdenv.system;
 
             override = { preBuild ? "", ... }: {
               preBuild = preBuild + ''
@@ -130,6 +137,7 @@
             name = "nix-install-shell";
 
             RUST_SRC_PATH = "${toolchain}/lib/rustlib/src/rust/library";
+            NIX_INSTALLER_TARBALL_PATH = nixTarballForSystem system;
 
             nativeBuildInputs = with pkgs; [ ];
             buildInputs = with pkgs; [
@@ -205,15 +213,16 @@
         });
 
       hydraJobs = {
-        build = forAllSystems ({ system, pkgs, ... }: self.packages.${system}.default);
         # vm-test = import ./nix/tests/vm-test {
         #   inherit forSystem;
-        #   inherit (nix.hydraJobs) binaryTarball;
         #   inherit (nixpkgs) lib;
+
+        #   binaryTarball = nix.tarballs_indirect;
         # };
         # container-test = import ./nix/tests/container-test {
         #   inherit forSystem;
-        #   inherit (nix.hydraJobs) binaryTarball;
+
+        #   binaryTarball = nix.tarballs_indirect;
         # };
       };
     };

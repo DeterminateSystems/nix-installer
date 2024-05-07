@@ -1,0 +1,36 @@
+name: Build i686 Linux (static)
+
+on:
+  workflow_call:
+    inputs:
+      cache-key:
+        type: string
+        required: false
+        default: i686-linux-artifacts-${{ github.sha }}
+
+jobs:
+  build-i686-linux:
+    name: Build i686 Linux (static)
+    runs-on: UbuntuLatest32Cores128G
+    concurrency: ${{ inputs.cache-key }}
+    permissions:
+      id-token: "write"
+      contents: "read"
+    steps:
+      - uses: actions/checkout@v3
+      - name: Install Nix
+        uses: DeterminateSystems/nix-installer-action@main
+        with:
+          flakehub: true
+      - uses: DeterminateSystems/magic-nix-cache-action@main
+        with:
+          use-gha-cache: false
+      - name: Build the installer
+        run: |
+          nix build .#packages.i686-linux.nix-installer-static -L
+          cp result/bin/nix-installer .
+      - name: Create GitHub cache from build artifacts
+        uses: actions/cache/save@v3
+        with:
+          path: nix-installer
+          key: ${{ inputs.cache-key }}

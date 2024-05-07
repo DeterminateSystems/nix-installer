@@ -136,6 +136,7 @@ impl Action for CreateFstabEntry {
 
         let mut fstab = tokio::fs::OpenOptions::new()
             .create(true)
+            .truncate(false)
             .write(true)
             .read(true)
             .open(fstab_path)

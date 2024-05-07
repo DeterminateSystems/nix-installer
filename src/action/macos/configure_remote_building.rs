@@ -12,7 +12,7 @@ This enables remote building, which requires `ssh host nix` to work.
  */
 #[derive(Debug, serde::Deserialize, serde::Serialize, Clone)]
 pub struct ConfigureRemoteBuilding {
-    create_or_insert_into_file: StatefulAction<CreateOrInsertIntoFile>,
+    create_or_insert_into_file: Option<StatefulAction<CreateOrInsertIntoFile>>,
 }
 
 impl ConfigureRemoteBuilding {
@@ -29,16 +29,24 @@ fi
 "#
         );
 
-        let create_or_insert_into_file = CreateOrInsertIntoFile::plan(
-            Path::new("/etc/zshenv"),
-            None,
-            None,
-            0o644,
-            shell_buf.to_string(),
-            create_or_insert_into_file::Position::Beginning,
-        )
-        .await
-        .map_err(Self::error)?;
+        let zshenv = Path::new("/etc/zshenv");
+
+        let create_or_insert_into_file = if !zshenv.is_symlink() {
+            Some(
+                CreateOrInsertIntoFile::plan(
+                    zshenv,
+                    None,
+                    None,
+                    0o644,
+                    shell_buf.to_string(),
+                    create_or_insert_into_file::Position::Beginning,
+                )
+                .await
+                .map_err(Self::error)?,
+            )
+        } else {
+            None
+        };
 
         Ok(Self {
             create_or_insert_into_file,
@@ -63,7 +71,11 @@ impl Action for ConfigureRemoteBuilding {
 
     fn execute_description(&self) -> Vec<ActionDescription> {
         vec![ActionDescription::new(
-            self.tracing_synopsis(),
+            if self.create_or_insert_into_file.is_none() {
+                "Skipping configuring zsh to support using Nix in non-interactive shells, `/etc/zshenv` is a symlink".to_string()
+            } else {
+                self.tracing_synopsis()
+            },
             vec!["Update `/etc/zshenv` to import Nix".to_string()],
         )]
     }
@@ -71,11 +83,13 @@ impl Action for ConfigureRemoteBuilding {
     #[tracing::instrument(level = "debug", skip_all)]
     async fn execute(&mut self) -> Result<(), ActionError> {
         let span = tracing::Span::current().clone();
-        self.create_or_insert_into_file
-            .try_execute()
-            .instrument(span)
-            .await
-            .map_err(Self::error)?;
+        if let Some(create_or_insert_into_file) = &mut self.create_or_insert_into_file {
+            create_or_insert_into_file
+                .try_execute()
+                .instrument(span)
+                .await
+                .map_err(Self::error)?;
+        }
 
         Ok(())
     }
@@ -89,7 +103,9 @@ impl Action for ConfigureRemoteBuilding {
 
     #[tracing::instrument(level = "debug", skip_all)]
     async fn revert(&mut self) -> Result<(), ActionError> {
-        self.create_or_insert_into_file.try_revert().await?;
+        if let Some(create_or_insert_into_file) = &mut self.create_or_insert_into_file {
+            create_or_insert_into_file.try_revert().await?
+        };
 
         Ok(())
     }

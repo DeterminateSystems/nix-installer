@@ -133,6 +133,11 @@ impl PlaceNixConfiguration {
                 "extra-nix-path".to_string(),
                 "nixpkgs=flake:nixpkgs".to_string(),
             );
+
+            settings.insert(
+                "upgrade-nix-store-path-url".to_string(),
+                "https://install.determinate.systems/nix-upgrade/stable/universal".to_string(),
+            );
         }
 
         let create_directory = CreateDirectory::plan(NIX_CONF_FOLDER, None, None, 0o0755, force)

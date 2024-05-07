@@ -8,6 +8,9 @@ use which::which;
 use super::ShellProfileLocations;
 use crate::planner::HasExpectedErrors;
 
+mod profile_queries;
+mod profiles;
+
 use crate::{
     action::{
         base::RemoveDirectory,
@@ -110,6 +113,9 @@ impl Planner for Macos {
             },
         };
 
+        // The encrypt variable isn't used in the enterprise edition since we have our own plan step for it,
+        // however this match accounts for enterprise edition so the receipt indicates encrypt: true.
+        // This is a goofy thing to do, but it is in an attempt to make a more globally coherent plan / receipt.
         let encrypt = match self.encrypt {
             Some(choice) => choice,
             None => {
@@ -135,13 +141,14 @@ impl Planner for Macos {
             CreateNixVolume::plan(
                 root_disk.unwrap(), /* We just ensured it was populated */
                 self.volume_label.clone(),
-                false,
+                self.case_sensitive,
                 encrypt,
             )
             .await
             .map_err(PlannerError::Action)?
             .boxed(),
         );
+
         plan.push(
             ProvisionNix::plan(&self.settings)
                 .await
@@ -259,6 +266,7 @@ impl Planner for Macos {
     }
 
     async fn pre_install_check(&self) -> Result<(), PlannerError> {
+        check_suis().await?;
         check_not_running_in_rosetta()?;
 
         Ok(())
@@ -314,17 +322,67 @@ fn check_not_running_in_rosetta() -> Result<(), PlannerError> {
     Ok(())
 }
 
+async fn check_suis() -> Result<(), PlannerError> {
+    let policies: profiles::Policies = match profiles::load().await {
+        Ok(pol) => pol,
+        Err(e) => {
+            tracing::warn!(
+                "Skipping SystemUIServer checks: failed to load profile data: {:?}",
+                e
+            );
+            return Ok(());
+        },
+    };
+
+    let blocks: Vec<_> = profile_queries::blocks_internal_mounting(&policies)
+        .into_iter()
+        .map(|blocking_policy| blocking_policy.display())
+        .collect();
+
+    let error: String = match &blocks[..] {
+        [] => {
+            return Ok(());
+        },
+        [block] => format!(
+            "The following macOS configuration profile includes a 'Restrictions - Media' policy, which interferes with the Nix Store volume:\n\n{}\n\nSee https://determinate.systems/solutions/macos-internal-disk-policy",
+            block
+        ),
+        blocks => {
+            format!(
+                "The following macOS configuration profiles include a 'Restrictions - Media' policy, which interferes with the Nix Store volume:\n\n{}\n\nSee https://determinate.systems/solutions/macos-internal-disk-policy",
+                blocks.join("\n\n")
+            )
+        },
+    };
+
+    Err(MacosError::BlockedBySystemUIServerPolicy(error))
+        .map_err(|e| PlannerError::Custom(Box::new(e)))
+}
+
+#[cfg(not(feature = "nix-community"))]
+async fn check_enterprise_edition_available() -> Result<(), PlannerError> {
+    tokio::fs::metadata("/usr/local/bin/determinate-nix-ee")
+        .await
+        .map_err(|_| PlannerError::EnterpriseEditionUnavailable)?;
+
+    Ok(())
+}
+
 #[non_exhaustive]
 #[derive(thiserror::Error, Debug)]
 pub enum MacosError {
     #[error("`nix-darwin` installation detected, it must be removed before uninstalling Nix. Please refer to https://github.com/LnL7/nix-darwin#uninstalling for instructions how to uninstall `nix-darwin`.")]
     UninstallNixDarwin,
+
+    #[error("{0}")]
+    BlockedBySystemUIServerPolicy(String),
 }
 
 impl HasExpectedErrors for MacosError {
     fn expected<'a>(&'a self) -> Option<Box<dyn std::error::Error + 'a>> {
         match self {
             this @ MacosError::UninstallNixDarwin => Some(Box::new(this)),
+            this @ MacosError::BlockedBySystemUIServerPolicy(_) => Some(Box::new(this)),
         }
     }
 }

@@ -1,17 +1,11 @@
 [package]
 name = "nix-installer"
 description = "Experimental Nix Installer"
-version = "0.14.0"
+version = "0.19.0"
 edition = "2021"
 resolver = "2"
 license = "LGPL-2.1"
 repository = "https://github.com/NixOS/experimental-nix-installer"
-
-[package.metadata.riff.targets.aarch64-apple-darwin]
-build-inputs = ["darwin.apple_sdk.frameworks.Security"]
-
-[package.metadata.riff.targets.x86_64-apple-darwin]
-build-inputs = ["darwin.apple_sdk.frameworks.Security"]
 
 [features]
 default = ["cli", "nix-community"]
@@ -30,15 +24,15 @@ clap = { version = "4", features = ["std", "color", "usage", "help", "error-cont
 color-eyre = { version = "0.6.2", default-features = false, features = [ "track-caller", "issue-url", "tracing-error", "capture-spantrace", "color-spantrace" ], optional = true }
 eyre = { version = "0.6.8", default-features = false, features = [ "track-caller" ], optional = true }
 glob = { version = "0.3.0", default-features = false }
-nix = { version = "0.27.0", default-features = false, features = ["user", "fs", "process", "term"] }
-owo-colors = { version = "3.5.0", default-features = false, features = [ "supports-colors" ] }
-reqwest = { version = "0.11.11", default-features = false, features = ["rustls-tls-native-roots", "stream", "socks"] }
-serde = { version = "1.0.144", default-features = false, features = [ "std", "derive" ] }
-serde_json = { version = "1.0.85", default-features = false, features = [ "std" ] }
+nix = { version = "0.28.0", default-features = false, features = ["user", "fs", "process", "term"] }
+owo-colors = { version = "4.0.0", default-features = false, features = [ "supports-colors" ] }
+reqwest = { version = "0.12.4", default-features = false, features = ["rustls-tls-native-roots", "stream", "socks"] }
+serde = { version = "1.0.200", default-features = false, features = [ "std", "derive" ] }
+serde_json = { version = "1.0.116", default-features = false, features = [ "std" ] }
 serde_with = { version = "3", default-features = false, features = [ "std", "macros" ] }
 tar = { version = "0.4.38", default-features = false, features = [ "xattr" ] }
 target-lexicon = { version = "0.12.4", default-features = false, features = [ "std" ] }
-thiserror = { version = "1.0.33", default-features = false }
+thiserror = { version = "1.0.59", default-features = false }
 tokio = { version = "1.21.0", default-features = false, features = ["time", "io-std", "process", "fs", "signal", "tracing", "rt-multi-thread", "macros", "io-util", "parking_lot" ] }
 tracing = { version = "0.1.36", default-features = false, features = [ "std", "attributes" ] }
 tracing-error = { version = "0.2.0", default-features = false, optional = true, features = ["traced-error"] }
@@ -55,9 +49,9 @@ term = { version = "0.7.0", default-features = false }
 uuid = { version = "1.2.2", features = ["serde"] }
 os-release = { version = "0.1.0", default-features = false }
 is_ci = { version = "1.1.1", default-features = false, optional = true }
-strum = { version = "0.25.0", features = ["derive"] }
+strum = { version = "0.26.1", features = ["derive"] }
 nix-config-parser = { version = "0.2", features = ["serde"] }
-which = "4.4.0"
+which = "6.0.0"
 sysctl = "0.5.4"
 walkdir = "2.3.3"
 indexmap = { version = "2.0.2", features = ["serde"] }
