@@ -15,7 +15,7 @@
     };
 
     nix = {
-      url = "https://flakehub.com/f/DeterminateSystems/nix/=2.21.2.tar.gz";
+      url = "github:DeterminateSystems/nix/lazy-trees";
       # Omitting `inputs.nixpkgs.follows = "nixpkgs";` on purpose
     };
 
