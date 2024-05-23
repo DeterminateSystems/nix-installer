@@ -59,7 +59,7 @@ jobs:
       contents: "read"
     steps:
       - uses: actions/checkout@v3
-      - name: Restore Github cache of Buildkite artifacts
+      - name: Restore Github cache artifacts
         uses: actions/cache/restore@v3
         with:
           path: nix-installer
@@ -167,7 +167,7 @@ jobs:
       contents: "read"
     steps:
       - uses: actions/checkout@v3
-      - name: Restore Github cache of Buildkite artifacts
+      - name: Restore Github cache artifacts
         uses: actions/cache/restore@v3
         with:
           path: nix-installer
@@ -281,7 +281,7 @@ jobs:
       contents: "read"
     steps:
       - uses: actions/checkout@v3
-      - name: Restore Github cache of Buildkite artifacts
+      - name: Restore Github cache artifacts
         uses: actions/cache/restore@v3
         with:
           path: nix-installer
@@ -369,7 +369,7 @@ jobs:
       contents: "read"
     steps:
       - uses: actions/checkout@v3
-      - name: Restore Github cache of Buildkite artifacts
+      - name: Restore Github cache artifacts
         uses: actions/cache/restore@v3
         with:
           path: nix-installer
