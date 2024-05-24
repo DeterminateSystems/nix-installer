@@ -357,12 +357,7 @@ jobs:
 
   run-aarch64-linux:
     name: Run aarch64 Linux
-    runs-on: ${{ matrix.system }}
-    strategy:
-      matrix:
-        system:
-          - namespace-profile-default-arm64
-          - nscloud-ubuntu-22.04-amd64-4x16
+    runs-on: namespace-profile-default-arm64
     needs: [lints, build-aarch64-linux]
     permissions:
       id-token: "write"
@@ -380,7 +375,7 @@ jobs:
           cp nix-installer.sh install-root/nix-installer.sh
           mv ./nix-installer install-root/nix-installer-aarch64-linux
           chmod +x install-root/nix-installer-aarch64-linux install-root/nix-installer.sh
-      - run: sudo apt install -y fish zsh
+      - run: sudo apt install fish zsh
       - name: Initial install
         uses: DeterminateSystems/nix-installer-action@main
         with:
