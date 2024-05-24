@@ -115,11 +115,12 @@ jobs:
       - name: Test `nix` with `$GITHUB_PATH`
         if: success() || failure()
         run: |
-          nix run nixpkgs#hello
-          nix profile install nixpkgs#hello
+          nix-channel --update nixpkgs
+          nix-shell -p hello --command hello
+          nix-env --install hello
           hello
-          nix store gc
-          nix run nixpkgs#hello
+          nix-store --gc
+          nix-shell -p hello --command hello
       - name: Test bash
         run: nix-instantiate -E 'builtins.currentTime' --eval
         if: success() || failure()
@@ -229,11 +230,12 @@ jobs:
       - name: Test `nix` with `$GITHUB_PATH`
         if: success() || failure()
         run: |
-          sudo -i nix run nixpkgs#hello
-          sudo -i nix profile install nixpkgs#hello
-          hello
-          sudo -i nix store gc
-          sudo -i nix run nixpkgs#hello
+          sudo -i nix-channel --update nixpkgs
+          sudo -i nix-shell -p hello --command hello
+          sudo -i nix-env --install hello
+          sudo -i hello
+          sudo -i nix-store --gc
+          sudo -i nix-shell -p hello --command hello
       - name: Test bash
         run: sudo -i nix-instantiate -E 'builtins.currentTime' --eval
         if: success() || failure()
@@ -326,11 +328,12 @@ jobs:
       - name: Test `nix` with `$GITHUB_PATH`
         if: success() || failure()
         run: |
-          nix run nixpkgs#hello
-          nix profile install nixpkgs#hello
+          nix-channel --update nixpkgs
+          nix-shell -p hello --command hello
+          nix-env --install hello
           hello
-          nix store gc
-          nix run nixpkgs#hello
+          nix-store --gc
+          nix-shell -p hello --command hello
       - name: Test bash
         run: nix-instantiate -E 'builtins.currentTime' --eval
         if: success() || failure()
