@@ -17,7 +17,7 @@ jobs:
     uses: ./.github/workflows/build-x86_64-darwin.yml
 
   build-aarch64-linux:
-    uses: ./.github/workflows/build-aarch64-darwin.yml
+    uses: ./.github/workflows/build-aarch64-linux.yml
 
   lints:
     name: Lints
