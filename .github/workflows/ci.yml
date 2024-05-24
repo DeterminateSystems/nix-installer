@@ -12,7 +12,6 @@ permissions:
 jobs:
   build-x86_64-linux:
     uses: ./.github/workflows/build-x86_64-linux.yml
-  
   build-x86_64-darwin:
     uses: ./.github/workflows/build-x86_64-darwin.yml
 
