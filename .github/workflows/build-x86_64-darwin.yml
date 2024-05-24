@@ -7,11 +7,15 @@ on:
         type: string
         required: false
         default: x86_64-darwin-artifacts-${{ github.sha }}
+      runs-on:
+        type: string
+        required: true
+        default: macos-13-large
 
 jobs:
   build-x86_64-darwin:
     name: Build x86_64 Darwin
-    runs-on: macos-13-large
+    runs-on: ${{ inputs.runs-on }}
     concurrency: ${{ inputs.cache-key }}
     permissions:
       id-token: "write"

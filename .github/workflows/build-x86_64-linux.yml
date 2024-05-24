@@ -7,11 +7,15 @@ on:
         type: string
         required: false
         default: x86_64-linux-artifacts-${{ github.sha }}
+      runs-on:
+        type: string
+        required: true
+        default: UbuntuLatest32Cores128G
 
 jobs:
   build-x86_64-linux:
     name: Build x86_64 Linux (static)
-    runs-on: UbuntuLatest32Cores128G
+    runs-on: ${{ inputs.runs-on }}
     concurrency: ${{ inputs.cache-key }}
     permissions:
       id-token: "write"

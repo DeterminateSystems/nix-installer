@@ -7,11 +7,15 @@ on:
         type: string
         required: false
         default: i686-linux-artifacts-${{ github.sha }}
+      runs-on:
+        type: string
+        required: true
+        default: UbuntuLatest32Cores128G
 
 jobs:
   build-i686-linux:
     name: Build i686 Linux (static)
-    runs-on: UbuntuLatest32Cores128G
+    runs-on: ${{ inputs.runs-on }}
     concurrency: ${{ inputs.cache-key }}
     permissions:
       id-token: "write"

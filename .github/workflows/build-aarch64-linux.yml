@@ -7,11 +7,15 @@ on:
         type: string
         required: false
         default: aarch64-linux-artifacts-${{ github.sha }}
+      runs-on:
+        type: string
+        required: true
+        default: namespace-profile-default-arm64
 
 jobs:
   build-aarch64-linux:
     name: Build aarch64 Linux (static)
-    runs-on: namespace-profile-default-arm64
+    runs-on: ${{ inputs.runs-on }}
     concurrency: ${{ inputs.cache-key }}
     permissions:
       id-token: "write"
