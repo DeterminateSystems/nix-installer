@@ -56,9 +56,11 @@
           targets.aarch64-unknown-linux-musl.stable.rust-std
         ]);
 
-    nixTarballForSystem = system: let
-      version = inputs.nix.packages.${system}.nix.version;
-    in "${inputs.nix.hydraJobs.binaryTarball.${system}}/nix-${version}-${system}.tar.xz";
+      nixTarballForSystem = system:
+        let
+          version = inputs.nix.packages.${system}.nix.version;
+        in
+        "${inputs.nix.hydraJobs.binaryTarball.${system}}/nix-${version}-${system}.tar.xz";
 
     in
     {
