@@ -380,7 +380,7 @@ jobs:
           cp nix-installer.sh install-root/nix-installer.sh
           mv ./nix-installer install-root/nix-installer-aarch64-linux
           chmod +x install-root/nix-installer-aarch64-linux install-root/nix-installer.sh
-      - run: sudo apt install fish zsh
+      - run: sudo apt install -y fish zsh
       - name: Initial install
         uses: DeterminateSystems/nix-installer-action@main
         with:
