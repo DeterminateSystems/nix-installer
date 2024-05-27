@@ -378,7 +378,7 @@
                 "path": "/etc/nix/nix.conf",
                 "pending_nix_config": {
                   "settings": {
-                    "always-allow-substitutes": true,
+                    "always-allow-substitutes": "true",
                     "extra-nix-path": "nixpkgs=flake:nixpkgs",
                     "auto-allocate-uids": "true",
                     "auto-optimise-store": "true",

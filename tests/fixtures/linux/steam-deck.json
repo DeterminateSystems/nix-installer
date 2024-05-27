@@ -341,7 +341,7 @@
                 "path": "/etc/nix/nix.conf",
                 "pending_nix_config": {
                   "settings": {
-                    "always-allow-substitutes": true,
+                    "always-allow-substitutes": "true",
                     "auto-optimise-store": "true",
                     "bash-prompt-prefix": "(nix:$name)\\040",
                     "build-users-group": "nixbld",
