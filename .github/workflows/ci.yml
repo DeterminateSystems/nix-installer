@@ -34,10 +34,9 @@ jobs:
           check-outdated: false # PRs shouldn't fail because main's nixpkgs is out of date
       - name: Install Nix
         uses: DeterminateSystems/nix-installer-action@main
-        with:
-          flakehub: true
       - uses: DeterminateSystems/magic-nix-cache-action@main
         with:
+          use-flakehub: false
           use-gha-cache: false
       - name: Check rustfmt
         run: nix develop --command check-rustfmt
@@ -74,7 +73,6 @@ jobs:
       - name: Initial install
         uses: DeterminateSystems/nix-installer-action@main
         with:
-          flakehub: true
           local-root: install-root/
           logger: pretty
           log-directives: nix_installer=debug
@@ -104,7 +102,6 @@ jobs:
       - name: Repeated install
         uses: DeterminateSystems/nix-installer-action@main
         with:
-          flakehub: true
           local-root: install-root/
           logger: pretty
           log-directives: nix_installer=debug
@@ -182,7 +179,6 @@ jobs:
       - name: Initial install
         uses: DeterminateSystems/nix-installer-action@main
         with:
-          flakehub: true
           init: none
           planner: linux
           local-root: install-root/
@@ -216,7 +212,6 @@ jobs:
       - name: Repeated install
         uses: DeterminateSystems/nix-installer-action@main
         with:
-          flakehub: true
           init: none
           planner: linux
           local-root: install-root/
@@ -296,7 +291,6 @@ jobs:
       - name: Initial install
         uses: DeterminateSystems/nix-installer-action@main
         with:
-          flakehub: true
           local-root: install-root/
           logger: pretty
           log-directives: nix_installer=debug
@@ -314,7 +308,6 @@ jobs:
       - name: Repeated install
         uses: DeterminateSystems/nix-installer-action@main
         with:
-          flakehub: true
           local-root: install-root/
           logger: pretty
           log-directives: nix_installer=debug

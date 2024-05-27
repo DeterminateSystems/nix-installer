@@ -24,10 +24,9 @@ jobs:
       - uses: actions/checkout@v3
       - name: Install Nix
         uses: DeterminateSystems/nix-installer-action@main
-        with:
-          flakehub: true
       - uses: DeterminateSystems/magic-nix-cache-action@main
         with:
+          use-flakehub: false
           use-gha-cache: false
       - name: Build the installer
         run: |
