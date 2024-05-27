@@ -115,7 +115,6 @@ jobs:
       - name: Test `nix` with `$GITHUB_PATH`
         if: success() || failure()
         run: |
-          nix-channel --update nixpkgs
           nix-shell -p hello --command hello
           nix-env --install hello
           hello
@@ -230,7 +229,6 @@ jobs:
       - name: Test `nix` with `$GITHUB_PATH`
         if: success() || failure()
         run: |
-          sudo -i nix-channel --update nixpkgs
           sudo -i nix-shell -p hello --command hello
           sudo -i nix-env --install hello
           sudo -i hello
@@ -328,7 +326,6 @@ jobs:
       - name: Test `nix` with `$GITHUB_PATH`
         if: success() || failure()
         run: |
-          nix-channel --update nixpkgs
           nix-shell -p hello --command hello
           nix-env --install hello
           hello
