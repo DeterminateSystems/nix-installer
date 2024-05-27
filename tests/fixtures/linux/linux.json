@@ -354,6 +354,7 @@
                 "path": "/etc/nix/nix.conf",
                 "pending_nix_config": {
                   "settings": {
+                    "always-allow-substitutes": "true",
                     "experimental-features": "nix-command flakes auto-allocate-uids",
                     "build-users-group": "nixbld",
                     "auto-optimise-store": "true",
