@@ -1,0 +1,39 @@
+name: Build x86_64 Linux (static)
+
+on:
+  workflow_call:
+    inputs:
+      cache-key:
+        type: string
+        required: false
+        default: x86_64-linux-artifacts-${{ github.sha }}
+      runs-on:
+        type: string
+        required: true
+        default: UbuntuLatest32Cores128G
+
+jobs:
+  build-x86_64-linux:
+    name: Build x86_64 Linux (static)
+    runs-on: ${{ inputs.runs-on }}
+    concurrency: ${{ inputs.cache-key }}
+    permissions:
+      id-token: "write"
+      contents: "read"
+    steps:
+      - uses: actions/checkout@v3
+      - name: Install Nix
+        uses: DeterminateSystems/nix-installer-action@main
+      - uses: DeterminateSystems/magic-nix-cache-action@main
+        with:
+          use-flakehub: false
+          use-gha-cache: false
+      - name: Build the installer
+        run: |
+          nix build .#packages.x86_64-linux.nix-installer-static -L
+          cp result/bin/nix-installer .
+      - name: Create GitHub cache from build artifacts
+        uses: actions/cache/save@v3
+        with:
+          path: nix-installer
+          key: ${{ inputs.cache-key }}

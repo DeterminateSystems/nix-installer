@@ -269,9 +269,9 @@ This package uses [Semantic Versioning](https://semver.org/). When determining t
 To cut a release:
 
 * Ensure the `flake.lock`, `Cargo.lock`, and Rust dependencies are up-to-date with the following:
-  + `nix flake update`
-  + `cargo update`
-  + `cargo outdated`
+  + `nix flake update --commit-lock-file`
+  + `cargo outdated --ignore-external-rel --aggressive`
+  + `cargo update --aggressive`
   + Make a PR for for this and let it get merged separately
 * Create a release branch from `main` (`git checkout -b release-v0.0.1`)
 * Remove the `-unreleased` from the `version` field in `Cargo.toml`, `flake.nix`, and the fixture JSON files

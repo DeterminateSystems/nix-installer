@@ -44,25 +44,29 @@ impl ConfigureShellProfile {
         for profile_target in locations.bash.iter().chain(locations.zsh.iter()) {
             let profile_target_path = Path::new(profile_target);
             if let Some(parent) = profile_target_path.parent() {
-                if !parent.exists() {
-                    create_directories.push(
-                        CreateDirectory::plan(parent, None, None, 0o0755, false)
-                            .await
-                            .map_err(Self::error)?,
+                // Some tools (eg `nix-darwin`) create symlinks to these files, don't write to them if that's the case.
+                if !profile_target_path.is_symlink() {
+                    if !parent.exists() {
+                        create_directories.push(
+                            CreateDirectory::plan(parent, None, None, 0o0755, false)
+                                .await
+                                .map_err(Self::error)?,
+                        );
+                    }
+
+                    create_or_insert_files.push(
+                        CreateOrInsertIntoFile::plan(
+                            profile_target_path,
+                            None,
+                            None,
+                            0o644,
+                            shell_buf.to_string(),
+                            create_or_insert_into_file::Position::Beginning,
+                        )
+                        .await
+                        .map_err(Self::error)?,
                     );
                 }
-                create_or_insert_files.push(
-                    CreateOrInsertIntoFile::plan(
-                        profile_target_path,
-                        None,
-                        None,
-                        0o644,
-                        shell_buf.to_string(),
-                        create_or_insert_into_file::Position::Beginning,
-                    )
-                    .await
-                    .map_err(Self::error)?,
-                );
             }
         }
 
@@ -88,23 +92,27 @@ impl ConfigureShellProfile {
             let mut profile_target = fish_prefix_path;
             profile_target.push(locations.fish.confd_suffix.clone());
 
-            if let Some(conf_d) = profile_target.parent() {
-                create_directories.push(
-                    CreateDirectory::plan(conf_d.to_path_buf(), None, None, 0o755, false).await?,
+            // Some tools (eg `nix-darwin`) create symlinks to these files, don't write to them if that's the case.
+            if !profile_target.is_symlink() {
+                if let Some(conf_d) = profile_target.parent() {
+                    create_directories.push(
+                        CreateDirectory::plan(conf_d.to_path_buf(), None, None, 0o755, false)
+                            .await?,
+                    );
+                }
+
+                create_or_insert_files.push(
+                    CreateOrInsertIntoFile::plan(
+                        profile_target,
+                        None,
+                        None,
+                        0o644,
+                        fish_buf.to_string(),
+                        create_or_insert_into_file::Position::Beginning,
+                    )
+                    .await?,
                 );
             }
-
-            create_or_insert_files.push(
-                CreateOrInsertIntoFile::plan(
-                    profile_target,
-                    None,
-                    None,
-                    0o644,
-                    fish_buf.to_string(),
-                    create_or_insert_into_file::Position::Beginning,
-                )
-                .await?,
-            );
         }
         for fish_prefix in &locations.fish.vendor_confd_prefixes {
             let fish_prefix_path = PathBuf::from(fish_prefix);

@@ -13,14 +13,14 @@ If you used the **Determinate Nix Installer**, report issues at https://github.c
 [![Crates.io](https://img.shields.io/crates/v/nix-installer)](https://crates.io/crates/nix-installer)
 [![Docs.rs](https://img.shields.io/docsrs/nix-installer)](https://docs.rs/nix-installer/latest/nix_installer/)
 
-A fast, friendly, and reliable tool to help you use Nix with Flakes everywhere.
+A fast, friendly, and reliable tool to help you use [Nix] with Flakes everywhere.
 
 
 ```bash
 curl --proto '=https' --tlsv1.2 -sSf -L https://install.determinate.systems/nix | sh -s -- install
 ```
 
-The `nix-installer` has successfully completed over 1,000,000 installs in a number of environments, including [Github Actions](#as-a-github-action):
+The `nix-installer` has successfully completed over 2,000,000 installs in a number of environments, including [Github Actions](#as-a-github-action) and [GitLab](#on-gitlab):
 
 | Platform                     | Multi User         | `root` only | Maturity          |
 |------------------------------|:------------------:|:-----------:|:-----------------:|
@@ -85,13 +85,13 @@ Options:
 # ...
       --nix-build-group-name <NIX_BUILD_GROUP_NAME>
           The Nix build group name
-          
+
           [env: NIX_INSTALLER_NIX_BUILD_GROUP_NAME=]
           [default: nixbld]
 
       --nix-build-group-id <NIX_BUILD_GROUP_ID>
           The Nix build group GID
-          
+
           [env: NIX_INSTALLER_NIX_BUILD_GROUP_ID=]
           [default: 3000]
 # ...
@@ -107,7 +107,7 @@ $ NIX_BUILD_GROUP_NAME=nixbuilder ./nix-installer install linux-multi --nix-buil
 
 ### Upgrading Nix
 
-You can upgrade Nix (to the version specified [here](https://raw.githubusercontent.com/NixOS/nixpkgs/master/nixos/modules/installer/tools/nix-fallback-paths.nix)) by running:
+You can upgrade Nix to [our currently recommended version of Nix][recommended-nix] by running:
 
 ```
 sudo -i nix upgrade-nix
@@ -145,6 +145,24 @@ jobs:
     - name: Run `nix build`
       run: nix build .
 ```
+
+### On GitLab
+
+GitLab CI runners are typically Docker based and run as the `root` user. This means `systemd` is not present, so the `--init none` option needs to be passed to the Linux planner. 
+
+On the default [GitLab.com](https://gitlab.com/) runners, `nix` can be installed and used like so:
+
+```yaml
+test:
+  script:
+  - curl --proto '=https' --tlsv1.2 -sSf -L https://install.determinate.systems/nix | sh -s -- install linux --no-confirm --init none
+  - . /nix/var/nix/profiles/default/etc/profile.d/nix-daemon.sh
+  - nix run nixpkgs#hello
+  - nix profile install nixpkgs#hello
+  - hello
+```
+
+If you are using different runners, the above example may need to be adjusted.
 
 ### Without systemd (Linux only)
 
@@ -246,7 +264,7 @@ wsl nix run --impure github:guibou/nixGL nix run nixpkgs#obs-studio
 ```
 
 
-If enabling system is not an option, pass `--init none` at the end of the command:
+If enabling systemd is not an option, pass `--init none` at the end of the command:
 
 > **Warning**
 > When `--init none` is used, _only_ `root` or users who can elevate to `root` privileges can run Nix:
@@ -363,7 +381,7 @@ To make this build portable, pass ` --target x86_64-unknown-linux-musl`.
 ## As a library
 
 > **Warning**
-> Use as a library is still experimental. This feature is likely to be removed in the future without an advocate. If you're using this, please let us know and we can make a path to stablization.
+> Use as a library is still experimental. This feature is likely to be removed in the future without an advocate. If you're using this, please let us know and we can make a path to stabilization.
 
 Add `nix-installer` to your dependencies:
 
@@ -380,6 +398,9 @@ You'll also need to edit your `.cargo/config.toml` to use `tokio_unstable` as we
 [build]
 rustflags=["--cfg", "tokio_unstable"]
 ```
+
+You'll also need to set the `NIX_INSTALLER_TARBALL_PATH` environment variable to point to a target-appropriate Nix installation tarball, like nix-2.21.2-aarch64-darwin.tar.xz.
+The contents are embedded in the resulting binary instead of downloaded at installation time.
 
 Then it's possible to review the [documentation](https://docs.rs/nix-installer/latest/nix_installer/):
 
@@ -414,6 +435,13 @@ curl -sSf -L https://github.com/DeterminateSystems/nix-installer/releases/downlo
 ./nix-installer install
 ```
 
+Each installer version has an [associated supported nix version](src/settings.rs) -- if you pin the installer version, you'll also indirectly pin to the associated nix version.
+
+You can also override the `nix` version via `--nix-package-url` or `NIX_INSTALLER_NIX_PACKAGE_URL=` but doing so is not recommended since we haven't tested that combination.
+Here are some example `nix` package URLs including nix version, OS and architecture:
+
+* https://releases.nixos.org/nix/nix-2.18.1/nix-2.18.1-x86_64-linux.tar.xz
+* https://releases.nixos.org/nix/nix-2.18.1/nix-2.18.1-aarch64-darwin.tar.xz
 
 ## Installation Differences
 

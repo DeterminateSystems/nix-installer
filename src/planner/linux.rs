@@ -220,9 +220,9 @@ pub(crate) async fn check_nix_not_already_installed() -> Result<(), PlannerError
 pub(crate) fn check_systemd_active() -> Result<(), PlannerError> {
     if !Path::new("/run/systemd/system").exists() {
         if std::env::var("WSL_DISTRO_NAME").is_ok() {
-            return Err(LinuxErrorKind::Wsl2SystemdNotActive)?;
+            return Err(LinuxErrorKind::Wsl2SystemdNotActive.into());
         } else {
-            return Err(LinuxErrorKind::SystemdNotActive)?;
+            return Err(LinuxErrorKind::SystemdNotActive.into());
         }
     }
 

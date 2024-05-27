@@ -1,6 +1,9 @@
 #[cfg(target_os = "linux")]
 use std::path::Path;
 use std::path::PathBuf;
+
+#[cfg(target_os = "macos")]
+use serde::{Deserialize, Serialize};
 use tokio::process::Command;
 use tracing::{span, Span};
 
@@ -79,10 +82,14 @@ impl ConfigureInitService {
             },
             #[cfg(target_os = "linux")]
             InitSystem::Systemd => {
-                // If /run/systemd/system exists, we can be reasonably sure the machine is booted
-                // with systemd: https://www.freedesktop.org/software/systemd/man/sd_booted.html
-                if !Path::new("/run/systemd/system").exists() {
-                    return Err(Self::error(ActionErrorKind::SystemdMissing));
+                // If `no_start_daemon` is set, then we don't require a running systemd,
+                // so we don't need to check if `/run/systemd/system` exists.
+                if start_daemon {
+                    // If /run/systemd/system exists, we can be reasonably sure the machine is booted
+                    // with systemd: https://www.freedesktop.org/software/systemd/man/sd_booted.html
+                    if !Path::new("/run/systemd/system").exists() {
+                        return Err(Self::error(ActionErrorKind::SystemdMissing));
+                    }
                 }
 
                 if which::which("systemctl").is_err() {
@@ -126,7 +133,7 @@ impl Action for ConfigureInitService {
     }
 
     fn tracing_span(&self) -> Span {
-        span!(tracing::Level::DEBUG, "configure_init_service",)
+        span!(tracing::Level::DEBUG, "configure_init_service")
     }
 
     fn execute_description(&self) -> Vec<ActionDescription> {
@@ -135,7 +142,7 @@ impl Action for ConfigureInitService {
             #[cfg(target_os = "linux")]
             InitSystem::Systemd => {
                 let mut explanation = vec![
-                    "Run `systemd-tempfiles --create --prefix=/nix/var/nix`".to_string(),
+                    "Run `systemd-tmpfiles --create --prefix=/nix/var/nix`".to_string(),
                     format!("Symlink `{SERVICE_SRC}` to `{SERVICE_DEST}`"),
                     format!("Symlink `{SOCKET_SRC}` to `{SOCKET_DEST}`"),
                     "Run `systemctl daemon-reload`".to_string(),
@@ -148,7 +155,7 @@ impl Action for ConfigureInitService {
             #[cfg(target_os = "macos")]
             InitSystem::Launchd => {
                 let mut explanation = vec![format!(
-                    "Copy `{DARWIN_NIX_DAEMON_SOURCE}` to `DARWIN_NIX_DAEMON_DEST`"
+                    "Copy `{DARWIN_NIX_DAEMON_SOURCE}` to `{DARWIN_NIX_DAEMON_DEST}`"
                 )];
                 if self.start_daemon {
                     explanation.push(format!("Run `launchctl load {DARWIN_NIX_DAEMON_DEST}`"));
@@ -168,29 +175,28 @@ impl Action for ConfigureInitService {
         match init {
             #[cfg(target_os = "macos")]
             InitSystem::Launchd => {
+                let daemon_file = DARWIN_NIX_DAEMON_DEST;
+                let domain = "system";
+                let service = "org.nixos.nix-daemon";
                 let src = std::path::Path::new(DARWIN_NIX_DAEMON_SOURCE);
-                tokio::fs::copy(src.clone(), DARWIN_NIX_DAEMON_DEST)
-                    .await
-                    .map_err(|e| {
-                        Self::error(ActionErrorKind::Copy(
-                            src.to_path_buf(),
-                            PathBuf::from(DARWIN_NIX_DAEMON_DEST),
-                            e,
-                        ))
-                    })?;
+
+                tokio::fs::copy(src, daemon_file).await.map_err(|e| {
+                    Self::error(ActionErrorKind::Copy(
+                        src.to_path_buf(),
+                        PathBuf::from(daemon_file),
+                        e,
+                    ))
+                })?;
 
                 execute_command(
                     Command::new("launchctl")
                         .process_group(0)
                         .args(["load", "-w"])
-                        .arg(DARWIN_NIX_DAEMON_DEST)
+                        .arg(daemon_file)
                         .stdin(std::process::Stdio::null()),
                 )
                 .await
                 .map_err(Self::error)?;
-
-                let domain = "system";
-                let service = "org.nixos.nix-daemon";
 
                 let is_disabled = crate::action::macos::service_is_disabled(domain, service)
                     .await
@@ -519,6 +525,26 @@ impl Action for ConfigureInitService {
 pub enum ConfigureNixDaemonServiceError {
     #[error("No supported init system found")]
     InitNotSupported,
+}
+
+#[cfg(target_os = "macos")]
+#[derive(Deserialize, Clone, Debug, Serialize, PartialEq)]
+#[serde(rename_all = "PascalCase")]
+pub struct DeterminateNixDaemonPlist {
+    label: String,
+    program: String,
+    keep_alive: bool,
+    run_at_load: bool,
+    standard_error_path: String,
+    standard_out_path: String,
+    soft_resource_limits: ResourceLimits,
+}
+
+#[cfg(target_os = "macos")]
+#[derive(Deserialize, Clone, Debug, Serialize, PartialEq)]
+#[serde(rename_all = "PascalCase")]
+pub struct ResourceLimits {
+    number_of_files: usize,
 }
 
 #[cfg(target_os = "linux")]

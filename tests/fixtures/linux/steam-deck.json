@@ -1,5 +1,5 @@
 {
-  "version": "0.14.0",
+  "version": "0.19.0",
   "actions": [
     {
       "action": {
@@ -380,7 +380,8 @@
         "action": "configure_init_service",
         "init": "Systemd",
         "start_daemon": true,
-        "ssl_cert_file": null
+        "ssl_cert_file": null,
+        "enterprise_edition": false
       },
       "state": "Uncompleted"
     },
@@ -422,7 +423,7 @@
     }
   },
   "diagnostic_data": {
-    "version": "0.14.0",
+    "version": "0.19.0",
     "planner": "steam-deck",
     "configured_settings": [],
     "os_name": "Ubuntu",

@@ -77,7 +77,7 @@ impl Action for CreateUsersAndGroups {
         } else {
             format!(
                 "Create build users (UID {}-{}) and group (GID {})",
-                self.nix_build_user_id_base,
+                self.nix_build_user_id_base + 1,
                 self.nix_build_user_id_base + self.nix_build_user_count,
                 self.nix_build_group_id
             )

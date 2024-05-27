@@ -237,6 +237,7 @@ impl Action for CreateUser {
                             .args([
                                 "--home",
                                 "/var/empty",
+                                "-H", // Don't create a home.
                                 "--gecos",
                                 comment,
                                 "--ingroup",

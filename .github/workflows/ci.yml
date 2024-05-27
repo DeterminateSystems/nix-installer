@@ -3,12 +3,28 @@ name: CI
 on:
   pull_request:
   push:
-    branches: [main]
+
+permissions:
+  id-token: "write"
+  contents: "read"
 
 jobs:
+  build-x86_64-linux:
+    uses: ./.github/workflows/build-x86_64-linux.yml
+    with:
+      runs-on: ubuntu-latest
+
+  build-x86_64-darwin:
+    uses: ./.github/workflows/build-x86_64-darwin.yml
+    with:
+      runs-on: macos-latest
+
   lints:
     name: Lints
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-latest
+    permissions:
+      id-token: "write"
+      contents: "read"
     steps:
       - uses: actions/checkout@v3
       - name: Check Nixpkgs input
@@ -19,6 +35,9 @@ jobs:
       - name: Install Nix
         uses: DeterminateSystems/nix-installer-action@main
       - uses: DeterminateSystems/magic-nix-cache-action@main
+        with:
+          use-flakehub: false
+          use-gha-cache: false
       - name: Check rustfmt
         run: nix develop --command check-rustfmt
       - name: Check Clippy
@@ -29,42 +48,28 @@ jobs:
         run: nix develop --command check-nixpkgs-fmt
       - name: Check EditorConfig conformance
         run: nix develop --command check-editorconfig
-      - name: Download Buildkite Artifacts
-        uses: EnricoMi/download-buildkite-artifact-action@v1.14
-        with:
-          buildkite_token: ${{ secrets.BUILDKITE_TOKEN }}
-          output_path: artifacts
-      - name: Output list of Buildkite artifacts
-        run: |
-          ls -lah artifacts/
-          ls -lah artifacts/**/*
-      # Mac's can't run this action, so we're forced to do this.
-      - name: Create Github cache from Buildkite artifacts
-        id: cache-buildkite-artifacts
-        uses: actions/cache/save@v3
-        with:
-          path: artifacts
-          key: buildkite-artifacts-${{ github.sha }}
 
   run-x86_64-linux:
     name: Run x86_64 Linux
-    runs-on: ubuntu-22.04
-    needs: [lints]
+    runs-on: ubuntu-latest
+    needs: [lints, build-x86_64-linux]
+    permissions:
+      id-token: "write"
+      contents: "read"
     steps:
       - uses: actions/checkout@v3
       - name: Restore Github cache of Buildkite artifacts
-        id: cache-buildkite-artifacts
         uses: actions/cache/restore@v3
         with:
-          path: artifacts
-          key: buildkite-artifacts-${{ github.sha }}
-      - run: sudo apt install fish zsh
+          path: nix-installer
+          key: x86_64-linux-artifacts-${{ github.sha }}
       - name: Move & set executable
         run: |
           mkdir install-root
           cp nix-installer.sh install-root/nix-installer.sh
-          mv ./artifacts/nix-installer-x86_64-linux-*/* install-root/nix-installer-x86_64-linux
+          mv ./nix-installer install-root/nix-installer-x86_64-linux
           chmod +x install-root/nix-installer-x86_64-linux install-root/nix-installer.sh
+      - run: sudo apt install fish zsh
       - name: Initial install
         uses: DeterminateSystems/nix-installer-action@main
         with:
@@ -107,11 +112,11 @@ jobs:
       - name: Test `nix` with `$GITHUB_PATH`
         if: success() || failure()
         run: |
-          nix run nixpkgs#hello
-          nix profile install nixpkgs#hello
+          nix-shell -p hello --command hello
+          nix-env --install hello
           hello
-          nix store gc
-          nix run nixpkgs#hello
+          nix-store --gc
+          nix-shell -p hello --command hello
       - name: Test bash
         run: nix-instantiate -E 'builtins.currentTime' --eval
         if: success() || failure()
@@ -152,23 +157,25 @@ jobs:
 
   run-x86_64-linux-no-init:
     name: Run x86_64 Linux (No init)
-    runs-on: ubuntu-22.04
-    needs: [lints]
+    runs-on: ubuntu-latest
+    needs: [lints, build-x86_64-linux]
+    permissions:
+      id-token: "write"
+      contents: "read"
     steps:
       - uses: actions/checkout@v3
       - name: Restore Github cache of Buildkite artifacts
-        id: cache-buildkite-artifacts
         uses: actions/cache/restore@v3
         with:
-          path: artifacts
-          key: buildkite-artifacts-${{ github.sha }}
-      - run: sudo apt install fish zsh
+          path: nix-installer
+          key: x86_64-linux-artifacts-${{ github.sha }}
       - name: Move & set executable
         run: |
           mkdir install-root
           cp nix-installer.sh install-root/nix-installer.sh
-          mv ./artifacts/nix-installer-x86_64-linux-*/* install-root/nix-installer-x86_64-linux
+          mv ./nix-installer install-root/nix-installer-x86_64-linux
           chmod +x install-root/nix-installer-x86_64-linux install-root/nix-installer.sh
+      - run: sudo apt install fish zsh
       - name: Initial install
         uses: DeterminateSystems/nix-installer-action@main
         with:
@@ -217,11 +224,11 @@ jobs:
       - name: Test `nix` with `$GITHUB_PATH`
         if: success() || failure()
         run: |
-          sudo -i nix run nixpkgs#hello
-          sudo -i nix profile install nixpkgs#hello
-          hello
-          sudo -i nix store gc
-          sudo -i nix run nixpkgs#hello
+          sudo -i nix-shell -p hello --command hello
+          sudo -i nix-env --install hello
+          sudo -i hello
+          sudo -i nix-store --gc
+          sudo -i nix-shell -p hello --command hello
       - name: Test bash
         run: sudo -i nix-instantiate -E 'builtins.currentTime' --eval
         if: success() || failure()
@@ -262,23 +269,25 @@ jobs:
 
   run-x86_64-darwin:
     name: Run x86_64 Darwin
-    runs-on: macos-12
-    needs: [lints]
+    runs-on: macos-13
+    needs: [lints, build-x86_64-darwin]
+    permissions:
+      id-token: "write"
+      contents: "read"
     steps:
       - uses: actions/checkout@v3
       - name: Restore Github cache of Buildkite artifacts
-        id: cache-buildkite-artifacts
         uses: actions/cache/restore@v3
         with:
-          path: artifacts
-          key: buildkite-artifacts-${{ github.sha }}
-      - run: brew install fish coreutils
+          path: nix-installer
+          key: x86_64-darwin-artifacts-${{ github.sha }}
       - name: Move & set executable
         run: |
           mkdir install-root
           cp nix-installer.sh install-root/nix-installer.sh
-          mv ./artifacts/nix-installer-x86_64-darwin-*/* install-root/nix-installer-x86_64-darwin
+          mv ./nix-installer install-root/nix-installer-x86_64-darwin
           chmod +x install-root/nix-installer-x86_64-darwin install-root/nix-installer.sh
+      - run: brew install fish coreutils
       - name: Initial install
         uses: DeterminateSystems/nix-installer-action@main
         with:
@@ -310,11 +319,11 @@ jobs:
       - name: Test `nix` with `$GITHUB_PATH`
         if: success() || failure()
         run: |
-          nix run nixpkgs#hello
-          nix profile install nixpkgs#hello
+          nix-shell -p hello --command hello
+          nix-env --install hello
           hello
-          nix store gc
-          nix run nixpkgs#hello
+          nix-store --gc
+          nix-shell -p hello --command hello
       - name: Test bash
         run: nix-instantiate -E 'builtins.currentTime' --eval
         if: success() || failure()
