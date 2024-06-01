@@ -28,7 +28,7 @@ nix = { version = "0.28.0", default-features = false, features = ["user", "fs", 
 owo-colors = { version = "4.0.0", default-features = false, features = [ "supports-colors" ] }
 reqwest = { version = "0.12.4", default-features = false, features = ["rustls-tls-native-roots", "stream", "socks"] }
 serde = { version = "1.0.200", default-features = false, features = [ "std", "derive" ] }
-serde_json = { version = "1.0.116", default-features = false, features = [ "std" ] }
+serde_json = { version = "1.0.117", default-features = false, features = [ "std" ] }
 serde_with = { version = "3", default-features = false, features = [ "std", "macros" ] }
 tar = { version = "0.4.38", default-features = false, features = [ "xattr" ] }
 target-lexicon = { version = "0.12.4", default-features = false, features = [ "std" ] }
