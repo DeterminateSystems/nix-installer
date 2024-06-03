@@ -111,6 +111,9 @@ impl PlaceNixConfiguration {
         #[cfg(not(target_os = "macos"))]
         settings.insert("auto-optimise-store".to_string(), "true".to_string());
 
+        // https://github.com/NixOS/nix/pull/8047
+        settings.insert("always-allow-substitutes".to_string(), "true".to_string());
+
         settings.insert(
             "bash-prompt-prefix".to_string(),
             "(nix:$name)\\040".to_string(),

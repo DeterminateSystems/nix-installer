@@ -441,6 +441,7 @@ Differing from the upstream [Nix](https://github.com/NixOS/nix) installer script
   + the `nix-command` and `flakes` features are enabled
   + `bash-prompt-prefix` is set
   + `auto-optimise-store` is set to `true` (On Linux only)
+  * `always-allow-substitutes` is set to `true`
   * `extra-nix-path` is set to `nixpkgs=flake:nixpkgs`
   * `max-jobs` is set to `auto`
   * `upgrade-nix-store-path-url` is set to `https://install.determinate.systems/nix-upgrade/stable/universal`, to prevent unintentional downgrades.
