@@ -28,7 +28,7 @@ nix = { version = "0.29.0", default-features = false, features = ["user", "fs", 
 owo-colors = { version = "4.0.0", default-features = false, features = [ "supports-colors" ] }
 reqwest = { version = "0.12.4", default-features = false, features = ["rustls-tls-native-roots", "stream", "socks"] }
 serde = { version = "1.0.203", default-features = false, features = [ "std", "derive" ] }
-serde_json = { version = "1.0.116", default-features = false, features = [ "std" ] }
+serde_json = { version = "1.0.117", default-features = false, features = [ "std" ] }
 serde_with = { version = "3", default-features = false, features = [ "std", "macros" ] }
 tar = { version = "0.4.38", default-features = false, features = [ "xattr" ] }
 target-lexicon = { version = "0.12.4", default-features = false, features = [ "std" ] }
@@ -44,7 +44,7 @@ dirs = { version = "5.0.0", default-features = false }
 typetag = { version = "0.2.3", default-features = false }
 dyn-clone = { version = "1.0.9", default-features = false }
 rand = { version = "0.8.5", default-features = false, features = [ "std", "std_rng" ] }
-semver = { version = "1.0.14", default-features = false, features = ["serde", "std"] }
+semver = { version = "1.0.23", default-features = false, features = ["serde", "std"] }
 term = { version = "0.7.0", default-features = false }
 uuid = { version = "1.2.2", features = ["serde"] }
 os-release = { version = "0.1.0", default-features = false }
