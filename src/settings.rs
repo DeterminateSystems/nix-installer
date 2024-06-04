@@ -50,7 +50,7 @@ Settings which only apply to certain [`Planner`](crate::planner::Planner)s shoul
 #[derive(Debug, serde::Deserialize, serde::Serialize, Clone)]
 #[cfg_attr(feature = "cli", derive(clap::Parser))]
 pub struct CommonSettings {
-    /// Modify the user profile to automatically load nix
+    /// Modify the user profile to automatically load Nix
     #[cfg_attr(
         feature = "cli",
         clap(
@@ -102,7 +102,7 @@ pub struct CommonSettings {
     )]
     pub nix_build_user_prefix: String,
 
-    /// Number of build users to create
+    /// The number of build users to create
     #[cfg_attr(
         feature = "cli",
         clap(
@@ -139,11 +139,11 @@ pub struct CommonSettings {
     )]
     pub nix_package_url: Option<UrlOrPath>,
 
-    /// The proxy to use (if any), valid proxy bases are `https://$URL`, `http://$URL` and `socks5://$URL`
+    /// The proxy to use (if any); valid proxy bases are `https://$URL`, `http://$URL` and `socks5://$URL`
     #[cfg_attr(feature = "cli", clap(long, env = "NIX_INSTALLER_PROXY"))]
     pub proxy: Option<Url>,
 
-    /// An SSL cert to use (if any), used for fetching Nix and sets `ssl-cert-file` in `/etc/nix/nix.conf`
+    /// An SSL cert to use (if any); used for fetching Nix and sets `ssl-cert-file` in `/etc/nix/nix.conf`
     #[cfg_attr(feature = "cli", clap(long, env = "NIX_INSTALLER_SSL_CERT_FILE"))]
     pub ssl_cert_file: Option<PathBuf>,
 
