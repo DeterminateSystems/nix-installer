@@ -137,6 +137,7 @@
             nativeBuildInputs = with pkgs; [ ];
             buildInputs = with pkgs; [
               toolchain
+              shellcheck
               rust-analyzer
               cargo-outdated
               cacert

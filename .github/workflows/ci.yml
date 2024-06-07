@@ -18,7 +18,7 @@ jobs:
 
   build-aarch64-linux:
     uses: ./.github/workflows/build-aarch64-linux.yml
-  
+
   build-aarch64-darwin:
     uses: ./.github/workflows/build-aarch64-darwin.yml
 
@@ -52,6 +52,8 @@ jobs:
         run: nix develop --command check-nixpkgs-fmt
       - name: Check EditorConfig conformance
         run: nix develop --command check-editorconfig
+      - name: Shell check for nix-installer.sh
+        run: nix develop --command shellcheck ./nix-installer.sh
 
   run-x86_64-linux:
     name: Run x86_64 Linux
