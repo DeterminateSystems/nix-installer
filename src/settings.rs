@@ -48,6 +48,17 @@ Settings which only apply to certain [`Planner`](crate::planner::Planner)s shoul
 #[derive(Debug, serde::Deserialize, serde::Serialize, Clone)]
 #[cfg_attr(feature = "cli", derive(clap::Parser))]
 pub struct CommonSettings {
+    /// Enable Determinate Nix Enterprise Edition. See: <https://determinate.systems/enterprise>
+    #[cfg_attr(
+        feature = "cli",
+        clap(
+            long,
+            env = "NIX_INSTALLER_ENTERPRISE_EDITION",
+            default_value = "false"
+        )
+    )]
+    pub enterprise_edition: bool,
+
     /// Modify the user profile to automatically load Nix
     #[cfg_attr(
         feature = "cli",
@@ -308,6 +319,7 @@ impl CommonSettings {
         };
 
         Ok(Self {
+            enterprise_edition: false,
             modify_profile: true,
             nix_build_group_name: String::from("nixbld"),
             nix_build_group_id: 30_000,
@@ -329,6 +341,7 @@ impl CommonSettings {
     /// A listing of the settings, suitable for [`Planner::settings`](crate::planner::Planner::settings)
     pub fn settings(&self) -> Result<HashMap<String, serde_json::Value>, InstallSettingsError> {
         let Self {
+            enterprise_edition,
             modify_profile,
             nix_build_group_name,
             nix_build_group_id,
@@ -347,6 +360,10 @@ impl CommonSettings {
         } = self;
         let mut map = HashMap::default();
 
+        map.insert(
+            "enterprise_edition".into(),
+            serde_json::to_value(enterprise_edition)?,
+        );
         map.insert(
             "modify_profile".into(),
             serde_json::to_value(modify_profile)?,

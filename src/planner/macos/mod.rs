@@ -60,16 +60,6 @@ pub struct Macos {
         )
     )]
     pub case_sensitive: bool,
-    /// Enable Determinate Nix Enterprise Edition. See: https://determinate.systems/enterprise
-    #[cfg_attr(
-        feature = "cli",
-        clap(
-            long,
-            env = "NIX_INSTALLER_ENTERPRISE_EDITION",
-            default_value = "false"
-        )
-    )]
-    pub enterprise_edition: bool,
     /// The label for the created APFS volume
     #[cfg_attr(
         feature = "cli",
@@ -104,7 +94,6 @@ impl Planner for Macos {
             root_disk: Some(default_root_disk().await?),
             case_sensitive: false,
             encrypt: None,
-            enterprise_edition: false,
             volume_label: "Nix Store".into(),
         })
     }
@@ -130,7 +119,7 @@ impl Planner for Macos {
         // The encrypt variable isn't used in the enterprise edition since we have our own plan step for it,
         // however this match accounts for enterprise edition so the receipt indicates encrypt: true.
         // This is a goofy thing to do, but it is in an attempt to make a more globally coherent plan / receipt.
-        let encrypt = match (self.enterprise_edition, self.encrypt) {
+        let encrypt = match (self.settings.enterprise_edition, self.encrypt) {
             (true, _) => true,
             (false, Some(choice)) => choice,
             (false, None) => {
@@ -152,7 +141,7 @@ impl Planner for Macos {
 
         let mut plan = vec![];
 
-        if self.enterprise_edition {
+        if self.settings.enterprise_edition {
             plan.push(
                 CreateEnterpriseEditionVolume::plan(
                     root_disk.unwrap(), /* We just ensured it was populated */
@@ -219,7 +208,7 @@ impl Planner for Macos {
             );
         }
 
-        if self.enterprise_edition {
+        if self.settings.enterprise_edition {
             plan.push(
                 ConfigureEnterpriseEditionInitService::plan(true)
                     .await
@@ -248,7 +237,6 @@ impl Planner for Macos {
         let Self {
             settings,
             encrypt,
-            enterprise_edition,
             volume_label,
             case_sensitive,
             root_disk,
@@ -256,10 +244,6 @@ impl Planner for Macos {
         let mut map = HashMap::default();
 
         map.extend(settings.settings()?);
-        map.insert(
-            "enterprise_edition".into(),
-            serde_json::to_value(enterprise_edition)?,
-        );
         map.insert("volume_encrypt".into(), serde_json::to_value(encrypt)?);
         map.insert("volume_label".into(), serde_json::to_value(volume_label)?);
         map.insert("root_disk".into(), serde_json::to_value(root_disk)?);
@@ -321,7 +305,7 @@ impl Planner for Macos {
     async fn pre_install_check(&self) -> Result<(), PlannerError> {
         check_suis().await?;
         check_not_running_in_rosetta()?;
-        if self.enterprise_edition {
+        if self.settings.enterprise_edition {
             check_enterprise_edition_available().await?;
         }
 

@@ -417,6 +417,7 @@
   "planner": {
     "planner": "macos",
     "settings": {
+      "enterprise_edition": false,
       "modify_profile": true,
       "nix_build_group_name": "nixbld",
       "nix_build_group_id": 30000,
@@ -432,7 +433,6 @@
       "force": false,
       "diagnostic_endpoint": "https://install.determinate.systems/nix/diagnostic"
     },
-    "enterprise_edition": false,
     "encrypt": null,
     "case_sensitive": false,
     "volume_label": "Nix Store",
