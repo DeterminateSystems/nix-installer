@@ -9,7 +9,8 @@ repository = "https://github.com/DeterminateSystems/nix-installer"
 documentation = "https://docs.rs/nix-installer/latest/nix_installer"
 
 [features]
-default = ["cli", "diagnostics"]
+default = ["cli", "diagnostics", "determinate-nix"]
+determinate-nix = []
 cli = ["eyre", "color-eyre", "clap", "tracing-subscriber", "tracing-error"]
 diagnostics = ["is_ci"]
 

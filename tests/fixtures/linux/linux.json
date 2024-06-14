@@ -390,7 +390,8 @@
         "init": "Systemd",
         "start_daemon": true,
         "ssl_cert_file": null,
-        "enterprise_edition": false
+        "enterprise_edition": false,
+        "service_src": "/nix/var/nix/profiles/default/lib/systemd/system/nix-daemon.service"
       },
       "state": "Uncompleted"
     },

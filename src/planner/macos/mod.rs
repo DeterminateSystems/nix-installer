@@ -217,10 +217,14 @@ impl Planner for Macos {
             );
         } else {
             plan.push(
-                ConfigureInitService::plan(InitSystem::Launchd, true)
-                    .await
-                    .map_err(PlannerError::Action)?
-                    .boxed(),
+                ConfigureInitService::plan(
+                    InitSystem::Launchd,
+                    true,
+                    self.settings.enterprise_edition,
+                )
+                .await
+                .map_err(PlannerError::Action)?
+                .boxed(),
             );
         }
         plan.push(

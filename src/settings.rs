@@ -21,6 +21,19 @@ pub const NIX_TARBALL_PATH: &str = env!("NIX_INSTALLER_TARBALL_PATH");
 /// in the resulting binary.
 pub const NIX_TARBALL: &[u8] = include_bytes!(env!("NIX_INSTALLER_TARBALL_PATH"));
 
+#[cfg(all(feature = "determinate-nix", target_os = "linux"))]
+/// The DETERMINATE_NIX_BINARY_PATH environment variable should point to a target-appropriate
+/// static build of the Determinate Nix shim binary. The contents are embedded in the resulting
+/// binary if the determinate-nix feature is turned on.
+pub const DETERMINATE_NIX_BINARY: Option<&[u8]> =
+    Some(include_bytes!(env!("DETERMINATE_NIX_BINARY_PATH")));
+
+#[cfg(any(not(feature = "determinate-nix"), not(target_os = "linux")))]
+/// The DETERMINATE_NIX_BINARY_PATH environment variable should point to a target-appropriate
+/// static build of the Determinate Nix shim binary. The contents are embedded in the resulting
+/// binary if the determinate-nix feature is turned on.
+pub const DETERMINATE_NIX_BINARY: Option<&[u8]> = None;
+
 #[derive(Debug, serde::Deserialize, serde::Serialize, Clone, Copy, PartialEq, Eq)]
 #[cfg_attr(feature = "cli", derive(clap::ValueEnum))]
 pub enum InitSystem {

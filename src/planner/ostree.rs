@@ -2,7 +2,9 @@ use crate::{
     action::{
         base::{CreateDirectory, CreateFile, RemoveDirectory},
         common::{ConfigureInitService, ConfigureNix, CreateUsersAndGroups, ProvisionNix},
-        linux::{ProvisionSelinux, StartSystemdUnit, SystemctlDaemonReload},
+        linux::{
+            ProvisionDeterminateNixShim, ProvisionSelinux, StartSystemdUnit, SystemctlDaemonReload,
+        },
         StatefulAction,
     },
     error::HasExpectedErrors,
@@ -171,6 +173,15 @@ impl Planner for Ostree {
                 .boxed(),
         );
 
+        if self.settings.enterprise_edition {
+            plan.push(
+                ProvisionDeterminateNixShim::plan()
+                    .await
+                    .map_err(PlannerError::Action)?
+                    .boxed(),
+            );
+        }
+
         plan.push(
             ProvisionNix::plan(&self.settings.clone())
                 .await
@@ -207,7 +218,7 @@ impl Planner for Ostree {
         );
 
         plan.push(
-            ConfigureInitService::plan(InitSystem::Systemd, true)
+            ConfigureInitService::plan(InitSystem::Systemd, true, self.settings.enterprise_edition)
                 .await
                 .map_err(PlannerError::Action)?
                 .boxed(),

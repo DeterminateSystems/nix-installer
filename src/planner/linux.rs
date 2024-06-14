@@ -2,7 +2,7 @@ use crate::{
     action::{
         base::{CreateDirectory, RemoveDirectory},
         common::{ConfigureInitService, ConfigureNix, CreateUsersAndGroups, ProvisionNix},
-        linux::ProvisionSelinux,
+        linux::{ProvisionDeterminateNixShim, ProvisionSelinux},
         StatefulAction,
     },
     error::HasExpectedErrors,
@@ -49,6 +49,15 @@ impl Planner for Linux {
                 .boxed(),
         );
 
+        if self.settings.enterprise_edition {
+            plan.push(
+                ProvisionDeterminateNixShim::plan()
+                    .await
+                    .map_err(PlannerError::Action)?
+                    .boxed(),
+            );
+        }
+
         plan.push(
             ProvisionNix::plan(&self.settings.clone())
                 .await
@@ -85,10 +94,14 @@ impl Planner for Linux {
         );
 
         plan.push(
-            ConfigureInitService::plan(self.init.init, self.init.start_daemon)
-                .await
-                .map_err(PlannerError::Action)?
-                .boxed(),
+            ConfigureInitService::plan(
+                self.init.init,
+                self.init.start_daemon,
+                self.settings.enterprise_edition,
+            )
+            .await
+            .map_err(PlannerError::Action)?
+            .boxed(),
         );
         plan.push(
             RemoveDirectory::plan(crate::settings::SCRATCH_DIR)

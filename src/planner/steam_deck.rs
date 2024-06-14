@@ -105,8 +105,8 @@ use crate::{
         base::{CreateDirectory, CreateFile, RemoveDirectory},
         common::{ConfigureInitService, ConfigureNix, CreateUsersAndGroups, ProvisionNix},
         linux::{
-            EnsureSteamosNixDirectory, RevertCleanSteamosNixOffload, StartSystemdUnit,
-            SystemctlDaemonReload,
+            EnsureSteamosNixDirectory, ProvisionDeterminateNixShim, RevertCleanSteamosNixOffload,
+            StartSystemdUnit, SystemctlDaemonReload,
         },
         Action, StatefulAction,
     },
@@ -319,6 +319,15 @@ impl Planner for SteamDeck {
             )
         }
 
+        if self.settings.enterprise_edition {
+            actions.push(
+                ProvisionDeterminateNixShim::plan()
+                    .await
+                    .map_err(PlannerError::Action)?
+                    .boxed(),
+            );
+        }
+
         actions.append(&mut vec![
             ProvisionNix::plan(&self.settings.clone())
                 .await
@@ -333,7 +342,7 @@ impl Planner for SteamDeck {
                 .map_err(PlannerError::Action)?
                 .boxed(),
             // Init is required for the steam-deck archetype to make the `/nix` mount
-            ConfigureInitService::plan(InitSystem::Systemd, true)
+            ConfigureInitService::plan(InitSystem::Systemd, true, self.settings.enterprise_edition)
                 .await
                 .map_err(PlannerError::Action)?
                 .boxed(),
