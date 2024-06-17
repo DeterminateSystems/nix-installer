@@ -55,6 +55,10 @@
         ] ++ nixpkgs.lib.optionals (system == "aarch64-linux") [
           targets.aarch64-unknown-linux-musl.stable.rust-std
         ]);
+
+      nixTarballs = forAllSystems ({ system, ... }:
+        inputs.nix.tarballs_direct.${system}
+          or "${inputs.nix.checks."${system}".binaryTarball}/nix-${inputs.nix.packages."${system}".default.version}-${system}.tar.xz");
     in
     {
       overlays.default = final: prev:
@@ -87,7 +91,7 @@
             RUSTFLAGS = "--cfg tokio_unstable";
             cargoTestOptions = f: f ++ [ "--all" ];
 
-            NIX_INSTALLER_TARBALL_PATH = inputs.nix.tarballs_direct.${final.stdenv.system};
+            NIX_INSTALLER_TARBALL_PATH = nixTarballs.${final.stdenv.system};
 
             override = { preBuild ? "", ... }: {
               preBuild = preBuild + ''
@@ -132,7 +136,7 @@
             name = "nix-install-shell";
 
             RUST_SRC_PATH = "${toolchain}/lib/rustlib/src/rust/library";
-            NIX_INSTALLER_TARBALL_PATH = inputs.nix.tarballs_direct.${system};
+            NIX_INSTALLER_TARBALL_PATH = nixTarballs.${system};
 
             nativeBuildInputs = with pkgs; [ ];
             buildInputs = with pkgs; [
