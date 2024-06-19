@@ -290,8 +290,10 @@ downloader() {
         _ciphersuites="$RETVAL"
         if [ -n "$_ciphersuites" ]; then
             if [ -n "${NIX_INSTALLER_FORCE_ALLOW_HTTP-}" ]; then
+                # shellcheck disable=SC2086 # ignore because $_retry could be a flag (e.g. `--retry 5`)
                 _err=$(curl $_retry --silent --show-error --fail --location "$1" --output "$2" 2>&1)
             else
+                # shellcheck disable=SC2086 # ignore because $_retry could be a flag (e.g. `--retry 5`)
                 _err=$(curl $_retry --proto '=https' --tlsv1.2 --ciphers "$_ciphersuites" --silent --show-error --fail --location "$1" --output "$2" 2>&1)
             fi
             _status=$?
@@ -299,9 +301,11 @@ downloader() {
             echo "Warning: Not enforcing strong cipher suites for TLS, this is potentially less secure"
             if ! check_help_for "$3" curl --proto --tlsv1.2; then
                 echo "Warning: Not enforcing TLS v1.2, this is potentially less secure"
+                # shellcheck disable=SC2086 # ignore because $_retry could be a flag (e.g. `--retry 5`)
                 _err=$(curl $_retry --silent --show-error --fail --location "$1" --output "$2" 2>&1)
                 _status=$?
             else
+                # shellcheck disable=SC2086 # ignore because $_retry could be a flag (e.g. `--retry 5`)
                 _err=$(curl $_retry --proto '=https' --tlsv1.2 --silent --show-error --fail --location "$1" --output "$2" 2>&1)
                 _status=$?
             fi
@@ -410,7 +414,6 @@ check_curl_for_retry_support() {
   fi
 
   RETVAL="$_retry_supported"
-
 }
 
 # Return cipher suite string specified by user, otherwise return strong TLS 1.2-1.3 cipher suites
