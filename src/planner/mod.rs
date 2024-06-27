@@ -2,7 +2,7 @@
 
 It's a [`Planner`]s job to construct (if possible) a valid [`InstallPlan`] for the host. Some planners are operating system specific, others are device specific.
 
-[`Planner`]s contain their planner specific settings, typically alongside a [`CommonSettings`][crate::settings::CommonSettings].
+[`Planner`]s contain their planner specific settings, typically alongside a [`CommonSettings`].
 
 [`BuiltinPlanner::default()`] offers a way to get the default builtin planner for a given host.
 
