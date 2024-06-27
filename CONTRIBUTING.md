@@ -370,7 +370,7 @@ To cut a release:
   + `cargo update --aggressive`
   + Make a PR for for this and let it get merged separately
 * Create a release branch from `main` (`git checkout -b release-v0.0.1`)
-* Remove the `-unreleased` from the `version` field in `Cargo.toml`, `flake.nix`, and the fixture JSON files
+* Remove the `-unreleased` from the `version` field in `Cargo.toml` and the fixture JSON files
   + Release PRs should not contain any tangible code changes which require review
 * Ensure the VM / container tests still pass with the following:
   + `nix flake check -L`
@@ -388,7 +388,7 @@ To cut a release:
 * Undraft the release
 * Once you are certain the release is good, `cargo publish` it
   + **Warning:** While you can re-release Github releases, it is not possible to do the same on `crates.io`
-* Create a PR bumping the version up one minor in the `Cargo.toml`, `flake.nix`, and fixture JSON files, adding `-unreleased` at the end (`v0.0.2-unreleased`)
+* Create a PR bumping the version up one minor in the `Cargo.toml` and fixture JSON files, adding `-unreleased` at the end (`v0.0.2-unreleased`)
 
 # Who maintains `nix-installer` and why?
 
