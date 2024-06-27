@@ -270,7 +270,7 @@ pub trait Action: Send + Sync + std::fmt::Debug + dyn_clone::DynClone {
 dyn_clone::clone_trait_object!(Action);
 
 /**
-A description of an [`Action`](crate::action::Action), intended for humans to review
+A description of an [`Action`], intended for humans to review
 */
 #[derive(Debug, serde::Deserialize, serde::Serialize, Clone)]
 pub struct ActionDescription {
