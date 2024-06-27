@@ -70,7 +70,7 @@
           };
           sharedAttrs = {
             pname = "nix-installer";
-            version = "0.19.0";
+            version = (builtins.fromTOML (builtins.readFile ./Cargo.toml)).package.version;
             src = builtins.path {
               name = "nix-installer-source";
               path = self;
