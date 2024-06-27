@@ -91,7 +91,7 @@ impl PlaceNixConfiguration {
         let settings = nix_config.settings_mut();
 
         settings.insert("build-users-group".to_string(), nix_build_group_name);
-        let experimental_features = ["nix-command", "flakes", "repl-flake"];
+        let experimental_features = ["nix-command", "flakes"];
         match settings.entry("experimental-features".to_string()) {
             Entry::Occupied(mut slot) => {
                 let slot_mut = slot.get_mut();
