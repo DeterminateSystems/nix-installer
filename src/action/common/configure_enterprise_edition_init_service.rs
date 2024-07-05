@@ -15,6 +15,10 @@ use crate::action::{Action, ActionDescription};
 #[cfg(target_os = "macos")]
 const DARWIN_ENTERPRISE_EDITION_DAEMON_DEST: &str =
     "/Library/LaunchDaemons/systems.determinate.nix-daemon.plist";
+#[cfg(target_os = "macos")]
+const DARWIN_LAUNCHD_DOMAIN: &str = "system";
+#[cfg(target_os = "macos")]
+const DARWIN_LAUNCHD_SERVICE: &str = "systems.determinate.nix-daemon";
 /**
 Configure the init to run the Nix daemon
 */
@@ -64,8 +68,8 @@ impl Action for ConfigureEnterpriseEditionInitService {
         let Self { start_daemon } = self;
 
         let daemon_file = DARWIN_ENTERPRISE_EDITION_DAEMON_DEST;
-        let domain = "system";
-        let service = "systems.determinate.nix-daemon";
+        let domain = DARWIN_LAUNCHD_DOMAIN;
+        let service = DARWIN_LAUNCHD_SERVICE;
 
         let generated_plist = generate_plist();
 
@@ -139,7 +143,7 @@ impl Action for ConfigureEnterpriseEditionInitService {
             Command::new("launchctl")
                 .process_group(0)
                 .arg("bootout")
-                .args([domain, service])
+                .args([DARWIN_LAUNCHD_DOMAIN, DARWIN_LAUNCHD_SERVICE]),
         )
         .await
         .map_err(Self::error)?;
