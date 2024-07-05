@@ -91,7 +91,7 @@ impl Action for ConfigureEnterpriseEditionInitService {
             Command::new("launchctl")
                 .process_group(0)
                 .arg("bootstrap")
-                .args([domain, service])
+                .args([domain, daemon_file])
                 .stdin(std::process::Stdio::null()),
         )
         .await
@@ -143,7 +143,7 @@ impl Action for ConfigureEnterpriseEditionInitService {
             Command::new("launchctl")
                 .process_group(0)
                 .arg("bootout")
-                .args([DARWIN_LAUNCHD_DOMAIN, DARWIN_LAUNCHD_SERVICE]),
+                .arg([DARWIN_LAUNCHD_DOMAIN, DARWIN_LAUNCHD_SERVICE].join("/")),
         )
         .await
         .map_err(Self::error)?;
