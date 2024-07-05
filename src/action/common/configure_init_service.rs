@@ -158,7 +158,7 @@ impl Action for ConfigureInitService {
                     "Copy `{DARWIN_NIX_DAEMON_SOURCE}` to `{DARWIN_NIX_DAEMON_DEST}`"
                 )];
                 if self.start_daemon {
-                    explanation.push(format!("Run `launchctl load {DARWIN_NIX_DAEMON_DEST}`"));
+                    explanation.push(format!("Run `launchctl bootstrap {DARWIN_NIX_DAEMON_DEST}`"));
                 }
                 vec.push(ActionDescription::new(self.tracing_synopsis(), explanation))
             },
@@ -191,8 +191,8 @@ impl Action for ConfigureInitService {
                 execute_command(
                     Command::new("launchctl")
                         .process_group(0)
-                        .args(["load", "-w"])
-                        .arg(daemon_file)
+                        .arg("bootstrap")
+                        .args([domain, service])
                         .stdin(std::process::Stdio::null()),
                 )
                 .await
@@ -378,7 +378,7 @@ impl Action for ConfigureInitService {
             InitSystem::Launchd => {
                 vec![ActionDescription::new(
                     "Unconfigure Nix daemon related settings with launchctl".to_string(),
-                    vec![format!("Run `launchctl unload {DARWIN_NIX_DAEMON_DEST}`")],
+                    vec![format!("Run `launchctl bootout {DARWIN_NIX_DAEMON_DEST}`")],
                 )]
             },
             #[cfg(not(target_os = "macos"))]
@@ -397,8 +397,8 @@ impl Action for ConfigureInitService {
                 execute_command(
                     Command::new("launchctl")
                         .process_group(0)
-                        .arg("unload")
-                        .arg(DARWIN_NIX_DAEMON_DEST),
+                        .arg("bootout")
+                        .args([domain, service]),
                 )
                 .await
                 .map_err(Self::error)?;

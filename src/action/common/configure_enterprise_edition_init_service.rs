@@ -52,7 +52,7 @@ impl Action for ConfigureEnterpriseEditionInitService {
         let mut explanation = vec![format!("Create `{DARWIN_ENTERPRISE_EDITION_DAEMON_DEST}`")];
         if self.start_daemon {
             explanation.push(format!(
-                "Run `launchctl load {DARWIN_ENTERPRISE_EDITION_DAEMON_DEST}`"
+                "Run `launchctl bootstrap {DARWIN_ENTERPRISE_EDITION_DAEMON_DEST}`"
             ));
         }
 
@@ -86,8 +86,8 @@ impl Action for ConfigureEnterpriseEditionInitService {
         execute_command(
             Command::new("launchctl")
                 .process_group(0)
-                .args(["load", "-w"])
-                .arg(daemon_file)
+                .arg("bootstrap")
+                .args([domain, service])
                 .stdin(std::process::Stdio::null()),
         )
         .await
@@ -128,7 +128,7 @@ impl Action for ConfigureEnterpriseEditionInitService {
         vec![ActionDescription::new(
             "Unconfigure Nix daemon related settings with launchctl".to_string(),
             vec![format!(
-                "Run `launchctl unload {DARWIN_ENTERPRISE_EDITION_DAEMON_DEST}`"
+                "Run `launchctl bootout {DARWIN_ENTERPRISE_EDITION_DAEMON_DEST}`"
             )],
         )]
     }
@@ -138,8 +138,8 @@ impl Action for ConfigureEnterpriseEditionInitService {
         execute_command(
             Command::new("launchctl")
                 .process_group(0)
-                .arg("unload")
-                .arg(DARWIN_ENTERPRISE_EDITION_DAEMON_DEST),
+                .arg("bootout")
+                .args([domain, service])
         )
         .await
         .map_err(Self::error)?;
