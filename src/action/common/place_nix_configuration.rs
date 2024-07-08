@@ -91,7 +91,7 @@ impl PlaceNixConfiguration {
         let settings = nix_config.settings_mut();
 
         settings.insert("build-users-group".to_string(), nix_build_group_name);
-        let experimental_features = ["nix-command", "flakes", "repl-flake"];
+        let experimental_features = ["nix-command", "flakes"];
         match settings.entry("experimental-features".to_string()) {
             Entry::Occupied(mut slot) => {
                 let slot_mut = slot.get_mut();
@@ -110,6 +110,9 @@ impl PlaceNixConfiguration {
         // https://github.com/DeterminateSystems/nix-installer/issues/449#issuecomment-1551782281
         #[cfg(not(target_os = "macos"))]
         settings.insert("auto-optimise-store".to_string(), "true".to_string());
+
+        // https://github.com/NixOS/nix/pull/8047
+        settings.insert("always-allow-substitutes".to_string(), "true".to_string());
 
         settings.insert(
             "bash-prompt-prefix".to_string(),

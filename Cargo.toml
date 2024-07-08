@@ -1,7 +1,7 @@
 [package]
 name = "nix-installer"
 description = "The Determinate Nix Installer"
-version = "0.19.0"
+version = "0.20.0"
 edition = "2021"
 resolver = "2"
 license = "LGPL-2.1"
@@ -24,27 +24,27 @@ clap = { version = "4", features = ["std", "color", "usage", "help", "error-cont
 color-eyre = { version = "0.6.2", default-features = false, features = [ "track-caller", "issue-url", "tracing-error", "capture-spantrace", "color-spantrace" ], optional = true }
 eyre = { version = "0.6.8", default-features = false, features = [ "track-caller" ], optional = true }
 glob = { version = "0.3.0", default-features = false }
-nix = { version = "0.28.0", default-features = false, features = ["user", "fs", "process", "term"] }
+nix = { version = "0.29.0", default-features = false, features = ["user", "fs", "process", "term"] }
 owo-colors = { version = "4.0.0", default-features = false, features = [ "supports-colors" ] }
 reqwest = { version = "0.12.4", default-features = false, features = ["rustls-tls-native-roots", "stream", "socks"] }
-serde = { version = "1.0.200", default-features = false, features = [ "std", "derive" ] }
-serde_json = { version = "1.0.116", default-features = false, features = [ "std" ] }
+serde = { version = "1.0.203", default-features = false, features = [ "std", "derive" ] }
+serde_json = { version = "1.0.120", default-features = false, features = [ "std" ] }
 serde_with = { version = "3", default-features = false, features = [ "std", "macros" ] }
 tar = { version = "0.4.38", default-features = false, features = [ "xattr" ] }
 target-lexicon = { version = "0.12.4", default-features = false, features = [ "std" ] }
-thiserror = { version = "1.0.59", default-features = false }
+thiserror = { version = "1.0.61", default-features = false }
 tokio = { version = "1.21.0", default-features = false, features = ["time", "io-std", "process", "fs", "signal", "tracing", "rt-multi-thread", "macros", "io-util", "parking_lot" ] }
 tracing = { version = "0.1.36", default-features = false, features = [ "std", "attributes" ] }
 tracing-error = { version = "0.2.0", default-features = false, optional = true, features = ["traced-error"] }
 tracing-subscriber = { version = "0.3.15", default-features = false, features = [ "std", "registry", "fmt", "json", "ansi", "env-filter" ], optional = true }
 url = { version = "2.3.1", default-features = false, features = ["serde"] }
 xz2 = { version = "0.1.7", default-features = false, features = ["static", "tokio"] }
-plist = { version = "1.3.1", default-features = false, features = [ "serde" ]}
+plist = { version = "1.7.0", default-features = false, features = [ "serde" ]}
 dirs = { version = "5.0.0", default-features = false }
 typetag = { version = "0.2.3", default-features = false }
 dyn-clone = { version = "1.0.9", default-features = false }
 rand = { version = "0.8.5", default-features = false, features = [ "std", "std_rng" ] }
-semver = { version = "1.0.14", default-features = false, features = ["serde", "std"] }
+semver = { version = "1.0.23", default-features = false, features = ["serde", "std"] }
 term = { version = "0.7.0", default-features = false }
 uuid = { version = "1.2.2", features = ["serde"] }
 os-release = { version = "0.1.0", default-features = false }
@@ -64,3 +64,9 @@ tempfile = "3.3.0"
 strip = true  # Automatically strip symbols from the binary.
 opt-level = "z"  # Optimize for size.
 lto = true
+
+[package.metadata.docs.rs]
+# NOTE(cole-h): We embed the Nix closure by reading from this environment variable, but this is not
+# available in docs.rs's build. It doesn't influence docs, so it's fine to set it to a bogus (but
+# existing-file) value.
+cargo-args = ["--config", "env.NIX_INSTALLER_TARBALL_PATH=\"../Cargo.toml\""]

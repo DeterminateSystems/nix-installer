@@ -1,5 +1,5 @@
 {
-  "version": "0.19.0",
+  "version": "0.20.0",
   "actions": [
     {
       "action": {
@@ -341,6 +341,7 @@
                 "path": "/etc/nix/nix.conf",
                 "pending_nix_config": {
                   "settings": {
+                    "always-allow-substitutes": "true",
                     "auto-optimise-store": "true",
                     "bash-prompt-prefix": "(nix:$name)\\040",
                     "build-users-group": "nixbld",

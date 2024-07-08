@@ -16,6 +16,12 @@ jobs:
   build-x86_64-darwin:
     uses: ./.github/workflows/build-x86_64-darwin.yml
 
+  build-aarch64-linux:
+    uses: ./.github/workflows/build-aarch64-linux.yml
+
+  build-aarch64-darwin:
+    uses: ./.github/workflows/build-aarch64-darwin.yml
+
   lints:
     name: Lints
     runs-on: ubuntu-latest
@@ -46,6 +52,8 @@ jobs:
         run: nix develop --command check-nixpkgs-fmt
       - name: Check EditorConfig conformance
         run: nix develop --command check-editorconfig
+      - name: Shell check for nix-installer.sh
+        run: nix develop --command shellcheck ./nix-installer.sh
 
   run-x86_64-linux:
     name: Run x86_64 Linux
@@ -56,7 +64,7 @@ jobs:
       contents: "read"
     steps:
       - uses: actions/checkout@v3
-      - name: Restore Github cache of Buildkite artifacts
+      - name: Restore Github cache artifacts
         uses: actions/cache/restore@v3
         with:
           path: nix-installer
@@ -164,7 +172,7 @@ jobs:
       contents: "read"
     steps:
       - uses: actions/checkout@v3
-      - name: Restore Github cache of Buildkite artifacts
+      - name: Restore Github cache artifacts
         uses: actions/cache/restore@v3
         with:
           path: nix-installer
@@ -278,7 +286,7 @@ jobs:
       contents: "read"
     steps:
       - uses: actions/checkout@v3
-      - name: Restore Github cache of Buildkite artifacts
+      - name: Restore Github cache artifacts
         uses: actions/cache/restore@v3
         with:
           path: nix-installer
@@ -289,6 +297,197 @@ jobs:
           cp nix-installer.sh install-root/nix-installer.sh
           mv ./nix-installer install-root/nix-installer-x86_64-darwin
           chmod +x install-root/nix-installer-x86_64-darwin install-root/nix-installer.sh
+      - run: brew install fish coreutils
+      - name: Initial install
+        uses: DeterminateSystems/nix-installer-action@main
+        with:
+          flakehub: true
+          local-root: install-root/
+          logger: pretty
+          log-directives: nix_installer=debug
+          backtrace: full
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          extra-conf: |
+            trusted-users = root runner
+      - name: Initial uninstall (without a `nix run` first)
+        run: sudo -E /nix/nix-installer uninstall
+        env:
+          NIX_INSTALLER_NO_CONFIRM: true
+          NIX_INSTALLER_LOGGER: pretty
+          NIX_INSTALLER_LOG_DIRECTIVES: nix_installer=debug
+          RUST_BACKTRACE: full
+      - name: Repeated install
+        uses: DeterminateSystems/nix-installer-action@main
+        with:
+          flakehub: true
+          local-root: install-root/
+          logger: pretty
+          log-directives: nix_installer=debug
+          backtrace: full
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          extra-conf: trusted-users = root runner
+      - name: echo $PATH
+        run: echo $PATH
+      - name: Test `nix` with `$GITHUB_PATH`
+        if: success() || failure()
+        run: |
+          nix run nixpkgs#hello
+          nix profile install nixpkgs#hello
+          hello
+          nix store gc
+          nix run nixpkgs#hello
+      - name: Test bash
+        run: nix-instantiate -E 'builtins.currentTime' --eval
+        if: success() || failure()
+        shell: bash --login {0}
+      - name: Test sh
+        run: nix-instantiate -E 'builtins.currentTime' --eval
+        if: success() || failure()
+        shell: sh -l {0}
+      - name: Test zsh
+        run: nix-instantiate -E 'builtins.currentTime' --eval
+        if: success() || failure()
+        shell: zsh --login --interactive {0}
+      - name: Test fish
+        run: nix-instantiate -E 'builtins.currentTime' --eval
+        if: success() || failure()
+        shell: fish --login {0}
+      - name: Repeated uninstall
+        run: sudo -E /nix/nix-installer uninstall
+        env:
+          NIX_INSTALLER_NO_CONFIRM: true
+          NIX_INSTALLER_LOGGER: pretty
+          NIX_INSTALLER_LOG_DIRECTIVES: nix_installer=debug
+          RUST_BACKTRACE: full
+
+  run-aarch64-linux:
+    name: Run aarch64 Linux
+    runs-on: namespace-profile-default-arm64
+    needs: [lints, build-aarch64-linux]
+    permissions:
+      id-token: "write"
+      contents: "read"
+    steps:
+      - uses: actions/checkout@v3
+      - name: Restore Github cache artifacts
+        uses: actions/cache/restore@v3
+        with:
+          path: nix-installer
+          key: aarch64-linux-artifacts-${{ github.sha }}
+      - name: Move & set executable
+        run: |
+          mkdir install-root
+          cp nix-installer.sh install-root/nix-installer.sh
+          mv ./nix-installer install-root/nix-installer-aarch64-linux
+          chmod +x install-root/nix-installer-aarch64-linux install-root/nix-installer.sh
+      - run: sudo apt install -y fish zsh
+      - name: Initial install
+        uses: DeterminateSystems/nix-installer-action@main
+        with:
+          flakehub: true
+          local-root: install-root/
+          logger: pretty
+          log-directives: nix_installer=debug
+          backtrace: full
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+      - name: Initial uninstall (without a `nix run` first)
+        run: sudo -E /nix/nix-installer uninstall
+        env:
+          NIX_INSTALLER_NO_CONFIRM: true
+          NIX_INSTALLER_LOGGER: pretty
+          NIX_INSTALLER_LOG_DIRECTIVES: nix_installer=debug
+          RUST_BACKTRACE: full
+      - name: Ensure `nix` is removed
+        run: |
+          if systemctl is-active nix-daemon.socket; then
+            echo "nix-daemon.socket was still running"
+            exit 1
+          fi
+          if systemctl is-active nix-daemon.service; then
+            echo "nix-daemon.service was still running"
+            exit 1
+          fi
+          if [ -e /nix ]; then
+            echo "/nix exists"
+            exit 1
+          fi
+      - name: Repeated install
+        uses: DeterminateSystems/nix-installer-action@main
+        with:
+          flakehub: true
+          local-root: install-root/
+          logger: pretty
+          log-directives: nix_installer=debug
+          backtrace: full
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+      - name: echo $PATH
+        run: echo $PATH
+      - name: Test `nix` with `$GITHUB_PATH`
+        if: success() || failure()
+        run: |
+          nix run nixpkgs#hello
+          nix profile install nixpkgs#hello
+          hello
+          nix store gc
+          nix run nixpkgs#hello
+      - name: Test bash
+        run: nix-instantiate -E 'builtins.currentTime' --eval
+        if: success() || failure()
+        shell: bash --login {0}
+      - name: Test sh
+        run: nix-instantiate -E 'builtins.currentTime' --eval
+        if: success() || failure()
+        shell: sh -l {0}
+      - name: Test zsh
+        run: nix-instantiate -E 'builtins.currentTime' --eval
+        if: success() || failure()
+        shell: zsh --login --interactive {0}
+      - name: Test fish
+        run: nix-instantiate -E 'builtins.currentTime' --eval
+        if: success() || failure()
+        shell: fish --login {0}
+      - name: Repeated uninstall
+        run: sudo -E /nix/nix-installer uninstall
+        env:
+          NIX_INSTALLER_NO_CONFIRM: true
+          NIX_INSTALLER_LOGGER: pretty
+          NIX_INSTALLER_LOG_DIRECTIVES: nix_installer=debug
+          RUST_BACKTRACE: full
+      - name: Ensure `nix` is removed
+        run: |
+          if systemctl is-active nix-daemon.socket; then
+            echo "nix-daemon.socket was still running"
+            exit 1
+          fi
+          if systemctl is-active nix-daemon.service; then
+            echo "nix-daemon.service was still running"
+            exit 1
+          fi
+          if [ -e /nix ]; then
+            echo "/nix exists"
+            exit 1
+          fi
+
+  run-aarch64-darwin:
+    name: Run aarch64 Darwin
+    runs-on: macos-latest-xlarge
+    needs: [lints, build-aarch64-darwin]
+    permissions:
+      id-token: "write"
+      contents: "read"
+    steps:
+      - uses: actions/checkout@v3
+      - name: Restore Github cache artifacts
+        uses: actions/cache/restore@v3
+        with:
+          path: nix-installer
+          key: aarch64-darwin-artifacts-${{ github.sha }}
+      - name: Move & set executable
+        run: |
+          mkdir install-root
+          cp nix-installer.sh install-root/nix-installer.sh
+          mv ./nix-installer install-root/nix-installer-aarch64-darwin
+          chmod +x install-root/nix-installer-aarch64-darwin install-root/nix-installer.sh
       - run: brew install fish coreutils
       - name: Initial install
         uses: DeterminateSystems/nix-installer-action@main
