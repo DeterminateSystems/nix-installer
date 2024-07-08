@@ -4,16 +4,20 @@
 
 ## Your system can't find Nix
 
-**Issue**: You run any Nix command, like `nix --version` and Nix isn't found:
+### Issue
+
+You run any Nix command, like `nix --version` and Nix isn't found:
 
 ```shell
 $ nix --version
 bash: nix: command not found
 ```
 
-**Likely problem**: Nix isn't currently on your `PATH`.
+### Likely problem
 
-**Potential solutions**
+Nix isn't currently on your `PATH`.
+
+### Potential solutions
 
 1. Start the Nix daemon by running
 
