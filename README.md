@@ -234,7 +234,7 @@ On some container tools, such as `docker`, `sandbox = false` can be omitted. Omi
 
 ### In WSL2
 
-We **strongly recommend** [enabling systemd](https://ubuntu.com/blog/ubuntu-wsl-enable-systemd), then installing Nix as normal:
+We **strongly recommend** [enabling systemd](https://devblogs.microsoft.com/commandline/systemd-support-is-now-available-in-wsl/#how-can-you-get-systemd-on-your-machine), then installing Nix as normal:
 
 
 ```bash
