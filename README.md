@@ -158,8 +158,7 @@ If you are using different runners, the above example may need to be adjusted.
 
 ### Without systemd (Linux only)
 
-> **Warning**:
-> When `--init none` is used, _only_ `root` or users who can elevate to `root` privileges can run Nix:
+> **Warning**: When `--init none` is used, _only_ `root` or users who can elevate to `root` privileges can run Nix:
 >
 > ```bash
 > sudo -i nix run nixpkgs#hello
@@ -177,8 +176,7 @@ In Docker/Podman containers or WSL2 instances where an init (like `systemd`) is 
 
 For containers (without an init):
 
-> **Warning**:
-> When `--init none` is used, _only_ `root` or users who can elevate to `root` privileges can run Nix:
+> **Warning**: When `--init none` is used, _only_ `root` or users who can elevate to `root` privileges can run Nix:
 >
 > ```bash
 > sudo -i nix run nixpkgs#hello
@@ -256,8 +254,7 @@ wsl nix run --impure github:guibou/nixGL nix run nixpkgs#obs-studio
 
 If enabling systemd is not an option, pass `--init none` at the end of the command:
 
-> **Warning**:
-> When `--init none` is used, _only_ `root` or users who can elevate to `root` privileges can run Nix:
+> **Warning**: When `--init none` is used, _only_ `root` or users who can elevate to `root` privileges can run Nix:
 >
 > ```bash
 > sudo -i nix run nixpkgs#hello
@@ -362,13 +359,11 @@ nix-installer --help
 
 To make this build portable, pass ` --target x86_64-unknown-linux-musl`.
 
-> **Note**:
-> We currently require `--cfg tokio_unstable` as we utilize [Tokio's process groups](https://docs.rs/tokio/1.24.1/tokio/process/struct.Command.html#method.process_group), which wrap stable `std` APIs, but are unstable due to it requiring an MSRV bump.
+> **Note**: We currently require `--cfg tokio_unstable` as we utilize [Tokio's process groups](https://docs.rs/tokio/1.24.1/tokio/process/struct.Command.html#method.process_group), which wrap stable `std` APIs, but are unstable due to it requiring an MSRV bump.
 
 ## As a library
 
-> **Warning**:
-> Use as a library is still experimental. This feature is likely to be removed in the future without an advocate. If you're using this, please let us know and we can make a path to stabilization.
+> **Warning**: Use as a library is still experimental. This feature is likely to be removed in the future without an advocate. If you're using this, please let us know and we can make a path to stabilization.
 
 Add `nix-installer` to your dependencies:
 
