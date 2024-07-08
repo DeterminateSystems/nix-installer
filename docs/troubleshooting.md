@@ -6,7 +6,7 @@
 
 ### Issue
 
-You run any Nix command, like `nix --version` and Nix isn't found:
+You've run the installer but when you run any Nix command, like `nix --version`, and Nix isn't found:
 
 ```shell
 $ nix --version
