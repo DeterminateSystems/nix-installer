@@ -42,24 +42,24 @@ $ chmod +x nix-installer
 $ ./nix-installer
 ```
 
-`nix-installer` installs Nix by following a *plan* made by a *planner*. Review the available planners:
+`nix-installer` installs Nix by following a _plan_ made by a _planner_. Review the available planners:
 
 ```bash
-$ ./nix-installer install --help
-Execute an install (possibly using an existing plan)
+foo@ubuntuserver2204:~$ ./nix-installer install --help
+Install Nix using a planner
 
-To pass custom options, select a planner, for example `nix-installer install linux-multi --help`
+By default, an appropriate planner is heuristically determined based on the system.
+
+Some planners have additional options which can be set from the planner's subcommand.
 
 Usage: nix-installer install [OPTIONS] [PLAN]
        nix-installer install <COMMAND>
 
 Commands:
-  linux
-          A planner for Linux installs
-  steam-deck
-          A planner suitable for the Valve Steam Deck running SteamOS
-  help
-          Print this message or the help of the given subcommand(s)
+  linux       A planner for traditional, mutable Linux systems like Debian, RHEL, or Arch
+  steam-deck  A planner for the Valve Steam Deck running SteamOS
+  ostree      A planner suitable for immutable systems using ostree, such as Fedora Silverblue
+  help        Print this message or the help of the given subcommand(s)
 # ...
 ```
 
@@ -90,9 +90,9 @@ Options:
 Planners can be configured via environment variable or command arguments:
 
 ```bash
-$ curl --proto '=https' --tlsv1.2 -sSf -L https://install.determinate.systems/nix | NIX_BUILD_GROUP_NAME=nixbuilder sh -s -- install linux-multi --nix-build-group-id 4000
+$ curl --proto '=https' --tlsv1.2 -sSf -L https://install.determinate.systems/nix | NIX_BUILD_GROUP_NAME=nixbuilder sh -s -- install --nix-build-group-id 4000
 # Or...
-$ NIX_BUILD_GROUP_NAME=nixbuilder ./nix-installer install linux-multi --nix-build-group-id 4000
+$ NIX_BUILD_GROUP_NAME=nixbuilder ./nix-installer install --nix-build-group-id 4000
 ```
 
 ### Upgrading Nix

@@ -15,6 +15,10 @@ use crate::action::{Action, ActionDescription};
 #[cfg(target_os = "macos")]
 const DARWIN_ENTERPRISE_EDITION_DAEMON_DEST: &str =
     "/Library/LaunchDaemons/systems.determinate.nix-daemon.plist";
+#[cfg(target_os = "macos")]
+const DARWIN_LAUNCHD_DOMAIN: &str = "system";
+#[cfg(target_os = "macos")]
+const DARWIN_LAUNCHD_SERVICE: &str = "systems.determinate.nix-daemon";
 /**
 Configure the init to run the Nix daemon
 */
@@ -52,7 +56,7 @@ impl Action for ConfigureEnterpriseEditionInitService {
         let mut explanation = vec![format!("Create `{DARWIN_ENTERPRISE_EDITION_DAEMON_DEST}`")];
         if self.start_daemon {
             explanation.push(format!(
-                "Run `launchctl load {DARWIN_ENTERPRISE_EDITION_DAEMON_DEST}`"
+                "Run `launchctl bootstrap {DARWIN_ENTERPRISE_EDITION_DAEMON_DEST}`"
             ));
         }
 
@@ -64,8 +68,8 @@ impl Action for ConfigureEnterpriseEditionInitService {
         let Self { start_daemon } = self;
 
         let daemon_file = DARWIN_ENTERPRISE_EDITION_DAEMON_DEST;
-        let domain = "system";
-        let service = "systems.determinate.nix-daemon";
+        let domain = DARWIN_LAUNCHD_DOMAIN;
+        let service = DARWIN_LAUNCHD_SERVICE;
 
         let generated_plist = generate_plist();
 
@@ -86,8 +90,8 @@ impl Action for ConfigureEnterpriseEditionInitService {
         execute_command(
             Command::new("launchctl")
                 .process_group(0)
-                .args(["load", "-w"])
-                .arg(daemon_file)
+                .arg("bootstrap")
+                .args([domain, daemon_file])
                 .stdin(std::process::Stdio::null()),
         )
         .await
@@ -128,7 +132,7 @@ impl Action for ConfigureEnterpriseEditionInitService {
         vec![ActionDescription::new(
             "Unconfigure Nix daemon related settings with launchctl".to_string(),
             vec![format!(
-                "Run `launchctl unload {DARWIN_ENTERPRISE_EDITION_DAEMON_DEST}`"
+                "Run `launchctl bootout {DARWIN_ENTERPRISE_EDITION_DAEMON_DEST}`"
             )],
         )]
     }
@@ -138,8 +142,8 @@ impl Action for ConfigureEnterpriseEditionInitService {
         execute_command(
             Command::new("launchctl")
                 .process_group(0)
-                .arg("unload")
-                .arg(DARWIN_ENTERPRISE_EDITION_DAEMON_DEST),
+                .arg("bootout")
+                .arg([DARWIN_LAUNCHD_DOMAIN, DARWIN_LAUNCHD_SERVICE].join("/")),
         )
         .await
         .map_err(Self::error)?;
