@@ -30,6 +30,7 @@ jobs:
     runs-on: ${{ matrix.jobs.runs-on }}
     needs: inventory
     strategy:
+      fail-fast: false
       matrix:
         jobs: ${{ fromJSON(needs.inventory.outputs.matrix) }}
 
