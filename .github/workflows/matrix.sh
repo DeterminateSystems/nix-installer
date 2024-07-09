@@ -15,8 +15,9 @@ nix flake show --json --all-systems \
         ' \
         '
             map(select(.[0][-1] == "type" and .[1] == "derivation")
-                | .[0][0:-1]
-                | select(.[-1] != "all")
+                | .[0][0:-1] # Take each attribute name and drop `type`
+                | select(.[-1] != "all") # Skip attributes which are `all` jobs, presumably combining other jobs
+                | select(.[0] == "hydraJobs") # Select the hydraJobs which are not typically run in CI
                 | {
                     attribute: . | join("."),
                     "nix-system": .[-2],
