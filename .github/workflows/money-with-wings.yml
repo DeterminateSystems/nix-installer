@@ -1,4 +1,4 @@
-name: 💸
+name: Extensive Release Checks
 
 on:
   workflow_dispatch:
