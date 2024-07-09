@@ -7,6 +7,8 @@ use clap::{
     error::{ContextKind, ContextValue},
     ArgAction,
 };
+use once_cell::sync::OnceCell;
+use serde::Deserialize;
 use url::Url;
 
 pub const SCRATCH_DIR: &str = "/nix/temp-install-dir";
@@ -125,10 +127,9 @@ pub struct CommonSettings {
         all(target_os = "macos", feature = "cli"),
         doc = "Service users on Mac should be between 200-400"
     )]
-    #[cfg_attr(all(target_os = "macos", feature = "cli"), clap(default_value_t = 300))]
     #[cfg_attr(
-        all(target_os = "linux", feature = "cli"),
-        clap(default_value_t = 30_000)
+        all(feature = "cli"),
+        clap(default_value_t = default_nix_build_user_id_base())
     )]
     pub nix_build_user_id_base: u32,
 
@@ -207,40 +208,81 @@ pub struct CommonSettings {
     pub diagnostic_endpoint: Option<String>,
 }
 
+#[derive(Deserialize, Clone, Debug, PartialEq)]
+#[serde(rename_all = "PascalCase")]
+pub struct SystemVersionPlist {
+    product_version: String,
+}
+
+const MACOS_SYSTEM_VERSION_PLIST_PATH: &str = "/System/Library/CoreServices/SystemVersion.plist";
+
+pub fn is_macos_15_or_later() -> bool {
+    static MACOS_MAJOR_VERSION: OnceCell<u64> = OnceCell::new();
+    let maybe_major_version = MACOS_MAJOR_VERSION
+        .get_or_try_init(|| {
+            let plist: SystemVersionPlist = plist::from_file(MACOS_SYSTEM_VERSION_PLIST_PATH)?;
+
+            let Some((major, _rest)) = plist.product_version.split_once('.') else {
+                return Err(eyre::eyre!(
+                    "Failed to parse ProductVersion: {}",
+                    plist.product_version
+                ));
+            };
+
+            let major = major.parse::<u64>()?;
+
+            Ok::<_, eyre::Error>(major)
+        })
+        .inspect_err(|e| {
+            tracing::warn!(
+                ?e,
+                "Failed to get macOS major version, assuming <= macOS 14"
+            );
+        })
+        .ok();
+
+    maybe_major_version.is_some_and(|&v| v >= 15)
+}
+
+fn default_nix_build_user_id_base() -> u32 {
+    use target_lexicon::OperatingSystem;
+
+    match OperatingSystem::host() {
+        OperatingSystem::MacOSX { .. } | OperatingSystem::Darwin => {
+            // NOTE(cole-h): https://github.com/NixOS/nix/issues/10892#issuecomment-2212094287
+            if is_macos_15_or_later() {
+                450
+            } else {
+                300
+            }
+        },
+        _ => 30_000,
+    }
+}
+
 impl CommonSettings {
     /// The default settings for the given Architecture & Operating System
     pub async fn default() -> Result<Self, InstallSettingsError> {
         let nix_build_user_prefix;
-        let nix_build_user_id_base;
 
         use target_lexicon::{Architecture, OperatingSystem};
         match (Architecture::host(), OperatingSystem::host()) {
-            #[cfg(target_os = "linux")]
             (Architecture::X86_64, OperatingSystem::Linux) => {
                 nix_build_user_prefix = "nixbld";
-                nix_build_user_id_base = 30000;
             },
-            #[cfg(target_os = "linux")]
             (Architecture::X86_32(_), OperatingSystem::Linux) => {
                 nix_build_user_prefix = "nixbld";
-                nix_build_user_id_base = 30000;
             },
-            #[cfg(target_os = "linux")]
             (Architecture::Aarch64(_), OperatingSystem::Linux) => {
                 nix_build_user_prefix = "nixbld";
-                nix_build_user_id_base = 30000;
             },
-            #[cfg(target_os = "macos")]
             (Architecture::X86_64, OperatingSystem::MacOSX { .. })
             | (Architecture::X86_64, OperatingSystem::Darwin) => {
                 nix_build_user_prefix = "_nixbld";
-                nix_build_user_id_base = 300;
             },
-            #[cfg(target_os = "macos")]
             (Architecture::Aarch64(_), OperatingSystem::MacOSX { .. })
             | (Architecture::Aarch64(_), OperatingSystem::Darwin) => {
                 nix_build_user_prefix = "_nixbld";
-                nix_build_user_id_base = 300;
             },
             _ => {
                 return Err(InstallSettingsError::UnsupportedArchitecture(
@@ -253,7 +295,7 @@ impl CommonSettings {
             modify_profile: true,
             nix_build_group_name: String::from("nixbld"),
             nix_build_group_id: 30_000,
-            nix_build_user_id_base,
+            nix_build_user_id_base: default_nix_build_user_id_base(),
             nix_build_user_count: 32,
             nix_build_user_prefix: nix_build_user_prefix.to_string(),
             nix_package_url: None,
