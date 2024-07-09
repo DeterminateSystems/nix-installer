@@ -48,4 +48,4 @@ jobs:
     needs: build
 
     steps:
-      - run: true
+      - run: "true"
