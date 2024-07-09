@@ -1,7 +1,6 @@
 #!/bin/sh
 
-#nix flake show --json --all-systems \
-cat data.json \
+nix flake show --json --all-systems \
     | nix run nixpkgs#gron -- -j \
     | nix run nixpkgs#jq -- -r \
         --slurp \
