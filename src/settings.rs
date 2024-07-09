@@ -212,7 +212,6 @@ impl CommonSettings {
     pub async fn default() -> Result<Self, InstallSettingsError> {
         let nix_build_user_prefix;
         let nix_build_user_id_base;
-        let nix_build_user_count;
 
         use target_lexicon::{Architecture, OperatingSystem};
         match (Architecture::host(), OperatingSystem::host()) {
@@ -220,33 +219,28 @@ impl CommonSettings {
             (Architecture::X86_64, OperatingSystem::Linux) => {
                 nix_build_user_prefix = "nixbld";
                 nix_build_user_id_base = 30000;
-                nix_build_user_count = 32;
             },
             #[cfg(target_os = "linux")]
             (Architecture::X86_32(_), OperatingSystem::Linux) => {
                 nix_build_user_prefix = "nixbld";
                 nix_build_user_id_base = 30000;
-                nix_build_user_count = 32;
             },
             #[cfg(target_os = "linux")]
             (Architecture::Aarch64(_), OperatingSystem::Linux) => {
                 nix_build_user_prefix = "nixbld";
                 nix_build_user_id_base = 30000;
-                nix_build_user_count = 32;
             },
             #[cfg(target_os = "macos")]
             (Architecture::X86_64, OperatingSystem::MacOSX { .. })
             | (Architecture::X86_64, OperatingSystem::Darwin) => {
                 nix_build_user_prefix = "_nixbld";
                 nix_build_user_id_base = 300;
-                nix_build_user_count = 32;
             },
             #[cfg(target_os = "macos")]
             (Architecture::Aarch64(_), OperatingSystem::MacOSX { .. })
             | (Architecture::Aarch64(_), OperatingSystem::Darwin) => {
                 nix_build_user_prefix = "_nixbld";
                 nix_build_user_id_base = 300;
-                nix_build_user_count = 32;
             },
             _ => {
                 return Err(InstallSettingsError::UnsupportedArchitecture(
@@ -260,7 +254,7 @@ impl CommonSettings {
             nix_build_group_name: String::from("nixbld"),
             nix_build_group_id: 30_000,
             nix_build_user_id_base,
-            nix_build_user_count,
+            nix_build_user_count: 32,
             nix_build_user_prefix: nix_build_user_prefix.to_string(),
             nix_package_url: None,
             proxy: Default::default(),
