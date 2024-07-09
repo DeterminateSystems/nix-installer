@@ -114,16 +114,16 @@
         "nixpkgs": "nixpkgs_2"
       },
       "locked": {
-        "lastModified": 1719508126,
-        "narHash": "sha256-FiQVX3mwExssB1JwqdW48cPBXJ2V+iXYKOtsqTkPlVw=",
-        "rev": "de0528b5fac30b802134ca9a84c73ae6626a492f",
-        "revCount": 64,
+        "lastModified": 1720535336,
+        "narHash": "sha256-l8Q5/8DwzkW2FgT9Iicxtzxj/MMNE2YlTKWlCV5ybko=",
+        "rev": "c6cc168785f687a3e51e9321628c33925f1a6a68",
+        "revCount": 73,
         "type": "tarball",
-        "url": "https://api.flakehub.com/f/pinned/DeterminateSystems/nix/2.23.1/01905aba-7c85-727f-ab95-e78f10889dd3/source.tar.gz"
+        "url": "https://api.flakehub.com/f/pinned/DeterminateSystems/nix/2.23.3/019097ec-5f84-7a24-9af5-79a2dfa6fe73/source.tar.gz"
       },
       "original": {
         "type": "tarball",
-        "url": "https://flakehub.com/f/DeterminateSystems/nix/%3D2.23.1.tar.gz"
+        "url": "https://flakehub.com/f/DeterminateSystems/nix/%3D2.23.3.tar.gz"
       }
     },
     "nix_2": {
@@ -136,16 +136,16 @@
         "pre-commit-hooks": "pre-commit-hooks"
       },
       "locked": {
-        "lastModified": 1719442162,
-        "narHash": "sha256-US+UsPhFeYoJH0ncjERRtVD1U20JtVtjsG+xhZqr/nY=",
-        "rev": "20ac7811904d5ee00d1d16ed811544c9d3297e15",
-        "revCount": 17394,
+        "lastModified": 1720213208,
+        "narHash": "sha256-lAoLGVIhRFrfgv7wcyduEkyc83QKrtsfsq4of+WrBeg=",
+        "rev": "f1deb42176cadfb412eb6f92315e6aeef7f2ad75",
+        "revCount": 17415,
         "type": "tarball",
-        "url": "https://api.flakehub.com/f/pinned/NixOS/nix/2.23.1/01905a9c-511f-7df0-910f-096ac5276124/source.tar.gz"
+        "url": "https://api.flakehub.com/f/pinned/NixOS/nix/2.23.3/0190936a-a531-7743-88ed-025ecd4d0835/source.tar.gz"
       },
       "original": {
         "type": "tarball",
-        "url": "https://flakehub.com/f/NixOS/nix/%3D2.23.1"
+        "url": "https://flakehub.com/f/NixOS/nix/%3D2.23.3"
       }
     },
     "nixpkgs": {
