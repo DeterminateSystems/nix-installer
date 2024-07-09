@@ -965,6 +965,7 @@ dependencies = [
  "is_ci",
  "nix",
  "nix-config-parser",
+ "once_cell",
  "os-release",
  "owo-colors 4.0.0",
  "plist",
