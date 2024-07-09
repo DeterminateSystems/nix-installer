@@ -2,6 +2,9 @@ name: Extensive Release Checks
 
 on:
   workflow_dispatch:
+  push:
+    branches:
+      - money-with-wings
 
 jobs:
   inventory:
