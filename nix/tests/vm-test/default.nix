@@ -653,7 +653,7 @@ lib.recursiveUpdate joined-tests {
   all."x86_64-linux" = (with (forSystem "x86_64-linux" ({ system, pkgs, ... }: pkgs)); pkgs.lib.mapAttrs (caseName: case:
     pkgs.releaseTools.aggregate {
       name = "${caseName}-aggregate";
-      constituents = pkgs.lib.mapAttrsToList (name: value: value."x86_64-linux"."${caseName}") joined-tests;
+      constituents = pkgs.lib.mapAttrsToList (name: value: value."x86_64-linux"."${caseName}-aggregate") joined-tests;
     }
   )) (allCases // { "cure-self" = { }; "cure-script" = { }; "install" = { }; "uninstall" = { }; "all" = { }; });
 }
