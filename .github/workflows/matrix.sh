@@ -17,6 +17,7 @@ nix flake show --json --all-systems \
             map(select(.[0][-1] == "type" and .[1] == "derivation")
                 | .[0][0:-1] # Take each attribute name and drop `type`
                 | select(.[-1] != "all") # Skip attributes which are `all` jobs, presumably combining other jobs
+                | select(.[-1] | endswith("-aggregate") != true) # Skip attributes which end in `-aggregate`, because those just depend on other jobs which build them
                 | select(.[0] == "hydraJobs") # Select the hydraJobs which are not typically run in CI
                 | {
                     attribute: . | join("."),
