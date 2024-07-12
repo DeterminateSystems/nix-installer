@@ -7,6 +7,8 @@ use clap::{
     error::{ContextKind, ContextValue},
     ArgAction,
 };
+use color_eyre::owo_colors::OwoColorize as _;
+use eyre::Context as _;
 use once_cell::sync::OnceCell;
 use serde::Deserialize;
 use url::Url;
@@ -215,12 +217,27 @@ pub struct SystemVersionPlist {
 }
 
 const MACOS_SYSTEM_VERSION_PLIST_PATH: &str = "/System/Library/CoreServices/SystemVersion.plist";
+const MACOS_SYSTEM_VERSION_PLIST_SYMLINK_PATH: &str =
+    "/System/Library/CoreServices/.SystemVersionPlatform.plist";
 
 pub fn is_macos_15_or_later() -> bool {
     static MACOS_MAJOR_VERSION: OnceCell<u64> = OnceCell::new();
     let maybe_major_version = MACOS_MAJOR_VERSION
         .get_or_try_init(|| {
-            let plist: SystemVersionPlist = plist::from_file(MACOS_SYSTEM_VERSION_PLIST_PATH)?;
+            // NOTE(cole-h): Sometimes, macOS decides it's a good idea to change the contents of the file you're reading.
+            // See also:
+            // https://eclecticlight.co/2020/08/13/macos-version-numbering-isnt-so-simple/
+            // https://github.com/ziglang/zig/pull/7714/
+            let symlink_path = std::path::Path::new(MACOS_SYSTEM_VERSION_PLIST_SYMLINK_PATH);
+            let plist: SystemVersionPlist = if symlink_path.exists() {
+                plist::from_file(symlink_path).with_context(|| {
+                    format!("Failed to parse plist from {MACOS_SYSTEM_VERSION_PLIST_SYMLINK_PATH}")
+                })?
+            } else {
+                plist::from_file(MACOS_SYSTEM_VERSION_PLIST_PATH).with_context(|| {
+                    format!("Failed to parse plist from {MACOS_SYSTEM_VERSION_PLIST_PATH}")
+                })?
+            };
 
             let Some((major, _rest)) = plist.product_version.split_once('.') else {
                 return Err(eyre::eyre!(
@@ -229,14 +246,19 @@ pub fn is_macos_15_or_later() -> bool {
                 ));
             };
 
-            let major = major.parse::<u64>()?;
+            let major = major
+                .parse::<u64>()
+                .with_context(|| format!("Failed to parse major version '{major}'"))?;
 
             Ok::<_, eyre::Error>(major)
         })
         .inspect_err(|e| {
-            tracing::warn!(
-                ?e,
-                "Failed to get macOS major version, assuming <= macOS 14"
+            // NOTE(cole-h): cannot using tracing here because this is called before we setup the
+            // tracing subscriber
+            eprintln!(
+                "{}",
+                format!("WARNING: Failed to detect macOS major version, assuming <= macOS 14: {e}")
+                    .yellow()
             );
         })
         .ok();
