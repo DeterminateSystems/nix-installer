@@ -3,6 +3,7 @@ use std::path::PathBuf;
 #[derive(serde::Deserialize)]
 #[serde(rename_all = "PascalCase")]
 pub struct DiskUtilInfoOutput {
+    #[cfg_attr(not(target_os = "macos"), allow(dead_code))]
     pub parent_whole_disk: String,
     pub global_permissions_enabled: bool,
     pub mount_point: Option<PathBuf>,
