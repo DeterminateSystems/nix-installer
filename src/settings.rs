@@ -24,22 +24,16 @@ pub const NIX_TARBALL: &[u8] = include_bytes!(env!("NIX_INSTALLER_TARBALL_PATH")
 #[derive(Debug, serde::Deserialize, serde::Serialize, Clone, Copy, PartialEq, Eq)]
 #[cfg_attr(feature = "cli", derive(clap::ValueEnum))]
 pub enum InitSystem {
-    #[cfg(not(target_os = "macos"))]
     None,
-    #[cfg(target_os = "linux")]
     Systemd,
-    #[cfg(target_os = "macos")]
     Launchd,
 }
 
 impl std::fmt::Display for InitSystem {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            #[cfg(not(target_os = "macos"))]
             InitSystem::None => write!(f, "none"),
-            #[cfg(target_os = "linux")]
             InitSystem::Systemd => write!(f, "systemd"),
-            #[cfg(target_os = "macos")]
             InitSystem::Launchd => write!(f, "launchd"),
         }
     }

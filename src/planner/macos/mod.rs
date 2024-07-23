@@ -29,7 +29,6 @@ use crate::{
     Action, BuiltinPlanner,
 };
 
-#[cfg(target_os = "macos")]
 use crate::action::common::ConfigureEnterpriseEditionInitService;
 
 /// A planner for MacOS (Darwin) systems
