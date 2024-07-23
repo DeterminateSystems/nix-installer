@@ -185,7 +185,7 @@ impl From<HostSpecificBuiltinPlanner> for BuiltinPlanner {
             HostSpecificBuiltinPlanner::SteamDeck(int) => BuiltinPlanner::SteamDeck(int),
 
             #[cfg(target_os = "linux")]
-            HostSpecificBuiltinPlanner::OsTree(int) => BuiltinPlanner::OsTree(int),
+            HostSpecificBuiltinPlanner::Ostree(int) => BuiltinPlanner::Ostree(int),
 
             #[cfg(target_os = "macos")]
             HostSpecificBuiltinPlanner::Macos(int) => BuiltinPlanner::Macos(int),
