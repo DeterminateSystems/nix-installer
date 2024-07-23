@@ -1,8 +1,6 @@
 use std::path::PathBuf;
 
-#[cfg(target_os = "macos")]
 use serde::{Deserialize, Serialize};
-#[cfg(target_os = "macos")]
 use tokio::io::AsyncWriteExt;
 use tokio::process::Command;
 use tracing::{span, Span};
@@ -12,12 +10,9 @@ use crate::execute_command;
 
 use crate::action::{Action, ActionDescription};
 
-#[cfg(target_os = "macos")]
 const DARWIN_ENTERPRISE_EDITION_DAEMON_DEST: &str =
     "/Library/LaunchDaemons/systems.determinate.nix-daemon.plist";
-#[cfg(target_os = "macos")]
 const DARWIN_LAUNCHD_DOMAIN: &str = "system";
-#[cfg(target_os = "macos")]
 const DARWIN_LAUNCHD_SERVICE: &str = "systems.determinate.nix-daemon";
 /**
 Configure the init to run the Nix daemon
@@ -156,7 +151,6 @@ impl Action for ConfigureEnterpriseEditionInitService {
 #[derive(Debug, thiserror::Error)]
 pub enum ConfigureEnterpriseEditionNixDaemonServiceError {}
 
-#[cfg(target_os = "macos")]
 #[derive(Deserialize, Clone, Debug, Serialize, PartialEq)]
 #[serde(rename_all = "PascalCase")]
 pub struct DeterminateNixDaemonPlist {
@@ -169,14 +163,12 @@ pub struct DeterminateNixDaemonPlist {
     soft_resource_limits: ResourceLimits,
 }
 
-#[cfg(target_os = "macos")]
 #[derive(Deserialize, Clone, Debug, Serialize, PartialEq)]
 #[serde(rename_all = "PascalCase")]
 pub struct ResourceLimits {
     number_of_files: usize,
 }
 
-#[cfg(target_os = "macos")]
 fn generate_plist() -> DeterminateNixDaemonPlist {
     DeterminateNixDaemonPlist {
         keep_alive: true,
