@@ -29,7 +29,6 @@ use crate::{
     Action, BuiltinPlanner,
 };
 
-#[cfg(target_os = "macos")]
 use crate::action::common::ConfigureEnterpriseEditionInitService;
 
 /// A planner for MacOS (Darwin) systems
@@ -300,6 +299,17 @@ impl Planner for Macos {
                 .collect::<Vec<_>>(),
             self.settings.ssl_cert_file.clone(),
         )?)
+    }
+
+    async fn platform_check(&self) -> Result<(), PlannerError> {
+        use target_lexicon::OperatingSystem;
+        match target_lexicon::OperatingSystem::host() {
+            OperatingSystem::MacOSX { .. } | OperatingSystem::Darwin => Ok(()),
+            host_os => Err(PlannerError::IncompatibleOperatingSystem {
+                planner: self.typetag_name(),
+                host_os,
+            }),
+        }
     }
 
     async fn pre_uninstall_check(&self) -> Result<(), PlannerError> {

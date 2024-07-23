@@ -1,8 +1,6 @@
-#[cfg(target_os = "linux")]
 use std::path::Path;
 use std::path::PathBuf;
 
-#[cfg(target_os = "macos")]
 use serde::{Deserialize, Serialize};
 use tokio::process::Command;
 use tracing::{span, Span};
@@ -13,26 +11,16 @@ use crate::execute_command;
 use crate::action::{Action, ActionDescription};
 use crate::settings::InitSystem;
 
-#[cfg(target_os = "linux")]
 const SERVICE_SRC: &str = "/nix/var/nix/profiles/default/lib/systemd/system/nix-daemon.service";
-#[cfg(target_os = "linux")]
 const SERVICE_DEST: &str = "/etc/systemd/system/nix-daemon.service";
-#[cfg(target_os = "linux")]
 const SOCKET_SRC: &str = "/nix/var/nix/profiles/default/lib/systemd/system/nix-daemon.socket";
-#[cfg(target_os = "linux")]
 const SOCKET_DEST: &str = "/etc/systemd/system/nix-daemon.socket";
-#[cfg(target_os = "linux")]
 const TMPFILES_SRC: &str = "/nix/var/nix/profiles/default/lib/tmpfiles.d/nix-daemon.conf";
-#[cfg(target_os = "linux")]
 const TMPFILES_DEST: &str = "/etc/tmpfiles.d/nix-daemon.conf";
-#[cfg(target_os = "macos")]
 const DARWIN_NIX_DAEMON_DEST: &str = "/Library/LaunchDaemons/org.nixos.nix-daemon.plist";
-#[cfg(target_os = "macos")]
 const DARWIN_NIX_DAEMON_SOURCE: &str =
     "/nix/var/nix/profiles/default/Library/LaunchDaemons/org.nixos.nix-daemon.plist";
-#[cfg(target_os = "macos")]
 const DARWIN_LAUNCHD_DOMAIN: &str = "system";
-#[cfg(target_os = "macos")]
 const DARWIN_LAUNCHD_SERVICE: &str = "org.nixos.nix-daemon";
 /**
 Configure the init to run the Nix daemon
@@ -44,7 +32,6 @@ pub struct ConfigureInitService {
 }
 
 impl ConfigureInitService {
-    #[cfg(target_os = "linux")]
     async fn check_if_systemd_unit_exists(src: &str, dest: &str) -> Result<(), ActionErrorKind> {
         // TODO: once we have a way to communicate interaction between the library and the cli,
         // interactively ask for permission to remove the file
@@ -80,11 +67,9 @@ impl ConfigureInitService {
         start_daemon: bool,
     ) -> Result<StatefulAction<Self>, ActionError> {
         match init {
-            #[cfg(target_os = "macos")]
             InitSystem::Launchd => {
                 // No plan checks, yet
             },
-            #[cfg(target_os = "linux")]
             InitSystem::Systemd => {
                 // If `no_start_daemon` is set, then we don't require a running systemd,
                 // so we don't need to check if `/run/systemd/system` exists.
@@ -107,7 +92,6 @@ impl ConfigureInitService {
                     .await
                     .map_err(Self::error)?;
             },
-            #[cfg(target_os = "linux")]
             InitSystem::None => {
                 // Nothing here, no init system
             },
@@ -125,13 +109,10 @@ impl Action for ConfigureInitService {
     }
     fn tracing_synopsis(&self) -> String {
         match self.init {
-            #[cfg(target_os = "linux")]
             InitSystem::Systemd => "Configure Nix daemon related settings with systemd".to_string(),
-            #[cfg(target_os = "macos")]
             InitSystem::Launchd => {
                 "Configure Nix daemon related settings with launchctl".to_string()
             },
-            #[cfg(not(target_os = "macos"))]
             InitSystem::None => "Leave the Nix daemon unconfigured".to_string(),
         }
     }
@@ -143,7 +124,6 @@ impl Action for ConfigureInitService {
     fn execute_description(&self) -> Vec<ActionDescription> {
         let mut vec = Vec::new();
         match self.init {
-            #[cfg(target_os = "linux")]
             InitSystem::Systemd => {
                 let mut explanation = vec![
                     "Run `systemd-tmpfiles --create --prefix=/nix/var/nix`".to_string(),
@@ -156,7 +136,6 @@ impl Action for ConfigureInitService {
                 }
                 vec.push(ActionDescription::new(self.tracing_synopsis(), explanation))
             },
-            #[cfg(target_os = "macos")]
             InitSystem::Launchd => {
                 let mut explanation = vec![format!(
                     "Copy `{DARWIN_NIX_DAEMON_SOURCE}` to `{DARWIN_NIX_DAEMON_DEST}`"
@@ -168,7 +147,6 @@ impl Action for ConfigureInitService {
                 }
                 vec.push(ActionDescription::new(self.tracing_synopsis(), explanation))
             },
-            #[cfg(not(target_os = "macos"))]
             InitSystem::None => (),
         }
         vec
@@ -179,7 +157,6 @@ impl Action for ConfigureInitService {
         let Self { init, start_daemon } = self;
 
         match init {
-            #[cfg(target_os = "macos")]
             InitSystem::Launchd => {
                 let daemon_file = DARWIN_NIX_DAEMON_DEST;
                 let domain = DARWIN_LAUNCHD_DOMAIN;
@@ -232,7 +209,6 @@ impl Action for ConfigureInitService {
                     .map_err(Self::error)?;
                 }
             },
-            #[cfg(target_os = "linux")]
             InitSystem::Systemd => {
                 if *start_daemon {
                     execute_command(
@@ -357,7 +333,6 @@ impl Action for ConfigureInitService {
                     enable(SOCKET_SRC, false).await.map_err(Self::error)?;
                 }
             },
-            #[cfg(not(target_os = "macos"))]
             InitSystem::None => {
                 // Nothing here, no init system
             },
@@ -368,7 +343,6 @@ impl Action for ConfigureInitService {
 
     fn revert_description(&self) -> Vec<ActionDescription> {
         match self.init {
-            #[cfg(target_os = "linux")]
             InitSystem::Systemd => {
                 vec![ActionDescription::new(
                     "Unconfigure Nix daemon related settings with systemd".to_string(),
@@ -380,25 +354,21 @@ impl Action for ConfigureInitService {
                     ],
                 )]
             },
-            #[cfg(target_os = "macos")]
             InitSystem::Launchd => {
                 vec![ActionDescription::new(
                     "Unconfigure Nix daemon related settings with launchctl".to_string(),
                     vec![format!("Run `launchctl bootout {DARWIN_NIX_DAEMON_DEST}`")],
                 )]
             },
-            #[cfg(not(target_os = "macos"))]
             InitSystem::None => Vec::new(),
         }
     }
 
     #[tracing::instrument(level = "debug", skip_all)]
     async fn revert(&mut self) -> Result<(), ActionError> {
-        #[cfg_attr(target_os = "macos", allow(unused_mut))]
         let mut errors = vec![];
 
         match self.init {
-            #[cfg(target_os = "macos")]
             InitSystem::Launchd => {
                 execute_command(
                     Command::new("launchctl")
@@ -409,7 +379,6 @@ impl Action for ConfigureInitService {
                 .await
                 .map_err(Self::error)?;
             },
-            #[cfg(target_os = "linux")]
             InitSystem::Systemd => {
                 // We separate stop and disable (instead of using `--now`) to avoid cases where the service isn't started, but is enabled.
 
@@ -505,7 +474,6 @@ impl Action for ConfigureInitService {
                     errors.push(err);
                 }
             },
-            #[cfg(not(target_os = "macos"))]
             InitSystem::None => {
                 // Nothing here, no init
             },
@@ -533,7 +501,6 @@ pub enum ConfigureNixDaemonServiceError {
     InitNotSupported,
 }
 
-#[cfg(target_os = "macos")]
 #[derive(Deserialize, Clone, Debug, Serialize, PartialEq)]
 #[serde(rename_all = "PascalCase")]
 pub struct DeterminateNixDaemonPlist {
@@ -546,14 +513,12 @@ pub struct DeterminateNixDaemonPlist {
     soft_resource_limits: ResourceLimits,
 }
 
-#[cfg(target_os = "macos")]
 #[derive(Deserialize, Clone, Debug, Serialize, PartialEq)]
 #[serde(rename_all = "PascalCase")]
 pub struct ResourceLimits {
     number_of_files: usize,
 }
 
-#[cfg(target_os = "linux")]
 async fn stop(unit: &str) -> Result<(), ActionErrorKind> {
     let mut command = Command::new("systemctl");
     command.arg("stop");
@@ -571,7 +536,6 @@ async fn stop(unit: &str) -> Result<(), ActionErrorKind> {
     }
 }
 
-#[cfg(target_os = "linux")]
 async fn enable(unit: &str, now: bool) -> Result<(), ActionErrorKind> {
     let mut command = Command::new("systemctl");
     command.arg("enable");
@@ -592,7 +556,6 @@ async fn enable(unit: &str, now: bool) -> Result<(), ActionErrorKind> {
     }
 }
 
-#[cfg(target_os = "linux")]
 async fn disable(unit: &str, now: bool) -> Result<(), ActionErrorKind> {
     let mut command = Command::new("systemctl");
     command.arg("disable");
@@ -613,7 +576,6 @@ async fn disable(unit: &str, now: bool) -> Result<(), ActionErrorKind> {
     }
 }
 
-#[cfg(target_os = "linux")]
 async fn is_active(unit: &str) -> Result<bool, ActionErrorKind> {
     let mut command = Command::new("systemctl");
     command.arg("is-active");
@@ -631,7 +593,6 @@ async fn is_active(unit: &str) -> Result<bool, ActionErrorKind> {
     }
 }
 
-#[cfg(target_os = "linux")]
 async fn is_enabled(unit: &str) -> Result<bool, ActionErrorKind> {
     let mut command = Command::new("systemctl");
     command.arg("is-enabled");

@@ -50,6 +50,8 @@ impl InstallPlan {
     where
         P: Planner + 'static,
     {
+        planner.platform_check().await?;
+
         #[cfg(feature = "diagnostics")]
         let diagnostic_data = Some(planner.diagnostic_data().await?);
 
@@ -67,11 +69,13 @@ impl InstallPlan {
     }
 
     pub async fn pre_uninstall_check(&self) -> Result<(), NixInstallerError> {
+        self.planner.platform_check().await?;
         self.planner.pre_uninstall_check().await?;
         Ok(())
     }
 
     pub async fn pre_install_check(&self) -> Result<(), NixInstallerError> {
+        self.planner.platform_check().await?;
         self.planner.pre_install_check().await?;
         Ok(())
     }
@@ -156,7 +160,7 @@ impl InstallPlan {
         cancel_channel: impl Into<Option<Receiver<()>>>,
     ) -> Result<(), NixInstallerError> {
         self.check_compatible()?;
-        self.planner.pre_install_check().await?;
+        self.pre_install_check().await?;
 
         let Self { actions, .. } = self;
         let mut cancel_channel = cancel_channel.into();
@@ -327,7 +331,7 @@ impl InstallPlan {
         cancel_channel: impl Into<Option<Receiver<()>>>,
     ) -> Result<(), NixInstallerError> {
         self.check_compatible()?;
-        self.planner.pre_uninstall_check().await?;
+        self.pre_uninstall_check().await?;
 
         let Self { actions, .. } = self;
         let mut cancel_channel = cancel_channel.into();
