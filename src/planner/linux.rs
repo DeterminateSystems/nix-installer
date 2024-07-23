@@ -144,7 +144,10 @@ impl Planner for Linux {
         use target_lexicon::OperatingSystem;
         match target_lexicon::OperatingSystem::host() {
             OperatingSystem::Linux => Ok(()),
-            _ => Err(PlannerError::IncompatibleOperatingSystem),
+            host_os => Err(PlannerError::IncompatibleOperatingSystem {
+                planner: self.typetag_name(),
+                host_os,
+            }),
         }
     }
 

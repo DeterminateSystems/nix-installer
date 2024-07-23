@@ -87,7 +87,10 @@ impl Planner for MyPlanner {
         use target_lexicon::OperatingSystem;
         match target_lexicon::OperatingSystem::host() {
             OperatingSystem::MacOSX { .. } | OperatingSystem::Darwin => Ok(()),
-            _ => Err(PlannerError::IncompatibleOperatingSystem),
+            host_os => Err(PlannerError::IncompatibleOperatingSystem {
+                planner: self.typetag_name(),
+                host_os,
+            }),
         }
     }
 }
@@ -171,16 +174,16 @@ dyn_clone::clone_trait_object!(Planner);
 #[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
 #[cfg_attr(feature = "cli", derive(clap::Subcommand))]
 pub enum BuiltinPlanner {
-    #[cfg_attr(not(target_os = "linux"), clap(hide=true))]
+    #[cfg_attr(not(target_os = "linux"), clap(hide = true))]
     /// A planner for traditional, mutable Linux systems like Debian, RHEL, or Arch
     Linux(linux::Linux),
-    #[cfg_attr(not(target_os = "linux"), clap(hide=true))]
+    #[cfg_attr(not(target_os = "linux"), clap(hide = true))]
     /// A planner for the Valve Steam Deck running SteamOS
     SteamDeck(steam_deck::SteamDeck),
-    #[cfg_attr(not(target_os = "linux"), clap(hide=true))]
+    #[cfg_attr(not(target_os = "linux"), clap(hide = true))]
     /// A planner suitable for immutable systems using ostree, such as Fedora Silverblue
     Ostree(ostree::Ostree),
-    #[cfg_attr(not(target_os = "macos"), clap(hide=true))]
+    #[cfg_attr(not(target_os = "macos"), clap(hide = true))]
     /// A planner for MacOS (Darwin) systems
     Macos(macos::Macos),
 }
@@ -364,8 +367,11 @@ impl Default for FishShellProfileLocations {
 #[non_exhaustive]
 #[derive(thiserror::Error, Debug, strum::IntoStaticStr)]
 pub enum PlannerError {
-    #[error("The selected planner does not support the host's operating system")]
-    IncompatibleOperatingSystem,
+    #[error("The selected planner (`{planner}`) does not support the host's operating system (`{host_os}`)")]
+    IncompatibleOperatingSystem {
+        planner: &'static str,
+        host_os: target_lexicon::OperatingSystem,
+    },
     /// `nix-installer` does not have a default planner for the target architecture right now
     #[error("`nix-installer` does not have a default planner for the `{0}` architecture right now, pass a specific archetype")]
     UnsupportedArchitecture(target_lexicon::Triple),
@@ -422,7 +428,7 @@ impl HasExpectedErrors for PlannerError {
             PlannerError::InstallSettings(_) => None,
             PlannerError::Plist(_) => None,
             PlannerError::Sysctl(_) => None,
-            this @ PlannerError::IncompatibleOperatingSystem => Some(Box::new(this)),
+            this @ PlannerError::IncompatibleOperatingSystem { .. } => Some(Box::new(this)),
             this @ PlannerError::RosettaDetected => Some(Box::new(this)),
             this @ PlannerError::EnterpriseEditionUnavailable => Some(Box::new(this)),
             PlannerError::OsRelease(_) => None,
