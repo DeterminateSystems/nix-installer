@@ -366,7 +366,6 @@ impl Action for ConfigureInitService {
 
     #[tracing::instrument(level = "debug", skip_all)]
     async fn revert(&mut self) -> Result<(), ActionError> {
-        #[cfg_attr(target_os = "macos", allow(unused_mut))]
         let mut errors = vec![];
 
         match self.init {
