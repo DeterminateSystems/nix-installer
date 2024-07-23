@@ -2,30 +2,70 @@ use std::path::PathBuf;
 
 use serde::{Deserialize, Serialize};
 use tokio::io::AsyncWriteExt;
-use tokio::process::Command;
 use tracing::{span, Span};
 
 use crate::action::{ActionError, ActionErrorKind, ActionTag, StatefulAction};
-use crate::execute_command;
 
-use crate::action::{Action, ActionDescription};
+use crate::action::{common::ConfigureInitService, Action, ActionDescription};
+use crate::settings::InitSystem;
 
+// Linux
+const SERVICE_DEST: &str = "/etc/systemd/system/nix-daemon.service";
+const DETERMINATE_NIX_EE_SERVICE_SRC: &str = "/nix/determinate/nix-daemon.service";
+
+// Darwin
 const DARWIN_ENTERPRISE_EDITION_DAEMON_DEST: &str =
     "/Library/LaunchDaemons/systems.determinate.nix-daemon.plist";
-const DARWIN_LAUNCHD_DOMAIN: &str = "system";
-const DARWIN_LAUNCHD_SERVICE: &str = "systems.determinate.nix-daemon";
+const DARWIN_ENTERPRISE_EDITION_SERVICE_NAME: &str = "systems.determinate.nix-daemon";
+
 /**
 Configure the init to run the Nix daemon
 */
 #[derive(Debug, serde::Deserialize, serde::Serialize, Clone)]
 pub struct ConfigureEnterpriseEditionInitService {
-    start_daemon: bool,
+    // FIXME(cole-h): add to tracing stuff
+    configure_init_service: StatefulAction<ConfigureInitService>,
 }
 
 impl ConfigureEnterpriseEditionInitService {
     #[tracing::instrument(level = "debug", skip_all)]
-    pub async fn plan(start_daemon: bool) -> Result<StatefulAction<Self>, ActionError> {
-        Ok(Self { start_daemon }.into())
+    pub async fn plan(
+        init: InitSystem,
+        start_daemon: bool,
+    ) -> Result<StatefulAction<Self>, ActionError> {
+        let service_src: Option<PathBuf> = match init {
+            InitSystem::Launchd => {
+                // We'll write it out down in the execute step
+                None
+            },
+            // FIXME(cole-h): should this be None, or are we writing the service to this location and then copying it to its destination..?
+            InitSystem::Systemd => Some(DETERMINATE_NIX_EE_SERVICE_SRC.into()),
+            InitSystem::None => None,
+        };
+        let service_dest: Option<PathBuf> = match init {
+            InitSystem::Launchd => Some(DARWIN_ENTERPRISE_EDITION_DAEMON_DEST.into()),
+            InitSystem::Systemd => Some(SERVICE_DEST.into()),
+            InitSystem::None => None,
+        };
+        let service_name: Option<String> = match init {
+            InitSystem::Launchd => Some(DARWIN_ENTERPRISE_EDITION_SERVICE_NAME.into()),
+            _ => None,
+        };
+
+        let configure_init_service = ConfigureInitService::plan(
+            InitSystem::Launchd,
+            start_daemon,
+            service_src,
+            service_dest,
+            service_name,
+        )
+        .await
+        .map_err(Self::error)?;
+
+        Ok(Self {
+            configure_init_service,
+        }
+        .into())
     }
 }
 
@@ -36,8 +76,7 @@ impl Action for ConfigureEnterpriseEditionInitService {
         ActionTag("configure_enterprise_edition_init_service")
     }
     fn tracing_synopsis(&self) -> String {
-        "Configure the Determinate Nix Enterprise Edition daemon related settings with launchctl"
-            .to_string()
+        "Configure Determinate Nix Enterprise Edition daemon".to_string()
     }
 
     fn tracing_span(&self) -> Span {
@@ -48,100 +87,58 @@ impl Action for ConfigureEnterpriseEditionInitService {
     }
 
     fn execute_description(&self) -> Vec<ActionDescription> {
-        let mut explanation = vec![format!("Create `{DARWIN_ENTERPRISE_EDITION_DAEMON_DEST}`")];
-        if self.start_daemon {
-            explanation.push(format!(
-                "Run `launchctl bootstrap {DARWIN_ENTERPRISE_EDITION_DAEMON_DEST}`"
-            ));
-        }
-
-        vec![ActionDescription::new(self.tracing_synopsis(), explanation)]
+        vec![ActionDescription::new(
+            self.tracing_synopsis(),
+            vec![self.configure_init_service.tracing_synopsis()],
+        )]
     }
 
     #[tracing::instrument(level = "debug", skip_all)]
     async fn execute(&mut self) -> Result<(), ActionError> {
-        let Self { start_daemon } = self;
+        let Self {
+            configure_init_service,
+        } = self;
 
         let daemon_file = DARWIN_ENTERPRISE_EDITION_DAEMON_DEST;
-        let domain = DARWIN_LAUNCHD_DOMAIN;
-        let service = DARWIN_LAUNCHD_SERVICE;
 
-        let generated_plist = generate_plist();
+        {
+            // This is the only part that is actually different from configure_init_service, beyond variable parameters.
 
-        let mut options = tokio::fs::OpenOptions::new();
-        options.create(true).write(true).read(true);
+            let generated_plist = generate_plist();
 
-        let mut file = options
-            .open(&daemon_file)
-            .await
-            .map_err(|e| Self::error(ActionErrorKind::Open(PathBuf::from(daemon_file), e)))?;
+            let mut options = tokio::fs::OpenOptions::new();
+            options.create(true).write(true).read(true);
 
-        let mut buf = Vec::new();
-        plist::to_writer_xml(&mut buf, &generated_plist).map_err(Self::error)?;
-        file.write_all(&buf)
-            .await
-            .map_err(|e| Self::error(ActionErrorKind::Write(PathBuf::from(daemon_file), e)))?;
+            let mut file = options
+                .open(&daemon_file)
+                .await
+                .map_err(|e| Self::error(ActionErrorKind::Open(PathBuf::from(daemon_file), e)))?;
 
-        execute_command(
-            Command::new("launchctl")
-                .process_group(0)
-                .arg("bootstrap")
-                .args([domain, daemon_file])
-                .stdin(std::process::Stdio::null()),
-        )
-        .await
-        .map_err(Self::error)?;
-
-        let is_disabled = crate::action::macos::service_is_disabled(domain, service)
-            .await
-            .map_err(Self::error)?;
-        if is_disabled {
-            execute_command(
-                Command::new("launchctl")
-                    .process_group(0)
-                    .arg("enable")
-                    .arg(&format!("{domain}/{service}"))
-                    .stdin(std::process::Stdio::null()),
-            )
-            .await
-            .map_err(Self::error)?;
+            let mut buf = Vec::new();
+            plist::to_writer_xml(&mut buf, &generated_plist).map_err(Self::error)?;
+            file.write_all(&buf)
+                .await
+                .map_err(|e| Self::error(ActionErrorKind::Write(PathBuf::from(daemon_file), e)))?;
         }
 
-        if *start_daemon {
-            execute_command(
-                Command::new("launchctl")
-                    .process_group(0)
-                    .arg("kickstart")
-                    .arg("-k")
-                    .arg(&format!("{domain}/{service}"))
-                    .stdin(std::process::Stdio::null()),
-            )
+        configure_init_service
+            .try_execute()
             .await
             .map_err(Self::error)?;
-        }
 
         Ok(())
     }
 
     fn revert_description(&self) -> Vec<ActionDescription> {
         vec![ActionDescription::new(
-            "Unconfigure Nix daemon related settings with launchctl".to_string(),
-            vec![format!(
-                "Run `launchctl bootout {DARWIN_ENTERPRISE_EDITION_DAEMON_DEST}`"
-            )],
+            "Unconfigure Determinate Nix Enterprise Edition daemon".to_string(),
+            vec![self.configure_init_service.tracing_synopsis()],
         )]
     }
 
     #[tracing::instrument(level = "debug", skip_all)]
     async fn revert(&mut self) -> Result<(), ActionError> {
-        execute_command(
-            Command::new("launchctl")
-                .process_group(0)
-                .arg("bootout")
-                .arg([DARWIN_LAUNCHD_DOMAIN, DARWIN_LAUNCHD_SERVICE].join("/")),
-        )
-        .await
-        .map_err(Self::error)?;
+        self.configure_init_service.try_revert().await?;
 
         Ok(())
     }

@@ -4,6 +4,7 @@ pub(crate) mod configure_enterprise_edition_init_service;
 pub(crate) mod configure_init_service;
 pub(crate) mod configure_nix;
 pub(crate) mod configure_shell_profile;
+pub(crate) mod configure_upstream_init_service;
 pub(crate) mod create_nix_tree;
 pub(crate) mod create_users_and_groups;
 pub(crate) mod delete_users;
@@ -14,6 +15,7 @@ pub use configure_enterprise_edition_init_service::ConfigureEnterpriseEditionIni
 pub use configure_init_service::{ConfigureInitService, ConfigureNixDaemonServiceError};
 pub use configure_nix::ConfigureNix;
 pub use configure_shell_profile::ConfigureShellProfile;
+pub use configure_upstream_init_service::ConfigureUpstreamInitService;
 pub use create_nix_tree::CreateNixTree;
 pub use create_users_and_groups::CreateUsersAndGroups;
 pub use delete_users::DeleteUsersInGroup;

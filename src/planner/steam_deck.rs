@@ -103,7 +103,7 @@ use tokio::process::Command;
 use crate::{
     action::{
         base::{CreateDirectory, CreateFile, RemoveDirectory},
-        common::{ConfigureInitService, ConfigureNix, CreateUsersAndGroups, ProvisionNix},
+        common::{ConfigureNix, ConfigureUpstreamInitService, CreateUsersAndGroups, ProvisionNix},
         linux::{
             EnsureSteamosNixDirectory, ProvisionDeterminateNixShim, RevertCleanSteamosNixOffload,
             StartSystemdUnit, SystemctlDaemonReload,
@@ -342,7 +342,7 @@ impl Planner for SteamDeck {
                 .map_err(PlannerError::Action)?
                 .boxed(),
             // Init is required for the steam-deck archetype to make the `/nix` mount
-            ConfigureInitService::plan(InitSystem::Systemd, true, self.settings.enterprise_edition)
+            ConfigureUpstreamInitService::plan(InitSystem::Systemd, true)
                 .await
                 .map_err(PlannerError::Action)?
                 .boxed(),

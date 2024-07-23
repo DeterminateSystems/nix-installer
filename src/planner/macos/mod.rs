@@ -14,7 +14,7 @@ mod profiles;
 use crate::{
     action::{
         base::RemoveDirectory,
-        common::{ConfigureInitService, ConfigureNix, CreateUsersAndGroups, ProvisionNix},
+        common::{ConfigureNix, ConfigureUpstreamInitService, CreateUsersAndGroups, ProvisionNix},
         macos::{
             ConfigureRemoteBuilding, CreateEnterpriseEditionVolume, CreateNixHookService,
             CreateNixVolume, SetTmutilExclusions,
@@ -210,21 +210,17 @@ impl Planner for Macos {
 
         if self.settings.enterprise_edition {
             plan.push(
-                ConfigureEnterpriseEditionInitService::plan(true)
+                ConfigureEnterpriseEditionInitService::plan(InitSystem::Launchd, true)
                     .await
                     .map_err(PlannerError::Action)?
                     .boxed(),
             );
         } else {
             plan.push(
-                ConfigureInitService::plan(
-                    InitSystem::Launchd,
-                    true,
-                    self.settings.enterprise_edition,
-                )
-                .await
-                .map_err(PlannerError::Action)?
-                .boxed(),
+                ConfigureUpstreamInitService::plan(InitSystem::Launchd, true)
+                    .await
+                    .map_err(PlannerError::Action)?
+                    .boxed(),
             );
         }
         plan.push(

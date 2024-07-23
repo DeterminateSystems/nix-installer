@@ -1,7 +1,7 @@
 use crate::{
     action::{
         base::{CreateDirectory, CreateFile, RemoveDirectory},
-        common::{ConfigureInitService, ConfigureNix, CreateUsersAndGroups, ProvisionNix},
+        common::{ConfigureNix, ConfigureUpstreamInitService, CreateUsersAndGroups, ProvisionNix},
         linux::{
             ProvisionDeterminateNixShim, ProvisionSelinux, StartSystemdUnit, SystemctlDaemonReload,
         },
@@ -218,7 +218,7 @@ impl Planner for Ostree {
         );
 
         plan.push(
-            ConfigureInitService::plan(InitSystem::Systemd, true, self.settings.enterprise_edition)
+            ConfigureUpstreamInitService::plan(InitSystem::Systemd, true)
                 .await
                 .map_err(PlannerError::Action)?
                 .boxed(),

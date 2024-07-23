@@ -11,18 +11,13 @@ use crate::execute_command;
 use crate::action::{Action, ActionDescription};
 use crate::settings::InitSystem;
 
-const DETERMINATE_NIX_EE_SERVICE_SRC: &str = "/nix/determinate/nix-daemon.service";
-const SERVICE_SRC: &str = "/nix/var/nix/profiles/default/lib/systemd/system/nix-daemon.service";
-const SERVICE_DEST: &str = "/etc/systemd/system/nix-daemon.service";
 const SOCKET_SRC: &str = "/nix/var/nix/profiles/default/lib/systemd/system/nix-daemon.socket";
 const SOCKET_DEST: &str = "/etc/systemd/system/nix-daemon.socket";
 const TMPFILES_SRC: &str = "/nix/var/nix/profiles/default/lib/tmpfiles.d/nix-daemon.conf";
 const TMPFILES_DEST: &str = "/etc/tmpfiles.d/nix-daemon.conf";
-const DARWIN_NIX_DAEMON_DEST: &str = "/Library/LaunchDaemons/org.nixos.nix-daemon.plist";
-const DARWIN_NIX_DAEMON_SOURCE: &str =
-    "/nix/var/nix/profiles/default/Library/LaunchDaemons/org.nixos.nix-daemon.plist";
+
 const DARWIN_LAUNCHD_DOMAIN: &str = "system";
-const DARWIN_LAUNCHD_SERVICE: &str = "org.nixos.nix-daemon";
+
 /**
 Configure the init to run the Nix daemon
 */
@@ -30,12 +25,17 @@ Configure the init to run the Nix daemon
 pub struct ConfigureInitService {
     init: InitSystem,
     start_daemon: bool,
-    enterprise_edition: bool,
+    // TODO(cole-h): make an enum so we can distinguish between "written out by another step" vs "actually there isn't one"
     service_src: Option<PathBuf>,
+    service_name: Option<String>,
+    service_dest: Option<PathBuf>,
 }
 
 impl ConfigureInitService {
-    async fn check_if_systemd_unit_exists(src: &Path, dest: &str) -> Result<(), ActionErrorKind> {
+    pub(crate) async fn check_if_systemd_unit_exists(
+        src: &Path,
+        dest: &Path,
+    ) -> Result<(), ActionErrorKind> {
         // TODO: once we have a way to communicate interaction between the library and the cli,
         // interactively ask for permission to remove the file
 
@@ -55,10 +55,9 @@ impl ConfigureInitService {
             }
         }
         // NOTE: ...and if there are any overrides in the most well-known places for systemd
-        if Path::new(&format!("{dest}.d")).exists() {
-            return Err(ActionErrorKind::DirExists(PathBuf::from(format!(
-                "{dest}.d"
-            ))));
+        let dest_d = format!("{dest}.d", dest = dest.display());
+        if Path::new(&dest_d).exists() {
+            return Err(ActionErrorKind::DirExists(PathBuf::from(dest_d)));
         }
 
         Ok(())
@@ -68,16 +67,10 @@ impl ConfigureInitService {
     pub async fn plan(
         init: InitSystem,
         start_daemon: bool,
-        enterprise_edition: bool,
+        service_src: Option<PathBuf>,
+        service_dest: Option<PathBuf>,
+        service_name: Option<String>,
     ) -> Result<StatefulAction<Self>, ActionError> {
-        let service_src: Option<PathBuf> = match (init, enterprise_edition) {
-            (InitSystem::Launchd, true) => todo!(),
-            (InitSystem::Launchd, false) => Some(DARWIN_NIX_DAEMON_SOURCE.into()),
-            (InitSystem::Systemd, true) => Some(DETERMINATE_NIX_EE_SERVICE_SRC.into()),
-            (InitSystem::Systemd, false) => Some(SERVICE_SRC.into()),
-            (InitSystem::None, _) => None,
-        };
-
         match init {
             InitSystem::Launchd => {
                 // No plan checks, yet
@@ -86,6 +79,9 @@ impl ConfigureInitService {
                 let service_src = service_src
                     .as_ref()
                     .expect("service_src should be defined for systemd");
+                let service_dest = service_dest
+                    .as_ref()
+                    .expect("service_dest should be defined for systemd");
 
                 // If `no_start_daemon` is set, then we don't require a running systemd,
                 // so we don't need to check if `/run/systemd/system` exists.
@@ -101,10 +97,10 @@ impl ConfigureInitService {
                     return Err(Self::error(ActionErrorKind::SystemdMissing));
                 }
 
-                Self::check_if_systemd_unit_exists(service_src, SERVICE_DEST)
+                Self::check_if_systemd_unit_exists(service_src, service_dest)
                     .await
                     .map_err(Self::error)?;
-                Self::check_if_systemd_unit_exists(Path::new(SOCKET_SRC), SOCKET_DEST)
+                Self::check_if_systemd_unit_exists(Path::new(SOCKET_SRC), Path::new(SOCKET_DEST))
                     .await
                     .map_err(Self::error)?;
             },
@@ -116,8 +112,9 @@ impl ConfigureInitService {
         Ok(Self {
             init,
             start_daemon,
-            enterprise_edition,
             service_src,
+            service_dest,
+            service_name,
         }
         .into())
     }
@@ -150,10 +147,14 @@ impl Action for ConfigureInitService {
                 let mut explanation = vec![
                     "Run `systemd-tmpfiles --create --prefix=/nix/var/nix`".to_string(),
                     format!(
-                        "Symlink `{0}` to `{SERVICE_DEST}`",
+                        "Symlink `{0}` to `{1}`",
                         self.service_src
                             .as_ref()
-                            .expect("service_src should be defined for launchd")
+                            .expect("service_src should be defined for systemd")
+                            .display(),
+                        self.service_dest
+                            .as_ref()
+                            .expect("service_src should be defined for systemd")
                             .display()
                     ),
                     format!("Symlink `{SOCKET_SRC}` to `{SOCKET_DEST}`"),
@@ -165,16 +166,25 @@ impl Action for ConfigureInitService {
                 vec.push(ActionDescription::new(self.tracing_synopsis(), explanation))
             },
             InitSystem::Launchd => {
-                let mut explanation = vec![format!(
-                    "Copy `{0}` to `{DARWIN_NIX_DAEMON_DEST}`",
-                    self.service_src
-                        .as_ref()
-                        .expect("service_src should be defined for launchd")
-                        .display()
-                )];
+                let mut explanation = vec![];
+                if let Some(service_src) = self.service_src.as_ref() {
+                    explanation.push(format!(
+                        "Copy `{0}` to `{1}`",
+                        service_src.display(),
+                        self.service_dest
+                            .as_ref()
+                            .expect("service_dest should be defined for launchd")
+                            .display(),
+                    ));
+                }
+
                 if self.start_daemon {
                     explanation.push(format!(
-                        "Run `launchctl bootstrap {DARWIN_NIX_DAEMON_DEST}`"
+                        "Run `launchctl bootstrap {0}`",
+                        self.service_dest
+                            .as_ref()
+                            .expect("service_dest should be defined for launchd")
+                            .display(),
                     ));
                 }
                 vec.push(ActionDescription::new(self.tracing_synopsis(), explanation))
@@ -190,7 +200,8 @@ impl Action for ConfigureInitService {
             init,
             start_daemon,
             service_src,
-            enterprise_edition: _,
+            service_dest,
+            service_name,
         } = self;
 
         match init {
@@ -199,16 +210,20 @@ impl Action for ConfigureInitService {
                     .as_ref()
                     .expect("service_src should be defined for launchd");
 
-                let daemon_file = DARWIN_NIX_DAEMON_DEST;
+                let service_dest = service_dest
+                    .as_ref()
+                    .expect("service_dest should be set for Launchd");
+                let service = service_name
+                    .as_ref()
+                    .expect("service_name should be set for Launchd");
                 let domain = DARWIN_LAUNCHD_DOMAIN;
-                let service = DARWIN_LAUNCHD_SERVICE;
 
-                tokio::fs::copy(&service_src, daemon_file)
+                tokio::fs::copy(&service_src, service_dest)
                     .await
                     .map_err(|e| {
                         Self::error(ActionErrorKind::Copy(
                             service_src.clone(),
-                            PathBuf::from(daemon_file),
+                            PathBuf::from(service_dest),
                             e,
                         ))
                     })?;
@@ -217,7 +232,8 @@ impl Action for ConfigureInitService {
                     Command::new("launchctl")
                         .process_group(0)
                         .arg("bootstrap")
-                        .args([domain, daemon_file])
+                        .arg(domain)
+                        .arg(service_dest)
                         .stdin(std::process::Stdio::null()),
                 )
                 .await
@@ -254,7 +270,10 @@ impl Action for ConfigureInitService {
             InitSystem::Systemd => {
                 let service_src = service_src
                     .as_ref()
-                    .expect("service_src should be defined for launchd");
+                    .expect("service_src should be defined for systemd");
+                let service_dest = service_dest
+                    .as_ref()
+                    .expect("service_dest should be defined for systemd");
 
                 if *start_daemon {
                     execute_command(
@@ -318,23 +337,23 @@ impl Action for ConfigureInitService {
                 // TODO: once we have a way to communicate interaction between the library and the
                 // cli, interactively ask for permission to remove the file
 
-                Self::check_if_systemd_unit_exists(service_src, SERVICE_DEST)
+                Self::check_if_systemd_unit_exists(service_src, service_dest)
                     .await
                     .map_err(Self::error)?;
-                if Path::new(SERVICE_DEST).exists() {
-                    tracing::trace!(path = %SERVICE_DEST, "Removing");
-                    tokio::fs::remove_file(SERVICE_DEST)
+                if Path::new(service_dest).exists() {
+                    tracing::trace!(path = %service_dest.display(), "Removing");
+                    tokio::fs::remove_file(service_dest)
                         .await
-                        .map_err(|e| ActionErrorKind::Remove(SERVICE_DEST.into(), e))
+                        .map_err(|e| ActionErrorKind::Remove(service_dest.into(), e))
                         .map_err(Self::error)?;
                 }
-                tracing::trace!(src = %service_src.display(), dest = %SERVICE_DEST, "Symlinking");
+                tracing::trace!(src = %service_src.display(), dest = %service_dest.display(), "Symlinking");
                 tokio::fs::symlink(
                     &self
                         .service_src
                         .as_ref()
                         .expect("service_src should be defined for systemd"),
-                    SERVICE_DEST,
+                    service_dest,
                 )
                 .await
                 .map_err(|e| {
@@ -343,12 +362,12 @@ impl Action for ConfigureInitService {
                             .as_ref()
                             .expect("service_src should be defined for systemd")
                             .clone(),
-                        PathBuf::from(SERVICE_DEST),
+                        PathBuf::from(service_dest),
                         e,
                     )
                 })
                 .map_err(Self::error)?;
-                Self::check_if_systemd_unit_exists(Path::new(SOCKET_SRC), SOCKET_DEST)
+                Self::check_if_systemd_unit_exists(Path::new(SOCKET_SRC), Path::new(SOCKET_DEST))
                     .await
                     .map_err(Self::error)?;
                 if Path::new(SOCKET_DEST).exists() {
@@ -418,7 +437,13 @@ impl Action for ConfigureInitService {
             InitSystem::Launchd => {
                 vec![ActionDescription::new(
                     "Unconfigure Nix daemon related settings with launchctl".to_string(),
-                    vec![format!("Run `launchctl bootout {DARWIN_NIX_DAEMON_DEST}`")],
+                    vec![format!(
+                        "Run `launchctl bootout {0}`",
+                        self.service_dest
+                            .as_ref()
+                            .expect("service_dest should be defined for launchd")
+                            .display(),
+                    )],
                 )]
             },
             InitSystem::None => Vec::new(),
@@ -435,7 +460,15 @@ impl Action for ConfigureInitService {
                     Command::new("launchctl")
                         .process_group(0)
                         .arg("bootout")
-                        .arg([DARWIN_LAUNCHD_DOMAIN, DARWIN_LAUNCHD_SERVICE].join("/")),
+                        .arg(
+                            [
+                                DARWIN_LAUNCHD_DOMAIN,
+                                self.service_name
+                                    .as_ref()
+                                    .expect("service_name should be defined for launchd"),
+                            ]
+                            .join("/"),
+                        ),
                 )
                 .await
                 .map_err(Self::error)?;
