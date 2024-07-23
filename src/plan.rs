@@ -50,11 +50,12 @@ impl InstallPlan {
     where
         P: Planner + 'static,
     {
+        planner.platform_check().await?;
+
         #[cfg(feature = "diagnostics")]
         let diagnostic_data = Some(planner.diagnostic_data().await?);
 
         // Some Action `plan` calls may fail if we don't do these checks
-        planner.platform_check().await?;
         planner.pre_install_check().await?;
 
         let actions = planner.plan().await?;
