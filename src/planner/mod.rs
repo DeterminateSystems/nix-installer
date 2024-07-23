@@ -160,6 +160,42 @@ dyn_clone::clone_trait_object!(Planner);
 /// Planners built into this crate
 #[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
 #[cfg_attr(feature = "cli", derive(clap::Subcommand))]
+pub enum HostSpecificBuiltinPlanner {
+    #[cfg(target_os = "linux")]
+    /// A planner for traditional, mutable Linux systems like Debian, RHEL, or Arch
+    Linux(linux::Linux),
+    #[cfg(target_os = "linux")]
+    /// A planner for the Valve Steam Deck running SteamOS
+    SteamDeck(steam_deck::SteamDeck),
+    #[cfg(target_os = "linux")]
+    /// A planner suitable for immutable systems using ostree, such as Fedora Silverblue
+    Ostree(ostree::Ostree),
+    #[cfg(target_os = "macos")]
+    /// A planner for MacOS (Darwin) systems
+    Macos(macos::Macos),
+}
+
+impl From<HostSpecificBuiltinPlanner> for BuiltinPlanner {
+    fn from(value: HostSpecificBuiltinPlanner) -> Self {
+        match value {
+            #[cfg(target_os = "linux")]
+            HostSpecificBuiltinPlanner::Linux(int) => BuiltinPlanner::Linux(int),
+
+            #[cfg(target_os = "linux")]
+            HostSpecificBuiltinPlanner::SteamDeck(int) => BuiltinPlanner::SteamDeck(int),
+
+            #[cfg(target_os = "linux")]
+            HostSpecificBuiltinPlanner::OsTree(int) => BuiltinPlanner::OsTree(int),
+
+            #[cfg(target_os = "macos")]
+            HostSpecificBuiltinPlanner::Macos(int) => BuiltinPlanner::Macos(int),
+        }
+    }
+}
+
+/// Planners built into this crate
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
+#[cfg_attr(feature = "cli", derive(clap::Subcommand))]
 pub enum BuiltinPlanner {
     /// A planner for traditional, mutable Linux systems like Debian, RHEL, or Arch
     Linux(linux::Linux),

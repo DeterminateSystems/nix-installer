@@ -85,7 +85,7 @@ use std::{ffi::OsStr, path::Path, process::Output};
 
 pub use error::NixInstallerError;
 pub use plan::InstallPlan;
-use planner::BuiltinPlanner;
+use planner::{BuiltinPlanner, HostSpecificBuiltinPlanner};
 
 use reqwest::Certificate;
 use tokio::process::Command;
