@@ -166,6 +166,14 @@ impl Planner for MyPlanner {
             self.common.ssl_cert_file.clone(),
         )?)
     }
+
+    async fn platform_check(&self) -> Result<(), PlannerError> {
+        use target_lexicon::OperatingSystem;
+        match target_lexicon::OperatingSystem::host() {
+            OperatingSystem::MacOSX { .. } | OperatingSystem::Darwin => Ok(()),
+            _ => Err(PlannerError::IncompatibleOperatingSystem),
+        }
+    }
 }
 
 # async fn custom_planner_install() -> color_eyre::Result<()> {

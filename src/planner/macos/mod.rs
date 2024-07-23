@@ -301,6 +301,14 @@ impl Planner for Macos {
         )?)
     }
 
+    async fn platform_check(&self) -> Result<(), PlannerError> {
+        use target_lexicon::OperatingSystem;
+        match target_lexicon::OperatingSystem::host() {
+            OperatingSystem::MacOSX { .. } | OperatingSystem::Darwin => Ok(()),
+            _ => Err(PlannerError::IncompatibleOperatingSystem),
+        }
+    }
+
     async fn pre_uninstall_check(&self) -> Result<(), PlannerError> {
         check_nix_darwin_not_installed().await?;
 

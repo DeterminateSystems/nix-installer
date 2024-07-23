@@ -15,7 +15,7 @@ use crate::{
     plan::RECEIPT_LOCATION,
     planner::Planner,
     settings::CommonSettings,
-    BuiltinPlanner, HostSpecificBuiltinPlanner, InstallPlan, NixInstallerError,
+    BuiltinPlanner, InstallPlan, NixInstallerError,
 };
 use clap::{ArgAction, Parser};
 use color_eyre::{
@@ -68,7 +68,7 @@ pub struct Install {
     pub plan: Option<PathBuf>,
 
     #[clap(subcommand)]
-    pub planner: Option<HostSpecificBuiltinPlanner>,
+    pub planner: Option<BuiltinPlanner>,
 }
 
 #[async_trait::async_trait]
@@ -82,7 +82,6 @@ impl CommandExecute for Install {
             settings,
             explain,
         } = self;
-        let planner: Option<BuiltinPlanner> = planner.map(|p| p.into());
 
         ensure_root()?;
 

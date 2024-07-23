@@ -399,6 +399,14 @@ impl Planner for SteamDeck {
         )?)
     }
 
+    async fn platform_check(&self) -> Result<(), PlannerError> {
+        use target_lexicon::OperatingSystem;
+        match target_lexicon::OperatingSystem::host() {
+            OperatingSystem::Linux => Ok(()),
+            _ => Err(PlannerError::IncompatibleOperatingSystem),
+        }
+    }
+
     async fn pre_uninstall_check(&self) -> Result<(), PlannerError> {
         super::linux::check_not_wsl1()?;
 
