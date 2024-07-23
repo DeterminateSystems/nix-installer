@@ -103,13 +103,9 @@ match plan.install(None).await {
 ```
 
 */
-#[cfg(target_os = "linux")]
 pub mod linux;
-#[cfg(target_os = "macos")]
 pub mod macos;
-#[cfg(target_os = "linux")]
 pub mod ostree;
-#[cfg(target_os = "linux")]
 pub mod steam_deck;
 
 use std::{collections::HashMap, path::PathBuf, string::FromUtf8Error};
@@ -165,17 +161,13 @@ dyn_clone::clone_trait_object!(Planner);
 #[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
 #[cfg_attr(feature = "cli", derive(clap::Subcommand))]
 pub enum BuiltinPlanner {
-    #[cfg(target_os = "linux")]
     /// A planner for traditional, mutable Linux systems like Debian, RHEL, or Arch
     Linux(linux::Linux),
     /// A planner for the Valve Steam Deck running SteamOS
-    #[cfg(target_os = "linux")]
     SteamDeck(steam_deck::SteamDeck),
     /// A planner suitable for immutable systems using ostree, such as Fedora Silverblue
-    #[cfg(target_os = "linux")]
     Ostree(ostree::Ostree),
     /// A planner for MacOS (Darwin) systems
-    #[cfg(target_os = "macos")]
     Macos(macos::Macos),
 }
 
@@ -184,22 +176,17 @@ impl BuiltinPlanner {
     pub async fn default() -> Result<Self, PlannerError> {
         use target_lexicon::{Architecture, OperatingSystem};
         match (Architecture::host(), OperatingSystem::host()) {
-            #[cfg(target_os = "linux")]
             (Architecture::X86_64, OperatingSystem::Linux) => Self::detect_linux_distro().await,
-            #[cfg(target_os = "linux")]
             (Architecture::X86_32(_), OperatingSystem::Linux) => {
                 Ok(Self::Linux(linux::Linux::default().await?))
             },
-            #[cfg(target_os = "linux")]
             (Architecture::Aarch64(_), OperatingSystem::Linux) => {
                 Ok(Self::Linux(linux::Linux::default().await?))
             },
-            #[cfg(target_os = "macos")]
             (Architecture::X86_64, OperatingSystem::MacOSX { .. })
             | (Architecture::X86_64, OperatingSystem::Darwin) => {
                 Ok(Self::Macos(macos::Macos::default().await?))
             },
-            #[cfg(target_os = "macos")]
             (Architecture::Aarch64(_), OperatingSystem::MacOSX { .. })
             | (Architecture::Aarch64(_), OperatingSystem::Darwin) => {
                 Ok(Self::Macos(macos::Macos::default().await?))
@@ -208,7 +195,6 @@ impl BuiltinPlanner {
         }
     }
 
-    #[cfg(target_os = "linux")]
     async fn detect_linux_distro() -> Result<Self, PlannerError> {
         let is_steam_deck =
             os_release::OsRelease::new().is_ok_and(|os_release| os_release.id == "steamos");
@@ -231,13 +217,9 @@ impl BuiltinPlanner {
     pub async fn from_common_settings(settings: CommonSettings) -> Result<Self, PlannerError> {
         let mut built = Self::default().await?;
         match &mut built {
-            #[cfg(target_os = "linux")]
             BuiltinPlanner::Linux(inner) => inner.settings = settings,
-            #[cfg(target_os = "linux")]
             BuiltinPlanner::SteamDeck(inner) => inner.settings = settings,
-            #[cfg(target_os = "linux")]
             BuiltinPlanner::Ostree(inner) => inner.settings = settings,
-            #[cfg(target_os = "macos")]
             BuiltinPlanner::Macos(inner) => inner.settings = settings,
         }
         Ok(built)
@@ -247,64 +229,44 @@ impl BuiltinPlanner {
         &self,
     ) -> Result<HashMap<String, serde_json::Value>, PlannerError> {
         match self {
-            #[cfg(target_os = "linux")]
             BuiltinPlanner::Linux(inner) => inner.configured_settings().await,
-            #[cfg(target_os = "linux")]
             BuiltinPlanner::SteamDeck(inner) => inner.configured_settings().await,
-            #[cfg(target_os = "linux")]
             BuiltinPlanner::Ostree(inner) => inner.configured_settings().await,
-            #[cfg(target_os = "macos")]
             BuiltinPlanner::Macos(inner) => inner.configured_settings().await,
         }
     }
 
     pub async fn plan(self) -> Result<InstallPlan, NixInstallerError> {
         match self {
-            #[cfg(target_os = "linux")]
             BuiltinPlanner::Linux(planner) => InstallPlan::plan(planner).await,
-            #[cfg(target_os = "linux")]
             BuiltinPlanner::SteamDeck(planner) => InstallPlan::plan(planner).await,
-            #[cfg(target_os = "linux")]
             BuiltinPlanner::Ostree(planner) => InstallPlan::plan(planner).await,
-            #[cfg(target_os = "macos")]
             BuiltinPlanner::Macos(planner) => InstallPlan::plan(planner).await,
         }
     }
     pub fn boxed(self) -> Box<dyn Planner> {
         match self {
-            #[cfg(target_os = "linux")]
             BuiltinPlanner::Linux(i) => i.boxed(),
-            #[cfg(target_os = "linux")]
             BuiltinPlanner::SteamDeck(i) => i.boxed(),
-            #[cfg(target_os = "linux")]
             BuiltinPlanner::Ostree(i) => i.boxed(),
-            #[cfg(target_os = "macos")]
             BuiltinPlanner::Macos(i) => i.boxed(),
         }
     }
 
     pub fn typetag_name(&self) -> &'static str {
         match self {
-            #[cfg(target_os = "linux")]
             BuiltinPlanner::Linux(i) => i.typetag_name(),
-            #[cfg(target_os = "linux")]
             BuiltinPlanner::SteamDeck(i) => i.typetag_name(),
-            #[cfg(target_os = "linux")]
             BuiltinPlanner::Ostree(i) => i.typetag_name(),
-            #[cfg(target_os = "macos")]
             BuiltinPlanner::Macos(i) => i.typetag_name(),
         }
     }
 
     pub fn settings(&self) -> Result<HashMap<String, serde_json::Value>, InstallSettingsError> {
         match self {
-            #[cfg(target_os = "linux")]
             BuiltinPlanner::Linux(i) => i.settings(),
-            #[cfg(target_os = "linux")]
             BuiltinPlanner::SteamDeck(i) => i.settings(),
-            #[cfg(target_os = "linux")]
             BuiltinPlanner::Ostree(i) => i.settings(),
-            #[cfg(target_os = "macos")]
             BuiltinPlanner::Macos(i) => i.settings(),
         }
     }
@@ -314,13 +276,9 @@ impl BuiltinPlanner {
         &self,
     ) -> Result<crate::diagnostics::DiagnosticData, PlannerError> {
         match self {
-            #[cfg(target_os = "linux")]
             BuiltinPlanner::Linux(i) => i.diagnostic_data().await,
-            #[cfg(target_os = "linux")]
             BuiltinPlanner::SteamDeck(i) => i.diagnostic_data().await,
-            #[cfg(target_os = "linux")]
             BuiltinPlanner::Ostree(i) => i.diagnostic_data().await,
-            #[cfg(target_os = "macos")]
             BuiltinPlanner::Macos(i) => i.diagnostic_data().await,
         }
     }
