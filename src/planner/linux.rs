@@ -98,14 +98,14 @@ impl Planner for Linux {
 
         if self.settings.determinate_nix {
             plan.push(
-                ConfigureUpstreamInitService::plan(self.init.init, self.init.start_daemon)
+                ConfigureDeterminateNixdInitService::plan(self.init.init, self.init.start_daemon)
                     .await
                     .map_err(PlannerError::Action)?
                     .boxed(),
             );
         } else {
             plan.push(
-                ConfigureDeterminateNixdInitService::plan(self.init.init, self.init.start_daemon)
+                ConfigureUpstreamInitService::plan(self.init.init, self.init.start_daemon)
                     .await
                     .map_err(PlannerError::Action)?
                     .boxed(),
