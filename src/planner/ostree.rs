@@ -173,7 +173,7 @@ impl Planner for Ostree {
                 .boxed(),
         );
 
-        if self.settings.enterprise_edition {
+        if self.settings.determinate_nix {
             plan.push(
                 ProvisionDeterminateNixShim::plan()
                     .await

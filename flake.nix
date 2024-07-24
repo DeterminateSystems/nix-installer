@@ -97,7 +97,7 @@
             cargoTestOptions = f: f ++ [ "--all" ];
 
             NIX_INSTALLER_TARBALL_PATH = nixTarballs.${final.stdenv.system};
-            DETERMINATE_NIX_BINARY_PATH = if final.stdenv.system == "x86_64-linux" || final.stdenv.system == "aarch64-linux" then "${inputs.dnee.packages.${final.stdenv.system}.default}/bin/determinate-nix-ee" else null;
+            DETERMINATE_NIX_BINARY_PATH = if final.stdenv.system == "x86_64-linux" || final.stdenv.system == "aarch64-linux" then "${inputs.dnee.packages.${final.stdenv.system}.default}/bin/determinate-nix" else null;
 
             override = { preBuild ? "", ... }: {
               preBuild = preBuild + ''
@@ -143,7 +143,7 @@
 
             RUST_SRC_PATH = "${toolchain}/lib/rustlib/src/rust/library";
             NIX_INSTALLER_TARBALL_PATH = nixTarballs.${system};
-            DETERMINATE_NIX_BINARY_PATH = if system == "x86_64-linux" || system == "aarch64-linux" then "${inputs.dnee.packages.${system}.default}/bin/determinate-nix-ee" else null;
+            DETERMINATE_NIX_BINARY_PATH = if system == "x86_64-linux" || system == "aarch64-linux" then "${inputs.dnee.packages.${system}.default}/bin/determinate-nix" else null;
 
             nativeBuildInputs = with pkgs; [ ];
             buildInputs = with pkgs; [

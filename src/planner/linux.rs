@@ -2,7 +2,7 @@ use crate::{
     action::{
         base::{CreateDirectory, RemoveDirectory},
         common::{
-            ConfigureEnterpriseEditionInitService, ConfigureNix, ConfigureUpstreamInitService,
+            ConfigureDeterminateNixInitService, ConfigureNix, ConfigureUpstreamInitService,
             CreateUsersAndGroups, ProvisionNix,
         },
         linux::{ProvisionDeterminateNixShim, ProvisionSelinux},
@@ -52,7 +52,7 @@ impl Planner for Linux {
                 .boxed(),
         );
 
-        if self.settings.enterprise_edition {
+        if self.settings.determinate_nix {
             plan.push(
                 ProvisionDeterminateNixShim::plan()
                     .await
@@ -96,7 +96,7 @@ impl Planner for Linux {
                 .boxed(),
         );
 
-        if self.settings.enterprise_edition {
+        if self.settings.determinate_nix {
             plan.push(
                 ConfigureUpstreamInitService::plan(self.init.init, self.init.start_daemon)
                     .await
@@ -105,7 +105,7 @@ impl Planner for Linux {
             );
         } else {
             plan.push(
-                ConfigureEnterpriseEditionInitService::plan(self.init.init, self.init.start_daemon)
+                ConfigureDeterminateNixInitService::plan(self.init.init, self.init.start_daemon)
                     .await
                     .map_err(PlannerError::Action)?
                     .boxed(),

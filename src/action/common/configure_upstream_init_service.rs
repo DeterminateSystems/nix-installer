@@ -91,7 +91,7 @@ impl Action for ConfigureUpstreamInitService {
 
     fn revert_description(&self) -> Vec<ActionDescription> {
         vec![ActionDescription::new(
-            format!("Remove upstream Nix daemon service",),
+            "Remove upstream Nix daemon service".to_string(),
             vec![self.configure_init_service.tracing_synopsis()],
         )]
     }

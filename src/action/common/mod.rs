@@ -1,6 +1,6 @@
 //! [`Action`](crate::action::Action)s which only call other base plugins
 
-pub(crate) mod configure_enterprise_edition_init_service;
+pub(crate) mod configure_determinate_nix_init_service;
 pub(crate) mod configure_init_service;
 pub(crate) mod configure_nix;
 pub(crate) mod configure_shell_profile;
@@ -11,7 +11,7 @@ pub(crate) mod delete_users;
 pub(crate) mod place_nix_configuration;
 pub(crate) mod provision_nix;
 
-pub use configure_enterprise_edition_init_service::ConfigureEnterpriseEditionInitService;
+pub use configure_determinate_nix_init_service::ConfigureDeterminateNixInitService;
 pub use configure_init_service::{ConfigureInitService, ConfigureNixDaemonServiceError};
 pub use configure_nix::ConfigureNix;
 pub use configure_shell_profile::ConfigureShellProfile;

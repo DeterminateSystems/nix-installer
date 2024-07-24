@@ -22,12 +22,12 @@ const DARWIN_ENTERPRISE_EDITION_SERVICE_NAME: &str = "systems.determinate.nix-da
 Configure the init to run the Nix daemon
 */
 #[derive(Debug, serde::Deserialize, serde::Serialize, Clone)]
-pub struct ConfigureEnterpriseEditionInitService {
+pub struct ConfigureDeterminateNixInitService {
     // FIXME(cole-h): add to tracing stuff
     configure_init_service: StatefulAction<ConfigureInitService>,
 }
 
-impl ConfigureEnterpriseEditionInitService {
+impl ConfigureDeterminateNixInitService {
     #[tracing::instrument(level = "debug", skip_all)]
     pub async fn plan(
         init: InitSystem,
@@ -70,19 +70,19 @@ impl ConfigureEnterpriseEditionInitService {
 }
 
 #[async_trait::async_trait]
-#[typetag::serde(name = "configure_enterprise_edition_init_service")]
-impl Action for ConfigureEnterpriseEditionInitService {
+#[typetag::serde(name = "configure_determinate_nix_init_service")]
+impl Action for ConfigureDeterminateNixInitService {
     fn action_tag() -> ActionTag {
-        ActionTag("configure_enterprise_edition_init_service")
+        ActionTag("configure_determinate_nix_init_service")
     }
     fn tracing_synopsis(&self) -> String {
-        "Configure Determinate Nix Enterprise Edition daemon".to_string()
+        "Configure the Determinate Nix daemon".to_string()
     }
 
     fn tracing_span(&self) -> Span {
         span!(
             tracing::Level::DEBUG,
-            "configure_enterprise_edition_init_service"
+            "configure_determinate_nix_init_service"
         )
     }
 
@@ -131,7 +131,7 @@ impl Action for ConfigureEnterpriseEditionInitService {
 
     fn revert_description(&self) -> Vec<ActionDescription> {
         vec![ActionDescription::new(
-            "Unconfigure Determinate Nix Enterprise Edition daemon".to_string(),
+            "Remove the Determinate Nix daemon".to_string(),
             vec![self.configure_init_service.tracing_synopsis()],
         )]
     }
@@ -146,7 +146,7 @@ impl Action for ConfigureEnterpriseEditionInitService {
 
 #[non_exhaustive]
 #[derive(Debug, thiserror::Error)]
-pub enum ConfigureEnterpriseEditionNixDaemonServiceError {}
+pub enum ConfigureDeterminateNixDaemonServiceError {}
 
 #[derive(Deserialize, Clone, Debug, Serialize, PartialEq)]
 #[serde(rename_all = "PascalCase")]
@@ -171,7 +171,7 @@ fn generate_plist() -> DeterminateNixDaemonPlist {
         keep_alive: true,
         run_at_load: true,
         label: "systems.determinate.nix-daemon".into(),
-        program: "/usr/local/bin/determinate-nix-ee".into(),
+        program: "/usr/local/bin/determinate-nix".into(),
         standard_error_path: "/var/log/determinate-nix-daemon.log".into(),
         standard_out_path: "/var/log/determinate-nix-daemon.log".into(),
         soft_resource_limits: ResourceLimits {

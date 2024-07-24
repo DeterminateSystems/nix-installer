@@ -319,7 +319,7 @@ impl Planner for SteamDeck {
             )
         }
 
-        if self.settings.enterprise_edition {
+        if self.settings.determinate_nix {
             actions.push(
                 ProvisionDeterminateNixShim::plan()
                     .await

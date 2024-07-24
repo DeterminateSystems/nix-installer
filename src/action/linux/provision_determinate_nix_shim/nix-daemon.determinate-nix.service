@@ -7,7 +7,7 @@ RequiresMountsFor=/nix/var/nix/db
 ConditionPathIsReadWrite=/nix/var/nix/daemon-socket
 
 [Service]
-ExecStart=@/nix/determinate/determinate-nix-ee
+ExecStart=@/nix/determinate/determinate-nix
 KillMode=process
 LimitNOFILE=1048576
 TasksMax=1048576

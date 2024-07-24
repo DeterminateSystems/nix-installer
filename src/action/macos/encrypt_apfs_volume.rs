@@ -21,7 +21,7 @@ Encrypt an APFS volume
  */
 #[derive(Debug, serde::Deserialize, serde::Serialize, Clone)]
 pub struct EncryptApfsVolume {
-    enterprise_edition: bool,
+    determinate_nix: bool,
     disk: PathBuf,
     name: String,
 }
@@ -29,7 +29,7 @@ pub struct EncryptApfsVolume {
 impl EncryptApfsVolume {
     #[tracing::instrument(level = "debug", skip_all)]
     pub async fn plan(
-        enterprise_edition: bool,
+        determinate_nix: bool,
         disk: impl AsRef<Path>,
         name: impl AsRef<str>,
         planned_create_apfs_volume: &StatefulAction<CreateApfsVolume>,
@@ -60,7 +60,7 @@ impl EncryptApfsVolume {
             if planned_create_apfs_volume.state == ActionState::Completed {
                 // We detected a created volume already, and a password exists, so we can keep using that and skip doing anything
                 return Ok(StatefulAction::completed(Self {
-                    enterprise_edition,
+                    determinate_nix,
                     name,
                     disk,
                 }));
@@ -94,7 +94,7 @@ impl EncryptApfsVolume {
                         ));
                     } else {
                         return Ok(StatefulAction::completed(Self {
-                            enterprise_edition,
+                            determinate_nix,
                             disk,
                             name,
                         }));
@@ -104,7 +104,7 @@ impl EncryptApfsVolume {
         }
 
         Ok(StatefulAction::uncompleted(Self {
-            enterprise_edition,
+            determinate_nix,
             name,
             disk,
         }))
@@ -142,7 +142,7 @@ impl Action for EncryptApfsVolume {
     ))]
     async fn execute(&mut self) -> Result<(), ActionError> {
         let Self {
-            enterprise_edition,
+            determinate_nix,
             disk,
             name,
         } = self;
@@ -194,8 +194,8 @@ impl Action for EncryptApfsVolume {
             "/usr/bin/security",
         ]);
 
-        if *enterprise_edition {
-            cmd.args(["-T", "/usr/local/bin/determinate-nix-ee"]);
+        if *determinate_nix {
+            cmd.args(["-T", "/usr/local/bin/determinate-nix"]);
         }
 
         cmd.arg("/Library/Keychains/System.keychain");

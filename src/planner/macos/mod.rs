@@ -16,7 +16,7 @@ use crate::{
         base::RemoveDirectory,
         common::{ConfigureNix, ConfigureUpstreamInitService, CreateUsersAndGroups, ProvisionNix},
         macos::{
-            ConfigureRemoteBuilding, CreateEnterpriseEditionVolume, CreateNixHookService,
+            ConfigureRemoteBuilding, CreateDeterminateNixVolume, CreateNixHookService,
             CreateNixVolume, SetTmutilExclusions,
         },
         StatefulAction,
@@ -29,7 +29,7 @@ use crate::{
     Action, BuiltinPlanner,
 };
 
-use crate::action::common::ConfigureEnterpriseEditionInitService;
+use crate::action::common::ConfigureDeterminateNixInitService;
 
 /// A planner for MacOS (Darwin) systems
 #[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
@@ -119,7 +119,7 @@ impl Planner for Macos {
         // The encrypt variable isn't used in the enterprise edition since we have our own plan step for it,
         // however this match accounts for enterprise edition so the receipt indicates encrypt: true.
         // This is a goofy thing to do, but it is in an attempt to make a more globally coherent plan / receipt.
-        let encrypt = match (self.settings.enterprise_edition, self.encrypt) {
+        let encrypt = match (self.settings.determinate_nix, self.encrypt) {
             (true, _) => true,
             (false, Some(choice)) => choice,
             (false, None) => {
@@ -141,9 +141,9 @@ impl Planner for Macos {
 
         let mut plan = vec![];
 
-        if self.settings.enterprise_edition {
+        if self.settings.determinate_nix {
             plan.push(
-                CreateEnterpriseEditionVolume::plan(
+                CreateDeterminateNixVolume::plan(
                     root_disk.unwrap(), /* We just ensured it was populated */
                     self.volume_label.clone(),
                     self.case_sensitive,
@@ -208,9 +208,9 @@ impl Planner for Macos {
             );
         }
 
-        if self.settings.enterprise_edition {
+        if self.settings.determinate_nix {
             plan.push(
-                ConfigureEnterpriseEditionInitService::plan(InitSystem::Launchd, true)
+                ConfigureDeterminateNixInitService::plan(InitSystem::Launchd, true)
                     .await
                     .map_err(PlannerError::Action)?
                     .boxed(),
@@ -305,8 +305,8 @@ impl Planner for Macos {
     async fn pre_install_check(&self) -> Result<(), PlannerError> {
         check_suis().await?;
         check_not_running_in_rosetta()?;
-        if self.settings.enterprise_edition {
-            check_enterprise_edition_available().await?;
+        if self.settings.determinate_nix {
+            check_determinate_nix_available().await?;
         }
 
         Ok(())
@@ -399,10 +399,10 @@ async fn check_suis() -> Result<(), PlannerError> {
         .map_err(|e| PlannerError::Custom(Box::new(e)))
 }
 
-async fn check_enterprise_edition_available() -> Result<(), PlannerError> {
-    tokio::fs::metadata("/usr/local/bin/determinate-nix-ee")
+async fn check_determinate_nix_available() -> Result<(), PlannerError> {
+    tokio::fs::metadata("/usr/local/bin/determinate-nix")
         .await
-        .map_err(|_| PlannerError::EnterpriseEditionUnavailable)?;
+        .map_err(|_| PlannerError::DeterminateNixUnavailable)?;
 
     Ok(())
 }
