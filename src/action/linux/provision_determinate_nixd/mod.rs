@@ -92,14 +92,6 @@ impl Action for ProvisionDeterminateNixd {
         .map_err(|e| ActionErrorKind::Write(self.service_location.clone(), e))
         .map_err(Self::error)?;
 
-        execute_command(
-            Command::new(&self.binary_location)
-                .arg("--stop-after")
-                .arg("init"),
-        )
-        .await
-        .map_err(Self::error)?;
-
         Ok(())
     }
 
