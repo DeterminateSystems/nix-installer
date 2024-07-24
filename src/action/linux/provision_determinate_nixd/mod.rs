@@ -7,26 +7,28 @@ use tracing::{span, Span};
 use crate::action::{ActionError, ActionErrorKind, ActionTag};
 use crate::execute_command;
 
+use crate::action::common::configure_determinate_nixd_init_service::DETERMINATE_NIXD_SERVICE_SRC;
 use crate::action::{Action, ActionDescription, StatefulAction};
 
+const DETERMINATE_NIXD_BINARY_PATH: &str = "/nix/determinate/determinate-nixd";
 /**
-Provision the determinate-nix binary
+Provision the determinate-nixd binary
 */
 #[derive(Debug, serde::Deserialize, serde::Serialize, Clone)]
-pub struct ProvisionDeterminateNixShim {
+pub struct ProvisionDeterminateNixd {
     binary_location: PathBuf,
     service_location: PathBuf,
 }
 
-impl ProvisionDeterminateNixShim {
+impl ProvisionDeterminateNixd {
     #[tracing::instrument(level = "debug", skip_all)]
     pub async fn plan() -> Result<StatefulAction<Self>, ActionError> {
-        crate::settings::DETERMINATE_NIX_BINARY
+        crate::settings::DETERMINATE_NIXD_BINARY
             .ok_or_else(|| Self::error(ActionErrorKind::DeterminateNixUnavailable))?;
 
         let this = Self {
-            binary_location: "/nix/determinate/determinate-nix".into(),
-            service_location: "/nix/determinate/nix-daemon.service".into(),
+            binary_location: DETERMINATE_NIXD_BINARY_PATH.into(),
+            service_location: DETERMINATE_NIXD_SERVICE_SRC.into(),
         };
 
         Ok(StatefulAction::uncompleted(this))
@@ -34,19 +36,19 @@ impl ProvisionDeterminateNixShim {
 }
 
 #[async_trait::async_trait]
-#[typetag::serde(name = "provision_determinate_nix_shim")]
-impl Action for ProvisionDeterminateNixShim {
+#[typetag::serde(name = "provision_determinate_nixd")]
+impl Action for ProvisionDeterminateNixd {
     fn action_tag() -> ActionTag {
-        ActionTag("provision_determinate_nix_shim")
+        ActionTag("provision_determinate_nixd")
     }
     fn tracing_synopsis(&self) -> String {
-        "Install Determinate Nix Shim".to_string()
+        "Install Determinate Nixd".to_string()
     }
 
     fn tracing_span(&self) -> Span {
         span!(
             tracing::Level::DEBUG,
-            "provision_determinate_nix_shim",
+            "provision_determinate_nixd",
             location = ?self.binary_location,
         )
     }
@@ -60,7 +62,7 @@ impl Action for ProvisionDeterminateNixShim {
 
     #[tracing::instrument(level = "debug", skip_all)]
     async fn execute(&mut self) -> Result<(), ActionError> {
-        let bytes = crate::settings::DETERMINATE_NIX_BINARY
+        let bytes = crate::settings::DETERMINATE_NIXD_BINARY
             .ok_or_else(|| Self::error(ActionErrorKind::DeterminateNixUnavailable))?;
 
         if self.binary_location.exists() {
@@ -84,7 +86,7 @@ impl Action for ProvisionDeterminateNixShim {
 
         tokio::fs::write(
             &self.service_location,
-            include_str!("./nix-daemon.determinate-nix.service"),
+            include_str!("./nix-daemon.determinate-nixd.service"),
         )
         .await
         .map_err(|e| ActionErrorKind::Write(self.service_location.clone(), e))

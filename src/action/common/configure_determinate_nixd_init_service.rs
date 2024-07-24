@@ -11,23 +11,22 @@ use crate::settings::InitSystem;
 
 // Linux
 const SERVICE_DEST: &str = "/etc/systemd/system/nix-daemon.service";
-const DETERMINATE_NIX_EE_SERVICE_SRC: &str = "/nix/determinate/nix-daemon.service";
+pub const DETERMINATE_NIXD_SERVICE_SRC: &str = "/nix/determinate/nix-daemon.service";
 
 // Darwin
-const DARWIN_ENTERPRISE_EDITION_DAEMON_DEST: &str =
-    "/Library/LaunchDaemons/systems.determinate.nix-daemon.plist";
-const DARWIN_ENTERPRISE_EDITION_SERVICE_NAME: &str = "systems.determinate.nix-daemon";
+const DARWIN_NIXD_DAEMON_DEST: &str = "/Library/LaunchDaemons/systems.determinate.nix-daemon.plist";
+const DARWIN_NIXD_SERVICE_NAME: &str = "systems.determinate.nix-daemon";
 
 /**
 Configure the init to run the Nix daemon
 */
 #[derive(Debug, serde::Deserialize, serde::Serialize, Clone)]
-pub struct ConfigureDeterminateNixInitService {
+pub struct ConfigureDeterminateNixdInitService {
     // FIXME(cole-h): add to tracing stuff
     configure_init_service: StatefulAction<ConfigureInitService>,
 }
 
-impl ConfigureDeterminateNixInitService {
+impl ConfigureDeterminateNixdInitService {
     #[tracing::instrument(level = "debug", skip_all)]
     pub async fn plan(
         init: InitSystem,
@@ -39,16 +38,16 @@ impl ConfigureDeterminateNixInitService {
                 None
             },
             // FIXME(cole-h): should this be None, or are we writing the service to this location and then copying it to its destination..?
-            InitSystem::Systemd => Some(DETERMINATE_NIX_EE_SERVICE_SRC.into()),
+            InitSystem::Systemd => Some(DETERMINATE_NIXD_SERVICE_SRC.into()),
             InitSystem::None => None,
         };
         let service_dest: Option<PathBuf> = match init {
-            InitSystem::Launchd => Some(DARWIN_ENTERPRISE_EDITION_DAEMON_DEST.into()),
+            InitSystem::Launchd => Some(DARWIN_NIXD_DAEMON_DEST.into()),
             InitSystem::Systemd => Some(SERVICE_DEST.into()),
             InitSystem::None => None,
         };
         let service_name: Option<String> = match init {
-            InitSystem::Launchd => Some(DARWIN_ENTERPRISE_EDITION_SERVICE_NAME.into()),
+            InitSystem::Launchd => Some(DARWIN_NIXD_SERVICE_NAME.into()),
             _ => None,
         };
 
@@ -70,10 +69,10 @@ impl ConfigureDeterminateNixInitService {
 }
 
 #[async_trait::async_trait]
-#[typetag::serde(name = "configure_determinate_nix_init_service")]
-impl Action for ConfigureDeterminateNixInitService {
+#[typetag::serde(name = "configure_determinate_nixd_init_service")]
+impl Action for ConfigureDeterminateNixdInitService {
     fn action_tag() -> ActionTag {
-        ActionTag("configure_determinate_nix_init_service")
+        ActionTag("configure_determinate_nixd_init_service")
     }
     fn tracing_synopsis(&self) -> String {
         "Configure the Determinate Nix daemon".to_string()
@@ -82,7 +81,7 @@ impl Action for ConfigureDeterminateNixInitService {
     fn tracing_span(&self) -> Span {
         span!(
             tracing::Level::DEBUG,
-            "configure_determinate_nix_init_service"
+            "configure_determinate_nixd_init_service"
         )
     }
 
@@ -99,7 +98,7 @@ impl Action for ConfigureDeterminateNixInitService {
             configure_init_service,
         } = self;
 
-        let daemon_file = DARWIN_ENTERPRISE_EDITION_DAEMON_DEST;
+        let daemon_file = DARWIN_NIXD_DAEMON_DEST;
 
         {
             // This is the only part that is actually different from configure_init_service, beyond variable parameters.
@@ -171,7 +170,7 @@ fn generate_plist() -> DeterminateNixDaemonPlist {
         keep_alive: true,
         run_at_load: true,
         label: "systems.determinate.nix-daemon".into(),
-        program: "/usr/local/bin/determinate-nix".into(),
+        program: "/usr/local/bin/determinate-nixd".into(),
         standard_error_path: "/var/log/determinate-nix-daemon.log".into(),
         standard_out_path: "/var/log/determinate-nix-daemon.log".into(),
         soft_resource_limits: ResourceLimits {

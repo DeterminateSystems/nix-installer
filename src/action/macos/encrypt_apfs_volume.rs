@@ -195,7 +195,7 @@ impl Action for EncryptApfsVolume {
         ]);
 
         if *determinate_nix {
-            cmd.args(["-T", "/usr/local/bin/determinate-nix"]);
+            cmd.args(["-T", "/usr/local/bin/determinate-nixd"]);
         }
 
         cmd.arg("/Library/Keychains/System.keychain");

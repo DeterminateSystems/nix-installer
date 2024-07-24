@@ -29,7 +29,7 @@ use crate::{
     Action, BuiltinPlanner,
 };
 
-use crate::action::common::ConfigureDeterminateNixInitService;
+use crate::action::common::ConfigureDeterminateNixdInitService;
 
 /// A planner for MacOS (Darwin) systems
 #[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
@@ -116,8 +116,8 @@ impl Planner for Macos {
             },
         };
 
-        // The encrypt variable isn't used in the enterprise edition since we have our own plan step for it,
-        // however this match accounts for enterprise edition so the receipt indicates encrypt: true.
+        // The encrypt variable isn't used in Determinate Nix since we have our own plan step for it,
+        // however this match accounts for Determinate Nix so the receipt indicates encrypt: true.
         // This is a goofy thing to do, but it is in an attempt to make a more globally coherent plan / receipt.
         let encrypt = match (self.settings.determinate_nix, self.encrypt) {
             (true, _) => true,
@@ -210,7 +210,7 @@ impl Planner for Macos {
 
         if self.settings.determinate_nix {
             plan.push(
-                ConfigureDeterminateNixInitService::plan(InitSystem::Launchd, true)
+                ConfigureDeterminateNixdInitService::plan(InitSystem::Launchd, true)
                     .await
                     .map_err(PlannerError::Action)?
                     .boxed(),
@@ -400,7 +400,7 @@ async fn check_suis() -> Result<(), PlannerError> {
 }
 
 async fn check_determinate_nix_available() -> Result<(), PlannerError> {
-    tokio::fs::metadata("/usr/local/bin/determinate-nix")
+    tokio::fs::metadata("/usr/local/bin/determinate-nixd")
         .await
         .map_err(|_| PlannerError::DeterminateNixUnavailable)?;
 

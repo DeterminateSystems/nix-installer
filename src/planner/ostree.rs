@@ -3,7 +3,7 @@ use crate::{
         base::{CreateDirectory, CreateFile, RemoveDirectory},
         common::{ConfigureNix, ConfigureUpstreamInitService, CreateUsersAndGroups, ProvisionNix},
         linux::{
-            ProvisionDeterminateNixShim, ProvisionSelinux, StartSystemdUnit, SystemctlDaemonReload,
+            ProvisionDeterminateNixd, ProvisionSelinux, StartSystemdUnit, SystemctlDaemonReload,
         },
         StatefulAction,
     },
@@ -175,7 +175,7 @@ impl Planner for Ostree {
 
         if self.settings.determinate_nix {
             plan.push(
-                ProvisionDeterminateNixShim::plan()
+                ProvisionDeterminateNixd::plan()
                     .await
                     .map_err(PlannerError::Action)?
                     .boxed(),

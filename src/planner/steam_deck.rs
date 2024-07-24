@@ -105,7 +105,7 @@ use crate::{
         base::{CreateDirectory, CreateFile, RemoveDirectory},
         common::{ConfigureNix, ConfigureUpstreamInitService, CreateUsersAndGroups, ProvisionNix},
         linux::{
-            EnsureSteamosNixDirectory, ProvisionDeterminateNixShim, RevertCleanSteamosNixOffload,
+            EnsureSteamosNixDirectory, ProvisionDeterminateNixd, RevertCleanSteamosNixOffload,
             StartSystemdUnit, SystemctlDaemonReload,
         },
         Action, StatefulAction,
@@ -321,7 +321,7 @@ impl Planner for SteamDeck {
 
         if self.settings.determinate_nix {
             actions.push(
-                ProvisionDeterminateNixShim::plan()
+                ProvisionDeterminateNixd::plan()
                     .await
                     .map_err(PlannerError::Action)?
                     .boxed(),

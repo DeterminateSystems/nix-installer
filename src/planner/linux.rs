@@ -2,10 +2,10 @@ use crate::{
     action::{
         base::{CreateDirectory, RemoveDirectory},
         common::{
-            ConfigureDeterminateNixInitService, ConfigureNix, ConfigureUpstreamInitService,
+            ConfigureDeterminateNixdInitService, ConfigureNix, ConfigureUpstreamInitService,
             CreateUsersAndGroups, ProvisionNix,
         },
-        linux::{ProvisionDeterminateNixShim, ProvisionSelinux},
+        linux::{ProvisionDeterminateNixd, ProvisionSelinux},
         StatefulAction,
     },
     error::HasExpectedErrors,
@@ -54,7 +54,7 @@ impl Planner for Linux {
 
         if self.settings.determinate_nix {
             plan.push(
-                ProvisionDeterminateNixShim::plan()
+                ProvisionDeterminateNixd::plan()
                     .await
                     .map_err(PlannerError::Action)?
                     .boxed(),
@@ -105,7 +105,7 @@ impl Planner for Linux {
             );
         } else {
             plan.push(
-                ConfigureDeterminateNixInitService::plan(self.init.init, self.init.start_daemon)
+                ConfigureDeterminateNixdInitService::plan(self.init.init, self.init.start_daemon)
                     .await
                     .map_err(PlannerError::Action)?
                     .boxed(),

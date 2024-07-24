@@ -8,16 +8,16 @@
         "nixpkgs": "nixpkgs"
       },
       "locked": {
-        "lastModified": 1721145747,
-        "narHash": "sha256-f2jWSJ9rYqGEOsj6aXEmIbX4h3fat8frExBn6B/g8jY=",
-        "rev": "c8d5023f44e63a4e1a5dd78aa31430a37ba103b4",
-        "revCount": 154,
+        "lastModified": 1721848324,
+        "narHash": "sha256-3c5x/17MEQC+5t+c46xTGApqg1Jirg3IoYvbz59Zmow=",
+        "rev": "ad733ec334599ba83a293c99711eb83d87b036f4",
+        "revCount": 159,
         "type": "tarball",
-        "url": "https://api.flakehub.com/f/pinned/DeterminateSystems/determinate-nix-ee/0.1.154%2Brev-c8d5023f44e63a4e1a5dd78aa31430a37ba103b4/0190bc48-a786-78f9-be4f-fe55ad4e1685/source.tar.gz"
+        "url": "https://api.flakehub.com/f/pinned/DeterminateSystems/determinate-nixd/0.1.159%2Brev-ad733ec334599ba83a293c99711eb83d87b036f4/0190e629-1a61-7c6b-8303-07ac2dc078aa/source.tar.gz"
       },
       "original": {
         "type": "tarball",
-        "url": "https://flakehub.com/f/DeterminateSystems/determinate-nix-ee/0.1.tar.gz"
+        "url": "https://flakehub.com/f/DeterminateSystems/determinate-nixd/0.1.tar.gz"
       }
     },
     "fenix": {

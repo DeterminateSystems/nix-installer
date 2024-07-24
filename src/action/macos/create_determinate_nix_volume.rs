@@ -84,7 +84,7 @@ impl CreateDeterminateNixVolume {
 }
 
 #[async_trait::async_trait]
-#[typetag::serde(name = "create_apfs_enterprise_volume")]
+#[typetag::serde(name = "create_apfs_determinate_nix_volume")]
 impl Action for CreateDeterminateNixVolume {
     fn action_tag() -> ActionTag {
         ActionTag("create_determinate_nix_volume")
@@ -100,7 +100,7 @@ impl Action for CreateDeterminateNixVolume {
     fn tracing_span(&self) -> Span {
         span!(
             tracing::Level::DEBUG,
-            "create_apfs_volume",
+            "create_determinate_nix_volume",
             disk = tracing::field::display(self.disk.display()),
             name = self.name
         )
@@ -171,7 +171,7 @@ impl Action for CreateDeterminateNixVolume {
             .await
             .map_err(Self::error)?;
 
-        let mut command = Command::new("/usr/local/bin/determinate-nix");
+        let mut command = Command::new("/usr/local/bin/determinate-nixd");
         command.args(["--stop-after", "mount"]);
         command.stderr(std::process::Stdio::piped());
         command.stdout(std::process::Stdio::piped());
