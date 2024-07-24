@@ -1,14 +1,12 @@
 use std::path::PathBuf;
 
 use tokio::fs::{create_dir_all, remove_file};
-use tokio::process::Command;
 use tracing::{span, Span};
 
-use crate::action::{ActionError, ActionErrorKind, ActionTag};
-use crate::execute_command;
-
 use crate::action::common::configure_determinate_nixd_init_service::DETERMINATE_NIXD_SERVICE_SRC;
-use crate::action::{Action, ActionDescription, StatefulAction};
+use crate::action::{
+    Action, ActionDescription, ActionError, ActionErrorKind, ActionTag, StatefulAction,
+};
 
 const DETERMINATE_NIXD_BINARY_PATH: &str = "/nix/determinate/determinate-nixd";
 /**

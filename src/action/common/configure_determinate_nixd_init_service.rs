@@ -22,7 +22,6 @@ Configure the init to run the Nix daemon
 */
 #[derive(Debug, serde::Deserialize, serde::Serialize, Clone)]
 pub struct ConfigureDeterminateNixdInitService {
-    // FIXME(cole-h): add to tracing stuff
     configure_init_service: StatefulAction<ConfigureInitService>,
 }
 
