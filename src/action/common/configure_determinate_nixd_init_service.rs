@@ -50,15 +50,10 @@ impl ConfigureDeterminateNixdInitService {
             _ => None,
         };
 
-        let configure_init_service = ConfigureInitService::plan(
-            init,
-            start_daemon,
-            service_src,
-            service_dest,
-            service_name,
-        )
-        .await
-        .map_err(Self::error)?;
+        let configure_init_service =
+            ConfigureInitService::plan(init, start_daemon, service_src, service_dest, service_name)
+                .await
+                .map_err(Self::error)?;
 
         Ok(Self {
             configure_init_service,
