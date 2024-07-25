@@ -218,7 +218,7 @@ use crate::{error::HasExpectedErrors, settings::UrlOrPathError, CertificateError
 ///
 /// Instead of calling [`execute`][Action::execute] or [`revert`][Action::revert], you should prefer [`try_execute`][StatefulAction::try_execute] and [`try_revert`][StatefulAction::try_revert]
 #[async_trait::async_trait]
-#[typetag::serde(tag = "action")]
+#[typetag::serde(tag = "action_name")]
 pub trait Action: Send + Sync + std::fmt::Debug + dyn_clone::DynClone {
     fn action_tag() -> ActionTag
     where
