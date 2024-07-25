@@ -20,6 +20,8 @@ use super::CreateApfsVolume;
 Encrypt an APFS volume
  */
 #[derive(Debug, serde::Deserialize, serde::Serialize, Clone)]
+#[serde(tag = "action_name")]
+#[serde(rename = "encrypt_volume")]
 pub struct EncryptApfsVolume {
     enterprise_edition: bool,
     disk: PathBuf,

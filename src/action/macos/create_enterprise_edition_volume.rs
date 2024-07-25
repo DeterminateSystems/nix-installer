@@ -17,6 +17,8 @@ use super::create_fstab_entry::CreateFstabEntry;
 
 /// Create an APFS volume
 #[derive(Debug, serde::Deserialize, serde::Serialize, Clone)]
+#[serde(tag = "action_name")]
+#[serde(rename = "create_apfs_enterprise_volume")]
 pub struct CreateEnterpriseEditionVolume {
     disk: PathBuf,
     name: String,

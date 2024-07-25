@@ -25,6 +25,8 @@ const PATHS: &[&str] = &[
 Create the `/nix` tree
  */
 #[derive(Debug, serde::Deserialize, serde::Serialize, Clone)]
+#[serde(tag = "action_name")]
+#[serde(rename = "create_nix_tree")]
 pub struct CreateNixTree {
     create_directories: Vec<StatefulAction<CreateDirectory>>,
 }

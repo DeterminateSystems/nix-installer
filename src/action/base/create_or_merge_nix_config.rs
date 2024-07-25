@@ -43,6 +43,8 @@ impl From<CreateOrMergeNixConfigError> for ActionErrorKind {
 
 /// Create or merge an existing `nix.conf` at the specified path.
 #[derive(Debug, serde::Deserialize, serde::Serialize, Clone)]
+#[serde(tag = "action_name")]
+#[serde(rename = "create_or_merge_nix_config")]
 pub struct CreateOrMergeNixConfig {
     pub(crate) path: PathBuf,
     pending_nix_config: NixConfig,

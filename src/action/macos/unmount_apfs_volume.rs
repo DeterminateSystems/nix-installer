@@ -14,6 +14,8 @@ use crate::os::darwin::DiskUtilInfoOutput;
 Unmount an APFS volume
  */
 #[derive(Debug, serde::Deserialize, serde::Serialize, Clone)]
+#[serde(tag = "action_name")]
+#[serde(rename = "unmount_volume")]
 pub struct UnmountApfsVolume {
     disk: PathBuf,
     name: String,

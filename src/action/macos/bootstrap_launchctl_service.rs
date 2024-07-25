@@ -14,6 +14,8 @@ use super::service_is_disabled;
 Bootstrap and kickstart an APFS volume
 */
 #[derive(Debug, serde::Deserialize, serde::Serialize, Clone)]
+#[serde(tag = "action_name")]
+#[serde(rename = "bootstrap_launchctl_service")]
 pub struct BootstrapLaunchctlService {
     domain: String,
     service: String,

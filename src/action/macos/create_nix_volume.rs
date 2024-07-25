@@ -19,6 +19,8 @@ pub const NIX_VOLUME_MOUNTD_DEST: &str = "/Library/LaunchDaemons/org.nixos.darwi
 
 /// Create an APFS volume
 #[derive(Debug, serde::Deserialize, serde::Serialize, Clone)]
+#[serde(tag = "action_name")]
+#[serde(rename = "create_apfs_volume")]
 pub struct CreateNixVolume {
     disk: PathBuf,
     name: String,

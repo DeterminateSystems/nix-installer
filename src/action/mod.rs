@@ -43,6 +43,8 @@ ideal.
 
 A custom [`Action`] can be created then used in a custom [`Planner`](crate::planner::Planner):
 
+(Note: if the struct has no fields, don't add the two `serde` attributes to the struct.)
+
 ```rust,no_run
 use std::{error::Error, collections::HashMap};
 use tracing::{Span, span};
@@ -54,6 +56,8 @@ use nix_installer::{
 };
 
 #[derive(Debug, serde::Deserialize, serde::Serialize, Clone)]
+#[serde(tag = "action_name")]
+#[serde(rename = "my_action")]
 pub struct MyAction {}
 
 

@@ -12,6 +12,8 @@ use crate::action::{Action, ActionDescription, StatefulAction};
 Create an operating system level user in the given group
 */
 #[derive(Debug, serde::Deserialize, serde::Serialize, Clone)]
+#[serde(tag = "action_name")]
+#[serde(rename = "create_user")]
 pub struct CreateUser {
     name: String,
     uid: u32,
