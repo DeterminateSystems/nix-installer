@@ -51,7 +51,7 @@ impl ConfigureDeterminateNixdInitService {
         };
 
         let configure_init_service = ConfigureInitService::plan(
-            InitSystem::Launchd,
+            init,
             start_daemon,
             service_src,
             service_dest,
