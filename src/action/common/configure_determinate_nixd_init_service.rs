@@ -22,6 +22,7 @@ Configure the init to run the Nix daemon
 */
 #[derive(Debug, serde::Deserialize, serde::Serialize, Clone)]
 pub struct ConfigureDeterminateNixdInitService {
+    init: InitSystem,
     configure_init_service: StatefulAction<ConfigureInitService>,
 }
 
@@ -56,6 +57,7 @@ impl ConfigureDeterminateNixdInitService {
                 .map_err(Self::error)?;
 
         Ok(Self {
+            init,
             configure_init_service,
         }
         .into())
@@ -89,12 +91,13 @@ impl Action for ConfigureDeterminateNixdInitService {
     #[tracing::instrument(level = "debug", skip_all)]
     async fn execute(&mut self) -> Result<(), ActionError> {
         let Self {
+            init,
             configure_init_service,
         } = self;
 
         let daemon_file = DARWIN_NIXD_DAEMON_DEST;
 
-        {
+        if *init == InitSystem::Launchd {
             // This is the only part that is actually different from configure_init_service, beyond variable parameters.
 
             let generated_plist = generate_plist();
