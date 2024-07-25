@@ -1,0 +1,55 @@
+name: Extensive Release Checks
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - money-with-wings
+
+jobs:
+  inventory:
+    name: Identify outputs to build
+    runs-on: UbuntuLatest32Cores128G
+    outputs:
+      matrix: ${{ steps.inventory.outputs.matrix }}
+    permissions:
+      id-token: "write"
+      contents: "read"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: DeterminateSystems/nix-installer-action@main
+        with:
+          flakehub: true
+      - uses: DeterminateSystems/magic-nix-cache-action@main
+      - name: Enumerate Checks
+        id: inventory
+        run: |
+          ./.github/workflows/matrix.sh
+
+  build:
+    runs-on: ${{ matrix.jobs.runs-on }}
+    needs: inventory
+    strategy:
+      fail-fast: false
+      matrix:
+        jobs: ${{ fromJSON(needs.inventory.outputs.matrix) }}
+
+    permissions:
+      id-token: "write"
+      contents: "read"
+
+    steps:
+      - uses: actions/checkout@v4
+      - uses: DeterminateSystems/nix-installer-action@main
+        with:
+          flakehub: true
+      - uses: DeterminateSystems/magic-nix-cache-action@main
+      - name: Build for ${{ matrix.jobs.nix-system }}
+        run: nix build .#${{ matrix.jobs.attribute }}
+
+  success:
+    runs-on: ubuntu-latest
+    needs: build
+
+    steps:
+      - run: "true"

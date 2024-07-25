@@ -600,7 +600,7 @@ let
         touch $out
       '';
 
-  makeTests = name: tests: builtins.mapAttrs
+  makeTests = name: tests: imagePredicate: builtins.mapAttrs
     (imageName: image:
       rec {
         ${image.system} = (builtins.mapAttrs
@@ -608,7 +608,7 @@ let
             makeTest imageName testName test
           )
           tests) // {
-          "${name}" = (with (forSystem "x86_64-linux" ({ system, pkgs, ... }: pkgs)); pkgs.releaseTools.aggregate {
+          "${name}-aggregate" = (with (forSystem "x86_64-linux" ({ system, pkgs, ... }: pkgs)); pkgs.releaseTools.aggregate {
             name = name;
             constituents = (
               pkgs.lib.mapAttrsToList
@@ -621,17 +621,17 @@ let
         };
       }
     )
-    images;
+    (lib.filterAttrs imagePredicate images);
 
   allCases = lib.recursiveUpdate (lib.recursiveUpdate installCases (lib.recursiveUpdate cureSelfCases cureScriptCases)) uninstallCases;
 
-  install-tests = makeTests "install" installCases;
+  install-tests = makeTests "install" installCases (_: _: true);
 
-  cure-self-tests = makeTests "cure-self" cureSelfCases;
+  cure-self-tests = makeTests "cure-self" cureSelfCases (_: _: true);
 
-  cure-script-tests = makeTests "cure-script" cureScriptCases;
+  cure-script-tests = makeTests "cure-script" cureScriptCases (_name: { upstreamScriptsWork ? true, ... }: upstreamScriptsWork);
 
-  uninstall-tests = makeTests "uninstall" uninstallCases;
+  uninstall-tests = makeTests "uninstall" uninstallCases (_: _: true);
 
   all-tests = builtins.mapAttrs
     (imageName: image: {
@@ -652,8 +652,8 @@ in
 lib.recursiveUpdate joined-tests {
   all."x86_64-linux" = (with (forSystem "x86_64-linux" ({ system, pkgs, ... }: pkgs)); pkgs.lib.mapAttrs (caseName: case:
     pkgs.releaseTools.aggregate {
-      name = caseName;
-      constituents = pkgs.lib.mapAttrsToList (name: value: value."x86_64-linux"."${caseName}") joined-tests;
+      name = "${caseName}-aggregate";
+      constituents = pkgs.lib.mapAttrsToList (name: value: value."x86_64-linux"."${caseName}-aggregate") joined-tests;
     }
   )) (allCases // { "cure-self" = { }; "cure-script" = { }; "install" = { }; "uninstall" = { }; "all" = { }; });
 }
