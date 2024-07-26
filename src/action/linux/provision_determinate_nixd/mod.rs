@@ -1,3 +1,4 @@
+use std::os::unix::fs::PermissionsExt;
 use std::path::PathBuf;
 
 use tokio::fs::{create_dir_all, remove_file};
@@ -89,6 +90,11 @@ impl Action for ProvisionDeterminateNixd {
         .await
         .map_err(|e| ActionErrorKind::Write(self.service_location.clone(), e))
         .map_err(Self::error)?;
+
+        tokio::fs::set_permissions(&self.service_location, PermissionsExt::from_mode(0o664))
+            .await
+            .map_err(|e| ActionErrorKind::Write(self.service_location.clone(), e))
+            .map_err(Self::error)?;
 
         Ok(())
     }
