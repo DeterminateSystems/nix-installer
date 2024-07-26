@@ -5,10 +5,6 @@ use serde_json::{
 };
 use std::io;
 
-struct DedupSerializer<W, F = CompactFormatter> {
-    ser: Serializer<W, F>,
-}
-
 pub fn dedup_to_string_pretty<T>(value: &T) -> Result<String>
 where
     T: ?Sized + Serialize,
@@ -24,6 +20,67 @@ where
     Ok(string)
 }
 
+struct DedupSerializeMap<'a, W, F>
+where
+    W: io::Write,
+    F: Formatter,
+{
+    delegate: Compound<'a, W, F>,
+}
+
+impl<'a, W, F> ser::SerializeMap for DedupSerializeMap<'a, W, F>
+where
+    W: io::Write,
+    F: Formatter,
+{
+    type Ok = ();
+    type Error = Error;
+
+    fn serialize_key<T>(&mut self, key: &T) -> std::result::Result<(), Self::Error>
+    where
+        T: ?Sized + Serialize,
+    {
+        self.delegate.serialize_key(key)
+    }
+
+    fn serialize_value<T>(&mut self, value: &T) -> std::result::Result<(), Self::Error>
+    where
+        T: ?Sized + Serialize,
+    {
+        self.delegate.serialize_value(value)
+    }
+
+    fn end(self) -> std::result::Result<Self::Ok, Self::Error> {
+        self.delegate.end()
+    }
+}
+
+impl<'a, W, F> ser::SerializeStruct for DedupSerializeMap<'a, W, F>
+where
+    W: io::Write,
+    F: Formatter,
+{
+    type Ok = ();
+    type Error = Error;
+
+    #[inline]
+    fn serialize_field<T>(&mut self, key: &'static str, value: &T) -> Result<()>
+    where
+        T: ?Sized + Serialize,
+    {
+        ser::SerializeMap::serialize_entry(self, key, value)
+    }
+
+    #[inline]
+    fn end(self) -> Result<()> {
+        ser::SerializeMap::end(self)
+    }
+}
+
+struct DedupSerializer<W, F = CompactFormatter> {
+    ser: Serializer<W, F>,
+}
+
 impl<'a, W, F> ser::Serializer for &'a mut DedupSerializer<W, F>
 where
     W: io::Write,
@@ -36,8 +93,8 @@ where
     type SerializeTuple = Compound<'a, W, F>;
     type SerializeTupleStruct = Compound<'a, W, F>;
     type SerializeTupleVariant = Compound<'a, W, F>;
-    type SerializeMap = Compound<'a, W, F>;
-    type SerializeStruct = Compound<'a, W, F>;
+    type SerializeMap = DedupSerializeMap<'a, W, F>;
+    type SerializeStruct = DedupSerializeMap<'a, W, F>;
     type SerializeStructVariant = Compound<'a, W, F>;
 
     #[inline]
@@ -210,12 +267,16 @@ where
 
     #[inline]
     fn serialize_map(self, len: Option<usize>) -> Result<Self::SerializeMap> {
-        self.ser.serialize_map(len)
+        Ok(DedupSerializeMap {
+            delegate: self.ser.serialize_map(len)?,
+        })
     }
 
     #[inline]
     fn serialize_struct(self, name: &'static str, len: usize) -> Result<Self::SerializeStruct> {
-        self.ser.serialize_struct(name, len)
+        Ok(DedupSerializeMap {
+            delegate: self.ser.serialize_struct(name, len)?,
+        })
     }
 
     #[inline]
