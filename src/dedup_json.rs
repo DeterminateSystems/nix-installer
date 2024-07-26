@@ -12,6 +12,7 @@ where
     let mut vec = Vec::with_capacity(128);
     let ser_base = Serializer::pretty(&mut vec);
     let mut ser = DedupSerializer { ser: ser_base };
+    println!("created DedupSerializer");
     value.serialize(&mut ser)?;
     let string = unsafe {
         // We do not emit invalid UTF-8.
@@ -26,6 +27,20 @@ where
     F: Formatter,
 {
     delegate: Compound<'a, W, F>,
+    was_action_name: bool,
+}
+
+impl<'a, W, F> DedupSerializeMap<'a, W, F>
+where
+    W: io::Write,
+    F: Formatter,
+{
+    fn new(delegate: Compound<'a, W, F>) -> DedupSerializeMap<'a, W, F> {
+        DedupSerializeMap {
+            delegate,
+            was_action_name: false,
+        }
+    }
 }
 
 impl<'a, W, F> ser::SerializeMap for DedupSerializeMap<'a, W, F>
@@ -40,6 +55,7 @@ where
     where
         T: ?Sized + Serialize,
     {
+        println!("serialize_key called");
         self.delegate.serialize_key(key)
     }
 
@@ -68,6 +84,7 @@ where
     where
         T: ?Sized + Serialize,
     {
+        println!("serialize_field({}, value) called", key);
         ser::SerializeMap::serialize_entry(self, key, value)
     }
 
@@ -267,16 +284,14 @@ where
 
     #[inline]
     fn serialize_map(self, len: Option<usize>) -> Result<Self::SerializeMap> {
-        Ok(DedupSerializeMap {
-            delegate: self.ser.serialize_map(len)?,
-        })
+        Ok(DedupSerializeMap::new(self.ser.serialize_map(len)?))
     }
 
     #[inline]
     fn serialize_struct(self, name: &'static str, len: usize) -> Result<Self::SerializeStruct> {
-        Ok(DedupSerializeMap {
-            delegate: self.ser.serialize_struct(name, len)?,
-        })
+        Ok(DedupSerializeMap::new(
+            self.ser.serialize_struct(name, len)?,
+        ))
     }
 
     #[inline]

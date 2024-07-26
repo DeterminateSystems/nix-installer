@@ -1,6 +1,8 @@
 use std::{path::PathBuf, process::ExitCode};
 
-use crate::{cli::ensure_root, error::HasExpectedErrors, BuiltinPlanner};
+use crate::{
+    cli::ensure_root, dedup_json::dedup_to_string_pretty, error::HasExpectedErrors, BuiltinPlanner,
+};
 use clap::Parser;
 
 use eyre::WrapErr;
@@ -52,7 +54,7 @@ impl CommandExecute for Plan {
             },
         };
 
-        let json = serde_json::to_string_pretty(&install_plan)?;
+        let json = dedup_to_string_pretty(&install_plan)?;
         tokio::fs::write(output, format!("{json}\n"))
             .await
             .wrap_err("Writing plan")?;
