@@ -103,7 +103,7 @@ impl ConfigureInitService {
 }
 
 #[async_trait::async_trait]
-#[typetag::serde(name = "configure_init_service", no_write_tag)]
+#[typetag::serde(name = "configure_init_service")]
 impl Action for ConfigureInitService {
     fn action_tag() -> ActionTag {
         ActionTag("configure_init_service")

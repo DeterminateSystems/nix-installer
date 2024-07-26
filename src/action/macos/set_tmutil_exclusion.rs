@@ -41,7 +41,7 @@ impl SetTmutilExclusion {
 }
 
 #[async_trait::async_trait]
-#[typetag::serde(name = "set_tmutil_exclusion", no_write_tag)]
+#[typetag::serde(name = "set_tmutil_exclusion")]
 impl Action for SetTmutilExclusion {
     fn action_tag() -> ActionTag {
         ActionTag("set_tmutil_exclusion")

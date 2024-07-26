@@ -182,7 +182,7 @@ impl ConfigureShellProfile {
 }
 
 #[async_trait::async_trait]
-#[typetag::serde(name = "configure_shell_profile", no_write_tag)]
+#[typetag::serde(name = "configure_shell_profile")]
 impl Action for ConfigureShellProfile {
     fn action_tag() -> ActionTag {
         ActionTag("configure_shell_profile")

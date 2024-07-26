@@ -32,7 +32,7 @@ impl UnmountApfsVolume {
 }
 
 #[async_trait::async_trait]
-#[typetag::serde(name = "unmount_volume", no_write_tag)]
+#[typetag::serde(name = "unmount_volume")]
 impl Action for UnmountApfsVolume {
     fn action_tag() -> ActionTag {
         ActionTag("unmount_apfs_volume")

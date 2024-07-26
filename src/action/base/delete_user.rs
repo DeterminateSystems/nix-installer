@@ -47,7 +47,7 @@ impl DeleteUser {
 }
 
 #[async_trait::async_trait]
-#[typetag::serde(name = "delete_user", no_write_tag)]
+#[typetag::serde(name = "delete_user")]
 impl Action for DeleteUser {
     fn action_tag() -> ActionTag {
         ActionTag("delete_user")

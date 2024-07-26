@@ -113,7 +113,7 @@ impl EncryptApfsVolume {
 }
 
 #[async_trait::async_trait]
-#[typetag::serde(name = "encrypt_volume", no_write_tag)]
+#[typetag::serde(name = "encrypt_volume")]
 impl Action for EncryptApfsVolume {
     fn action_tag() -> ActionTag {
         ActionTag("encrypt_apfs_volume")

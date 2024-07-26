@@ -59,7 +59,7 @@ impl CreateGroup {
 }
 
 #[async_trait::async_trait]
-#[typetag::serde(name = "create_group", no_write_tag)]
+#[typetag::serde(name = "create_group")]
 impl Action for CreateGroup {
     fn action_tag() -> ActionTag {
         ActionTag("create_group")

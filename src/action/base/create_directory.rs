@@ -116,7 +116,7 @@ impl CreateDirectory {
 }
 
 #[async_trait::async_trait]
-#[typetag::serde(name = "create_directory", no_write_tag)]
+#[typetag::serde(name = "create_directory")]
 impl Action for CreateDirectory {
     fn action_tag() -> crate::action::ActionTag {
         crate::action::ActionTag("create_directory")

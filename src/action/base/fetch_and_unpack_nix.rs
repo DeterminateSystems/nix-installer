@@ -62,7 +62,7 @@ impl FetchAndUnpackNix {
 }
 
 #[async_trait::async_trait]
-#[typetag::serde(name = "fetch_and_unpack_nix", no_write_tag)]
+#[typetag::serde(name = "fetch_and_unpack_nix")]
 impl Action for FetchAndUnpackNix {
     fn action_tag() -> ActionTag {
         ActionTag("fetch_and_unpack_nix")

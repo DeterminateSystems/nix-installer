@@ -86,7 +86,7 @@ impl CreateNixHookService {
 }
 
 #[async_trait::async_trait]
-#[typetag::serde(name = "create_nix_hook_service", no_write_tag)]
+#[typetag::serde(name = "create_nix_hook_service")]
 impl Action for CreateNixHookService {
     fn action_tag() -> ActionTag {
         ActionTag("create_nix_hook_service")

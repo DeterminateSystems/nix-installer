@@ -48,7 +48,7 @@ impl CreateNixTree {
 }
 
 #[async_trait::async_trait]
-#[typetag::serde(name = "create_nix_tree", no_write_tag)]
+#[typetag::serde(name = "create_nix_tree")]
 impl Action for CreateNixTree {
     fn action_tag() -> ActionTag {
         ActionTag("create_nix_tree")

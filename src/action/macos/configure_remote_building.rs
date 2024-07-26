@@ -57,7 +57,7 @@ fi
 }
 
 #[async_trait::async_trait]
-#[typetag::serde(name = "configure_remote_building", no_write_tag)]
+#[typetag::serde(name = "configure_remote_building")]
 impl Action for ConfigureRemoteBuilding {
     fn action_tag() -> ActionTag {
         ActionTag("configure_remote_building")

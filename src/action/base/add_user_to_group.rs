@@ -150,7 +150,7 @@ impl AddUserToGroup {
 }
 
 #[async_trait::async_trait]
-#[typetag::serde(name = "add_user_to_group", no_write_tag)]
+#[typetag::serde(name = "add_user_to_group")]
 impl Action for AddUserToGroup {
     fn action_tag() -> crate::action::ActionTag {
         crate::action::ActionTag("add_user_to_group")

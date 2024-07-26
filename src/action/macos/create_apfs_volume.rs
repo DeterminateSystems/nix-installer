@@ -53,7 +53,7 @@ impl CreateApfsVolume {
 }
 
 #[async_trait::async_trait]
-#[typetag::serde(name = "create_volume", no_write_tag)]
+#[typetag::serde(name = "create_volume")]
 impl Action for CreateApfsVolume {
     fn action_tag() -> ActionTag {
         ActionTag("create_apfs_volume")

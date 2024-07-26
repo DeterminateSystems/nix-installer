@@ -34,7 +34,7 @@ impl ConfigureEnterpriseEditionInitService {
 }
 
 #[async_trait::async_trait]
-#[typetag::serde(name = "configure_enterprise_edition_init_service", no_write_tag)]
+#[typetag::serde(name = "configure_enterprise_edition_init_service")]
 impl Action for ConfigureEnterpriseEditionInitService {
     fn action_tag() -> ActionTag {
         ActionTag("configure_enterprise_edition_init_service")

@@ -46,7 +46,7 @@ impl ProvisionNix {
 }
 
 #[async_trait::async_trait]
-#[typetag::serde(name = "provision_nix", no_write_tag)]
+#[typetag::serde(name = "provision_nix")]
 impl Action for ProvisionNix {
     fn action_tag() -> ActionTag {
         ActionTag("provision_nix")

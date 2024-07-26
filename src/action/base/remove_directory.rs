@@ -27,7 +27,7 @@ impl RemoveDirectory {
 }
 
 #[async_trait::async_trait]
-#[typetag::serde(name = "remove_directory", no_write_tag)]
+#[typetag::serde(name = "remove_directory")]
 impl Action for RemoveDirectory {
     fn action_tag() -> crate::action::ActionTag {
         crate::action::ActionTag("remove_directory")

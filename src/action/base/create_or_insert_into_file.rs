@@ -149,7 +149,7 @@ impl CreateOrInsertIntoFile {
 }
 
 #[async_trait::async_trait]
-#[typetag::serde(name = "create_or_insert_into_file", no_write_tag)]
+#[typetag::serde(name = "create_or_insert_into_file")]
 impl Action for CreateOrInsertIntoFile {
     fn action_tag() -> ActionTag {
         ActionTag("create_or_insert_into_file")

@@ -85,7 +85,7 @@ impl CreateEnterpriseEditionVolume {
 }
 
 #[async_trait::async_trait]
-#[typetag::serde(name = "create_apfs_enterprise_volume", no_write_tag)]
+#[typetag::serde(name = "create_apfs_enterprise_volume")]
 impl Action for CreateEnterpriseEditionVolume {
     fn action_tag() -> ActionTag {
         ActionTag("create_enterprise_edition_volume")

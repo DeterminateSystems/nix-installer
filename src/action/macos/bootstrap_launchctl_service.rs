@@ -76,7 +76,7 @@ impl BootstrapLaunchctlService {
 }
 
 #[async_trait::async_trait]
-#[typetag::serde(name = "bootstrap_launchctl_service", no_write_tag)]
+#[typetag::serde(name = "bootstrap_launchctl_service")]
 impl Action for BootstrapLaunchctlService {
     fn action_tag() -> ActionTag {
         ActionTag("bootstrap_launchctl_service")

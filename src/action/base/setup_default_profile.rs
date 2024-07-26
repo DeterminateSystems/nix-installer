@@ -27,7 +27,7 @@ impl SetupDefaultProfile {
 }
 
 #[async_trait::async_trait]
-#[typetag::serde(name = "setup_default_profile", no_write_tag)]
+#[typetag::serde(name = "setup_default_profile")]
 impl Action for SetupDefaultProfile {
     fn action_tag() -> ActionTag {
         ActionTag("setup_default_profile")

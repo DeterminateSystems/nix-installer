@@ -30,7 +30,7 @@ impl EnableOwnership {
 }
 
 #[async_trait::async_trait]
-#[typetag::serde(name = "enable_ownership", no_write_tag)]
+#[typetag::serde(name = "enable_ownership")]
 impl Action for EnableOwnership {
     fn action_tag() -> ActionTag {
         ActionTag("enable_ownership")

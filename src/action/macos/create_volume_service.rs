@@ -138,7 +138,7 @@ impl CreateVolumeService {
 }
 
 #[async_trait::async_trait]
-#[typetag::serde(name = "create_volume_service", no_write_tag)]
+#[typetag::serde(name = "create_volume_service")]
 impl Action for CreateVolumeService {
     fn action_tag() -> ActionTag {
         ActionTag("create_volume_service")

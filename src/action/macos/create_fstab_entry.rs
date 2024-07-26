@@ -83,7 +83,7 @@ impl CreateFstabEntry {
 }
 
 #[async_trait::async_trait]
-#[typetag::serde(name = "create_fstab_entry", no_write_tag)]
+#[typetag::serde(name = "create_fstab_entry")]
 impl Action for CreateFstabEntry {
     fn action_tag() -> ActionTag {
         ActionTag("create_fstab_entry")

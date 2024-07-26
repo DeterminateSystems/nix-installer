@@ -34,7 +34,7 @@ impl DeleteUsersInGroup {
 }
 
 #[async_trait::async_trait]
-#[typetag::serde(name = "delete_users_in_group", no_write_tag)]
+#[typetag::serde(name = "delete_users_in_group")]
 impl Action for DeleteUsersInGroup {
     fn action_tag() -> ActionTag {
         ActionTag("delete_users_in_group")

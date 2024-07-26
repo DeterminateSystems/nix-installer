@@ -17,7 +17,7 @@ impl CreateSyntheticObjects {
 }
 
 #[async_trait::async_trait]
-#[typetag::serde(name = "create_synthetic_objects", no_write_tag)]
+#[typetag::serde(name = "create_synthetic_objects")]
 impl Action for CreateSyntheticObjects {
     fn action_tag() -> ActionTag {
         ActionTag("create_synthetic_objects")

@@ -43,9 +43,7 @@ ideal.
 
 A custom [`Action`] can be created then used in a custom [`Planner`](crate::planner::Planner):
 
-Note: if the struct has no fields:
-  1. Remove the `serde` attribute from the struct.
-  2. Remove `no_write_tag` from the `typetag::serde` attribute of `impl Action for MyAction`
+Note: if the struct has no fields, don't add the `serde` attribute to the struct.
 
 ```rust,no_run
 use std::{error::Error, collections::HashMap};
@@ -71,7 +69,6 @@ impl MyAction {
 
 
 #[async_trait::async_trait]
-#[typetag::serde(name = "my_action", no_write_tag)]
 impl Action for MyAction {
     fn action_tag() -> nix_installer::action::ActionTag {
         "my_action".into()

@@ -121,7 +121,7 @@ impl CreateNixVolume {
 }
 
 #[async_trait::async_trait]
-#[typetag::serde(name = "create_apfs_volume", no_write_tag)]
+#[typetag::serde(name = "create_apfs_volume")]
 impl Action for CreateNixVolume {
     fn action_tag() -> ActionTag {
         ActionTag("create_nix_volume")

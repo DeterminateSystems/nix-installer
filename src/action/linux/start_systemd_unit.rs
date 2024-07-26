@@ -49,7 +49,7 @@ impl StartSystemdUnit {
 }
 
 #[async_trait::async_trait]
-#[typetag::serde(name = "start_systemd_unit", no_write_tag)]
+#[typetag::serde(name = "start_systemd_unit")]
 impl Action for StartSystemdUnit {
     fn action_tag() -> ActionTag {
         ActionTag("start_systemd_unit")

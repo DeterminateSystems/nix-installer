@@ -30,7 +30,7 @@ impl MoveUnpackedNix {
 }
 
 #[async_trait::async_trait]
-#[typetag::serde(name = "mount_unpacked_nix", no_write_tag)]
+#[typetag::serde(name = "mount_unpacked_nix")]
 impl Action for MoveUnpackedNix {
     fn action_tag() -> ActionTag {
         ActionTag("move_unpacked_nix")

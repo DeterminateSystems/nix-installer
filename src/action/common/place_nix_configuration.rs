@@ -153,7 +153,7 @@ impl PlaceNixConfiguration {
 }
 
 #[async_trait::async_trait]
-#[typetag::serde(name = "place_nix_configuration", no_write_tag)]
+#[typetag::serde(name = "place_nix_configuration")]
 impl Action for PlaceNixConfiguration {
     fn action_tag() -> ActionTag {
         ActionTag("place_nix_configuration")

@@ -32,7 +32,7 @@ impl ProvisionSelinux {
 }
 
 #[async_trait::async_trait]
-#[typetag::serde(name = "provision_selinux", no_write_tag)]
+#[typetag::serde(name = "provision_selinux")]
 impl Action for ProvisionSelinux {
     fn action_tag() -> ActionTag {
         ActionTag("provision_selinux")

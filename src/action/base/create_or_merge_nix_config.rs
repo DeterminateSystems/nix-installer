@@ -176,7 +176,7 @@ impl CreateOrMergeNixConfig {
 }
 
 #[async_trait::async_trait]
-#[typetag::serde(name = "create_or_merge_nix_config", no_write_tag)]
+#[typetag::serde(name = "create_or_merge_nix_config")]
 impl Action for CreateOrMergeNixConfig {
     fn action_tag() -> ActionTag {
         ActionTag("create_or_merge_nix_config")

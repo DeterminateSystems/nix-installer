@@ -144,7 +144,7 @@ impl CreateFile {
 }
 
 #[async_trait::async_trait]
-#[typetag::serde(name = "create_file", no_write_tag)]
+#[typetag::serde(name = "create_file")]
 impl Action for CreateFile {
     fn action_tag() -> ActionTag {
         ActionTag("create_file")

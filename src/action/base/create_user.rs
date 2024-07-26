@@ -80,7 +80,7 @@ impl CreateUser {
 }
 
 #[async_trait::async_trait]
-#[typetag::serde(name = "create_user", no_write_tag)]
+#[typetag::serde(name = "create_user")]
 impl Action for CreateUser {
     fn action_tag() -> ActionTag {
         ActionTag("create_user")

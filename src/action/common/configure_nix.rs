@@ -122,7 +122,7 @@ impl ConfigureNix {
 }
 
 #[async_trait::async_trait]
-#[typetag::serde(name = "configure_nix", no_write_tag)]
+#[typetag::serde(name = "configure_nix")]
 impl Action for ConfigureNix {
     fn action_tag() -> ActionTag {
         ActionTag("configure_nix")
