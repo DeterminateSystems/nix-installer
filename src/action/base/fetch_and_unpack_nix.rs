@@ -14,8 +14,7 @@ use crate::{
 Fetch a URL to the given path
 */
 #[derive(Debug, serde::Deserialize, serde::Serialize, Clone)]
-#[serde(tag = "action_name")]
-#[serde(rename = "fetch_and_unpack_nix")]
+#[serde(tag = "action_name", rename = "fetch_and_unpack_nix")]
 pub struct FetchAndUnpackNix {
     url_or_path: Option<UrlOrPath>,
     dest: PathBuf,
@@ -63,7 +62,7 @@ impl FetchAndUnpackNix {
 }
 
 #[async_trait::async_trait]
-#[typetag::serde(name = "fetch_and_unpack_nix")]
+#[typetag::serde(name = "fetch_and_unpack_nix", no_write_tag)]
 impl Action for FetchAndUnpackNix {
     fn action_tag() -> ActionTag {
         ActionTag("fetch_and_unpack_nix")

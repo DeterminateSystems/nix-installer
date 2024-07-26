@@ -18,8 +18,10 @@ const DARWIN_LAUNCHD_SERVICE: &str = "systems.determinate.nix-daemon";
 Configure the init to run the Nix daemon
 */
 #[derive(Debug, serde::Deserialize, serde::Serialize, Clone)]
-#[serde(tag = "action_name")]
-#[serde(rename = "configure_enterprise_edition_init_service")]
+#[serde(
+    tag = "action_name",
+    rename = "configure_enterprise_edition_init_service"
+)]
 pub struct ConfigureEnterpriseEditionInitService {
     start_daemon: bool,
 }
@@ -32,7 +34,7 @@ impl ConfigureEnterpriseEditionInitService {
 }
 
 #[async_trait::async_trait]
-#[typetag::serde(name = "configure_enterprise_edition_init_service")]
+#[typetag::serde(name = "configure_enterprise_edition_init_service", no_write_tag)]
 impl Action for ConfigureEnterpriseEditionInitService {
     fn action_tag() -> ActionTag {
         ActionTag("configure_enterprise_edition_init_service")

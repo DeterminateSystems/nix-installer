@@ -14,8 +14,7 @@ use crate::os::darwin::DiskUtilInfoOutput;
 Unmount an APFS volume
  */
 #[derive(Debug, serde::Deserialize, serde::Serialize, Clone)]
-#[serde(tag = "action_name")]
-#[serde(rename = "unmount_volume")]
+#[serde(tag = "action_name", rename = "unmount_volume")]
 pub struct UnmountApfsVolume {
     disk: PathBuf,
     name: String,
@@ -33,7 +32,7 @@ impl UnmountApfsVolume {
 }
 
 #[async_trait::async_trait]
-#[typetag::serde(name = "unmount_volume")]
+#[typetag::serde(name = "unmount_volume", no_write_tag)]
 impl Action for UnmountApfsVolume {
     fn action_tag() -> ActionTag {
         ActionTag("unmount_apfs_volume")

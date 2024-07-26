@@ -12,8 +12,7 @@ use crate::action::{Action, ActionDescription, StatefulAction};
 Create an operating system level user in the given group
 */
 #[derive(Debug, serde::Deserialize, serde::Serialize, Clone)]
-#[serde(tag = "action_name")]
-#[serde(rename = "create_user")]
+#[serde(tag = "action_name", rename = "create_user")]
 pub struct CreateUser {
     name: String,
     uid: u32,
@@ -81,7 +80,7 @@ impl CreateUser {
 }
 
 #[async_trait::async_trait]
-#[typetag::serde(name = "create_user")]
+#[typetag::serde(name = "create_user", no_write_tag)]
 impl Action for CreateUser {
     fn action_tag() -> ActionTag {
         ActionTag("create_user")

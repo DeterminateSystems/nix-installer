@@ -28,8 +28,7 @@ If the file exists, the provided `buf` will be inserted at its
 beginning or end, depending on the position field.
  */
 #[derive(Debug, serde::Deserialize, serde::Serialize, Clone)]
-#[serde(tag = "action_name")]
-#[serde(rename = "create_or_insert_into_file")]
+#[serde(tag = "action_name", rename = "create_or_insert_into_file")]
 pub struct CreateOrInsertIntoFile {
     path: PathBuf,
     user: Option<String>,
@@ -150,7 +149,7 @@ impl CreateOrInsertIntoFile {
 }
 
 #[async_trait::async_trait]
-#[typetag::serde(name = "create_or_insert_into_file")]
+#[typetag::serde(name = "create_or_insert_into_file", no_write_tag)]
 impl Action for CreateOrInsertIntoFile {
     fn action_tag() -> ActionTag {
         ActionTag("create_or_insert_into_file")

@@ -14,8 +14,7 @@ use crate::action::{Action, ActionDescription, StatefulAction};
 Create an operating system level user in the given group
 */
 #[derive(Debug, serde::Deserialize, serde::Serialize, Clone)]
-#[serde(tag = "action_name")]
-#[serde(rename = "add_user_to_group")]
+#[serde(tag = "action_name", rename = "add_user_to_group")]
 pub struct AddUserToGroup {
     name: String,
     uid: u32,
@@ -151,7 +150,7 @@ impl AddUserToGroup {
 }
 
 #[async_trait::async_trait]
-#[typetag::serde(name = "add_user_to_group")]
+#[typetag::serde(name = "add_user_to_group", no_write_tag)]
 impl Action for AddUserToGroup {
     fn action_tag() -> crate::action::ActionTag {
         crate::action::ActionTag("add_user_to_group")

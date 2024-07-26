@@ -5,8 +5,7 @@ use crate::action::{
 use tracing::{span, Span};
 
 #[derive(Debug, serde::Deserialize, serde::Serialize, Clone)]
-#[serde(tag = "action_name")]
-#[serde(rename = "delete_users_in_group")]
+#[serde(tag = "action_name", rename = "delete_users_in_group")]
 pub struct DeleteUsersInGroup {
     group_name: String,
     group_id: u32,
@@ -35,7 +34,7 @@ impl DeleteUsersInGroup {
 }
 
 #[async_trait::async_trait]
-#[typetag::serde(name = "delete_users_in_group")]
+#[typetag::serde(name = "delete_users_in_group", no_write_tag)]
 impl Action for DeleteUsersInGroup {
     fn action_tag() -> ActionTag {
         ActionTag("delete_users_in_group")

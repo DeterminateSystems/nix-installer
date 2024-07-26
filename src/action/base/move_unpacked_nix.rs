@@ -16,8 +16,7 @@ pub(crate) const DEST: &str = "/nix/";
 Move an unpacked Nix at `src` to `/nix`
 */
 #[derive(Debug, serde::Deserialize, serde::Serialize, Clone)]
-#[serde(tag = "action_name")]
-#[serde(rename = "mount_unpacked_nix")]
+#[serde(tag = "action_name", rename = "mount_unpacked_nix")]
 pub struct MoveUnpackedNix {
     unpacked_path: PathBuf,
 }
@@ -31,7 +30,7 @@ impl MoveUnpackedNix {
 }
 
 #[async_trait::async_trait]
-#[typetag::serde(name = "mount_unpacked_nix")]
+#[typetag::serde(name = "mount_unpacked_nix", no_write_tag)]
 impl Action for MoveUnpackedNix {
     fn action_tag() -> ActionTag {
         ActionTag("move_unpacked_nix")

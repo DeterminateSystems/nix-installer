@@ -25,8 +25,7 @@ to the list of applications which are allowed Full Disk Access.
 
  */
 #[derive(Debug, serde::Deserialize, serde::Serialize, Clone)]
-#[serde(tag = "action_name")]
-#[serde(rename = "set_tmutil_exclusion")]
+#[serde(tag = "action_name", rename = "set_tmutil_exclusion")]
 pub struct SetTmutilExclusion {
     path: PathBuf,
 }
@@ -42,7 +41,7 @@ impl SetTmutilExclusion {
 }
 
 #[async_trait::async_trait]
-#[typetag::serde(name = "set_tmutil_exclusion")]
+#[typetag::serde(name = "set_tmutil_exclusion", no_write_tag)]
 impl Action for SetTmutilExclusion {
     fn action_tag() -> ActionTag {
         ActionTag("set_tmutil_exclusion")

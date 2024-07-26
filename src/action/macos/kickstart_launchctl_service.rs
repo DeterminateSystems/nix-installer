@@ -12,8 +12,7 @@ use crate::action::{Action, ActionDescription};
 Bootstrap and kickstart an APFS volume
 */
 #[derive(Debug, serde::Deserialize, serde::Serialize, Clone)]
-#[serde(tag = "action_name")]
-#[serde(rename = "kickstart_launchctl_service")]
+#[serde(tag = "action_name", rename = "kickstart_launchctl_service")]
 pub struct KickstartLaunchctlService {
     domain: String,
     service: String,
@@ -72,7 +71,7 @@ impl KickstartLaunchctlService {
 }
 
 #[async_trait::async_trait]
-#[typetag::serde(name = "kickstart_launchctl_service")]
+#[typetag::serde(name = "kickstart_launchctl_service", no_write_tag)]
 impl Action for KickstartLaunchctlService {
     fn action_tag() -> ActionTag {
         ActionTag("kickstart_launchctl_service")

@@ -21,8 +21,7 @@ If `force` is set, the file will always be overwritten (and deleted)
 regardless of its presence prior to install.
  */
 #[derive(Debug, serde::Deserialize, serde::Serialize, Clone)]
-#[serde(tag = "action_name")]
-#[serde(rename = "create_file")]
+#[serde(tag = "action_name", rename = "create_file")]
 pub struct CreateFile {
     pub(crate) path: PathBuf,
     user: Option<String>,
@@ -145,7 +144,7 @@ impl CreateFile {
 }
 
 #[async_trait::async_trait]
-#[typetag::serde(name = "create_file")]
+#[typetag::serde(name = "create_file", no_write_tag)]
 impl Action for CreateFile {
     fn action_tag() -> ActionTag {
         ActionTag("create_file")

@@ -18,8 +18,7 @@ const NIX_CONF: &str = "/etc/nix/nix.conf";
 Place the `/etc/nix.conf` file
  */
 #[derive(Debug, serde::Deserialize, serde::Serialize, Clone)]
-#[serde(tag = "action_name")]
-#[serde(rename = "place_nix_configuration")]
+#[serde(tag = "action_name", rename = "place_nix_configuration")]
 pub struct PlaceNixConfiguration {
     create_directory: StatefulAction<CreateDirectory>,
     create_or_merge_nix_config: StatefulAction<CreateOrMergeNixConfig>,
@@ -154,7 +153,7 @@ impl PlaceNixConfiguration {
 }
 
 #[async_trait::async_trait]
-#[typetag::serde(name = "place_nix_configuration")]
+#[typetag::serde(name = "place_nix_configuration", no_write_tag)]
 impl Action for PlaceNixConfiguration {
     fn action_tag() -> ActionTag {
         ActionTag("place_nix_configuration")

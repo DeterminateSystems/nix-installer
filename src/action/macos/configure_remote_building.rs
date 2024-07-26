@@ -11,8 +11,7 @@ Configure macOS's zshenv to load the Nix environment when ForceCommand is used.
 This enables remote building, which requires `ssh host nix` to work.
  */
 #[derive(Debug, serde::Deserialize, serde::Serialize, Clone)]
-#[serde(tag = "action_name")]
-#[serde(rename = "configure_remote_building")]
+#[serde(tag = "action_name", rename = "configure_remote_building")]
 pub struct ConfigureRemoteBuilding {
     create_or_insert_into_file: Option<StatefulAction<CreateOrInsertIntoFile>>,
 }
@@ -58,7 +57,7 @@ fi
 }
 
 #[async_trait::async_trait]
-#[typetag::serde(name = "configure_remote_building")]
+#[typetag::serde(name = "configure_remote_building", no_write_tag)]
 impl Action for ConfigureRemoteBuilding {
     fn action_tag() -> ActionTag {
         ActionTag("configure_remote_building")

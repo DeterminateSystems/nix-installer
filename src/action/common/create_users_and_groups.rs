@@ -8,8 +8,7 @@ use crate::{
 use tracing::{span, Span};
 
 #[derive(Debug, serde::Deserialize, serde::Serialize, Clone)]
-#[serde(tag = "action_name")]
-#[serde(rename = "create_users_and_group")]
+#[serde(tag = "action_name", rename = "create_users_and_group")]
 pub struct CreateUsersAndGroups {
     nix_build_user_count: u32,
     nix_build_group_name: String,
@@ -68,7 +67,7 @@ impl CreateUsersAndGroups {
 }
 
 #[async_trait::async_trait]
-#[typetag::serde(name = "create_users_and_group")]
+#[typetag::serde(name = "create_users_and_group", no_write_tag)]
 impl Action for CreateUsersAndGroups {
     fn action_tag() -> ActionTag {
         ActionTag("create_users_and_group")

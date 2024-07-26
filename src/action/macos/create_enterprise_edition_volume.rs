@@ -17,8 +17,7 @@ use super::create_fstab_entry::CreateFstabEntry;
 
 /// Create an APFS volume
 #[derive(Debug, serde::Deserialize, serde::Serialize, Clone)]
-#[serde(tag = "action_name")]
-#[serde(rename = "create_apfs_enterprise_volume")]
+#[serde(tag = "action_name", rename = "create_apfs_enterprise_volume")]
 pub struct CreateEnterpriseEditionVolume {
     disk: PathBuf,
     name: String,
@@ -86,7 +85,7 @@ impl CreateEnterpriseEditionVolume {
 }
 
 #[async_trait::async_trait]
-#[typetag::serde(name = "create_apfs_enterprise_volume")]
+#[typetag::serde(name = "create_apfs_enterprise_volume", no_write_tag)]
 impl Action for CreateEnterpriseEditionVolume {
     fn action_tag() -> ActionTag {
         ActionTag("create_enterprise_edition_volume")

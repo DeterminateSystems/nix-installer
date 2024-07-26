@@ -9,8 +9,7 @@ use crate::action::{ActionError, StatefulAction};
 /** Remove a directory, does nothing on revert.
 */
 #[derive(Debug, serde::Deserialize, serde::Serialize, Clone)]
-#[serde(tag = "action_name")]
-#[serde(rename = "remove_directory")]
+#[serde(tag = "action_name", rename = "remove_directory")]
 pub struct RemoveDirectory {
     path: PathBuf,
 }
@@ -28,7 +27,7 @@ impl RemoveDirectory {
 }
 
 #[async_trait::async_trait]
-#[typetag::serde(name = "remove_directory")]
+#[typetag::serde(name = "remove_directory", no_write_tag)]
 impl Action for RemoveDirectory {
     fn action_tag() -> crate::action::ActionTag {
         crate::action::ActionTag("remove_directory")

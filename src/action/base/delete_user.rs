@@ -13,8 +13,7 @@ use crate::action::{Action, ActionDescription, StatefulAction};
 Delete an operating system level user
 */
 #[derive(Debug, serde::Deserialize, serde::Serialize, Clone)]
-#[serde(tag = "action_name")]
-#[serde(rename = "delete_user")]
+#[serde(tag = "action_name", rename = "delete_user")]
 pub struct DeleteUser {
     name: String,
 }
@@ -48,7 +47,7 @@ impl DeleteUser {
 }
 
 #[async_trait::async_trait]
-#[typetag::serde(name = "delete_user")]
+#[typetag::serde(name = "delete_user", no_write_tag)]
 impl Action for DeleteUser {
     fn action_tag() -> ActionTag {
         ActionTag("delete_user")

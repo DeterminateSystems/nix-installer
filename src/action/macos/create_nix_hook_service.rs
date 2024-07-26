@@ -16,8 +16,7 @@ use crate::{
 /** Create a plist for a `launchctl` service to re-add Nix to the zshrc after upgrades.
  */
 #[derive(Debug, serde::Deserialize, serde::Serialize, Clone)]
-#[serde(tag = "action_name")]
-#[serde(rename = "create_nix_hook_service")]
+#[serde(tag = "action_name", rename = "create_nix_hook_service")]
 pub struct CreateNixHookService {
     path: PathBuf,
     service_label: String,
@@ -87,7 +86,7 @@ impl CreateNixHookService {
 }
 
 #[async_trait::async_trait]
-#[typetag::serde(name = "create_nix_hook_service")]
+#[typetag::serde(name = "create_nix_hook_service", no_write_tag)]
 impl Action for CreateNixHookService {
     fn action_tag() -> ActionTag {
         ActionTag("create_nix_hook_service")

@@ -17,8 +17,7 @@ use super::get_uuid_for_label;
 /** Create a plist for a `launchctl` service to mount the given `apfs_volume_label` on the given `mount_point`.
  */
 #[derive(Debug, serde::Deserialize, serde::Serialize, Clone)]
-#[serde(tag = "action_name")]
-#[serde(rename = "create_volume_service")]
+#[serde(tag = "action_name", rename = "create_volume_service")]
 pub struct CreateVolumeService {
     pub(crate) path: PathBuf,
     apfs_volume_label: String,
@@ -139,7 +138,7 @@ impl CreateVolumeService {
 }
 
 #[async_trait::async_trait]
-#[typetag::serde(name = "create_volume_service")]
+#[typetag::serde(name = "create_volume_service", no_write_tag)]
 impl Action for CreateVolumeService {
     fn action_tag() -> ActionTag {
         ActionTag("create_volume_service")

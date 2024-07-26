@@ -17,8 +17,7 @@ use tracing::{span, Instrument, Span};
 Configure Nix and start it
  */
 #[derive(Debug, serde::Deserialize, serde::Serialize, Clone)]
-#[serde(tag = "action_name")]
-#[serde(rename = "configure_nix")]
+#[serde(tag = "action_name", rename = "configure_nix")]
 pub struct ConfigureNix {
     setup_default_profile: StatefulAction<SetupDefaultProfile>,
     configure_shell_profile: Option<StatefulAction<ConfigureShellProfile>>,
@@ -123,7 +122,7 @@ impl ConfigureNix {
 }
 
 #[async_trait::async_trait]
-#[typetag::serde(name = "configure_nix")]
+#[typetag::serde(name = "configure_nix", no_write_tag)]
 impl Action for ConfigureNix {
     fn action_tag() -> ActionTag {
         ActionTag("configure_nix")

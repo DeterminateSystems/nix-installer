@@ -10,8 +10,7 @@ use crate::action::{Action, ActionDescription};
 Start a given systemd unit
  */
 #[derive(Debug, serde::Deserialize, serde::Serialize, Clone)]
-#[serde(tag = "action_name")]
-#[serde(rename = "start_systemd_unit")]
+#[serde(tag = "action_name", rename = "start_systemd_unit")]
 pub struct StartSystemdUnit {
     unit: String,
     enable: bool,
@@ -50,7 +49,7 @@ impl StartSystemdUnit {
 }
 
 #[async_trait::async_trait]
-#[typetag::serde(name = "start_systemd_unit")]
+#[typetag::serde(name = "start_systemd_unit", no_write_tag)]
 impl Action for StartSystemdUnit {
     fn action_tag() -> ActionTag {
         ActionTag("start_systemd_unit")

@@ -26,8 +26,7 @@ const DARWIN_LAUNCHD_SERVICE: &str = "org.nixos.nix-daemon";
 Configure the init to run the Nix daemon
 */
 #[derive(Debug, serde::Deserialize, serde::Serialize, Clone)]
-#[serde(tag = "action_name")]
-#[serde(rename = "configure_init_service")]
+#[serde(tag = "action_name", rename = "configure_init_service")]
 pub struct ConfigureInitService {
     init: InitSystem,
     start_daemon: bool,
@@ -104,7 +103,7 @@ impl ConfigureInitService {
 }
 
 #[async_trait::async_trait]
-#[typetag::serde(name = "configure_init_service")]
+#[typetag::serde(name = "configure_init_service", no_write_tag)]
 impl Action for ConfigureInitService {
     fn action_tag() -> ActionTag {
         ActionTag("configure_init_service")
