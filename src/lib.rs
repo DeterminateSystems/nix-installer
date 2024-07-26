@@ -72,7 +72,6 @@ match plan.install(None).await {
 pub mod action;
 #[cfg(feature = "cli")]
 pub mod cli;
-mod dedup_json;
 #[cfg(feature = "diagnostics")]
 pub mod diagnostics;
 mod error;
