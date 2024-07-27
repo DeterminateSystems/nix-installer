@@ -2066,8 +2066,7 @@ checksum = "059d83cc991e7a42fc37bd50941885db0888e34209f8cfd9aab07ddec03bc9cf"
 [[package]]
 name = "typetag"
 version = "0.2.16"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "661d18414ec032a49ece2d56eee03636e43c4e8d577047ab334c0ba892e29aaf"
+source = "git+https://github.com/noamraph/typetag.git?branch=ignore-repeating-tag#ed6d8fde7a11343a6e14e90d01828b1022b50fc1"
 dependencies = [
  "erased-serde",
  "inventory",
@@ -2079,8 +2078,7 @@ dependencies = [
 [[package]]
 name = "typetag-impl"
 version = "0.2.16"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "ac73887f47b9312552aa90ef477927ff014d63d1920ca8037c6c1951eab64bb1"
+source = "git+https://github.com/noamraph/typetag.git?branch=ignore-repeating-tag#ed6d8fde7a11343a6e14e90d01828b1022b50fc1"
 dependencies = [
  "proc-macro2",
  "quote",
