@@ -58,7 +58,7 @@ use nix_installer::{
 #[derive(Debug, serde::Deserialize, serde::Serialize, Clone)]
 #[serde(tag = "action_name", rename = "my_action")]
 pub struct MyAction {
-    my_field: SomeType,
+    my_field: String, // Just an example
 }
 
 
