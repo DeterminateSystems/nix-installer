@@ -25,7 +25,7 @@ use crate::{
     os::darwin::DiskUtilInfoOutput,
     planner::{Planner, PlannerError},
     settings::InstallSettingsError,
-    settings::{CommonSettings, InitSystem},
+    settings::{determinate_nix_settings, CommonSettings, InitSystem},
     Action, BuiltinPlanner,
 };
 
@@ -187,10 +187,14 @@ impl Planner for Macos {
                 .boxed(),
         );
         plan.push(
-            ConfigureNix::plan(ShellProfileLocations::default(), &self.settings)
-                .await
-                .map_err(PlannerError::Action)?
-                .boxed(),
+            ConfigureNix::plan(
+                ShellProfileLocations::default(),
+                &self.settings,
+                self.settings.determinate_nix.then(determinate_nix_settings),
+            )
+            .await
+            .map_err(PlannerError::Action)?
+            .boxed(),
         );
         plan.push(
             ConfigureRemoteBuilding::plan()

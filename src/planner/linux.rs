@@ -1,3 +1,9 @@
+use std::{collections::HashMap, path::Path};
+
+use tokio::process::Command;
+use which::which;
+
+use super::ShellProfileLocations;
 use crate::{
     action::{
         base::{CreateDirectory, RemoveDirectory},
@@ -11,14 +17,9 @@ use crate::{
     error::HasExpectedErrors,
     planner::{Planner, PlannerError},
     settings::CommonSettings,
-    settings::{InitSettings, InitSystem, InstallSettingsError},
+    settings::{determinate_nix_settings, InitSettings, InitSystem, InstallSettingsError},
     Action, BuiltinPlanner,
 };
-use std::{collections::HashMap, path::Path};
-use tokio::process::Command;
-use which::which;
-
-use super::ShellProfileLocations;
 
 /// A planner for traditional, mutable Linux systems like Debian, RHEL, or Arch
 #[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
@@ -74,10 +75,14 @@ impl Planner for Linux {
                 .boxed(),
         );
         plan.push(
-            ConfigureNix::plan(ShellProfileLocations::default(), &self.settings)
-                .await
-                .map_err(PlannerError::Action)?
-                .boxed(),
+            ConfigureNix::plan(
+                ShellProfileLocations::default(),
+                &self.settings,
+                self.settings.determinate_nix.then(determinate_nix_settings),
+            )
+            .await
+            .map_err(PlannerError::Action)?
+            .boxed(),
         );
 
         if has_selinux {

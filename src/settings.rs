@@ -755,3 +755,16 @@ mod tests {
         Ok(())
     }
 }
+
+pub fn determinate_nix_settings() -> nix_config_parser::NixConfig {
+    let mut cfg = nix_config_parser::NixConfig::new();
+    let settings = cfg.settings_mut();
+
+    settings.insert("netrc-file".into(), "/nix/var/determinate/netrc".into());
+    settings.insert(
+        "extra-substituters".into(),
+        "https://cache.flakehub.com".into(),
+    );
+
+    cfg
+}

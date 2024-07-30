@@ -111,7 +111,7 @@ use crate::{
         Action, StatefulAction,
     },
     planner::{Planner, PlannerError},
-    settings::{CommonSettings, InitSystem, InstallSettingsError},
+    settings::{determinate_nix_settings, CommonSettings, InitSystem, InstallSettingsError},
     BuiltinPlanner,
 };
 
@@ -337,10 +337,14 @@ impl Planner for SteamDeck {
                 .await
                 .map_err(PlannerError::Action)?
                 .boxed(),
-            ConfigureNix::plan(shell_profile_locations, &self.settings)
-                .await
-                .map_err(PlannerError::Action)?
-                .boxed(),
+            ConfigureNix::plan(
+                shell_profile_locations,
+                &self.settings,
+                self.settings.determinate_nix.then(determinate_nix_settings),
+            )
+            .await
+            .map_err(PlannerError::Action)?
+            .boxed(),
             // Init is required for the steam-deck archetype to make the `/nix` mount
             ConfigureUpstreamInitService::plan(InitSystem::Systemd, true)
                 .await
