@@ -19,8 +19,10 @@
       # Omitting `inputs.nixpkgs.follows = "nixpkgs";` on purpose
     };
 
-    dnee = {
-      url = "https://flakehub.com/f/DeterminateSystems/determinate-nixd/0.1.tar.gz";
+    determinate = {
+      url = "https://flakehub.com/f/DeterminateSystems/determinate/0.1.tar.gz";
+      inputs.nixpkgs.follows = "nixpkgs";
+      inputs.nix.follows = "nix";
     };
 
     flake-compat.url = "https://flakehub.com/f/edolstra/flake-compat/1.0.0.tar.gz";
@@ -32,7 +34,7 @@
     , fenix
     , naersk
     , nix
-    , dnee
+    , determinate
     , ...
     } @ inputs:
     let
@@ -97,7 +99,7 @@
             cargoTestOptions = f: f ++ [ "--all" ];
 
             NIX_INSTALLER_TARBALL_PATH = nixTarballs.${final.stdenv.system};
-            DETERMINATE_NIXD_BINARY_PATH = if final.stdenv.system == "x86_64-linux" || final.stdenv.system == "aarch64-linux" then "${inputs.dnee.packages.${final.stdenv.system}.default}/bin/determinate-nixd" else null;
+            DETERMINATE_NIXD_BINARY_PATH = if final.stdenv.system == "x86_64-linux" || final.stdenv.system == "aarch64-linux" then "${inputs.determinate.packages.${final.stdenv.system}.default}/bin/determinate-nixd" else null;
 
             override = { preBuild ? "", ... }: {
               preBuild = preBuild + ''
@@ -143,7 +145,7 @@
 
             RUST_SRC_PATH = "${toolchain}/lib/rustlib/src/rust/library";
             NIX_INSTALLER_TARBALL_PATH = nixTarballs.${system};
-            DETERMINATE_NIXD_BINARY_PATH = if system == "x86_64-linux" || system == "aarch64-linux" then "${inputs.dnee.packages.${system}.default}/bin/determinate-nixd" else null;
+            DETERMINATE_NIXD_BINARY_PATH = if system == "x86_64-linux" || system == "aarch64-linux" then "${inputs.determinate.packages.${system}.default}/bin/determinate-nixd" else null;
 
             nativeBuildInputs = with pkgs; [ ];
             buildInputs = with pkgs; [
