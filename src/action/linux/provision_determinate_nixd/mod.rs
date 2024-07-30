@@ -83,6 +83,11 @@ impl Action for ProvisionDeterminateNixd {
             .map_err(|e| ActionErrorKind::Write(self.binary_location.clone(), e))
             .map_err(Self::error)?;
 
+        tokio::fs::set_permissions(&self.binary_location, PermissionsExt::from_mode(0o555))
+            .await
+            .map_err(|e| ActionErrorKind::Write(self.binary_location.clone(), e))
+            .map_err(Self::error)?;
+
         tokio::fs::write(
             &self.service_location,
             include_str!("./nix-daemon.determinate-nixd.service"),
@@ -90,11 +95,6 @@ impl Action for ProvisionDeterminateNixd {
         .await
         .map_err(|e| ActionErrorKind::Write(self.service_location.clone(), e))
         .map_err(Self::error)?;
-
-        tokio::fs::set_permissions(&self.service_location, PermissionsExt::from_mode(0o664))
-            .await
-            .map_err(|e| ActionErrorKind::Write(self.service_location.clone(), e))
-            .map_err(Self::error)?;
 
         Ok(())
     }
