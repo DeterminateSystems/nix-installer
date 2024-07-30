@@ -21,6 +21,27 @@ pub const NIX_TARBALL_PATH: &str = env!("NIX_INSTALLER_TARBALL_PATH");
 /// in the resulting binary.
 pub const NIX_TARBALL: &[u8] = include_bytes!(env!("NIX_INSTALLER_TARBALL_PATH"));
 
+#[cfg(all(
+    feature = "determinate-nix",
+    target_os = "linux",
+    not(target_arch = "x86")
+))]
+/// The DETERMINATE_NIXD_BINARY_PATH environment variable should point to a target-appropriate
+/// static build of the Determinate Nixd binary. The contents are embedded in the resulting
+/// binary if the determinate-nix feature is turned on.
+pub const DETERMINATE_NIXD_BINARY: Option<&[u8]> =
+    Some(include_bytes!(env!("DETERMINATE_NIXD_BINARY_PATH")));
+
+#[cfg(not(all(
+    feature = "determinate-nix",
+    target_os = "linux",
+    not(target_arch = "x86")
+)))]
+/// The DETERMINATE_NIXD_BINARY_PATH environment variable should point to a target-appropriate
+/// static build of the Determinate Nixd binary. The contents are embedded in the resulting
+/// binary if the determinate-nix feature is turned on.
+pub const DETERMINATE_NIXD_BINARY: Option<&[u8]> = None;
+
 #[derive(Debug, serde::Deserialize, serde::Serialize, Clone, Copy, PartialEq, Eq)]
 #[cfg_attr(feature = "cli", derive(clap::ValueEnum))]
 pub enum InitSystem {
@@ -48,6 +69,17 @@ Settings which only apply to certain [`Planner`](crate::planner::Planner)s shoul
 #[derive(Debug, serde::Deserialize, serde::Serialize, Clone)]
 #[cfg_attr(feature = "cli", derive(clap::Parser))]
 pub struct CommonSettings {
+    /// Enable Determinate Nix. See: <https://determinate.systems/enterprise>
+    #[cfg_attr(
+        feature = "cli",
+        clap(
+            long = "determinate",
+            env = "NIX_INSTALLER_DETERMINATE",
+            default_value = "false"
+        )
+    )]
+    pub determinate_nix: bool,
+
     /// Modify the user profile to automatically load Nix
     #[cfg_attr(
         feature = "cli",
@@ -308,6 +340,7 @@ impl CommonSettings {
         };
 
         Ok(Self {
+            determinate_nix: false,
             modify_profile: true,
             nix_build_group_name: String::from("nixbld"),
             nix_build_group_id: 30_000,
@@ -329,6 +362,7 @@ impl CommonSettings {
     /// A listing of the settings, suitable for [`Planner::settings`](crate::planner::Planner::settings)
     pub fn settings(&self) -> Result<HashMap<String, serde_json::Value>, InstallSettingsError> {
         let Self {
+            determinate_nix,
             modify_profile,
             nix_build_group_name,
             nix_build_group_id,
@@ -347,6 +381,10 @@ impl CommonSettings {
         } = self;
         let mut map = HashMap::default();
 
+        map.insert(
+            "determinate_nix".into(),
+            serde_json::to_value(determinate_nix)?,
+        );
         map.insert(
             "modify_profile".into(),
             serde_json::to_value(modify_profile)?,
@@ -716,4 +754,17 @@ mod tests {
         );
         Ok(())
     }
+}
+
+pub fn determinate_nix_settings() -> nix_config_parser::NixConfig {
+    let mut cfg = nix_config_parser::NixConfig::new();
+    let settings = cfg.settings_mut();
+
+    settings.insert("netrc-file".into(), "/nix/var/determinate/netrc".into());
+    settings.insert(
+        "extra-substituters".into(),
+        "https://cache.flakehub.com".into(),
+    );
+
+    cfg
 }

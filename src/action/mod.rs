@@ -397,6 +397,8 @@ pub enum ActionErrorKind {
         }
     }).collect::<Vec<_>>().join("\n"))]
     Multiple(Vec<ActionErrorKind>),
+    #[error("Determinate Nix planned, but this installer is not equipped to install it.")]
+    DeterminateNixUnavailable,
     /// The path already exists with different content that expected
     #[error(
         "`{0}` exists with different content than planned, consider removing it with `rm {0}`"
