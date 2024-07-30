@@ -37,7 +37,6 @@ impl ConfigureDeterminateNixdInitService {
                 // We'll write it out down in the execute step
                 None
             },
-            // FIXME(cole-h): should this be None, or are we writing the service to this location and then copying it to its destination..?
             InitSystem::Systemd => Some(DETERMINATE_NIXD_SERVICE_SRC.into()),
             InitSystem::None => None,
         };
