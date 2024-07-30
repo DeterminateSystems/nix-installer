@@ -65,7 +65,7 @@ pub struct MyAction {
 impl MyAction {
     #[tracing::instrument(level = "debug", skip_all)]
     pub async fn plan() -> Result<StatefulAction<Self>, ActionError> {
-        Ok(Self {}.into())
+        Ok(Self { my_field: "my field".to_string() }.into())
     }
 }
 
