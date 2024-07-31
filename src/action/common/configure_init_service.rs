@@ -206,10 +206,6 @@ impl Action for ConfigureInitService {
 
         match init {
             InitSystem::Launchd => {
-                let service_src = service_src
-                    .as_ref()
-                    .expect("service_src should be defined for launchd");
-
                 let service_dest = service_dest
                     .as_ref()
                     .expect("service_dest should be set for Launchd");
@@ -218,15 +214,17 @@ impl Action for ConfigureInitService {
                     .expect("service_name should be set for Launchd");
                 let domain = DARWIN_LAUNCHD_DOMAIN;
 
-                tokio::fs::copy(&service_src, service_dest)
-                    .await
-                    .map_err(|e| {
-                        Self::error(ActionErrorKind::Copy(
-                            service_src.clone(),
-                            PathBuf::from(service_dest),
-                            e,
-                        ))
-                    })?;
+                if let Some(service_src) = service_src {
+                    tokio::fs::copy(&service_src, service_dest)
+                        .await
+                        .map_err(|e| {
+                            Self::error(ActionErrorKind::Copy(
+                                service_src.clone(),
+                                PathBuf::from(service_dest),
+                                e,
+                            ))
+                        })?;
+                }
 
                 execute_command(
                     Command::new("launchctl")
