@@ -1,21 +1,25 @@
+use std::{collections::HashMap, path::Path};
+
+use tokio::process::Command;
+use which::which;
+
+use super::ShellProfileLocations;
 use crate::{
     action::{
         base::{CreateDirectory, RemoveDirectory},
-        common::{ConfigureInitService, ConfigureNix, CreateUsersAndGroups, ProvisionNix},
-        linux::ProvisionSelinux,
+        common::{
+            ConfigureDeterminateNixdInitService, ConfigureNix, ConfigureUpstreamInitService,
+            CreateUsersAndGroups, ProvisionNix,
+        },
+        linux::{ProvisionDeterminateNixd, ProvisionSelinux},
         StatefulAction,
     },
     error::HasExpectedErrors,
     planner::{Planner, PlannerError},
     settings::CommonSettings,
-    settings::{InitSettings, InitSystem, InstallSettingsError},
+    settings::{determinate_nix_settings, InitSettings, InitSystem, InstallSettingsError},
     Action, BuiltinPlanner,
 };
-use std::{collections::HashMap, path::Path};
-use tokio::process::Command;
-use which::which;
-
-use super::ShellProfileLocations;
 
 /// A planner for traditional, mutable Linux systems like Debian, RHEL, or Arch
 #[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
@@ -49,6 +53,15 @@ impl Planner for Linux {
                 .boxed(),
         );
 
+        if self.settings.determinate_nix {
+            plan.push(
+                ProvisionDeterminateNixd::plan()
+                    .await
+                    .map_err(PlannerError::Action)?
+                    .boxed(),
+            );
+        }
+
         plan.push(
             ProvisionNix::plan(&self.settings.clone())
                 .await
@@ -62,10 +75,14 @@ impl Planner for Linux {
                 .boxed(),
         );
         plan.push(
-            ConfigureNix::plan(ShellProfileLocations::default(), &self.settings)
-                .await
-                .map_err(PlannerError::Action)?
-                .boxed(),
+            ConfigureNix::plan(
+                ShellProfileLocations::default(),
+                &self.settings,
+                self.settings.determinate_nix.then(determinate_nix_settings),
+            )
+            .await
+            .map_err(PlannerError::Action)?
+            .boxed(),
         );
 
         if has_selinux {
@@ -84,12 +101,21 @@ impl Planner for Linux {
                 .boxed(),
         );
 
-        plan.push(
-            ConfigureInitService::plan(self.init.init, self.init.start_daemon)
-                .await
-                .map_err(PlannerError::Action)?
-                .boxed(),
-        );
+        if self.settings.determinate_nix {
+            plan.push(
+                ConfigureDeterminateNixdInitService::plan(self.init.init, self.init.start_daemon)
+                    .await
+                    .map_err(PlannerError::Action)?
+                    .boxed(),
+            );
+        } else {
+            plan.push(
+                ConfigureUpstreamInitService::plan(self.init.init, self.init.start_daemon)
+                    .await
+                    .map_err(PlannerError::Action)?
+                    .boxed(),
+            );
+        }
         plan.push(
             RemoveDirectory::plan(crate::settings::SCRATCH_DIR)
                 .await

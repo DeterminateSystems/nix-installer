@@ -29,6 +29,7 @@ impl ConfigureNix {
     pub async fn plan(
         shell_profile_locations: ShellProfileLocations,
         settings: &CommonSettings,
+        extra_internal_conf: Option<nix_config_parser::NixConfig>,
     ) -> Result<StatefulAction<Self>, ActionError> {
         let setup_default_profile = SetupDefaultProfile::plan(PathBuf::from(SCRATCH_DIR))
             .await
@@ -47,6 +48,7 @@ impl ConfigureNix {
             settings.nix_build_group_name.clone(),
             settings.proxy.clone(),
             settings.ssl_cert_file.clone(),
+            extra_internal_conf.clone(),
             settings.extra_conf.clone(),
             settings.force,
         )

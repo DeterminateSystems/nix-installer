@@ -30,6 +30,7 @@ impl PlaceNixConfiguration {
         nix_build_group_name: String,
         proxy: Option<Url>,
         ssl_cert_file: Option<PathBuf>,
+        extra_internal_conf: Option<nix_config_parser::NixConfig>,
         extra_conf: Vec<UrlOrPathOrString>,
         force: bool,
     ) -> Result<StatefulAction<Self>, ActionError> {
@@ -89,7 +90,12 @@ impl PlaceNixConfiguration {
         let mut nix_config = nix_config_parser::NixConfig::parse_string(extra_conf, None)
             .map_err(CreateOrMergeNixConfigError::ParseNixConfig)
             .map_err(Self::error)?;
+
         let settings = nix_config.settings_mut();
+
+        if let Some(extra) = extra_internal_conf {
+            settings.extend(extra.into_settings().into_iter());
+        }
 
         settings.insert("build-users-group".to_string(), nix_build_group_name);
         let experimental_features = ["nix-command", "flakes"];
@@ -114,6 +120,19 @@ impl PlaceNixConfiguration {
 
         // https://github.com/NixOS/nix/pull/8047
         settings.insert("always-allow-substitutes".to_string(), "true".to_string());
+
+        // base, unintrusive Determinate Nix options
+        {
+            // Add FlakeHub cache to the list of possible substituters, but disabled by default.
+            // This allows a user to turn on FlakeHub Cache.
+            settings.insert(
+                "extra-trusted-substituters".to_string(),
+                "https://cache.flakehub.com".to_string(),
+            );
+
+            // Add FlakeHub's cache signing keys to the allowed list, but unused unless a user turns them on.
+            settings.insert("extra-trusted-public-keys".to_string(), "cache.flakehub.com-1:t6986ugxCA+d/ZF9IeMzJkyqi5mDhvFIx7KA/ipulzE= cache.flakehub.com-2:ntBGiaKSmygJOw2j1hFS7KDlUHQWmZALvSJ9PxMJJYU=".to_string());
+        }
 
         settings.insert(
             "bash-prompt-prefix".to_string(),

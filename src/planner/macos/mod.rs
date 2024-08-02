@@ -14,9 +14,9 @@ mod profiles;
 use crate::{
     action::{
         base::RemoveDirectory,
-        common::{ConfigureInitService, ConfigureNix, CreateUsersAndGroups, ProvisionNix},
+        common::{ConfigureNix, ConfigureUpstreamInitService, CreateUsersAndGroups, ProvisionNix},
         macos::{
-            ConfigureRemoteBuilding, CreateEnterpriseEditionVolume, CreateNixHookService,
+            ConfigureRemoteBuilding, CreateDeterminateNixVolume, CreateNixHookService,
             CreateNixVolume, SetTmutilExclusions,
         },
         StatefulAction,
@@ -25,11 +25,11 @@ use crate::{
     os::darwin::DiskUtilInfoOutput,
     planner::{Planner, PlannerError},
     settings::InstallSettingsError,
-    settings::{CommonSettings, InitSystem},
+    settings::{determinate_nix_settings, CommonSettings, InitSystem},
     Action, BuiltinPlanner,
 };
 
-use crate::action::common::ConfigureEnterpriseEditionInitService;
+use crate::action::common::ConfigureDeterminateNixdInitService;
 
 /// A planner for MacOS (Darwin) systems
 #[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
@@ -60,16 +60,6 @@ pub struct Macos {
         )
     )]
     pub case_sensitive: bool,
-    /// Enable Determinate Nix Enterprise Edition. See: https://determinate.systems/enterprise
-    #[cfg_attr(
-        feature = "cli",
-        clap(
-            long,
-            env = "NIX_INSTALLER_ENTERPRISE_EDITION",
-            default_value = "false"
-        )
-    )]
-    pub enterprise_edition: bool,
     /// The label for the created APFS volume
     #[cfg_attr(
         feature = "cli",
@@ -104,7 +94,6 @@ impl Planner for Macos {
             root_disk: Some(default_root_disk().await?),
             case_sensitive: false,
             encrypt: None,
-            enterprise_edition: false,
             volume_label: "Nix Store".into(),
         })
     }
@@ -127,10 +116,10 @@ impl Planner for Macos {
             },
         };
 
-        // The encrypt variable isn't used in the enterprise edition since we have our own plan step for it,
-        // however this match accounts for enterprise edition so the receipt indicates encrypt: true.
+        // The encrypt variable isn't used in Determinate Nix since we have our own plan step for it,
+        // however this match accounts for Determinate Nix so the receipt indicates encrypt: true.
         // This is a goofy thing to do, but it is in an attempt to make a more globally coherent plan / receipt.
-        let encrypt = match (self.enterprise_edition, self.encrypt) {
+        let encrypt = match (self.settings.determinate_nix, self.encrypt) {
             (true, _) => true,
             (false, Some(choice)) => choice,
             (false, None) => {
@@ -152,9 +141,9 @@ impl Planner for Macos {
 
         let mut plan = vec![];
 
-        if self.enterprise_edition {
+        if self.settings.determinate_nix {
             plan.push(
-                CreateEnterpriseEditionVolume::plan(
+                CreateDeterminateNixVolume::plan(
                     root_disk.unwrap(), /* We just ensured it was populated */
                     self.volume_label.clone(),
                     self.case_sensitive,
@@ -198,10 +187,14 @@ impl Planner for Macos {
                 .boxed(),
         );
         plan.push(
-            ConfigureNix::plan(ShellProfileLocations::default(), &self.settings)
-                .await
-                .map_err(PlannerError::Action)?
-                .boxed(),
+            ConfigureNix::plan(
+                ShellProfileLocations::default(),
+                &self.settings,
+                self.settings.determinate_nix.then(determinate_nix_settings),
+            )
+            .await
+            .map_err(PlannerError::Action)?
+            .boxed(),
         );
         plan.push(
             ConfigureRemoteBuilding::plan()
@@ -219,16 +212,16 @@ impl Planner for Macos {
             );
         }
 
-        if self.enterprise_edition {
+        if self.settings.determinate_nix {
             plan.push(
-                ConfigureEnterpriseEditionInitService::plan(true)
+                ConfigureDeterminateNixdInitService::plan(InitSystem::Launchd, true)
                     .await
                     .map_err(PlannerError::Action)?
                     .boxed(),
             );
         } else {
             plan.push(
-                ConfigureInitService::plan(InitSystem::Launchd, true)
+                ConfigureUpstreamInitService::plan(InitSystem::Launchd, true)
                     .await
                     .map_err(PlannerError::Action)?
                     .boxed(),
@@ -248,7 +241,6 @@ impl Planner for Macos {
         let Self {
             settings,
             encrypt,
-            enterprise_edition,
             volume_label,
             case_sensitive,
             root_disk,
@@ -256,10 +248,6 @@ impl Planner for Macos {
         let mut map = HashMap::default();
 
         map.extend(settings.settings()?);
-        map.insert(
-            "enterprise_edition".into(),
-            serde_json::to_value(enterprise_edition)?,
-        );
         map.insert("volume_encrypt".into(), serde_json::to_value(encrypt)?);
         map.insert("volume_label".into(), serde_json::to_value(volume_label)?);
         map.insert("root_disk".into(), serde_json::to_value(root_disk)?);
@@ -321,8 +309,8 @@ impl Planner for Macos {
     async fn pre_install_check(&self) -> Result<(), PlannerError> {
         check_suis().await?;
         check_not_running_in_rosetta()?;
-        if self.enterprise_edition {
-            check_enterprise_edition_available().await?;
+        if self.settings.determinate_nix {
+            check_determinate_nix_available().await?;
         }
 
         Ok(())
@@ -415,10 +403,10 @@ async fn check_suis() -> Result<(), PlannerError> {
         .map_err(|e| PlannerError::Custom(Box::new(e)))
 }
 
-async fn check_enterprise_edition_available() -> Result<(), PlannerError> {
-    tokio::fs::metadata("/usr/local/bin/determinate-nix-ee")
+async fn check_determinate_nix_available() -> Result<(), PlannerError> {
+    tokio::fs::metadata("/usr/local/bin/determinate-nixd")
         .await
-        .map_err(|_| PlannerError::EnterpriseEditionUnavailable)?;
+        .map_err(|_| PlannerError::DeterminateNixUnavailable)?;
 
     Ok(())
 }

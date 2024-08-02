@@ -17,8 +17,8 @@ use super::create_fstab_entry::CreateFstabEntry;
 
 /// Create an APFS volume
 #[derive(Debug, serde::Deserialize, serde::Serialize, Clone)]
-#[serde(tag = "action_name", rename = "create_apfs_enterprise_volume")]
-pub struct CreateEnterpriseEditionVolume {
+#[serde(tag = "action_name", rename = "create_determinate_nix_volume")]
+pub struct CreateDeterminateNixVolume {
     disk: PathBuf,
     name: String,
     case_sensitive: bool,
@@ -31,7 +31,7 @@ pub struct CreateEnterpriseEditionVolume {
     enable_ownership: StatefulAction<EnableOwnership>,
 }
 
-impl CreateEnterpriseEditionVolume {
+impl CreateDeterminateNixVolume {
     #[tracing::instrument(level = "debug", skip_all)]
     pub async fn plan(
         disk: impl AsRef<Path>,
@@ -85,10 +85,10 @@ impl CreateEnterpriseEditionVolume {
 }
 
 #[async_trait::async_trait]
-#[typetag::serde(name = "create_apfs_enterprise_volume")]
-impl Action for CreateEnterpriseEditionVolume {
+#[typetag::serde(name = "create_determinate_nix_volume")]
+impl Action for CreateDeterminateNixVolume {
     fn action_tag() -> ActionTag {
-        ActionTag("create_enterprise_edition_volume")
+        ActionTag("create_determinate_nix_volume")
     }
     fn tracing_synopsis(&self) -> String {
         format!(
@@ -101,7 +101,7 @@ impl Action for CreateEnterpriseEditionVolume {
     fn tracing_span(&self) -> Span {
         span!(
             tracing::Level::DEBUG,
-            "create_apfs_volume",
+            "create_determinate_nix_volume",
             disk = tracing::field::display(self.disk.display()),
             name = self.name
         )
@@ -172,7 +172,7 @@ impl Action for CreateEnterpriseEditionVolume {
             .await
             .map_err(Self::error)?;
 
-        let mut command = Command::new("/usr/local/bin/determinate-nix-ee");
+        let mut command = Command::new("/usr/local/bin/determinate-nixd");
         command.args(["--stop-after", "mount"]);
         command.stderr(std::process::Stdio::piped());
         command.stdout(std::process::Stdio::piped());

@@ -9,7 +9,8 @@ repository = "https://github.com/DeterminateSystems/nix-installer"
 documentation = "https://docs.rs/nix-installer/latest/nix_installer"
 
 [features]
-default = ["cli", "diagnostics"]
+default = ["cli", "diagnostics", "determinate-nix"]
+determinate-nix = []
 cli = ["eyre", "color-eyre", "clap", "tracing-subscriber", "tracing-error"]
 diagnostics = ["is_ci"]
 
@@ -70,4 +71,7 @@ lto = true
 # NOTE(cole-h): We embed the Nix closure by reading from this environment variable, but this is not
 # available in docs.rs's build. It doesn't influence docs, so it's fine to set it to a bogus (but
 # existing-file) value.
-cargo-args = ["--config", "env.NIX_INSTALLER_TARBALL_PATH=\"../Cargo.toml\""]
+cargo-args = [
+    "--config", "env.NIX_INSTALLER_TARBALL_PATH=\"../Cargo.toml\"",
+    "--config", "env.DETERMINATE_NIXD_BINARY_PATH=\"../Cargo.toml\""
+]

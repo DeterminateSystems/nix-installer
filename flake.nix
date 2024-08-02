@@ -19,6 +19,19 @@
       # Omitting `inputs.nixpkgs.follows = "nixpkgs";` on purpose
     };
 
+    determinate = {
+      url = "https://flakehub.com/f/DeterminateSystems/determinate/0.1.tar.gz";
+
+      # We set the overrides below so the flake.lock has many fewer nodes.
+      #
+      # The `determinate` input is used to access the builds of `determinate-nixd`.
+      # Below, we access the `packages` outputs, which download static builds of `determinate-nixd` and makes them executable.
+      # The way we consume the determinate flake means the `nix` and `nixpkgs` inputs are not meaningfully used.
+      # This means `follows` won't cause surprisingly extensive rebuilds, just trivial `chmod +x` rebuilds.
+      inputs.nixpkgs.follows = "nixpkgs";
+      inputs.nix.follows = "nix";
+    };
+
     flake-compat.url = "https://flakehub.com/f/edolstra/flake-compat/1.0.0.tar.gz";
   };
 
@@ -28,6 +41,7 @@
     , fenix
     , naersk
     , nix
+    , determinate
     , ...
     } @ inputs:
     let
@@ -92,6 +106,7 @@
             cargoTestOptions = f: f ++ [ "--all" ];
 
             NIX_INSTALLER_TARBALL_PATH = nixTarballs.${final.stdenv.system};
+            DETERMINATE_NIXD_BINARY_PATH = if final.stdenv.system == "x86_64-linux" || final.stdenv.system == "aarch64-linux" then "${inputs.determinate.packages.${final.stdenv.system}.default}/bin/determinate-nixd" else null;
 
             override = { preBuild ? "", ... }: {
               preBuild = preBuild + ''
@@ -137,6 +152,7 @@
 
             RUST_SRC_PATH = "${toolchain}/lib/rustlib/src/rust/library";
             NIX_INSTALLER_TARBALL_PATH = nixTarballs.${system};
+            DETERMINATE_NIXD_BINARY_PATH = if system == "x86_64-linux" || system == "aarch64-linux" then "${inputs.determinate.packages.${system}.default}/bin/determinate-nixd" else null;
 
             nativeBuildInputs = with pkgs; [ ];
             buildInputs = with pkgs; [

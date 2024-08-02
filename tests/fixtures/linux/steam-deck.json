@@ -391,7 +391,8 @@
         "init": "Systemd",
         "start_daemon": true,
         "ssl_cert_file": null,
-        "enterprise_edition": false
+        "determinate_nix": false,
+        "service_src": "/nix/var/nix/profiles/default/lib/systemd/system/nix-daemon.service"
       },
       "state": "Uncompleted"
     },
@@ -415,6 +416,7 @@
     "planner": "steam-deck",
     "persistence": "/home/nix",
     "settings": {
+      "determinate_nix": false,
       "modify_profile": true,
       "nix_build_group_name": "nixbld",
       "nix_build_group_id": 30000,

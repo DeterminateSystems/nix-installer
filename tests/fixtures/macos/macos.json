@@ -8,7 +8,7 @@
         "name": "Nix Store",
         "case_sensitive": false,
         "encrypt": false,
-        "enterprise_edition": false,
+        "determinate_nix": false,
         "create_or_append_synthetic_conf": {
           "action": {
             "action_name": "create_of_insert_into_file",
@@ -435,7 +435,8 @@
         "init": "Launchd",
         "start_daemon": true,
         "ssl_cert_file": null,
-        "enterprise_edition": false
+        "determinate_nix": false,
+        "service_src": "/nix/var/nix/profiles/default/Library/LaunchDaemons/org.nixos.nix-daemon.plist"
       },
       "state": "Uncompleted"
     },
@@ -450,6 +451,7 @@
   "planner": {
     "planner": "macos",
     "settings": {
+      "determinate_nix": false,
       "modify_profile": true,
       "nix_build_group_name": "nixbld",
       "nix_build_group_id": 30000,
@@ -465,7 +467,6 @@
       "force": false,
       "diagnostic_endpoint": "https://install.determinate.systems/nix/diagnostic"
     },
-    "enterprise_edition": false,
     "encrypt": null,
     "case_sensitive": false,
     "volume_label": "Nix Store",
