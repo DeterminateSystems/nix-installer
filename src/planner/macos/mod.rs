@@ -309,9 +309,6 @@ impl Planner for Macos {
     async fn pre_install_check(&self) -> Result<(), PlannerError> {
         check_suis().await?;
         check_not_running_in_rosetta()?;
-        if self.settings.determinate_nix {
-            check_determinate_nix_available().await?;
-        }
 
         Ok(())
     }
@@ -401,14 +398,6 @@ async fn check_suis() -> Result<(), PlannerError> {
 
     Err(MacosError::BlockedBySystemUIServerPolicy(error))
         .map_err(|e| PlannerError::Custom(Box::new(e)))
-}
-
-async fn check_determinate_nix_available() -> Result<(), PlannerError> {
-    tokio::fs::metadata("/usr/local/bin/determinate-nixd")
-        .await
-        .map_err(|_| PlannerError::DeterminateNixUnavailable)?;
-
-    Ok(())
 }
 
 #[non_exhaustive]
