@@ -146,6 +146,15 @@ impl Planner for Macos {
 
         if self.settings.determinate_nix {
             plan.push(
+                ProvisionDeterminateNixd::plan()
+                    .await
+                    .map_err(PlannerError::Action)?
+                    .boxed(),
+            );
+        }
+
+        if self.settings.determinate_nix {
+            plan.push(
                 CreateDeterminateNixVolume::plan(
                     root_disk.unwrap(), /* We just ensured it was populated */
                     self.volume_label.clone(),
@@ -167,15 +176,6 @@ impl Planner for Macos {
                 .await
                 .map_err(PlannerError::Action)?
                 .boxed(),
-            );
-        }
-
-        if self.settings.determinate_nix {
-            plan.push(
-                ProvisionDeterminateNixd::plan()
-                    .await
-                    .map_err(PlannerError::Action)?
-                    .boxed(),
             );
         }
 
