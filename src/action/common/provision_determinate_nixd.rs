@@ -7,11 +7,10 @@ use tracing::{span, Span};
 use crate::action::{
     Action, ActionDescription, ActionError, ActionErrorKind, ActionTag, StatefulAction,
 };
+use crate::settings::InitSystem;
 
-#[cfg(target_os = "linux")]
-const DETERMINATE_NIXD_BINARY_PATH: &str = "/nix/determinate/determinate-nixd";
-#[cfg(target_os = "macos")]
-const DETERMINATE_NIXD_BINARY_PATH: &str = "/usr/local/bin/determinate-nixd";
+const LINUX_DETERMINATE_NIXD_BINARY_PATH: &str = "/nix/determinate/determinate-nixd";
+const MACOS_DETERMINATE_NIXD_BINARY_PATH: &str = "/usr/local/bin/determinate-nixd";
 /**
 Provision the determinate-nixd binary
 */
@@ -23,12 +22,16 @@ pub struct ProvisionDeterminateNixd {
 
 impl ProvisionDeterminateNixd {
     #[tracing::instrument(level = "debug", skip_all)]
-    pub async fn plan() -> Result<StatefulAction<Self>, ActionError> {
+    pub async fn plan(init: InitSystem) -> Result<StatefulAction<Self>, ActionError> {
         crate::settings::DETERMINATE_NIXD_BINARY
             .ok_or_else(|| Self::error(ActionErrorKind::DeterminateNixUnavailable))?;
 
         let this = Self {
-            binary_location: DETERMINATE_NIXD_BINARY_PATH.into(),
+            binary_location: match init {
+                InitSystem::Launchd => MACOS_DETERMINATE_NIXD_BINARY_PATH.into(),
+                InitSystem::Systemd => LINUX_DETERMINATE_NIXD_BINARY_PATH.into(),
+                InitSystem::None => LINUX_DETERMINATE_NIXD_BINARY_PATH.into(),
+            },
         };
 
         Ok(StatefulAction::uncompleted(this))

@@ -176,7 +176,7 @@ impl Planner for Ostree {
 
         if self.settings.determinate_nix {
             plan.push(
-                ProvisionDeterminateNixd::plan()
+                ProvisionDeterminateNixd::plan(InitSystem::Systemd)
                     .await
                     .map_err(PlannerError::Action)?
                     .boxed(),

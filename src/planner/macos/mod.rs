@@ -146,7 +146,7 @@ impl Planner for Macos {
 
         if self.settings.determinate_nix {
             plan.push(
-                ProvisionDeterminateNixd::plan()
+                ProvisionDeterminateNixd::plan(InitSystem::Launchd)
                     .await
                     .map_err(PlannerError::Action)?
                     .boxed(),

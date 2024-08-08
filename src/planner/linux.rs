@@ -55,7 +55,7 @@ impl Planner for Linux {
 
         if self.settings.determinate_nix {
             plan.push(
-                ProvisionDeterminateNixd::plan()
+                ProvisionDeterminateNixd::plan(self.init.init)
                     .await
                     .map_err(PlannerError::Action)?
                     .boxed(),

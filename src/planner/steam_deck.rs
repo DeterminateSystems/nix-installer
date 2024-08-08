@@ -324,7 +324,7 @@ impl Planner for SteamDeck {
 
         if self.settings.determinate_nix {
             actions.push(
-                ProvisionDeterminateNixd::plan()
+                ProvisionDeterminateNixd::plan(InitSystem::Systemd)
                     .await
                     .map_err(PlannerError::Action)?
                     .boxed(),
