@@ -3,7 +3,7 @@ use std::path::{Path, PathBuf};
 
 use nix::unistd::{chown, Group, User};
 
-use tokio::fs::{create_dir, remove_dir_all, remove_file};
+use tokio::fs::{create_dir_all, remove_dir_all, remove_file};
 use tokio::process::Command;
 use tracing::{span, Span};
 
@@ -183,7 +183,7 @@ impl Action for CreateDirectory {
             None
         };
 
-        create_dir(&path)
+        create_dir_all(&path)
             .await
             .map_err(|e| ActionErrorKind::CreateDirectory(path.clone(), e))
             .map_err(Self::error)?;
