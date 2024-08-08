@@ -15,6 +15,7 @@ const SE_LINUX_POLICY_PP_CONTENT: &[u8] = include_bytes!("selinux/nix.pp");
 Provision the selinux/nix.pp for SELinux compatibility
 */
 #[derive(Debug, serde::Deserialize, serde::Serialize, Clone)]
+#[serde(tag = "action_name", rename = "provision_selinux")]
 pub struct ProvisionSelinux {
     policy_path: PathBuf,
 }

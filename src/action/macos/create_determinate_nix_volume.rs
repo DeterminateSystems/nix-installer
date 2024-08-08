@@ -17,6 +17,7 @@ use super::create_fstab_entry::CreateFstabEntry;
 
 /// Create an APFS volume
 #[derive(Debug, serde::Deserialize, serde::Serialize, Clone)]
+#[serde(tag = "action_name", rename = "create_determinate_nix_volume")]
 pub struct CreateDeterminateNixVolume {
     disk: PathBuf,
     name: String,
@@ -84,7 +85,7 @@ impl CreateDeterminateNixVolume {
 }
 
 #[async_trait::async_trait]
-#[typetag::serde(name = "create_apfs_determinate_nix_volume")]
+#[typetag::serde(name = "create_determinate_nix_volume")]
 impl Action for CreateDeterminateNixVolume {
     fn action_tag() -> ActionTag {
         ActionTag("create_determinate_nix_volume")

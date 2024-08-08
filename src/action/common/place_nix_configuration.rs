@@ -18,6 +18,7 @@ const NIX_CONF: &str = "/etc/nix/nix.conf";
 Place the `/etc/nix.conf` file
  */
 #[derive(Debug, serde::Deserialize, serde::Serialize, Clone)]
+#[serde(tag = "action_name", rename = "place_nix_configuration")]
 pub struct PlaceNixConfiguration {
     create_directory: StatefulAction<CreateDirectory>,
     create_or_merge_nix_config: StatefulAction<CreateOrMergeNixConfig>,

@@ -14,6 +14,7 @@ use std::path::PathBuf;
 Place Nix and it's requirements onto the target
  */
 #[derive(Debug, serde::Deserialize, serde::Serialize, Clone)]
+#[serde(tag = "action_name", rename = "provision_nix")]
 pub struct ProvisionNix {
     fetch_nix: StatefulAction<FetchAndUnpackNix>,
     create_nix_tree: StatefulAction<CreateNixTree>,

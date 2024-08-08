@@ -28,6 +28,7 @@ If the file exists, the provided `buf` will be inserted at its
 beginning or end, depending on the position field.
  */
 #[derive(Debug, serde::Deserialize, serde::Serialize, Clone)]
+#[serde(tag = "action_name", rename = "create_or_insert_into_file")]
 pub struct CreateOrInsertIntoFile {
     path: PathBuf,
     user: Option<String>,

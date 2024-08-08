@@ -11,6 +11,7 @@ use crate::action::{Action, ActionDescription};
 use crate::os::darwin::{DiskUtilApfsListOutput, DiskUtilInfoOutput};
 
 #[derive(Debug, serde::Deserialize, serde::Serialize, Clone)]
+#[serde(tag = "action_name", rename = "create_volume")]
 pub struct CreateApfsVolume {
     disk: PathBuf,
     name: String,

@@ -21,6 +21,7 @@ const DARWIN_LAUNCHD_SERVICE_NAME: &str = "org.nixos.nix-daemon";
 Configure the init to run the Nix daemon
 */
 #[derive(Debug, serde::Deserialize, serde::Serialize, Clone)]
+#[serde(tag = "action_name", rename = "create_upstream_init_service")]
 pub struct ConfigureUpstreamInitService {
     configure_init_service: StatefulAction<ConfigureInitService>,
 }

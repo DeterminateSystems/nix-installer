@@ -30,6 +30,7 @@ add the relevant information to `/etc/fstab`.
 // Initially, a `NAME` was used, however in https://github.com/DeterminateSystems/nix-installer/issues/212
 // several users reported issues. Using a UUID resolved the issue for them.
 #[derive(Debug, serde::Deserialize, serde::Serialize, Clone)]
+#[serde(tag = "action_name", rename = "create_fstab_entry")]
 pub struct CreateFstabEntry {
     apfs_volume_label: String,
     existing_entry: ExistingFstabEntry,

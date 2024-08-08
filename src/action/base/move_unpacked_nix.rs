@@ -16,6 +16,7 @@ pub(crate) const DEST: &str = "/nix/";
 Move an unpacked Nix at `src` to `/nix`
 */
 #[derive(Debug, serde::Deserialize, serde::Serialize, Clone)]
+#[serde(tag = "action_name", rename = "mount_unpacked_nix")]
 pub struct MoveUnpackedNix {
     unpacked_path: PathBuf,
 }

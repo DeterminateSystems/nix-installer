@@ -22,6 +22,7 @@ const DARWIN_LAUNCHD_DOMAIN: &str = "system";
 Configure the init to run the Nix daemon
 */
 #[derive(Debug, serde::Deserialize, serde::Serialize, Clone)]
+#[serde(tag = "action_name", rename = "configure_init_service")]
 pub struct ConfigureInitService {
     init: InitSystem,
     start_daemon: bool,

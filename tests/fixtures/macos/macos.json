@@ -3,7 +3,7 @@
   "actions": [
     {
       "action": {
-        "action": "create_apfs_volume",
+        "action_name": "create_apfs_volume",
         "disk": "disk3",
         "name": "Nix Store",
         "case_sensitive": false,
@@ -11,6 +11,7 @@
         "determinate_nix": false,
         "create_or_append_synthetic_conf": {
           "action": {
+            "action_name": "create_of_insert_into_file",
             "path": "/etc/synthetic.conf",
             "user": null,
             "group": null,
@@ -26,6 +27,7 @@
         },
         "unmount_volume": {
           "action": {
+            "action_name": "unmount_volume",
             "disk": "disk3",
             "name": "Nix Store"
           },
@@ -33,6 +35,7 @@
         },
         "create_volume": {
           "action": {
+            "action_name": "create_volume",
             "disk": "disk3",
             "name": "Nix Store",
             "case_sensitive": false
@@ -41,6 +44,7 @@
         },
         "create_fstab_entry": {
           "action": {
+            "action_name": "create_fstab_entry",
             "apfs_volume_label": "Nix Store",
             "existing_entry": "None"
           },
@@ -49,6 +53,7 @@
         "encrypt_volume": null,
         "setup_volume_daemon": {
           "action": {
+            "action_name": "create_volume_service",
             "path": "/Library/LaunchDaemons/org.nixos.darwin-store.plist",
             "apfs_volume_label": "Nix Store",
             "mount_service_label": "org.nixos.darwin-store",
@@ -60,6 +65,7 @@
         },
         "bootstrap_volume": {
           "action": {
+            "action_name": "bootstrap_launchctl_service",
             "domain": "system",
             "service": "org.nixos.darwin-store",
             "path": "/Library/LaunchDaemons/org.nixos.darwin-store.plist",
@@ -70,6 +76,7 @@
         },
         "kickstart_launchctl_service": {
           "action": {
+            "action_name": "kickstart_launchctl_service",
             "domain": "system",
             "service": "org.nixos.darwin-store"
           },
@@ -77,6 +84,7 @@
         },
         "enable_ownership": {
           "action": {
+            "action_name": "enable_ownership",
             "path": "/nix"
           },
           "state": "Uncompleted"
@@ -86,9 +94,10 @@
     },
     {
       "action": {
-        "action": "provision_nix",
+        "action_name": "provision_nix",
         "fetch_nix": {
           "action": {
+            "action_name": "fetch_and_unpack_nix",
             "url_or_path": {
               "Url": "https://releases.nixos.org/nix/nix-2.17.0/nix-2.17.0-x86_64-darwin.tar.xz"
             },
@@ -101,6 +110,7 @@
         "delete_users_in_group": null,
         "create_group": {
           "action": {
+            "action_name": "create_group",
             "name": "nixbld",
             "gid": 30000
           },
@@ -111,6 +121,7 @@
             "create_directories": [
               {
                 "action": {
+                  "action_name": "create_directory",
                   "path": "/nix/var",
                   "user": "root",
                   "group": null,
@@ -122,6 +133,7 @@
               },
               {
                 "action": {
+                  "action_name": "create_directory",
                   "path": "/nix/var/log",
                   "user": "root",
                   "group": null,
@@ -133,6 +145,7 @@
               },
               {
                 "action": {
+                  "action_name": "create_directory",
                   "path": "/nix/var/log/nix",
                   "user": "root",
                   "group": null,
@@ -144,6 +157,7 @@
               },
               {
                 "action": {
+                  "action_name": "create_directory",
                   "path": "/nix/var/log/nix/drvs",
                   "user": "root",
                   "group": null,
@@ -155,6 +169,7 @@
               },
               {
                 "action": {
+                  "action_name": "create_directory",
                   "path": "/nix/var/nix",
                   "user": "root",
                   "group": null,
@@ -166,6 +181,7 @@
               },
               {
                 "action": {
+                  "action_name": "create_directory",
                   "path": "/nix/var/nix/db",
                   "user": "root",
                   "group": null,
@@ -177,6 +193,7 @@
               },
               {
                 "action": {
+                  "action_name": "create_directory",
                   "path": "/nix/var/nix/gcroots",
                   "user": "root",
                   "group": null,
@@ -188,6 +205,7 @@
               },
               {
                 "action": {
+                  "action_name": "create_directory",
                   "path": "/nix/var/nix/gcroots/per-user",
                   "user": "root",
                   "group": null,
@@ -199,6 +217,7 @@
               },
               {
                 "action": {
+                  "action_name": "create_directory",
                   "path": "/nix/var/nix/profiles",
                   "user": "root",
                   "group": null,
@@ -210,6 +229,7 @@
               },
               {
                 "action": {
+                  "action_name": "create_directory",
                   "path": "/nix/var/nix/profiles/per-user",
                   "user": "root",
                   "group": null,
@@ -221,6 +241,7 @@
               },
               {
                 "action": {
+                  "action_name": "create_directory",
                   "path": "/nix/var/nix/temproots",
                   "user": "root",
                   "group": null,
@@ -232,6 +253,7 @@
               },
               {
                 "action": {
+                  "action_name": "create_directory",
                   "path": "/nix/var/nix/userpool",
                   "user": "root",
                   "group": null,
@@ -243,6 +265,7 @@
               },
               {
                 "action": {
+                  "action_name": "create_directory",
                   "path": "/nix/var/nix/daemon-socket",
                   "user": "root",
                   "group": null,
@@ -258,6 +281,7 @@
         },
         "move_unpacked_nix": {
           "action": {
+            "action_name": "mount_unpacked_nix",
             "unpacked_path": "/nix/temp-install-dir"
           },
           "state": "Uncompleted"
@@ -267,16 +291,18 @@
     },
     {
       "action": {
-        "action": "set_tmutil_exclusions",
+        "action_name": "set_tmutil_exclusions",
         "set_tmutil_exclusions": [
           {
             "action": {
+              "action_name": "set_tmutil_exclusion",
               "path": "/nix/store"
             },
             "state": "Uncompleted"
           },
           {
             "action": {
+              "action_name": "set_tmutil_exclusion",
               "path": "/nix/var"
             },
             "state": "Uncompleted"
@@ -287,15 +313,17 @@
     },
     {
       "action": {
-        "action": "configure_nix",
+        "action_name": "configure_nix",
         "setup_default_profile": {
           "action": {
+            "action_name": "setup_default_profile",
             "unpacked_path": "/nix/temp-install-dir"
           },
           "state": "Uncompleted"
         },
         "configure_shell_profile": {
           "action": {
+            "action_name": "configure_shell_profile",
             "locations": {
               "fish": {
                 "confd_suffix": "conf.d/nix.fish",
@@ -325,6 +353,7 @@
             "create_or_insert_into_files": [
               {
                 "action": {
+                  "action_name": "create_of_insert_into_file",
                   "path": "/etc/bashrc",
                   "user": null,
                   "group": null,
@@ -336,6 +365,7 @@
               },
               {
                 "action": {
+                  "action_name": "create_of_insert_into_file",
                   "path": "/etc/bash.bashrc",
                   "user": null,
                   "group": null,
@@ -347,6 +377,7 @@
               },
               {
                 "action": {
+                  "action_name": "create_of_insert_into_file",
                   "path": "/etc/zshrc",
                   "user": null,
                   "group": null,
@@ -364,6 +395,7 @@
           "action": {
             "create_directory": {
               "action": {
+                "action_name": "create_directory",
                 "path": "/etc/nix",
                 "user": null,
                 "group": null,
@@ -375,6 +407,7 @@
             },
             "create_or_merge_nix_config": {
               "action": {
+                "action_name": "create_or_merge_nix_config",
                 "path": "/etc/nix/nix.conf",
                 "pending_nix_config": {
                   "settings": {
@@ -398,7 +431,7 @@
     },
     {
       "action": {
-        "action": "configure_init_service",
+        "action_name": "configure_init_service",
         "init": "Launchd",
         "start_daemon": true,
         "ssl_cert_file": null,
@@ -409,7 +442,7 @@
     },
     {
       "action": {
-        "action": "remove_directory",
+        "action_name": "remove_directory",
         "path": "/nix/temp-install-dir"
       },
       "state": "Uncompleted"

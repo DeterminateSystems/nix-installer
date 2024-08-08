@@ -21,6 +21,7 @@ If `force` is set, the file will always be overwritten (and deleted)
 regardless of its presence prior to install.
  */
 #[derive(Debug, serde::Deserialize, serde::Serialize, Clone)]
+#[serde(tag = "action_name", rename = "create_file")]
 pub struct CreateFile {
     pub(crate) path: PathBuf,
     user: Option<String>,

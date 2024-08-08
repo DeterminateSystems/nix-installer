@@ -43,6 +43,8 @@ ideal.
 
 A custom [`Action`] can be created then used in a custom [`Planner`](crate::planner::Planner):
 
+Note: if the struct has no fields, don't add the `serde` attribute to the struct.
+
 ```rust,no_run
 use std::{error::Error, collections::HashMap};
 use tracing::{Span, span};
@@ -54,13 +56,16 @@ use nix_installer::{
 };
 
 #[derive(Debug, serde::Deserialize, serde::Serialize, Clone)]
-pub struct MyAction {}
+#[serde(tag = "action_name", rename = "my_action")]
+pub struct MyAction {
+    my_field: String, // Just an example
+}
 
 
 impl MyAction {
     #[tracing::instrument(level = "debug", skip_all)]
     pub async fn plan() -> Result<StatefulAction<Self>, ActionError> {
-        Ok(Self {}.into())
+        Ok(Self { my_field: "my field".to_string() }.into())
     }
 }
 
@@ -218,7 +223,7 @@ use crate::{error::HasExpectedErrors, settings::UrlOrPathError, CertificateError
 ///
 /// Instead of calling [`execute`][Action::execute] or [`revert`][Action::revert], you should prefer [`try_execute`][StatefulAction::try_execute] and [`try_revert`][StatefulAction::try_revert]
 #[async_trait::async_trait]
-#[typetag::serde(tag = "action")]
+#[typetag::serde(tag = "action_name")]
 pub trait Action: Send + Sync + std::fmt::Debug + dyn_clone::DynClone {
     fn action_tag() -> ActionTag
     where

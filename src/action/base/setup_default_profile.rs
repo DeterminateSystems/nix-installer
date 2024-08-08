@@ -14,6 +14,7 @@ use crate::action::{Action, ActionDescription};
 Setup the default Nix profile with `nss-cacert` and `nix` itself.
  */
 #[derive(Debug, serde::Deserialize, serde::Serialize, Clone)]
+#[serde(tag = "action_name", rename = "setup_default_profile")]
 pub struct SetupDefaultProfile {
     unpacked_path: PathBuf,
 }

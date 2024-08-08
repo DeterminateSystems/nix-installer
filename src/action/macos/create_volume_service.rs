@@ -17,6 +17,7 @@ use super::get_uuid_for_label;
 /** Create a plist for a `launchctl` service to mount the given `apfs_volume_label` on the given `mount_point`.
  */
 #[derive(Debug, serde::Deserialize, serde::Serialize, Clone)]
+#[serde(tag = "action_name", rename = "create_volume_service")]
 pub struct CreateVolumeService {
     pub(crate) path: PathBuf,
     apfs_volume_label: String,

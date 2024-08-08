@@ -14,6 +14,7 @@ use crate::os::darwin::DiskUtilInfoOutput;
 Enable ownership on a volume
  */
 #[derive(Debug, serde::Deserialize, serde::Serialize, Clone)]
+#[serde(tag = "action_name", rename = "enable_ownership")]
 pub struct EnableOwnership {
     path: PathBuf,
 }

@@ -8,6 +8,7 @@ use crate::{
 use tracing::{span, Span};
 
 #[derive(Debug, serde::Deserialize, serde::Serialize, Clone)]
+#[serde(tag = "action_name", rename = "create_users_and_group")]
 pub struct CreateUsersAndGroups {
     nix_build_user_count: u32,
     nix_build_group_name: String,

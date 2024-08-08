@@ -5,6 +5,7 @@ use crate::action::{
 use tracing::{span, Span};
 
 #[derive(Debug, serde::Deserialize, serde::Serialize, Clone)]
+#[serde(tag = "action_name", rename = "delete_users_in_group")]
 pub struct DeleteUsersInGroup {
     group_name: String,
     group_id: u32,

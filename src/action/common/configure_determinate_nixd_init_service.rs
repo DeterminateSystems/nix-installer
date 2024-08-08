@@ -21,6 +21,10 @@ const DARWIN_NIXD_SERVICE_NAME: &str = "systems.determinate.nix-daemon";
 Configure the init to run the Nix daemon
 */
 #[derive(Debug, serde::Deserialize, serde::Serialize, Clone)]
+#[serde(
+    tag = "action_name",
+    rename = "configure_determinate_nixd_init_service"
+)]
 pub struct ConfigureDeterminateNixdInitService {
     init: InitSystem,
     configure_init_service: StatefulAction<ConfigureInitService>,

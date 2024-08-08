@@ -14,6 +14,7 @@ const DETERMINATE_NIXD_BINARY_PATH: &str = "/nix/determinate/determinate-nixd";
 Provision the determinate-nixd binary
 */
 #[derive(Debug, serde::Deserialize, serde::Serialize, Clone)]
+#[serde(tag = "action_name", rename = "provision_determinate_nixd")]
 pub struct ProvisionDeterminateNixd {
     binary_location: PathBuf,
     service_location: PathBuf,

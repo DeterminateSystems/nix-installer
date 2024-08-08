@@ -17,6 +17,7 @@ If `force_prune_on_revert` is set, the folder will always be deleted on
 [`revert`](CreateDirectory::revert).
 */
 #[derive(Debug, serde::Deserialize, serde::Serialize, Clone)]
+#[serde(tag = "action_name", rename = "create_directory")]
 pub struct CreateDirectory {
     path: PathBuf,
     user: Option<String>,

@@ -13,6 +13,7 @@ use crate::action::{Action, ActionDescription, StatefulAction};
 Delete an operating system level user
 */
 #[derive(Debug, serde::Deserialize, serde::Serialize, Clone)]
+#[serde(tag = "action_name", rename = "delete_user")]
 pub struct DeleteUser {
     name: String,
 }
