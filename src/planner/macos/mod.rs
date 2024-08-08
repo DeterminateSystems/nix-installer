@@ -150,6 +150,7 @@ impl Planner for Macos {
                     root_disk.unwrap(), /* We just ensured it was populated */
                     self.volume_label.clone(),
                     self.case_sensitive,
+                    self.settings.force,
                 )
                 .await
                 .map_err(PlannerError::Action)?

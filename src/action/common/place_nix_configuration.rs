@@ -11,7 +11,7 @@ use crate::settings::UrlOrPathOrString;
 use indexmap::map::Entry;
 use std::path::PathBuf;
 
-const NIX_CONF_FOLDER: &str = "/etc/nix";
+pub const NIX_CONF_FOLDER: &str = "/etc/nix";
 const NIX_CONF: &str = "/etc/nix/nix.conf";
 
 /**
