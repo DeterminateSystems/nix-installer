@@ -9,9 +9,9 @@ use crate::{
         base::{CreateDirectory, RemoveDirectory},
         common::{
             ConfigureDeterminateNixdInitService, ConfigureNix, ConfigureUpstreamInitService,
-            CreateUsersAndGroups, ProvisionNix,
+            CreateUsersAndGroups, ProvisionDeterminateNixd, ProvisionNix,
         },
-        linux::{ProvisionDeterminateNixd, ProvisionSelinux},
+        linux::ProvisionSelinux,
         StatefulAction,
     },
     error::HasExpectedErrors,

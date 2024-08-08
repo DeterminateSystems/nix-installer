@@ -1,10 +1,11 @@
 use crate::{
     action::{
         base::{CreateDirectory, CreateFile, RemoveDirectory},
-        common::{ConfigureNix, ConfigureUpstreamInitService, CreateUsersAndGroups, ProvisionNix},
-        linux::{
-            ProvisionDeterminateNixd, ProvisionSelinux, StartSystemdUnit, SystemctlDaemonReload,
+        common::{
+            ConfigureNix, ConfigureUpstreamInitService, CreateUsersAndGroups,
+            ProvisionDeterminateNixd, ProvisionNix,
         },
+        linux::{ProvisionSelinux, StartSystemdUnit, SystemctlDaemonReload},
         StatefulAction,
     },
     error::HasExpectedErrors,

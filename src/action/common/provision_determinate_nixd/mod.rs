@@ -9,7 +9,10 @@ use crate::action::{
     Action, ActionDescription, ActionError, ActionErrorKind, ActionTag, StatefulAction,
 };
 
+#[cfg(target_os = "linux")]
 const DETERMINATE_NIXD_BINARY_PATH: &str = "/nix/determinate/determinate-nixd";
+#[cfg(target_os = "macos")]
+const DETERMINATE_NIXD_BINARY_PATH: &str = "/usr/local/bin/determinate-nixd";
 /**
 Provision the determinate-nixd binary
 */

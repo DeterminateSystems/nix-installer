@@ -103,10 +103,13 @@ use tokio::process::Command;
 use crate::{
     action::{
         base::{CreateDirectory, CreateFile, RemoveDirectory},
-        common::{ConfigureNix, ConfigureUpstreamInitService, CreateUsersAndGroups, ProvisionNix},
+        common::{
+            ConfigureNix, ConfigureUpstreamInitService, CreateUsersAndGroups,
+            ProvisionDeterminateNixd, ProvisionNix,
+        },
         linux::{
-            EnsureSteamosNixDirectory, ProvisionDeterminateNixd, RevertCleanSteamosNixOffload,
-            StartSystemdUnit, SystemctlDaemonReload,
+            EnsureSteamosNixDirectory, RevertCleanSteamosNixOffload, StartSystemdUnit,
+            SystemctlDaemonReload,
         },
         Action, StatefulAction,
     },

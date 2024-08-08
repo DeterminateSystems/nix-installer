@@ -14,7 +14,10 @@ mod profiles;
 use crate::{
     action::{
         base::RemoveDirectory,
-        common::{ConfigureNix, ConfigureUpstreamInitService, CreateUsersAndGroups, ProvisionNix},
+        common::{
+            ConfigureNix, ConfigureUpstreamInitService, CreateUsersAndGroups,
+            ProvisionDeterminateNixd, ProvisionNix,
+        },
         macos::{
             ConfigureRemoteBuilding, CreateDeterminateNixVolume, CreateNixHookService,
             CreateNixVolume, SetTmutilExclusions,
@@ -163,6 +166,15 @@ impl Planner for Macos {
                 .await
                 .map_err(PlannerError::Action)?
                 .boxed(),
+            );
+        }
+
+        if self.settings.determinate_nix {
+            plan.push(
+                ProvisionDeterminateNixd::plan()
+                    .await
+                    .map_err(PlannerError::Action)?
+                    .boxed(),
             );
         }
 
