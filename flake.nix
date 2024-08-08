@@ -46,6 +46,7 @@
     } @ inputs:
     let
       supportedSystems = [ "i686-linux" "x86_64-linux" "aarch64-linux" "x86_64-darwin" "aarch64-darwin" ];
+      systemsSupportedByDeterminateNixd = [ "x86_64-linux" "aarch64-linux" "x86_64-darwin" "aarch64-darwin" ];
 
       forAllSystems = f: nixpkgs.lib.genAttrs supportedSystems (system: (forSystem system f));
 
@@ -74,7 +75,7 @@
         inputs.nix.tarballs_direct.${system}
           or "${inputs.nix.checks."${system}".binaryTarball}/nix-${inputs.nix.packages."${system}".default.version}-${system}.tar.xz");
 
-      optionalPathToDeterminateNixd = system: if builtins.elem system [ "x86_64-linux" "aarch64-linux" "x86_64-darwin" "aarch64-darwin" ] then "${inputs.determinate.packages.${system}.default}/bin/determinate-nixd" else null;
+      optionalPathToDeterminateNixd = system: if builtins.elem system systemsSupportedByDeterminateNixd then "${inputs.determinate.packages.${system}.default}/bin/determinate-nixd" else null;
     in
     {
       overlays.default = final: prev:
