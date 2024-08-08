@@ -177,7 +177,7 @@
               darwin.apple_sdk.frameworks.SystemConfiguration
             ])
             ++ lib.optionals (pkgs.stdenv.isLinux) (with pkgs; [
-              checkpolicy
+              # checkpolicy # failed to build 2024-08-08
               semodule-utils
               /* users are expected to have a system docker, too */
             ]);
