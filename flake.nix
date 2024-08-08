@@ -73,6 +73,8 @@
       nixTarballs = forAllSystems ({ system, ... }:
         inputs.nix.tarballs_direct.${system}
           or "${inputs.nix.checks."${system}".binaryTarball}/nix-${inputs.nix.packages."${system}".default.version}-${system}.tar.xz");
+
+      optionalPathToDeterminateNixd = system: if builtins.elem system [ "x86_64-linux" "aarch64-linux" "x86_64-darwin" "aarch64-darwin" ] then "${inputs.determinate.packages.${system}.default}/bin/determinate-nixd" else null;
     in
     {
       overlays.default = final: prev:
@@ -106,7 +108,7 @@
             cargoTestOptions = f: f ++ [ "--all" ];
 
             NIX_INSTALLER_TARBALL_PATH = nixTarballs.${final.stdenv.system};
-            DETERMINATE_NIXD_BINARY_PATH = if builtins.elem final.stdenv.system [ "x86_64-linux" "aarch64-linux" "x86_64-darwin" "aarch64-darwin" ] then "${inputs.determinate.packages.${final.stdenv.system}.default}/bin/determinate-nixd" else null;
+            DETERMINATE_NIXD_BINARY_PATH = optionalPathToDeterminateNixd final.stdenv.system;
 
             override = { preBuild ? "", ... }: {
               preBuild = preBuild + ''
@@ -152,7 +154,7 @@
 
             RUST_SRC_PATH = "${toolchain}/lib/rustlib/src/rust/library";
             NIX_INSTALLER_TARBALL_PATH = nixTarballs.${system};
-            DETERMINATE_NIXD_BINARY_PATH = if builtins.elem system [ "x86_64-linux" "aarch64-linux" "x86_64-darwin" "aarch64-darwin" ] then "${inputs.determinate.packages.${system}.default}/bin/determinate-nixd" else null;
+            DETERMINATE_NIXD_BINARY_PATH = optionalPathToDeterminateNixd system;
 
             nativeBuildInputs = with pkgs; [ ];
             buildInputs = with pkgs; [
