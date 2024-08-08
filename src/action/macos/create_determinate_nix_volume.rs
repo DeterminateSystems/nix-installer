@@ -1,5 +1,6 @@
 use crate::action::{
-    base::{create_or_insert_into_file, CreateOrInsertIntoFile},
+    base::{create_or_insert_into_file, CreateDirectory, CreateOrInsertIntoFile},
+    common::place_nix_configuration::NIX_CONF_FOLDER,
     macos::{
         CreateApfsVolume, CreateSyntheticObjects, EnableOwnership, EncryptApfsVolume,
         UnmountApfsVolume,
@@ -22,6 +23,7 @@ pub struct CreateDeterminateNixVolume {
     disk: PathBuf,
     name: String,
     case_sensitive: bool,
+    create_directory: StatefulAction<CreateDirectory>,
     create_or_append_synthetic_conf: StatefulAction<CreateOrInsertIntoFile>,
     create_synthetic_objects: StatefulAction<CreateSyntheticObjects>,
     unmount_volume: StatefulAction<UnmountApfsVolume>,
@@ -37,6 +39,7 @@ impl CreateDeterminateNixVolume {
         disk: impl AsRef<Path>,
         name: String,
         case_sensitive: bool,
+        force: bool,
     ) -> Result<StatefulAction<Self>, ActionError> {
         let disk = disk.as_ref();
         let create_or_append_synthetic_conf = CreateOrInsertIntoFile::plan(
@@ -49,6 +52,10 @@ impl CreateDeterminateNixVolume {
         )
         .await
         .map_err(Self::error)?;
+
+        let create_directory = CreateDirectory::plan(NIX_CONF_FOLDER, None, None, 0o0755, force)
+            .await
+            .map_err(Self::error)?;
 
         let create_synthetic_objects = CreateSyntheticObjects::plan().await.map_err(Self::error)?;
 
@@ -72,6 +79,7 @@ impl CreateDeterminateNixVolume {
             disk: disk.to_path_buf(),
             name,
             case_sensitive,
+            create_directory,
             create_or_append_synthetic_conf,
             create_synthetic_objects,
             unmount_volume,
@@ -109,6 +117,7 @@ impl Action for CreateDeterminateNixVolume {
 
     fn execute_description(&self) -> Vec<ActionDescription> {
         let explanation = vec![
+            self.create_directory.tracing_synopsis(),
             self.create_or_append_synthetic_conf.tracing_synopsis(),
             self.create_synthetic_objects.tracing_synopsis(),
             self.unmount_volume.tracing_synopsis(),
@@ -123,6 +132,10 @@ impl Action for CreateDeterminateNixVolume {
 
     #[tracing::instrument(level = "debug", skip_all)]
     async fn execute(&mut self) -> Result<(), ActionError> {
+        self.create_directory
+            .try_execute()
+            .await
+            .map_err(Self::error)?;
         self.create_or_append_synthetic_conf
             .try_execute()
             .await
@@ -222,6 +235,7 @@ impl Action for CreateDeterminateNixVolume {
 
     fn revert_description(&self) -> Vec<ActionDescription> {
         let explanation = vec![
+            self.create_directory.tracing_synopsis(),
             self.create_or_append_synthetic_conf.tracing_synopsis(),
             self.create_synthetic_objects.tracing_synopsis(),
             self.unmount_volume.tracing_synopsis(),
@@ -268,6 +282,10 @@ impl Action for CreateDeterminateNixVolume {
         }
         if let Err(err) = self.create_synthetic_objects.try_revert().await {
             errors.push(err)
+        }
+
+        if let Err(err) = self.create_directory.try_revert().await {
+            errors.push(err);
         }
 
         if errors.is_empty() {

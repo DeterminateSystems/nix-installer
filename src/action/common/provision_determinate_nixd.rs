@@ -4,12 +4,13 @@ use std::path::PathBuf;
 use tokio::fs::{create_dir_all, remove_file};
 use tracing::{span, Span};
 
-use crate::action::common::configure_determinate_nixd_init_service::DETERMINATE_NIXD_SERVICE_SRC;
 use crate::action::{
     Action, ActionDescription, ActionError, ActionErrorKind, ActionTag, StatefulAction,
 };
+use crate::settings::InitSystem;
 
-const DETERMINATE_NIXD_BINARY_PATH: &str = "/nix/determinate/determinate-nixd";
+const LINUX_DETERMINATE_NIXD_BINARY_PATH: &str = "/nix/determinate/determinate-nixd";
+const MACOS_DETERMINATE_NIXD_BINARY_PATH: &str = "/usr/local/bin/determinate-nixd";
 /**
 Provision the determinate-nixd binary
 */
@@ -17,18 +18,20 @@ Provision the determinate-nixd binary
 #[serde(tag = "action_name", rename = "provision_determinate_nixd")]
 pub struct ProvisionDeterminateNixd {
     binary_location: PathBuf,
-    service_location: PathBuf,
 }
 
 impl ProvisionDeterminateNixd {
     #[tracing::instrument(level = "debug", skip_all)]
-    pub async fn plan() -> Result<StatefulAction<Self>, ActionError> {
+    pub async fn plan(init: InitSystem) -> Result<StatefulAction<Self>, ActionError> {
         crate::settings::DETERMINATE_NIXD_BINARY
             .ok_or_else(|| Self::error(ActionErrorKind::DeterminateNixUnavailable))?;
 
         let this = Self {
-            binary_location: DETERMINATE_NIXD_BINARY_PATH.into(),
-            service_location: DETERMINATE_NIXD_SERVICE_SRC.into(),
+            binary_location: match init {
+                InitSystem::Launchd => MACOS_DETERMINATE_NIXD_BINARY_PATH.into(),
+                InitSystem::Systemd => LINUX_DETERMINATE_NIXD_BINARY_PATH.into(),
+                InitSystem::None => LINUX_DETERMINATE_NIXD_BINARY_PATH.into(),
+            },
         };
 
         Ok(StatefulAction::uncompleted(this))
@@ -88,14 +91,6 @@ impl Action for ProvisionDeterminateNixd {
             .await
             .map_err(|e| ActionErrorKind::Write(self.binary_location.clone(), e))
             .map_err(Self::error)?;
-
-        tokio::fs::write(
-            &self.service_location,
-            include_str!("./nix-daemon.determinate-nixd.service"),
-        )
-        .await
-        .map_err(|e| ActionErrorKind::Write(self.service_location.clone(), e))
-        .map_err(Self::error)?;
 
         Ok(())
     }

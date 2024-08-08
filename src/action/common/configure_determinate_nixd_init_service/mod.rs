@@ -10,8 +10,7 @@ use crate::action::{common::ConfigureInitService, Action, ActionDescription};
 use crate::settings::InitSystem;
 
 // Linux
-const SERVICE_DEST: &str = "/etc/systemd/system/nix-daemon.service";
-pub const DETERMINATE_NIXD_SERVICE_SRC: &str = "/nix/determinate/nix-daemon.service";
+const LINUX_NIXD_DAEMON_DEST: &str = "/etc/systemd/system/nix-daemon.service";
 
 // Darwin
 const DARWIN_NIXD_DAEMON_DEST: &str = "/Library/LaunchDaemons/systems.determinate.nix-daemon.plist";
@@ -36,17 +35,9 @@ impl ConfigureDeterminateNixdInitService {
         init: InitSystem,
         start_daemon: bool,
     ) -> Result<StatefulAction<Self>, ActionError> {
-        let service_src: Option<PathBuf> = match init {
-            InitSystem::Launchd => {
-                // We'll write it out down in the execute step
-                None
-            },
-            InitSystem::Systemd => Some(DETERMINATE_NIXD_SERVICE_SRC.into()),
-            InitSystem::None => None,
-        };
         let service_dest: Option<PathBuf> = match init {
             InitSystem::Launchd => Some(DARWIN_NIXD_DAEMON_DEST.into()),
-            InitSystem::Systemd => Some(SERVICE_DEST.into()),
+            InitSystem::Systemd => Some(LINUX_NIXD_DAEMON_DEST.into()),
             InitSystem::None => None,
         };
         let service_name: Option<String> = match init {
@@ -55,7 +46,7 @@ impl ConfigureDeterminateNixdInitService {
         };
 
         let configure_init_service =
-            ConfigureInitService::plan(init, start_daemon, service_src, service_dest, service_name)
+            ConfigureInitService::plan(init, start_daemon, None, service_dest, service_name)
                 .await
                 .map_err(Self::error)?;
 
@@ -98,9 +89,9 @@ impl Action for ConfigureDeterminateNixdInitService {
             configure_init_service,
         } = self;
 
-        let daemon_file = DARWIN_NIXD_DAEMON_DEST;
-
         if *init == InitSystem::Launchd {
+            let daemon_file = DARWIN_NIXD_DAEMON_DEST;
+
             // This is the only part that is actually different from configure_init_service, beyond variable parameters.
 
             let generated_plist = generate_plist();
@@ -118,6 +109,16 @@ impl Action for ConfigureDeterminateNixdInitService {
             file.write_all(&buf)
                 .await
                 .map_err(|e| Self::error(ActionErrorKind::Write(PathBuf::from(daemon_file), e)))?;
+        } else if *init == InitSystem::Systemd {
+            let daemon_file = PathBuf::from(LINUX_NIXD_DAEMON_DEST);
+
+            tokio::fs::write(
+                &daemon_file,
+                include_str!("./nix-daemon.determinate-nixd.service"),
+            )
+            .await
+            .map_err(|e| ActionErrorKind::Write(daemon_file.clone(), e))
+            .map_err(Self::error)?;
         }
 
         configure_init_service

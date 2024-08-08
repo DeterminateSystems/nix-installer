@@ -14,7 +14,10 @@ mod profiles;
 use crate::{
     action::{
         base::RemoveDirectory,
-        common::{ConfigureNix, ConfigureUpstreamInitService, CreateUsersAndGroups, ProvisionNix},
+        common::{
+            ConfigureNix, ConfigureUpstreamInitService, CreateUsersAndGroups,
+            ProvisionDeterminateNixd, ProvisionNix,
+        },
         macos::{
             ConfigureRemoteBuilding, CreateDeterminateNixVolume, CreateNixHookService,
             CreateNixVolume, SetTmutilExclusions,
@@ -143,10 +146,20 @@ impl Planner for Macos {
 
         if self.settings.determinate_nix {
             plan.push(
+                ProvisionDeterminateNixd::plan(InitSystem::Launchd)
+                    .await
+                    .map_err(PlannerError::Action)?
+                    .boxed(),
+            );
+        }
+
+        if self.settings.determinate_nix {
+            plan.push(
                 CreateDeterminateNixVolume::plan(
                     root_disk.unwrap(), /* We just ensured it was populated */
                     self.volume_label.clone(),
                     self.case_sensitive,
+                    self.settings.force,
                 )
                 .await
                 .map_err(PlannerError::Action)?
@@ -309,9 +322,6 @@ impl Planner for Macos {
     async fn pre_install_check(&self) -> Result<(), PlannerError> {
         check_suis().await?;
         check_not_running_in_rosetta()?;
-        if self.settings.determinate_nix {
-            check_determinate_nix_available().await?;
-        }
 
         Ok(())
     }
@@ -401,14 +411,6 @@ async fn check_suis() -> Result<(), PlannerError> {
 
     Err(MacosError::BlockedBySystemUIServerPolicy(error))
         .map_err(|e| PlannerError::Custom(Box::new(e)))
-}
-
-async fn check_determinate_nix_available() -> Result<(), PlannerError> {
-    tokio::fs::metadata("/usr/local/bin/determinate-nixd")
-        .await
-        .map_err(|_| PlannerError::DeterminateNixUnavailable)?;
-
-    Ok(())
 }
 
 #[non_exhaustive]

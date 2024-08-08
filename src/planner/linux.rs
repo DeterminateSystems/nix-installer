@@ -9,9 +9,9 @@ use crate::{
         base::{CreateDirectory, RemoveDirectory},
         common::{
             ConfigureDeterminateNixdInitService, ConfigureNix, ConfigureUpstreamInitService,
-            CreateUsersAndGroups, ProvisionNix,
+            CreateUsersAndGroups, ProvisionDeterminateNixd, ProvisionNix,
         },
-        linux::{ProvisionDeterminateNixd, ProvisionSelinux},
+        linux::ProvisionSelinux,
         StatefulAction,
     },
     error::HasExpectedErrors,
@@ -55,7 +55,7 @@ impl Planner for Linux {
 
         if self.settings.determinate_nix {
             plan.push(
-                ProvisionDeterminateNixd::plan()
+                ProvisionDeterminateNixd::plan(self.init.init)
                     .await
                     .map_err(PlannerError::Action)?
                     .boxed(),

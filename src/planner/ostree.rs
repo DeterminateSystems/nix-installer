@@ -1,10 +1,11 @@
 use crate::{
     action::{
         base::{CreateDirectory, CreateFile, RemoveDirectory},
-        common::{ConfigureNix, ConfigureUpstreamInitService, CreateUsersAndGroups, ProvisionNix},
-        linux::{
-            ProvisionDeterminateNixd, ProvisionSelinux, StartSystemdUnit, SystemctlDaemonReload,
+        common::{
+            ConfigureNix, ConfigureUpstreamInitService, CreateUsersAndGroups,
+            ProvisionDeterminateNixd, ProvisionNix,
         },
+        linux::{ProvisionSelinux, StartSystemdUnit, SystemctlDaemonReload},
         StatefulAction,
     },
     error::HasExpectedErrors,
@@ -175,7 +176,7 @@ impl Planner for Ostree {
 
         if self.settings.determinate_nix {
             plan.push(
-                ProvisionDeterminateNixd::plan()
+                ProvisionDeterminateNixd::plan(InitSystem::Systemd)
                     .await
                     .map_err(PlannerError::Action)?
                     .boxed(),

@@ -23,8 +23,8 @@ pub const NIX_TARBALL: &[u8] = include_bytes!(env!("NIX_INSTALLER_TARBALL_PATH")
 
 #[cfg(all(
     feature = "determinate-nix",
-    target_os = "linux",
-    not(target_arch = "x86")
+    // Determinate Nix is available on everything but i686-linux, so set the bytes
+    not(all(target_os = "linux", target_arch = "x86"))
 ))]
 /// The DETERMINATE_NIXD_BINARY_PATH environment variable should point to a target-appropriate
 /// static build of the Determinate Nixd binary. The contents are embedded in the resulting
@@ -34,8 +34,8 @@ pub const DETERMINATE_NIXD_BINARY: Option<&[u8]> =
 
 #[cfg(not(all(
     feature = "determinate-nix",
-    target_os = "linux",
-    not(target_arch = "x86")
+    // Determinate Nix is not available on i686-linux, so default it to None
+    not(all(target_os = "linux", target_arch = "x86"))
 )))]
 /// The DETERMINATE_NIXD_BINARY_PATH environment variable should point to a target-appropriate
 /// static build of the Determinate Nixd binary. The contents are embedded in the resulting
