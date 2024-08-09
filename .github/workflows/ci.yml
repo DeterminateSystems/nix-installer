@@ -114,6 +114,7 @@ jobs:
         uses: DeterminateSystems/nix-installer-action@main
         with:
           flakehub: true
+          extra-args: ${{ matrix.extra-args }}
           local-root: install-root/
           logger: pretty
           log-directives: nix_installer=debug
