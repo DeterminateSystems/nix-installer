@@ -77,13 +77,6 @@ impl ConfigureInitService {
                 // No plan checks, yet
             },
             InitSystem::Systemd => {
-                let service_src = service_src
-                    .as_ref()
-                    .expect("service_src should be defined for systemd");
-                let service_dest = service_dest
-                    .as_ref()
-                    .expect("service_dest should be defined for systemd");
-
                 // If `no_start_daemon` is set, then we don't require a running systemd,
                 // so we don't need to check if `/run/systemd/system` exists.
                 if start_daemon {
@@ -98,9 +91,13 @@ impl ConfigureInitService {
                     return Err(Self::error(ActionErrorKind::SystemdMissing));
                 }
 
-                Self::check_if_systemd_unit_exists(service_src, service_dest)
-                    .await
-                    .map_err(Self::error)?;
+                if let (Some(service_src), Some(service_dest)) =
+                    (service_src.as_ref(), service_dest.as_ref())
+                {
+                    Self::check_if_systemd_unit_exists(service_src, service_dest)
+                        .await
+                        .map_err(Self::error)?;
+                }
                 Self::check_if_systemd_unit_exists(Path::new(SOCKET_SRC), Path::new(SOCKET_DEST))
                     .await
                     .map_err(Self::error)?;
@@ -267,9 +264,6 @@ impl Action for ConfigureInitService {
                 }
             },
             InitSystem::Systemd => {
-                let service_src = service_src
-                    .as_ref()
-                    .expect("service_src should be defined for systemd");
                 let service_dest = service_dest
                     .as_ref()
                     .expect("service_dest should be defined for systemd");
@@ -336,36 +330,30 @@ impl Action for ConfigureInitService {
                 // TODO: once we have a way to communicate interaction between the library and the
                 // cli, interactively ask for permission to remove the file
 
-                Self::check_if_systemd_unit_exists(service_src, service_dest)
-                    .await
-                    .map_err(Self::error)?;
-                if Path::new(service_dest).exists() {
-                    tracing::trace!(path = %service_dest.display(), "Removing");
-                    tokio::fs::remove_file(service_dest)
+                if let Some(service_src) = service_src.as_ref() {
+                    Self::check_if_systemd_unit_exists(service_src, service_dest)
                         .await
-                        .map_err(|e| ActionErrorKind::Remove(service_dest.into(), e))
+                        .map_err(Self::error)?;
+                    if Path::new(service_dest).exists() {
+                        tracing::trace!(path = %service_dest.display(), "Removing");
+                        tokio::fs::remove_file(service_dest)
+                            .await
+                            .map_err(|e| ActionErrorKind::Remove(service_dest.into(), e))
+                            .map_err(Self::error)?;
+                    }
+                    tracing::trace!(src = %service_src.display(), dest = %service_dest.display(), "Symlinking");
+                    tokio::fs::symlink(service_src, service_dest)
+                        .await
+                        .map_err(|e| {
+                            ActionErrorKind::Symlink(
+                                service_src.clone(),
+                                PathBuf::from(service_dest),
+                                e,
+                            )
+                        })
                         .map_err(Self::error)?;
                 }
-                tracing::trace!(src = %service_src.display(), dest = %service_dest.display(), "Symlinking");
-                tokio::fs::symlink(
-                    &self
-                        .service_src
-                        .as_ref()
-                        .expect("service_src should be defined for systemd"),
-                    service_dest,
-                )
-                .await
-                .map_err(|e| {
-                    ActionErrorKind::Symlink(
-                        self.service_src
-                            .as_ref()
-                            .expect("service_src should be defined for systemd")
-                            .clone(),
-                        PathBuf::from(service_dest),
-                        e,
-                    )
-                })
-                .map_err(Self::error)?;
+
                 Self::check_if_systemd_unit_exists(Path::new(SOCKET_SRC), Path::new(SOCKET_DEST))
                     .await
                     .map_err(Self::error)?;
