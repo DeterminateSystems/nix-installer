@@ -575,3 +575,9 @@ jobs:
           NIX_INSTALLER_LOGGER: pretty
           NIX_INSTALLER_LOG_DIRECTIVES: nix_installer=debug
           RUST_BACKTRACE: full
+      - name: Breakpoint if tests failed
+        if: failure()
+        uses: namespacelabs/breakpoint-action@v0
+        with:
+          duration: 30m
+          authorized-users: grahamc
