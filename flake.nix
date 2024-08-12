@@ -23,7 +23,7 @@
       url = "https://flakehub.com/f/DeterminateSystems/determinate/0.1.tar.gz";
 
       inputs.determinate-nixd-aarch64-darwin = {
-        url = "https://install.determinate.systems/determinate-nixd/rev/aa3c23278102c9c309695691ce1c5c27e8a5500f/macOS";
+        url = "https://install.determinate.systems/determinate-nixd/rev/62571d312e016cca0f536b2ba2206c6437ba1b53/macOS";
         flake = false;
       };
 
