@@ -512,6 +512,11 @@ jobs:
           mv ./nix-installer install-root/nix-installer-aarch64-darwin
           chmod +x install-root/nix-installer-aarch64-darwin install-root/nix-installer.sh
       - run: brew install fish coreutils
+      - name: Breakpoint if tests failed
+        uses: namespacelabs/breakpoint-action@v0
+        with:
+          duration: 30m
+          authorized-users: grahamc
       - name: Initial install
         uses: DeterminateSystems/nix-installer-action@main
         with:
