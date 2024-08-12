@@ -33,13 +33,13 @@
     "determinate-nixd-aarch64-darwin": {
       "flake": false,
       "locked": {
-        "narHash": "sha256-wvx/yNIxDMkh0y3Sil7IB3r8DU+Lo/HYp1MTfl8ppWE=",
+        "narHash": "sha256-UnU+RvPC7bSZmvBfFRVe+R2N6uIg1dsivjUqGRcmdCY=",
         "type": "file",
-        "url": "https://install.determinate.systems/determinate-nixd/rev/d43df18ebee8d7f8bb7a89a7f1b973d579f8087b/macOS"
+        "url": "https://install.determinate.systems/determinate-nixd/rev/ed16deafbd1f2df65dc231340c9f50e5e9185382/macOS"
       },
       "original": {
         "type": "file",
-        "url": "https://install.determinate.systems/determinate-nixd/rev/d43df18ebee8d7f8bb7a89a7f1b973d579f8087b/macOS"
+        "url": "https://install.determinate.systems/determinate-nixd/rev/ed16deafbd1f2df65dc231340c9f50e5e9185382/macOS"
       }
     },
     "determinate-nixd-aarch64-linux": {
