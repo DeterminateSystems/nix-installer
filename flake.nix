@@ -23,7 +23,15 @@
       url = "https://flakehub.com/f/DeterminateSystems/determinate/0.1.tar.gz";
 
       inputs.determinate-nixd-aarch64-darwin = {
-        url = "https://install.determinate.systems/determinate-nixd/rev/62571d312e016cca0f536b2ba2206c6437ba1b53/macOS";
+        url = "https://install.determinate.systems/determinate-nixd/rev/86c4b11d7253132a88cd9a549976f4d20df0bf2b/macOS";
+        flake = false;
+      };
+      inputs.determinate-nixd-aarch64-linux = {
+        url = "https://install.determinate.systems/determinate-nixd/rev/86c4b11d7253132a88cd9a549976f4d20df0bf2b/aarch64-linux";
+        flake = false;
+      };
+      inputs.determinate-nixd-x86_64-linux = {
+        url = "https://install.determinate.systems/determinate-nixd/rev/86c4b11d7253132a88cd9a549976f4d20df0bf2b/x86_64-linux";
         flake = false;
       };
 

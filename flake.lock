@@ -33,37 +33,37 @@
     "determinate-nixd-aarch64-darwin": {
       "flake": false,
       "locked": {
-        "narHash": "sha256-UnU+RvPC7bSZmvBfFRVe+R2N6uIg1dsivjUqGRcmdCY=",
+        "narHash": "sha256-1w9JUBWVWQCk+BK7PX9e7Tsyj1Yk4mEqavJ14H+DSXQ=",
         "type": "file",
-        "url": "https://install.determinate.systems/determinate-nixd/rev/ed16deafbd1f2df65dc231340c9f50e5e9185382/macOS"
+        "url": "https://install.determinate.systems/determinate-nixd/rev/86c4b11d7253132a88cd9a549976f4d20df0bf2b/macOS"
       },
       "original": {
         "type": "file",
-        "url": "https://install.determinate.systems/determinate-nixd/rev/ed16deafbd1f2df65dc231340c9f50e5e9185382/macOS"
+        "url": "https://install.determinate.systems/determinate-nixd/rev/86c4b11d7253132a88cd9a549976f4d20df0bf2b/macOS"
       }
     },
     "determinate-nixd-aarch64-linux": {
       "flake": false,
       "locked": {
-        "narHash": "sha256-F4j6WDcuZPAtJPY2iFhwzRHQO0xAmO5HHfK8vaEuZOI=",
+        "narHash": "sha256-HnCWt6YSrCSH/UCDy2gZTVVOAB3IdqRocL5N8f+5bDM=",
         "type": "file",
-        "url": "https://install.determinate.systems/determinate-nixd/rev/d43df18ebee8d7f8bb7a89a7f1b973d579f8087b/aarch64-linux"
+        "url": "https://install.determinate.systems/determinate-nixd/rev/86c4b11d7253132a88cd9a549976f4d20df0bf2b/aarch64-linux"
       },
       "original": {
         "type": "file",
-        "url": "https://install.determinate.systems/determinate-nixd/rev/d43df18ebee8d7f8bb7a89a7f1b973d579f8087b/aarch64-linux"
+        "url": "https://install.determinate.systems/determinate-nixd/rev/86c4b11d7253132a88cd9a549976f4d20df0bf2b/aarch64-linux"
       }
     },
     "determinate-nixd-x86_64-linux": {
       "flake": false,
       "locked": {
-        "narHash": "sha256-egZGwiWgAPHL4sQMwuZxCXukKXBSNckmwmfIIgYiPa8=",
+        "narHash": "sha256-TtPPHtY54INYXxKSbbATsjuo5x0TLxv25K1GPCz044w=",
         "type": "file",
-        "url": "https://install.determinate.systems/determinate-nixd/rev/d43df18ebee8d7f8bb7a89a7f1b973d579f8087b/x86_64-linux"
+        "url": "https://install.determinate.systems/determinate-nixd/rev/86c4b11d7253132a88cd9a549976f4d20df0bf2b/x86_64-linux"
       },
       "original": {
         "type": "file",
-        "url": "https://install.determinate.systems/determinate-nixd/rev/d43df18ebee8d7f8bb7a89a7f1b973d579f8087b/x86_64-linux"
+        "url": "https://install.determinate.systems/determinate-nixd/rev/86c4b11d7253132a88cd9a549976f4d20df0bf2b/x86_64-linux"
       }
     },
     "fenix": {
