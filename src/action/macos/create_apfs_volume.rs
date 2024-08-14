@@ -138,7 +138,7 @@ impl Action for CreateApfsVolume {
             let the_plist: DiskUtilInfoOutput =
                 plist::from_reader(Cursor::new(buf)).map_err(Self::error)?;
 
-            the_plist.mount_point.is_some()
+            the_plist.is_mounted()
         };
 
         // Unmounts the volume before attempting to remove it, avoiding 'in use' errors

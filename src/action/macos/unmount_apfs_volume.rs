@@ -72,7 +72,7 @@ impl Action for UnmountApfsVolume {
             let the_plist: DiskUtilInfoOutput =
                 plist::from_reader(Cursor::new(buf)).map_err(Self::error)?;
 
-            the_plist.mount_point.is_some()
+            the_plist.is_mounted()
         };
 
         if currently_mounted {
@@ -114,7 +114,7 @@ impl Action for UnmountApfsVolume {
             let the_plist: DiskUtilInfoOutput =
                 plist::from_reader(Cursor::new(buf)).map_err(Self::error)?;
 
-            the_plist.mount_point.is_some()
+            the_plist.is_mounted()
         };
 
         if currently_mounted {
