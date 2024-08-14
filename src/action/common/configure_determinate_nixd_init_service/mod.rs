@@ -1,3 +1,4 @@
+use std::collections::HashMap;
 use std::path::PathBuf;
 
 use serde::{Deserialize, Serialize};
@@ -167,11 +168,12 @@ pub enum ConfigureDeterminateNixDaemonServiceError {}
 pub struct DeterminateNixDaemonPlist {
     label: String,
     program: String,
-    keep_alive: bool,
     run_at_load: bool,
+    sockets: HashMap<String, Socket>,
     standard_error_path: String,
     standard_out_path: String,
     soft_resource_limits: ResourceLimits,
+    hard_resource_limits: ResourceLimits,
 }
 
 #[derive(Deserialize, Clone, Debug, Serialize, PartialEq)]
@@ -180,9 +182,22 @@ pub struct ResourceLimits {
     number_of_files: usize,
 }
 
+#[derive(Deserialize, Clone, Debug, Serialize, PartialEq)]
+#[serde(rename_all = "PascalCase")]
+pub struct Socket {
+    sock_family: SocketFamily,
+    sock_passive: bool,
+    sock_path_name: String,
+}
+
+#[derive(Deserialize, Clone, Debug, Serialize, PartialEq)]
+#[serde(rename_all = "PascalCase")]
+enum SocketFamily {
+    Unix,
+}
+
 fn generate_plist() -> DeterminateNixDaemonPlist {
     DeterminateNixDaemonPlist {
-        keep_alive: true,
         run_at_load: true,
         label: "systems.determinate.nix-daemon".into(),
         program: "/usr/local/bin/determinate-nixd".into(),
@@ -191,5 +206,26 @@ fn generate_plist() -> DeterminateNixDaemonPlist {
         soft_resource_limits: ResourceLimits {
             number_of_files: 1048576,
         },
+        hard_resource_limits: ResourceLimits {
+            number_of_files: 1048576 * 2,
+        },
+        sockets: HashMap::from([
+            (
+                "determinate-nixd-http".to_string(),
+                Socket {
+                    sock_family: SocketFamily::Unix,
+                    sock_passive: true,
+                    sock_path_name: "/nix/var/determinate/determinate-nixd.socket".into(),
+                },
+            ),
+            (
+                "nix-daemon.socket".to_string(),
+                Socket {
+                    sock_family: SocketFamily::Unix,
+                    sock_passive: true,
+                    sock_path_name: "/nix/var/nix/daemon-socket/socket".into(),
+                },
+            ),
+        ]),
     }
 }

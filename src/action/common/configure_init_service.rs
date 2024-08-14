@@ -425,11 +425,10 @@ impl Action for ConfigureInitService {
                 vec![ActionDescription::new(
                     "Unconfigure Nix daemon related settings with launchctl".to_string(),
                     vec![format!(
-                        "Run `launchctl bootout {0}`",
-                        self.service_dest
+                        "Run `launchctl bootout {DARWIN_LAUNCHD_DOMAIN}/{0}`",
+                        self.service_name
                             .as_ref()
-                            .expect("service_dest should be defined for launchd")
-                            .display(),
+                            .expect("service_name should be defined for launchd"),
                     )],
                 )]
             },
@@ -459,6 +458,28 @@ impl Action for ConfigureInitService {
                 )
                 .await
                 .map_err(Self::error)?;
+
+                for attempt in 1..100 {
+                    tracing::trace!(attempt, "Checking to see if the daemon is down yet");
+                    if execute_command(
+                        Command::new("launchctl").process_group(0).arg("print").arg(
+                            [
+                                DARWIN_LAUNCHD_DOMAIN,
+                                self.service_name
+                                    .as_ref()
+                                    .expect("service_name should be defined for launchd"),
+                            ]
+                            .join("/"),
+                        ),
+                    )
+                    .await
+                    .is_err()
+                    {
+                        tracing::trace!(attempt, "Daemon is down");
+                        tokio::time::sleep(tokio::time::Duration::from_millis(100)).await;
+                        break;
+                    }
+                }
             },
             InitSystem::Systemd => {
                 // We separate stop and disable (instead of using `--now`) to avoid cases where the service isn't started, but is enabled.
