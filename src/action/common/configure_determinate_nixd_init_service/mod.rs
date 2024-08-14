@@ -5,9 +5,9 @@ use serde::{Deserialize, Serialize};
 use tokio::io::AsyncWriteExt;
 use tracing::{span, Span};
 
-use crate::action::{ActionError, ActionErrorKind, ActionTag, StatefulAction};
-
+use crate::action::common::configure_init_service::{SocketFile, UnitSrc};
 use crate::action::{common::ConfigureInitService, Action, ActionDescription};
+use crate::action::{ActionError, ActionErrorKind, ActionTag, StatefulAction};
 use crate::settings::InitSystem;
 
 // Linux
@@ -46,10 +46,31 @@ impl ConfigureDeterminateNixdInitService {
             _ => None,
         };
 
-        let configure_init_service =
-            ConfigureInitService::plan(init, start_daemon, None, service_dest, service_name)
-                .await
-                .map_err(Self::error)?;
+        let configure_init_service = ConfigureInitService::plan(
+            init,
+            start_daemon,
+            None,
+            service_dest,
+            service_name,
+            vec![
+                SocketFile {
+                    name: "nix-daemon.socket".into(),
+                    src: UnitSrc::Literal(
+                        include_str!("./nix-daemon.determinate-nixd.socket").to_string(),
+                    ),
+                    dest: "/etc/systemd/system/nix-daemon.socket".into(),
+                },
+                SocketFile {
+                    name: "determinate-nixd.socket".into(),
+                    src: UnitSrc::Literal(
+                        include_str!("./nixd.determinate-nixd.socket").to_string(),
+                    ),
+                    dest: "/etc/systemd/system/determinate-nixd.socket".into(),
+                },
+            ],
+        )
+        .await
+        .map_err(Self::error)?;
 
         Ok(Self {
             init,
@@ -211,7 +232,7 @@ fn generate_plist() -> DeterminateNixDaemonPlist {
         },
         sockets: HashMap::from([
             (
-                "determinate-nixd-http".to_string(),
+                "determinate-nixd.socket".to_string(),
                 Socket {
                     sock_family: SocketFamily::Unix,
                     sock_passive: true,

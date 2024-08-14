@@ -436,7 +436,8 @@
         "start_daemon": true,
         "ssl_cert_file": null,
         "determinate_nix": false,
-        "service_src": "/nix/var/nix/profiles/default/Library/LaunchDaemons/org.nixos.nix-daemon.plist"
+        "service_src": "/nix/var/nix/profiles/default/Library/LaunchDaemons/org.nixos.nix-daemon.plist",
+        "socket_files": []
       },
       "state": "Uncompleted"
     },

@@ -421,7 +421,16 @@
         "start_daemon": true,
         "ssl_cert_file": null,
         "determinate_nix": false,
-        "service_src": "/nix/var/nix/profiles/default/lib/systemd/system/nix-daemon.service"
+        "service_src": "/nix/var/nix/profiles/default/lib/systemd/system/nix-daemon.service",
+        "socket_files": [
+          {
+            "name": "nix-daemon.socket",
+            "src": {
+              "Path": "/nix/var/nix/profiles/default/lib/systemd/system/nix-daemon.socket"
+            },
+            "dest": "/etc/systemd/system/nix-daemon.socket"
+          }
+        ]
       },
       "state": "Uncompleted"
     },
