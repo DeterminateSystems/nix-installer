@@ -187,8 +187,8 @@ impl Action for CreateDeterminateNixVolume {
 
         let mut command = Command::new("/usr/local/bin/determinate-nixd");
         command.args(["--stop-after", "mount"]);
-        command.stderr(std::process::Stdio::inherit());
-        command.stdout(std::process::Stdio::inherit());
+        command.stderr(std::process::Stdio::piped());
+        command.stdout(std::process::Stdio::piped());
         tracing::trace!(command = ?command.as_std(), "Mounting /nix");
         let output = command
             .output()
