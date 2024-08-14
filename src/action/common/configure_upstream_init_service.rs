@@ -4,6 +4,7 @@ use tracing::{span, Span};
 
 use crate::action::{ActionError, ActionTag, StatefulAction};
 
+use crate::action::common::configure_init_service::{SocketFile, UnitSrc};
 use crate::action::{common::ConfigureInitService, Action, ActionDescription};
 use crate::settings::InitSystem;
 
@@ -47,10 +48,22 @@ impl ConfigureUpstreamInitService {
             _ => None,
         };
 
-        let configure_init_service =
-            ConfigureInitService::plan(init, start_daemon, service_src, service_dest, service_name)
-                .await
-                .map_err(Self::error)?;
+        let configure_init_service = ConfigureInitService::plan(
+            init,
+            start_daemon,
+            service_src,
+            service_dest,
+            service_name,
+            vec![SocketFile {
+                name: "nix-daemon.socket".into(),
+                src: UnitSrc::Path(
+                    "/nix/var/nix/profiles/default/lib/systemd/system/nix-daemon.socket".into(),
+                ),
+                dest: "/etc/systemd/system/nix-daemon.socket".into(),
+            }],
+        )
+        .await
+        .map_err(Self::error)?;
 
         Ok(Self {
             configure_init_service,
