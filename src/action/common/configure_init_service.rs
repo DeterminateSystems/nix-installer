@@ -536,6 +536,7 @@ impl Action for ConfigureInitService {
                 .await
                 .map_err(Self::error)?;
 
+                // check if the daemon is down up to 99 times, with 100ms of delay between each attempt
                 for attempt in 1..100 {
                     tracing::trace!(attempt, "Checking to see if the daemon is down yet");
                     if execute_command(
