@@ -6,7 +6,7 @@ RequiresMountsFor=/nix/var/determinate
 ConditionPathIsReadWrite=/nix/var/determinate
 
 [Socket]
-FileDescriptorName=determinate-nixd-http
+FileDescriptorName=determinate-nixd.socket
 ListenStream=/nix/var/determinate/determinate-nixd.socket
 
 [Install]

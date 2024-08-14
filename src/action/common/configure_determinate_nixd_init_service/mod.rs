@@ -232,7 +232,7 @@ fn generate_plist() -> DeterminateNixDaemonPlist {
         },
         sockets: HashMap::from([
             (
-                "determinate-nixd-http".to_string(),
+                "determinate-nixd.socket".to_string(),
                 Socket {
                     sock_family: SocketFamily::Unix,
                     sock_passive: true,
