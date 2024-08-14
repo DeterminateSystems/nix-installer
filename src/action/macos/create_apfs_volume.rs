@@ -143,7 +143,7 @@ impl Action for CreateApfsVolume {
 
         // Unmounts the volume before attempting to remove it, avoiding 'in use' errors
         // https://github.com/DeterminateSystems/nix-installer/issues/647
-        if !currently_mounted {
+        if currently_mounted {
             execute_command(
                 Command::new("/usr/sbin/diskutil")
                     .process_group(0)

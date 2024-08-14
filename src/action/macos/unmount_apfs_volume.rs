@@ -75,7 +75,7 @@ impl Action for UnmountApfsVolume {
             the_plist.mount_point.is_some()
         };
 
-        if !currently_mounted {
+        if currently_mounted {
             execute_command(
                 Command::new("/usr/sbin/diskutil")
                     .process_group(0)
@@ -117,7 +117,7 @@ impl Action for UnmountApfsVolume {
             the_plist.mount_point.is_some()
         };
 
-        if !currently_mounted {
+        if currently_mounted {
             execute_command(
                 Command::new("/usr/sbin/diskutil")
                     .process_group(0)
