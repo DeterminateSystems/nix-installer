@@ -553,9 +553,9 @@ impl Action for ConfigureInitService {
                     .is_err()
                     {
                         tracing::trace!(attempt, "Daemon is down");
-                        tokio::time::sleep(tokio::time::Duration::from_millis(100)).await;
                         break;
                     }
+                    tokio::time::sleep(tokio::time::Duration::from_millis(100)).await;
                 }
             },
             InitSystem::Systemd => {
