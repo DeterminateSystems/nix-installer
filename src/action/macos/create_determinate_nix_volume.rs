@@ -157,6 +157,9 @@ impl Action for CreateDeterminateNixVolume {
             self.create_volume.tracing_synopsis(),
             self.create_fstab_entry.tracing_synopsis(),
             self.encrypt_volume.tracing_synopsis(),
+            self.setup_volume_daemon.tracing_synopsis(),
+            self.bootstrap_volume.tracing_synopsis(),
+            self.kickstart_launchctl_service.tracing_synopsis(),
             self.enable_ownership.tracing_synopsis(),
         ];
 
@@ -258,6 +261,21 @@ impl Action for CreateDeterminateNixVolume {
             tokio::time::sleep(Duration::from_millis(100)).await;
         }
 
+        self.setup_volume_daemon
+            .try_execute()
+            .await
+            .map_err(Self::error)?;
+
+        self.bootstrap_volume
+            .try_execute()
+            .await
+            .map_err(Self::error)?;
+
+        self.kickstart_launchctl_service
+            .try_execute()
+            .await
+            .map_err(Self::error)?;
+
         self.enable_ownership
             .try_execute()
             .await
@@ -275,6 +293,9 @@ impl Action for CreateDeterminateNixVolume {
             self.create_volume.tracing_synopsis(),
             self.create_fstab_entry.tracing_synopsis(),
             self.encrypt_volume.tracing_synopsis(),
+            self.setup_volume_daemon.tracing_synopsis(),
+            self.bootstrap_volume.tracing_synopsis(),
+            self.kickstart_launchctl_service.tracing_synopsis(),
             self.enable_ownership.tracing_synopsis(),
         ];
 
@@ -295,6 +316,15 @@ impl Action for CreateDeterminateNixVolume {
         if let Err(err) = self.enable_ownership.try_revert().await {
             errors.push(err)
         };
+        if let Err(err) = self.kickstart_launchctl_service.try_revert().await {
+            errors.push(err)
+        }
+        if let Err(err) = self.bootstrap_volume.try_revert().await {
+            errors.push(err)
+        }
+        if let Err(err) = self.setup_volume_daemon.try_revert().await {
+            errors.push(err)
+        }
         if let Err(err) = self.encrypt_volume.try_revert().await {
             errors.push(err)
         }
