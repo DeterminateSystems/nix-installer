@@ -22,19 +22,6 @@
     determinate = {
       url = "https://flakehub.com/f/DeterminateSystems/determinate/0.1.tar.gz";
 
-      inputs.determinate-nixd-aarch64-darwin = {
-        url = "https://install.determinate.systems/determinate-nixd/rev/06fe26d67808f9d29585f3255917b1438ce14aca/macOS";
-        flake = false;
-      };
-      inputs.determinate-nixd-aarch64-linux = {
-        url = "https://install.determinate.systems/determinate-nixd/rev/06fe26d67808f9d29585f3255917b1438ce14aca/aarch64-linux";
-        flake = false;
-      };
-      inputs.determinate-nixd-x86_64-linux = {
-        url = "https://install.determinate.systems/determinate-nixd/rev/06fe26d67808f9d29585f3255917b1438ce14aca/x86_64-linux";
-        flake = false;
-      };
-
       # We set the overrides below so the flake.lock has many fewer nodes.
       #
       # The `determinate` input is used to access the builds of `determinate-nixd`.
