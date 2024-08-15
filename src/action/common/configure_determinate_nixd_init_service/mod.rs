@@ -1,12 +1,13 @@
+use std::collections::HashMap;
 use std::path::PathBuf;
 
 use serde::{Deserialize, Serialize};
 use tokio::io::AsyncWriteExt;
 use tracing::{span, Span};
 
-use crate::action::{ActionError, ActionErrorKind, ActionTag, StatefulAction};
-
+use crate::action::common::configure_init_service::{SocketFile, UnitSrc};
 use crate::action::{common::ConfigureInitService, Action, ActionDescription};
+use crate::action::{ActionError, ActionErrorKind, ActionTag, StatefulAction};
 use crate::settings::InitSystem;
 
 // Linux
@@ -45,10 +46,31 @@ impl ConfigureDeterminateNixdInitService {
             _ => None,
         };
 
-        let configure_init_service =
-            ConfigureInitService::plan(init, start_daemon, None, service_dest, service_name)
-                .await
-                .map_err(Self::error)?;
+        let configure_init_service = ConfigureInitService::plan(
+            init,
+            start_daemon,
+            None,
+            service_dest,
+            service_name,
+            vec![
+                SocketFile {
+                    name: "nix-daemon.socket".into(),
+                    src: UnitSrc::Literal(
+                        include_str!("./nix-daemon.determinate-nixd.socket").to_string(),
+                    ),
+                    dest: "/etc/systemd/system/nix-daemon.socket".into(),
+                },
+                SocketFile {
+                    name: "determinate-nixd.socket".into(),
+                    src: UnitSrc::Literal(
+                        include_str!("./nixd.determinate-nixd.socket").to_string(),
+                    ),
+                    dest: "/etc/systemd/system/determinate-nixd.socket".into(),
+                },
+            ],
+        )
+        .await
+        .map_err(Self::error)?;
 
         Ok(Self {
             init,
@@ -140,6 +162,20 @@ impl Action for ConfigureDeterminateNixdInitService {
     async fn revert(&mut self) -> Result<(), ActionError> {
         self.configure_init_service.try_revert().await?;
 
+        let file_to_remove = match self.init {
+            InitSystem::Launchd => Some(DARWIN_NIXD_DAEMON_DEST),
+            InitSystem::Systemd => Some(LINUX_NIXD_DAEMON_DEST),
+            InitSystem::None => None,
+        };
+
+        if let Some(file_to_remove) = file_to_remove {
+            tracing::trace!(path = %file_to_remove, "Removing");
+            tokio::fs::remove_file(file_to_remove)
+                .await
+                .map_err(|e| ActionErrorKind::Remove(file_to_remove.into(), e))
+                .map_err(Self::error)?;
+        }
+
         Ok(())
     }
 }
@@ -153,11 +189,12 @@ pub enum ConfigureDeterminateNixDaemonServiceError {}
 pub struct DeterminateNixDaemonPlist {
     label: String,
     program: String,
-    keep_alive: bool,
     run_at_load: bool,
+    sockets: HashMap<String, Socket>,
     standard_error_path: String,
     standard_out_path: String,
     soft_resource_limits: ResourceLimits,
+    hard_resource_limits: ResourceLimits,
 }
 
 #[derive(Deserialize, Clone, Debug, Serialize, PartialEq)]
@@ -166,10 +203,23 @@ pub struct ResourceLimits {
     number_of_files: usize,
 }
 
+#[derive(Deserialize, Clone, Debug, Serialize, PartialEq)]
+#[serde(rename_all = "PascalCase")]
+pub struct Socket {
+    sock_family: SocketFamily,
+    sock_passive: bool,
+    sock_path_name: String,
+}
+
+#[derive(Deserialize, Clone, Debug, Serialize, PartialEq)]
+#[serde(rename_all = "PascalCase")]
+enum SocketFamily {
+    Unix,
+}
+
 fn generate_plist() -> DeterminateNixDaemonPlist {
     DeterminateNixDaemonPlist {
-        keep_alive: true,
-        run_at_load: true,
+        run_at_load: false,
         label: "systems.determinate.nix-daemon".into(),
         program: "/usr/local/bin/determinate-nixd".into(),
         standard_error_path: "/var/log/determinate-nix-daemon.log".into(),
@@ -177,5 +227,26 @@ fn generate_plist() -> DeterminateNixDaemonPlist {
         soft_resource_limits: ResourceLimits {
             number_of_files: 1048576,
         },
+        hard_resource_limits: ResourceLimits {
+            number_of_files: 1048576 * 2,
+        },
+        sockets: HashMap::from([
+            (
+                "determinate-nixd.socket".to_string(),
+                Socket {
+                    sock_family: SocketFamily::Unix,
+                    sock_passive: true,
+                    sock_path_name: "/var/run/determinate-nixd.socket".into(),
+                },
+            ),
+            (
+                "nix-daemon.socket".to_string(),
+                Socket {
+                    sock_family: SocketFamily::Unix,
+                    sock_passive: true,
+                    sock_path_name: "/var/run/nix-daemon.socket".into(),
+                },
+            ),
+        ]),
     }
 }

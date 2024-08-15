@@ -72,10 +72,10 @@ impl Action for UnmountApfsVolume {
             let the_plist: DiskUtilInfoOutput =
                 plist::from_reader(Cursor::new(buf)).map_err(Self::error)?;
 
-            the_plist.mount_point.is_some()
+            the_plist.is_mounted()
         };
 
-        if !currently_mounted {
+        if currently_mounted {
             execute_command(
                 Command::new("/usr/sbin/diskutil")
                     .process_group(0)
@@ -114,10 +114,10 @@ impl Action for UnmountApfsVolume {
             let the_plist: DiskUtilInfoOutput =
                 plist::from_reader(Cursor::new(buf)).map_err(Self::error)?;
 
-            the_plist.mount_point.is_some()
+            the_plist.is_mounted()
         };
 
-        if !currently_mounted {
+        if currently_mounted {
             execute_command(
                 Command::new("/usr/sbin/diskutil")
                     .process_group(0)

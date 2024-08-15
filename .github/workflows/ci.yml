@@ -59,6 +59,9 @@ jobs:
     name: Run x86_64 Linux
     runs-on: ubuntu-latest
     needs: [lints, build-x86_64-linux]
+    strategy:
+      matrix:
+        extra-args: ["--determinate", ""]
     permissions:
       id-token: "write"
       contents: "read"
@@ -80,6 +83,7 @@ jobs:
         uses: DeterminateSystems/nix-installer-action@main
         with:
           flakehub: true
+          extra-args: ${{ matrix.extra-args }}
           local-root: install-root/
           logger: pretty
           log-directives: nix_installer=debug
@@ -110,6 +114,7 @@ jobs:
         uses: DeterminateSystems/nix-installer-action@main
         with:
           flakehub: true
+          extra-args: ${{ matrix.extra-args }}
           local-root: install-root/
           logger: pretty
           log-directives: nix_installer=debug
@@ -167,6 +172,9 @@ jobs:
     name: Run x86_64 Linux (No init)
     runs-on: ubuntu-latest
     needs: [lints, build-x86_64-linux]
+    strategy:
+      matrix:
+        extra-args: ["--determinate", ""]
     permissions:
       id-token: "write"
       contents: "read"
@@ -189,6 +197,7 @@ jobs:
         with:
           flakehub: true
           init: none
+          extra-args: ${{ matrix.extra-args }}
           planner: linux
           local-root: install-root/
           logger: pretty
@@ -224,6 +233,7 @@ jobs:
           flakehub: true
           init: none
           planner: linux
+          extra-args: ${{ matrix.extra-args }}
           local-root: install-root/
           logger: pretty
           log-directives: nix_installer=debug
@@ -281,6 +291,9 @@ jobs:
     name: Run x86_64 Darwin
     runs-on: macos-13
     needs: [lints, build-x86_64-darwin]
+    strategy:
+      matrix:
+        extra-args: ["--determinate", ""]
     permissions:
       id-token: "write"
       contents: "read"
@@ -302,6 +315,7 @@ jobs:
         uses: DeterminateSystems/nix-installer-action@main
         with:
           flakehub: true
+          extra-args: ${{ matrix.extra-args }}
           local-root: install-root/
           logger: pretty
           log-directives: nix_installer=debug
@@ -320,6 +334,7 @@ jobs:
         uses: DeterminateSystems/nix-installer-action@main
         with:
           flakehub: true
+          extra-args: ${{ matrix.extra-args }}
           local-root: install-root/
           logger: pretty
           log-directives: nix_installer=debug
@@ -364,6 +379,9 @@ jobs:
     name: Run aarch64 Linux
     runs-on: namespace-profile-default-arm64
     needs: [lints, build-aarch64-linux]
+    strategy:
+      matrix:
+        extra-args: ["--determinate", ""]
     permissions:
       id-token: "write"
       contents: "read"
@@ -386,6 +404,7 @@ jobs:
         with:
           flakehub: true
           local-root: install-root/
+          extra-args: ${{ matrix.extra-args }}
           logger: pretty
           log-directives: nix_installer=debug
           backtrace: full
@@ -417,6 +436,7 @@ jobs:
           flakehub: true
           local-root: install-root/
           logger: pretty
+          extra-args: ${{ matrix.extra-args }}
           log-directives: nix_installer=debug
           backtrace: full
           github-token: ${{ secrets.GITHUB_TOKEN }}
@@ -472,6 +492,9 @@ jobs:
     name: Run aarch64 Darwin
     runs-on: macos-latest-xlarge
     needs: [lints, build-aarch64-darwin]
+    strategy:
+      matrix:
+        extra-args: ["--determinate", ""]
     permissions:
       id-token: "write"
       contents: "read"
@@ -494,6 +517,7 @@ jobs:
         with:
           flakehub: true
           local-root: install-root/
+          extra-args: ${{ matrix.extra-args }}
           logger: pretty
           log-directives: nix_installer=debug
           backtrace: full
@@ -512,6 +536,7 @@ jobs:
         with:
           flakehub: true
           local-root: install-root/
+          extra-args: ${{ matrix.extra-args }}
           logger: pretty
           log-directives: nix_installer=debug
           backtrace: full

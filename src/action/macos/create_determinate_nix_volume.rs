@@ -1,3 +1,15 @@
+use std::{
+    path::{Path, PathBuf},
+    time::Duration,
+};
+
+use tokio::process::Command;
+use tracing::{span, Span};
+
+use super::create_fstab_entry::CreateFstabEntry;
+use crate::action::macos::{
+    BootstrapLaunchctlService, CreateDeterminateVolumeService, KickstartLaunchctlService,
+};
 use crate::action::{
     base::{create_or_insert_into_file, CreateDirectory, CreateOrInsertIntoFile},
     common::place_nix_configuration::NIX_CONF_FOLDER,
@@ -7,14 +19,10 @@ use crate::action::{
     },
     Action, ActionDescription, ActionError, ActionErrorKind, ActionTag, StatefulAction,
 };
-use std::{
-    path::{Path, PathBuf},
-    time::Duration,
-};
-use tokio::process::Command;
-use tracing::{span, Span};
 
-use super::create_fstab_entry::CreateFstabEntry;
+pub const VOLUME_MOUNT_SERVICE_NAME: &str = "systems.determinate.nix-store";
+pub const VOLUME_MOUNT_SERVICE_DEST: &str =
+    "/Library/LaunchDaemons/systems.determinate.nix-store.plist";
 
 /// Create an APFS volume
 #[derive(Debug, serde::Deserialize, serde::Serialize, Clone)]
@@ -30,6 +38,9 @@ pub struct CreateDeterminateNixVolume {
     create_volume: StatefulAction<CreateApfsVolume>,
     create_fstab_entry: StatefulAction<CreateFstabEntry>,
     encrypt_volume: StatefulAction<EncryptApfsVolume>,
+    setup_volume_daemon: StatefulAction<CreateDeterminateVolumeService>,
+    bootstrap_volume: StatefulAction<BootstrapLaunchctlService>,
+    kickstart_launchctl_service: StatefulAction<KickstartLaunchctlService>,
     enable_ownership: StatefulAction<EnableOwnership>,
 }
 
@@ -73,6 +84,25 @@ impl CreateDeterminateNixVolume {
 
         let encrypt_volume = EncryptApfsVolume::plan(true, disk, &name, &create_volume).await?;
 
+        let setup_volume_daemon = CreateDeterminateVolumeService::plan(
+            VOLUME_MOUNT_SERVICE_DEST,
+            VOLUME_MOUNT_SERVICE_NAME,
+        )
+        .await
+        .map_err(Self::error)?;
+
+        let bootstrap_volume = BootstrapLaunchctlService::plan(
+            "system",
+            VOLUME_MOUNT_SERVICE_NAME,
+            VOLUME_MOUNT_SERVICE_DEST,
+        )
+        .await
+        .map_err(Self::error)?;
+        let kickstart_launchctl_service =
+            KickstartLaunchctlService::plan("system", VOLUME_MOUNT_SERVICE_NAME)
+                .await
+                .map_err(Self::error)?;
+
         let enable_ownership = EnableOwnership::plan("/nix").await.map_err(Self::error)?;
 
         Ok(Self {
@@ -86,6 +116,9 @@ impl CreateDeterminateNixVolume {
             create_volume,
             create_fstab_entry,
             encrypt_volume,
+            setup_volume_daemon,
+            bootstrap_volume,
+            kickstart_launchctl_service,
             enable_ownership,
         }
         .into())
@@ -124,6 +157,9 @@ impl Action for CreateDeterminateNixVolume {
             self.create_volume.tracing_synopsis(),
             self.create_fstab_entry.tracing_synopsis(),
             self.encrypt_volume.tracing_synopsis(),
+            self.setup_volume_daemon.tracing_synopsis(),
+            self.bootstrap_volume.tracing_synopsis(),
+            self.kickstart_launchctl_service.tracing_synopsis(),
             self.enable_ownership.tracing_synopsis(),
         ];
 
@@ -225,6 +261,21 @@ impl Action for CreateDeterminateNixVolume {
             tokio::time::sleep(Duration::from_millis(100)).await;
         }
 
+        self.setup_volume_daemon
+            .try_execute()
+            .await
+            .map_err(Self::error)?;
+
+        self.bootstrap_volume
+            .try_execute()
+            .await
+            .map_err(Self::error)?;
+
+        self.kickstart_launchctl_service
+            .try_execute()
+            .await
+            .map_err(Self::error)?;
+
         self.enable_ownership
             .try_execute()
             .await
@@ -242,6 +293,9 @@ impl Action for CreateDeterminateNixVolume {
             self.create_volume.tracing_synopsis(),
             self.create_fstab_entry.tracing_synopsis(),
             self.encrypt_volume.tracing_synopsis(),
+            self.setup_volume_daemon.tracing_synopsis(),
+            self.bootstrap_volume.tracing_synopsis(),
+            self.kickstart_launchctl_service.tracing_synopsis(),
             self.enable_ownership.tracing_synopsis(),
         ];
 
@@ -262,6 +316,15 @@ impl Action for CreateDeterminateNixVolume {
         if let Err(err) = self.enable_ownership.try_revert().await {
             errors.push(err)
         };
+        if let Err(err) = self.kickstart_launchctl_service.try_revert().await {
+            errors.push(err)
+        }
+        if let Err(err) = self.bootstrap_volume.try_revert().await {
+            errors.push(err)
+        }
+        if let Err(err) = self.setup_volume_daemon.try_revert().await {
+            errors.push(err)
+        }
         if let Err(err) = self.encrypt_volume.try_revert().await {
             errors.push(err)
         }

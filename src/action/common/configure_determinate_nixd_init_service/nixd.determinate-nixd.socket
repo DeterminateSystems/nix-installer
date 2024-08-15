@@ -1,0 +1,13 @@
+[Unit]
+Description=Determinate Nixd Daemon Socket
+Before=multi-user.target
+RequiresMountsFor=/nix/store
+RequiresMountsFor=/nix/var/determinate
+ConditionPathIsReadWrite=/nix/var/determinate
+
+[Socket]
+FileDescriptorName=determinate-nixd.socket
+ListenStream=/nix/var/determinate/determinate-nixd.socket
+
+[Install]
+WantedBy=sockets.target

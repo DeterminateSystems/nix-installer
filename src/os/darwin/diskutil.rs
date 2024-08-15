@@ -9,6 +9,15 @@ pub struct DiskUtilInfoOutput {
     pub mount_point: Option<PathBuf>,
 }
 
+impl DiskUtilInfoOutput {
+    pub fn is_mounted(&self) -> bool {
+        match self.mount_point {
+            None => false,
+            Some(ref mp) => !mp.as_os_str().is_empty(),
+        }
+    }
+}
+
 #[derive(serde::Deserialize, Clone, Debug)]
 #[serde(rename_all = "PascalCase")]
 pub struct DiskUtilApfsListOutput {
