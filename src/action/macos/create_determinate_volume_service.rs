@@ -17,7 +17,7 @@ use crate::action::{
 #[derive(Debug, serde::Deserialize, serde::Serialize, Clone)]
 #[serde(tag = "action_name", rename = "create_determinate_volume_service")]
 pub struct CreateDeterminateVolumeService {
-    pub(crate) path: PathBuf,
+    path: PathBuf,
     mount_service_label: String,
     needs_bootout: bool,
 }
@@ -46,11 +46,13 @@ impl CreateDeterminateVolumeService {
             "Executing"
         );
         let check_loaded_output = check_loaded_command
-            .output()
+            .status()
             .await
             .map_err(|e| ActionErrorKind::command(&check_loaded_command, e))
             .map_err(Self::error)?;
-        this.needs_bootout = check_loaded_output.status.success();
+
+        this.needs_bootout = check_loaded_output.success();
+
         if this.needs_bootout {
             tracing::debug!(
                 "Detected loaded service `{}` which needs unload before replacing `{}`",
