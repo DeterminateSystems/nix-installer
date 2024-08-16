@@ -47,6 +47,7 @@ let
           machine =
             { config, pkgs, ... }: {
               virtualisation.${containerTool}.enable = true;
+              virtualisation.diskSize = 4 * 1024;
             };
         };
         testScript = ''
