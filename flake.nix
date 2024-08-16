@@ -135,6 +135,13 @@
             };
           });
 
+          # NOTE(cole-h): Got hit by the Rust 1.80 x time incompatibility issue:
+          # https://github.com/NixOS/nixpkgs/issues/332957
+          # Can be removed once https://github.com/NixOS/nixpkgs/pull/335152 merges.
+          cargo-outdated = final.callPackage ./nix/cargo-outdated.nix {
+            inherit (final.darwin.apple_sdk.frameworks) CoreFoundation CoreServices Security SystemConfiguration;
+          };
+
           nix-installer = naerskLib.buildPackage sharedAttrs;
         } // nixpkgs.lib.optionalAttrs (prev.stdenv.system == "x86_64-linux") rec {
           default = nix-installer-static;
