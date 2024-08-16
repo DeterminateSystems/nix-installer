@@ -122,6 +122,26 @@
           };
         in
         rec {
+          # NOTE(cole-h): fixes build -- nixpkgs updated libsepol to 3.7 but didn't update
+          # checkpolicy to 3.7, checkpolicy links against libsepol, and libsepol 3.7 changed
+          # something in the API so checkpolicy 3.6 failed to build against libsepol 3.7
+          # Can be removed once https://github.com/NixOS/nixpkgs/pull/335146 merges.
+          checkpolicy = prev.checkpolicy.overrideAttrs ({ ... }: rec {
+            version = "3.7";
+
+            src = final.fetchurl {
+              url = "https://github.com/SELinuxProject/selinux/releases/download/${version}/checkpolicy-${version}.tar.gz";
+              sha256 = "sha256-/T4ZJUd9SZRtERaThmGvRMH4bw1oFGb9nwLqoGACoH8=";
+            };
+          });
+
+          # NOTE(cole-h): Got hit by the Rust 1.80 x time incompatibility issue:
+          # https://github.com/NixOS/nixpkgs/issues/332957
+          # Can be removed once https://github.com/NixOS/nixpkgs/pull/335152 merges.
+          cargo-outdated = final.callPackage ./nix/cargo-outdated.nix {
+            inherit (final.darwin.apple_sdk.frameworks) CoreFoundation CoreServices Security SystemConfiguration;
+          };
+
           nix-installer = naerskLib.buildPackage sharedAttrs;
         } // nixpkgs.lib.optionalAttrs (prev.stdenv.system == "x86_64-linux") rec {
           default = nix-installer-static;
@@ -164,7 +184,7 @@
               rust-analyzer
               cargo-outdated
               cacert
-              cargo-audit
+              # cargo-audit # NOTE(cole-h): build currently broken because of time dependency and Rust 1.80
               cargo-watch
               nixpkgs-fmt
               check.check-rustfmt
