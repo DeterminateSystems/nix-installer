@@ -46,7 +46,7 @@ typetag = { version = "0.2.17", default-features = false }
 dyn-clone = { version = "1.0.9", default-features = false }
 rand = { version = "0.8.5", default-features = false, features = [ "std", "std_rng" ] }
 semver = { version = "1.0.23", default-features = false, features = ["serde", "std"] }
-term = { version = "0.7.0", default-features = false }
+term = { version = "1.0.0", default-features = false }
 uuid = { version = "1.2.2", features = ["serde"] }
 os-release = { version = "0.1.0", default-features = false }
 is_ci = { version = "1.1.1", default-features = false, optional = true }
