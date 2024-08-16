@@ -19,7 +19,6 @@ The `nix-installer` has successfully completed over 2,000,000 installs in a numb
 | WSL2 (x86_64 & aarch64)    | ✓ (via [systemd]) |      ✓      |      Stable       |
 | Podman Linux Containers    | ✓ (via [systemd]) |      ✓      |      Stable       |
 | Docker Containers          |                   |      ✓      |      Stable       |
-| Linux (i686)               | ✓ (via [systemd]) |      ✓      |     Unstable      |
 
 > [!NOTE]
 > On **MacOS only**, removing users and/or groups may fail if there are no users who are logged in graphically.

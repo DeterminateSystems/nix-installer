@@ -213,10 +213,6 @@ get_architecture() {
             _cputype=x86_64
             ;;
 
-        i686)
-            _cputype=i686
-            ;;
-
         *)
             err "unknown CPU type: $_cputype"
             ;;
