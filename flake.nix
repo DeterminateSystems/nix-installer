@@ -184,7 +184,7 @@
               rust-analyzer
               cargo-outdated
               cacert
-              cargo-audit
+              # cargo-audit # NOTE(cole-h): build currently broken because of time dependency and Rust 1.80
               cargo-watch
               nixpkgs-fmt
               check.check-rustfmt
