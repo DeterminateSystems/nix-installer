@@ -21,22 +21,14 @@ pub const NIX_TARBALL_PATH: &str = env!("NIX_INSTALLER_TARBALL_PATH");
 /// in the resulting binary.
 pub const NIX_TARBALL: &[u8] = include_bytes!(env!("NIX_INSTALLER_TARBALL_PATH"));
 
-#[cfg(all(
-    feature = "determinate-nix",
-    // Determinate Nix is available on everything but i686-linux, so set the bytes
-    not(all(target_os = "linux", target_arch = "x86"))
-))]
+#[cfg(feature = "determinate-nix")]
 /// The DETERMINATE_NIXD_BINARY_PATH environment variable should point to a target-appropriate
 /// static build of the Determinate Nixd binary. The contents are embedded in the resulting
 /// binary if the determinate-nix feature is turned on.
 pub const DETERMINATE_NIXD_BINARY: Option<&[u8]> =
     Some(include_bytes!(env!("DETERMINATE_NIXD_BINARY_PATH")));
 
-#[cfg(not(all(
-    feature = "determinate-nix",
-    // Determinate Nix is not available on i686-linux, so default it to None
-    not(all(target_os = "linux", target_arch = "x86"))
-)))]
+#[cfg(not(feature = "determinate-nix"))]
 /// The DETERMINATE_NIXD_BINARY_PATH environment variable should point to a target-appropriate
 /// static build of the Determinate Nixd binary. The contents are embedded in the resulting
 /// binary if the determinate-nix feature is turned on.
