@@ -459,26 +459,24 @@ impl Action for ConfigureInitService {
                 }
 
                 for SocketFile { name, src, .. } in socket_files.iter() {
-                    if *start_daemon || any_socket_was_active {
-                        match src {
-                            UnitSrc::Path(path) => {
-                                // NOTE(cole-h): we have to enable by path here because older
-                                // systemd's (e.g. on our Ubuntu 16.04 test VMs) had faulty (or too-
-                                // strict) symlink detection, which causes the symlink chain of
-                                // `/etc/systemd/system/nix-daemon.socket` ->
-                                // `/nix/var/nix/profiles/default` -> `/nix/store/............/nix-
-                                // daemon.socket` to fail with "Failed to execute operation: Too
-                                // many levels of symbolic links"
-                                enable(path.display().to_string().as_ref(), true)
-                                    .await
-                                    .map_err(Self::error)?;
-                            },
-                            UnitSrc::Literal(_) => {
-                                enable(name, true).await.map_err(Self::error)?;
-                            },
-                        }
-                    } else {
-                        enable(name, false).await.map_err(Self::error)?;
+                    let enable_now = *start_daemon || any_socket_was_active;
+
+                    match src {
+                        UnitSrc::Path(path) => {
+                            // NOTE(cole-h): we have to enable by path here because older systemd's
+                            // (e.g. on our Ubuntu 16.04 test VMs) had faulty (or too- strict)
+                            // symlink detection, which causes the symlink chain of
+                            // `/etc/systemd/system/nix-daemon.socket` ->
+                            // `/nix/var/nix/profiles/default` -> `/nix/store/............/nix-
+                            // daemon.socket` to fail with "Failed to execute operation: Too many
+                            // levels of symbolic links"
+                            enable(path.display().to_string().as_ref(), enable_now)
+                                .await
+                                .map_err(Self::error)?;
+                        },
+                        UnitSrc::Literal(_) => {
+                            enable(name, enable_now).await.map_err(Self::error)?;
+                        },
                     }
                 }
             },
