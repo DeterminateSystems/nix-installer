@@ -42,25 +42,25 @@ let
         fi
         if systemctl is-failed nix-daemon.socket; then
           echo "nix-daemon.socket is failed"
-          systemctl status nix-daemon.socket
+          sudo journalctl -eu nix-daemon.socket
           exit 1
         fi
 
         if !(sudo systemctl start nix-daemon.service); then
           echo "nix-daemon.service failed to start"
-          systemctl status nix-daemon.service
+          sudo journalctl -eu nix-daemon.service
           exit 1
         fi
 
         if systemctl is-failed nix-daemon.service; then
           echo "nix-daemon.service is failed"
-          systemctl status nix-daemon.service
+          sudo journalctl -eu nix-daemon.service
           exit 1
         fi
 
         if !(sudo systemctl stop nix-daemon.service); then
           echo "nix-daemon.service failed to stop"
-          systemctl status nix-daemon.service
+          sudo journalctl -eu nix-daemon.service
           exit 1
         fi
 
@@ -197,7 +197,7 @@ let
       check = installCases.install-default.check + ''
         if systemctl is-failed determinate-nixd.socket; then
           echo "determinate-nixd.socket is failed"
-          systemctl status determinate-nixd.socket;
+          sudo journalctl -eu determinate-nixd.socket
           exit 1
         fi
       '';
