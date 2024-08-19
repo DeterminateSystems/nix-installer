@@ -622,7 +622,7 @@ let
   makeTests = name: tests: builtins.mapAttrs
     (imageName: image:
       let
-        doTests = builtins.removeAttrs tests (image.skip or []);
+        doTests = builtins.removeAttrs tests (image.skip or [ ]);
       in
       rec {
         ${image.system} = (builtins.mapAttrs
