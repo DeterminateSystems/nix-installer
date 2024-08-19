@@ -491,6 +491,9 @@ let
       rootDisk = "box.img";
       upstreamScriptsWork = false; # SELinux!
       system = "x86_64-linux";
+      skip = [
+        "install-determinate" # RHEL v7 has systemd 219 (2015-02-16); determinate-nixd requires at least 227 (2015-10-07)
+      ];
     };
 
     "rhel-v8" = {
@@ -618,12 +621,15 @@ let
 
   makeTests = name: tests: builtins.mapAttrs
     (imageName: image:
+      let
+        doTests = builtins.removeAttrs tests (image.skip or []);
+      in
       rec {
         ${image.system} = (builtins.mapAttrs
           (testName: test:
             makeTest imageName testName test
           )
-          tests) // {
+          doTests) // {
           "${name}" = (with (forSystem "x86_64-linux" ({ system, pkgs, ... }: pkgs)); pkgs.releaseTools.aggregate {
             name = name;
             constituents = (
@@ -631,7 +637,7 @@ let
                 (testName: test:
                   makeTest imageName testName test
                 )
-                tests
+                doTests
             );
           });
         };
@@ -669,7 +675,7 @@ lib.recursiveUpdate joined-tests {
   all."x86_64-linux" = (with (forSystem "x86_64-linux" ({ system, pkgs, ... }: pkgs)); pkgs.lib.mapAttrs (caseName: case:
     pkgs.releaseTools.aggregate {
       name = caseName;
-      constituents = pkgs.lib.mapAttrsToList (name: value: value."x86_64-linux"."${caseName}") joined-tests;
+      constituents = pkgs.lib.mapAttrsToList (name: value: value."x86_64-linux"."${caseName}" or "") joined-tests;
     }
   )) (allCases // { "cure-self" = { }; "cure-script" = { }; "install" = { }; "uninstall" = { }; "all" = { }; });
 }
