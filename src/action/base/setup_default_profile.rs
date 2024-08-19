@@ -118,6 +118,7 @@ impl Action for SetupDefaultProfile {
         execute_command(
             Command::new(nix_pkg.join("bin/nix-env"))
                 .process_group(0)
+                .args(["--option", "substitute", "false"])
                 .arg("-i")
                 .arg(&nix_pkg)
                 .stdin(std::process::Stdio::null())
@@ -138,6 +139,7 @@ impl Action for SetupDefaultProfile {
         execute_command(
             Command::new(nix_pkg.join("bin/nix-env"))
                 .process_group(0)
+                .args(["--option", "substitute", "false"])
                 .arg("-i")
                 .arg(&nss_ca_cert_pkg)
                 .stdin(std::process::Stdio::null())
