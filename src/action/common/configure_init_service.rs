@@ -335,26 +335,33 @@ impl Action for ConfigureInitService {
                 // The goal state is the `socket` enabled and active, the service not enabled and stopped (it activates via socket activation)
                 let mut any_socket_was_active = false;
                 for SocketFile { name, .. } in socket_files.iter() {
+                    let is_active = is_active(name).await.map_err(Self::error)?;
+
                     if is_enabled(name).await.map_err(Self::error)? {
-                        disable(name, false).await.map_err(Self::error)?;
-                    }
-                    if is_active(name).await.map_err(Self::error)? {
+                        disable(name, is_active).await.map_err(Self::error)?;
+                    } else if is_active {
                         stop(name).await.map_err(Self::error)?;
-                        any_socket_was_active = true;
                     };
+
+                    if is_active {
+                        any_socket_was_active = true;
+                    }
                 }
 
-                if is_enabled("nix-daemon.service")
-                    .await
-                    .map_err(Self::error)?
                 {
-                    let now = is_active("nix-daemon.service").await.map_err(Self::error)?;
-                    disable("nix-daemon.service", now)
+                    let is_active = is_active("nix-daemon.service").await.map_err(Self::error)?;
+
+                    if is_enabled("nix-daemon.service")
                         .await
-                        .map_err(Self::error)?;
-                } else if is_active("nix-daemon.service").await.map_err(Self::error)? {
-                    stop("nix-daemon.service").await.map_err(Self::error)?;
-                };
+                        .map_err(Self::error)?
+                    {
+                        disable("nix-daemon.service", is_active)
+                            .await
+                            .map_err(Self::error)?;
+                    } else if is_active {
+                        stop("nix-daemon.service").await.map_err(Self::error)?;
+                    };
+                }
 
                 tracing::trace!(src = TMPFILES_SRC, dest = TMPFILES_DEST, "Symlinking");
                 if !Path::new(TMPFILES_DEST).exists() {

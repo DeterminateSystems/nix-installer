@@ -8,6 +8,7 @@ ConditionPathIsReadWrite=/nix/var/determinate
 [Socket]
 FileDescriptorName=determinate-nixd.socket
 ListenStream=/nix/var/determinate/determinate-nixd.socket
+Service=nix-daemon.service
 
 [Install]
 WantedBy=sockets.target
