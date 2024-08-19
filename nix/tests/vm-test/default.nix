@@ -10,6 +10,10 @@ let
     NIX_PATH=$(readlink -f nix.tar.xz)
     RUST_BACKTRACE="full" ./nix-installer install --nix-package-url "file://$NIX_PATH" --no-confirm
   '';
+  nix-installer-install-determinate = ''
+    NIX_PATH=$(readlink -f nix.tar.xz)
+    RUST_BACKTRACE="full" ./nix-installer install --nix-package-url "file://$NIX_PATH" --no-confirm --logger pretty --log-directive nix_installer=info --determinate
+  '';
   cure-script-multi-user = ''
     tar xvf nix.tar.xz
     ./nix-*/install --no-channel-add --yes --daemon
@@ -185,6 +189,18 @@ let
       '';
       install = installCases.install-default.install;
       check = installCases.install-default.check;
+      uninstall = installCases.install-default.uninstall;
+      uninstallCheck = installCases.install-default.uninstallCheck;
+    };
+    install-determinate = {
+      install = nix-installer-install-determinate;
+      check = installCases.install-default.check + ''
+        if systemctl is-failed determinate-nixd.socket; then
+          echo "determinate-nixd.socket is failed"
+          systemctl status determinate-nixd.socket;
+          exit 1
+        fi
+      '';
       uninstall = installCases.install-default.uninstall;
       uninstallCheck = installCases.install-default.uninstallCheck;
     };
