@@ -11,13 +11,17 @@ use crate::{
             ConfigureDeterminateNixdInitService, ConfigureNix, ConfigureUpstreamInitService,
             CreateUsersAndGroups, ProvisionDeterminateNixd, ProvisionNix,
         },
-        linux::ProvisionSelinux,
+        linux::{
+            provision_selinux::{DETERMINATE_SELINUX_POLICY_PP_CONTENT, SELINUX_POLICY_PP_CONTENT},
+            ProvisionSelinux,
+        },
         StatefulAction,
     },
     error::HasExpectedErrors,
     planner::{Planner, PlannerError},
-    settings::CommonSettings,
-    settings::{determinate_nix_settings, InitSettings, InitSystem, InstallSettingsError},
+    settings::{
+        determinate_nix_settings, CommonSettings, InitSettings, InitSystem, InstallSettingsError,
+    },
     Action, BuiltinPlanner,
 };
 
@@ -87,10 +91,16 @@ impl Planner for Linux {
 
         if has_selinux {
             plan.push(
-                ProvisionSelinux::plan("/usr/share/selinux/packages/nix.pp".into())
-                    .await
-                    .map_err(PlannerError::Action)?
-                    .boxed(),
+                ProvisionSelinux::plan(
+                    "/usr/share/selinux/packages/nix.pp".into(),
+                    self.settings
+                        .determinate_nix
+                        .then_some(DETERMINATE_SELINUX_POLICY_PP_CONTENT)
+                        .unwrap_or(SELINUX_POLICY_PP_CONTENT),
+                )
+                .await
+                .map_err(PlannerError::Action)?
+                .boxed(),
             );
         }
 
