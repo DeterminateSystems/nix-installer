@@ -5,13 +5,15 @@ use crate::{
             ConfigureNix, ConfigureUpstreamInitService, CreateUsersAndGroups,
             ProvisionDeterminateNixd, ProvisionNix,
         },
-        linux::{ProvisionSelinux, StartSystemdUnit, SystemctlDaemonReload},
+        linux::{
+            provision_selinux::{DETERMINATE_SELINUX_POLICY_PP_CONTENT, SELINUX_POLICY_PP_CONTENT},
+            ProvisionSelinux, StartSystemdUnit, SystemctlDaemonReload,
+        },
         StatefulAction,
     },
     error::HasExpectedErrors,
     planner::{Planner, PlannerError},
-    settings::CommonSettings,
-    settings::{determinate_nix_settings, InitSystem, InstallSettingsError},
+    settings::{determinate_nix_settings, CommonSettings, InitSystem, InstallSettingsError},
     Action, BuiltinPlanner,
 };
 use std::{collections::HashMap, path::PathBuf};
@@ -208,10 +210,16 @@ impl Planner for Ostree {
 
         if has_selinux {
             plan.push(
-                ProvisionSelinux::plan("/etc/nix-installer/selinux/packages/nix.pp".into())
-                    .await
-                    .map_err(PlannerError::Action)?
-                    .boxed(),
+                ProvisionSelinux::plan(
+                    "/etc/nix-installer/selinux/packages/nix.pp".into(),
+                    self.settings
+                        .determinate_nix
+                        .then_some(DETERMINATE_SELINUX_POLICY_PP_CONTENT)
+                        .unwrap_or(SELINUX_POLICY_PP_CONTENT),
+                )
+                .await
+                .map_err(PlannerError::Action)?
+                .boxed(),
             );
         }
 
