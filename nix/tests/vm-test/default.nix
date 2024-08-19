@@ -4,7 +4,7 @@
 let
   nix-installer-install = ''
     NIX_PATH=$(readlink -f nix.tar.xz)
-    RUST_BACKTRACE="full" ./nix-installer install --nix-package-url "file://$NIX_PATH" --no-confirm --logger pretty --log-directive nix_installer=info
+    RUST_BACKTRACE="full" ./nix-installer install --nix-package-url "file://$NIX_PATH" --no-confirm --logger pretty --log-directive nix_installer=trace
   '';
   nix-installer-install-quiet = ''
     NIX_PATH=$(readlink -f nix.tar.xz)
@@ -12,7 +12,7 @@ let
   '';
   nix-installer-install-determinate = ''
     NIX_PATH=$(readlink -f nix.tar.xz)
-    RUST_BACKTRACE="full" ./nix-installer install --nix-package-url "file://$NIX_PATH" --no-confirm --logger pretty --log-directive nix_installer=info --determinate
+    RUST_BACKTRACE="full" ./nix-installer install --nix-package-url "file://$NIX_PATH" --no-confirm --logger pretty --log-directive nix_installer=trace --determinate
   '';
   cure-script-multi-user = ''
     tar xvf nix.tar.xz
