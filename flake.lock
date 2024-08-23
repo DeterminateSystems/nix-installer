@@ -217,16 +217,14 @@
       "locked": {
         "lastModified": 1724423028,
         "narHash": "sha256-mSYGU5vXXrrfSAailue+UgWNxfnL7AOVZ4RCdPK2mtM=",
-        "owner": "DeterminateSystems",
-        "repo": "nix",
         "rev": "b13a7d7ef2be6cb870a19c296dc8a59724a2440a",
-        "type": "github"
+        "revCount": 90,
+        "type": "tarball",
+        "url": "https://api.flakehub.com/f/pinned/DeterminateSystems/nix/2.24.4/01917fb6-9673-783a-9c79-5a46636fe80d/source.tar.gz"
       },
       "original": {
-        "owner": "DeterminateSystems",
-        "ref": "main",
-        "repo": "nix",
-        "type": "github"
+        "type": "tarball",
+        "url": "https://flakehub.com/f/DeterminateSystems/nix/%3D2.24.4.tar.gz"
       }
     },
     "nix_2": {
