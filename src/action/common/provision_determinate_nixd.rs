@@ -9,8 +9,7 @@ use crate::action::{
 };
 use crate::settings::InitSystem;
 
-const LINUX_DETERMINATE_NIXD_BINARY_PATH: &str = "/nix/determinate/determinate-nixd";
-const MACOS_DETERMINATE_NIXD_BINARY_PATH: &str = "/usr/local/bin/determinate-nixd";
+const DETERMINATE_NIXD_BINARY_PATH: &str = "/usr/local/bin/determinate-nixd";
 /**
 Provision the determinate-nixd binary
 */
@@ -27,11 +26,7 @@ impl ProvisionDeterminateNixd {
             .ok_or_else(|| Self::error(ActionErrorKind::DeterminateNixUnavailable))?;
 
         let this = Self {
-            binary_location: match init {
-                InitSystem::Launchd => MACOS_DETERMINATE_NIXD_BINARY_PATH.into(),
-                InitSystem::Systemd => LINUX_DETERMINATE_NIXD_BINARY_PATH.into(),
-                InitSystem::None => LINUX_DETERMINATE_NIXD_BINARY_PATH.into(),
-            },
+            binary_location: DETERMINATE_NIXD_BINARY_PATH,
         };
 
         Ok(StatefulAction::uncompleted(this))
