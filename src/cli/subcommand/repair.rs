@@ -6,6 +6,7 @@ use crate::{
     planner::{PlannerError, ShellProfileLocations},
 };
 use clap::{ArgAction, Parser};
+use target_lexicon::OperatingSystem;
 
 /**
 Update the shell profiles to make Nix usable after system upgrades.
@@ -40,19 +41,20 @@ impl CommandExecute for Repair {
             println!("{:#?}", err);
             return Ok(ExitCode::FAILURE);
         }
-        // TODO: Using `cfg` based on OS is not a long term solution.
-        // Make this read the planner from the `/nix/receipt.json` to determine which tasks to run.
-        #[cfg(target_os = "macos")]
-        {
-            let mut reconfigure = crate::action::macos::ConfigureRemoteBuilding::plan()
-                .await
-                .map_err(PlannerError::Action)?
-                .boxed();
 
-            if let Err(err) = reconfigure.try_execute().await {
-                println!("{:#?}", err);
-                return Ok(ExitCode::FAILURE);
-            }
+        match OperatingSystem::host() {
+            OperatingSystem::MacOSX { .. } | OperatingSystem::Darwin => {
+                let mut reconfigure = crate::action::macos::ConfigureRemoteBuilding::plan()
+                    .await
+                    .map_err(PlannerError::Action)?
+                    .boxed();
+
+                if let Err(err) = reconfigure.try_execute().await {
+                    println!("{:#?}", err);
+                    return Ok(ExitCode::FAILURE);
+                }
+            },
+            _ => {},
         }
 
         Ok(ExitCode::SUCCESS)
