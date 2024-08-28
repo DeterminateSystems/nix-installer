@@ -7,7 +7,7 @@
 /nix/var/nix/daemon-socket(/.*)?	system_u:object_r:var_run_t:s0
 /nix/var/nix/profiles(/per-user/[^/]+)?/[^/]+	system_u:object_r:usr_t:s0
 
-/nix/determinate/determinate-nixd	system_u:object_r:bin_t:s0
+/usr/local/bin/determinate-nixd	system_u:object_r:bin_t:s0
 /nix/var/determinate/determinate-nixd.socket	system_u:object_r:var_run_t:s0
 /nix/var/determinate/intake.pipe	system_u:object_r:var_run_t:s0
 /nix/var/determinate/post-build-hook.sh	system_u:object_r:bin_t:s0
