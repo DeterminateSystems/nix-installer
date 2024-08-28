@@ -32,29 +32,32 @@ impl CommandExecute for Repair {
 
         ensure_root()?;
 
-        let mut reconfigure = ConfigureShellProfile::plan(ShellProfileLocations::default())
+        let mut repair_actions = Vec::new();
+
+        let reconfigure = ConfigureShellProfile::plan(ShellProfileLocations::default())
             .await
             .map_err(PlannerError::Action)?
             .boxed();
-
-        if let Err(err) = reconfigure.try_execute().await {
-            println!("{:#?}", err);
-            return Ok(ExitCode::FAILURE);
-        }
+        repair_actions.push(reconfigure);
 
         match OperatingSystem::host() {
             OperatingSystem::MacOSX { .. } | OperatingSystem::Darwin => {
-                let mut reconfigure = crate::action::macos::ConfigureRemoteBuilding::plan()
+                let reconfigure = crate::action::macos::ConfigureRemoteBuilding::plan()
                     .await
                     .map_err(PlannerError::Action)?
                     .boxed();
-
-                if let Err(err) = reconfigure.try_execute().await {
-                    println!("{:#?}", err);
-                    return Ok(ExitCode::FAILURE);
-                }
+                repair_actions.push(reconfigure);
             },
-            _ => {},
+            _ => {
+                // Linux-specific repair actions, once we have them
+            },
+        }
+
+        for mut action in repair_actions {
+            if let Err(err) = action.try_execute().await {
+                println!("{:#?}", err);
+                return Ok(ExitCode::FAILURE);
+            }
         }
 
         Ok(ExitCode::SUCCESS)
