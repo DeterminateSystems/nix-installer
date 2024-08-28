@@ -26,7 +26,7 @@ impl ProvisionDeterminateNixd {
             .ok_or_else(|| Self::error(ActionErrorKind::DeterminateNixUnavailable))?;
 
         let this = Self {
-            binary_location: DETERMINATE_NIXD_BINARY_PATH,
+            binary_location: DETERMINATE_NIXD_BINARY_PATH.into(),
         };
 
         Ok(StatefulAction::uncompleted(this))
