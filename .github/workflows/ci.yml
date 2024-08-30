@@ -605,10 +605,13 @@ jobs:
           logger: pretty
           log-directives: nix_installer=debug
           backtrace: full
-          github-token: ${{ secrets.GITHUB_TOKEN }}
-      - run: nix flake check -L
+      - uses: DeterminateSystems/magic-nix-cache-action@main
+        with:
+          use-gha-cache: false
+
       - run: |
           nix build \
             -L --tarball-ttl 0 --keep-going \
-            github:DeterminateSystems/nix-installer/release-v0.23.0#hydraJobs.container-test.all.x86_64-linux.all \
-            github:DeterminateSystems/nix-installer/release-v0.23.0#hydraJobs.vm-test.all.x86_64-linux.all
+            .#hydraJobs.container-test.all.x86_64-linux.all \
+            .#hydraJobs.vm-test.all.x86_64-linux.all
+      - run: nix flake check -L
