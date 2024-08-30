@@ -227,12 +227,12 @@ fn generate_plist() -> DeterminateNixDaemonPlist {
         standard_error_path: "/var/log/determinate-nix-daemon.log".into(),
         standard_out_path: "/var/log/determinate-nix-daemon.log".into(),
         soft_resource_limits: ResourceLimits {
-            number_of_files: 512 * 1024 * 1024,
+            number_of_files: 1024 * 1024,
             number_of_processes: 1024 * 1024,
             stack: 64 * 1024 * 1024,
         },
         hard_resource_limits: ResourceLimits {
-            number_of_files: 512 * 1024 * 1024,
+            number_of_files: 1024 * 1024,
             number_of_processes: 1024 * 1024,
             stack: 64 * 1024 * 1024,
         },
