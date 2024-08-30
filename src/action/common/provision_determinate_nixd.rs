@@ -7,7 +7,6 @@ use tracing::{span, Span};
 use crate::action::{
     Action, ActionDescription, ActionError, ActionErrorKind, ActionTag, StatefulAction,
 };
-use crate::settings::InitSystem;
 
 const DETERMINATE_NIXD_BINARY_PATH: &str = "/usr/local/bin/determinate-nixd";
 /**
@@ -21,7 +20,7 @@ pub struct ProvisionDeterminateNixd {
 
 impl ProvisionDeterminateNixd {
     #[tracing::instrument(level = "debug", skip_all)]
-    pub async fn plan(init: InitSystem) -> Result<StatefulAction<Self>, ActionError> {
+    pub async fn plan() -> Result<StatefulAction<Self>, ActionError> {
         crate::settings::DETERMINATE_NIXD_BINARY
             .ok_or_else(|| Self::error(ActionErrorKind::DeterminateNixUnavailable))?;
 
