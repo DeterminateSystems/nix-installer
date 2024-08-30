@@ -201,6 +201,7 @@ pub struct DeterminateNixDaemonPlist {
 #[serde(rename_all = "PascalCase")]
 pub struct ResourceLimits {
     number_of_files: usize,
+    stack: usize,
 }
 
 #[derive(Deserialize, Clone, Debug, Serialize, PartialEq)]
@@ -226,9 +227,11 @@ fn generate_plist() -> DeterminateNixDaemonPlist {
         standard_out_path: "/var/log/determinate-nix-daemon.log".into(),
         soft_resource_limits: ResourceLimits {
             number_of_files: 512 * 1024 * 1024,
+            stack: 64 * 1024 * 1024,
         },
         hard_resource_limits: ResourceLimits {
             number_of_files: 512 * 1024 * 1024,
+            stack: 64 * 1024 * 1024,
         },
         sockets: HashMap::from([
             (
