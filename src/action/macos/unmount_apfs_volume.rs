@@ -56,14 +56,12 @@ impl Action for UnmountApfsVolume {
 
     #[tracing::instrument(level = "debug", skip_all)]
     async fn execute(&mut self) -> Result<(), ActionError> {
-        let Self { disk: _, name } = self;
-
         let currently_mounted = {
             let buf = execute_command(
                 Command::new("/usr/sbin/diskutil")
                     .process_group(0)
                     .args(["info", "-plist"])
-                    .arg(&name)
+                    .arg(&self.name)
                     .stdin(std::process::Stdio::null()),
             )
             .await
@@ -80,7 +78,7 @@ impl Action for UnmountApfsVolume {
                 Command::new("/usr/sbin/diskutil")
                     .process_group(0)
                     .args(["unmount", "force"])
-                    .arg(name)
+                    .arg(&self.name)
                     .stdin(std::process::Stdio::null()),
             )
             .await
@@ -98,14 +96,12 @@ impl Action for UnmountApfsVolume {
 
     #[tracing::instrument(level = "debug", skip_all)]
     async fn revert(&mut self) -> Result<(), ActionError> {
-        let Self { disk: _, name } = self;
-
         let currently_mounted = {
             let buf = execute_command(
                 Command::new("/usr/sbin/diskutil")
                     .process_group(0)
                     .args(["info", "-plist"])
-                    .arg(&name)
+                    .arg(&self.name)
                     .stdin(std::process::Stdio::null()),
             )
             .await
@@ -122,7 +118,7 @@ impl Action for UnmountApfsVolume {
                 Command::new("/usr/sbin/diskutil")
                     .process_group(0)
                     .args(["unmount", "force"])
-                    .arg(name)
+                    .arg(&self.name)
                     .stdin(std::process::Stdio::null()),
             )
             .await

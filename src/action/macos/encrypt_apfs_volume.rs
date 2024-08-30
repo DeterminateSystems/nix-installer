@@ -142,12 +142,6 @@ impl Action for EncryptApfsVolume {
         disk = %self.disk.display(),
     ))]
     async fn execute(&mut self) -> Result<(), ActionError> {
-        let Self {
-            determinate_nix,
-            disk,
-            name,
-        } = self;
-
         // Generate a random password.
         let password: String = {
             const CHARSET: &[u8] = b"ABCDEFGHIJKLMNOPQRSTUVWXYZ\
@@ -164,18 +158,22 @@ impl Action for EncryptApfsVolume {
                 .collect()
         };
 
-        let disk_str = disk.to_str().expect("Could not turn disk into string"); /* Should not reasonably ever fail */
+        let disk_str = &self.disk.to_str().expect("Could not turn disk into string"); /* Should not reasonably ever fail */
 
-        execute_command(Command::new("/usr/sbin/diskutil").arg("mount").arg(&name))
-            .await
-            .map_err(Self::error)?;
+        execute_command(
+            Command::new("/usr/sbin/diskutil")
+                .arg("mount")
+                .arg(&self.name),
+        )
+        .await
+        .map_err(Self::error)?;
 
         // Add the password to the user keychain so they can unlock it later.
         let mut cmd = Command::new("/usr/bin/security");
         cmd.process_group(0).args([
             "add-generic-password",
             "-a",
-            name.as_str(),
+            self.name.as_str(),
             "-s",
             "Nix Store",
             "-l",
@@ -195,7 +193,7 @@ impl Action for EncryptApfsVolume {
             "/usr/bin/security",
         ]);
 
-        if *determinate_nix {
+        if self.determinate_nix {
             cmd.args(["-T", "/usr/local/bin/determinate-nixd"]);
         }
 
@@ -208,7 +206,7 @@ impl Action for EncryptApfsVolume {
         execute_command(Command::new("/usr/sbin/diskutil").process_group(0).args([
             "apfs",
             "encryptVolume",
-            name.as_str(),
+            self.name.as_str(),
             "-user",
             "disk",
             "-passphrase",
@@ -222,7 +220,7 @@ impl Action for EncryptApfsVolume {
                 .process_group(0)
                 .arg("unmount")
                 .arg("force")
-                .arg(&name),
+                .arg(&self.name),
         )
         .await
         .map_err(Self::error)?;
