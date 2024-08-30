@@ -178,7 +178,7 @@ impl Planner for Ostree {
 
         if self.settings.determinate_nix {
             plan.push(
-                ProvisionDeterminateNixd::plan(InitSystem::Systemd)
+                ProvisionDeterminateNixd::plan()
                     .await
                     .map_err(PlannerError::Action)?
                     .boxed(),
@@ -212,10 +212,11 @@ impl Planner for Ostree {
             plan.push(
                 ProvisionSelinux::plan(
                     "/etc/nix-installer/selinux/packages/nix.pp".into(),
-                    self.settings
-                        .determinate_nix
-                        .then_some(DETERMINATE_SELINUX_POLICY_PP_CONTENT)
-                        .unwrap_or(SELINUX_POLICY_PP_CONTENT),
+                    if self.settings.determinate_nix {
+                        DETERMINATE_SELINUX_POLICY_PP_CONTENT
+                    } else {
+                        SELINUX_POLICY_PP_CONTENT
+                    },
                 )
                 .await
                 .map_err(PlannerError::Action)?

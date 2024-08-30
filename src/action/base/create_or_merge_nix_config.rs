@@ -200,8 +200,7 @@ impl Action for CreateOrMergeNixConfig {
         if tracing::enabled!(tracing::Level::TRACE) {
             span.record(
                 "pending_nix_config",
-                &self
-                    .pending_nix_config
+                self.pending_nix_config
                     .settings()
                     .iter()
                     .map(|(k, v)| format!("{k}=\"{v}\""))

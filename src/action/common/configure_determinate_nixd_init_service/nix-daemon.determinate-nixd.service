@@ -9,7 +9,8 @@ ConditionPathIsReadWrite=/nix/var/nix/daemon-socket
 [Service]
 ExecStart=@/usr/local/bin/determinate-nixd determinate-nixd
 KillMode=process
-LimitNOFILE=1048576
+LimitNOFILE=536870912
+LimitSTACK=64M
 TasksMax=1048576
 
 [Install]

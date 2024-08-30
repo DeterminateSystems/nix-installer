@@ -184,13 +184,6 @@ impl Action for AddUserToGroup {
 
     #[tracing::instrument(level = "debug", skip_all)]
     async fn execute(&mut self) -> Result<(), ActionError> {
-        let Self {
-            name,
-            uid: _,
-            groupname,
-            gid: _,
-        } = self;
-
         use target_lexicon::OperatingSystem;
         match OperatingSystem::host() {
             OperatingSystem::MacOSX {
@@ -205,10 +198,10 @@ impl Action for AddUserToGroup {
                         .args([
                             ".",
                             "-append",
-                            &format!("/Groups/{groupname}"),
+                            &format!("/Groups/{}", self.groupname),
                             "GroupMembership",
                         ])
-                        .arg(&name)
+                        .arg(&self.name)
                         .stdin(std::process::Stdio::null()),
                 )
                 .await
@@ -218,10 +211,10 @@ impl Action for AddUserToGroup {
                         .process_group(0)
                         .args(["-o", "edit"])
                         .arg("-a")
-                        .arg(&name)
+                        .arg(&self.name)
                         .arg("-t")
-                        .arg(&name)
-                        .arg(groupname)
+                        .arg(&self.name)
+                        .arg(&self.groupname)
                         .stdin(std::process::Stdio::null()),
                 )
                 .await
@@ -233,7 +226,7 @@ impl Action for AddUserToGroup {
                         Command::new("gpasswd")
                             .process_group(0)
                             .args(["-a"])
-                            .args([name, groupname])
+                            .args([&self.name, &self.groupname])
                             .stdin(std::process::Stdio::null()),
                     )
                     .await
@@ -242,7 +235,7 @@ impl Action for AddUserToGroup {
                     execute_command(
                         Command::new("addgroup")
                             .process_group(0)
-                            .args([name, groupname])
+                            .args([&self.name, &self.groupname])
                             .stdin(std::process::Stdio::null()),
                     )
                     .await
@@ -291,7 +284,7 @@ impl Action for AddUserToGroup {
                     Command::new("/usr/bin/dscl")
                         .process_group(0)
                         .args([".", "-delete", &format!("/Groups/{groupname}"), "users"])
-                        .arg(&name)
+                        .arg(name)
                         .stdin(std::process::Stdio::null()),
                 )
                 .await
