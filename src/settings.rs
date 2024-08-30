@@ -7,10 +7,6 @@ use clap::{
     error::{ContextKind, ContextValue},
     ArgAction,
 };
-use color_eyre::owo_colors::OwoColorize as _;
-use eyre::Context as _;
-use once_cell::sync::OnceCell;
-use serde::Deserialize;
 use url::Url;
 
 pub const SCRATCH_DIR: &str = "/nix/temp-install-dir";
@@ -100,12 +96,11 @@ pub struct CommonSettings {
     /// The Nix build group GID
     #[cfg_attr(
         feature = "cli",
-        clap(
-            long,
-            default_value_t = 30_000,
-            env = "NIX_INSTALLER_NIX_BUILD_GROUP_ID",
-            global = true
-        )
+        clap(long, env = "NIX_INSTALLER_NIX_BUILD_GROUP_ID", global = true)
+    )]
+    #[cfg_attr(
+        all(feature = "cli"),
+        clap(default_value_t = default_nix_build_group_id())
     )]
     pub nix_build_group_id: u32,
 
@@ -228,74 +223,20 @@ pub struct CommonSettings {
     pub diagnostic_endpoint: Option<String>,
 }
 
-#[derive(Deserialize, Clone, Debug, PartialEq)]
-#[serde(rename_all = "PascalCase")]
-pub struct SystemVersionPlist {
-    product_version: String,
-}
-
-const MACOS_SYSTEM_VERSION_PLIST_PATH: &str = "/System/Library/CoreServices/SystemVersion.plist";
-const MACOS_SYSTEM_VERSION_PLIST_SYMLINK_PATH: &str =
-    "/System/Library/CoreServices/.SystemVersionPlatform.plist";
-
-pub fn is_macos_15_or_later() -> bool {
-    static MACOS_MAJOR_VERSION: OnceCell<u64> = OnceCell::new();
-    let maybe_major_version = MACOS_MAJOR_VERSION
-        .get_or_try_init(|| {
-            // NOTE(cole-h): Sometimes, macOS decides it's a good idea to change the contents of the file you're reading.
-            // See also:
-            // https://eclecticlight.co/2020/08/13/macos-version-numbering-isnt-so-simple/
-            // https://github.com/ziglang/zig/pull/7714/
-            let symlink_path = std::path::Path::new(MACOS_SYSTEM_VERSION_PLIST_SYMLINK_PATH);
-            let plist: SystemVersionPlist = if symlink_path.exists() {
-                plist::from_file(symlink_path).with_context(|| {
-                    format!("Failed to parse plist from {MACOS_SYSTEM_VERSION_PLIST_SYMLINK_PATH}")
-                })?
-            } else {
-                plist::from_file(MACOS_SYSTEM_VERSION_PLIST_PATH).with_context(|| {
-                    format!("Failed to parse plist from {MACOS_SYSTEM_VERSION_PLIST_PATH}")
-                })?
-            };
-
-            let Some((major, _rest)) = plist.product_version.split_once('.') else {
-                return Err(eyre::eyre!(
-                    "Failed to parse ProductVersion: {}",
-                    plist.product_version
-                ));
-            };
-
-            let major = major
-                .parse::<u64>()
-                .with_context(|| format!("Failed to parse major version '{major}'"))?;
-
-            Ok::<_, eyre::Error>(major)
-        })
-        .inspect_err(|e| {
-            // NOTE(cole-h): cannot using tracing here because this is called before we setup the
-            // tracing subscriber
-            eprintln!(
-                "{}",
-                format!("WARNING: Failed to detect macOS major version, assuming <= macOS 14: {e}")
-                    .yellow()
-            );
-        })
-        .ok();
-
-    maybe_major_version.is_some_and(|&v| v >= 15)
-}
-
 fn default_nix_build_user_id_base() -> u32 {
     use target_lexicon::OperatingSystem;
 
     match OperatingSystem::host() {
-        OperatingSystem::MacOSX { .. } | OperatingSystem::Darwin => {
-            // NOTE(cole-h): https://github.com/NixOS/nix/issues/10892#issuecomment-2212094287
-            if is_macos_15_or_later() {
-                450
-            } else {
-                300
-            }
-        },
+        OperatingSystem::MacOSX { .. } | OperatingSystem::Darwin => 350,
+        _ => 30_000,
+    }
+}
+
+fn default_nix_build_group_id() -> u32 {
+    use target_lexicon::OperatingSystem;
+
+    match OperatingSystem::host() {
+        OperatingSystem::MacOSX { .. } | OperatingSystem::Darwin => 350,
         _ => 30_000,
     }
 }
@@ -335,7 +276,7 @@ impl CommonSettings {
             determinate_nix: false,
             modify_profile: true,
             nix_build_group_name: String::from("nixbld"),
-            nix_build_group_id: 30_000,
+            nix_build_group_id: default_nix_build_group_id(),
             nix_build_user_id_base: default_nix_build_user_id_base(),
             nix_build_user_count: 32,
             nix_build_user_prefix: nix_build_user_prefix.to_string(),
