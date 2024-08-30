@@ -577,7 +577,7 @@ jobs:
           RUST_BACKTRACE: full
 
   run-x86_64-linux-release-checks:
-    name: Run x86_64 Linux
+    name: Run x86_64 Linux release checks
     runs-on: UbuntuLatest64Cores256GX86
     needs: [lints, build-x86_64-linux]
     permissions:
