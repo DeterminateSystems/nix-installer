@@ -225,10 +225,10 @@ fn generate_plist() -> DeterminateNixDaemonPlist {
         standard_error_path: "/var/log/determinate-nix-daemon.log".into(),
         standard_out_path: "/var/log/determinate-nix-daemon.log".into(),
         soft_resource_limits: ResourceLimits {
-            number_of_files: 1048576,
+            number_of_files: 536_870_912,
         },
         hard_resource_limits: ResourceLimits {
-            number_of_files: 1048576 * 2,
+            number_of_files: 536_870_912,
         },
         sockets: HashMap::from([
             (
