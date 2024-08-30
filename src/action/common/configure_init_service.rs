@@ -1,7 +1,6 @@
 use std::path::Path;
 use std::path::PathBuf;
 
-use serde::{Deserialize, Serialize};
 use tokio::process::Command;
 use tracing::{span, Span};
 
@@ -711,24 +710,6 @@ impl Action for ConfigureInitService {
 pub enum ConfigureNixDaemonServiceError {
     #[error("No supported init system found")]
     InitNotSupported,
-}
-
-#[derive(Deserialize, Clone, Debug, Serialize, PartialEq)]
-#[serde(rename_all = "PascalCase")]
-pub struct DeterminateNixDaemonPlist {
-    label: String,
-    program: String,
-    keep_alive: bool,
-    run_at_load: bool,
-    standard_error_path: String,
-    standard_out_path: String,
-    soft_resource_limits: ResourceLimits,
-}
-
-#[derive(Deserialize, Clone, Debug, Serialize, PartialEq)]
-#[serde(rename_all = "PascalCase")]
-pub struct ResourceLimits {
-    number_of_files: usize,
 }
 
 async fn stop(unit: &str) -> Result<(), ActionErrorKind> {
