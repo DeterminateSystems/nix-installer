@@ -389,12 +389,3 @@ To cut a release:
 * Once you are certain the release is good, `cargo publish` it
   + **Warning:** While you can re-release Github releases, it is not possible to do the same on `crates.io`
 * Create a PR bumping the version up one minor in the `Cargo.toml` and fixture JSON files, adding `-unreleased` at the end (`v0.0.2-unreleased`)
-
-# Who maintains `nix-installer` and why?
-
-`nix-installer` is maintained by [Determinate Systems](https://determinate.systems/) in
-an effort to explore Nix installer ideas.
-
-Determinate Systems has no plans to monetize or relicense `nix-installer`. If your
-enterprise requires a support contact in order to adopt a tool, please contact
-Determinate Systems and something can be worked out.
