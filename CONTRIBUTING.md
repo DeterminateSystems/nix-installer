@@ -364,28 +364,23 @@ This package uses [Semantic Versioning](https://semver.org/). When determining t
 
 To cut a release:
 
+* Create a release branch from `main` (`git checkout -b release-v0.0.1`)
+  + Release PRs should not contain any installer-related changes which require review
 * Ensure the `flake.lock`, `Cargo.lock`, and Rust dependencies are up-to-date with the following:
   + `nix flake update --commit-lock-file`
-  + `cargo outdated --ignore-external-rel --aggressive`
   + `cargo update --aggressive`
-  + Make a PR for for this and let it get merged separately
-* Create a release branch from `main` (`git checkout -b release-v0.0.1`)
-* Remove the `-unreleased` from the `version` field in `Cargo.toml` and the fixture JSON files
-  + Release PRs should not contain any tangible code changes which require review
+  + `cargo outdated --ignore-external-rel --aggressive`
 * Ensure the VM / container tests still pass with the following:
+  + NOTE: At time of writing, these are run in CI on release branches
   + `nix flake check -L`
   + `nix build .#hydraJobs.container-test.all.x86_64-linux.all -L -j 6`
   + `nix build .#hydraJobs.vm-test.all.x86_64-linux.all -L -j 6`
 * Push the branch, create a PR ("Release v0.0.1")
 * Once the PR tests pass and it has been reviewed, merge it
-* `git pull` on the `main` branch
-* Tag the release (`git tag v0.0.1`)
-* Push the tag (`git push origin v0.0.1`)
-* The CI should produce artifacts via Buildkite and create a "Draft" release containing them on GitHub
-  + This will take a bit, use this time to draft a changelog
-* Review the draft release, test the artifacts in a VM
-* Create a changelog following the format of last release
+* Checkout the `main` branch and `git pull`
+* Prepare a draft release that creates the new tag on publish
+  + Create a changelog following the format of the last release
 * Undraft the release
+* CI will produce artifacts and upload them to the release
 * Once you are certain the release is good, `cargo publish` it
   + **Warning:** While you can re-release Github releases, it is not possible to do the same on `crates.io`
-* Create a PR bumping the version up one minor in the `Cargo.toml` and fixture JSON files, adding `-unreleased` at the end (`v0.0.2-unreleased`)

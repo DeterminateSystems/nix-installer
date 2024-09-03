@@ -581,7 +581,7 @@ jobs:
     name: Run x86_64 Linux release checks
     runs-on: UbuntuLatest64Cores256GX86
     needs: [lints, build-x86_64-linux]
-    if: contains(github.ref, 'release-')
+    if: contains(github.ref, 'release-') || contains(github.head_ref, 'release-')
     permissions:
       id-token: "write"
       contents: "read"
