@@ -1,6 +1,7 @@
 name: CI
 
 on:
+  workflow_dispatch:
   pull_request:
   push:
     branches: [main]
@@ -24,7 +25,7 @@ jobs:
 
   lints:
     name: Lints
-    runs-on: ubuntu-latest
+    runs-on: UbuntuLatest32Cores128G
     permissions:
       id-token: "write"
       contents: "read"
@@ -57,7 +58,7 @@ jobs:
 
   run-x86_64-linux:
     name: Run x86_64 Linux
-    runs-on: ubuntu-latest
+    runs-on: UbuntuLatest32Cores128G
     needs: [lints, build-x86_64-linux]
     strategy:
       matrix:
@@ -170,7 +171,7 @@ jobs:
 
   run-x86_64-linux-no-init:
     name: Run x86_64 Linux (No init)
-    runs-on: ubuntu-latest
+    runs-on: UbuntuLatest32Cores128G
     needs: [lints, build-x86_64-linux]
     strategy:
       matrix:
@@ -575,3 +576,43 @@ jobs:
           NIX_INSTALLER_LOGGER: pretty
           NIX_INSTALLER_LOG_DIRECTIVES: nix_installer=debug
           RUST_BACKTRACE: full
+
+  run-x86_64-linux-release-checks:
+    name: Run x86_64 Linux release checks
+    runs-on: UbuntuLatest64Cores256GX86
+    needs: [lints, build-x86_64-linux]
+    if: contains(github.ref, 'release-')
+    permissions:
+      id-token: "write"
+      contents: "read"
+    steps:
+      - uses: actions/checkout@v3
+      - name: Restore Github cache artifacts
+        uses: actions/cache/restore@v3
+        with:
+          path: nix-installer
+          key: x86_64-linux-artifacts-${{ github.sha }}
+      - name: Move & set executable
+        run: |
+          mkdir install-root
+          cp nix-installer.sh install-root/nix-installer.sh
+          mv ./nix-installer install-root/nix-installer-x86_64-linux
+          chmod +x install-root/nix-installer-x86_64-linux install-root/nix-installer.sh
+      - name: Initial install
+        uses: DeterminateSystems/nix-installer-action@main
+        with:
+          flakehub: true
+          local-root: install-root/
+          logger: pretty
+          log-directives: nix_installer=debug
+          backtrace: full
+      - uses: DeterminateSystems/magic-nix-cache-action@main
+        with:
+          use-gha-cache: false
+
+      - run: nix flake check -L
+      - run: |
+          nix build \
+            -L --tarball-ttl 0 --keep-going \
+            .#hydraJobs.container-test.all.x86_64-linux.all \
+            .#hydraJobs.vm-test.all.x86_64-linux.all
