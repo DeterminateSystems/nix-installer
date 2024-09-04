@@ -108,9 +108,10 @@ pub(crate) async fn service_is_disabled(
     Ok(is_disabled)
 }
 
+/// Waits for the Nix Store mountpoint to exist, up to `retry_tokens * 100ms` amount of time.
 #[tracing::instrument]
 pub(crate) async fn wait_for_nix_store_dir() -> Result<(), ActionErrorKind> {
-    let mut retry_tokens: usize = 50;
+    let mut retry_tokens: usize = 150;
     loop {
         let mut command = Command::new("/usr/sbin/diskutil");
         command.args(["info", "/nix"]);
