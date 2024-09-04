@@ -225,29 +225,9 @@ impl Action for CreateNixVolume {
             .await
             .map_err(Self::error)?;
 
-        let mut retry_tokens: usize = 50;
-        loop {
-            let mut command = Command::new("/usr/sbin/diskutil");
-            command.args(["info", "/nix"]);
-            command.stderr(std::process::Stdio::null());
-            command.stdout(std::process::Stdio::null());
-            tracing::trace!(%retry_tokens, command = ?command.as_std(), "Checking for Nix Store mount path existence");
-            let output = command
-                .output()
-                .await
-                .map_err(|e| ActionErrorKind::command(&command, e))
-                .map_err(Self::error)?;
-            if output.status.success() {
-                break;
-            } else if retry_tokens == 0 {
-                return Err(Self::error(ActionErrorKind::command_output(
-                    &command, output,
-                )));
-            } else {
-                retry_tokens = retry_tokens.saturating_sub(1);
-            }
-            tokio::time::sleep(Duration::from_millis(100)).await;
-        }
+        crate::action::macos::wait_for_nix_store_dir()
+            .await
+            .map_err(Self::error)?;
 
         self.enable_ownership
             .try_execute()
