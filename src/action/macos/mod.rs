@@ -18,6 +18,8 @@ pub(crate) mod set_tmutil_exclusion;
 pub(crate) mod set_tmutil_exclusions;
 pub(crate) mod unmount_apfs_volume;
 
+use std::time::Duration;
+
 pub use bootstrap_launchctl_service::BootstrapLaunchctlService;
 pub use configure_remote_building::ConfigureRemoteBuilding;
 pub use create_apfs_volume::CreateApfsVolume;
@@ -104,4 +106,30 @@ pub(crate) async fn service_is_disabled(
     let is_disabled = utf8_output.contains(&format!("\"{service}\" => disabled"));
     tracing::trace!(is_disabled, "Service disabled status");
     Ok(is_disabled)
+}
+
+#[tracing::instrument]
+pub(crate) async fn wait_for_nix_store_dir() -> Result<(), ActionErrorKind> {
+    let mut retry_tokens: usize = 50;
+    loop {
+        let mut command = Command::new("/usr/sbin/diskutil");
+        command.args(["info", "/nix"]);
+        command.stderr(std::process::Stdio::null());
+        command.stdout(std::process::Stdio::null());
+        tracing::trace!(%retry_tokens, command = ?command.as_std(), "Checking for Nix Store mount path existence");
+        let output = command
+            .output()
+            .await
+            .map_err(|e| ActionErrorKind::command(&command, e))?;
+        if output.status.success() {
+            break;
+        } else if retry_tokens == 0 {
+            return Err(ActionErrorKind::command_output(&command, output))?;
+        } else {
+            retry_tokens = retry_tokens.saturating_sub(1);
+        }
+        tokio::time::sleep(Duration::from_millis(100)).await;
+    }
+
+    Ok(())
 }
