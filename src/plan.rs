@@ -15,7 +15,7 @@ pub const RECEIPT_LOCATION: &str = "/nix/receipt.json";
 A set of [`Action`]s, along with some metadata, which can be carried out to drive an install or
 revert
 */
-#[derive(Debug, serde::Deserialize, serde::Serialize, Clone)]
+#[derive(Debug, serde::Deserialize, serde::Serialize)]
 pub struct InstallPlan {
     pub(crate) version: Version,
 
@@ -173,7 +173,7 @@ impl InstallPlan {
                 if cancel_channel.try_recv()
                     != Err(tokio::sync::broadcast::error::TryRecvError::Empty)
                 {
-                    if let Err(err) = write_receipt(self.clone()).await {
+                    if let Err(err) = write_receipt(self).await {
                         tracing::error!("Error saving receipt: {:?}", err);
                     }
 
@@ -194,7 +194,7 @@ impl InstallPlan {
 
             tracing::info!("Step: {}", action.tracing_synopsis());
             if let Err(err) = action.try_execute().await {
-                if let Err(err) = write_receipt(self.clone()).await {
+                if let Err(err) = write_receipt(self).await {
                     tracing::error!("Error saving receipt: {:?}", err);
                 }
                 let err = NixInstallerError::Action(err);
@@ -214,7 +214,7 @@ impl InstallPlan {
             }
         }
 
-        write_receipt(self.clone()).await?;
+        write_receipt(self).await?;
 
         if let Err(err) = crate::self_test::self_test()
             .await
@@ -345,7 +345,7 @@ impl InstallPlan {
                 if cancel_channel.try_recv()
                     != Err(tokio::sync::broadcast::error::TryRecvError::Empty)
                 {
-                    if let Err(err) = write_receipt(self.clone()).await {
+                    if let Err(err) = write_receipt(self).await {
                         tracing::error!("Error saving receipt: {:?}", err);
                     }
 
@@ -416,7 +416,7 @@ impl InstallPlan {
     }
 }
 
-async fn write_receipt(plan: InstallPlan) -> Result<(), NixInstallerError> {
+async fn write_receipt(plan: &InstallPlan) -> Result<(), NixInstallerError> {
     tokio::fs::create_dir_all("/nix")
         .await
         .map_err(|e| NixInstallerError::RecordingReceipt(PathBuf::from("/nix"), e))?;
