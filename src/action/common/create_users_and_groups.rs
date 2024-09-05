@@ -37,6 +37,7 @@ impl CreateUsersAndGroups {
                     settings.nix_build_group_name.clone(),
                     settings.nix_build_group_id,
                     format!("Nix build user {index}"),
+                    true,
                 )
                 .await
                 .map_err(Self::error)?,
