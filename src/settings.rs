@@ -224,7 +224,7 @@ pub struct CommonSettings {
     pub diagnostic_endpoint: Option<String>,
 }
 
-fn default_nix_build_user_id_base() -> u32 {
+pub(crate) fn default_nix_build_user_id_base() -> u32 {
     use target_lexicon::OperatingSystem;
 
     match OperatingSystem::host() {
@@ -233,7 +233,7 @@ fn default_nix_build_user_id_base() -> u32 {
     }
 }
 
-fn default_nix_build_group_id() -> u32 {
+pub(crate) fn default_nix_build_group_id() -> u32 {
     use target_lexicon::OperatingSystem;
 
     match OperatingSystem::host() {

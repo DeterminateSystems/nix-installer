@@ -14,10 +14,10 @@ Create an operating system level user in the given group
 #[derive(Debug, serde::Deserialize, serde::Serialize, Clone)]
 #[serde(tag = "action_name", rename = "create_user")]
 pub struct CreateUser {
-    name: String,
-    uid: u32,
-    groupname: String,
-    gid: u32,
+    pub(crate) name: String,
+    pub(crate) uid: u32,
+    pub(crate) groupname: String,
+    pub(crate) gid: u32,
     comment: String,
 }
 
