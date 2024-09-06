@@ -271,3 +271,43 @@ impl Action for PlaceNixConfiguration {
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[tokio::test]
+    async fn extra_trusted_no_error() -> eyre::Result<()> {
+        let nix_config = PlaceNixConfiguration::setup_nix_config(
+            String::from("foo"),
+            None,
+            None,
+            None,
+            vec![
+                UrlOrPathOrString::String(String::from("extra-trusted-substituters = barfoo")),
+                UrlOrPathOrString::String(String::from("extra-trusted-public-keys = foobar")),
+            ],
+        )
+        .await?;
+
+        assert!(
+            nix_config
+                .settings()
+                .get("extra-trusted-substituters")
+                .unwrap()
+                .contains("barfoo"),
+            "User config and internal defaults are both respected"
+        );
+
+        assert!(
+            nix_config
+                .settings()
+                .get("extra-trusted-public-keys")
+                .unwrap()
+                .contains("foobar"),
+            "User config and internal defaults are both respected"
+        );
+
+        Ok(())
+    }
+}
