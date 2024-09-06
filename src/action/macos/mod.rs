@@ -98,6 +98,7 @@ pub(crate) async fn service_is_disabled(
 ) -> Result<bool, ActionErrorKind> {
     let output = execute_command(
         Command::new("launchctl")
+            .process_group(0)
             .arg("print-disabled")
             .arg(domain)
             .stdin(std::process::Stdio::null())
@@ -117,6 +118,7 @@ pub(crate) async fn wait_for_nix_store_dir() -> Result<(), ActionErrorKind> {
     let mut retry_tokens: usize = 150;
     loop {
         let mut command = Command::new("/usr/sbin/diskutil");
+        command.process_group(0);
         command.args(["info", "/nix"]);
         command.stderr(std::process::Stdio::null());
         command.stdout(std::process::Stdio::null());
