@@ -13,7 +13,10 @@ use std::{
 use tokio::process::Command;
 use tracing::{span, Span};
 
-use super::{create_fstab_entry::CreateFstabEntry, CreateVolumeService, KickstartLaunchctlService};
+use super::{
+    create_fstab_entry::CreateFstabEntry, CreateVolumeService, KickstartLaunchctlService,
+    DARWIN_LAUNCHD_DOMAIN,
+};
 
 pub const NIX_VOLUME_MOUNTD_DEST: &str = "/Library/LaunchDaemons/org.nixos.darwin-store.plist";
 
@@ -87,15 +90,12 @@ impl CreateNixVolume {
         .await
         .map_err(Self::error)?;
 
-        let bootstrap_volume = BootstrapLaunchctlService::plan(
-            "system",
-            "org.nixos.darwin-store",
-            NIX_VOLUME_MOUNTD_DEST,
-        )
-        .await
-        .map_err(Self::error)?;
+        let bootstrap_volume =
+            BootstrapLaunchctlService::plan("org.nixos.darwin-store", NIX_VOLUME_MOUNTD_DEST)
+                .await
+                .map_err(Self::error)?;
         let kickstart_launchctl_service =
-            KickstartLaunchctlService::plan("system", "org.nixos.darwin-store")
+            KickstartLaunchctlService::plan(DARWIN_LAUNCHD_DOMAIN, "org.nixos.darwin-store")
                 .await
                 .map_err(Self::error)?;
         let enable_ownership = EnableOwnership::plan("/nix").await.map_err(Self::error)?;

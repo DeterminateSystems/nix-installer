@@ -44,6 +44,8 @@ use crate::execute_command;
 
 use super::ActionErrorKind;
 
+pub const DARWIN_LAUNCHD_DOMAIN: &str = "system";
+
 async fn get_uuid_for_label(apfs_volume_label: &str) -> Result<Option<Uuid>, ActionErrorKind> {
     let mut command = Command::new("/usr/sbin/diskutil");
     command.process_group(0);
@@ -151,6 +153,44 @@ pub(crate) async fn retry_bootstrap(domain: &str, service: &Path) -> Result<(), 
         command.stderr(std::process::Stdio::null());
         command.stdout(std::process::Stdio::null());
         tracing::trace!(%retry_tokens, command = ?command.as_std(), "Waiting for bootstrap to succeed");
+
+        let output = command
+            .output()
+            .await
+            .map_err(|e| ActionErrorKind::command(&command, e))?;
+
+        if output.status.success() {
+            break;
+        } else if retry_tokens == 0 {
+            return Err(ActionErrorKind::command_output(&command, output))?;
+        } else {
+            retry_tokens = retry_tokens.saturating_sub(1);
+        }
+
+        tokio::time::sleep(Duration::from_millis(500)).await;
+    }
+
+    Ok(())
+}
+
+/// Wait for `launchctl bootout {domain} {service_path}` to succeed up to `retry_tokens * 500ms` amount
+/// of time.
+#[tracing::instrument]
+pub(crate) async fn retry_bootout(
+    domain: &str,
+    service_path: &Path,
+) -> Result<(), ActionErrorKind> {
+    let mut retry_tokens: usize = 10;
+    loop {
+        let mut command = Command::new("launchctl");
+        command.process_group(0);
+        command.arg("bootout");
+        command.arg(domain);
+        command.arg(service_path);
+        command.stdin(std::process::Stdio::null());
+        command.stderr(std::process::Stdio::null());
+        command.stdout(std::process::Stdio::null());
+        tracing::trace!(%retry_tokens, command = ?command.as_std(), "Waiting for bootout to succeed");
 
         let output = command
             .output()

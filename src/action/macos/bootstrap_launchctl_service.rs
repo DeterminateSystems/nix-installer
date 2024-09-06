@@ -1,4 +1,4 @@
-use std::path::{Path, PathBuf};
+use std::path::PathBuf;
 
 use tokio::process::Command;
 use tracing::{span, Span};
@@ -8,7 +8,7 @@ use crate::execute_command;
 
 use crate::action::{Action, ActionDescription};
 
-use super::service_is_disabled;
+use super::{service_is_disabled, DARWIN_LAUNCHD_DOMAIN};
 
 /**
 Bootstrap and kickstart an APFS volume
@@ -16,7 +16,6 @@ Bootstrap and kickstart an APFS volume
 #[derive(Debug, serde::Deserialize, serde::Serialize, Clone)]
 #[serde(tag = "action_name", rename = "bootstrap_launchctl_service")]
 pub struct BootstrapLaunchctlService {
-    domain: String,
     service: String,
     path: PathBuf,
     is_present: bool,
@@ -25,20 +24,15 @@ pub struct BootstrapLaunchctlService {
 
 impl BootstrapLaunchctlService {
     #[tracing::instrument(level = "debug", skip_all)]
-    pub async fn plan(
-        domain: impl AsRef<str>,
-        service: impl AsRef<str>,
-        path: impl AsRef<Path>,
-    ) -> Result<StatefulAction<Self>, ActionError> {
-        let domain = domain.as_ref().to_string();
-        let service = service.as_ref().to_string();
-        let path = path.as_ref().to_path_buf();
+    pub async fn plan(service: &str, path: &str) -> Result<StatefulAction<Self>, ActionError> {
+        let service = service.to_owned();
+        let path = PathBuf::from(path);
 
         let is_present = {
             let mut command = Command::new("launchctl");
             command.process_group(0);
             command.arg("print");
-            command.arg(format!("{domain}/{service}"));
+            command.arg(format!("{DARWIN_LAUNCHD_DOMAIN}/{service}"));
             command.arg("-plist");
             command.stdin(std::process::Stdio::null());
             command.stdout(std::process::Stdio::piped());
@@ -51,14 +45,13 @@ impl BootstrapLaunchctlService {
             command_output.status.success() || command_output.status.code() == Some(37)
         };
 
-        let is_disabled = service_is_disabled(&domain, &service)
+        let is_disabled = service_is_disabled(DARWIN_LAUNCHD_DOMAIN, &service)
             .await
             .map_err(Self::error)?;
 
         if is_present && !is_disabled {
             return Ok(StatefulAction::completed(Self {
                 service,
-                domain,
                 path,
                 is_present,
                 is_disabled,
@@ -66,7 +59,6 @@ impl BootstrapLaunchctlService {
         }
 
         Ok(StatefulAction::uncompleted(Self {
-            domain,
             service,
             path,
             is_present,
@@ -85,7 +77,7 @@ impl Action for BootstrapLaunchctlService {
         format!(
             "Bootstrap the `{}` service via `launchctl bootstrap {} {}`",
             self.service,
-            self.domain,
+            DARWIN_LAUNCHD_DOMAIN,
             self.path.display()
         )
     }
@@ -94,7 +86,6 @@ impl Action for BootstrapLaunchctlService {
         span!(
             tracing::Level::DEBUG,
             "bootstrap_launchctl_service",
-            domain = self.domain,
             path = %self.path.display(),
             is_disabled = self.is_disabled,
             is_present = self.is_present,
@@ -108,7 +99,6 @@ impl Action for BootstrapLaunchctlService {
     #[tracing::instrument(level = "debug", skip_all)]
     async fn execute(&mut self) -> Result<(), ActionError> {
         let Self {
-            domain,
             service,
             path,
             is_present,
@@ -120,7 +110,7 @@ impl Action for BootstrapLaunchctlService {
                 Command::new("launchctl")
                     .process_group(0)
                     .arg("enable")
-                    .arg(&format!("{domain}/{service}"))
+                    .arg(&format!("{DARWIN_LAUNCHD_DOMAIN}/{service}"))
                     .stdin(std::process::Stdio::null()),
             )
             .await
@@ -128,7 +118,7 @@ impl Action for BootstrapLaunchctlService {
         }
 
         if !*is_present {
-            crate::action::macos::retry_bootstrap(&domain, &path)
+            crate::action::macos::retry_bootstrap(DARWIN_LAUNCHD_DOMAIN, &path)
                 .await
                 .map_err(Self::error)?;
         }
@@ -140,7 +130,7 @@ impl Action for BootstrapLaunchctlService {
         vec![ActionDescription::new(
             format!(
                 "Run `launchctl bootout {} {}`",
-                self.domain,
+                DARWIN_LAUNCHD_DOMAIN,
                 self.path.display()
             ),
             vec![],
@@ -149,16 +139,9 @@ impl Action for BootstrapLaunchctlService {
 
     #[tracing::instrument(level = "debug", skip_all)]
     async fn revert(&mut self) -> Result<(), ActionError> {
-        execute_command(
-            Command::new("launchctl")
-                .process_group(0)
-                .arg("bootout")
-                .arg(&self.domain)
-                .arg(&self.path)
-                .stdin(std::process::Stdio::null()),
-        )
-        .await
-        .map_err(Self::error)?;
+        crate::action::macos::retry_bootout(DARWIN_LAUNCHD_DOMAIN, &self.path)
+            .await
+            .map_err(Self::error)?;
 
         Ok(())
     }

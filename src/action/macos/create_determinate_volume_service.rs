@@ -12,6 +12,8 @@ use crate::action::{
     Action, ActionDescription, ActionError, ActionErrorKind, ActionTag, StatefulAction,
 };
 
+use super::DARWIN_LAUNCHD_DOMAIN;
+
 /** Create a plist for a `launchctl` service to mount the volume
  */
 #[derive(Debug, serde::Deserialize, serde::Serialize, Clone)]
@@ -132,24 +134,9 @@ impl Action for CreateDeterminateVolumeService {
         } = self;
 
         if *needs_bootout {
-            let mut unload_command = Command::new("launchctl");
-            unload_command.arg("bootout");
-            unload_command.arg(format!("system/{mount_service_label}"));
-            tracing::trace!(
-                command = format!("{:?}", unload_command.as_std()),
-                "Executing"
-            );
-            let unload_output = unload_command
-                .output()
+            crate::action::macos::retry_bootout(DARWIN_LAUNCHD_DOMAIN, &path)
                 .await
-                .map_err(|e| ActionErrorKind::command(&unload_command, e))
                 .map_err(Self::error)?;
-            if !unload_output.status.success() {
-                return Err(Self::error(ActionErrorKind::command_output(
-                    &unload_command,
-                    unload_output,
-                )));
-            }
         }
 
         let generated_plist = generate_mount_plist(mount_service_label)
