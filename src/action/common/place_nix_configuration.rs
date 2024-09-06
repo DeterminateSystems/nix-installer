@@ -127,6 +127,7 @@ impl PlaceNixConfiguration {
         }
 
         settings.insert("build-users-group".to_string(), nix_build_group_name);
+
         let experimental_features = ["nix-command", "flakes"];
         match settings.entry("experimental-features".to_string()) {
             Entry::Occupied(mut slot) => {
@@ -153,14 +154,50 @@ impl PlaceNixConfiguration {
         // base, unintrusive Determinate Nix options
         {
             // Add FlakeHub cache to the list of possible substituters, but disabled by default.
-            // This allows a user to turn on FlakeHub Cache.
-            settings.insert(
-                "extra-trusted-substituters".to_string(),
-                "https://cache.flakehub.com".to_string(),
-            );
+            // This allows a user to turn on FlakeHub Cache by adding it to the `extra-substituters`
+            // list without being a trusted user.
+            let extra_trusted_substituters = ["https://cache.flakehub.com"];
+            match settings.entry("extra-trusted-substituters".to_string()) {
+                Entry::Occupied(mut slot) => {
+                    let slot_mut = slot.get_mut();
+                    for extra_trusted_substituter in extra_trusted_substituters {
+                        if !slot_mut.contains(extra_trusted_substituter) {
+                            *slot_mut += " ";
+                            *slot_mut += extra_trusted_substituter;
+                        }
+                    }
+                },
+                Entry::Vacant(slot) => {
+                    let _ = slot.insert(extra_trusted_substituters.join(" "));
+                },
+            };
 
-            // Add FlakeHub's cache signing keys to the allowed list, but unused unless a user turns them on.
-            settings.insert("extra-trusted-public-keys".to_string(), "cache.flakehub.com-3:hJuILl5sVK4iKm86JzgdXW12Y2Hwd5G07qKtHTOcDCM= cache.flakehub.com-4:Asi8qIv291s0aYLyH6IOnr5Kf6+OF14WVjkE6t3xMio= cache.flakehub.com-5:zB96CRlL7tiPtzA9/WKyPkp3A2vqxqgdgyTVNGShPDU= cache.flakehub.com-6:W4EGFwAGgBj3he7c5fNh9NkOXw0PUVaxygCVKeuvaqU= cache.flakehub.com-7:mvxJ2DZVHn/kRxlIaxYNMuDG1OvMckZu32um1TadOR8= cache.flakehub.com-8:moO+OVS0mnTjBTcOUh2kYLQEd59ExzyoW1QgQ8XAARQ= cache.flakehub.com-9:wChaSeTI6TeCuV/Sg2513ZIM9i0qJaYsF+lZCXg0J6o= cache.flakehub.com-10:2GqeNlIp6AKp4EF2MVbE1kBOp9iBSyo0UPR9KoR0o1Y=".to_string());
+            // Add FlakeHub's cache signing keys to the allowed list, but unused unless a user
+            // specifies FlakeHub Cache as an `extra-substituter`.
+            let extra_trusted_public_keys = [
+                "cache.flakehub.com-3:hJuILl5sVK4iKm86JzgdXW12Y2Hwd5G07qKtHTOcDCM=",
+                "cache.flakehub.com-4:Asi8qIv291s0aYLyH6IOnr5Kf6+OF14WVjkE6t3xMio=",
+                "cache.flakehub.com-5:zB96CRlL7tiPtzA9/WKyPkp3A2vqxqgdgyTVNGShPDU=",
+                "cache.flakehub.com-6:W4EGFwAGgBj3he7c5fNh9NkOXw0PUVaxygCVKeuvaqU=",
+                "cache.flakehub.com-7:mvxJ2DZVHn/kRxlIaxYNMuDG1OvMckZu32um1TadOR8=",
+                "cache.flakehub.com-8:moO+OVS0mnTjBTcOUh2kYLQEd59ExzyoW1QgQ8XAARQ=",
+                "cache.flakehub.com-9:wChaSeTI6TeCuV/Sg2513ZIM9i0qJaYsF+lZCXg0J6o=",
+                "cache.flakehub.com-10:2GqeNlIp6AKp4EF2MVbE1kBOp9iBSyo0UPR9KoR0o1Y=",
+            ];
+            match settings.entry("extra-trusted-public-keys".to_string()) {
+                Entry::Occupied(mut slot) => {
+                    let slot_mut = slot.get_mut();
+                    for extra_trusted_public_key in extra_trusted_public_keys {
+                        if !slot_mut.contains(extra_trusted_public_key) {
+                            *slot_mut += " ";
+                            *slot_mut += extra_trusted_public_key;
+                        }
+                    }
+                },
+                Entry::Vacant(slot) => {
+                    let _ = slot.insert(extra_trusted_public_keys.join(" "));
+                },
+            };
         }
 
         settings.insert(
