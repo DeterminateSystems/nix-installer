@@ -32,8 +32,7 @@ impl KickstartLaunchctlService {
         let mut command = Command::new("launchctl");
         command.process_group(0);
         command.arg("print");
-        command.arg(&service);
-        command.arg("-plist");
+        command.arg([domain.as_ref(), service.as_ref()].join("/"));
         command.stdin(std::process::Stdio::null());
         command.stdout(std::process::Stdio::piped());
         command.stderr(std::process::Stdio::piped());
