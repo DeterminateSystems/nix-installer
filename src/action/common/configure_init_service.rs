@@ -275,7 +275,7 @@ impl Action for ConfigureInitService {
                         })?;
                 }
 
-                crate::action::macos::retry_bootstrap(&domain, &service_dest)
+                crate::action::macos::retry_bootstrap(&domain, &service, &service_dest)
                     .await
                     .map_err(Self::error)?;
 
@@ -533,6 +533,9 @@ impl Action for ConfigureInitService {
             InitSystem::Launchd => {
                 crate::action::macos::retry_bootout(
                     DARWIN_LAUNCHD_DOMAIN,
+                    self.service_name
+                        .as_ref()
+                        .expect("service_name should be set for launchd"),
                     self.service_dest
                         .as_ref()
                         .expect("service_dest should be defined for launchd"),

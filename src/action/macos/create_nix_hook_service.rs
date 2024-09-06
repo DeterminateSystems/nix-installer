@@ -127,7 +127,7 @@ impl Action for CreateNixHookService {
         } = self;
 
         if *needs_bootout {
-            crate::action::macos::retry_bootout(DARWIN_LAUNCHD_DOMAIN, &path)
+            crate::action::macos::retry_bootout(DARWIN_LAUNCHD_DOMAIN, &service_label, &path)
                 .await
                 .map_err(Self::error)?;
         }

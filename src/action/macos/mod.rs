@@ -143,14 +143,35 @@ pub(crate) async fn wait_for_nix_store_dir() -> Result<(), ActionErrorKind> {
 /// Wait for `launchctl bootstrap {domain} {service}` to succeed up to `retry_tokens * 500ms` amount
 /// of time.
 #[tracing::instrument]
-pub(crate) async fn retry_bootstrap(domain: &str, service: &Path) -> Result<(), ActionErrorKind> {
+pub(crate) async fn retry_bootstrap(
+    domain: &str,
+    service_name: &str,
+    service_path: &Path,
+) -> Result<(), ActionErrorKind> {
+    let check_service_running = execute_command(
+        Command::new("launchctl")
+            .process_group(0)
+            .arg("print")
+            .arg([domain, service_name].join("/"))
+            .stdin(std::process::Stdio::null())
+            .stdout(std::process::Stdio::piped())
+            .stderr(std::process::Stdio::piped()),
+    )
+    .await;
+
+    if check_service_running.is_ok() {
+        // NOTE(cole-h): if `launchctl print` succeeds, that means the service is already loaded
+        // and so our retry will fail.
+        return Ok(());
+    }
+
     let mut retry_tokens: usize = 10;
     loop {
         let mut command = Command::new("launchctl");
         command.process_group(0);
         command.arg("bootstrap");
         command.arg(domain);
-        command.arg(service);
+        command.arg(service_path);
         command.stdin(std::process::Stdio::null());
         command.stderr(std::process::Stdio::null());
         command.stdout(std::process::Stdio::null());
@@ -180,8 +201,26 @@ pub(crate) async fn retry_bootstrap(domain: &str, service: &Path) -> Result<(), 
 #[tracing::instrument]
 pub(crate) async fn retry_bootout(
     domain: &str,
+    service_name: &str,
     service_path: &Path,
 ) -> Result<(), ActionErrorKind> {
+    let check_service_running = execute_command(
+        Command::new("launchctl")
+            .process_group(0)
+            .arg("print")
+            .arg([domain, service_name].join("/"))
+            .stdin(std::process::Stdio::null())
+            .stdout(std::process::Stdio::piped())
+            .stderr(std::process::Stdio::piped()),
+    )
+    .await;
+
+    if check_service_running.is_err() {
+        // NOTE(cole-h): if `launchctl print` fails, that means the service is already unloaded and
+        // so our retry will fail.
+        return Ok(());
+    }
+
     let mut retry_tokens: usize = 10;
     loop {
         let mut command = Command::new("launchctl");

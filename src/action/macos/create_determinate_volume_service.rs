@@ -134,7 +134,7 @@ impl Action for CreateDeterminateVolumeService {
         } = self;
 
         if *needs_bootout {
-            crate::action::macos::retry_bootout(DARWIN_LAUNCHD_DOMAIN, &path)
+            crate::action::macos::retry_bootout(DARWIN_LAUNCHD_DOMAIN, &mount_service_label, &path)
                 .await
                 .map_err(Self::error)?;
         }

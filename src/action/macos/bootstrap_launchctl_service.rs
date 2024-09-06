@@ -118,7 +118,7 @@ impl Action for BootstrapLaunchctlService {
         }
 
         if !*is_present {
-            crate::action::macos::retry_bootstrap(DARWIN_LAUNCHD_DOMAIN, &path)
+            crate::action::macos::retry_bootstrap(DARWIN_LAUNCHD_DOMAIN, &service, &path)
                 .await
                 .map_err(Self::error)?;
         }
@@ -139,7 +139,7 @@ impl Action for BootstrapLaunchctlService {
 
     #[tracing::instrument(level = "debug", skip_all)]
     async fn revert(&mut self) -> Result<(), ActionError> {
-        crate::action::macos::retry_bootout(DARWIN_LAUNCHD_DOMAIN, &self.path)
+        crate::action::macos::retry_bootout(DARWIN_LAUNCHD_DOMAIN, &self.service, &self.path)
             .await
             .map_err(Self::error)?;
 
