@@ -34,6 +34,35 @@ impl PlaceNixConfiguration {
         extra_conf: Vec<UrlOrPathOrString>,
         force: bool,
     ) -> Result<StatefulAction<Self>, ActionError> {
+        let nix_config = Self::setup_nix_config(
+            nix_build_group_name,
+            proxy,
+            ssl_cert_file,
+            extra_internal_conf,
+            extra_conf,
+        )
+        .await?;
+
+        let create_directory = CreateDirectory::plan(NIX_CONF_FOLDER, None, None, 0o0755, force)
+            .await
+            .map_err(Self::error)?;
+        let create_or_merge_nix_config = CreateOrMergeNixConfig::plan(NIX_CONF, nix_config)
+            .await
+            .map_err(Self::error)?;
+        Ok(Self {
+            create_directory,
+            create_or_merge_nix_config,
+        }
+        .into())
+    }
+
+    async fn setup_nix_config(
+        nix_build_group_name: String,
+        proxy: Option<Url>,
+        ssl_cert_file: Option<PathBuf>,
+        extra_internal_conf: Option<nix_config_parser::NixConfig>,
+        extra_conf: Vec<UrlOrPathOrString>,
+    ) -> Result<nix_config_parser::NixConfig, ActionError> {
         let mut extra_conf_text = vec![];
         for extra in extra_conf {
             let buf = match &extra {
@@ -157,17 +186,7 @@ impl PlaceNixConfiguration {
             "https://install.determinate.systems/nix-upgrade/stable/universal".to_string(),
         );
 
-        let create_directory = CreateDirectory::plan(NIX_CONF_FOLDER, None, None, 0o0755, force)
-            .await
-            .map_err(Self::error)?;
-        let create_or_merge_nix_config = CreateOrMergeNixConfig::plan(NIX_CONF, nix_config)
-            .await
-            .map_err(Self::error)?;
-        Ok(Self {
-            create_directory,
-            create_or_merge_nix_config,
-        }
-        .into())
+        Ok(nix_config)
     }
 }
 
