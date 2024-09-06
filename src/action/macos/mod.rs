@@ -18,6 +18,7 @@ pub(crate) mod set_tmutil_exclusion;
 pub(crate) mod set_tmutil_exclusions;
 pub(crate) mod unmount_apfs_volume;
 
+use std::path::Path;
 use std::time::Duration;
 
 pub use bootstrap_launchctl_service::BootstrapLaunchctlService;
@@ -130,6 +131,41 @@ pub(crate) async fn wait_for_nix_store_dir() -> Result<(), ActionErrorKind> {
             retry_tokens = retry_tokens.saturating_sub(1);
         }
         tokio::time::sleep(Duration::from_millis(100)).await;
+    }
+
+    Ok(())
+}
+
+/// Wait for `launchctl bootstrap {domain} {service}` to succeed up to `retry_tokens * 500ms` amount
+/// of time.
+#[tracing::instrument]
+pub(crate) async fn retry_bootstrap(domain: &str, service: &Path) -> Result<(), ActionErrorKind> {
+    let mut retry_tokens: usize = 10;
+    loop {
+        let mut command = Command::new("launchctl");
+        command.process_group(0);
+        command.arg("bootstrap");
+        command.arg(domain);
+        command.arg(service);
+        command.stdin(std::process::Stdio::null());
+        command.stderr(std::process::Stdio::null());
+        command.stdout(std::process::Stdio::null());
+        tracing::trace!(%retry_tokens, command = ?command.as_std(), "Waiting for bootstrap to succeed");
+
+        let output = command
+            .output()
+            .await
+            .map_err(|e| ActionErrorKind::command(&command, e))?;
+
+        if output.status.success() {
+            break;
+        } else if retry_tokens == 0 {
+            return Err(ActionErrorKind::command_output(&command, output))?;
+        } else {
+            retry_tokens = retry_tokens.saturating_sub(1);
+        }
+
+        tokio::time::sleep(Duration::from_millis(500)).await;
     }
 
     Ok(())

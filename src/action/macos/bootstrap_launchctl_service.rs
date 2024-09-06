@@ -128,16 +128,9 @@ impl Action for BootstrapLaunchctlService {
         }
 
         if !*is_present {
-            execute_command(
-                Command::new("launchctl")
-                    .process_group(0)
-                    .arg("bootstrap")
-                    .arg(domain)
-                    .arg(path)
-                    .stdin(std::process::Stdio::null()),
-            )
-            .await
-            .map_err(Self::error)?;
+            crate::action::macos::retry_bootstrap(&domain, &path)
+                .await
+                .map_err(Self::error)?;
         }
 
         Ok(())
