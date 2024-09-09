@@ -194,13 +194,13 @@ let
     };
     install-determinate = {
       install = nix-installer-install-determinate;
-      check = installCases.install-default.check + ''
+      check = ''
         if ! determinate-nixd status; then
           echo "determinate-nixd is not working"
           sudo journalctl -eu determinate-nixd.service
           exit 1
         fi
-      '';
+      '' + installCases.install-default.check;
       uninstall = installCases.install-default.uninstall;
       uninstallCheck = installCases.install-default.uninstallCheck;
     };
