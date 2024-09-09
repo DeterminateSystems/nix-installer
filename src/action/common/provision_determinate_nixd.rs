@@ -9,6 +9,7 @@ use crate::action::{
 };
 
 const DETERMINATE_NIXD_BINARY_PATH: &str = "/usr/local/bin/determinate-nixd";
+const DETERMINATE_NIXD_SOCKET_DIRECTORY: &str = "/nix/var/determinate";
 /**
 Provision the determinate-nixd binary
 */
@@ -16,6 +17,7 @@ Provision the determinate-nixd binary
 #[serde(tag = "action_name", rename = "provision_determinate_nixd")]
 pub struct ProvisionDeterminateNixd {
     binary_location: PathBuf,
+    socket_directory: PathBuf,
 }
 
 impl ProvisionDeterminateNixd {
@@ -26,6 +28,7 @@ impl ProvisionDeterminateNixd {
 
         let this = Self {
             binary_location: DETERMINATE_NIXD_BINARY_PATH.into(),
+            socket_directory: DETERMINATE_NIXD_SOCKET_DIRECTORY.into(),
         };
 
         Ok(StatefulAction::uncompleted(this))
@@ -75,6 +78,11 @@ impl Action for ProvisionDeterminateNixd {
                 .map_err(|e| ActionErrorKind::CreateDirectory(parent.into(), e))
                 .map_err(Self::error)?;
         }
+
+        create_dir_all(&self.socket_directory)
+            .await
+            .map_err(|e| ActionErrorKind::CreateDirectory(self.socket_directory.clone(), e))
+            .map_err(Self::error)?;
 
         tokio::fs::write(&self.binary_location, bytes)
             .await
