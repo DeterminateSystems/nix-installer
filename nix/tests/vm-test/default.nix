@@ -195,6 +195,12 @@ let
     install-determinate = {
       install = nix-installer-install-determinate;
       check = ''
+        if ! systemctl is-active determinate-nixd.socket; then
+          echo "determinate-nixd.socket is not active"
+          sudo journalctl -eu determinate-nixd.socket
+          exit 1
+        fi
+
         if ! determinate-nixd status; then
           echo "determinate-nixd is not working"
           sudo journalctl -eu determinate-nixd.service
