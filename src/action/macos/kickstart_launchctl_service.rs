@@ -1,10 +1,10 @@
 use std::process::Output;
+use std::time::Duration;
 
 use tokio::process::Command;
 use tracing::{span, Span};
 
 use crate::action::{ActionError, ActionErrorKind, ActionTag, StatefulAction};
-use crate::execute_command;
 
 use crate::action::{Action, ActionDescription};
 
@@ -99,15 +99,35 @@ impl Action for KickstartLaunchctlService {
     async fn execute(&mut self) -> Result<(), ActionError> {
         let Self { domain, service } = self;
 
-        execute_command(
-            Command::new("launchctl")
-                .process_group(0)
-                .args(["kickstart", "-k"])
-                .arg(format!("{domain}/{service}"))
-                .stdin(std::process::Stdio::null()),
-        )
-        .await
-        .map_err(Self::error)?;
+        let mut retry_tokens: usize = 10;
+        loop {
+            let mut command = Command::new("launchctl");
+            command.process_group(0);
+            command.args(["kickstart", "-k"]);
+            command.arg(format!("{domain}/{service}"));
+            command.stdin(std::process::Stdio::null());
+            command.stderr(std::process::Stdio::null());
+            command.stdout(std::process::Stdio::null());
+            tracing::trace!(%retry_tokens, command = ?command.as_std(), "Waiting for kickstart to succeed");
+
+            let output = command
+                .output()
+                .await
+                .map_err(|e| ActionErrorKind::command(&command, e))
+                .map_err(Self::error)?;
+
+            if output.status.success() {
+                break;
+            } else if retry_tokens == 0 {
+                return Err(Self::error(ActionErrorKind::command_output(
+                    &command, output,
+                )))?;
+            } else {
+                retry_tokens = retry_tokens.saturating_sub(1);
+            }
+
+            tokio::time::sleep(Duration::from_millis(500)).await;
+        }
 
         Ok(())
     }
