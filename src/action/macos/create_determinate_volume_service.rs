@@ -201,6 +201,7 @@ async fn generate_mount_plist(
             "/usr/local/bin/determinate-nixd".into(),
             "--stop-after".into(),
             "mount".into(),
+            "daemon".into(),
         ],
         standard_out_path: "/var/log/determinate-nixd-mount.log".into(),
         standard_error_path: "/var/log/determinate-nixd-mount.log".into(),
