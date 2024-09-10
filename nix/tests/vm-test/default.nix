@@ -194,13 +194,19 @@ let
     };
     install-determinate = {
       install = nix-installer-install-determinate;
-      check = installCases.install-default.check + ''
-        if systemctl is-failed determinate-nixd.socket; then
-          echo "determinate-nixd.socket is failed"
+      check = ''
+        if ! systemctl is-active determinate-nixd.socket; then
+          echo "determinate-nixd.socket is not active"
           sudo journalctl -eu determinate-nixd.socket
           exit 1
         fi
-      '';
+
+        if ! determinate-nixd status; then
+          echo "determinate-nixd is not working"
+          sudo journalctl -eu determinate-nixd.service
+          exit 1
+        fi
+      '' + installCases.install-default.check;
       uninstall = installCases.install-default.uninstall;
       uninstallCheck = installCases.install-default.uninstallCheck;
     };
