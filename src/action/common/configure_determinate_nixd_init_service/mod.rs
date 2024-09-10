@@ -223,10 +223,7 @@ fn generate_plist() -> DeterminateNixDaemonPlist {
     DeterminateNixDaemonPlist {
         run_at_load: false,
         label: "systems.determinate.nix-daemon".into(),
-        program_arguments: vec![
-            "/usr/local/bin/determinate-nixd".into(),
-            "daemon".into(),
-        ],
+        program_arguments: vec!["/usr/local/bin/determinate-nixd".into(), "daemon".into()],
         standard_error_path: "/var/log/determinate-nix-daemon.log".into(),
         standard_out_path: "/var/log/determinate-nix-daemon.log".into(),
         soft_resource_limits: ResourceLimits {
