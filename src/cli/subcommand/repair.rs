@@ -207,6 +207,7 @@ impl CommandExecute for Repair {
                     ));
                 }
 
+                let user_base = crate::settings::default_nix_build_user_id_base();
                 let existing_receipt = get_existing_receipt().await;
 
                 let maybe_create_users_and_groups_idx_action =
@@ -215,7 +216,6 @@ impl CommandExecute for Repair {
                 let (
                     user_prefix,
                     user_count,
-                    user_base,
                     group_name,
                     group_gid,
                     receipt_action_idx_create_group,
@@ -225,34 +225,29 @@ impl CommandExecute for Repair {
 
                         let user_prefix = action.nix_build_user_prefix;
                         let user_count = action.nix_build_user_count;
-                        let user_base = crate::settings::default_nix_build_user_id_base();
                         let group_gid = action.nix_build_group_id;
                         let group_name = action.nix_build_group_name;
 
                         (
                             user_prefix,
                             user_count,
-                            user_base,
                             group_name,
                             Some(group_gid),
                             Some((receipt, create_users_and_groups_idx, action.create_group)),
                         )
                     },
                     None => {
-                        let uid_base = crate::settings::default_nix_build_user_id_base();
-
                         tracing::warn!(
                             "Unable to find {} in receipt (receipt didn't exist or is unable to be \
                             parsed by this version of the installer). Your receipt at {RECEIPT_LOCATION} \
                             will not reflect the changed UIDs, but the users will still be relocated \
-                            to the new Sequoia-compatible UID range, starting at {uid_base}.",
+                            to the new Sequoia-compatible UID range, starting at {user_base}.",
                             CreateUsersAndGroups::action_tag()
                         );
 
                         (
-                            nix_build_user_prefix,
+                            nix_build_user_prefix.clone(),
                             nix_build_user_count,
-                            uid_base,
                             nix_build_group_name,
                             None,
                             None,
