@@ -326,12 +326,13 @@ async fn path_is_mountpoint(path: &Path) -> Result<bool, ActionErrorKind> {
             Some(destination_and_options) => destination_and_options,
             None => continue,
         };
-        // Each line on Linux looks like `portal on /run/user/1000/doc type fuse.portal (rw,nosuid,nodev,relatime,user_id=1000,group_id=100)`
-        #[cfg(target_os = "linux")]
-        let split_token = "type";
-        // Each line on MacOS looks like `/dev/disk3s6 on /System/Volumes/VM (apfs, local, noexec, journaled, noatime, nobrowse)`
-        #[cfg(target_os = "macos")]
-        let split_token = "(";
+
+        let split_token = match OperatingSystem::host() {
+            // Each line on MacOS looks like `/dev/disk3s6 on /System/Volumes/VM (apfs, local, noexec, journaled, noatime, nobrowse)`
+            OperatingSystem::MacOSX { .. } | OperatingSystem::Darwin => "(",
+            // Each line on Linux looks like `portal on /run/user/1000/doc type fuse.portal (rw,nosuid,nodev,relatime,user_id=1000,group_id=100)`
+            _ => "type",
+        };
 
         if let Some(mount_path) = destination_and_options.rsplit(split_token).last() {
             let trimmed = mount_path.trim();
