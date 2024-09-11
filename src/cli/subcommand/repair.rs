@@ -79,21 +79,6 @@ pub enum RepairKind {
         )]
         nix_build_user_count: u32,
 
-        /// The Nix build user base UID (ascending).
-        ///
-        /// Note: the first UID will be this base + 1.
-        #[cfg_attr(
-            feature = "cli",
-            clap(long, env = "NIX_INSTALLER_NIX_BUILD_USER_ID_BASE", global = true,
-                default_value_t = crate::settings::default_nix_build_user_id_base()
-            )
-        )]
-        #[cfg_attr(
-            all(target_os = "macos", feature = "cli"),
-            doc = "Service users on Mac should be between 200-400"
-        )]
-        nix_build_user_id_base: u32,
-
         /// The Nix build group name
         #[cfg_attr(
             feature = "cli",
@@ -165,7 +150,6 @@ impl CommandExecute for Repair {
             RepairKind::Sequoia {
                 nix_build_user_prefix,
                 nix_build_user_count,
-                nix_build_user_id_base,
                 nix_build_group_name,
                 move_existing_users,
             } => {
@@ -227,7 +211,7 @@ impl CommandExecute for Repair {
                         (
                             nix_build_user_prefix,
                             nix_build_user_count,
-                            nix_build_user_id_base,
+                            crate::settings::default_nix_build_user_id_base(),
                             nix_build_group_name,
                             None,
                             None,
