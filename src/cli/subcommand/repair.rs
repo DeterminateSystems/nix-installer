@@ -10,6 +10,7 @@ use tokio::process::Command;
 use crate::action::base::{AddUserToGroup, CreateUser};
 use crate::action::common::{ConfigureShellProfile, CreateUsersAndGroups};
 use crate::action::{Action, ActionState, StatefulAction};
+use crate::cli::interaction::PromptChoice;
 use crate::cli::{ensure_root, CommandExecute};
 use crate::plan::RECEIPT_LOCATION;
 use crate::planner::{PlannerError, ShellProfileLocations};
@@ -122,6 +123,43 @@ impl CommandExecute for Repair {
         ensure_root()?;
 
         let mut repair_actions = Vec::new();
+        let (prompt_before_repairing, brief_repair_summary) = match command {
+            RepairKind::Hooks => (
+                false,
+                String::from("Will ensure the Nix shell profiles are still being sourced"),
+            ),
+            RepairKind::Sequoia {
+                ref nix_build_user_prefix,
+                ..
+            } => {
+                let user_base = crate::settings::default_nix_build_user_id_base();
+                let brief_summary = format!("Will move the {nix_build_user_prefix} users to the Sequoia-compatible {user_base}+ UID range");
+                (!self.no_confirm, brief_summary)
+            },
+        };
+
+        if prompt_before_repairing {
+            loop {
+                match crate::cli::interaction::prompt(
+                    &brief_repair_summary,
+                    PromptChoice::Yes,
+                    true,
+                )
+                .await?
+                {
+                    PromptChoice::Yes => break,
+                    PromptChoice::No => {
+                        crate::cli::interaction::clean_exit_with_message(
+                            "Okay, didn't do anything! Bye!",
+                        )
+                        .await
+                    },
+                    PromptChoice::Explain => (),
+                }
+            }
+        } else {
+            tracing::info!("{}", brief_repair_summary);
+        }
 
         // TODO(cole-h): if we add another repair command, make this whole thing more generic
         let updated_receipt = match command.clone() {
