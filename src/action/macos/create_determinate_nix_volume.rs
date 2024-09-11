@@ -6,7 +6,7 @@ use std::{
 use tokio::process::Command;
 use tracing::{span, Span};
 
-use super::create_fstab_entry::CreateFstabEntry;
+use super::{create_fstab_entry::CreateFstabEntry, DARWIN_LAUNCHD_DOMAIN};
 use crate::action::macos::{
     BootstrapLaunchctlService, CreateDeterminateVolumeService, KickstartLaunchctlService,
 };
@@ -91,15 +91,12 @@ impl CreateDeterminateNixVolume {
         .await
         .map_err(Self::error)?;
 
-        let bootstrap_volume = BootstrapLaunchctlService::plan(
-            "system",
-            VOLUME_MOUNT_SERVICE_NAME,
-            VOLUME_MOUNT_SERVICE_DEST,
-        )
-        .await
-        .map_err(Self::error)?;
+        let bootstrap_volume =
+            BootstrapLaunchctlService::plan(VOLUME_MOUNT_SERVICE_NAME, VOLUME_MOUNT_SERVICE_DEST)
+                .await
+                .map_err(Self::error)?;
         let kickstart_launchctl_service =
-            KickstartLaunchctlService::plan("system", VOLUME_MOUNT_SERVICE_NAME)
+            KickstartLaunchctlService::plan(DARWIN_LAUNCHD_DOMAIN, VOLUME_MOUNT_SERVICE_NAME)
                 .await
                 .map_err(Self::error)?;
 

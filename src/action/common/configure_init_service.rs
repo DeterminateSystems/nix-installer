@@ -4,6 +4,7 @@ use std::path::PathBuf;
 use tokio::process::Command;
 use tracing::{span, Span};
 
+use crate::action::macos::DARWIN_LAUNCHD_DOMAIN;
 use crate::action::{ActionError, ActionErrorKind, ActionTag, StatefulAction};
 use crate::execute_command;
 
@@ -12,8 +13,6 @@ use crate::settings::InitSystem;
 
 const TMPFILES_SRC: &str = "/nix/var/nix/profiles/default/lib/tmpfiles.d/nix-daemon.conf";
 const TMPFILES_DEST: &str = "/etc/tmpfiles.d/nix-daemon.conf";
-
-const DARWIN_LAUNCHD_DOMAIN: &str = "system";
 
 #[derive(Debug, serde::Deserialize, serde::Serialize, Clone)]
 pub struct SocketFile {
@@ -276,16 +275,9 @@ impl Action for ConfigureInitService {
                         })?;
                 }
 
-                execute_command(
-                    Command::new("launchctl")
-                        .process_group(0)
-                        .arg("bootstrap")
-                        .arg(domain)
-                        .arg(service_dest)
-                        .stdin(std::process::Stdio::null()),
-                )
-                .await
-                .map_err(Self::error)?;
+                crate::action::macos::retry_bootstrap(&domain, &service, &service_dest)
+                    .await
+                    .map_err(Self::error)?;
 
                 let is_disabled = crate::action::macos::service_is_disabled(domain, service)
                     .await
@@ -539,19 +531,14 @@ impl Action for ConfigureInitService {
 
         match self.init {
             InitSystem::Launchd => {
-                execute_command(
-                    Command::new("launchctl")
-                        .process_group(0)
-                        .arg("bootout")
-                        .arg(
-                            [
-                                DARWIN_LAUNCHD_DOMAIN,
-                                self.service_name
-                                    .as_ref()
-                                    .expect("service_name should be defined for launchd"),
-                            ]
-                            .join("/"),
-                        ),
+                crate::action::macos::retry_bootout(
+                    DARWIN_LAUNCHD_DOMAIN,
+                    self.service_name
+                        .as_ref()
+                        .expect("service_name should be set for launchd"),
+                    self.service_dest
+                        .as_ref()
+                        .expect("service_dest should be defined for launchd"),
                 )
                 .await
                 .map_err(Self::error)?;
