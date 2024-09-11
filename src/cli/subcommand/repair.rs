@@ -416,17 +416,8 @@ async fn get_existing_receipt() -> Option<InstallPlan> {
             match install_plan_string {
                 Some(s) => match serde_json::from_str::<InstallPlan>(s.as_str()) {
                     Ok(plan) => {
-                        tracing::debug!("Able to parse receipt");
-                        match plan.check_compatible() {
-                            Ok(_) => {
-                                tracing::debug!("Existing plan is compatible with this version of the installer");
-                                Some(plan)
-                            },
-                            Err(_) => {
-                                tracing::warn!("Existing plan is incompatible with this version of the installer");
-                                None
-                            },
-                        }
+                        tracing::debug!(plan_version = %plan.version, "Able to parse receipt");
+                        Some(plan)
                     },
                     Err(e) => {
                         tracing::warn!(?e, "Could not parse receipt. Your receipt will not be updated to account for the new UIDs");
