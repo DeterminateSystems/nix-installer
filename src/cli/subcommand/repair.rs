@@ -201,17 +201,20 @@ impl CommandExecute for Repair {
                         )
                     },
                     None => {
+                        let uid_base = crate::settings::default_nix_build_user_id_base();
+
                         tracing::warn!(
-                            "Unable to find {} in receipt (receipt didn't exist or is incompatible \
-                            with this version of the installer), not updating receipt with migrated \
-                            UIDs",
+                            "Unable to find {} in receipt (receipt didn't exist or is unable to be \
+                            parsed by this version of the installer). Your receipt at {RECEIPT_LOCATION} \
+                            will not reflect the changed UIDs, but the users will still be relocated \
+                            to the new Sequoia-compatible UID range, starting at {uid_base}.",
                             CreateUsersAndGroups::action_tag()
                         );
 
                         (
                             nix_build_user_prefix,
                             nix_build_user_count,
-                            crate::settings::default_nix_build_user_id_base(),
+                            uid_base,
                             nix_build_group_name,
                             None,
                             None,
