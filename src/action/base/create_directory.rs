@@ -3,6 +3,7 @@ use std::path::{Path, PathBuf};
 
 use nix::unistd::{chown, Group, User};
 
+use target_lexicon::OperatingSystem;
 use tokio::fs::{create_dir_all, remove_dir_all, remove_file};
 use tokio::process::Command;
 use tracing::{span, Span};
@@ -297,13 +298,20 @@ async fn path_is_mountpoint(path: &Path) -> Result<bool, ActionErrorKind> {
         None => return Err(ActionErrorKind::PathNoneString(path.to_path_buf())),
     };
 
-    let mut mount_command = Command::new("mount");
-    mount_command.process_group(0);
+    let mut mount_command = match OperatingSystem::host() {
+        OperatingSystem::MacOSX { .. } | OperatingSystem::Darwin => {
+            let mut cmd = Command::new("/sbin/mount");
+            cmd.arg("-d"); // `-d` means `--dry-run`
+            cmd
+        },
+        _ => {
+            let mut cmd = Command::new("mount");
+            cmd.arg("-f"); // `-f` means `--fake` not `--force`
+            cmd
+        },
+    };
 
-    #[cfg(target_os = "macos")]
-    mount_command.arg("-d"); // `-d` means `--dry-run`
-    #[cfg(target_os = "linux")]
-    mount_command.arg("-f"); // `-f` means `--fake` not `--force`
+    mount_command.process_group(0);
 
     let output = execute_command(&mut mount_command).await?;
     let output_string = String::from_utf8(output.stdout).map_err(ActionErrorKind::FromUtf8)?;
