@@ -249,7 +249,8 @@ impl CommandExecute for Repair {
                         "Unable to find {} in receipt (receipt didn't exist or is unable to be \
                         parsed by this version of the installer). Your receipt at {RECEIPT_LOCATION} \
                         will not reflect the changed UIDs, but the users will still be relocated \
-                        to the new Sequoia-compatible UID range, starting at {user_base}.",
+                        to the new Sequoia-compatible UID range, starting at {user_base}, and \
+                        uninstallation will continue to work as normal, even if the UIDs do not match.",
                         CreateUsersAndGroups::action_tag()
                     );
                 }
