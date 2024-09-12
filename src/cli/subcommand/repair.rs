@@ -8,7 +8,7 @@ use serde::{Deserialize, Serialize};
 use target_lexicon::OperatingSystem;
 use tokio::process::Command;
 
-use crate::action::base::{AddUserToGroup, CreateUser};
+use crate::action::base::{AddUserToGroup, CreateGroup, CreateUser};
 use crate::action::common::{ConfigureShellProfile, CreateUsersAndGroups};
 use crate::action::{Action, ActionState, StatefulAction};
 use crate::cli::interaction::PromptChoice;
@@ -131,10 +131,30 @@ impl CommandExecute for Repair {
             ),
             RepairKind::Sequoia {
                 ref nix_build_user_prefix,
+                nix_build_user_count,
+                ref nix_build_group_name,
                 ..
             } => {
+                let maybe_users_and_groups_from_receipt = maybe_users_and_groups_from_receipt(
+                    nix_build_user_prefix,
+                    nix_build_user_count,
+                    nix_build_group_name,
+                )
+                .await?;
+
                 let user_base = crate::settings::default_nix_build_user_id_base();
-                let brief_summary = format!("Will move the {nix_build_user_prefix} users to the Sequoia-compatible {user_base}+ UID range");
+                let brief_summary = format!(
+                    "Will move the {nix_build_user_prefix} users to the Sequoia-compatible \
+                    {user_base}+ UID range and {maybe_update_receipt} update the receipt",
+                    maybe_update_receipt = if maybe_users_and_groups_from_receipt
+                        .receipt_action_idx_create_group
+                        .is_some()
+                    {
+                        "WILL"
+                    } else {
+                        "WILL NOT"
+                    }
+                );
                 (!self.no_confirm, brief_summary)
             },
         };
@@ -209,52 +229,30 @@ impl CommandExecute for Repair {
                 }
 
                 let user_base = crate::settings::default_nix_build_user_id_base();
-                let existing_receipt = get_existing_receipt().await;
 
-                let maybe_create_users_and_groups_idx_action =
-                    find_users_and_groups(existing_receipt)?;
+                let maybe_users_and_groups_from_receipt = maybe_users_and_groups_from_receipt(
+                    &nix_build_user_prefix,
+                    nix_build_user_count,
+                    &nix_build_group_name,
+                )
+                .await?;
 
-                let (
-                    user_prefix,
-                    user_count,
-                    group_name,
-                    group_gid,
-                    receipt_action_idx_create_group,
-                ) = match maybe_create_users_and_groups_idx_action {
-                    Some((receipt, create_users_and_groups_idx, action)) => {
-                        tracing::debug!("Found {} in receipt", CreateUsersAndGroups::action_tag());
+                let user_prefix = maybe_users_and_groups_from_receipt.user_prefix;
+                let user_count = maybe_users_and_groups_from_receipt.user_count;
+                let group_name = maybe_users_and_groups_from_receipt.group_name;
+                let group_gid = maybe_users_and_groups_from_receipt.group_gid;
+                let receipt_action_idx_create_group =
+                    maybe_users_and_groups_from_receipt.receipt_action_idx_create_group;
 
-                        let user_prefix = action.nix_build_user_prefix;
-                        let user_count = action.nix_build_user_count;
-                        let group_gid = action.nix_build_group_id;
-                        let group_name = action.nix_build_group_name;
-
-                        (
-                            user_prefix,
-                            user_count,
-                            group_name,
-                            Some(group_gid),
-                            Some((receipt, create_users_and_groups_idx, action.create_group)),
-                        )
-                    },
-                    None => {
-                        tracing::warn!(
-                            "Unable to find {} in receipt (receipt didn't exist or is unable to be \
-                            parsed by this version of the installer). Your receipt at {RECEIPT_LOCATION} \
-                            will not reflect the changed UIDs, but the users will still be relocated \
-                            to the new Sequoia-compatible UID range, starting at {user_base}.",
-                            CreateUsersAndGroups::action_tag()
-                        );
-
-                        (
-                            nix_build_user_prefix.clone(),
-                            nix_build_user_count,
-                            nix_build_group_name,
-                            None,
-                            None,
-                        )
-                    },
-                };
+                if receipt_action_idx_create_group.is_none() {
+                    tracing::warn!(
+                        "Unable to find {} in receipt (receipt didn't exist or is unable to be \
+                        parsed by this version of the installer). Your receipt at {RECEIPT_LOCATION} \
+                        will not reflect the changed UIDs, but the users will still be relocated \
+                        to the new Sequoia-compatible UID range, starting at {user_base}.",
+                        CreateUsersAndGroups::action_tag()
+                    );
+                }
 
                 let group_plist = {
                     let buf = execute_command(
@@ -463,7 +461,8 @@ async fn get_existing_receipt() -> Option<InstallPlan> {
                         Some(plan)
                     },
                     Err(e) => {
-                        tracing::warn!(?e, "Could not parse receipt. Your receipt will not be updated to account for the new UIDs");
+                        tracing::debug!(?e);
+                        tracing::warn!("Could not parse receipt. Your receipt will not be updated to account for the new UIDs");
                         None
                     },
                 },
@@ -523,4 +522,51 @@ fn find_users_and_groups(
     };
 
     Ok(ret)
+}
+
+struct UsersAndGroupsMeta {
+    user_prefix: String,
+    user_count: u32,
+    group_name: String,
+    group_gid: Option<u32>,
+    receipt_action_idx_create_group: Option<(InstallPlan, usize, StatefulAction<CreateGroup>)>,
+}
+
+async fn maybe_users_and_groups_from_receipt(
+    nix_build_user_prefix: &str,
+    nix_build_user_count: u32,
+    nix_build_group_name: &str,
+) -> eyre::Result<UsersAndGroupsMeta> {
+    let existing_receipt = get_existing_receipt().await;
+    let maybe_create_users_and_groups_idx_action = find_users_and_groups(existing_receipt)?;
+
+    match maybe_create_users_and_groups_idx_action {
+        Some((receipt, create_users_and_groups_idx, action)) => {
+            tracing::debug!("Found {} in receipt", CreateUsersAndGroups::action_tag());
+
+            let user_prefix = action.nix_build_user_prefix;
+            let user_count = action.nix_build_user_count;
+            let group_gid = action.nix_build_group_id;
+            let group_name = action.nix_build_group_name;
+
+            Ok(UsersAndGroupsMeta {
+                user_prefix,
+                user_count,
+                group_name,
+                group_gid: Some(group_gid),
+                receipt_action_idx_create_group: Some((
+                    receipt,
+                    create_users_and_groups_idx,
+                    action.create_group,
+                )),
+            })
+        },
+        None => Ok(UsersAndGroupsMeta {
+            user_prefix: nix_build_user_prefix.to_string(),
+            user_count: nix_build_user_count,
+            group_name: nix_build_group_name.to_string(),
+            group_gid: None,
+            receipt_action_idx_create_group: None,
+        }),
+    }
 }
