@@ -16,10 +16,10 @@ Create an operating system level user in the given group
 #[derive(Debug, serde::Deserialize, serde::Serialize, Clone)]
 #[serde(tag = "action_name", rename = "add_user_to_group")]
 pub struct AddUserToGroup {
-    name: String,
-    uid: u32,
-    groupname: String,
-    gid: u32,
+    pub(crate) name: String,
+    pub(crate) uid: u32,
+    pub(crate) groupname: String,
+    pub(crate) gid: u32,
 }
 
 impl AddUserToGroup {

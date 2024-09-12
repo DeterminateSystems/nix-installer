@@ -304,7 +304,7 @@ impl ActionDescription {
 }
 
 /// A 'tag' name an action has that corresponds to the one we serialize in [`typetag]`
-pub struct ActionTag(&'static str);
+pub struct ActionTag(pub &'static str);
 
 impl std::fmt::Display for ActionTag {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {

@@ -14,10 +14,10 @@ Create an operating system level user in the given group
 #[derive(Debug, serde::Deserialize, serde::Serialize, Clone)]
 #[serde(tag = "action_name", rename = "create_user")]
 pub struct CreateUser {
-    name: String,
-    uid: u32,
-    groupname: String,
-    gid: u32,
+    pub(crate) name: String,
+    pub(crate) uid: u32,
+    pub(crate) groupname: String,
+    pub(crate) gid: u32,
     comment: String,
 }
 
@@ -29,6 +29,7 @@ impl CreateUser {
         groupname: String,
         gid: u32,
         comment: String,
+        check_completed: bool,
     ) -> Result<StatefulAction<Self>, ActionError> {
         let this = Self {
             name: name.clone(),
@@ -50,29 +51,31 @@ impl CreateUser {
             },
         }
 
-        // Ensure user does not exists
-        if let Some(user) = User::from_name(name.as_str())
-            .map_err(|e| ActionErrorKind::GettingUserId(name.clone(), e))
-            .map_err(Self::error)?
-        {
-            if user.uid.as_raw() != uid {
-                return Err(Self::error(ActionErrorKind::UserUidMismatch(
-                    name.clone(),
-                    user.uid.as_raw(),
-                    uid,
-                )));
-            }
+        if check_completed {
+            // Ensure user does not exist
+            if let Some(user) = User::from_name(name.as_str())
+                .map_err(|e| ActionErrorKind::GettingUserId(name.clone(), e))
+                .map_err(Self::error)?
+            {
+                if user.uid.as_raw() != uid {
+                    return Err(Self::error(ActionErrorKind::UserUidMismatch(
+                        name.clone(),
+                        user.uid.as_raw(),
+                        uid,
+                    )));
+                }
 
-            if user.gid.as_raw() != gid {
-                return Err(Self::error(ActionErrorKind::UserGidMismatch(
-                    name.clone(),
-                    user.gid.as_raw(),
-                    gid,
-                )));
-            }
+                if user.gid.as_raw() != gid {
+                    return Err(Self::error(ActionErrorKind::UserGidMismatch(
+                        name.clone(),
+                        user.gid.as_raw(),
+                        gid,
+                    )));
+                }
 
-            tracing::debug!("Creating user `{}` already complete", this.name);
-            return Ok(StatefulAction::completed(this));
+                tracing::debug!("Creating user `{}` already complete", this.name);
+                return Ok(StatefulAction::completed(this));
+            }
         }
 
         Ok(StatefulAction::uncompleted(this))
