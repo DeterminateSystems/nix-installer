@@ -1,5 +1,6 @@
 use std::io::IsTerminal as _;
 use std::process::ExitCode;
+use std::time::SystemTime;
 
 use clap::{ArgAction, Parser, Subcommand};
 use eyre::Context as _;
@@ -402,8 +403,17 @@ impl CommandExecute for Repair {
         }
 
         if let Some(updated_receipt) = updated_receipt {
-            tracing::info!("Updated receipt");
+            let timestamp_millis = SystemTime::now()
+                .duration_since(SystemTime::UNIX_EPOCH)?
+                .as_millis();
+
+            let mut old_receipt = std::path::PathBuf::from(RECEIPT_LOCATION);
+            old_receipt.set_extension(format!("pre-repair.{timestamp_millis}.json"));
+            tokio::fs::copy(RECEIPT_LOCATION, &old_receipt).await?;
+            tracing::info!("Backed up pre-repair receipt to {}", old_receipt.display());
+
             updated_receipt.write_receipt().await?;
+            tracing::info!("Wrote updated receipt");
         }
 
         tracing::info!("Finished repairing successfully!");
