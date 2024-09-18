@@ -389,7 +389,7 @@ pub enum ActionErrorKind {
         if let Some(source) = err.source() {
             format!("{err}\n{source}\n")
         } else {
-            format!("{err}\n") 
+            format!("{err}\n")
         }
     }).collect::<Vec<_>>().join("\n"))]
     MultipleChildren(Vec<ActionError>),

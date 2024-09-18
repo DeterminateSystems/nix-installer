@@ -113,7 +113,7 @@ impl CommandExecute for Install {
                     Some(existing_receipt) => {
                         if let Err(e) = existing_receipt.check_compatible() {
                             eprintln!(
-                                "{}", 
+                                "{}",
                                 format!("\
                                     {e}\n\
                                     \n\
@@ -164,7 +164,7 @@ impl CommandExecute for Install {
                     Some(existing_receipt) => {
                         if let Err(e) = existing_receipt.check_compatible() {
                             eprintln!(
-                                "{}", 
+                                "{}",
                                 format!("\
                                     {e}\n\
                                     \n\

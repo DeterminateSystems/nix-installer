@@ -13,59 +13,54 @@ contributing to other serious Rust ecosystem projects. You may already know
 the process and expectations of you, this document shouldn't contain any
 surprises.
 
-
 # What kinds of contributions are needed?
 
 `nix-installer` can benefit from all kinds of contributions:
 
-* Bug reports
-* Code improvements
-* Registry additions
-* Dependency updates or dependency feature trimming
-* New features (Please create an issue first!)
-* Documentation
-* Graphical/visual asset improvement
-* Kind words or recommendation on your own site, repo, stream, or social media
+- Bug reports
+- Code improvements
+- Registry additions
+- Dependency updates or dependency feature trimming
+- New features (Please create an issue first!)
+- Documentation
+- Graphical/visual asset improvement
+- Kind words or recommendation on your own site, repo, stream, or social media
   account
-* Onboarding others to using `nix-installer`
-
+- Onboarding others to using `nix-installer`
 
 # What are the expectations you can have of the maintainers?
 
 You can expect us to:
 
-* Follow the [Contributor Covenant](CODE_OF_CONDUCT.md), just like you
-* Help diagnose bug reports (for supported platforms using supported
+- Follow the [Contributor Covenant](CODE_OF_CONDUCT.md), just like you
+- Help diagnose bug reports (for supported platforms using supported
   languages)
-* Give constructive feedback on pull requests
-* Merge pull requests which:
-    + Have been approved of by at least 1 maintainer
-    + Pass all tests
-    + Have no complex conflicts with in-flight high priority work
+- Give constructive feedback on pull requests
+- Merge pull requests which:
+  - Have been approved of by at least 1 maintainer
+  - Pass all tests
+  - Have no complex conflicts with in-flight high priority work
 
 The maintainers of this project use a separate issue tracker for some internal
 tasks. Unfortunately, the contents of this tracker is not publicly visible as
 it may contain sensitive or confidential data. Our maintainers will endeavor to
 ensure you are not 'left out' of the discussion about your contributions.
 
-
 # What kind of expectations do the maintainers have from you?
 
 We expect you to:
 
-* Follow the [Contributor Covenant](CODE_OF_CONDUCT.md), just like them
-* Make an earnest attempt to follow the contribution process described in this
+- Follow the [Contributor Covenant](CODE_OF_CONDUCT.md), just like them
+- Make an earnest attempt to follow the contribution process described in this
   document
-* Update bug reports with a solution, if you find one before we do
-* Do your best to follow existing conventions
-* Reflect maintainer feedback if you are able
-* Declare if you need to abandon a PR so someone else can shepherd it
-
+- Update bug reports with a solution, if you find one before we do
+- Do your best to follow existing conventions
+- Reflect maintainer feedback if you are able
+- Declare if you need to abandon a PR so someone else can shepherd it
 
 # How exactly does the contribution process work?
 
 Here are how to do various kinds of contributions.
-
 
 ## Bug Reports
 
@@ -80,7 +75,6 @@ It should contain:
 5. What you expected to happen
 6. If you tried to fix it, what did you try?
 
-
 ## Code/Documentation improvement
 
 For **minor** fixes, documentation, or changes which **do not** have a
@@ -93,13 +87,12 @@ proposing the change is **required** for non-maintainers.
 
 Please:
 
-* Write civil commit messages, it's ok if they are simple like `fmt`
+- Write civil commit messages, it's ok if they are simple like `fmt`
   or `formatting`
-* Follow existing conventions and style within the code the best you can
-* Describe in your PR the problem and solution so reviewers don't need to
+- Follow existing conventions and style within the code the best you can
+- Describe in your PR the problem and solution so reviewers don't need to
   rebuild much context
-* Run `nix flake check` and `nix build`
-
+- Run `nix flake check` and `nix build`
 
 ## Non-code contributions
 
@@ -110,7 +103,6 @@ the project.
 # Development
 
 Some snippets or workflows for development.
-
 
 ## Direnv support
 
@@ -124,9 +116,8 @@ direnv allow
 
 If using an editor, it may be preferable to adopt an addon to enter the environment:
 
-* [`vim`](https://github.com/direnv/direnv.vim)
-* [VSCode](https://marketplace.visualstudio.com/items?itemName=mkhl.direnv)
-
+- [`vim`](https://github.com/direnv/direnv.vim)
+- [VSCode](https://marketplace.visualstudio.com/items?itemName=mkhl.direnv)
 
 ## Testing Installs
 
@@ -142,11 +133,10 @@ When running such interactive tests, consider creating a snapshot of the VM righ
 
 In general, it's a good idea to test on the closest you can get to the desired target environment. For example, when testing the Steam Deck planner it's a good idea to run that test in a Steam Deck VM as described in detail in the planner.
 
-
 <details>
   <summary><strong>Adding a planner for specific hardware?</strong></summary>
 
-Please include an full guide on how to create the best known virtual testing environment for that device. 
+Please include an full guide on how to create the best known virtual testing environment for that device.
 
 **A link is not sufficient, it may break.** Please provide a full summary of steps to take, link to any original source and give them credit if it is appropriate.
 
@@ -210,7 +200,7 @@ nix build github:determinatesystems/nix-installer/${BRANCH}#hydraJobs.vm-test.ub
 <details>
   <summary><strong>Adding a distro?</strong></summary>
 
-Notice how `rhel-v7` has a `v7`, not just `7`? That's so the test output shows correctly, as Nix will interpret the first `-\d` (eg `-7`, `-123213`) as a version, and not show it in the output. 
+Notice how `rhel-v7` has a `v7`, not just `7`? That's so the test output shows correctly, as Nix will interpret the first `-\d` (eg `-7`, `-123213`) as a version, and not show it in the output.
 
 Using `v7` instead turns:
 
@@ -241,7 +231,6 @@ installer-test-rhel-v7-install-default> Formatting './disk.qcow2', fmt=qcow2 clu
 </details>
 
 ## Container tests
-
 
 For x86_64 Linux we have some additional container tests. In `nix/tests/container-test` there exists some Nix derivations which we expose in the flake via `hydraJobs`.
 
@@ -278,7 +267,6 @@ git+file:///home/ana/git/determinatesystems/nix-installer
 
 To run all of the currently supported tests:
 
-
 ```bash
 nix build .#hydraJobs.container-test.all.x86_64-linux.all -L -j 4
 ```
@@ -300,7 +288,7 @@ nix build github:determinatesystems/nix-installer/${BRANCH}#hydraJobs.container-
 <details>
   <summary><strong>Adding a distro?</strong></summary>
 
-Notice how `ubuntu-v20_02` has a `v20`, not just `20`? That's so the test output shows correctly, as Nix will interpret the first `-\d` (eg `-20`, `-123213`) as a version, and not show it in the output. 
+Notice how `ubuntu-v20_02` has a `v20`, not just `20`? That's so the test output shows correctly, as Nix will interpret the first `-\d` (eg `-20`, `-123213`) as a version, and not show it in the output.
 
 Using `v20` instead turns:
 
@@ -356,31 +344,29 @@ wsl --unregister nix-installer-test-ubuntu-jammy
 
 You can also remove your `$HOME/nix-installer-wsl-tests-temp` folder whenever you wish.
 
-
 # Releases
-
 
 This package uses [Semantic Versioning](https://semver.org/). When determining the version number for a new release refer to Semantic Versioning for guidance. You can use the `check-semver` command alias from within the development environment to validate your changes don't break semver.
 
 To cut a release:
 
-* Create a release branch from `main` (`git checkout -b release-v0.0.1`)
-  + Release PRs should not contain any installer-related changes which require review
-* Ensure the `flake.lock`, `Cargo.lock`, and Rust dependencies are up-to-date with the following:
-  + `nix flake update --commit-lock-file`
-  + `cargo update --aggressive`
-  + `cargo outdated --ignore-external-rel --aggressive`
-* Ensure the VM / container tests still pass with the following:
-  + NOTE: At time of writing, these are run in CI on release branches
-  + `nix flake check -L`
-  + `nix build .#hydraJobs.container-test.all.x86_64-linux.all -L -j 6`
-  + `nix build .#hydraJobs.vm-test.all.x86_64-linux.all -L -j 6`
-* Push the branch, create a PR ("Release v0.0.1")
-* Once the PR tests pass and it has been reviewed, merge it
-* Checkout the `main` branch and `git pull`
-* Prepare a draft release that creates the new tag on publish
-  + Create a changelog following the format of the last release
-* Undraft the release
-* CI will produce artifacts and upload them to the release
-* Once you are certain the release is good, `cargo publish` it
-  + **Warning:** While you can re-release Github releases, it is not possible to do the same on `crates.io`
+- Create a release branch from `main` (`git checkout -b release-v0.0.1`)
+  - Release PRs should not contain any installer-related changes which require review
+- Ensure the `flake.lock`, `Cargo.lock`, and Rust dependencies are up-to-date with the following:
+  - `nix flake update --commit-lock-file`
+  - `cargo update --aggressive`
+  - `cargo outdated --ignore-external-rel --aggressive`
+- Ensure the VM / container tests still pass with the following:
+  - NOTE: At time of writing, these are run in CI on release branches
+  - `nix flake check -L`
+  - `nix build .#hydraJobs.container-test.all.x86_64-linux.all -L -j 6`
+  - `nix build .#hydraJobs.vm-test.all.x86_64-linux.all -L -j 6`
+- Push the branch, create a PR ("Release v0.0.1")
+- Once the PR tests pass and it has been reviewed, merge it
+- Checkout the `main` branch and `git pull`
+- Prepare a draft release that creates the new tag on publish
+  - Create a changelog following the format of the last release
+- Undraft the release
+- CI will produce artifacts and upload them to the release
+- Once you are certain the release is good, `cargo publish` it
+  - **Warning:** While you can re-release Github releases, it is not possible to do the same on `crates.io`

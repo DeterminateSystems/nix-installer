@@ -1,7 +1,7 @@
 #!/bin/sh
 # shellcheck shell=dash
 
-# If you need an offline install, or you'd prefer to run the binary directly, head to 
+# If you need an offline install, or you'd prefer to run the binary directly, head to
 # https://github.com/DeterminateSystems/nix-installer/releases then pick the version and platform
 # most appropriate for your deployment target.
 #
