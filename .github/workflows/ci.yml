@@ -57,7 +57,7 @@ jobs:
         run: nix develop --command shellcheck ./nix-installer.sh
 
   run-x86_64-linux:
-    name: Run x86_64 Linux
+    name: Run x86_64 Linux${{ matrix.determinate && ' (--determinate)' || ''}}
     runs-on: UbuntuLatest32Cores128G
     needs: [lints, build-x86_64-linux]
     strategy:
@@ -175,7 +175,7 @@ jobs:
           fi
 
   run-x86_64-linux-no-init:
-    name: Run x86_64 Linux (No init)
+    name: Run x86_64 Linux (No init${{ matrix.determinate && ', --determinate' || ''}})
     runs-on: UbuntuLatest32Cores128G
     needs: [lints, build-x86_64-linux]
     strategy:
@@ -299,7 +299,7 @@ jobs:
           fi
 
   run-x86_64-darwin:
-    name: Run x86_64 Darwin
+    name: Run x86_64 Darwin${{ matrix.determinate && ' (--determinate)' || ''}}
     runs-on: macos-13
     needs: [lints, build-x86_64-darwin]
     strategy:
@@ -389,7 +389,7 @@ jobs:
           RUST_BACKTRACE: full
 
   run-aarch64-linux:
-    name: Run aarch64 Linux
+    name: Run aarch64 Linux${{ matrix.determinate && ' (--determinate)' || ''}}
     runs-on: namespace-profile-default-arm64
     needs: [lints, build-aarch64-linux]
     strategy:
@@ -507,7 +507,7 @@ jobs:
           fi
 
   run-aarch64-darwin:
-    name: Run aarch64 Darwin
+    name: Run aarch64 Darwin${{ matrix.determinate && ' (--determinate)' || ''}}
     runs-on: macos-latest-xlarge
     needs: [lints, build-aarch64-darwin]
     strategy:
