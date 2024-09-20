@@ -62,7 +62,7 @@ jobs:
     needs: [lints, build-x86_64-linux]
     strategy:
       matrix:
-        extra-args: ["--determinate", ""]
+        determinate: [true, false]
     permissions:
       id-token: "write"
       contents: "read"
@@ -83,8 +83,7 @@ jobs:
       - name: Initial install
         uses: DeterminateSystems/nix-installer-action@main
         with:
-          flakehub: true
-          extra-args: ${{ matrix.extra-args }}
+          determinate: ${{ matrix.determinate }}
           local-root: install-root/
           logger: pretty
           log-directives: nix_installer=debug
@@ -114,8 +113,7 @@ jobs:
       - name: Repeated install
         uses: DeterminateSystems/nix-installer-action@main
         with:
-          flakehub: true
-          extra-args: ${{ matrix.extra-args }}
+          determinate: ${{ matrix.determinate }}
           local-root: install-root/
           logger: pretty
           log-directives: nix_installer=debug
@@ -175,7 +173,7 @@ jobs:
     needs: [lints, build-x86_64-linux]
     strategy:
       matrix:
-        extra-args: ["--determinate", ""]
+        determinate: [true, false]
     permissions:
       id-token: "write"
       contents: "read"
@@ -196,9 +194,8 @@ jobs:
       - name: Initial install
         uses: DeterminateSystems/nix-installer-action@main
         with:
-          flakehub: true
+          determinate: ${{ matrix.determinate }}
           init: none
-          extra-args: ${{ matrix.extra-args }}
           planner: linux
           local-root: install-root/
           logger: pretty
@@ -231,10 +228,9 @@ jobs:
       - name: Repeated install
         uses: DeterminateSystems/nix-installer-action@main
         with:
-          flakehub: true
+          determinate: ${{ matrix.determinate }}
           init: none
           planner: linux
-          extra-args: ${{ matrix.extra-args }}
           local-root: install-root/
           logger: pretty
           log-directives: nix_installer=debug
@@ -294,7 +290,7 @@ jobs:
     needs: [lints, build-x86_64-darwin]
     strategy:
       matrix:
-        extra-args: ["--determinate", ""]
+        determinate: [true, false]
     permissions:
       id-token: "write"
       contents: "read"
@@ -315,8 +311,7 @@ jobs:
       - name: Initial install
         uses: DeterminateSystems/nix-installer-action@main
         with:
-          flakehub: true
-          extra-args: ${{ matrix.extra-args }}
+          determinate: ${{ matrix.determinate }}
           local-root: install-root/
           logger: pretty
           log-directives: nix_installer=debug
@@ -334,8 +329,7 @@ jobs:
       - name: Repeated install
         uses: DeterminateSystems/nix-installer-action@main
         with:
-          flakehub: true
-          extra-args: ${{ matrix.extra-args }}
+          determinate: ${{ matrix.determinate }}
           local-root: install-root/
           logger: pretty
           log-directives: nix_installer=debug
@@ -382,7 +376,7 @@ jobs:
     needs: [lints, build-aarch64-linux]
     strategy:
       matrix:
-        extra-args: ["--determinate", ""]
+        determinate: [true, false]
     permissions:
       id-token: "write"
       contents: "read"
@@ -403,9 +397,8 @@ jobs:
       - name: Initial install
         uses: DeterminateSystems/nix-installer-action@main
         with:
-          flakehub: true
           local-root: install-root/
-          extra-args: ${{ matrix.extra-args }}
+          determinate: ${{ matrix.determinate }}
           logger: pretty
           log-directives: nix_installer=debug
           backtrace: full
@@ -434,10 +427,9 @@ jobs:
       - name: Repeated install
         uses: DeterminateSystems/nix-installer-action@main
         with:
-          flakehub: true
           local-root: install-root/
           logger: pretty
-          extra-args: ${{ matrix.extra-args }}
+          determinate: ${{ matrix.determinate }}
           log-directives: nix_installer=debug
           backtrace: full
           github-token: ${{ secrets.GITHUB_TOKEN }}
@@ -495,7 +487,7 @@ jobs:
     needs: [lints, build-aarch64-darwin]
     strategy:
       matrix:
-        extra-args: ["--determinate", ""]
+        determinate: [true, false]
     permissions:
       id-token: "write"
       contents: "read"
@@ -516,9 +508,8 @@ jobs:
       - name: Initial install
         uses: DeterminateSystems/nix-installer-action@main
         with:
-          flakehub: true
           local-root: install-root/
-          extra-args: ${{ matrix.extra-args }}
+          determinate: ${{ matrix.determinate }}
           logger: pretty
           log-directives: nix_installer=debug
           backtrace: full
@@ -535,9 +526,8 @@ jobs:
       - name: Repeated install
         uses: DeterminateSystems/nix-installer-action@main
         with:
-          flakehub: true
           local-root: install-root/
-          extra-args: ${{ matrix.extra-args }}
+          determinate: ${{ matrix.determinate }}
           logger: pretty
           log-directives: nix_installer=debug
           backtrace: full
@@ -603,7 +593,7 @@ jobs:
       - name: Initial install
         uses: DeterminateSystems/nix-installer-action@main
         with:
-          flakehub: true
+          determinate: true
           local-root: install-root/
           logger: pretty
           log-directives: nix_installer=debug
