@@ -90,6 +90,15 @@ jobs:
           log-directives: nix_installer=debug
           backtrace: full
           github-token: ${{ secrets.GITHUB_TOKEN }}
+      - name: "Validate dnixd is ${{ (matrix.extra-args == '--determinate') && 'installed' || 'uninstalled' }}"
+        run: |
+          if test -x /usr/local/bin/determinate-nixd; then
+            echo "determinate-nixd is present"
+            ${{ (matrix.extra-args != '--determinate') && 'exit 1' }}
+          else
+            echo "determinate-nixd is not present"
+            ${{ (matrix.extra-args == '--determinate') && 'exit 1' }}
+          fi
       - name: Initial uninstall (without a `nix run` first)
         run: sudo -E /nix/nix-installer uninstall
         env:
@@ -205,6 +214,15 @@ jobs:
           log-directives: nix_installer=debug
           backtrace: full
           github-token: ${{ secrets.GITHUB_TOKEN }}
+      - name: "Validate dnixd is ${{ (matrix.extra-args == '--determinate') && 'installed' || 'uninstalled' }}"
+        run: |
+          if test -x /usr/local/bin/determinate-nixd; then
+            echo "determinate-nixd is present"
+            ${{ (matrix.extra-args != '--determinate') && 'exit 1' }}
+          else
+            echo "determinate-nixd is not present"
+            ${{ (matrix.extra-args == '--determinate') && 'exit 1' }}
+          fi
       - name: Ensure daemon was not configured with init
         run: |
           if systemctl is-active nix-daemon.socket; then
@@ -324,6 +342,15 @@ jobs:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           extra-conf: |
             trusted-users = root runner
+      - name: "Validate dnixd is ${{ (matrix.extra-args == '--determinate') && 'installed' || 'uninstalled' }}"
+        run: |
+          if test -x /usr/local/bin/determinate-nixd; then
+            echo "determinate-nixd is present"
+            ${{ (matrix.extra-args != '--determinate') && 'exit 1' }}
+          else
+            echo "determinate-nixd is not present"
+            ${{ (matrix.extra-args == '--determinate') && 'exit 1' }}
+          fi
       - name: Initial uninstall (without a `nix run` first)
         run: sudo -E /nix/nix-installer uninstall
         env:
@@ -410,6 +437,15 @@ jobs:
           log-directives: nix_installer=debug
           backtrace: full
           github-token: ${{ secrets.GITHUB_TOKEN }}
+      - name: "Validate dnixd is ${{ (matrix.extra-args == '--determinate') && 'installed' || 'uninstalled' }}"
+        run: |
+          if test -x /usr/local/bin/determinate-nixd; then
+            echo "determinate-nixd is present"
+            ${{ (matrix.extra-args != '--determinate') && 'exit 1' }}
+          else
+            echo "determinate-nixd is not present"
+            ${{ (matrix.extra-args == '--determinate') && 'exit 1' }}
+          fi
       - name: Initial uninstall (without a `nix run` first)
         run: sudo -E /nix/nix-installer uninstall
         env:
@@ -525,6 +561,15 @@ jobs:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           extra-conf: |
             trusted-users = root runner
+      - name: "Validate dnixd is ${{ (matrix.extra-args == '--determinate') && 'installed' || 'uninstalled' }}"
+        run: |
+          if test -x /usr/local/bin/determinate-nixd; then
+            echo "determinate-nixd is present"
+            ${{ (matrix.extra-args != '--determinate') && 'exit 1' }}
+          else
+            echo "determinate-nixd is not present"
+            ${{ (matrix.extra-args == '--determinate') && 'exit 1' }}
+          fi
       - name: Initial uninstall (without a `nix run` first)
         run: sudo -E /nix/nix-installer uninstall
         env:
