@@ -83,11 +83,11 @@ jobs:
       - name: Initial install
         uses: DeterminateSystems/nix-installer-action@main
         with:
+          backtrace: full
           determinate: ${{ matrix.determinate }}
           local-root: install-root/
-          logger: pretty
           log-directives: nix_installer=debug
-          backtrace: full
+          logger: pretty
       - name: "Validate dnixd is ${{ matrix.determinate && 'installed' || 'uninstalled' }}"
         run: |
           if test -x /usr/local/bin/determinate-nixd; then
@@ -121,11 +121,11 @@ jobs:
       - name: Repeated install
         uses: DeterminateSystems/nix-installer-action@main
         with:
+          backtrace: full
           determinate: ${{ matrix.determinate }}
           local-root: install-root/
-          logger: pretty
           log-directives: nix_installer=debug
-          backtrace: full
+          logger: pretty
       - name: echo $PATH
         run: echo $PATH
       - name: Test `nix` with `$GITHUB_PATH`
@@ -201,13 +201,13 @@ jobs:
       - name: Initial install
         uses: DeterminateSystems/nix-installer-action@main
         with:
+          backtrace: full
           determinate: ${{ matrix.determinate }}
           init: none
-          planner: linux
           local-root: install-root/
-          logger: pretty
           log-directives: nix_installer=debug
-          backtrace: full
+          logger: pretty
+          planner: linux
       - name: "Validate dnixd is ${{ matrix.determinate && 'installed' || 'uninstalled' }}"
         run: |
           if test -x /usr/local/bin/determinate-nixd; then
@@ -243,13 +243,13 @@ jobs:
       - name: Repeated install
         uses: DeterminateSystems/nix-installer-action@main
         with:
+          backtrace: full
           determinate: ${{ matrix.determinate }}
           init: none
-          planner: linux
           local-root: install-root/
-          logger: pretty
           log-directives: nix_installer=debug
-          backtrace: full
+          logger: pretty
+          planner: linux
       - name: echo $PATH
         run: echo $PATH
       - name: Test `nix` with `$GITHUB_PATH`
@@ -325,11 +325,11 @@ jobs:
       - name: Initial install
         uses: DeterminateSystems/nix-installer-action@main
         with:
+          backtrace: full
           determinate: ${{ matrix.determinate }}
           local-root: install-root/
-          logger: pretty
           log-directives: nix_installer=debug
-          backtrace: full
+          logger: pretty
       - name: "Validate dnixd is ${{ matrix.determinate && 'installed' || 'uninstalled' }}"
         run: |
           if test -x /usr/local/bin/determinate-nixd; then
@@ -349,11 +349,11 @@ jobs:
       - name: Repeated install
         uses: DeterminateSystems/nix-installer-action@main
         with:
+          backtrace: full
           determinate: ${{ matrix.determinate }}
           local-root: install-root/
-          logger: pretty
           log-directives: nix_installer=debug
-          backtrace: full
+          logger: pretty
       - name: echo $PATH
         run: echo $PATH
       - name: Test `nix` with `$GITHUB_PATH`
@@ -415,11 +415,11 @@ jobs:
       - name: Initial install
         uses: DeterminateSystems/nix-installer-action@main
         with:
-          local-root: install-root/
-          determinate: ${{ matrix.determinate }}
-          logger: pretty
-          log-directives: nix_installer=debug
           backtrace: full
+          determinate: ${{ matrix.determinate }}
+          local-root: install-root/
+          log-directives: nix_installer=debug
+          logger: pretty
       - name: "Validate dnixd is ${{ matrix.determinate && 'installed' || 'uninstalled' }}"
         run: |
           if test -x /usr/local/bin/determinate-nixd; then
@@ -453,11 +453,11 @@ jobs:
       - name: Repeated install
         uses: DeterminateSystems/nix-installer-action@main
         with:
-          local-root: install-root/
-          logger: pretty
-          determinate: ${{ matrix.determinate }}
-          log-directives: nix_installer=debug
           backtrace: full
+          determinate: ${{ matrix.determinate }}
+          local-root: install-root/
+          log-directives: nix_installer=debug
+          logger: pretty
       - name: echo $PATH
         run: echo $PATH
       - name: Test `nix` with `$GITHUB_PATH`
@@ -533,11 +533,11 @@ jobs:
       - name: Initial install
         uses: DeterminateSystems/nix-installer-action@main
         with:
-          local-root: install-root/
-          determinate: ${{ matrix.determinate }}
-          logger: pretty
-          log-directives: nix_installer=debug
           backtrace: full
+          determinate: ${{ matrix.determinate }}
+          local-root: install-root/
+          log-directives: nix_installer=debug
+          logger: pretty
       - name: "Validate dnixd is ${{ matrix.determinate && 'installed' || 'uninstalled' }}"
         run: |
           if test -x /usr/local/bin/determinate-nixd; then
@@ -557,11 +557,11 @@ jobs:
       - name: Repeated install
         uses: DeterminateSystems/nix-installer-action@main
         with:
-          local-root: install-root/
-          determinate: ${{ matrix.determinate }}
-          logger: pretty
-          log-directives: nix_installer=debug
           backtrace: full
+          determinate: ${{ matrix.determinate }}
+          local-root: install-root/
+          log-directives: nix_installer=debug
+          logger: pretty
       - name: echo $PATH
         run: echo $PATH
       - name: Test `nix` with `$GITHUB_PATH`
@@ -622,11 +622,11 @@ jobs:
       - name: Initial install
         uses: DeterminateSystems/nix-installer-action@main
         with:
+          backtrace: full
           determinate: true
           local-root: install-root/
-          logger: pretty
           log-directives: nix_installer=debug
-          backtrace: full
+          logger: pretty
       - uses: DeterminateSystems/magic-nix-cache-action@main
         with:
           use-gha-cache: false
