@@ -94,10 +94,10 @@ jobs:
         run: |
           if test -x /usr/local/bin/determinate-nixd; then
             echo "determinate-nixd is present"
-            ${{ (matrix.extra-args != '--determinate') && 'exit 1' }}
+            ${{ matrix.extra-args == '--determinate' }}
           else
             echo "determinate-nixd is not present"
-            ${{ (matrix.extra-args == '--determinate') && 'exit 1' }}
+            ${{ matrix.extra-args != '--determinate' }}
           fi
       - name: Initial uninstall (without a `nix run` first)
         run: sudo -E /nix/nix-installer uninstall
@@ -218,10 +218,10 @@ jobs:
         run: |
           if test -x /usr/local/bin/determinate-nixd; then
             echo "determinate-nixd is present"
-            ${{ (matrix.extra-args != '--determinate') && 'exit 1' }}
+            ${{ matrix.extra-args == '--determinate' }}
           else
             echo "determinate-nixd is not present"
-            ${{ (matrix.extra-args == '--determinate') && 'exit 1' }}
+            ${{ matrix.extra-args != '--determinate' }}
           fi
       - name: Ensure daemon was not configured with init
         run: |
@@ -346,10 +346,10 @@ jobs:
         run: |
           if test -x /usr/local/bin/determinate-nixd; then
             echo "determinate-nixd is present"
-            ${{ (matrix.extra-args != '--determinate') && 'exit 1' }}
+            ${{ matrix.extra-args == '--determinate' }}
           else
             echo "determinate-nixd is not present"
-            ${{ (matrix.extra-args == '--determinate') && 'exit 1' }}
+            ${{ matrix.extra-args != '--determinate' }}
           fi
       - name: Initial uninstall (without a `nix run` first)
         run: sudo -E /nix/nix-installer uninstall
@@ -441,10 +441,10 @@ jobs:
         run: |
           if test -x /usr/local/bin/determinate-nixd; then
             echo "determinate-nixd is present"
-            ${{ (matrix.extra-args != '--determinate') && 'exit 1' }}
+            ${{ matrix.extra-args == '--determinate' }}
           else
             echo "determinate-nixd is not present"
-            ${{ (matrix.extra-args == '--determinate') && 'exit 1' }}
+            ${{ matrix.extra-args != '--determinate' }}
           fi
       - name: Initial uninstall (without a `nix run` first)
         run: sudo -E /nix/nix-installer uninstall
@@ -565,10 +565,10 @@ jobs:
         run: |
           if test -x /usr/local/bin/determinate-nixd; then
             echo "determinate-nixd is present"
-            ${{ (matrix.extra-args != '--determinate') && 'exit 1' }}
+            ${{ matrix.extra-args == '--determinate' }}
           else
             echo "determinate-nixd is not present"
-            ${{ (matrix.extra-args == '--determinate') && 'exit 1' }}
+            ${{ matrix.extra-args != '--determinate' }}
           fi
       - name: Initial uninstall (without a `nix run` first)
         run: sudo -E /nix/nix-installer uninstall
