@@ -330,8 +330,6 @@ jobs:
           logger: pretty
           log-directives: nix_installer=debug
           backtrace: full
-          extra-conf: |
-            trusted-users = root runner
       - name: "Validate dnixd is ${{ matrix.determinate && 'installed' || 'uninstalled' }}"
         run: |
           if test -x /usr/local/bin/determinate-nixd; then
@@ -356,7 +354,6 @@ jobs:
           logger: pretty
           log-directives: nix_installer=debug
           backtrace: full
-          extra-conf: trusted-users = root runner
       - name: echo $PATH
         run: echo $PATH
       - name: Test `nix` with `$GITHUB_PATH`
@@ -541,8 +538,6 @@ jobs:
           logger: pretty
           log-directives: nix_installer=debug
           backtrace: full
-          extra-conf: |
-            trusted-users = root runner
       - name: "Validate dnixd is ${{ matrix.determinate && 'installed' || 'uninstalled' }}"
         run: |
           if test -x /usr/local/bin/determinate-nixd; then
@@ -567,7 +562,6 @@ jobs:
           logger: pretty
           log-directives: nix_installer=debug
           backtrace: full
-          extra-conf: trusted-users = root runner
       - name: echo $PATH
         run: echo $PATH
       - name: Test `nix` with `$GITHUB_PATH`
