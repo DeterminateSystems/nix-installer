@@ -88,7 +88,6 @@ jobs:
           logger: pretty
           log-directives: nix_installer=debug
           backtrace: full
-          github-token: ${{ secrets.GITHUB_TOKEN }}
       - name: "Validate dnixd is ${{ matrix.determinate && 'installed' || 'uninstalled' }}"
         run: |
           if test -x /usr/local/bin/determinate-nixd; then
@@ -127,7 +126,6 @@ jobs:
           logger: pretty
           log-directives: nix_installer=debug
           backtrace: full
-          github-token: ${{ secrets.GITHUB_TOKEN }}
       - name: echo $PATH
         run: echo $PATH
       - name: Test `nix` with `$GITHUB_PATH`
@@ -210,7 +208,6 @@ jobs:
           logger: pretty
           log-directives: nix_installer=debug
           backtrace: full
-          github-token: ${{ secrets.GITHUB_TOKEN }}
       - name: "Validate dnixd is ${{ matrix.determinate && 'installed' || 'uninstalled' }}"
         run: |
           if test -x /usr/local/bin/determinate-nixd; then
@@ -253,7 +250,6 @@ jobs:
           logger: pretty
           log-directives: nix_installer=debug
           backtrace: full
-          github-token: ${{ secrets.GITHUB_TOKEN }}
       - name: echo $PATH
         run: echo $PATH
       - name: Test `nix` with `$GITHUB_PATH`
@@ -334,7 +330,6 @@ jobs:
           logger: pretty
           log-directives: nix_installer=debug
           backtrace: full
-          github-token: ${{ secrets.GITHUB_TOKEN }}
           extra-conf: |
             trusted-users = root runner
       - name: "Validate dnixd is ${{ matrix.determinate && 'installed' || 'uninstalled' }}"
@@ -361,7 +356,6 @@ jobs:
           logger: pretty
           log-directives: nix_installer=debug
           backtrace: full
-          github-token: ${{ secrets.GITHUB_TOKEN }}
           extra-conf: trusted-users = root runner
       - name: echo $PATH
         run: echo $PATH
@@ -429,7 +423,6 @@ jobs:
           logger: pretty
           log-directives: nix_installer=debug
           backtrace: full
-          github-token: ${{ secrets.GITHUB_TOKEN }}
       - name: "Validate dnixd is ${{ matrix.determinate && 'installed' || 'uninstalled' }}"
         run: |
           if test -x /usr/local/bin/determinate-nixd; then
@@ -468,7 +461,6 @@ jobs:
           determinate: ${{ matrix.determinate }}
           log-directives: nix_installer=debug
           backtrace: full
-          github-token: ${{ secrets.GITHUB_TOKEN }}
       - name: echo $PATH
         run: echo $PATH
       - name: Test `nix` with `$GITHUB_PATH`
@@ -549,7 +541,6 @@ jobs:
           logger: pretty
           log-directives: nix_installer=debug
           backtrace: full
-          github-token: ${{ secrets.GITHUB_TOKEN }}
           extra-conf: |
             trusted-users = root runner
       - name: "Validate dnixd is ${{ matrix.determinate && 'installed' || 'uninstalled' }}"
@@ -576,7 +567,6 @@ jobs:
           logger: pretty
           log-directives: nix_installer=debug
           backtrace: full
-          github-token: ${{ secrets.GITHUB_TOKEN }}
           extra-conf: trusted-users = root runner
       - name: echo $PATH
         run: echo $PATH
