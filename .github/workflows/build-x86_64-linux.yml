@@ -21,7 +21,7 @@ jobs:
       - name: Install Nix
         uses: DeterminateSystems/nix-installer-action@main
         with:
-          flakehub: true
+          determinate: true
       - uses: DeterminateSystems/magic-nix-cache-action@main
         with:
           use-gha-cache: false
