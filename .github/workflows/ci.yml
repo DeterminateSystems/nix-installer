@@ -62,7 +62,7 @@ jobs:
     needs: [lints, build-x86_64-linux]
     strategy:
       matrix:
-        extra-args: ["--determinate", ""]
+        determinate: [true, false]
     permissions:
       id-token: "write"
       contents: "read"
@@ -83,21 +83,20 @@ jobs:
       - name: Initial install
         uses: DeterminateSystems/nix-installer-action@main
         with:
-          flakehub: true
-          extra-args: ${{ matrix.extra-args }}
+          determinate: ${{ matrix.determinate }}
           local-root: install-root/
           logger: pretty
           log-directives: nix_installer=debug
           backtrace: full
           github-token: ${{ secrets.GITHUB_TOKEN }}
-      - name: "Validate dnixd is ${{ (matrix.extra-args == '--determinate') && 'installed' || 'uninstalled' }}"
+      - name: "Validate dnixd is ${{ matrix.determinate && 'installed' || 'uninstalled' }}"
         run: |
           if test -x /usr/local/bin/determinate-nixd; then
             echo "determinate-nixd is present"
-            ${{ matrix.extra-args == '--determinate' }}
+            ${{ matrix.determinate }}
           else
             echo "determinate-nixd is not present"
-            ${{ matrix.extra-args != '--determinate' }}
+            ${{ !matrix.determinate }}
           fi
       - name: Initial uninstall (without a `nix run` first)
         run: sudo -E /nix/nix-installer uninstall
@@ -123,8 +122,7 @@ jobs:
       - name: Repeated install
         uses: DeterminateSystems/nix-installer-action@main
         with:
-          flakehub: true
-          extra-args: ${{ matrix.extra-args }}
+          determinate: ${{ matrix.determinate }}
           local-root: install-root/
           logger: pretty
           log-directives: nix_installer=debug
@@ -184,7 +182,7 @@ jobs:
     needs: [lints, build-x86_64-linux]
     strategy:
       matrix:
-        extra-args: ["--determinate", ""]
+        determinate: [true, false]
     permissions:
       id-token: "write"
       contents: "read"
@@ -205,23 +203,22 @@ jobs:
       - name: Initial install
         uses: DeterminateSystems/nix-installer-action@main
         with:
-          flakehub: true
+          determinate: ${{ matrix.determinate }}
           init: none
-          extra-args: ${{ matrix.extra-args }}
           planner: linux
           local-root: install-root/
           logger: pretty
           log-directives: nix_installer=debug
           backtrace: full
           github-token: ${{ secrets.GITHUB_TOKEN }}
-      - name: "Validate dnixd is ${{ (matrix.extra-args == '--determinate') && 'installed' || 'uninstalled' }}"
+      - name: "Validate dnixd is ${{ matrix.determinate && 'installed' || 'uninstalled' }}"
         run: |
           if test -x /usr/local/bin/determinate-nixd; then
             echo "determinate-nixd is present"
-            ${{ matrix.extra-args == '--determinate' }}
+            ${{ matrix.determinate }}
           else
             echo "determinate-nixd is not present"
-            ${{ matrix.extra-args != '--determinate' }}
+            ${{ !matrix.determinate }}
           fi
       - name: Ensure daemon was not configured with init
         run: |
@@ -249,10 +246,9 @@ jobs:
       - name: Repeated install
         uses: DeterminateSystems/nix-installer-action@main
         with:
-          flakehub: true
+          determinate: ${{ matrix.determinate }}
           init: none
           planner: linux
-          extra-args: ${{ matrix.extra-args }}
           local-root: install-root/
           logger: pretty
           log-directives: nix_installer=debug
@@ -312,7 +308,7 @@ jobs:
     needs: [lints, build-x86_64-darwin]
     strategy:
       matrix:
-        extra-args: ["--determinate", ""]
+        determinate: [true, false]
     permissions:
       id-token: "write"
       contents: "read"
@@ -333,8 +329,7 @@ jobs:
       - name: Initial install
         uses: DeterminateSystems/nix-installer-action@main
         with:
-          flakehub: true
-          extra-args: ${{ matrix.extra-args }}
+          determinate: ${{ matrix.determinate }}
           local-root: install-root/
           logger: pretty
           log-directives: nix_installer=debug
@@ -342,14 +337,14 @@ jobs:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           extra-conf: |
             trusted-users = root runner
-      - name: "Validate dnixd is ${{ (matrix.extra-args == '--determinate') && 'installed' || 'uninstalled' }}"
+      - name: "Validate dnixd is ${{ matrix.determinate && 'installed' || 'uninstalled' }}"
         run: |
           if test -x /usr/local/bin/determinate-nixd; then
             echo "determinate-nixd is present"
-            ${{ matrix.extra-args == '--determinate' }}
+            ${{ matrix.determinate }}
           else
             echo "determinate-nixd is not present"
-            ${{ matrix.extra-args != '--determinate' }}
+            ${{ !matrix.determinate }}
           fi
       - name: Initial uninstall (without a `nix run` first)
         run: sudo -E /nix/nix-installer uninstall
@@ -361,8 +356,7 @@ jobs:
       - name: Repeated install
         uses: DeterminateSystems/nix-installer-action@main
         with:
-          flakehub: true
-          extra-args: ${{ matrix.extra-args }}
+          determinate: ${{ matrix.determinate }}
           local-root: install-root/
           logger: pretty
           log-directives: nix_installer=debug
@@ -409,7 +403,7 @@ jobs:
     needs: [lints, build-aarch64-linux]
     strategy:
       matrix:
-        extra-args: ["--determinate", ""]
+        determinate: [true, false]
     permissions:
       id-token: "write"
       contents: "read"
@@ -430,21 +424,20 @@ jobs:
       - name: Initial install
         uses: DeterminateSystems/nix-installer-action@main
         with:
-          flakehub: true
           local-root: install-root/
-          extra-args: ${{ matrix.extra-args }}
+          determinate: ${{ matrix.determinate }}
           logger: pretty
           log-directives: nix_installer=debug
           backtrace: full
           github-token: ${{ secrets.GITHUB_TOKEN }}
-      - name: "Validate dnixd is ${{ (matrix.extra-args == '--determinate') && 'installed' || 'uninstalled' }}"
+      - name: "Validate dnixd is ${{ matrix.determinate && 'installed' || 'uninstalled' }}"
         run: |
           if test -x /usr/local/bin/determinate-nixd; then
             echo "determinate-nixd is present"
-            ${{ matrix.extra-args == '--determinate' }}
+            ${{ matrix.determinate }}
           else
             echo "determinate-nixd is not present"
-            ${{ matrix.extra-args != '--determinate' }}
+            ${{ !matrix.determinate }}
           fi
       - name: Initial uninstall (without a `nix run` first)
         run: sudo -E /nix/nix-installer uninstall
@@ -470,10 +463,9 @@ jobs:
       - name: Repeated install
         uses: DeterminateSystems/nix-installer-action@main
         with:
-          flakehub: true
           local-root: install-root/
           logger: pretty
-          extra-args: ${{ matrix.extra-args }}
+          determinate: ${{ matrix.determinate }}
           log-directives: nix_installer=debug
           backtrace: full
           github-token: ${{ secrets.GITHUB_TOKEN }}
@@ -531,7 +523,7 @@ jobs:
     needs: [lints, build-aarch64-darwin]
     strategy:
       matrix:
-        extra-args: ["--determinate", ""]
+        determinate: [true, false]
     permissions:
       id-token: "write"
       contents: "read"
@@ -552,23 +544,22 @@ jobs:
       - name: Initial install
         uses: DeterminateSystems/nix-installer-action@main
         with:
-          flakehub: true
           local-root: install-root/
-          extra-args: ${{ matrix.extra-args }}
+          determinate: ${{ matrix.determinate }}
           logger: pretty
           log-directives: nix_installer=debug
           backtrace: full
           github-token: ${{ secrets.GITHUB_TOKEN }}
           extra-conf: |
             trusted-users = root runner
-      - name: "Validate dnixd is ${{ (matrix.extra-args == '--determinate') && 'installed' || 'uninstalled' }}"
+      - name: "Validate dnixd is ${{ matrix.determinate && 'installed' || 'uninstalled' }}"
         run: |
           if test -x /usr/local/bin/determinate-nixd; then
             echo "determinate-nixd is present"
-            ${{ matrix.extra-args == '--determinate' }}
+            ${{ matrix.determinate }}
           else
             echo "determinate-nixd is not present"
-            ${{ matrix.extra-args != '--determinate' }}
+            ${{ !matrix.determinate }}
           fi
       - name: Initial uninstall (without a `nix run` first)
         run: sudo -E /nix/nix-installer uninstall
@@ -580,9 +571,8 @@ jobs:
       - name: Repeated install
         uses: DeterminateSystems/nix-installer-action@main
         with:
-          flakehub: true
           local-root: install-root/
-          extra-args: ${{ matrix.extra-args }}
+          determinate: ${{ matrix.determinate }}
           logger: pretty
           log-directives: nix_installer=debug
           backtrace: full
@@ -648,7 +638,7 @@ jobs:
       - name: Initial install
         uses: DeterminateSystems/nix-installer-action@main
         with:
-          flakehub: true
+          determinate: true
           local-root: install-root/
           logger: pretty
           log-directives: nix_installer=debug
