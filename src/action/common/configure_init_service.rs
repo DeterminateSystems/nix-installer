@@ -275,7 +275,7 @@ impl Action for ConfigureInitService {
                         })?;
                 }
 
-                crate::action::macos::retry_bootstrap(&domain, &service, &service_dest)
+                crate::action::macos::retry_bootstrap(domain, service, service_dest)
                     .await
                     .map_err(Self::error)?;
 
