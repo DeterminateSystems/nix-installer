@@ -31,6 +31,7 @@ pub struct CreateDeterminateNixVolume {
     disk: PathBuf,
     name: String,
     case_sensitive: bool,
+    use_ec2_instance_store: bool,
     create_directory: StatefulAction<CreateDirectory>,
     create_or_append_synthetic_conf: StatefulAction<CreateOrInsertIntoFile>,
     create_synthetic_objects: StatefulAction<CreateSyntheticObjects>,
@@ -51,6 +52,7 @@ impl CreateDeterminateNixVolume {
         name: String,
         case_sensitive: bool,
         force: bool,
+        use_ec2_instance_store: bool,
     ) -> Result<StatefulAction<Self>, ActionError> {
         let disk = disk.as_ref();
         let create_or_append_synthetic_conf = CreateOrInsertIntoFile::plan(
@@ -87,6 +89,7 @@ impl CreateDeterminateNixVolume {
         let setup_volume_daemon = CreateDeterminateVolumeService::plan(
             VOLUME_MOUNT_SERVICE_DEST,
             VOLUME_MOUNT_SERVICE_NAME,
+            use_ec2_instance_store,
         )
         .await
         .map_err(Self::error)?;
@@ -106,6 +109,7 @@ impl CreateDeterminateNixVolume {
             disk: disk.to_path_buf(),
             name,
             case_sensitive,
+            use_ec2_instance_store,
             create_directory,
             create_or_append_synthetic_conf,
             create_synthetic_objects,

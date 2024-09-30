@@ -471,7 +471,8 @@
     "encrypt": null,
     "case_sensitive": false,
     "volume_label": "Nix Store",
-    "root_disk": "disk3"
+    "root_disk": "disk3",
+    "use_ec2_instance_store": false
   },
   "diagnostic_data": {
     "version": "0.19.0",
