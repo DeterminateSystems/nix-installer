@@ -223,7 +223,7 @@ impl Action for CreateDeterminateNixVolume {
             .map_err(Self::error)?;
 
         let mut command = Command::new("/usr/local/bin/determinate-nixd");
-        command.args(["--stop-after", "mount", "daemon"]);
+        command.args(["init", "--stop-after", "mount"]);
         command.stderr(std::process::Stdio::piped());
         command.stdout(std::process::Stdio::piped());
         tracing::trace!(command = ?command.as_std(), "Mounting /nix");
