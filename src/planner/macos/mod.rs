@@ -75,15 +75,15 @@ pub struct Macos {
 
     /// On AWS, put the Nix Store volume on the EC2 instances' instance store volume.
     ///
-    /// Using the instance store volume bypasses the interactive "enable full disk access" step.
-    /// However, using the instance store volume means the machine can never be "Stopped".
+    /// WARNING: Using the instance store volume means the machine must never be Stopped in AWS.
     /// If the instance is Stopped, the instance store volume is erased, and the installation is broken.
-    /// Note: the machine can still be rebooted.
+    /// The machine can be safely rebooted.
+    ///
+    /// Using the instance store volume bypasses the interactive "enable full disk access" step.
     ///
     /// Setting this option:
-    ///
     ///  * Requires passing --determinate due to complications of AWS's deployment of macOS.
-    ///  * Sets --root-disk to an auto-detected disk, even if it was already set
+    ///  * Sets --root-disk to an auto-detected disk
     #[cfg_attr(feature = "cli", clap(long, default_value = "false", requires = "determinate_nix"))]
     pub use_ec2_instance_store: bool,
 }
