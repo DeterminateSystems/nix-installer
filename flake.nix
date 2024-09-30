@@ -178,6 +178,7 @@
               check.check-editorconfig
               check.check-semver
               check.check-clippy
+              editorconfig-checker
             ]
             ++ lib.optionals (pkgs.stdenv.isDarwin) (with pkgs; [
               libiconv

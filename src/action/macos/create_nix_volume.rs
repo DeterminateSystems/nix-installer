@@ -129,7 +129,7 @@ impl Action for CreateNixVolume {
     fn tracing_synopsis(&self) -> String {
         format!(
             "Create an{maybe_encrypted} APFS volume `{name}` for Nix on `{disk}` and add it to `/etc/fstab` mounting on `/nix`",
-            maybe_encrypted = if self.encrypt { " encrypted" } else { "" }, 
+            maybe_encrypted = if self.encrypt { " encrypted" } else { "" },
             name = self.name,
             disk = self.disk.display(),
         )
