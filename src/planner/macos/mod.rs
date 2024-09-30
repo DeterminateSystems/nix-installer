@@ -80,6 +80,7 @@ pub struct Macos {
     /// The machine can be safely rebooted.
     ///
     /// Using the instance store volume bypasses the interactive "enable full disk access" step.
+    /// Without this flag, installations on macOS on EC2 will require manual, graphical intervention when first installed to grant Full Disk Access.
     ///
     /// Setting this option:
     ///  * Requires passing --determinate due to complications of AWS's deployment of macOS.
