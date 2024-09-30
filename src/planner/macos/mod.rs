@@ -95,7 +95,7 @@ async fn default_root_disk() -> Result<String, PlannerError> {
             .stdin(std::process::Stdio::null()),
     )
     .await
-    .unwrap()
+    .map_err(|e| PlannerError::Custom(Box::new(e)))?
     .stdout;
     let the_plist: DiskUtilInfoOutput = plist::from_reader(Cursor::new(buf))?;
 
@@ -109,7 +109,7 @@ async fn default_internal_root_disk() -> Result<Option<String>, PlannerError> {
             .stdin(std::process::Stdio::null()),
     )
     .await
-    .unwrap()
+    .map_err(|e| PlannerError::Custom(Box::new(e)))?
     .stdout;
     let the_plist: DiskUtilList = plist::from_reader(Cursor::new(buf))?;
 
@@ -149,18 +149,7 @@ impl Planner for Macos {
                 if self.use_ec2_instance_store {
                     default_internal_root_disk().await?
                 } else {
-                    let buf = execute_command(
-                        Command::new("/usr/sbin/diskutil")
-                            .args(["info", "-plist", "/"])
-                            .stdin(std::process::Stdio::null()),
-                    )
-                    .await
-                    .unwrap()
-                    .stdout;
-                    let the_plist: DiskUtilInfoOutput =
-                        plist::from_reader(Cursor::new(buf)).unwrap();
-
-                    Some(the_plist.parent_whole_disk)
+                    Some(default_root_disk().await?)
                 }
             },
         };
