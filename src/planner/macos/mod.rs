@@ -84,7 +84,7 @@ pub struct Macos {
     ///
     ///  * Requires passing --determinate due to complications of AWS's deployment of macOS.
     ///  * Sets --root-disk to an auto-detected disk, even if it was already set
-    #[cfg_attr(feature = "cli", clap(long, default_value = "false"))]
+    #[cfg_attr(feature = "cli", clap(long, default_value = "false", requires = "determinate_nix"))]
     pub use_ec2_instance_store: bool,
 }
 
