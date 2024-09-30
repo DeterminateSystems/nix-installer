@@ -38,7 +38,7 @@ in
     name = "check-editorconfig";
     runtimeInputs = with pkgs; [ editorconfig-checker ];
     text = ''
-      editorconfig-checker .
+      editorconfig-checker
     '';
   });
 
