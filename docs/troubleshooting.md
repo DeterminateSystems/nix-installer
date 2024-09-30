@@ -22,7 +22,7 @@ Nix isn't currently on your `PATH`.
 1. Initialize your Nix profile:
 
    ```shell
-    . /nix/var/nix/profiles/default/etc/profile.d/nix-daemon.sh
+   . /nix/var/nix/profiles/default/etc/profile.d/nix-daemon.sh
    ```
 
    This script sets up various environment variables that Nix needs to work.
