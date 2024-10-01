@@ -30,7 +30,7 @@ jobs:
       id-token: "write"
       contents: "read"
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
       - name: Check Nixpkgs input
         uses: DeterminateSystems/flake-checker-action@main
         with:
@@ -67,7 +67,7 @@ jobs:
       id-token: "write"
       contents: "read"
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
       - name: Restore Github cache artifacts
         uses: actions/cache/restore@v3
         with:
@@ -185,7 +185,7 @@ jobs:
       id-token: "write"
       contents: "read"
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
       - name: Restore Github cache artifacts
         uses: actions/cache/restore@v3
         with:
@@ -309,7 +309,7 @@ jobs:
       id-token: "write"
       contents: "read"
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
       - name: Restore Github cache artifacts
         uses: actions/cache/restore@v3
         with:
@@ -399,7 +399,7 @@ jobs:
       id-token: "write"
       contents: "read"
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
       - name: Restore Github cache artifacts
         uses: actions/cache/restore@v3
         with:
@@ -517,7 +517,7 @@ jobs:
       id-token: "write"
       contents: "read"
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
       - name: Restore Github cache artifacts
         uses: actions/cache/restore@v3
         with:
@@ -607,7 +607,7 @@ jobs:
       id-token: "write"
       contents: "read"
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
       - name: Restore Github cache artifacts
         uses: actions/cache/restore@v3
         with:
