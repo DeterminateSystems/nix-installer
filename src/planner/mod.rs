@@ -397,6 +397,8 @@ pub enum PlannerError {
     RosettaDetected,
     #[error("Determinate Nix is not available. See: https://determinate.systems/enterprise")]
     DeterminateNixUnavailable,
+    #[error("Running Nix on the EC2 instance store requires Determinate Nix to be enabled")]
+    Ec2InstanceStoreRequiresDeterminateNix,
     /// A Linux SELinux related error
     #[error("Unable to install on an SELinux system without common SELinux tooling, the binaries `restorecon`, and `semodule` are required")]
     SelinuxRequirements,
@@ -431,6 +433,7 @@ impl HasExpectedErrors for PlannerError {
             this @ PlannerError::IncompatibleOperatingSystem { .. } => Some(Box::new(this)),
             this @ PlannerError::RosettaDetected => Some(Box::new(this)),
             this @ PlannerError::DeterminateNixUnavailable => Some(Box::new(this)),
+            this @ PlannerError::Ec2InstanceStoreRequiresDeterminateNix => Some(Box::new(this)),
             PlannerError::OsRelease(_) => None,
             PlannerError::Utf8(_) => None,
             PlannerError::SelinuxRequirements => Some(Box::new(self)),

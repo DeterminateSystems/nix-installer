@@ -36,3 +36,19 @@ pub struct DiskUtilApfsListVolume {
     pub name: Option<String>,
     pub encryption: bool,
 }
+
+#[derive(serde::Deserialize, Clone, Debug)]
+#[serde(rename_all = "PascalCase")]
+pub struct DiskUtilList {
+    pub all_disks_and_partitions: Vec<DiskUtilListDisk>,
+}
+
+#[derive(serde::Deserialize, Clone, Debug)]
+#[serde(rename_all = "PascalCase")]
+pub struct DiskUtilListDisk {
+    #[serde(rename = "OSInternal")]
+    pub os_internal: bool,
+    pub device_identifier: String,
+    #[serde(rename = "Size")]
+    pub size_bytes: u64,
+}

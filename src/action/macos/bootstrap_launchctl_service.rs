@@ -118,7 +118,7 @@ impl Action for BootstrapLaunchctlService {
         }
 
         if !*is_present {
-            crate::action::macos::retry_bootstrap(DARWIN_LAUNCHD_DOMAIN, &service, &path)
+            crate::action::macos::retry_bootstrap(DARWIN_LAUNCHD_DOMAIN, service, path)
                 .await
                 .map_err(Self::error)?;
         }

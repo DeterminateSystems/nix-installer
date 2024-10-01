@@ -22,6 +22,7 @@ pub struct CreateDeterminateVolumeService {
     path: PathBuf,
     mount_service_label: String,
     needs_bootout: bool,
+    use_ec2_instance_store: bool,
 }
 
 impl CreateDeterminateVolumeService {
@@ -29,12 +30,14 @@ impl CreateDeterminateVolumeService {
     pub async fn plan(
         path: impl AsRef<Path>,
         mount_service_label: impl Into<String>,
+        use_ec2_instance_store: bool,
     ) -> Result<StatefulAction<Self>, ActionError> {
         let path = path.as_ref().to_path_buf();
         let mount_service_label = mount_service_label.into();
         let mut this = Self {
             path,
             mount_service_label,
+            use_ec2_instance_store,
             needs_bootout: false,
         };
 
@@ -67,9 +70,10 @@ impl CreateDeterminateVolumeService {
             let discovered_plist: LaunchctlMountPlist =
                 plist::from_file(&this.path).map_err(Self::error)?;
 
-            let expected_plist = generate_mount_plist(&this.mount_service_label)
-                .await
-                .map_err(Self::error)?;
+            let expected_plist =
+                generate_mount_plist(&this.mount_service_label, use_ec2_instance_store)
+                    .await
+                    .map_err(Self::error)?;
             if discovered_plist != expected_plist {
                 tracing::trace!(
                     ?discovered_plist,
@@ -131,15 +135,16 @@ impl Action for CreateDeterminateVolumeService {
             path,
             mount_service_label,
             needs_bootout,
+            use_ec2_instance_store,
         } = self;
 
         if *needs_bootout {
-            crate::action::macos::retry_bootout(DARWIN_LAUNCHD_DOMAIN, &mount_service_label, &path)
+            crate::action::macos::retry_bootout(DARWIN_LAUNCHD_DOMAIN, mount_service_label, path)
                 .await
                 .map_err(Self::error)?;
         }
 
-        let generated_plist = generate_mount_plist(mount_service_label)
+        let generated_plist = generate_mount_plist(mount_service_label, *use_ec2_instance_store)
             .await
             .map_err(Self::error)?;
 
@@ -180,18 +185,18 @@ impl Action for CreateDeterminateVolumeService {
 /// This function must be able to operate at both plan and execute time.
 async fn generate_mount_plist(
     mount_service_label: &str,
+    use_ec2_instance_store: bool,
 ) -> Result<LaunchctlMountPlist, ActionErrorKind> {
+    let mut arguments = vec!["/usr/local/bin/determinate-nixd".into(), "init".into()];
+    if use_ec2_instance_store {
+        arguments.push("--keep-mounted".into());
+    }
     let mount_plist = LaunchctlMountPlist {
         run_at_load: true,
         label: mount_service_label.into(),
-        program_arguments: vec![
-            "/usr/local/bin/determinate-nixd".into(),
-            "--stop-after".into(),
-            "mount".into(),
-            "daemon".into(),
-        ],
-        standard_out_path: "/var/log/determinate-nixd-mount.log".into(),
-        standard_error_path: "/var/log/determinate-nixd-mount.log".into(),
+        program_arguments: arguments,
+        standard_out_path: "/var/log/determinate-nix-init.log".into(),
+        standard_error_path: "/var/log/determinate-nix-init.log".into(),
     };
 
     Ok(mount_plist)
