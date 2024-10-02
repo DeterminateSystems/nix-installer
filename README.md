@@ -34,9 +34,9 @@ curl --proto '=https' --tlsv1.2 -sSf -L https://install.determinate.systems/nix 
 Or, to download a platform specific Installer binary yourself:
 
 ```bash
-$ curl -sL -o nix-installer https://install.determinate.systems/nix/nix-installer-x86_64-linux
-$ chmod +x nix-installer
-$ ./nix-installer
+curl -sL -o nix-installer https://install.determinate.systems/nix/nix-installer-x86_64-linux
+chmod +x nix-installer
+./nix-installer
 ```
 
 `nix-installer` installs Nix by following a _plan_ made by a _planner_. Review the available planners:
