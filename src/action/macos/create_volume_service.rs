@@ -268,7 +268,7 @@ async fn generate_mount_plist(
     // The official Nix scripts uppercase the UUID, so we do as well for compatibility.
     let uuid_string = uuid.to_string().to_uppercase();
     let mount_command = if encrypt {
-        let encrypted_command = format!("/usr/bin/security find-generic-password -s {apfs_volume_label_with_quotes} -w |  /usr/sbin/diskutil apfs unlockVolume {apfs_volume_label_with_quotes} -mountpoint {mount_point:?} -stdinpassphrase");
+        let encrypted_command = format!("/usr/bin/security find-generic-password -a {apfs_volume_label_with_quotes} -s \"Nix Store\" -w |  /usr/sbin/diskutil apfs unlockVolume {apfs_volume_label_with_quotes} -mountpoint {mount_point:?} -stdinpassphrase");
         vec!["/bin/sh".into(), "-c".into(), encrypted_command]
     } else {
         vec![
