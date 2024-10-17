@@ -3,7 +3,7 @@
 [![Crates.io](https://img.shields.io/crates/v/nix-installer)](https://crates.io/crates/nix-installer)
 [![Docs.rs](https://img.shields.io/docsrs/nix-installer)](https://docs.rs/nix-installer/latest/nix_installer)
 
-**Determinate Nix Installer** is a fast, friendly, and reliable way to install and manage [Nix] everywhere, including macOS, Linux, [Windows Subsystem for Linux][wsl] (WSL), [SELinux], the [Valve Steam Deck][steam-dec], and more.
+**Determinate Nix Installer** is a fast, friendly, and reliable way to install and manage [Nix] everywhere, including macOS, Linux, [Windows Subsystem for Linux][wsl] (WSL), [SELinux], the [Valve Steam Deck][steam-deck], and more.
 It offers support for seamlessly [uninstalling Nix](#uninstalling), and [much more](#features).
 
 This one-liner is the quickest way to get started on any supported system:
@@ -13,23 +13,19 @@ curl --proto '=https' --tlsv1.2 -sSf -L https://install.determinate.systems/nix 
   sh -s -- install
 ```
 
-You can install [Determinate] by adding the `--determinate` flag:
-
-```shell
-curl --proto '=https' --tlsv1.2 -sSf -L https://install.determinate.systems/nix | \
-  sh -s -- install --determinate
-```
+> [!TIP]
+> To install [Determinate] using the installer, see the instructions [below](#install-determinate).
 
 Determinate Nix Installer has successfully completed over 2,000,000 installs in a number of environments, including [Github Actions](#as-a-github-action) and [GitLab](#on-gitlab):
 
 | Platform                                                             |    Multi user?    | `root` only |     Maturity      |
 | -------------------------------------------------------------------- | :---------------: | :---------: | :---------------: |
 | Linux (`x86_64` and `aarch64`)                                       | ✓ (via [systemd]) |      ✓      |      Stable       |
-| MacOS (`x86_64` and `aarch64`)                                       |         ✓         |             | Stable (See note) |
+| MacOS (`x86_64` and `aarch64`)                                       |         ✓         |             | Stable (see note) |
 | [Valve Steam Deck][steam-deck] (SteamOS)                             |         ✓         |             |      Stable       |
 | [Windows Subsystem for Linux][wsl] 2 (WSL2) (`x86_64` and `aarch64`) | ✓ (via [systemd]) |      ✓      |      Stable       |
-| [Podman] Linux Containers                                            | ✓ (via [systemd]) |      ✓      |      Stable       |
-| [Docker] Containers                                                  |                   |      ✓      |      Stable       |
+| [Podman] Linux containers                                            | ✓ (via [systemd]) |      ✓      |      Stable       |
+| [Docker] containers                                                  |                   |      ✓      |      Stable       |
 
 ## Install Nix
 
@@ -51,6 +47,21 @@ chmod +x nix-installer
 This would install Nix on an `x86_64-linux` system but you can replace that with the system of your choice.
 
 ### Install Determinate
+
+If you're on macOS (but not [nix-darwin]) or Linux (but not [NixOS]), you can install [Determinate] using Determinate Nix Installer by adding the `--determinate` flag:
+
+```shell
+curl --proto '=https' --tlsv1.2 -sSf -L https://install.determinate.systems/nix | \
+  sh -s -- install --determinate
+```
+
+> [!TIP]
+> If you use [nix-darwin] or [NixOS], we recommend installing Determinate using modules provided by the [`determinate` flake][determinate-flake].
+
+Determinate is:
+
+- [**Determinate Nix**][det-nix], [Determinate Systems][detsys]' validated and secure downstream Nix distribution for enterprises.
+- [**FlakeHub**][flakehub], a platform for publishing and discovering [Nix flakes][flakes] that provides features like [semantic versioning][semver] (SemVer) for flakes, [private flakes][private-flakes], and [FlakeHub Cache][cache].
 
 ### Planners
 
@@ -573,13 +584,17 @@ To disable diagnostic reporting, set the diagnostics URL to an empty string by p
 You can read the full privacy policy for [Determinate Systems][detsys], the creators of Determinate Nix Installer, [here][privacy].
 
 [actions]: https://github.com/features/actions
+[cache]: https://docs.determinate.systems/flakehub/features/flakehub-cache
 [cargo]: https://doc.rust-lang.org/cargo
 [clap]: https://clap.rs
+[det-nix]: https://docs.determinate.systems/determinate-nix
 [determinate]: https://docs.determinate.systems
+[determinate-flake]: https://github.com/DeterminateSystems/determinate
 [detsys]: https://determinate.systems
 [docker]: https://docker.com
 [diagnosticdata]: https://github.com/DeterminateSystems/nix-installer/blob/f9f927840d532b71f41670382a30cfcbea2d8a35/src/diagnostics.rs#L29-L43
 [enabling-systemd]: https://devblogs.microsoft.com/commandline/systemd-support-is-now-available-in-wsl/#how-can-you-get-systemd-on-your-machine
+[flakes]: https://zero-to-nix.com/concepts/flakes
 [forked-installer]: https://github.com/nixos/experimental-nix-installer
 [gitlab]: https://gitlab.com
 [gitlab-ci]: https://docs.gitlab.com/ee/ci
@@ -588,14 +603,17 @@ You can read the full privacy policy for [Determinate Systems][detsys], the crea
 [nix-darwin]: https://github.com/LnL7/nix-darwin
 [nix-installer-action]: https://github.com/DeterminateSystems/nix-installer-action
 [nixgl]: https://github.com/guibou/nixGL
+[nixos]: https://zero-to-nix.com/concepts/nixos
 [openssl]: https://openssl.org
 [podman]: https://podman.io
 [privacy]: https://determinate.systems/policies/privacy
+[private-flakes]: https://docs.determinate.systems/flakehub/concepts/visibility#private
 [process-groups]: https://docs.rs/tokio/1.24.1/tokio/process/struct.Command.html#method.process_group
 [recommended-nix]: https://github.com/DeterminateSystems/nix/releases/latest
 [releases]: https://github.com/DeterminateSystems/nix-installer/releases
 [rust]: https://rust-lang.org
 [selinux]: https://selinuxproject.org
+[semver]: https://docs.determinate.systems/flakehub/concepts/semver
 [steam-deck]: https://store.steampowered.com/steamdeck
 [systemd]: https://systemd.io
 [upstream-nix]: https://github.com/NixOS/nix
