@@ -444,7 +444,7 @@ Here are some example Nix package URLs, including the Nix version, OS, and archi
 
 ## Installation differences
 
-Differing from the upstream [Nix][upsteam-nix] installer scripts:
+Differing from the upstream [Nix][upstream-nix] installer scripts:
 
 - In `nix.conf`:
   - the `nix-command` and `flakes` features are enabled
@@ -594,6 +594,7 @@ You can read the full privacy policy for [Determinate Systems][detsys], the crea
 [docker]: https://docker.com
 [diagnosticdata]: https://github.com/DeterminateSystems/nix-installer/blob/f9f927840d532b71f41670382a30cfcbea2d8a35/src/diagnostics.rs#L29-L43
 [enabling-systemd]: https://devblogs.microsoft.com/commandline/systemd-support-is-now-available-in-wsl/#how-can-you-get-systemd-on-your-machine
+[flakehub]: https://flakehub.com
 [flakes]: https://zero-to-nix.com/concepts/flakes
 [forked-installer]: https://github.com/nixos/experimental-nix-installer
 [gitlab]: https://gitlab.com
