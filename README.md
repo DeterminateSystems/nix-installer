@@ -1,29 +1,28 @@
-# The Determinate Nix Installer
+# Determinate Nix Installer
 
 [![Crates.io](https://img.shields.io/crates/v/nix-installer)](https://crates.io/crates/nix-installer)
-[![Docs.rs](https://img.shields.io/docsrs/nix-installer)](https://docs.rs/nix-installer/latest/nix_installer/)
+[![Docs.rs](https://img.shields.io/docsrs/nix-installer)](https://docs.rs/nix-installer/latest/nix_installer)
 
-A fast, friendly, and reliable tool to help you use [Nix] with Flakes everywhere.
+**Determinate Nix Installer** is a fast, friendly, and reliable way to install and manage [Nix] everywhere, including macOS, Linux, Windows Subsystem for Linux (WSL), SELinux, the Valve Steam Deck, and more.
+
+This one-liner is the quickest way to get started on any supported system:
 
 ```bash
 curl --proto '=https' --tlsv1.2 -sSf -L https://install.determinate.systems/nix | sh -s -- install
 ```
 
-The `nix-installer` has successfully completed over 2,000,000 installs in a number of environments, including [Github Actions](#as-a-github-action) and [GitLab](#on-gitlab):
+Determinate Nix Installer has successfully completed over 2,000,000 installs in a number of environments, including [Github Actions](#as-a-github-action) and [GitLab](#on-gitlab):
 
 | Platform                   |    Multi User     | `root` only |     Maturity      |
 | -------------------------- | :---------------: | :---------: | :---------------: |
-| Linux (x86_64 & aarch64)   | ✓ (via [systemd]) |      ✓      |      Stable       |
-| MacOS (x86_64 & aarch64)   |         ✓         |             | Stable (See note) |
+| Linux (x86_64 and aarch64) | ✓ (via [systemd]) |      ✓      |      Stable       |
+| MacOS (x86_64 and aarch64) |         ✓         |             | Stable (See note) |
 | Valve Steam Deck (SteamOS) |         ✓         |             |      Stable       |
-| WSL2 (x86_64 & aarch64)    | ✓ (via [systemd]) |      ✓      |      Stable       |
+| WSL2 (x86_64 and aarch64)  | ✓ (via [systemd]) |      ✓      |      Stable       |
 | Podman Linux Containers    | ✓ (via [systemd]) |      ✓      |      Stable       |
 | Docker Containers          |                   |      ✓      |      Stable       |
 
-> [!NOTE]
-> On **MacOS only**, removing users and/or groups may fail if there are no users who are logged in graphically.
-
-## Usage
+## Install Nix
 
 Install Nix with the default planner and options:
 
@@ -105,7 +104,7 @@ You can upgrade Nix to [our currently recommended version of Nix][recommended-ni
 sudo -i nix upgrade-nix
 ```
 
-Alternatively, you can [uninstall](#uninstalling) and [reinstall](#usage) with a different version of the `nix-installer`.
+Alternatively, you can [uninstall](#uninstalling) and [reinstall](#install-nix) with a different version of the `nix-installer`.
 
 ### Uninstalling
 
@@ -235,7 +234,7 @@ On some container tools, such as `docker`, `sandbox = false` can be omitted. Omi
 
 ### In WSL2
 
-We **strongly recommend** [enabling systemd](https://devblogs.microsoft.com/commandline/systemd-support-is-now-available-in-wsl/#how-can-you-get-systemd-on-your-machine), then installing Nix as normal:
+We **strongly recommend** first [enabling systemd](https://devblogs.microsoft.com/commandline/systemd-support-is-now-available-in-wsl/#how-can-you-get-systemd-on-your-machine) and then installing Nix as normal:
 
 ```bash
 curl --proto '=https' --tlsv1.2 -sSf -L https://install.determinate.systems/nix | sh -s -- install
@@ -447,11 +446,11 @@ Differing from the upstream [Nix](https://github.com/NixOS/nix) installer script
 
 ## Motivations
 
-The existing upstream scripts do a good job, however they are difficult to maintain.
+The existing upstream scripts do a good job but they are difficult to maintain.
 
 Subtle differences in the shell implementations and tool used in the scripts make it difficult to make meaningful changes to the installer.
 
-The Determinate Nix installer has numerous advantages:
+Determinate Nix installer has numerous advantages:
 
 - survives macOS upgrades
 - keeping an installation receipt for easy uninstallation
@@ -460,7 +459,7 @@ The Determinate Nix installer has numerous advantages:
 - offering users with a failing install the chance to do a best-effort revert
 - improving performance by maximizing parallel operations
 - supporting a expanded test suite including 'curing' cases
-- supporting SELinux and OSTree based distributions without asking users to make compromises
+- supporting SELinux and OSTree-based distributions without asking users to make compromises
 - operating as a single, static binary with external dependencies such as `openssl`, only calling existing system tools (like `useradd`) where necessary
 - As a MacOS remote build target, ensures `nix` is not absent from path
 
@@ -485,6 +484,7 @@ These settings are available for all commands.
 
 | Flag(s)                    | Description                                                                                        | Default (if any)                                     | Environment variable                   |
 | -------------------------- | -------------------------------------------------------------------------------------------------- | ---------------------------------------------------- | -------------------------------------- |
+| `--determinate`            | Installs [Determinate]                                                                             | `NIX_INSTALLER_DETERMINATE`                          |
 | `--diagnostic-attribution` | Relate the install diagnostic to a specific value                                                  |                                                      | `NIX_INSTALLER_DIAGNOSTIC_ATTRIBUTION` |
 | `--diagnostic-endpoint`    | The URL or file path for an installation diagnostic to be sent                                     | `https://install.determinate.systems/nix/diagnostic` | `NIX_INSTALLER_DIAGNOSTIC_ENDPOINT`    |
 | `--explain`                | Provide an explanation of the changes the installation process will make to your system            | `false`                                              | `NIX_INSTALLER_EXPLAIN`                |
