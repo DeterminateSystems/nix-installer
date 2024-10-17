@@ -4,7 +4,7 @@
 [![Docs.rs](https://img.shields.io/docsrs/nix-installer)](https://docs.rs/nix-installer/latest/nix_installer)
 
 **Determinate Nix Installer** is a fast, friendly, and reliable way to install and manage [Nix] everywhere, including macOS, Linux, [Windows Subsystem for Linux][wsl] (WSL), [SELinux], the [Valve Steam Deck][steam-deck], and more.
-It offers support for seamlessly [uninstalling Nix](#uninstalling), and [much more](#features).
+It installs Nix with [flakes] enabled by default, it offers support for seamlessly [uninstalling Nix](#uninstalling), it enables Nix to survive [macOS upgrades][macos-upgrades], and [much more](#features).
 
 This one-liner is the quickest way to get started on any supported system:
 
@@ -291,6 +291,7 @@ Subtle differences in the shell implementations and tool used in the scripts mak
 
 Determinate Nix installer has numerous advantages over these options:
 
+- It installs Nix with [flakes] enabled by default
 - It enables Nix to survive macOS upgrades
 - It keeps an installation _receipt_ for easy [uninstallation](#uninstalling)
 - It uses [planners](#planners) to create appropriate install plans for complicated targets&mdash;plans that you can review prior to installation
@@ -300,6 +301,8 @@ Determinate Nix installer has numerous advantages over these options:
 - It supports SELinux and OSTree-based distributions without asking users to make compromises
 - It operates as a single, static binary with external dependencies such as [OpenSSL], only calling existing system tools (like `useradd`) when necessary
 - As a macOS remote build target, it ensures that Nix is present on the `PATH`
+
+## Nix community involvement
 
 It has been wonderful to collaborate with other participants in the [Nix Installer Working Group][wg] and members of the broader community.
 The working group maintains a [foundation-owned fork of the installer][forked-installer].
@@ -600,6 +603,7 @@ You can read the full privacy policy for [Determinate Systems][detsys], the crea
 [gitlab]: https://gitlab.com
 [gitlab-ci]: https://docs.gitlab.com/ee/ci
 [lib]: https://docs.rs/nix-installer
+[macos-upgrades]: https://determinate.systems/posts/nix-survival-mode-on-macos/
 [nix]: https://nixos.org
 [nix-darwin]: https://github.com/LnL7/nix-darwin
 [nix-installer-action]: https://github.com/DeterminateSystems/nix-installer-action
