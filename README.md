@@ -16,7 +16,7 @@ curl --proto '=https' --tlsv1.2 -sSf -L https://install.determinate.systems/nix 
 > [!TIP]
 > To install [Determinate] using the installer, see the instructions [below](#install-determinate).
 
-Determinate Nix Installer has successfully completed over 2,000,000 installs in a number of environments, including [Github Actions](#as-a-github-action) and [GitLab](#on-gitlab):
+Determinate Nix Installer has successfully completed over **7 million** installs in a number of environments, including [Github Actions](#as-a-github-action) and [GitLab](#on-gitlab):
 
 | Platform                                                             |    Multi user?    | `root` only |     Maturity      |
 | -------------------------------------------------------------------- | :---------------: | :---------: | :---------------: |
