@@ -283,6 +283,27 @@ curl --proto '=https' --tlsv1.2 -sSf -L https://install.determinate.systems/nix 
 
 This is especially useful when using the installer in non-interactive scripts.
 
+## Features
+
+Existing Nix installation scripts do a good job but they are difficult to maintain.
+
+Subtle differences in the shell implementations and tool used in the scripts make it difficult to make meaningful changes to the installer.
+
+Determinate Nix installer has numerous advantages over these options:
+
+- It enables Nix to survive macOS upgrades
+- It keeps an installation _receipt_ for easy [uninstallation](#uninstalling)
+- It uses [planners](#planners) to create appropriate install plans for complicated targets&mdash;plans that you can review prior to installation
+- It enables you to perform a best-effort reversion in the facing of a failed install
+- It improves installation performance by maximizing parallel operations
+- It supports na expanded test suite including "curing" cases (compatibility with Nix already on the system)
+- It supports SELinux and OSTree-based distributions without asking users to make compromises
+- It operates as a single, static binary with external dependencies such as [OpenSSL], only calling existing system tools (like `useradd`) when necessary
+- As a macOS remote build target, it ensures that Nix is present on the `PATH`
+
+It has been wonderful to collaborate with other participants in the [Nix Installer Working Group][wg] and members of the broader community.
+The working group maintains a [foundation-owned fork of the installer][forked-installer].
+
 ## Quirks
 
 While Determinate Nix Installer tries to provide a comprehensive and unquirky experience, there are unfortunately some issues that may require manual intervention or operator choices.
@@ -457,27 +478,6 @@ Differing from the upstream [Nix][upstream-nix] installer scripts:
 - an installation receipt (for uninstalling) is stored at `/nix/receipt.json` as well as a copy of the install binary at `/nix/nix-installer`
 - `nix-channel --update` is not run, `~/.nix-channels` is not provisioned
 - `ssl-cert-file` is set in `/etc/nix/nix.conf` if the `ssl-cert-file` argument is used.
-
-## Features
-
-Existing Nix installation scripts do a good job but they are difficult to maintain.
-
-Subtle differences in the shell implementations and tool used in the scripts make it difficult to make meaningful changes to the installer.
-
-Determinate Nix installer has numerous advantages over these options:
-
-- It enables Nix to survive macOS upgrades
-- It keeps an installation _receipt_ for easy [uninstallation](#uninstalling)
-- It uses [planners](#planners) to create appropriate install plans for complicated targets&mdash;plans that you can review prior to installation
-- It enables you to perform a best-effort reversion in the facing of a failed install
-- It improves installation performance by maximizing parallel operations
-- It supports na expanded test suite including "curing" cases (compatibility with Nix already on the system)
-- It supports SELinux and OSTree-based distributions without asking users to make compromises
-- It operates as a single, static binary with external dependencies such as [OpenSSL], only calling existing system tools (like `useradd`) when necessary
-- As a macOS remote build target, it ensures that Nix is present on the `PATH`
-
-It has been wonderful to collaborate with other participants in the [Nix Installer Working Group][wg] and members of the broader community.
-The working group maintains a [foundation-owned fork of the installer][forked-installer].
 
 ## Installer settings
 
