@@ -503,17 +503,21 @@ impl Action for ConfigureInitService {
 
         match self.init {
             InitSystem::Launchd => {
-                crate::action::macos::retry_bootout(
+                let service_dest = self
+                    .service_dest
+                    .as_ref()
+                    .expect("service_dest should be defined for launchd");
+                if let Err(e) = crate::action::macos::retry_bootout(
                     DARWIN_LAUNCHD_DOMAIN,
                     self.service_name
                         .as_ref()
                         .expect("service_name should be set for launchd"),
-                    self.service_dest
-                        .as_ref()
-                        .expect("service_dest should be defined for launchd"),
+                    service_dest,
                 )
                 .await
-                .map_err(Self::error)?;
+                {
+                    errors.push(e);
+                }
 
                 // check if the daemon is down up to 99 times, with 100ms of delay between each attempt
                 for attempt in 1..100 {
