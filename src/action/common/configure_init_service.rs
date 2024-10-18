@@ -116,23 +116,6 @@ impl ConfigureInitService {
                 if which::which("systemctl").is_err() {
                     return Err(Self::error(ActionErrorKind::SystemdMissing));
                 }
-
-                if let (Some(service_src), Some(service_dest)) =
-                    (service_src.as_ref(), service_dest.as_ref())
-                {
-                    Self::check_if_systemd_unit_exists(
-                        &UnitSrc::Path(service_src.to_path_buf()),
-                        service_dest,
-                    )
-                    .await
-                    .map_err(Self::error)?;
-                }
-
-                for SocketFile { src, dest, .. } in socket_files.iter() {
-                    Self::check_if_systemd_unit_exists(src, dest)
-                        .await
-                        .map_err(Self::error)?;
-                }
             },
             InitSystem::None => {
                 // Nothing here, no init system
