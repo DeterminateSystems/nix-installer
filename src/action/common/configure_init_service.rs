@@ -634,20 +634,24 @@ impl Action for ConfigureInitService {
                 }
 
                 for socket in self.socket_files.iter() {
-                    if let UnitSrc::Literal(_) = socket.src {
+                    if socket.dest.exists() {
                         tracing::trace!(path = %socket.dest.display(), "Removing");
-                        tokio::fs::remove_file(&socket.dest)
+                        if let Err(err) = tokio::fs::remove_file(&socket.dest)
                             .await
                             .map_err(|e| ActionErrorKind::Remove(socket.dest.to_path_buf(), e))
-                            .map_err(Self::error)?;
+                        {
+                            errors.push(err);
+                        }
                     }
                 }
 
-                if let Err(err) = tokio::fs::remove_file(TMPFILES_DEST)
-                    .await
-                    .map_err(|e| ActionErrorKind::Remove(PathBuf::from(TMPFILES_DEST), e))
-                {
-                    errors.push(err);
+                if Path::new(TMPFILES_DEST).exists() {
+                    if let Err(err) = tokio::fs::remove_file(TMPFILES_DEST)
+                        .await
+                        .map_err(|e| ActionErrorKind::Remove(PathBuf::from(TMPFILES_DEST), e))
+                    {
+                        errors.push(err);
+                    }
                 }
 
                 if let Err(err) = execute_command(
