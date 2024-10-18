@@ -180,10 +180,6 @@ impl Action for ConfigureDeterminateNixdInitService {
     }
 }
 
-#[non_exhaustive]
-#[derive(Debug, thiserror::Error)]
-pub enum ConfigureDeterminateNixDaemonServiceError {}
-
 #[derive(Deserialize, Clone, Debug, Serialize, PartialEq)]
 #[serde(rename_all = "PascalCase")]
 pub struct DeterminateNixDaemonPlist {
