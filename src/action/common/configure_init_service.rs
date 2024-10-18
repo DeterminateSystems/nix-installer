@@ -312,17 +312,6 @@ impl Action for ConfigureInitService {
                     .as_ref()
                     .expect("service_dest should be defined for systemd");
 
-                if *start_daemon {
-                    execute_command(
-                        Command::new("systemctl")
-                            .process_group(0)
-                            .arg("daemon-reload")
-                            .stdin(std::process::Stdio::null()),
-                    )
-                    .await
-                    .map_err(Self::error)?;
-                }
-
                 // The goal state is the `socket` enabled and active, the service not enabled and stopped (it activates via socket activation)
                 let mut any_socket_was_active = false;
                 for SocketFile { name, .. } in socket_files.iter() {
