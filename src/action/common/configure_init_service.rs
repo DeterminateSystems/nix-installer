@@ -344,8 +344,8 @@ impl Action for ConfigureInitService {
                     };
                 }
 
-                tracing::trace!(src = TMPFILES_SRC, dest = TMPFILES_DEST, "Symlinking");
                 if !Path::new(TMPFILES_DEST).exists() {
+                    tracing::trace!(src = TMPFILES_SRC, dest = TMPFILES_DEST, "Symlinking");
                     tokio::fs::symlink(TMPFILES_SRC, TMPFILES_DEST)
                         .await
                         .map_err(|e| {
