@@ -297,7 +297,7 @@ Determinate Nix installer has numerous advantages over these options:
 - It uses [planners](#planners) to create appropriate install plans for complicated targets&mdash;plans that you can review prior to installation
 - It enables you to perform a best-effort reversion in the facing of a failed install
 - It improves installation performance by maximizing parallel operations
-- It supports na expanded test suite including "curing" cases (compatibility with Nix already on the system)
+- It supports an expanded test suite including "curing" cases (compatibility with Nix already on the system)
 - It supports SELinux and OSTree-based distributions without asking users to make compromises
 - It operates as a single, static binary with external dependencies such as [OpenSSL], only calling existing system tools (like `useradd`) when necessary
 - As a macOS remote build target, it ensures that Nix is present on the `PATH`
