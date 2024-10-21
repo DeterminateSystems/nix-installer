@@ -251,7 +251,7 @@ impl Action for EncryptApfsVolume {
                 "-a",
                 self.name.as_str(),
                 "-s",
-                self.name.as_str(),
+                "Nix Store",
                 "-l",
                 format!("{} encryption password", disk_str).as_str(),
                 "-D",
