@@ -1,13 +1,16 @@
-use std::{
-    ffi::CString,
-    path::{Path, PathBuf},
-    process::ExitCode,
-};
+use std::{ffi::CString, path::PathBuf, process::ExitCode};
 
 use crate::{
-    cli::{ensure_root, interaction::PromptChoice, signal_channel},
+    cli::{
+        ensure_root,
+        interaction::PromptChoice,
+        signal_channel,
+        subcommand::make_determinate::{
+            ORIGINAL_INSTALLER_BINARY_LOCATION, ORIGINAL_RECEIPT_LOCATION,
+        },
+    },
     error::HasExpectedErrors,
-    plan::{current_version, RECEIPT_LOCATION},
+    plan::{current_version, BINARY_LOCATION, RECEIPT_LOCATION},
     InstallPlan, NixInstallerError,
 };
 use clap::{ArgAction, Parser};
@@ -71,9 +74,9 @@ impl CommandExecute for Uninstall {
         // well, we have a problem, since the binary would delete itself.
         // Instead, detect if we're in that location, if so, move the binary and `execv` it.
         if let Ok(current_exe) = std::env::current_exe() {
-            if current_exe.as_path() == Path::new("/nix/nix-installer") {
+            if current_exe.as_path().starts_with("/nix") {
                 tracing::debug!(
-                    "Detected uninstall from `/nix/nix-installer`, moving executable and re-executing"
+                    "Detected uninstall from within `/nix`, copying executable and re-executing"
                 );
                 let temp = std::env::temp_dir();
                 let random_trailer: String = {
@@ -205,8 +208,74 @@ impl CommandExecute for Uninstall {
             "\
             {success}\n\
             ",
-            success = "Nix was uninstalled successfully!".green().bold(),
+            success = "Uninstallation completed successfully!".green().bold(),
         );
+
+        // NOTE(cole-h): If `/nix/original-receipt.json` exists, the current binary was used to
+        // install determinate to an existing installation. If they're uninstalling, they must first
+        // uninstall determinate (using /nix/nix-installer and /nix/receipt.json, which will be the
+        // determinate-installing nix-installer binary and receipt), and once that succeeds, we move
+        // the original binary (that installed Nix itself) and its receipt back to their expected
+        // locations (`/nix/nix-installer`, `/nix/receipt.json`) and rerun the uninstall command
+        // with the same arguments but with the original binary.
+        //
+        // This is to provide support for installing determinate to installations whose receipts
+        // cannot be parsed -- we want to be able to uninstall determinate and Nix, but this is
+        // complicated when mixing versions. So we do a best-effort attempt of "keep original binary
+        // and receipt under a new name, and put the new determinate-installed binary in the normal
+        // place".
+        let original_binary_exists = PathBuf::from(ORIGINAL_INSTALLER_BINARY_LOCATION).exists();
+        let original_receipt_exists = PathBuf::from(ORIGINAL_RECEIPT_LOCATION).exists();
+
+        if original_receipt_exists && !original_binary_exists {
+            #[derive(serde::Deserialize)]
+            struct VersionedInstallPlan {
+                version: semver::Version,
+            }
+
+            let original_plan = tokio::fs::read_to_string(ORIGINAL_RECEIPT_LOCATION)
+                .await
+                .wrap_err("Reading original receipt")?;
+            let versioned_plan: VersionedInstallPlan = serde_json::from_str(&original_plan)
+                .wrap_err("Getting version out of original plan")?;
+
+            // FIXME: better message
+            tracing::error!("the original nix-installer binary appears to have gone missing, so uninstall cannot proceed; redownload it with the following:");
+            tracing::error!("curl --proto '=https' --tlsv1.2 -sSf -L https://install.determinate.systems/nix/tag/v{} | sh -s -- uninstall", versioned_plan.version);
+            return Err(eyre::eyre!("foobar"));
+        }
+
+        if original_receipt_exists {
+            tokio::fs::remove_file(BINARY_LOCATION)
+                .await
+                .wrap_err_with(|| {
+                    format!("Removing determinate nix-installer binary at {BINARY_LOCATION}")
+                })?;
+            tokio::fs::remove_file(RECEIPT_LOCATION)
+                .await
+                .wrap_err_with(|| format!("Removing determinate receipt at {RECEIPT_LOCATION}"))?;
+
+            tokio::fs::rename(ORIGINAL_INSTALLER_BINARY_LOCATION, BINARY_LOCATION)
+                .await
+                .wrap_err_with(|| {
+                    format!("Moving original nix-installer binary back to {BINARY_LOCATION}")
+                })?;
+            tokio::fs::rename(ORIGINAL_RECEIPT_LOCATION, RECEIPT_LOCATION)
+                .await
+                .wrap_err_with(|| format!("Moving original receipt back to {RECEIPT_LOCATION}"))?;
+
+            let args = std::env::args();
+            let mut arg_vec_cstring = vec![];
+            for arg in args {
+                arg_vec_cstring.push(CString::new(arg).wrap_err("Making arg into C string")?);
+            }
+            let exe_cstring = CString::new("/nix/nix-installer")
+                .wrap_err("Making C string of original nix-installer executable path")?;
+
+            tracing::trace!("Execv'ing `{exe_cstring:?} {arg_vec_cstring:?}`");
+            nix::unistd::execv(&exe_cstring, &arg_vec_cstring)
+                .wrap_err("Executing original `nix-installer`")?;
+        }
 
         Ok(ExitCode::SUCCESS)
     }

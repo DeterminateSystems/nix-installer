@@ -49,7 +49,7 @@ impl CommandExecute for NixInstallerCli {
             NixInstallerSubcommand::Install(install) => install.execute().await,
             NixInstallerSubcommand::Repair(repair) => repair.execute().await,
             NixInstallerSubcommand::Uninstall(revert) => revert.execute().await,
-            NixInstallerSubcommand::Prepare(prepare) => prepare.execute().await,
+            NixInstallerSubcommand::MakeDeterminate(prepare) => prepare.execute().await,
         }
     }
 }

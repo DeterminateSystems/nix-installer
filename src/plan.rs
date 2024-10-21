@@ -10,6 +10,7 @@ use semver::{Version, VersionReq};
 use tokio::sync::broadcast::Receiver;
 
 pub const RECEIPT_LOCATION: &str = "/nix/receipt.json";
+pub const BINARY_LOCATION: &str = "/nix/nix-installer";
 
 /**
 A set of [`Action`]s, along with some metadata, which can be carried out to drive an install or
@@ -173,7 +174,7 @@ impl InstallPlan {
                 if cancel_channel.try_recv()
                     != Err(tokio::sync::broadcast::error::TryRecvError::Empty)
                 {
-                    if let Err(err) = self.write_receipt().await {
+                    if let Err(err) = self.write_receipt(PathBuf::from(RECEIPT_LOCATION)).await {
                         tracing::error!("Error saving receipt: {:?}", err);
                     }
 
@@ -194,7 +195,7 @@ impl InstallPlan {
 
             tracing::info!("Step: {}", action.tracing_synopsis());
             if let Err(err) = action.try_execute().await {
-                if let Err(err) = self.write_receipt().await {
+                if let Err(err) = self.write_receipt(PathBuf::from(RECEIPT_LOCATION)).await {
                     tracing::error!("Error saving receipt: {:?}", err);
                 }
                 let err = NixInstallerError::Action(err);
@@ -214,7 +215,7 @@ impl InstallPlan {
             }
         }
 
-        self.write_receipt().await?;
+        self.write_receipt(PathBuf::from(RECEIPT_LOCATION)).await?;
 
         if let Err(err) = crate::self_test::self_test()
             .await
@@ -345,7 +346,7 @@ impl InstallPlan {
                 if cancel_channel.try_recv()
                     != Err(tokio::sync::broadcast::error::TryRecvError::Empty)
                 {
-                    if let Err(err) = self.write_receipt().await {
+                    if let Err(err) = self.write_receipt(PathBuf::from(RECEIPT_LOCATION)).await {
                         tracing::error!("Error saving receipt: {:?}", err);
                     }
 
@@ -415,8 +416,10 @@ impl InstallPlan {
         }
     }
 
-    pub(crate) async fn write_receipt(&self) -> Result<(), NixInstallerError> {
-        let install_receipt_path = PathBuf::from(RECEIPT_LOCATION);
+    pub(crate) async fn write_receipt(
+        &self,
+        install_receipt_path: PathBuf,
+    ) -> Result<(), NixInstallerError> {
         let install_receipt_path_tmp = {
             let mut install_receipt_path_tmp = install_receipt_path.clone();
             install_receipt_path_tmp.set_extension("tmp");

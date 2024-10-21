@@ -1,13 +1,13 @@
 mod install;
+mod make_determinate;
 mod plan;
-mod prepare;
 mod repair;
 mod self_test;
 mod uninstall;
 
 use install::Install;
+use make_determinate::MakeDeterminate;
 use plan::Plan;
-use prepare::Prepare;
 use repair::Repair;
 use self_test::SelfTest;
 use uninstall::Uninstall;
@@ -20,5 +20,5 @@ pub enum NixInstallerSubcommand {
     Uninstall(Uninstall),
     SelfTest(SelfTest),
     Plan(Plan),
-    Prepare(Prepare),
+    MakeDeterminate(MakeDeterminate),
 }
