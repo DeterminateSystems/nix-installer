@@ -587,7 +587,7 @@ To disable diagnostic reporting, set the diagnostics URL to an empty string by p
 You can read the full privacy policy for [Determinate Systems][detsys], the creators of Determinate Nix Installer, [here][privacy].
 
 [actions]: https://github.com/features/actions
-[cache]: https://docs.determinate.systems/flakehub/features/flakehub-cache
+[cache]: https://docs.determinate.systems/flakehub/cache
 [cargo]: https://doc.rust-lang.org/cargo
 [clap]: https://clap.rs
 [det-nix]: https://docs.determinate.systems/determinate-nix
@@ -612,7 +612,7 @@ You can read the full privacy policy for [Determinate Systems][detsys], the crea
 [openssl]: https://openssl.org
 [podman]: https://podman.io
 [privacy]: https://determinate.systems/policies/privacy
-[private-flakes]: https://docs.determinate.systems/flakehub/concepts/visibility#private
+[private-flakes]: https://docs.determinate.systems/flakehub/private-flakes
 [process-groups]: https://docs.rs/tokio/1.24.1/tokio/process/struct.Command.html#method.process_group
 [recommended-nix]: https://github.com/DeterminateSystems/nix/releases/latest
 [releases]: https://github.com/DeterminateSystems/nix-installer/releases
