@@ -147,6 +147,7 @@ impl CommandExecute for MakeDeterminate {
         }
 
         let receipt_location = PathBuf::from(RECEIPT_LOCATION);
+        let determinate_receipt_location = PathBuf::from("/nix/determinate-receipt.json");
         let nix_installer_location = PathBuf::from("/nix/nix-installer");
 
         if receipt_location.exists() {
@@ -161,7 +162,12 @@ impl CommandExecute for MakeDeterminate {
             );
         }
 
-        install_plan.write_receipt(receipt_location).await?;
+        install_plan
+            .write_receipt(&determinate_receipt_location)
+            .await?;
+        tokio::fs::symlink(&determinate_receipt_location, &receipt_location)
+            .await
+            .wrap_err_with(|| format!("Symlinking Determinate receipt to {receipt_location:?}"))?;
         tracing::info!("Wrote Determinate receipt");
 
         crate::cli::subcommand::install::copy_self_to_nix_dir()

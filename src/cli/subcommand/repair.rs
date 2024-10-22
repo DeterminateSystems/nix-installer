@@ -1,5 +1,5 @@
 use std::io::IsTerminal as _;
-use std::path::PathBuf;
+use std::path::Path;
 use std::process::ExitCode;
 use std::time::SystemTime;
 
@@ -413,7 +413,7 @@ impl CommandExecute for Repair {
             tracing::info!("Backed up pre-repair receipt to {}", old_receipt.display());
 
             updated_receipt
-                .write_receipt(PathBuf::from(RECEIPT_LOCATION))
+                .write_receipt(&Path::new(RECEIPT_LOCATION))
                 .await?;
             tracing::info!("Wrote updated receipt");
         }
