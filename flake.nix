@@ -100,8 +100,7 @@
             copyBins = true;
             copyDocsToSeparateOutput = true;
 
-            # FIXME(cole-h): fixtures are broken because of the type change from Option<PathBuf> to Option<UnitSrc>
-            doCheck = false;
+            doCheck = true;
             doDoc = true;
             doDocFail = true;
             RUSTFLAGS = "--cfg tokio_unstable";
