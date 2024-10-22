@@ -14,6 +14,7 @@ use crate::cli::interaction::PromptChoice;
 use crate::cli::{ensure_root, CommandExecute};
 use crate::error::HasExpectedErrors as _;
 use crate::plan::RECEIPT_LOCATION;
+use crate::planner::linux::FHS_SELINUX_POLICY_PATH;
 use crate::planner::PlannerError;
 use crate::settings::InitSystem;
 use crate::InstallPlan;
@@ -71,7 +72,7 @@ impl CommandExecute for MakeDeterminate {
                 if has_selinux {
                     plan.push(
                         ProvisionSelinux::plan(
-                            "/usr/share/selinux/packages/nix.pp".into(),
+                            FHS_SELINUX_POLICY_PATH.into(),
                             DETERMINATE_SELINUX_POLICY_PP_CONTENT,
                         )
                         .await
