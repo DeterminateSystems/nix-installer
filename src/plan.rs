@@ -196,7 +196,10 @@ impl InstallPlan {
                 }
             }
 
-            tracing::info!("Step: {}", action.tracing_synopsis());
+            let synopsis = action.tracing_synopsis();
+            if !synopsis.is_empty() {
+                tracing::info!("Step: {synopsis}");
+            }
             if let Err(err) = action.try_execute().await {
                 if let Err(err) = self.write_receipt(&Path::new(RECEIPT_LOCATION)).await {
                     tracing::error!("Error saving receipt: {:?}", err);
@@ -367,7 +370,10 @@ impl InstallPlan {
                 }
             }
 
-            tracing::info!("Revert: {}", action.tracing_synopsis());
+            let synopsis = action.tracing_synopsis();
+            if !synopsis.is_empty() {
+                tracing::info!("Revert: {synopsis}");
+            }
             if let Err(errs) = action.try_revert().await {
                 errors.push(errs);
             }
