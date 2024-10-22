@@ -15,7 +15,7 @@ pub enum PromptChoice {
 //
 // Mac is extremely janky if you `curl $URL | sudo sh` and the TTY may not be set up right.
 // The below method was adopted from Rustup at https://github.com/rust-lang/rustup/blob/3331f34c01474bf216c99a1b1706725708833de1/src/cli/term2.rs#L37
-pub(crate) async fn prompt(
+pub async fn prompt(
     question: impl AsRef<str>,
     default: PromptChoice,
     currently_explaining: bool,
@@ -93,7 +93,7 @@ pub(crate) fn read_line() -> eyre::Result<String> {
     .context("unable to read from stdin for confirmation")
 }
 
-pub(crate) async fn clean_exit_with_message(message: impl AsRef<str>) -> ! {
+pub async fn clean_exit_with_message(message: impl AsRef<str>) -> ! {
     eprintln!("{}", message.as_ref());
     std::process::exit(0)
 }

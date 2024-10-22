@@ -93,7 +93,7 @@ pub enum NixInstallerError {
     IncompatibleVersion { binary: Version, plan: Version },
 }
 
-pub(crate) trait HasExpectedErrors: std::error::Error + Sized + Send + Sync {
+pub trait HasExpectedErrors: std::error::Error + Sized + Send + Sync {
     fn expected<'a>(&'a self) -> Option<Box<dyn std::error::Error + 'a>>;
 }
 

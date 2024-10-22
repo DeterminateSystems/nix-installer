@@ -238,7 +238,7 @@ pub(crate) fn check_not_wsl1() -> Result<(), PlannerError> {
     Ok(())
 }
 
-pub(crate) async fn detect_selinux() -> Result<bool, PlannerError> {
+pub async fn detect_selinux() -> Result<bool, PlannerError> {
     if Path::new("/sys/fs/selinux").exists() && which("sestatus").is_ok() {
         // We expect systems with SELinux to have the normal SELinux tools.
         let has_semodule = which("semodule").is_ok();

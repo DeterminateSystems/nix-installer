@@ -74,9 +74,9 @@ pub mod action;
 pub mod cli;
 #[cfg(feature = "diagnostics")]
 pub mod diagnostics;
-mod error;
+pub mod error;
 mod os;
-mod plan;
+pub mod plan;
 pub mod planner;
 pub mod self_test;
 pub mod settings;
