@@ -177,7 +177,7 @@ impl InstallPlan {
                 if cancel_channel.try_recv()
                     != Err(tokio::sync::broadcast::error::TryRecvError::Empty)
                 {
-                    if let Err(err) = self.write_receipt(&Path::new(RECEIPT_LOCATION)).await {
+                    if let Err(err) = self.write_receipt(Path::new(RECEIPT_LOCATION)).await {
                         tracing::error!("Error saving receipt: {:?}", err);
                     }
 
@@ -201,7 +201,7 @@ impl InstallPlan {
                 tracing::info!("Step: {synopsis}");
             }
             if let Err(err) = action.try_execute().await {
-                if let Err(err) = self.write_receipt(&Path::new(RECEIPT_LOCATION)).await {
+                if let Err(err) = self.write_receipt(Path::new(RECEIPT_LOCATION)).await {
                     tracing::error!("Error saving receipt: {:?}", err);
                 }
                 let err = NixInstallerError::Action(err);
@@ -221,7 +221,7 @@ impl InstallPlan {
             }
         }
 
-        self.write_receipt(&Path::new(RECEIPT_LOCATION)).await?;
+        self.write_receipt(Path::new(RECEIPT_LOCATION)).await?;
 
         if let Err(err) = crate::self_test::self_test()
             .await
@@ -352,7 +352,7 @@ impl InstallPlan {
                 if cancel_channel.try_recv()
                     != Err(tokio::sync::broadcast::error::TryRecvError::Empty)
                 {
-                    if let Err(err) = self.write_receipt(&Path::new(RECEIPT_LOCATION)).await {
+                    if let Err(err) = self.write_receipt(Path::new(RECEIPT_LOCATION)).await {
                         tracing::error!("Error saving receipt: {:?}", err);
                     }
 

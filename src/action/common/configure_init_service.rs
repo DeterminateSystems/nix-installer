@@ -288,7 +288,7 @@ impl Action for ConfigureInitService {
                         Command::new("launchctl")
                             .process_group(0)
                             .arg("enable")
-                            .arg(&format!("{domain}/{service}"))
+                            .arg(format!("{domain}/{service}"))
                             .stdin(std::process::Stdio::null()),
                     )
                     .await
@@ -301,7 +301,7 @@ impl Action for ConfigureInitService {
                             .process_group(0)
                             .arg("kickstart")
                             .arg("-k")
-                            .arg(&format!("{domain}/{service}"))
+                            .arg(format!("{domain}/{service}"))
                             .stdin(std::process::Stdio::null()),
                     )
                     .await
