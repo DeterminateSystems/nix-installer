@@ -239,10 +239,10 @@ impl CommandExecute for Uninstall {
             let versioned_plan: VersionedInstallPlan = serde_json::from_str(&original_plan)
                 .wrap_err("Getting version out of original plan")?;
 
-            // FIXME: better message
-            tracing::error!("the original nix-installer binary appears to have gone missing, so uninstall cannot proceed; redownload it with the following:");
-            tracing::error!("curl --proto '=https' --tlsv1.2 -sSf -L https://install.determinate.systems/nix/tag/v{} | sh -s -- uninstall", versioned_plan.version);
-            return Err(eyre::eyre!("foobar"));
+            eprintln!("{}", "The original nix-installer binary appears to have gone missing, so uninstall cannot proceed.".red());
+            eprintln!("{}", "To finish uninstalling Nix from your system, please redownload the version you installed with using the following:".red());
+            eprintln!("curl --proto '=https' --tlsv1.2 -sSf -L https://install.determinate.systems/nix/tag/v{} | sh -s -- uninstall", versioned_plan.version);
+            return Ok(ExitCode::FAILURE);
         }
 
         if original_receipt_exists {
