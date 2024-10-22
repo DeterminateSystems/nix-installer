@@ -1,5 +1,3 @@
-use std::path::PathBuf;
-
 use tracing::{span, Span};
 
 use crate::action::{ActionError, ActionTag, StatefulAction};
@@ -33,17 +31,17 @@ impl ConfigureUpstreamInitService {
         init: InitSystem,
         start_daemon: bool,
     ) -> Result<StatefulAction<Self>, ActionError> {
-        let service_src: Option<PathBuf> = match init {
-            InitSystem::Launchd => Some(DARWIN_NIX_DAEMON_SOURCE.into()),
-            InitSystem::Systemd => Some(SERVICE_SRC.into()),
+        let service_src = match init {
+            InitSystem::Launchd => Some(UnitSrc::Path(DARWIN_NIX_DAEMON_SOURCE.into())),
+            InitSystem::Systemd => Some(UnitSrc::Path(SERVICE_SRC.into())),
             InitSystem::None => None,
         };
-        let service_dest: Option<PathBuf> = match init {
+        let service_dest = match init {
             InitSystem::Launchd => Some(DARWIN_NIX_DAEMON_DEST.into()),
             InitSystem::Systemd => Some(SERVICE_DEST.into()),
             InitSystem::None => None,
         };
-        let service_name: Option<String> = match init {
+        let service_name = match init {
             InitSystem::Launchd => Some(DARWIN_LAUNCHD_SERVICE_NAME.into()),
             _ => None,
         };

@@ -25,6 +25,8 @@ use crate::{
     Action, BuiltinPlanner,
 };
 
+pub const FHS_SELINUX_POLICY_PATH: &str = "/usr/share/selinux/packages/nix.pp";
+
 /// A planner for traditional, mutable Linux systems like Debian, RHEL, or Arch
 #[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
 #[cfg_attr(feature = "cli", derive(clap::Parser))]
@@ -92,7 +94,7 @@ impl Planner for Linux {
         if has_selinux {
             plan.push(
                 ProvisionSelinux::plan(
-                    "/usr/share/selinux/packages/nix.pp".into(),
+                    FHS_SELINUX_POLICY_PATH.into(),
                     if self.settings.determinate_nix {
                         DETERMINATE_SELINUX_POLICY_PP_CONTENT
                     } else {

@@ -44,7 +44,7 @@ impl EncryptApfsVolume {
         command.arg("-s");
         command.arg("Nix Store");
         command.arg("-l");
-        command.arg(&format!("{} encryption password", disk.display()));
+        command.arg(format!("{} encryption password", disk.display()));
         command.arg("-D");
         command.arg("Encrypted volume password");
         command.process_group(0);

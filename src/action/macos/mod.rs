@@ -204,6 +204,11 @@ pub(crate) async fn retry_bootout(
     service_name: &str,
     service_path: &Path,
 ) -> Result<(), ActionErrorKind> {
+    // NOTE(cole-h): if the service file doesn't exist, then we can just ignore this
+    if !service_path.exists() {
+        return Ok(());
+    }
+
     let check_service_running = execute_command(
         Command::new("launchctl")
             .process_group(0)

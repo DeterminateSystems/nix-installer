@@ -645,6 +645,31 @@ impl crate::diagnostics::ErrorDiagnostic for InstallSettingsError {
     }
 }
 
+pub fn determinate_nix_settings() -> nix_config_parser::NixConfig {
+    let mut cfg = nix_config_parser::NixConfig::new();
+    let settings = cfg.settings_mut();
+
+    settings.insert("netrc-file".into(), "/nix/var/determinate/netrc".into());
+
+    let extra_substituters = ["https://cache.flakehub.com"];
+    match settings.entry("extra-substituters".to_string()) {
+        Entry::Occupied(mut slot) => {
+            let slot_mut = slot.get_mut();
+            for extra_substituter in extra_substituters {
+                if !slot_mut.contains(extra_substituter) {
+                    *slot_mut += " ";
+                    *slot_mut += extra_substituter;
+                }
+            }
+        },
+        Entry::Vacant(slot) => {
+            let _ = slot.insert(extra_substituters.join(" "));
+        },
+    };
+
+    cfg
+}
+
 #[cfg(test)]
 mod tests {
     use super::{FromStr, PathBuf, Url, UrlOrPath, UrlOrPathOrString};
@@ -688,29 +713,4 @@ mod tests {
         );
         Ok(())
     }
-}
-
-pub fn determinate_nix_settings() -> nix_config_parser::NixConfig {
-    let mut cfg = nix_config_parser::NixConfig::new();
-    let settings = cfg.settings_mut();
-
-    settings.insert("netrc-file".into(), "/nix/var/determinate/netrc".into());
-
-    let extra_substituters = ["https://cache.flakehub.com"];
-    match settings.entry("extra-substituters".to_string()) {
-        Entry::Occupied(mut slot) => {
-            let slot_mut = slot.get_mut();
-            for extra_substituter in extra_substituters {
-                if !slot_mut.contains(extra_substituter) {
-                    *slot_mut += " ";
-                    *slot_mut += extra_substituter;
-                }
-            }
-        },
-        Entry::Vacant(slot) => {
-            let _ = slot.insert(extra_substituters.join(" "));
-        },
-    };
-
-    cfg
 }
