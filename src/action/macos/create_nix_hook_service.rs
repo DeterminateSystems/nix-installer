@@ -8,14 +8,16 @@ use tokio::{
     process::Command,
 };
 
-use crate::{
-    action::{Action, ActionDescription, ActionError, ActionErrorKind, ActionTag, StatefulAction},
-    execute_command,
+use crate::action::{
+    Action, ActionDescription, ActionError, ActionErrorKind, ActionTag, StatefulAction,
 };
+
+use super::DARWIN_LAUNCHD_DOMAIN;
 
 /** Create a plist for a `launchctl` service to re-add Nix to the zshrc after upgrades.
  */
 #[derive(Debug, serde::Deserialize, serde::Serialize, Clone)]
+#[serde(tag = "action_name", rename = "create_nix_hook_service")]
 pub struct CreateNixHookService {
     path: PathBuf,
     service_label: String,
@@ -125,14 +127,9 @@ impl Action for CreateNixHookService {
         } = self;
 
         if *needs_bootout {
-            execute_command(
-                Command::new("launchctl")
-                    .process_group(0)
-                    .arg("bootout")
-                    .arg(format!("system/{service_label}")),
-            )
-            .await
-            .map_err(Self::error)?;
+            crate::action::macos::retry_bootout(DARWIN_LAUNCHD_DOMAIN, service_label, path)
+                .await
+                .map_err(Self::error)?;
         }
 
         let generated_plist = generate_plist(service_label).await.map_err(Self::error)?;

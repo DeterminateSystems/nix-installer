@@ -1,14 +1,19 @@
 use crate::{
     action::{
         base::{CreateDirectory, CreateFile, RemoveDirectory},
-        common::{ConfigureInitService, ConfigureNix, CreateUsersAndGroups, ProvisionNix},
-        linux::{ProvisionSelinux, StartSystemdUnit, SystemctlDaemonReload},
+        common::{
+            ConfigureNix, ConfigureUpstreamInitService, CreateUsersAndGroups,
+            ProvisionDeterminateNixd, ProvisionNix,
+        },
+        linux::{
+            provision_selinux::{DETERMINATE_SELINUX_POLICY_PP_CONTENT, SELINUX_POLICY_PP_CONTENT},
+            ProvisionSelinux, StartSystemdUnit, SystemctlDaemonReload,
+        },
         StatefulAction,
     },
     error::HasExpectedErrors,
     planner::{Planner, PlannerError},
-    settings::CommonSettings,
-    settings::{InitSystem, InstallSettingsError},
+    settings::{determinate_nix_settings, CommonSettings, InitSystem, InstallSettingsError},
     Action, BuiltinPlanner,
 };
 use std::{collections::HashMap, path::PathBuf};
@@ -171,6 +176,15 @@ impl Planner for Ostree {
                 .boxed(),
         );
 
+        if self.settings.determinate_nix {
+            plan.push(
+                ProvisionDeterminateNixd::plan()
+                    .await
+                    .map_err(PlannerError::Action)?
+                    .boxed(),
+            );
+        }
+
         plan.push(
             ProvisionNix::plan(&self.settings.clone())
                 .await
@@ -184,18 +198,29 @@ impl Planner for Ostree {
                 .boxed(),
         );
         plan.push(
-            ConfigureNix::plan(shell_profile_locations, &self.settings)
-                .await
-                .map_err(PlannerError::Action)?
-                .boxed(),
+            ConfigureNix::plan(
+                shell_profile_locations,
+                &self.settings,
+                self.settings.determinate_nix.then(determinate_nix_settings),
+            )
+            .await
+            .map_err(PlannerError::Action)?
+            .boxed(),
         );
 
         if has_selinux {
             plan.push(
-                ProvisionSelinux::plan("/etc/nix-installer/selinux/packages/nix.pp".into())
-                    .await
-                    .map_err(PlannerError::Action)?
-                    .boxed(),
+                ProvisionSelinux::plan(
+                    "/etc/nix-installer/selinux/packages/nix.pp".into(),
+                    if self.settings.determinate_nix {
+                        DETERMINATE_SELINUX_POLICY_PP_CONTENT
+                    } else {
+                        SELINUX_POLICY_PP_CONTENT
+                    },
+                )
+                .await
+                .map_err(PlannerError::Action)?
+                .boxed(),
             );
         }
 
@@ -207,7 +232,7 @@ impl Planner for Ostree {
         );
 
         plan.push(
-            ConfigureInitService::plan(InitSystem::Systemd, true)
+            ConfigureUpstreamInitService::plan(InitSystem::Systemd, true)
                 .await
                 .map_err(PlannerError::Action)?
                 .boxed(),
@@ -279,6 +304,18 @@ impl Planner for Ostree {
             self.settings.ssl_cert_file.clone(),
         )?)
     }
+
+    async fn platform_check(&self) -> Result<(), PlannerError> {
+        use target_lexicon::OperatingSystem;
+        match target_lexicon::OperatingSystem::host() {
+            OperatingSystem::Linux => Ok(()),
+            host_os => Err(PlannerError::IncompatibleOperatingSystem {
+                planner: self.typetag_name(),
+                host_os,
+            }),
+        }
+    }
+
     async fn pre_uninstall_check(&self) -> Result<(), PlannerError> {
         check_not_wsl1()?;
 

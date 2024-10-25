@@ -15,7 +15,6 @@ contribution to this repo is appropriate.
 
 Some snippets or workflows for development.
 
-
 ## Direnv support
 
 While `nix develop` should work perfectly fine for development, contributors may prefer to enable [`direnv`](https://direnv.net/) or [`nix-direnv`](https://github.com/nix-community/nix-direnv) support.
@@ -28,9 +27,8 @@ direnv allow
 
 If using an editor, it may be preferable to adopt an addon to enter the environment:
 
-* [`vim`](https://github.com/direnv/direnv.vim)
-* [VSCode](https://marketplace.visualstudio.com/items?itemName=mkhl.direnv)
-
+- [`vim`](https://github.com/direnv/direnv.vim)
+- [VSCode](https://marketplace.visualstudio.com/items?itemName=mkhl.direnv)
 
 ## Testing Installs
 
@@ -46,11 +44,10 @@ When running such interactive tests, consider creating a snapshot of the VM righ
 
 In general, it's a good idea to test on the closest you can get to the desired target environment. For example, when testing the Steam Deck planner it's a good idea to run that test in a Steam Deck VM as described in detail in the planner.
 
-
 <details>
   <summary><strong>Adding a planner for specific hardware?</strong></summary>
 
-Please include an full guide on how to create the best known virtual testing environment for that device. 
+Please include an full guide on how to create the best known virtual testing environment for that device.
 
 **A link is not sufficient, it may break.** Please provide a full summary of steps to take, link to any original source and give them credit if it is appropriate.
 
@@ -114,7 +111,7 @@ nix build github:NixOS/experimental-nix-installer/${BRANCH}#hydraJobs.vm-test.ub
 <details>
   <summary><strong>Adding a distro?</strong></summary>
 
-Notice how `rhel-v7` has a `v7`, not just `7`? That's so the test output shows correctly, as Nix will interpret the first `-\d` (eg `-7`, `-123213`) as a version, and not show it in the output. 
+Notice how `rhel-v7` has a `v7`, not just `7`? That's so the test output shows correctly, as Nix will interpret the first `-\d` (eg `-7`, `-123213`) as a version, and not show it in the output.
 
 Using `v7` instead turns:
 
@@ -145,7 +142,6 @@ installer-test-rhel-v7-install-default> Formatting './disk.qcow2', fmt=qcow2 clu
 </details>
 
 ## Container tests
-
 
 For x86_64 Linux we have some additional container tests. In `nix/tests/container-test` there exists some Nix derivations which we expose in the flake via `hydraJobs`.
 
@@ -182,7 +178,6 @@ git+file:///home/ana/git/determinatesystems/nix-installer
 
 To run all of the currently supported tests:
 
-
 ```bash
 nix build .#hydraJobs.container-test.all.x86_64-linux.all -L -j 4
 ```
@@ -204,7 +199,7 @@ nix build github:NixOS/experimental-nix-installer/${BRANCH}#hydraJobs.container-
 <details>
   <summary><strong>Adding a distro?</strong></summary>
 
-Notice how `ubuntu-v20_02` has a `v20`, not just `20`? That's so the test output shows correctly, as Nix will interpret the first `-\d` (eg `-20`, `-123213`) as a version, and not show it in the output. 
+Notice how `ubuntu-v20_02` has a `v20`, not just `20`? That's so the test output shows correctly, as Nix will interpret the first `-\d` (eg `-20`, `-123213`) as a version, and not show it in the output.
 
 Using `v20` instead turns:
 
@@ -260,39 +255,32 @@ wsl --unregister nix-installer-test-ubuntu-jammy
 
 You can also remove your `$HOME/nix-installer-wsl-tests-temp` folder whenever you wish.
 
-
 # Releases
-
 
 This package uses [Semantic Versioning](https://semver.org/). When determining the version number for a new release refer to Semantic Versioning for guidance. You can use the `check-semver` command alias from within the development environment to validate your changes don't break semver.
 
 To cut a release:
 
-* Ensure the `flake.lock`, `Cargo.lock`, and Rust dependencies are up-to-date with the following:
-  + `nix flake update --commit-lock-file`
-  + `cargo outdated --ignore-external-rel --aggressive`
-  + `cargo update --aggressive`
-  + Make a PR for for this and let it get merged separately
-* Create a release branch from `main` (`git checkout -b release-v0.0.1`)
-* Remove the `-unreleased` from the `version` field in `Cargo.toml`, `flake.nix`, and the fixture JSON files
-  + Release PRs should not contain any tangible code changes which require review
-* Ensure the VM / container tests still pass with the following:
-  + `nix flake check -L`
-  + `nix build .#hydraJobs.container-test.all.x86_64-linux.all -L -j 6`
-  + `nix build .#hydraJobs.vm-test.all.x86_64-linux.all -L -j 6`
-* Push the branch, create a PR ("Release v0.0.1")
-* Once the PR tests pass and it has been reviewed, merge it
-* `git pull` on the `main` branch
-* Tag the release (`git tag v0.0.1`)
-* Push the tag (`git push origin v0.0.1`)
-* The CI should produce artifacts via Buildkite and create a "Draft" release containing them on GitHub
-  + This will take a bit, use this time to draft a changelog
-* Review the draft release, test the artifacts in a VM
-* Create a changelog following the format of last release
-* Undraft the release
-* Once you are certain the release is good, `cargo publish` it
-  + **Warning:** While you can re-release Github releases, it is not possible to do the same on `crates.io`
-* Create a PR bumping the version up one minor in the `Cargo.toml`, `flake.nix`, and fixture JSON files, adding `-unreleased` at the end (`v0.0.2-unreleased`)
+- Create a release branch from `main` (`git checkout -b release-v0.0.1`)
+  - Release PRs should not contain any installer-related changes which require review
+- Ensure the `flake.lock`, `Cargo.lock`, and Rust dependencies are up-to-date with the following:
+  - `nix flake update --commit-lock-file`
+  - `cargo update --aggressive`
+  - `cargo outdated --ignore-external-rel --aggressive`
+- Ensure the VM / container tests still pass with the following:
+  - NOTE: At time of writing, these are run in CI on release branches
+  - `nix flake check -L`
+  - `nix build .#hydraJobs.container-test.all.x86_64-linux.all -L -j 6`
+  - `nix build .#hydraJobs.vm-test.all.x86_64-linux.all -L -j 6`
+- Push the branch, create a PR ("Release v0.0.1")
+- Once the PR tests pass and it has been reviewed, merge it
+- Checkout the `main` branch and `git pull`
+- Prepare a draft release that creates the new tag on publish
+  - Create a changelog following the format of the last release
+- Undraft the release
+- CI will produce artifacts and upload them to the release
+- Once you are certain the release is good, `cargo publish` it
+  - **Warning:** While you can re-release Github releases, it is not possible to do the same on `crates.io`
 
 # Who maintains `nix-installer` and why?
 

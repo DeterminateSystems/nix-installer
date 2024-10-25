@@ -8,4 +8,9 @@ require {
   type etc_t;
   type var_run_t;
   type systemd_unit_file_t;
+  type default_t;
+  type init_t;
+  class lnk_file read;
 }
+
+allow init_t default_t:lnk_file read;

@@ -13,12 +13,16 @@ use std::{
 use tokio::process::Command;
 use tracing::{span, Span};
 
-use super::{create_fstab_entry::CreateFstabEntry, CreateVolumeService, KickstartLaunchctlService};
+use super::{
+    create_fstab_entry::CreateFstabEntry, CreateVolumeService, KickstartLaunchctlService,
+    DARWIN_LAUNCHD_DOMAIN,
+};
 
 pub const NIX_VOLUME_MOUNTD_DEST: &str = "/Library/LaunchDaemons/org.nixos.darwin-store.plist";
 
 /// Create an APFS volume
 #[derive(Debug, serde::Deserialize, serde::Serialize, Clone)]
+#[serde(tag = "action_name", rename = "create_apfs_volume")]
 pub struct CreateNixVolume {
     disk: PathBuf,
     name: String,
@@ -86,15 +90,12 @@ impl CreateNixVolume {
         .await
         .map_err(Self::error)?;
 
-        let bootstrap_volume = BootstrapLaunchctlService::plan(
-            "system",
-            "org.nixos.darwin-store",
-            NIX_VOLUME_MOUNTD_DEST,
-        )
-        .await
-        .map_err(Self::error)?;
+        let bootstrap_volume =
+            BootstrapLaunchctlService::plan("org.nixos.darwin-store", NIX_VOLUME_MOUNTD_DEST)
+                .await
+                .map_err(Self::error)?;
         let kickstart_launchctl_service =
-            KickstartLaunchctlService::plan("system", "org.nixos.darwin-store")
+            KickstartLaunchctlService::plan(DARWIN_LAUNCHD_DOMAIN, "org.nixos.darwin-store")
                 .await
                 .map_err(Self::error)?;
         let enable_ownership = EnableOwnership::plan("/nix").await.map_err(Self::error)?;
@@ -128,7 +129,7 @@ impl Action for CreateNixVolume {
     fn tracing_synopsis(&self) -> String {
         format!(
             "Create an{maybe_encrypted} APFS volume `{name}` for Nix on `{disk}` and add it to `/etc/fstab` mounting on `/nix`",
-            maybe_encrypted = if self.encrypt { " encrypted" } else { "" }, 
+            maybe_encrypted = if self.encrypt { " encrypted" } else { "" },
             name = self.name,
             disk = self.disk.display(),
         )
@@ -224,29 +225,9 @@ impl Action for CreateNixVolume {
             .await
             .map_err(Self::error)?;
 
-        let mut retry_tokens: usize = 50;
-        loop {
-            let mut command = Command::new("/usr/sbin/diskutil");
-            command.args(["info", "/nix"]);
-            command.stderr(std::process::Stdio::null());
-            command.stdout(std::process::Stdio::null());
-            tracing::trace!(%retry_tokens, command = ?command.as_std(), "Checking for Nix Store mount path existence");
-            let output = command
-                .output()
-                .await
-                .map_err(|e| ActionErrorKind::command(&command, e))
-                .map_err(Self::error)?;
-            if output.status.success() {
-                break;
-            } else if retry_tokens == 0 {
-                return Err(Self::error(ActionErrorKind::command_output(
-                    &command, output,
-                )));
-            } else {
-                retry_tokens = retry_tokens.saturating_sub(1);
-            }
-            tokio::time::sleep(Duration::from_millis(100)).await;
-        }
+        crate::action::macos::wait_for_nix_store_dir()
+            .await
+            .map_err(Self::error)?;
 
         self.enable_ownership
             .try_execute()

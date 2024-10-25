@@ -21,6 +21,7 @@ If `force` is set, the file will always be overwritten (and deleted)
 regardless of its presence prior to install.
  */
 #[derive(Debug, serde::Deserialize, serde::Serialize, Clone)]
+#[serde(tag = "action_name", rename = "create_file")]
 pub struct CreateFile {
     pub(crate) path: PathBuf,
     user: Option<String>,
@@ -177,39 +178,30 @@ impl Action for CreateFile {
 
     #[tracing::instrument(level = "debug", skip_all)]
     async fn execute(&mut self) -> Result<(), ActionError> {
-        let Self {
-            path,
-            user,
-            group,
-            mode,
-            buf,
-            force: _,
-        } = self;
-
         if tracing::enabled!(tracing::Level::TRACE) {
             let span = tracing::Span::current();
-            span.record("buf", &buf);
+            span.record("buf", &self.buf);
         }
 
         let mut options = OpenOptions::new();
         options.create_new(true).write(true).read(true);
 
-        if let Some(mode) = mode {
-            options.mode(*mode);
+        if let Some(mode) = self.mode {
+            options.mode(mode);
         }
 
         let mut file = options
-            .open(&path)
+            .open(&self.path)
             .await
-            .map_err(|e| ActionErrorKind::Open(path.to_owned(), e))
+            .map_err(|e| ActionErrorKind::Open(self.path.to_owned(), e))
             .map_err(Self::error)?;
 
-        file.write_all(buf.as_bytes())
+        file.write_all(self.buf.as_bytes())
             .await
-            .map_err(|e| ActionErrorKind::Write(path.to_owned(), e))
+            .map_err(|e| ActionErrorKind::Write(self.path.to_owned(), e))
             .map_err(Self::error)?;
 
-        let gid = if let Some(group) = group {
+        let gid = if let Some(ref group) = self.group {
             Some(
                 Group::from_name(group.as_str())
                     .map_err(|e| ActionErrorKind::GettingGroupId(group.clone(), e))
@@ -221,7 +213,7 @@ impl Action for CreateFile {
         } else {
             None
         };
-        let uid = if let Some(user) = user {
+        let uid = if let Some(ref user) = self.user {
             Some(
                 User::from_name(user.as_str())
                     .map_err(|e| ActionErrorKind::GettingUserId(user.clone(), e))
@@ -233,8 +225,8 @@ impl Action for CreateFile {
         } else {
             None
         };
-        chown(path, uid, gid)
-            .map_err(|e| ActionErrorKind::Chown(path.clone(), e))
+        chown(&self.path, uid, gid)
+            .map_err(|e| ActionErrorKind::Chown(self.path.clone(), e))
             .map_err(Self::error)?;
 
         Ok(())

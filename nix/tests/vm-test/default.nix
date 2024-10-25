@@ -4,11 +4,15 @@
 let
   nix-installer-install = ''
     NIX_PATH=$(readlink -f nix.tar.xz)
-    RUST_BACKTRACE="full" ./nix-installer install --nix-package-url "file://$NIX_PATH" --no-confirm --logger pretty --log-directive nix_installer=info
+    RUST_BACKTRACE="full" ./nix-installer install --nix-package-url "file://$NIX_PATH" --no-confirm --logger pretty --log-directive nix_installer=trace
   '';
   nix-installer-install-quiet = ''
     NIX_PATH=$(readlink -f nix.tar.xz)
     RUST_BACKTRACE="full" ./nix-installer install --nix-package-url "file://$NIX_PATH" --no-confirm
+  '';
+  nix-installer-install-determinate = ''
+    NIX_PATH=$(readlink -f nix.tar.xz)
+    RUST_BACKTRACE="full" ./nix-installer install --nix-package-url "file://$NIX_PATH" --no-confirm --logger pretty --log-directive nix_installer=trace --determinate
   '';
   cure-script-multi-user = ''
     tar xvf nix.tar.xz
@@ -38,25 +42,25 @@ let
         fi
         if systemctl is-failed nix-daemon.socket; then
           echo "nix-daemon.socket is failed"
-          systemctl status nix-daemon.socket
+          sudo journalctl -eu nix-daemon.socket
           exit 1
         fi
 
         if !(sudo systemctl start nix-daemon.service); then
           echo "nix-daemon.service failed to start"
-          systemctl status nix-daemon.service
+          sudo journalctl -eu nix-daemon.service
           exit 1
         fi
 
         if systemctl is-failed nix-daemon.service; then
           echo "nix-daemon.service is failed"
-          systemctl status nix-daemon.service
+          sudo journalctl -eu nix-daemon.service
           exit 1
         fi
 
         if !(sudo systemctl stop nix-daemon.service); then
           echo "nix-daemon.service failed to stop"
-          systemctl status nix-daemon.service
+          sudo journalctl -eu nix-daemon.service
           exit 1
         fi
 
@@ -185,6 +189,24 @@ let
       '';
       install = installCases.install-default.install;
       check = installCases.install-default.check;
+      uninstall = installCases.install-default.uninstall;
+      uninstallCheck = installCases.install-default.uninstallCheck;
+    };
+    install-determinate = {
+      install = nix-installer-install-determinate;
+      check = ''
+        if ! systemctl is-active determinate-nixd.socket; then
+          echo "determinate-nixd.socket is not active"
+          sudo journalctl -eu determinate-nixd.socket
+          exit 1
+        fi
+
+        if ! determinate-nixd status; then
+          echo "determinate-nixd is not working"
+          sudo journalctl -eu determinate-nixd.service
+          exit 1
+        fi
+      '' + installCases.install-default.check;
       uninstall = installCases.install-default.uninstall;
       uninstallCheck = installCases.install-default.uninstallCheck;
     };
@@ -475,6 +497,9 @@ let
       rootDisk = "box.img";
       upstreamScriptsWork = false; # SELinux!
       system = "x86_64-linux";
+      skip = [
+        "install-determinate" # RHEL v7 has systemd 219 (2015-02-16); determinate-nixd requires at least 227 (2015-10-07)
+      ];
     };
 
     "rhel-v8" = {
@@ -602,12 +627,15 @@ let
 
   makeTests = name: tests: builtins.mapAttrs
     (imageName: image:
+      let
+        doTests = builtins.removeAttrs tests (image.skip or [ ]);
+      in
       rec {
         ${image.system} = (builtins.mapAttrs
           (testName: test:
             makeTest imageName testName test
           )
-          tests) // {
+          doTests) // {
           "${name}" = (with (forSystem "x86_64-linux" ({ system, pkgs, ... }: pkgs)); pkgs.releaseTools.aggregate {
             name = name;
             constituents = (
@@ -615,7 +643,7 @@ let
                 (testName: test:
                   makeTest imageName testName test
                 )
-                tests
+                doTests
             );
           });
         };
@@ -653,7 +681,7 @@ lib.recursiveUpdate joined-tests {
   all."x86_64-linux" = (with (forSystem "x86_64-linux" ({ system, pkgs, ... }: pkgs)); pkgs.lib.mapAttrs (caseName: case:
     pkgs.releaseTools.aggregate {
       name = caseName;
-      constituents = pkgs.lib.mapAttrsToList (name: value: value."x86_64-linux"."${caseName}") joined-tests;
+      constituents = pkgs.lib.mapAttrsToList (name: value: value."x86_64-linux"."${caseName}" or "") joined-tests;
     }
   )) (allCases // { "cure-self" = { }; "cure-script" = { }; "install" = { }; "uninstall" = { }; "all" = { }; });
 }

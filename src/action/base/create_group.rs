@@ -12,6 +12,7 @@ use crate::action::{Action, ActionDescription, StatefulAction};
 Create an operating system level user group
 */
 #[derive(Debug, serde::Deserialize, serde::Serialize, Clone)]
+#[serde(tag = "action_name", rename = "create_group")]
 pub struct CreateGroup {
     name: String,
     gid: u32,

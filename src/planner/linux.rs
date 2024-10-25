@@ -1,21 +1,29 @@
-use crate::{
-    action::{
-        base::{CreateDirectory, RemoveDirectory},
-        common::{ConfigureInitService, ConfigureNix, CreateUsersAndGroups, ProvisionNix},
-        linux::ProvisionSelinux,
-        StatefulAction,
-    },
-    error::HasExpectedErrors,
-    planner::{Planner, PlannerError},
-    settings::CommonSettings,
-    settings::{InitSettings, InitSystem, InstallSettingsError},
-    Action, BuiltinPlanner,
-};
 use std::{collections::HashMap, path::Path};
+
 use tokio::process::Command;
 use which::which;
 
 use super::ShellProfileLocations;
+use crate::{
+    action::{
+        base::{CreateDirectory, RemoveDirectory},
+        common::{
+            ConfigureNix, ConfigureDeterminateNixdInitService, ConfigureUpstreamInitService,
+            CreateUsersAndGroups, ProvisionDeterminateNixd, ProvisionNix,
+        },
+        linux::{
+            provision_selinux::{DETERMINATE_SELINUX_POLICY_PP_CONTENT, SELINUX_POLICY_PP_CONTENT},
+            ProvisionSelinux,
+        },
+        StatefulAction,
+    },
+    error::HasExpectedErrors,
+    planner::{Planner, PlannerError},
+    settings::{
+        determinate_nix_settings, CommonSettings, InitSettings, InitSystem, InstallSettingsError,
+    },
+    Action, BuiltinPlanner,
+};
 
 /// A planner for traditional, mutable Linux systems like Debian, RHEL, or Arch
 #[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
@@ -49,6 +57,15 @@ impl Planner for Linux {
                 .boxed(),
         );
 
+        if self.settings.determinate_nix {
+            plan.push(
+                ProvisionDeterminateNixd::plan()
+                    .await
+                    .map_err(PlannerError::Action)?
+                    .boxed(),
+            );
+        }
+
         plan.push(
             ProvisionNix::plan(&self.settings.clone())
                 .await
@@ -62,18 +79,29 @@ impl Planner for Linux {
                 .boxed(),
         );
         plan.push(
-            ConfigureNix::plan(ShellProfileLocations::default(), &self.settings)
-                .await
-                .map_err(PlannerError::Action)?
-                .boxed(),
+            ConfigureNix::plan(
+                ShellProfileLocations::default(),
+                &self.settings,
+                self.settings.determinate_nix.then(determinate_nix_settings),
+            )
+            .await
+            .map_err(PlannerError::Action)?
+            .boxed(),
         );
 
         if has_selinux {
             plan.push(
-                ProvisionSelinux::plan("/usr/share/selinux/packages/nix.pp".into())
-                    .await
-                    .map_err(PlannerError::Action)?
-                    .boxed(),
+                ProvisionSelinux::plan(
+                    "/usr/share/selinux/packages/nix.pp".into(),
+                    if self.settings.determinate_nix {
+                        DETERMINATE_SELINUX_POLICY_PP_CONTENT
+                    } else {
+                        SELINUX_POLICY_PP_CONTENT
+                    },
+                )
+                .await
+                .map_err(PlannerError::Action)?
+                .boxed(),
             );
         }
 
@@ -84,12 +112,22 @@ impl Planner for Linux {
                 .boxed(),
         );
 
-        plan.push(
-            ConfigureInitService::plan(self.init.init, self.init.start_daemon)
-                .await
-                .map_err(PlannerError::Action)?
-                .boxed(),
-        );
+        if self.settings.determinate_nix {
+            // effectively disabled by skipping the cli option in settings.rs
+            plan.push(
+                ConfigureDeterminateNixdInitService::plan(self.init.init, self.init.start_daemon)
+                    .await
+                    .map_err(PlannerError::Action)?
+                    .boxed(),
+            );
+        } else {
+            plan.push(
+                ConfigureUpstreamInitService::plan(self.init.init, self.init.start_daemon)
+                    .await
+                    .map_err(PlannerError::Action)?
+                    .boxed(),
+            );
+        }
         plan.push(
             RemoveDirectory::plan(crate::settings::SCRATCH_DIR)
                 .await
@@ -139,6 +177,18 @@ impl Planner for Linux {
             self.settings.ssl_cert_file.clone(),
         )?)
     }
+
+    async fn platform_check(&self) -> Result<(), PlannerError> {
+        use target_lexicon::OperatingSystem;
+        match target_lexicon::OperatingSystem::host() {
+            OperatingSystem::Linux => Ok(()),
+            host_os => Err(PlannerError::IncompatibleOperatingSystem {
+                planner: self.typetag_name(),
+                host_os,
+            }),
+        }
+    }
+
     async fn pre_uninstall_check(&self) -> Result<(), PlannerError> {
         check_not_wsl1()?;
 

@@ -9,7 +9,8 @@ use tokio::{
 };
 
 use crate::action::{
-    Action, ActionDescription, ActionError, ActionErrorKind, ActionTag, StatefulAction,
+    macos::DARWIN_LAUNCHD_DOMAIN, Action, ActionDescription, ActionError, ActionErrorKind,
+    ActionTag, StatefulAction,
 };
 
 use super::get_uuid_for_label;
@@ -17,6 +18,7 @@ use super::get_uuid_for_label;
 /** Create a plist for a `launchctl` service to mount the given `apfs_volume_label` on the given `mount_point`.
  */
 #[derive(Debug, serde::Deserialize, serde::Serialize, Clone)]
+#[serde(tag = "action_name", rename = "create_volume_service")]
 pub struct CreateVolumeService {
     pub(crate) path: PathBuf,
     apfs_volume_label: String,
@@ -184,24 +186,9 @@ impl Action for CreateVolumeService {
         } = self;
 
         if *needs_bootout {
-            let mut unload_command = Command::new("launchctl");
-            unload_command.arg("bootout");
-            unload_command.arg(format!("system/{mount_service_label}"));
-            tracing::trace!(
-                command = format!("{:?}", unload_command.as_std()),
-                "Executing"
-            );
-            let unload_output = unload_command
-                .output()
+            crate::action::macos::retry_bootout(DARWIN_LAUNCHD_DOMAIN, mount_service_label, path)
                 .await
-                .map_err(|e| ActionErrorKind::command(&unload_command, e))
                 .map_err(Self::error)?;
-            if !unload_output.status.success() {
-                return Err(Self::error(ActionErrorKind::command_output(
-                    &unload_command,
-                    unload_output,
-                )));
-            }
         }
 
         let uuid = match get_uuid_for_label(apfs_volume_label)

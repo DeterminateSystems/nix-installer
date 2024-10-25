@@ -20,8 +20,9 @@ use super::CreateApfsVolume;
 Encrypt an APFS volume
  */
 #[derive(Debug, serde::Deserialize, serde::Serialize, Clone)]
+#[serde(tag = "action_name", rename = "encrypt_volume")]
 pub struct EncryptApfsVolume {
-    enterprise_edition: bool,
+    determinate_nix: bool,
     disk: PathBuf,
     name: String,
 }
@@ -29,7 +30,7 @@ pub struct EncryptApfsVolume {
 impl EncryptApfsVolume {
     #[tracing::instrument(level = "debug", skip_all)]
     pub async fn plan(
-        enterprise_edition: bool,
+        determinate_nix: bool,
         disk: impl AsRef<Path>,
         name: impl AsRef<str>,
         planned_create_apfs_volume: &StatefulAction<CreateApfsVolume>,
@@ -60,7 +61,7 @@ impl EncryptApfsVolume {
             if planned_create_apfs_volume.state == ActionState::Completed {
                 // We detected a created volume already, and a password exists, so we can keep using that and skip doing anything
                 return Ok(StatefulAction::completed(Self {
-                    enterprise_edition,
+                    determinate_nix,
                     name,
                     disk,
                 }));
@@ -94,7 +95,7 @@ impl EncryptApfsVolume {
                         ));
                     } else {
                         return Ok(StatefulAction::completed(Self {
-                            enterprise_edition,
+                            determinate_nix,
                             disk,
                             name,
                         }));
@@ -104,7 +105,7 @@ impl EncryptApfsVolume {
         }
 
         Ok(StatefulAction::uncompleted(Self {
-            enterprise_edition,
+            determinate_nix,
             name,
             disk,
         }))
@@ -141,12 +142,6 @@ impl Action for EncryptApfsVolume {
         disk = %self.disk.display(),
     ))]
     async fn execute(&mut self) -> Result<(), ActionError> {
-        let Self {
-            enterprise_edition,
-            disk,
-            name,
-        } = self;
-
         // Generate a random password.
         let password: String = {
             const CHARSET: &[u8] = b"ABCDEFGHIJKLMNOPQRSTUVWXYZ\
@@ -163,18 +158,22 @@ impl Action for EncryptApfsVolume {
                 .collect()
         };
 
-        let disk_str = disk.to_str().expect("Could not turn disk into string"); /* Should not reasonably ever fail */
+        let disk_str = &self.disk.to_str().expect("Could not turn disk into string"); /* Should not reasonably ever fail */
 
-        execute_command(Command::new("/usr/sbin/diskutil").arg("mount").arg(&name))
-            .await
-            .map_err(Self::error)?;
+        execute_command(
+            Command::new("/usr/sbin/diskutil")
+                .arg("mount")
+                .arg(&self.name),
+        )
+        .await
+        .map_err(Self::error)?;
 
         // Add the password to the user keychain so they can unlock it later.
         let mut cmd = Command::new("/usr/bin/security");
         cmd.process_group(0).args([
             "add-generic-password",
             "-a",
-            name.as_str(),
+            self.name.as_str(),
             "-s",
             "Nix Store",
             "-l",
@@ -194,8 +193,8 @@ impl Action for EncryptApfsVolume {
             "/usr/bin/security",
         ]);
 
-        if *enterprise_edition {
-            cmd.args(["-T", "/usr/local/bin/determinate-nix-ee"]);
+        if self.determinate_nix {
+            cmd.args(["-T", "/usr/local/bin/determinate-nixd"]);
         }
 
         cmd.arg("/Library/Keychains/System.keychain");
@@ -207,7 +206,7 @@ impl Action for EncryptApfsVolume {
         execute_command(Command::new("/usr/sbin/diskutil").process_group(0).args([
             "apfs",
             "encryptVolume",
-            name.as_str(),
+            self.name.as_str(),
             "-user",
             "disk",
             "-passphrase",
@@ -221,7 +220,7 @@ impl Action for EncryptApfsVolume {
                 .process_group(0)
                 .arg("unmount")
                 .arg("force")
-                .arg(&name),
+                .arg(&self.name),
         )
         .await
         .map_err(Self::error)?;

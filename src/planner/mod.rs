@@ -2,7 +2,7 @@
 
 It's a [`Planner`]s job to construct (if possible) a valid [`InstallPlan`] for the host. Some planners are operating system specific, others are device specific.
 
-[`Planner`]s contain their planner specific settings, typically alongside a [`CommonSettings`][crate::settings::CommonSettings].
+[`Planner`]s contain their planner specific settings, typically alongside a [`CommonSettings`].
 
 [`BuiltinPlanner::default()`] offers a way to get the default builtin planner for a given host.
 
@@ -82,6 +82,17 @@ impl Planner for MyPlanner {
             self.common.ssl_cert_file.clone(),
         )?)
     }
+
+    async fn platform_check(&self) -> Result<(), PlannerError> {
+        use target_lexicon::OperatingSystem;
+        match target_lexicon::OperatingSystem::host() {
+            OperatingSystem::MacOSX { .. } | OperatingSystem::Darwin => Ok(()),
+            host_os => Err(PlannerError::IncompatibleOperatingSystem {
+                planner: self.typetag_name(),
+                host_os,
+            }),
+        }
+    }
 }
 
 # async fn custom_planner_install() -> color_eyre::Result<()> {
@@ -103,13 +114,9 @@ match plan.install(None).await {
 ```
 
 */
-#[cfg(target_os = "linux")]
 pub mod linux;
-#[cfg(target_os = "macos")]
 pub mod macos;
-#[cfg(target_os = "linux")]
 pub mod ostree;
-#[cfg(target_os = "linux")]
 pub mod steam_deck;
 
 use std::{collections::HashMap, path::PathBuf, string::FromUtf8Error};
@@ -147,6 +154,8 @@ pub trait Planner: std::fmt::Debug + Send + Sync + dyn_clone::DynClone {
         Box::new(self)
     }
 
+    async fn platform_check(&self) -> Result<(), PlannerError>;
+
     async fn pre_uninstall_check(&self) -> Result<(), PlannerError> {
         Ok(())
     }
@@ -165,17 +174,17 @@ dyn_clone::clone_trait_object!(Planner);
 #[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
 #[cfg_attr(feature = "cli", derive(clap::Subcommand))]
 pub enum BuiltinPlanner {
-    #[cfg(target_os = "linux")]
+    #[cfg_attr(not(target_os = "linux"), clap(hide = true))]
     /// A planner for traditional, mutable Linux systems like Debian, RHEL, or Arch
     Linux(linux::Linux),
+    #[cfg_attr(not(target_os = "linux"), clap(hide = true))]
     /// A planner for the Valve Steam Deck running SteamOS
-    #[cfg(target_os = "linux")]
     SteamDeck(steam_deck::SteamDeck),
+    #[cfg_attr(not(target_os = "linux"), clap(hide = true))]
     /// A planner suitable for immutable systems using ostree, such as Fedora Silverblue
-    #[cfg(target_os = "linux")]
     Ostree(ostree::Ostree),
+    #[cfg_attr(not(target_os = "macos"), clap(hide = true))]
     /// A planner for MacOS (Darwin) systems
-    #[cfg(target_os = "macos")]
     Macos(macos::Macos),
 }
 
@@ -184,22 +193,17 @@ impl BuiltinPlanner {
     pub async fn default() -> Result<Self, PlannerError> {
         use target_lexicon::{Architecture, OperatingSystem};
         match (Architecture::host(), OperatingSystem::host()) {
-            #[cfg(target_os = "linux")]
             (Architecture::X86_64, OperatingSystem::Linux) => Self::detect_linux_distro().await,
-            #[cfg(target_os = "linux")]
             (Architecture::X86_32(_), OperatingSystem::Linux) => {
                 Ok(Self::Linux(linux::Linux::default().await?))
             },
-            #[cfg(target_os = "linux")]
             (Architecture::Aarch64(_), OperatingSystem::Linux) => {
                 Ok(Self::Linux(linux::Linux::default().await?))
             },
-            #[cfg(target_os = "macos")]
             (Architecture::X86_64, OperatingSystem::MacOSX { .. })
             | (Architecture::X86_64, OperatingSystem::Darwin) => {
                 Ok(Self::Macos(macos::Macos::default().await?))
             },
-            #[cfg(target_os = "macos")]
             (Architecture::Aarch64(_), OperatingSystem::MacOSX { .. })
             | (Architecture::Aarch64(_), OperatingSystem::Darwin) => {
                 Ok(Self::Macos(macos::Macos::default().await?))
@@ -208,7 +212,6 @@ impl BuiltinPlanner {
         }
     }
 
-    #[cfg(target_os = "linux")]
     async fn detect_linux_distro() -> Result<Self, PlannerError> {
         let is_steam_deck =
             os_release::OsRelease::new().is_ok_and(|os_release| os_release.id == "steamos");
@@ -231,13 +234,9 @@ impl BuiltinPlanner {
     pub async fn from_common_settings(settings: CommonSettings) -> Result<Self, PlannerError> {
         let mut built = Self::default().await?;
         match &mut built {
-            #[cfg(target_os = "linux")]
             BuiltinPlanner::Linux(inner) => inner.settings = settings,
-            #[cfg(target_os = "linux")]
             BuiltinPlanner::SteamDeck(inner) => inner.settings = settings,
-            #[cfg(target_os = "linux")]
             BuiltinPlanner::Ostree(inner) => inner.settings = settings,
-            #[cfg(target_os = "macos")]
             BuiltinPlanner::Macos(inner) => inner.settings = settings,
         }
         Ok(built)
@@ -247,64 +246,44 @@ impl BuiltinPlanner {
         &self,
     ) -> Result<HashMap<String, serde_json::Value>, PlannerError> {
         match self {
-            #[cfg(target_os = "linux")]
             BuiltinPlanner::Linux(inner) => inner.configured_settings().await,
-            #[cfg(target_os = "linux")]
             BuiltinPlanner::SteamDeck(inner) => inner.configured_settings().await,
-            #[cfg(target_os = "linux")]
             BuiltinPlanner::Ostree(inner) => inner.configured_settings().await,
-            #[cfg(target_os = "macos")]
             BuiltinPlanner::Macos(inner) => inner.configured_settings().await,
         }
     }
 
     pub async fn plan(self) -> Result<InstallPlan, NixInstallerError> {
         match self {
-            #[cfg(target_os = "linux")]
             BuiltinPlanner::Linux(planner) => InstallPlan::plan(planner).await,
-            #[cfg(target_os = "linux")]
             BuiltinPlanner::SteamDeck(planner) => InstallPlan::plan(planner).await,
-            #[cfg(target_os = "linux")]
             BuiltinPlanner::Ostree(planner) => InstallPlan::plan(planner).await,
-            #[cfg(target_os = "macos")]
             BuiltinPlanner::Macos(planner) => InstallPlan::plan(planner).await,
         }
     }
     pub fn boxed(self) -> Box<dyn Planner> {
         match self {
-            #[cfg(target_os = "linux")]
             BuiltinPlanner::Linux(i) => i.boxed(),
-            #[cfg(target_os = "linux")]
             BuiltinPlanner::SteamDeck(i) => i.boxed(),
-            #[cfg(target_os = "linux")]
             BuiltinPlanner::Ostree(i) => i.boxed(),
-            #[cfg(target_os = "macos")]
             BuiltinPlanner::Macos(i) => i.boxed(),
         }
     }
 
     pub fn typetag_name(&self) -> &'static str {
         match self {
-            #[cfg(target_os = "linux")]
             BuiltinPlanner::Linux(i) => i.typetag_name(),
-            #[cfg(target_os = "linux")]
             BuiltinPlanner::SteamDeck(i) => i.typetag_name(),
-            #[cfg(target_os = "linux")]
             BuiltinPlanner::Ostree(i) => i.typetag_name(),
-            #[cfg(target_os = "macos")]
             BuiltinPlanner::Macos(i) => i.typetag_name(),
         }
     }
 
     pub fn settings(&self) -> Result<HashMap<String, serde_json::Value>, InstallSettingsError> {
         match self {
-            #[cfg(target_os = "linux")]
             BuiltinPlanner::Linux(i) => i.settings(),
-            #[cfg(target_os = "linux")]
             BuiltinPlanner::SteamDeck(i) => i.settings(),
-            #[cfg(target_os = "linux")]
             BuiltinPlanner::Ostree(i) => i.settings(),
-            #[cfg(target_os = "macos")]
             BuiltinPlanner::Macos(i) => i.settings(),
         }
     }
@@ -314,13 +293,9 @@ impl BuiltinPlanner {
         &self,
     ) -> Result<crate::diagnostics::DiagnosticData, PlannerError> {
         match self {
-            #[cfg(target_os = "linux")]
             BuiltinPlanner::Linux(i) => i.diagnostic_data().await,
-            #[cfg(target_os = "linux")]
             BuiltinPlanner::SteamDeck(i) => i.diagnostic_data().await,
-            #[cfg(target_os = "linux")]
             BuiltinPlanner::Ostree(i) => i.diagnostic_data().await,
-            #[cfg(target_os = "macos")]
             BuiltinPlanner::Macos(i) => i.diagnostic_data().await,
         }
     }
@@ -392,6 +367,11 @@ impl Default for FishShellProfileLocations {
 #[non_exhaustive]
 #[derive(thiserror::Error, Debug, strum::IntoStaticStr)]
 pub enum PlannerError {
+    #[error("The selected planner (`{planner}`) does not support the host's operating system (`{host_os}`)")]
+    IncompatibleOperatingSystem {
+        planner: &'static str,
+        host_os: target_lexicon::OperatingSystem,
+    },
     /// `nix-installer` does not have a default planner for the target architecture right now
     #[error("`nix-installer` does not have a default planner for the `{0}` architecture right now, pass a specific archetype")]
     UnsupportedArchitecture(target_lexicon::Triple),
@@ -415,8 +395,10 @@ pub enum PlannerError {
     Sysctl(#[from] sysctl::SysctlError),
     #[error("Detected that this process is running under Rosetta, using Nix in Rosetta is not supported (Please open an issue with your use case)")]
     RosettaDetected,
-    #[error("Determinate Nix Enterprise Edition is not available. See: https://determinate.systems/enterprise")]
-    EnterpriseEditionUnavailable,
+    #[error("Determinate Nix is not available. See: https://determinate.systems/enterprise")]
+    DeterminateNixUnavailable,
+    #[error("Running Nix on the EC2 instance store requires Determinate Nix to be enabled")]
+    Ec2InstanceStoreRequiresDeterminateNix,
     /// A Linux SELinux related error
     #[error("Unable to install on an SELinux system without common SELinux tooling, the binaries `restorecon`, and `semodule` are required")]
     SelinuxRequirements,
@@ -448,8 +430,10 @@ impl HasExpectedErrors for PlannerError {
             PlannerError::InstallSettings(_) => None,
             PlannerError::Plist(_) => None,
             PlannerError::Sysctl(_) => None,
+            this @ PlannerError::IncompatibleOperatingSystem { .. } => Some(Box::new(this)),
             this @ PlannerError::RosettaDetected => Some(Box::new(this)),
-            this @ PlannerError::EnterpriseEditionUnavailable => Some(Box::new(this)),
+            this @ PlannerError::DeterminateNixUnavailable => Some(Box::new(this)),
+            this @ PlannerError::Ec2InstanceStoreRequiresDeterminateNix => Some(Box::new(this)),
             PlannerError::OsRelease(_) => None,
             PlannerError::Utf8(_) => None,
             PlannerError::SelinuxRequirements => Some(Box::new(self)),

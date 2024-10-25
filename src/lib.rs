@@ -100,7 +100,14 @@ async fn execute_command(command: &mut Command) -> Result<Output, ActionErrorKin
         .await
         .map_err(|e| ActionErrorKind::command(command, e))?;
     match output.status.success() {
-        true => Ok(output),
+        true => {
+            tracing::trace!(
+                stderr = %String::from_utf8_lossy(&output.stderr),
+                stdout = %String::from_utf8_lossy(&output.stdout),
+                "Command success"
+            );
+            Ok(output)
+        },
         false => Err(ActionErrorKind::command_output(command, output)),
     }
 }
