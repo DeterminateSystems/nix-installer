@@ -32,10 +32,10 @@ pub struct Instrumentation {
     /// Enable debug logs, -vv for trace
     #[clap(short = 'v', env = "NIX_INSTALLER_VERBOSITY", long, action = clap::ArgAction::Count, global = true)]
     pub verbose: u8,
-    /// Which logger to use
+    /// Which logger to use (options are `compact`, `full`, `pretty`, and `json`)
     #[clap(long, env = "NIX_INSTALLER_LOGGER", default_value_t = Default::default(), global = true)]
     pub logger: Logger,
-    /// Tracing directives
+    /// Tracing directives delimited by comma
     ///
     /// See https://docs.rs/tracing-subscriber/latest/tracing_subscriber/filter/struct.EnvFilter.html#directives
     #[clap(long = "log-directive", global = true, env = "NIX_INSTALLER_LOG_DIRECTIVES", value_delimiter = ',', num_args = 0..)]

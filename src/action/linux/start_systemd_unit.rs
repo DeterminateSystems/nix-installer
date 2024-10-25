@@ -10,6 +10,7 @@ use crate::action::{Action, ActionDescription};
 Start a given systemd unit
  */
 #[derive(Debug, serde::Deserialize, serde::Serialize, Clone)]
+#[serde(tag = "action_name", rename = "start_systemd_unit")]
 pub struct StartSystemdUnit {
     unit: String,
     enable: bool,
@@ -81,7 +82,7 @@ impl Action for StartSystemdUnit {
                         .process_group(0)
                         .arg("enable")
                         .arg("--now")
-                        .arg(&unit)
+                        .arg(unit)
                         .stdin(std::process::Stdio::null()),
                 )
                 .await
@@ -93,7 +94,7 @@ impl Action for StartSystemdUnit {
                     Command::new("systemctl")
                         .process_group(0)
                         .arg("start")
-                        .arg(&unit)
+                        .arg(unit)
                         .stdin(std::process::Stdio::null()),
                 )
                 .await

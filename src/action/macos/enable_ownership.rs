@@ -14,6 +14,7 @@ use crate::os::darwin::DiskUtilInfoOutput;
 Enable ownership on a volume
  */
 #[derive(Debug, serde::Deserialize, serde::Serialize, Clone)]
+#[serde(tag = "action_name", rename = "enable_ownership")]
 pub struct EnableOwnership {
     path: PathBuf,
 }
@@ -52,14 +53,12 @@ impl Action for EnableOwnership {
 
     #[tracing::instrument(level = "debug", skip_all)]
     async fn execute(&mut self) -> Result<(), ActionError> {
-        let Self { path } = self;
-
         let should_enable_ownership = {
             let buf = execute_command(
                 Command::new("/usr/sbin/diskutil")
                     .process_group(0)
                     .args(["info", "-plist"])
-                    .arg(&path)
+                    .arg(&self.path)
                     .stdin(std::process::Stdio::null()),
             )
             .await
@@ -76,7 +75,7 @@ impl Action for EnableOwnership {
                 Command::new("/usr/sbin/diskutil")
                     .process_group(0)
                     .arg("enableOwnership")
-                    .arg(path)
+                    .arg(&self.path)
                     .stdin(std::process::Stdio::null()),
             )
             .await

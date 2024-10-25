@@ -11,12 +11,19 @@ use crate::planner::HasExpectedErrors;
 mod profile_queries;
 mod profiles;
 
+#[cfg(not(feature = "nix-community"))]
+use crate::action::common::ConfigureDeterminateNixdInitService;
+use crate::os::darwin::diskutil::DiskUtilList;
 use crate::{
     action::{
         base::RemoveDirectory,
-        common::{ConfigureInitService, ConfigureNix, CreateUsersAndGroups, ProvisionNix},
+        common::{
+            ConfigureNix, ConfigureUpstreamInitService, CreateUsersAndGroups,
+            ProvisionDeterminateNixd, ProvisionNix,
+        },
         macos::{
-            ConfigureRemoteBuilding, CreateNixHookService, CreateNixVolume, SetTmutilExclusions,
+            ConfigureRemoteBuilding, CreateDeterminateNixVolume, CreateNixHookService,
+            CreateNixVolume, SetTmutilExclusions,
         },
         StatefulAction,
     },
@@ -24,7 +31,7 @@ use crate::{
     os::darwin::DiskUtilInfoOutput,
     planner::{Planner, PlannerError},
     settings::InstallSettingsError,
-    settings::{CommonSettings, InitSystem},
+    settings::{determinate_nix_settings, CommonSettings, InitSystem},
     Action, BuiltinPlanner,
 };
 
@@ -66,6 +73,24 @@ pub struct Macos {
     /// The root disk of the target
     #[cfg_attr(feature = "cli", clap(long, env = "NIX_INSTALLER_ROOT_DISK"))]
     pub root_disk: Option<String>,
+
+    /// On AWS, put the Nix Store volume on the EC2 instances' instance store volume.
+    ///
+    /// WARNING: Using the instance store volume means the machine must never be Stopped in AWS.
+    /// If the instance is Stopped, the instance store volume is erased, and the installation is broken.
+    /// The machine can be safely rebooted.
+    ///
+    /// Using the instance store volume bypasses the interactive "enable full disk access" step.
+    /// Without this flag, installations on macOS on EC2 will require manual, graphical intervention when first installed to grant Full Disk Access.
+    ///
+    /// Setting this option:
+    ///  * Requires passing --determinate due to complications of AWS's deployment of macOS.
+    ///  * Sets --root-disk to an auto-detected disk
+    #[cfg_attr(
+        feature = "cli",
+        clap(long, default_value = "false", requires = "determinate_nix")
+    )]
+    pub use_ec2_instance_store: bool,
 }
 
 async fn default_root_disk() -> Result<String, PlannerError> {
@@ -75,11 +100,33 @@ async fn default_root_disk() -> Result<String, PlannerError> {
             .stdin(std::process::Stdio::null()),
     )
     .await
-    .unwrap()
+    .map_err(|e| PlannerError::Custom(Box::new(e)))?
     .stdout;
     let the_plist: DiskUtilInfoOutput = plist::from_reader(Cursor::new(buf))?;
 
     Ok(the_plist.parent_whole_disk)
+}
+
+async fn default_internal_root_disk() -> Result<Option<String>, PlannerError> {
+    let buf = execute_command(
+        Command::new("/usr/sbin/diskutil")
+            .args(["list", "-plist", "internal", "virtual"])
+            .stdin(std::process::Stdio::null()),
+    )
+    .await
+    .map_err(|e| PlannerError::Custom(Box::new(e)))?
+    .stdout;
+    let the_plist: DiskUtilList = plist::from_reader(Cursor::new(buf))?;
+
+    let mut disks = the_plist
+        .all_disks_and_partitions
+        .into_iter()
+        .filter(|disk| !disk.os_internal)
+        .collect::<Vec<_>>();
+
+    disks.sort_by_key(|d| d.size_bytes);
+
+    Ok(disks.pop().map(|d| d.device_identifier))
 }
 
 #[async_trait::async_trait]
@@ -88,6 +135,7 @@ impl Planner for Macos {
     async fn default() -> Result<Self, PlannerError> {
         Ok(Self {
             settings: CommonSettings::default().await?,
+            use_ec2_instance_store: false,
             root_disk: Some(default_root_disk().await?),
             case_sensitive: false,
             encrypt: None,
@@ -96,29 +144,28 @@ impl Planner for Macos {
     }
 
     async fn plan(&self) -> Result<Vec<StatefulAction<Box<dyn Action>>>, PlannerError> {
+        if self.use_ec2_instance_store && !self.settings.determinate_nix {
+            return Err(PlannerError::Ec2InstanceStoreRequiresDeterminateNix);
+        }
+
         let root_disk = match &self.root_disk {
             root_disk @ Some(_) => root_disk.clone(),
             None => {
-                let buf = execute_command(
-                    Command::new("/usr/sbin/diskutil")
-                        .args(["info", "-plist", "/"])
-                        .stdin(std::process::Stdio::null()),
-                )
-                .await
-                .unwrap()
-                .stdout;
-                let the_plist: DiskUtilInfoOutput = plist::from_reader(Cursor::new(buf)).unwrap();
-
-                Some(the_plist.parent_whole_disk)
+                if self.use_ec2_instance_store {
+                    default_internal_root_disk().await?
+                } else {
+                    Some(default_root_disk().await?)
+                }
             },
         };
 
-        // The encrypt variable isn't used in the enterprise edition since we have our own plan step for it,
-        // however this match accounts for enterprise edition so the receipt indicates encrypt: true.
+        // The encrypt variable isn't used in Determinate Nix since we have our own plan step for it,
+        // however this match accounts for Determinate Nix so the receipt indicates encrypt: true.
         // This is a goofy thing to do, but it is in an attempt to make a more globally coherent plan / receipt.
-        let encrypt = match self.encrypt {
-            Some(choice) => choice,
-            None => {
+        let encrypt = match (self.settings.determinate_nix, self.encrypt) {
+            (true, _) => true,
+            (false, Some(choice)) => choice,
+            (false, None) => {
                 let output = Command::new("/usr/bin/fdesetup")
                     .arg("isactive")
                     .stdout(std::process::Stdio::null())
@@ -137,17 +184,41 @@ impl Planner for Macos {
 
         let mut plan = vec![];
 
-        plan.push(
-            CreateNixVolume::plan(
-                root_disk.unwrap(), /* We just ensured it was populated */
-                self.volume_label.clone(),
-                self.case_sensitive,
-                encrypt,
-            )
-            .await
-            .map_err(PlannerError::Action)?
-            .boxed(),
-        );
+        if self.settings.determinate_nix {
+            plan.push(
+                ProvisionDeterminateNixd::plan()
+                    .await
+                    .map_err(PlannerError::Action)?
+                    .boxed(),
+            );
+        }
+
+        if self.settings.determinate_nix {
+            plan.push(
+                CreateDeterminateNixVolume::plan(
+                    root_disk.unwrap(), /* We just ensured it was populated */
+                    self.volume_label.clone(),
+                    self.case_sensitive,
+                    self.settings.force,
+                    self.use_ec2_instance_store,
+                )
+                .await
+                .map_err(PlannerError::Action)?
+                .boxed(),
+            );
+        } else {
+            plan.push(
+                CreateNixVolume::plan(
+                    root_disk.unwrap(), /* We just ensured it was populated */
+                    self.volume_label.clone(),
+                    self.case_sensitive,
+                    encrypt,
+                )
+                .await
+                .map_err(PlannerError::Action)?
+                .boxed(),
+            );
+        }
 
         plan.push(
             ProvisionNix::plan(&self.settings)
@@ -170,10 +241,14 @@ impl Planner for Macos {
                 .boxed(),
         );
         plan.push(
-            ConfigureNix::plan(ShellProfileLocations::default(), &self.settings)
-                .await
-                .map_err(PlannerError::Action)?
-                .boxed(),
+            ConfigureNix::plan(
+                ShellProfileLocations::default(),
+                &self.settings,
+                self.settings.determinate_nix.then(determinate_nix_settings),
+            )
+            .await
+            .map_err(PlannerError::Action)?
+            .boxed(),
         );
         plan.push(
             ConfigureRemoteBuilding::plan()
@@ -191,12 +266,22 @@ impl Planner for Macos {
             );
         }
 
-        plan.push(
-            ConfigureInitService::plan(InitSystem::Launchd, true)
-                .await
-                .map_err(PlannerError::Action)?
-                .boxed(),
-        );
+        if self.settings.determinate_nix {
+            #[cfg(not(feature = "nix-community"))]
+            plan.push(
+                ConfigureDeterminateNixdInitService::plan(InitSystem::Launchd, true)
+                    .await
+                    .map_err(PlannerError::Action)?
+                    .boxed(),
+            );
+        } else {
+            plan.push(
+                ConfigureUpstreamInitService::plan(InitSystem::Launchd, true)
+                    .await
+                    .map_err(PlannerError::Action)?
+                    .boxed(),
+            );
+        }
         plan.push(
             RemoveDirectory::plan(crate::settings::SCRATCH_DIR)
                 .await
@@ -214,6 +299,7 @@ impl Planner for Macos {
             volume_label,
             case_sensitive,
             root_disk,
+            use_ec2_instance_store,
         } = self;
         let mut map = HashMap::default();
 
@@ -221,6 +307,10 @@ impl Planner for Macos {
         map.insert("volume_encrypt".into(), serde_json::to_value(encrypt)?);
         map.insert("volume_label".into(), serde_json::to_value(volume_label)?);
         map.insert("root_disk".into(), serde_json::to_value(root_disk)?);
+        map.insert(
+            "use_ec2_instance_store".into(),
+            serde_json::to_value(use_ec2_instance_store)?,
+        );
         map.insert(
             "case_sensitive".into(),
             serde_json::to_value(case_sensitive)?,
@@ -257,6 +347,17 @@ impl Planner for Macos {
                 .collect::<Vec<_>>(),
             self.settings.ssl_cert_file.clone(),
         )?)
+    }
+
+    async fn platform_check(&self) -> Result<(), PlannerError> {
+        use target_lexicon::OperatingSystem;
+        match target_lexicon::OperatingSystem::host() {
+            OperatingSystem::MacOSX { .. } | OperatingSystem::Darwin => Ok(()),
+            host_os => Err(PlannerError::IncompatibleOperatingSystem {
+                planner: self.typetag_name(),
+                host_os,
+            }),
+        }
     }
 
     async fn pre_uninstall_check(&self) -> Result<(), PlannerError> {
@@ -357,15 +458,6 @@ async fn check_suis() -> Result<(), PlannerError> {
 
     Err(MacosError::BlockedBySystemUIServerPolicy(error))
         .map_err(|e| PlannerError::Custom(Box::new(e)))
-}
-
-#[cfg(not(feature = "nix-community"))]
-async fn check_enterprise_edition_available() -> Result<(), PlannerError> {
-    tokio::fs::metadata("/usr/local/bin/determinate-nix-ee")
-        .await
-        .map_err(|_| PlannerError::EnterpriseEditionUnavailable)?;
-
-    Ok(())
 }
 
 #[non_exhaustive]

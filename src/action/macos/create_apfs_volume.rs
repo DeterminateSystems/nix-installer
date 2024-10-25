@@ -11,6 +11,7 @@ use crate::action::{Action, ActionDescription};
 use crate::os::darwin::{DiskUtilApfsListOutput, DiskUtilInfoOutput};
 
 #[derive(Debug, serde::Deserialize, serde::Serialize, Clone)]
+#[serde(tag = "action_name", rename = "create_volume")]
 pub struct CreateApfsVolume {
     disk: PathBuf,
     name: String,
@@ -137,12 +138,12 @@ impl Action for CreateApfsVolume {
             let the_plist: DiskUtilInfoOutput =
                 plist::from_reader(Cursor::new(buf)).map_err(Self::error)?;
 
-            the_plist.mount_point.is_some()
+            the_plist.is_mounted()
         };
 
         // Unmounts the volume before attempting to remove it, avoiding 'in use' errors
         // https://github.com/DeterminateSystems/nix-installer/issues/647
-        if !currently_mounted {
+        if currently_mounted {
             execute_command(
                 Command::new("/usr/sbin/diskutil")
                     .process_group(0)

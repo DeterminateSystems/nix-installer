@@ -29,19 +29,6 @@ jobs:
     uses: ./.github/workflows/build-x86_64-linux.yml
     with:
       cache-key: release-x86_64-linux-artifacts-${{ github.sha }}
-  build-i686-linux:
-    # Only intra-repo PRs are allowed to have PR artifacts uploaded
-    # We only want to trigger once the upload once in the case the upload label is added, not when any label is added
-    if: |
-      always() && !failure() && !cancelled()
-      && github.event.pull_request.head.repo.full_name == 'DeterminateSystems/nix-installer'
-      && (
-        (github.event.action == 'labeled' && github.event.label.name == 'upload to s3')
-        || (github.event.action != 'labeled' && contains(github.event.pull_request.labels.*.name, 'upload to s3'))
-      )
-    uses: ./.github/workflows/build-i686-linux.yml
-    with:
-      cache-key: release-i686-linux-artifacts-${{ github.sha }}
   build-aarch64-linux:
     # Only intra-repo PRs are allowed to have PR artifacts uploaded
     # We only want to trigger once the upload once in the case the upload label is added, not when any label is added
@@ -95,13 +82,12 @@ jobs:
     runs-on: ubuntu-latest
     needs:
       - build-x86_64-linux
-      - build-i686-linux
       - build-aarch64-linux
       - build-x86_64-darwin
       - build-aarch64-darwin
     steps:
       - name: Checkout
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
       - name: Create artifacts directory
         run: mkdir -p ./artifacts
 
@@ -112,14 +98,6 @@ jobs:
           key: release-x86_64-linux-artifacts-${{ github.sha }}
       - name: Move artifact to artifacts directory
         run: mv ./nix-installer ./artifacts/nix-installer-x86_64-linux
-
-      - name: Fetch cached i686-linux binary
-        uses: actions/cache/restore@v3
-        with:
-          path: nix-installer
-          key: release-i686-linux-artifacts-${{ github.sha }}
-      - name: Move artifact to artifacts directory
-        run: mv ./nix-installer ./artifacts/nix-installer-i686-linux
 
       - name: Fetch cached aarch64-linux binary
         uses: actions/cache/restore@v3

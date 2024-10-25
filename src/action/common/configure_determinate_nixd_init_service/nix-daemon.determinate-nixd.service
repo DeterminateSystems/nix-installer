@@ -1,0 +1,17 @@
+[Unit]
+Description=Nix Daemon, with Determinate Nix superpowers.
+Documentation=man:nix-daemon https://determinate.systems
+RequiresMountsFor=/nix/store
+RequiresMountsFor=/nix/var
+RequiresMountsFor=/nix/var/nix/db
+ConditionPathIsReadWrite=/nix/var/nix/daemon-socket
+
+[Service]
+ExecStart=@/usr/local/bin/determinate-nixd determinate-nixd daemon
+KillMode=process
+LimitNOFILE=1048576
+LimitSTACK=64M
+TasksMax=1048576
+
+[Install]
+WantedBy=multi-user.target

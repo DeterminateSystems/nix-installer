@@ -40,6 +40,7 @@ Some planners have additional options which can be set from the planner's subcom
 #[derive(Debug, Parser)]
 #[command(args_conflicts_with_subcommands = true)]
 pub struct Install {
+    /// Run installation without requiring explicit user confirmation
     #[clap(
         long,
         env = "NIX_INSTALLER_NO_CONFIRM",
@@ -52,6 +53,7 @@ pub struct Install {
     #[clap(flatten)]
     pub settings: CommonSettings,
 
+    /// Provide an explanation of the changes the installation process will make to your system
     #[clap(
         long,
         env = "NIX_INSTALLER_EXPLAIN",
@@ -61,6 +63,7 @@ pub struct Install {
     )]
     pub explain: bool,
 
+    /// A path to a non-default installer plan
     #[clap(env = "NIX_INSTALLER_PLAN")]
     pub plan: Option<PathBuf>,
 
@@ -110,7 +113,7 @@ impl CommandExecute for Install {
                     Some(existing_receipt) => {
                         if let Err(e) = existing_receipt.check_compatible() {
                             eprintln!(
-                                "{}", 
+                                "{}",
                                 format!("\
                                     {e}\n\
                                     \n\
@@ -161,7 +164,7 @@ impl CommandExecute for Install {
                     Some(existing_receipt) => {
                         if let Err(e) = existing_receipt.check_compatible() {
                             eprintln!(
-                                "{}", 
+                                "{}",
                                 format!("\
                                     {e}\n\
                                     \n\

@@ -1,0 +1,14 @@
+[Unit]
+Description=Determinate Nixd Daemon Socket
+Before=multi-user.target
+RequiresMountsFor=/nix/store
+RequiresMountsFor=/nix/var/determinate
+
+[Socket]
+FileDescriptorName=determinate-nixd.socket
+DirectoryMode=0755
+ListenStream=/nix/var/determinate/determinate-nixd.socket
+Service=nix-daemon.service
+
+[Install]
+WantedBy=sockets.target

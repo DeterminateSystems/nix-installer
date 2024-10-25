@@ -7,6 +7,7 @@ use clap::{
     error::{ContextKind, ContextValue},
     ArgAction,
 };
+use indexmap::map::Entry;
 use url::Url;
 
 pub const SCRATCH_DIR: &str = "/nix/temp-install-dir";
@@ -17,25 +18,32 @@ pub const NIX_TARBALL_PATH: &str = env!("NIX_INSTALLER_TARBALL_PATH");
 /// in the resulting binary.
 pub const NIX_TARBALL: &[u8] = include_bytes!(env!("NIX_INSTALLER_TARBALL_PATH"));
 
+#[cfg(feature = "determinate-nix")]
+/// The DETERMINATE_NIXD_BINARY_PATH environment variable should point to a target-appropriate
+/// static build of the Determinate Nixd binary. The contents are embedded in the resulting
+/// binary if the determinate-nix feature is turned on.
+pub const DETERMINATE_NIXD_BINARY: Option<&[u8]> =
+    Some(include_bytes!(env!("DETERMINATE_NIXD_BINARY_PATH")));
+
+#[cfg(not(feature = "determinate-nix"))]
+/// The DETERMINATE_NIXD_BINARY_PATH environment variable should point to a target-appropriate
+/// static build of the Determinate Nixd binary. The contents are embedded in the resulting
+/// binary if the determinate-nix feature is turned on.
+pub const DETERMINATE_NIXD_BINARY: Option<&[u8]> = None;
+
 #[derive(Debug, serde::Deserialize, serde::Serialize, Clone, Copy, PartialEq, Eq)]
 #[cfg_attr(feature = "cli", derive(clap::ValueEnum))]
 pub enum InitSystem {
-    #[cfg(not(target_os = "macos"))]
     None,
-    #[cfg(target_os = "linux")]
     Systemd,
-    #[cfg(target_os = "macos")]
     Launchd,
 }
 
 impl std::fmt::Display for InitSystem {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            #[cfg(not(target_os = "macos"))]
             InitSystem::None => write!(f, "none"),
-            #[cfg(target_os = "linux")]
             InitSystem::Systemd => write!(f, "systemd"),
-            #[cfg(target_os = "macos")]
             InitSystem::Launchd => write!(f, "launchd"),
         }
     }
@@ -50,7 +58,20 @@ Settings which only apply to certain [`Planner`](crate::planner::Planner)s shoul
 #[derive(Debug, serde::Deserialize, serde::Serialize, Clone)]
 #[cfg_attr(feature = "cli", derive(clap::Parser))]
 pub struct CommonSettings {
-    /// Modify the user profile to automatically load nix
+    /// Enable Determinate Nix. See: <https://determinate.systems/enterprise>
+    // DOING: we're trying to make this always-false?
+    #[cfg_attr(
+        feature = "cli",
+        clap(
+            // long = "determinate",
+            // env = "NIX_INSTALLER_DETERMINATE",
+            // default_value = "false",
+            skip = false,
+        )
+    )]
+    pub determinate_nix: bool,
+
+    /// Modify the user profile to automatically load Nix
     #[cfg_attr(
         feature = "cli",
         clap(
@@ -78,12 +99,11 @@ pub struct CommonSettings {
     /// The Nix build group GID
     #[cfg_attr(
         feature = "cli",
-        clap(
-            long,
-            default_value_t = 30_000,
-            env = "NIX_INSTALLER_NIX_BUILD_GROUP_ID",
-            global = true
-        )
+        clap(long, env = "NIX_INSTALLER_NIX_BUILD_GROUP_ID", global = true)
+    )]
+    #[cfg_attr(
+        all(feature = "cli"),
+        clap(default_value_t = default_nix_build_group_id())
     )]
     pub nix_build_group_id: u32,
 
@@ -102,7 +122,7 @@ pub struct CommonSettings {
     )]
     pub nix_build_user_prefix: String,
 
-    /// Number of build users to create
+    /// The number of build users to create
     #[cfg_attr(
         feature = "cli",
         clap(
@@ -125,10 +145,9 @@ pub struct CommonSettings {
         all(target_os = "macos", feature = "cli"),
         doc = "Service users on Mac should be between 200-400"
     )]
-    #[cfg_attr(all(target_os = "macos", feature = "cli"), clap(default_value_t = 300))]
     #[cfg_attr(
-        all(target_os = "linux", feature = "cli"),
-        clap(default_value_t = 30_000)
+        all(feature = "cli"),
+        clap(default_value_t = default_nix_build_user_id_base())
     )]
     pub nix_build_user_id_base: u32,
 
@@ -139,11 +158,11 @@ pub struct CommonSettings {
     )]
     pub nix_package_url: Option<UrlOrPath>,
 
-    /// The proxy to use (if any), valid proxy bases are `https://$URL`, `http://$URL` and `socks5://$URL`
+    /// The proxy to use (if any); valid proxy bases are `https://$URL`, `http://$URL` and `socks5://$URL`
     #[cfg_attr(feature = "cli", clap(long, env = "NIX_INSTALLER_PROXY"))]
     pub proxy: Option<Url>,
 
-    /// An SSL cert to use (if any), used for fetching Nix and sets `ssl-cert-file` in `/etc/nix/nix.conf`
+    /// An SSL cert to use (if any); used for fetching Nix and sets `ssl-cert-file` in `/etc/nix/nix.conf`
     #[cfg_attr(feature = "cli", clap(long, env = "NIX_INSTALLER_SSL_CERT_FILE"))]
     pub ssl_cert_file: Option<PathBuf>,
 
@@ -220,46 +239,47 @@ pub struct CommonSettings {
     pub add_channel: bool,
 }
 
+pub(crate) fn default_nix_build_user_id_base() -> u32 {
+    use target_lexicon::OperatingSystem;
+
+    match OperatingSystem::host() {
+        OperatingSystem::MacOSX { .. } | OperatingSystem::Darwin => 350,
+        _ => 30_000,
+    }
+}
+
+pub(crate) fn default_nix_build_group_id() -> u32 {
+    use target_lexicon::OperatingSystem;
+
+    match OperatingSystem::host() {
+        OperatingSystem::MacOSX { .. } | OperatingSystem::Darwin => 350,
+        _ => 30_000,
+    }
+}
+
 impl CommonSettings {
     /// The default settings for the given Architecture & Operating System
     pub async fn default() -> Result<Self, InstallSettingsError> {
         let nix_build_user_prefix;
-        let nix_build_user_id_base;
-        let nix_build_user_count;
 
         use target_lexicon::{Architecture, OperatingSystem};
         match (Architecture::host(), OperatingSystem::host()) {
-            #[cfg(target_os = "linux")]
             (Architecture::X86_64, OperatingSystem::Linux) => {
                 nix_build_user_prefix = "nixbld";
-                nix_build_user_id_base = 30000;
-                nix_build_user_count = 32;
             },
-            #[cfg(target_os = "linux")]
             (Architecture::X86_32(_), OperatingSystem::Linux) => {
                 nix_build_user_prefix = "nixbld";
-                nix_build_user_id_base = 30000;
-                nix_build_user_count = 32;
             },
-            #[cfg(target_os = "linux")]
             (Architecture::Aarch64(_), OperatingSystem::Linux) => {
                 nix_build_user_prefix = "nixbld";
-                nix_build_user_id_base = 30000;
-                nix_build_user_count = 32;
             },
-            #[cfg(target_os = "macos")]
             (Architecture::X86_64, OperatingSystem::MacOSX { .. })
             | (Architecture::X86_64, OperatingSystem::Darwin) => {
                 nix_build_user_prefix = "_nixbld";
-                nix_build_user_id_base = 300;
-                nix_build_user_count = 32;
             },
-            #[cfg(target_os = "macos")]
             (Architecture::Aarch64(_), OperatingSystem::MacOSX { .. })
             | (Architecture::Aarch64(_), OperatingSystem::Darwin) => {
                 nix_build_user_prefix = "_nixbld";
-                nix_build_user_id_base = 300;
-                nix_build_user_count = 32;
             },
             _ => {
                 return Err(InstallSettingsError::UnsupportedArchitecture(
@@ -269,11 +289,12 @@ impl CommonSettings {
         };
 
         Ok(Self {
+            determinate_nix: false,
             modify_profile: true,
             nix_build_group_name: String::from("nixbld"),
-            nix_build_group_id: 30_000,
-            nix_build_user_id_base,
-            nix_build_user_count,
+            nix_build_group_id: default_nix_build_group_id(),
+            nix_build_user_id_base: default_nix_build_user_id_base(),
+            nix_build_user_count: 32,
             nix_build_user_prefix: nix_build_user_prefix.to_string(),
             nix_package_url: None,
             proxy: Default::default(),
@@ -291,6 +312,7 @@ impl CommonSettings {
     /// A listing of the settings, suitable for [`Planner::settings`](crate::planner::Planner::settings)
     pub fn settings(&self) -> Result<HashMap<String, serde_json::Value>, InstallSettingsError> {
         let Self {
+            determinate_nix,
             modify_profile,
             nix_build_group_name,
             nix_build_group_id,
@@ -310,6 +332,10 @@ impl CommonSettings {
         } = self;
         let mut map = HashMap::default();
 
+        map.insert(
+            "determinate_nix".into(),
+            serde_json::to_value(determinate_nix)?,
+        );
         map.insert(
             "modify_profile".into(),
             serde_json::to_value(modify_profile)?,
@@ -355,7 +381,6 @@ impl CommonSettings {
     }
 }
 
-#[cfg(target_os = "linux")]
 async fn linux_detect_systemd_started() -> bool {
     use std::process::Stdio;
 
@@ -413,22 +438,17 @@ impl InitSettings {
     pub async fn default() -> Result<Self, InstallSettingsError> {
         use target_lexicon::{Architecture, OperatingSystem};
         let (init, start_daemon) = match (Architecture::host(), OperatingSystem::host()) {
-            #[cfg(target_os = "linux")]
             (Architecture::X86_64, OperatingSystem::Linux) => {
                 (InitSystem::Systemd, linux_detect_systemd_started().await)
             },
-            #[cfg(target_os = "linux")]
             (Architecture::X86_32(_), OperatingSystem::Linux) => {
                 (InitSystem::Systemd, linux_detect_systemd_started().await)
             },
-            #[cfg(target_os = "linux")]
             (Architecture::Aarch64(_), OperatingSystem::Linux) => {
                 (InitSystem::Systemd, linux_detect_systemd_started().await)
             },
-            #[cfg(target_os = "macos")]
             (Architecture::X86_64, OperatingSystem::MacOSX { .. })
             | (Architecture::X86_64, OperatingSystem::Darwin) => (InitSystem::Launchd, true),
-            #[cfg(target_os = "macos")]
             (Architecture::Aarch64(_), OperatingSystem::MacOSX { .. })
             | (Architecture::Aarch64(_), OperatingSystem::Darwin) => (InitSystem::Launchd, true),
             _ => {
@@ -687,4 +707,29 @@ mod tests {
         );
         Ok(())
     }
+}
+
+pub fn determinate_nix_settings() -> nix_config_parser::NixConfig {
+    let mut cfg = nix_config_parser::NixConfig::new();
+    let settings = cfg.settings_mut();
+
+    settings.insert("netrc-file".into(), "/nix/var/determinate/netrc".into());
+
+    let extra_substituters = ["https://cache.flakehub.com"];
+    match settings.entry("extra-substituters".to_string()) {
+        Entry::Occupied(mut slot) => {
+            let slot_mut = slot.get_mut();
+            for extra_substituter in extra_substituters {
+                if !slot_mut.contains(extra_substituter) {
+                    *slot_mut += " ";
+                    *slot_mut += extra_substituter;
+                }
+            }
+        },
+        Entry::Vacant(slot) => {
+            let _ = slot.insert(extra_substituters.join(" "));
+        },
+    };
+
+    cfg
 }

@@ -141,7 +141,7 @@ impl CommandExecute for Uninstall {
         if let Err(e) = plan.check_compatible() {
             let version = plan.version;
             eprintln!(
-                "{}", 
+                "{}",
                 format!("\
                     {e}\n\
                     \n\

@@ -93,8 +93,6 @@ impl Shell {
 
         #[cfg(all(target_os = "linux", target_arch = "x86_64"))]
         const SYSTEM: &str = "x86_64-linux";
-        #[cfg(all(target_os = "linux", target_arch = "x86"))]
-        const SYSTEM: &str = "x86-linux";
         #[cfg(all(target_os = "linux", target_arch = "aarch64"))]
         const SYSTEM: &str = "aarch64-linux";
         #[cfg(all(target_os = "macos", target_arch = "x86_64"))]
@@ -107,7 +105,7 @@ impl Shell {
             .as_millis();
 
         command.arg(format!(
-            r#"nix-build --no-link --expr 'derivation {{ name = "self-test-{executable}-{timestamp_millis}"; system = "{SYSTEM}"; builder = "/bin/sh"; args = ["-c" "echo hello > \$out"]; }}'"#
+            r#"nix-build --option substitute false --no-link --expr 'derivation {{ name = "self-test-{executable}-{timestamp_millis}"; system = "{SYSTEM}"; builder = "/bin/sh"; args = ["-c" "echo hello > \$out"]; }}'"#
         ));
         let command_str = format!("{:?}", command.as_std());
 
