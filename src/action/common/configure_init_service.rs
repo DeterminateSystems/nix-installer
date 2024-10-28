@@ -503,17 +503,13 @@ impl Action for ConfigureInitService {
 
         match self.init {
             InitSystem::Launchd => {
-                let service_dest = self
-                    .service_dest
+                let service_name = self
+                    .service_name
                     .as_ref()
-                    .expect("service_dest should be defined for launchd");
-                if let Err(e) = crate::action::macos::retry_bootout(
-                    DARWIN_LAUNCHD_DOMAIN,
-                    self.service_name
-                        .as_ref()
-                        .expect("service_name should be set for launchd"),
-                )
-                .await
+                    .expect("service_name should be set for launchd");
+
+                if let Err(e) =
+                    crate::action::macos::retry_bootout(DARWIN_LAUNCHD_DOMAIN, service_name).await
                 {
                     errors.push(e);
                 }
@@ -522,15 +518,10 @@ impl Action for ConfigureInitService {
                 for attempt in 1..100 {
                     tracing::trace!(attempt, "Checking to see if the daemon is down yet");
                     if execute_command(
-                        Command::new("launchctl").process_group(0).arg("print").arg(
-                            [
-                                DARWIN_LAUNCHD_DOMAIN,
-                                self.service_name
-                                    .as_ref()
-                                    .expect("service_name should be defined for launchd"),
-                            ]
-                            .join("/"),
-                        ),
+                        Command::new("launchctl")
+                            .process_group(0)
+                            .arg("print")
+                            .arg([DARWIN_LAUNCHD_DOMAIN, service_name].join("/")),
                     )
                     .await
                     .is_err()
