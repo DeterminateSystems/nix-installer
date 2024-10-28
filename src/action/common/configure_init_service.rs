@@ -512,7 +512,6 @@ impl Action for ConfigureInitService {
                     self.service_name
                         .as_ref()
                         .expect("service_name should be set for launchd"),
-                    service_dest,
                 )
                 .await
                 {

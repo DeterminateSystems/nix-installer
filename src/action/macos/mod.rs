@@ -199,16 +199,14 @@ pub(crate) async fn retry_bootstrap(
 /// Wait for `launchctl bootout {domain} {service_path}` to succeed up to `retry_tokens * 500ms` amount
 /// of time.
 #[tracing::instrument]
-pub(crate) async fn retry_bootout(
-    domain: &str,
-    service_name: &str,
-    service_path: &Path,
-) -> Result<(), ActionErrorKind> {
+pub(crate) async fn retry_bootout(domain: &str, service_name: &str) -> Result<(), ActionErrorKind> {
+    let service_identifier = [domain, service_name].join("/");
+
     let check_service_running = execute_command(
         Command::new("launchctl")
             .process_group(0)
             .arg("print")
-            .arg([domain, service_name].join("/"))
+            .arg(&service_identifier)
             .stdin(std::process::Stdio::null())
             .stdout(std::process::Stdio::piped())
             .stderr(std::process::Stdio::piped()),
@@ -226,8 +224,7 @@ pub(crate) async fn retry_bootout(
         let mut command = Command::new("launchctl");
         command.process_group(0);
         command.arg("bootout");
-        command.arg(domain);
-        command.arg(service_path);
+        command.arg(&service_identifier);
         command.stdin(std::process::Stdio::null());
         command.stderr(std::process::Stdio::null());
         command.stdout(std::process::Stdio::null());
