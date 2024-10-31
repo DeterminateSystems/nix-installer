@@ -162,20 +162,6 @@ impl Action for ConfigureDeterminateNixdInitService {
     async fn revert(&mut self) -> Result<(), ActionError> {
         self.configure_init_service.try_revert().await?;
 
-        let file_to_remove = match self.init {
-            InitSystem::Launchd => Some(DARWIN_NIXD_DAEMON_DEST),
-            InitSystem::Systemd => Some(LINUX_NIXD_DAEMON_DEST),
-            InitSystem::None => None,
-        };
-
-        if let Some(file_to_remove) = file_to_remove {
-            tracing::trace!(path = %file_to_remove, "Removing");
-            tokio::fs::remove_file(file_to_remove)
-                .await
-                .map_err(|e| ActionErrorKind::Remove(file_to_remove.into(), e))
-                .map_err(Self::error)?;
-        }
-
         Ok(())
     }
 }
