@@ -116,23 +116,6 @@ impl ConfigureInitService {
                 if which::which("systemctl").is_err() {
                     return Err(Self::error(ActionErrorKind::SystemdMissing));
                 }
-
-                if let (Some(service_src), Some(service_dest)) =
-                    (service_src.as_ref(), service_dest.as_ref())
-                {
-                    Self::check_if_systemd_unit_exists(
-                        &UnitSrc::Path(service_src.to_path_buf()),
-                        service_dest,
-                    )
-                    .await
-                    .map_err(Self::error)?;
-                }
-
-                for SocketFile { src, dest, .. } in socket_files.iter() {
-                    Self::check_if_systemd_unit_exists(src, dest)
-                        .await
-                        .map_err(Self::error)?;
-                }
             },
             InitSystem::None => {
                 // Nothing here, no init system
@@ -312,17 +295,6 @@ impl Action for ConfigureInitService {
                     .as_ref()
                     .expect("service_dest should be defined for systemd");
 
-                if *start_daemon {
-                    execute_command(
-                        Command::new("systemctl")
-                            .process_group(0)
-                            .arg("daemon-reload")
-                            .stdin(std::process::Stdio::null()),
-                    )
-                    .await
-                    .map_err(Self::error)?;
-                }
-
                 // The goal state is the `socket` enabled and active, the service not enabled and stopped (it activates via socket activation)
                 let mut any_socket_was_active = false;
                 for SocketFile { name, .. } in socket_files.iter() {
@@ -354,8 +326,8 @@ impl Action for ConfigureInitService {
                     };
                 }
 
-                tracing::trace!(src = TMPFILES_SRC, dest = TMPFILES_DEST, "Symlinking");
                 if !Path::new(TMPFILES_DEST).exists() {
+                    tracing::trace!(src = TMPFILES_SRC, dest = TMPFILES_DEST, "Symlinking");
                     tokio::fs::symlink(TMPFILES_SRC, TMPFILES_DEST)
                         .await
                         .map_err(|e| {
@@ -531,31 +503,25 @@ impl Action for ConfigureInitService {
 
         match self.init {
             InitSystem::Launchd => {
-                crate::action::macos::retry_bootout(
-                    DARWIN_LAUNCHD_DOMAIN,
-                    self.service_name
-                        .as_ref()
-                        .expect("service_name should be set for launchd"),
-                    self.service_dest
-                        .as_ref()
-                        .expect("service_dest should be defined for launchd"),
-                )
-                .await
-                .map_err(Self::error)?;
+                let service_name = self
+                    .service_name
+                    .as_ref()
+                    .expect("service_name should be set for launchd");
+
+                if let Err(e) =
+                    crate::action::macos::retry_bootout(DARWIN_LAUNCHD_DOMAIN, service_name).await
+                {
+                    errors.push(e);
+                }
 
                 // check if the daemon is down up to 99 times, with 100ms of delay between each attempt
                 for attempt in 1..100 {
                     tracing::trace!(attempt, "Checking to see if the daemon is down yet");
                     if execute_command(
-                        Command::new("launchctl").process_group(0).arg("print").arg(
-                            [
-                                DARWIN_LAUNCHD_DOMAIN,
-                                self.service_name
-                                    .as_ref()
-                                    .expect("service_name should be defined for launchd"),
-                            ]
-                            .join("/"),
-                        ),
+                        Command::new("launchctl")
+                            .process_group(0)
+                            .arg("print")
+                            .arg([DARWIN_LAUNCHD_DOMAIN, service_name].join("/")),
                     )
                     .await
                     .is_err()
@@ -645,20 +611,24 @@ impl Action for ConfigureInitService {
                 }
 
                 for socket in self.socket_files.iter() {
-                    if let UnitSrc::Literal(_) = socket.src {
+                    if socket.dest.exists() {
                         tracing::trace!(path = %socket.dest.display(), "Removing");
-                        tokio::fs::remove_file(&socket.dest)
+                        if let Err(err) = tokio::fs::remove_file(&socket.dest)
                             .await
                             .map_err(|e| ActionErrorKind::Remove(socket.dest.to_path_buf(), e))
-                            .map_err(Self::error)?;
+                        {
+                            errors.push(err);
+                        }
                     }
                 }
 
-                if let Err(err) = tokio::fs::remove_file(TMPFILES_DEST)
-                    .await
-                    .map_err(|e| ActionErrorKind::Remove(PathBuf::from(TMPFILES_DEST), e))
-                {
-                    errors.push(err);
+                if Path::new(TMPFILES_DEST).exists() {
+                    if let Err(err) = tokio::fs::remove_file(TMPFILES_DEST)
+                        .await
+                        .map_err(|e| ActionErrorKind::Remove(PathBuf::from(TMPFILES_DEST), e))
+                    {
+                        errors.push(err);
+                    }
                 }
 
                 if let Err(err) = execute_command(

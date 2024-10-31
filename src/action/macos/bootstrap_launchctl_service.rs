@@ -139,7 +139,7 @@ impl Action for BootstrapLaunchctlService {
 
     #[tracing::instrument(level = "debug", skip_all)]
     async fn revert(&mut self) -> Result<(), ActionError> {
-        crate::action::macos::retry_bootout(DARWIN_LAUNCHD_DOMAIN, &self.service, &self.path)
+        crate::action::macos::retry_bootout(DARWIN_LAUNCHD_DOMAIN, &self.service)
             .await
             .map_err(Self::error)?;
 
