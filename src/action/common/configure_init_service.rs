@@ -610,18 +610,6 @@ impl Action for ConfigureInitService {
                     errors.push(err);
                 }
 
-                for socket in self.socket_files.iter() {
-                    if socket.dest.exists() {
-                        tracing::trace!(path = %socket.dest.display(), "Removing");
-                        if let Err(err) = tokio::fs::remove_file(&socket.dest)
-                            .await
-                            .map_err(|e| ActionErrorKind::Remove(socket.dest.to_path_buf(), e))
-                        {
-                            errors.push(err);
-                        }
-                    }
-                }
-
                 if Path::new(TMPFILES_DEST).exists() {
                     if let Err(err) = tokio::fs::remove_file(TMPFILES_DEST)
                         .await
@@ -646,6 +634,30 @@ impl Action for ConfigureInitService {
                 // Nothing here, no init
             },
         };
+
+        if let Some(dest) = &self.service_dest {
+            if dest.exists() {
+                tracing::trace!(path = %dest.display(), "Removing");
+                if let Err(err) = tokio::fs::remove_file(dest)
+                    .await
+                    .map_err(|e| ActionErrorKind::Remove(PathBuf::from(dest), e))
+                {
+                    errors.push(err);
+                }
+            }
+        }
+
+        for socket in self.socket_files.iter() {
+            if socket.dest.exists() {
+                tracing::trace!(path = %socket.dest.display(), "Removing");
+                if let Err(err) = tokio::fs::remove_file(&socket.dest)
+                    .await
+                    .map_err(|e| ActionErrorKind::Remove(socket.dest.to_path_buf(), e))
+                {
+                    errors.push(err);
+                }
+            }
+        }
 
         if errors.is_empty() {
             Ok(())
