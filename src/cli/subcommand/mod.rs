@@ -1,13 +1,14 @@
-mod plan;
-use plan::Plan;
 mod install;
-use install::Install;
+mod plan;
 mod repair;
-use repair::Repair;
-mod uninstall;
-use uninstall::Uninstall;
 mod self_test;
+mod uninstall;
+
+use install::Install;
+use plan::Plan;
+use repair::Repair;
 use self_test::SelfTest;
+use uninstall::Uninstall;
 
 #[allow(clippy::large_enum_variant)]
 #[derive(Debug, clap::Subcommand)]
