@@ -19,8 +19,8 @@ mod split_receipt {
 
     use crate::cli::CommandExecute;
 
-    const PHASE1_RECEIPT_LOCATION: &str = "/nix/uninstall-phase1.json";
-    const PHASE2_RECEIPT_LOCATION: &str = "/nix/uninstall-phase2.json";
+    pub(crate) const PHASE1_RECEIPT_LOCATION: &str = "/nix/uninstall-phase1.json";
+    pub(crate) const PHASE2_RECEIPT_LOCATION: &str = "/nix/uninstall-phase2.json";
 
     /// Split an existing receipt into two phases, one that cleans up the Nix store (phase 2), and
     /// one that does everything else (phase 1).
