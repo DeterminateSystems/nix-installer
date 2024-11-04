@@ -33,7 +33,6 @@ impl BootstrapLaunchctlService {
             command.process_group(0);
             command.arg("print");
             command.arg(format!("{DARWIN_LAUNCHD_DOMAIN}/{service}"));
-            command.arg("-plist");
             command.stdin(std::process::Stdio::null());
             command.stdout(std::process::Stdio::piped());
             command.stderr(std::process::Stdio::piped());
