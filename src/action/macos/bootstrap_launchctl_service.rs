@@ -48,15 +48,6 @@ impl BootstrapLaunchctlService {
             .await
             .map_err(Self::error)?;
 
-        if is_present && !is_disabled {
-            return Ok(StatefulAction::completed(Self {
-                service,
-                path,
-                is_present,
-                is_disabled,
-            }));
-        }
-
         Ok(StatefulAction::uncompleted(Self {
             service,
             path,
@@ -116,11 +107,15 @@ impl Action for BootstrapLaunchctlService {
             .map_err(Self::error)?;
         }
 
-        if !*is_present {
-            crate::action::macos::retry_bootstrap(DARWIN_LAUNCHD_DOMAIN, service, path)
+        if *is_present {
+            crate::action::macos::retry_bootout(DARWIN_LAUNCHD_DOMAIN, service)
                 .await
                 .map_err(Self::error)?;
         }
+
+        crate::action::macos::retry_bootstrap(DARWIN_LAUNCHD_DOMAIN, service, path)
+            .await
+            .map_err(Self::error)?;
 
         Ok(())
     }
