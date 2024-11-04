@@ -103,6 +103,8 @@ impl CreateVolumeService {
                             ?expected_plist,
                             "Parsed plists not equal"
                         );
+                        // TODO(cole-h): should this really be an error? we could just replace the contents.......
+                        // maybe it's possible to have duplicate volume names...?
                         return Err(Self::error(CreateVolumeServiceError::DifferentPlist {
                             expected: expected_plist,
                             discovered: discovered_plist,
