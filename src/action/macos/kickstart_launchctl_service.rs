@@ -53,7 +53,7 @@ impl KickstartLaunchctlService {
             for output_line in output_string.lines() {
                 let output_line_trimmed = output_line.trim();
                 if output_line_trimmed.starts_with("state") {
-                    if output_line_trimmed.contains("running") {
+                    if !output_line_trimmed.contains("not running") {
                         service_started = true;
                     }
                     break;
