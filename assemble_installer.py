@@ -14,7 +14,7 @@ for build_id in hydra_eval['builds']:
     build = response.json()
     installer_url = build['buildoutputs']['out']['path']
     system = build['system']
-    if build['finished'] == "1":
+    if build['finished'] == 1:
         try:
             subprocess.call(f"nix-store -r {installer_url}", shell=True)
         except:
