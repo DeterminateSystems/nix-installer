@@ -14,7 +14,8 @@ use crate::settings::InitSystem;
 const LINUX_NIXD_DAEMON_DEST: &str = "/etc/systemd/system/nix-daemon.service";
 
 // Darwin
-const DARWIN_NIXD_DAEMON_DEST: &str = "/Library/LaunchDaemons/systems.determinate.nix-daemon.plist";
+pub(crate) const DARWIN_NIXD_DAEMON_DEST: &str =
+    "/Library/LaunchDaemons/systems.determinate.nix-daemon.plist";
 const DARWIN_NIXD_SERVICE_NAME: &str = "systems.determinate.nix-daemon";
 
 /**
@@ -37,7 +38,31 @@ impl ConfigureDeterminateNixdInitService {
         start_daemon: bool,
     ) -> Result<StatefulAction<Self>, ActionError> {
         let service_dest: Option<PathBuf> = match init {
-            InitSystem::Launchd => Some(DARWIN_NIXD_DAEMON_DEST.into()),
+            InitSystem::Launchd => {
+                // NOTE(cole-h): if the upstream daemon exists and we're installing determinate-
+                // nixd, we need to remove the old daemon unit -- we used to have a bug[1] where
+                // these service files wouldn't get removed, so we can't rely on them not being
+                // there after phase 1 of the uninstall
+                // [1]: https://github.com/DeterminateSystems/nix-installer/pull/1266
+                if std::path::Path::new(
+                    super::configure_upstream_init_service::DARWIN_NIX_DAEMON_DEST,
+                )
+                .exists()
+                {
+                    tokio::fs::remove_file(
+                        super::configure_upstream_init_service::DARWIN_NIX_DAEMON_DEST,
+                    )
+                    .await
+                    .map_err(|e| {
+                        Self::error(ActionErrorKind::Remove(
+                            super::configure_upstream_init_service::DARWIN_NIX_DAEMON_DEST.into(),
+                            e,
+                        ))
+                    })?;
+                }
+
+                Some(DARWIN_NIXD_DAEMON_DEST.into())
+            },
             InitSystem::Systemd => Some(LINUX_NIXD_DAEMON_DEST.into()),
             InitSystem::None => None,
         };
