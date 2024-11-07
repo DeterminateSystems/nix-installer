@@ -8,7 +8,10 @@ use crate::{
     },
     settings::{CommonSettings, SCRATCH_DIR},
 };
+use std::os::unix::fs::MetadataExt as _;
 use std::path::PathBuf;
+
+pub(crate) const NIX_STORE_LOCATION: &str = "/nix/store";
 
 /**
 Place Nix and it's requirements onto the target
@@ -24,6 +27,21 @@ pub struct ProvisionNix {
 impl ProvisionNix {
     #[tracing::instrument(level = "debug", skip_all)]
     pub async fn plan(settings: &CommonSettings) -> Result<StatefulAction<Self>, ActionError> {
+        if std::path::Path::new(NIX_STORE_LOCATION).exists() {
+            let previous_store_metadata = tokio::fs::metadata(NIX_STORE_LOCATION)
+                .await
+                .map_err(|e| ActionErrorKind::GettingMetadata(NIX_STORE_LOCATION.into(), e))
+                .map_err(Self::error)?;
+            let previous_store_group_id = previous_store_metadata.gid();
+            if previous_store_group_id != settings.nix_build_group_id {
+                return Err(Self::error(ActionErrorKind::PathGroupMismatch(
+                    NIX_STORE_LOCATION.into(),
+                    previous_store_group_id,
+                    settings.nix_build_group_id,
+                )));
+            }
+        }
+
         let fetch_nix = FetchAndUnpackNix::plan(
             settings.nix_package_url.clone(),
             PathBuf::from(SCRATCH_DIR),

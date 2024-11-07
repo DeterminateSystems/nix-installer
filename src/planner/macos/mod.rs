@@ -6,6 +6,7 @@ use tokio::process::Command;
 use which::which;
 
 use super::ShellProfileLocations;
+use crate::action::common::provision_nix::NIX_STORE_LOCATION;
 use crate::planner::HasExpectedErrors;
 
 mod profile_queries;
@@ -267,10 +268,13 @@ impl Planner for Macos {
                 .boxed(),
         );
         plan.push(
-            SetTmutilExclusions::plan(vec![PathBuf::from("/nix/store"), PathBuf::from("/nix/var")])
-                .await
-                .map_err(PlannerError::Action)?
-                .boxed(),
+            SetTmutilExclusions::plan(vec![
+                PathBuf::from(NIX_STORE_LOCATION),
+                PathBuf::from("/nix/var"),
+            ])
+            .await
+            .map_err(PlannerError::Action)?
+            .boxed(),
         );
         plan.push(
             ConfigureNix::plan(
