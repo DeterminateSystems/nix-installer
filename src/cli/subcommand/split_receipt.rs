@@ -131,13 +131,14 @@ impl CommandExecute for SplitReceipt {
 
         println!(
             "\
-                {success}\n\
-                ",
+            {success}\n\
+            ",
             success = format!(
                 "Phase 1 and 2 uninstall receipts successfully written:\n\
-                    Phase 1: {phase1}\n\
-                    Phase 2: {phase2}\n\
-                    You can now uninstall starting with `/nix/nix-installer uninstall {phase1}`",
+                Phase 1: {phase1}\n\
+                Phase 2: {phase2}\n\
+                You can now uninstall starting with:\n\
+                /nix/nix-installer uninstall {phase1}",
                 phase1 = self.phase1_output.display(),
                 phase2 = self.phase2_output.display()
             )
