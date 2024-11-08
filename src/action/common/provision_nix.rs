@@ -19,9 +19,9 @@ Place Nix and it's requirements onto the target
 #[derive(Debug, serde::Deserialize, serde::Serialize, Clone)]
 #[serde(tag = "action_name", rename = "provision_nix")]
 pub struct ProvisionNix {
-    fetch_nix: StatefulAction<FetchAndUnpackNix>,
-    create_nix_tree: StatefulAction<CreateNixTree>,
-    move_unpacked_nix: StatefulAction<MoveUnpackedNix>,
+    pub(crate) fetch_nix: StatefulAction<FetchAndUnpackNix>,
+    pub(crate) create_nix_tree: StatefulAction<CreateNixTree>,
+    pub(crate) move_unpacked_nix: StatefulAction<MoveUnpackedNix>,
 }
 
 impl ProvisionNix {
