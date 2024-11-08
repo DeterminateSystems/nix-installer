@@ -186,7 +186,7 @@ async fn two_phased_can_parse_receipt_perfectly(
         match inner_typetag_name {
             action_tag if action_tag == crate::action::common::ProvisionNix::action_tag().0 => {
                 let action_unjson = roundtrip_to_extract_type::<crate::action::common::ProvisionNix>(
-                    &action, action_tag,
+                    action, action_tag,
                 )?;
 
                 tracing::debug!(
@@ -210,7 +210,7 @@ async fn two_phased_can_parse_receipt_perfectly(
             action_tag if action_tag == crate::action::base::CreateDirectory::action_tag().0 => {
                 let action_unjson = roundtrip_to_extract_type::<
                     crate::action::base::CreateDirectory,
-                >(&action, action_tag)?;
+                >(action, action_tag)?;
 
                 // NOTE(cole-h): we check if it stars with /nix, in case we start creating more
                 // directories in the "toplevel" actions
@@ -235,7 +235,7 @@ async fn two_phased_can_parse_receipt_perfectly(
             action_tag if action_tag == crate::action::macos::CreateNixVolume::action_tag().0 => {
                 let action_unjson = roundtrip_to_extract_type::<
                     crate::action::macos::CreateNixVolume,
-                >(&action, action_tag)?;
+                >(action, action_tag)?;
 
                 tracing::debug!("Marking create_volume, encrypt_volume (if it happened), unmount_volume as skipped so we don't undo it until phase 2");
 
@@ -268,7 +268,7 @@ async fn two_phased_can_parse_receipt_perfectly(
             {
                 let action_unjson = roundtrip_to_extract_type::<
                     crate::action::macos::CreateDeterminateNixVolume,
-                >(&action, action_tag)?;
+                >(action, action_tag)?;
 
                 tracing::debug!("Marking create_volume, encrypt_volume, unmount_volume as skipped so we don't undo it until phase 2");
 
@@ -322,7 +322,7 @@ async fn two_phased_cannot_parse_receipt_perfectly(
     }
 
     let mut phase1_plan: OpaquePlan =
-        serde_json::from_str(&receipt_str).context("Receipt was not opaquely parseable")?;
+        serde_json::from_str(receipt_str).context("Receipt was not opaquely parseable")?;
     let mut phase2_plan = OpaquePlan {
         version: phase1_plan.version.clone(),
         actions: Vec::new(),
@@ -365,7 +365,7 @@ async fn two_phased_cannot_parse_receipt_perfectly(
 
         match action_name {
             // ProvisionNix
-            s if s == "provision_nix" => {
+            "provision_nix" => {
                 tracing::debug!(
                     "Marking provision_nix as skipped so we don't undo it until phase 2"
                 );
@@ -390,7 +390,7 @@ async fn two_phased_cannot_parse_receipt_perfectly(
                 }
             },
             // CreateDirectory; Linux-only
-            s if s == "create_directory" => {
+            "create_directory" => {
                 // NOTE(cole-h): we check if it stars with /nix, in case we created more
                 // directories in the "toplevel" actions in the past
                 let path = action_obj["path"]
@@ -443,7 +443,7 @@ async fn two_phased_cannot_parse_receipt_perfectly(
                 }
             },
             // CreateDeterminateNixVolume; macOS-only
-            s if s == "create_determinate_nix_volume" => {
+            "create_determinate_nix_volume" => {
                 tracing::debug!("Marking create_volume, encrypt_volume, unmount_volume as skipped so we don't undo it until phase 2");
 
                 {
