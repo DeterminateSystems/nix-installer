@@ -47,7 +47,7 @@ impl CreateDeterminateVolumeService {
 
         // If the service is currently loaded or running, we need to unload it during execute (since we will then recreate it and reload it)
         // This `launchctl` command may fail if the service isn't loaded
-        let check_loaded_output = execute_command(
+        let check_loaded = execute_command(
             Command::new("launchctl")
                 .arg("print")
                 .arg(format!(
@@ -61,7 +61,7 @@ impl CreateDeterminateVolumeService {
         .await
         .ok();
 
-        if check_loaded_output.is_some() {
+        if check_loaded.is_some() {
             tracing::debug!(
                 "Detected loaded service `{}` which needs unload before replacing `{}`",
                 this.mount_service_label,
