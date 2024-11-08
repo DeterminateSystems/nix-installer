@@ -166,21 +166,6 @@ async fn two_phased_can_parse_receipt_perfectly(
         diagnostic_data: phase1_plan.diagnostic_data.clone(),
     };
 
-    fn roundtrip_to_extract_type<T: serde::de::DeserializeOwned>(
-        action: &StatefulAction<Box<dyn Action>>,
-        action_tag: &str,
-    ) -> eyre::Result<StatefulAction<T>> {
-        let action_json = serde_json::to_string(action).with_context(|| {
-            format!("serde_json::to_string'ing {action_tag} json to extract real type")
-        })?;
-        let action_unjson: StatefulAction<T> =
-            serde_json::from_str(&action_json).with_context(|| {
-                format!("serde_json::from_str'ing {action_tag} json to extract real type")
-            })?;
-
-        Ok(action_unjson)
-    }
-
     for action in phase1_plan.actions.iter_mut() {
         let inner_typetag_name = action.inner_typetag_name();
         match inner_typetag_name {
@@ -474,4 +459,19 @@ async fn two_phased_cannot_parse_receipt_perfectly(
     crate::plan::write_receipt(&phase2_plan, &uninstall_args.phase2_output).await?;
 
     Ok(())
+}
+
+fn roundtrip_to_extract_type<T: serde::de::DeserializeOwned>(
+    action: &StatefulAction<Box<dyn Action>>,
+    action_tag: &str,
+) -> eyre::Result<StatefulAction<T>> {
+    let action_json = serde_json::to_string(action).with_context(|| {
+        format!("serde_json::to_string'ing {action_tag} json to extract real type")
+    })?;
+    let action_unjson: StatefulAction<T> =
+        serde_json::from_str(&action_json).with_context(|| {
+            format!("serde_json::from_str'ing {action_tag} json to extract real type")
+        })?;
+
+    Ok(action_unjson)
 }
