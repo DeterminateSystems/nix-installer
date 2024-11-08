@@ -100,7 +100,7 @@ impl Action for BootstrapLaunchctlService {
                 Command::new("launchctl")
                     .process_group(0)
                     .arg("enable")
-                    .arg(&format!("{DARWIN_LAUNCHD_DOMAIN}/{service}"))
+                    .arg(format!("{DARWIN_LAUNCHD_DOMAIN}/{service}"))
                     .stdin(std::process::Stdio::null()),
             )
             .await
