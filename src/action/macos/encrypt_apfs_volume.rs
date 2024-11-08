@@ -86,8 +86,8 @@ impl EncryptApfsVolume {
             let parsed: DiskUtilDiskInfoOutput =
                 plist::from_bytes(&output.stdout).map_err(Self::error)?;
 
-            // The user has an already-encrypted volume, but we couldn't retrieve the password. We won't
-            // be able to decrypt the volume.
+            // The user has an already-encrypted volume, but we couldn't retrieve the password.
+            // We won't be able to decrypt the volume.
             if parsed.file_vault {
                 return Err(Self::error(
                     EncryptApfsVolumeError::MissingPasswordForExistingVolume(name, disk),
