@@ -33,7 +33,6 @@ impl BootstrapLaunchctlService {
             command.process_group(0);
             command.arg("print");
             command.arg(format!("{DARWIN_LAUNCHD_DOMAIN}/{service}"));
-            command.arg("-plist");
             command.stdin(std::process::Stdio::null());
             command.stdout(std::process::Stdio::piped());
             command.stderr(std::process::Stdio::piped());
@@ -48,15 +47,6 @@ impl BootstrapLaunchctlService {
         let is_disabled = service_is_disabled(DARWIN_LAUNCHD_DOMAIN, &service)
             .await
             .map_err(Self::error)?;
-
-        if is_present && !is_disabled {
-            return Ok(StatefulAction::completed(Self {
-                service,
-                path,
-                is_present,
-                is_disabled,
-            }));
-        }
 
         Ok(StatefulAction::uncompleted(Self {
             service,
@@ -110,18 +100,22 @@ impl Action for BootstrapLaunchctlService {
                 Command::new("launchctl")
                     .process_group(0)
                     .arg("enable")
-                    .arg(&format!("{DARWIN_LAUNCHD_DOMAIN}/{service}"))
+                    .arg(format!("{DARWIN_LAUNCHD_DOMAIN}/{service}"))
                     .stdin(std::process::Stdio::null()),
             )
             .await
             .map_err(Self::error)?;
         }
 
-        if !*is_present {
-            crate::action::macos::retry_bootstrap(DARWIN_LAUNCHD_DOMAIN, service, path)
+        if *is_present {
+            crate::action::macos::retry_bootout(DARWIN_LAUNCHD_DOMAIN, service)
                 .await
                 .map_err(Self::error)?;
         }
+
+        crate::action::macos::retry_bootstrap(DARWIN_LAUNCHD_DOMAIN, service, path)
+            .await
+            .map_err(Self::error)?;
 
         Ok(())
     }

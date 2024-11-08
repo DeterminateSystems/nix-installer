@@ -1,6 +1,6 @@
 use uuid::Uuid;
 
-use super::{get_uuid_for_label, CreateApfsVolume};
+use super::{get_disk_info_for_label, CreateApfsVolume};
 use crate::action::{
     Action, ActionDescription, ActionError, ActionErrorKind, ActionState, ActionTag, StatefulAction,
 };
@@ -123,11 +123,11 @@ impl Action for CreateFstabEntry {
             existing_entry,
         } = self;
         let fstab_path = Path::new(FSTAB_PATH);
-        let uuid = match get_uuid_for_label(apfs_volume_label)
+        let uuid = match get_disk_info_for_label(apfs_volume_label)
             .await
             .map_err(Self::error)?
         {
-            Some(uuid) => uuid,
+            Some(diskutil_info) => diskutil_info.volume_uuid,
             None => {
                 return Err(Self::error(CreateFstabEntryError::CannotDetermineUuid(
                     apfs_volume_label.clone(),
@@ -237,11 +237,11 @@ impl Action for CreateFstabEntry {
     async fn revert(&mut self) -> Result<(), ActionError> {
         let fstab_path = Path::new(FSTAB_PATH);
 
-        if let Some(uuid) = get_uuid_for_label(&self.apfs_volume_label)
+        if let Some(diskutil_info) = get_disk_info_for_label(&self.apfs_volume_label)
             .await
             .map_err(Self::error)?
         {
-            let fstab_entry = fstab_lines(&uuid, &self.apfs_volume_label);
+            let fstab_entry = fstab_lines(&diskutil_info.volume_uuid, &self.apfs_volume_label);
 
             let mut file = OpenOptions::new()
                 .create(false)

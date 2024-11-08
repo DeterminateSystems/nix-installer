@@ -1,19 +1,25 @@
 use serde::{Deserialize, Serialize};
 use tracing::{span, Span};
 
-use std::path::{Path, PathBuf};
+use std::{
+    path::{Path, PathBuf},
+    process::Stdio,
+};
 use tokio::{
     fs::{remove_file, OpenOptions},
     io::AsyncWriteExt,
     process::Command,
 };
 
-use crate::action::{
-    macos::DARWIN_LAUNCHD_DOMAIN, Action, ActionDescription, ActionError, ActionErrorKind,
-    ActionTag, StatefulAction,
+use crate::{
+    action::{
+        macos::DARWIN_LAUNCHD_DOMAIN, Action, ActionDescription, ActionError, ActionErrorKind,
+        ActionTag, StatefulAction,
+    },
+    execute_command,
 };
 
-use super::get_uuid_for_label;
+use super::get_disk_info_for_label;
 
 /** Create a plist for a `launchctl` service to mount the given `apfs_volume_label` on the given `mount_point`.
  */
@@ -51,39 +57,41 @@ impl CreateVolumeService {
 
         // If the service is currently loaded or running, we need to unload it during execute (since we will then recreate it and reload it)
         // This `launchctl` command may fail if the service isn't loaded
-        let mut check_loaded_command = Command::new("launchctl");
-        check_loaded_command.arg("print");
-        check_loaded_command.arg(format!("system/{}", this.mount_service_label));
-        tracing::trace!(
-            command = format!("{:?}", check_loaded_command.as_std()),
-            "Executing"
-        );
-        let check_loaded_output = check_loaded_command
-            .output()
-            .await
-            .map_err(|e| ActionErrorKind::command(&check_loaded_command, e))
-            .map_err(Self::error)?;
-        this.needs_bootout = check_loaded_output.status.success();
-        if this.needs_bootout {
+        let check_loaded = execute_command(
+            Command::new("launchctl")
+                .arg("print")
+                .arg(format!(
+                    "{DARWIN_LAUNCHD_DOMAIN}/{}",
+                    this.mount_service_label
+                ))
+                .stdin(Stdio::null())
+                .stdout(Stdio::null())
+                .stderr(Stdio::null()),
+        )
+        .await
+        .ok();
+
+        if check_loaded.is_some() {
             tracing::debug!(
                 "Detected loaded service `{}` which needs unload before replacing `{}`",
                 this.mount_service_label,
                 this.path.display(),
             );
+            this.needs_bootout = true;
         }
 
         if this.path.exists() {
             let discovered_plist: LaunchctlMountPlist =
                 plist::from_file(&this.path).map_err(Self::error)?;
-            match get_uuid_for_label(&this.apfs_volume_label)
+            match get_disk_info_for_label(&this.apfs_volume_label)
                 .await
                 .map_err(Self::error)?
             {
-                Some(uuid) => {
+                Some(disk_info) => {
                     let expected_plist = generate_mount_plist(
                         &this.mount_service_label,
                         &this.apfs_volume_label,
-                        uuid,
+                        disk_info.volume_uuid,
                         &this.mount_point,
                         encrypt,
                     )
@@ -191,7 +199,7 @@ impl Action for CreateVolumeService {
                 .map_err(Self::error)?;
         }
 
-        let uuid = match get_uuid_for_label(apfs_volume_label)
+        let disk_info = match get_disk_info_for_label(apfs_volume_label)
             .await
             .map_err(Self::error)?
         {
@@ -205,7 +213,7 @@ impl Action for CreateVolumeService {
         let generated_plist = generate_mount_plist(
             mount_service_label,
             apfs_volume_label,
-            uuid,
+            disk_info.volume_uuid,
             mount_point,
             *encrypt,
         )

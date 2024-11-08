@@ -44,7 +44,7 @@ impl EncryptApfsVolume {
         command.arg("-s");
         command.arg("Nix Store");
         command.arg("-l");
-        command.arg(&format!("{} encryption password", disk.display()));
+        command.arg(format!("{} encryption password", disk.display()));
         command.arg("-D");
         command.arg("Encrypted volume password");
         command.process_group(0);
@@ -72,10 +72,27 @@ impl EncryptApfsVolume {
                 name, disk,
             )));
         } else if planned_create_apfs_volume.state == ActionState::Completed {
-            // The user has a volume already created, but a password not set. This means we probably can't decrypt the volume.
-            return Err(Self::error(
-                EncryptApfsVolumeError::MissingPasswordForExistingVolume(name, disk),
-            ));
+            #[derive(serde::Deserialize)]
+            #[serde(rename_all = "PascalCase")]
+            struct DiskUtilDiskInfoOutput {
+                file_vault: bool,
+            }
+
+            let output =
+                execute_command(Command::new("/usr/sbin/diskutil").args(["info", "-plist", &name]))
+                    .await
+                    .map_err(Self::error)?;
+
+            let parsed: DiskUtilDiskInfoOutput =
+                plist::from_bytes(&output.stdout).map_err(Self::error)?;
+
+            // The user has an already-encrypted volume, but we couldn't retrieve the password.
+            // We won't be able to decrypt the volume.
+            if parsed.file_vault {
+                return Err(Self::error(
+                    EncryptApfsVolumeError::MissingPasswordForExistingVolume(name, disk),
+                ));
+            }
         }
 
         // Ensure if the disk already exists, that it's encrypted
@@ -88,18 +105,12 @@ impl EncryptApfsVolume {
             plist::from_bytes(&output.stdout).map_err(Self::error)?;
         for container in parsed.containers {
             for volume in container.volumes {
-                if volume.name.as_ref() == Some(&name) {
-                    if volume.encryption {
-                        return Err(Self::error(
-                            EncryptApfsVolumeError::ExistingVolumeNotEncrypted(name, disk),
-                        ));
-                    } else {
-                        return Ok(StatefulAction::completed(Self {
-                            determinate_nix,
-                            disk,
-                            name,
-                        }));
-                    }
+                if volume.name.as_ref() == Some(&name) && volume.file_vault {
+                    return Ok(StatefulAction::completed(Self {
+                        determinate_nix,
+                        disk,
+                        name,
+                    }));
                 }
             }
         }

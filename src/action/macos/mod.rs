@@ -46,7 +46,9 @@ use super::ActionErrorKind;
 
 pub const DARWIN_LAUNCHD_DOMAIN: &str = "system";
 
-async fn get_uuid_for_label(apfs_volume_label: &str) -> Result<Option<Uuid>, ActionErrorKind> {
+pub(crate) async fn get_disk_info_for_label(
+    apfs_volume_label: &str,
+) -> Result<Option<DiskUtilApfsInfoOutput>, ActionErrorKind> {
     let mut command = Command::new("/usr/sbin/diskutil");
     command.process_group(0);
     command.arg("info");
@@ -63,32 +65,39 @@ async fn get_uuid_for_label(apfs_volume_label: &str) -> Result<Option<Uuid>, Act
         .await
         .map_err(|e| ActionErrorKind::command(&command, e))?;
 
-    let parsed: DiskUtilApfsInfoOutput = plist::from_bytes(&output.stdout)?;
+    if let Ok(diskutil_info) = plist::from_bytes::<DiskUtilApfsInfoOutput>(&output.stdout) {
+        return Ok(Some(diskutil_info));
+    }
 
-    if let Some(error_message) = parsed.error_message {
+    if let Ok(diskutil_error) = plist::from_bytes::<DiskUtilApfsInfoError>(&output.stdout) {
+        let error_message = diskutil_error.error_message;
         let expected_not_found = format!("Could not find disk: {apfs_volume_label}");
         if error_message.contains(&expected_not_found) {
-            Ok(None)
+            return Ok(None);
         } else {
-            Err(ActionErrorKind::DiskUtilInfoError {
+            return Err(ActionErrorKind::DiskUtilInfoError {
                 command: command_str,
                 message: error_message,
-            })
+            });
         }
-    } else if let Some(uuid) = parsed.volume_uuid {
-        Ok(Some(uuid))
-    } else {
-        Err(ActionErrorKind::command_output(&command, output))
     }
+
+    Err(ActionErrorKind::command_output(&command, output))
 }
 
 #[derive(Deserialize, Clone, Debug)]
 #[serde(rename_all = "PascalCase")]
-struct DiskUtilApfsInfoOutput {
-    #[serde(rename = "ErrorMessage")]
-    error_message: Option<String>,
+pub(crate) struct DiskUtilApfsInfoOutput {
     #[serde(rename = "VolumeUUID")]
-    volume_uuid: Option<Uuid>,
+    volume_uuid: Uuid,
+    pub(crate) file_vault: bool,
+}
+
+#[derive(Deserialize, Clone, Debug)]
+#[serde(rename_all = "PascalCase")]
+struct DiskUtilApfsInfoError {
+    #[serde(rename = "ErrorMessage")]
+    error_message: String,
 }
 
 #[tracing::instrument]

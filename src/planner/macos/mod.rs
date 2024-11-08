@@ -163,21 +163,54 @@ impl Planner for Macos {
         // This is a goofy thing to do, but it is in an attempt to make a more globally coherent plan / receipt.
         let encrypt = match (self.settings.determinate_nix, self.encrypt) {
             (true, _) => true,
-            (false, Some(choice)) => choice,
+            (false, Some(choice)) => {
+                if let Some(diskutil_info) =
+                    crate::action::macos::get_disk_info_for_label(&self.volume_label)
+                        .await
+                        .ok()
+                        .flatten()
+                {
+                    if diskutil_info.file_vault {
+                        tracing::warn!("Existing volume was encrypted with FileVault, forcing `encrypt` to true");
+                        true
+                    } else {
+                        choice
+                    }
+                } else {
+                    choice
+                }
+            },
             (false, None) => {
-                let output = Command::new("/usr/bin/fdesetup")
-                    .arg("isactive")
-                    .stdout(std::process::Stdio::null())
-                    .stderr(std::process::Stdio::null())
-                    .process_group(0)
-                    .output()
-                    .await
-                    .map_err(|e| PlannerError::Custom(Box::new(e)))?;
+                let root_disk_is_encrypted = {
+                    let output = Command::new("/usr/bin/fdesetup")
+                        .arg("isactive")
+                        .stdout(std::process::Stdio::null())
+                        .stderr(std::process::Stdio::null())
+                        .process_group(0)
+                        .output()
+                        .await
+                        .map_err(|e| PlannerError::Custom(Box::new(e)))?;
 
-                let stdout = String::from_utf8_lossy(&output.stdout);
-                let stdout_trimmed = stdout.trim();
+                    let stdout = String::from_utf8_lossy(&output.stdout);
+                    let stdout_trimmed = stdout.trim();
 
-                stdout_trimmed == "true"
+                    stdout_trimmed == "true"
+                };
+
+                let existing_store_volume_is_encrypted = {
+                    if let Some(diskutil_info) =
+                        crate::action::macos::get_disk_info_for_label(&self.volume_label)
+                            .await
+                            .ok()
+                            .flatten()
+                    {
+                        diskutil_info.file_vault
+                    } else {
+                        false
+                    }
+                };
+
+                root_disk_is_encrypted || existing_store_volume_is_encrypted
             },
         };
 
