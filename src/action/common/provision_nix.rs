@@ -28,18 +28,9 @@ impl ProvisionNix {
     #[tracing::instrument(level = "debug", skip_all)]
     pub async fn plan(settings: &CommonSettings) -> Result<StatefulAction<Self>, ActionError> {
         if std::path::Path::new(NIX_STORE_LOCATION).exists() {
-            let previous_store_metadata = tokio::fs::metadata(NIX_STORE_LOCATION)
+            check_existing_nix_store_gid_matches(settings.nix_build_group_id)
                 .await
-                .map_err(|e| ActionErrorKind::GettingMetadata(NIX_STORE_LOCATION.into(), e))
                 .map_err(Self::error)?;
-            let previous_store_group_id = previous_store_metadata.gid();
-            if previous_store_group_id != settings.nix_build_group_id {
-                return Err(Self::error(ActionErrorKind::PathGroupMismatch(
-                    NIX_STORE_LOCATION.into(),
-                    previous_store_group_id,
-                    settings.nix_build_group_id,
-                )));
-            }
         }
 
         let fetch_nix = FetchAndUnpackNix::plan(
@@ -161,4 +152,25 @@ impl Action for ProvisionNix {
             Err(Self::error(ActionErrorKind::MultipleChildren(errors)))
         }
     }
+}
+
+/// If there is an existing /nix/store directory, ensure that the group ID we're going to use for
+/// the nix build group matches the group that owns /nix/store to prevent weird mismatched-ownership
+/// issues.
+async fn check_existing_nix_store_gid_matches(
+    desired_nix_build_group_id: u32,
+) -> Result<(), ActionErrorKind> {
+    let previous_store_metadata = tokio::fs::metadata(NIX_STORE_LOCATION)
+        .await
+        .map_err(|e| ActionErrorKind::GettingMetadata(NIX_STORE_LOCATION.into(), e))?;
+    let previous_store_group_id = previous_store_metadata.gid();
+    if previous_store_group_id != desired_nix_build_group_id {
+        return Err(ActionErrorKind::PathGroupMismatch(
+            NIX_STORE_LOCATION.into(),
+            previous_store_group_id,
+            desired_nix_build_group_id,
+        ));
+    }
+
+    Ok(())
 }
