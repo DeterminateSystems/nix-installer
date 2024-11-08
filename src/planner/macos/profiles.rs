@@ -65,8 +65,8 @@ pub enum ProfileItem {
 #[derive(serde::Deserialize, Clone, Debug, PartialEq)]
 #[serde(rename_all = "PascalCase")]
 pub struct UnknownProfileItem {
-    payload_type: String,
-    payload_content: plist::Value,
+    payload_type: Option<String>,
+    payload_content: Option<plist::Value>,
 }
 
 impl std::cmp::Eq for UnknownProfileItem {}
@@ -146,13 +146,13 @@ mod tests {
                     profile_uuid: Some("F7972F85-2A4D-4609-A4BB-02CB0C34A3F8".into()),
                     profile_version: Some(1),
                     profile_items: vec![ProfileItem::Unknown(UnknownProfileItem {
-                        payload_type: "com.apple.SoftwareUpdate".into(),
-                        payload_content: plist::Value::Dictionary({
+                        payload_type: Some("com.apple.SoftwareUpdate".into()),
+                        payload_content: Some(plist::Value::Dictionary({
                             let mut dict = plist::dictionary::Dictionary::new();
                             dict.insert("AllowPreReleaseInstallation".into(), false.into());
                             dict.insert("AutomaticCheckEnabled".into(), true.into());
                             dict
-                        })
+                        }))
                     })],
                 }]
             )]),
