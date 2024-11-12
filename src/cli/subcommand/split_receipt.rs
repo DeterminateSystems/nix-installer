@@ -173,9 +173,8 @@ async fn two_phased_can_parse_receipt_perfectly(
         let inner_typetag_name = action.inner_typetag_name();
         match inner_typetag_name {
             action_tag if action_tag == crate::action::common::ProvisionNix::action_tag().0 => {
-                let action_unjson = roundtrip_to_extract_type::<crate::action::common::ProvisionNix>(
-                    action, action_tag,
-                )?;
+                let action_unjson =
+                    roundtrip_to_extract_type::<crate::action::common::ProvisionNix>(action)?;
 
                 tracing::debug!(
                     "Marking provision_nix as skipped so we don't undo it until phase 2"
@@ -196,9 +195,8 @@ async fn two_phased_can_parse_receipt_perfectly(
                 }
             },
             action_tag if action_tag == crate::action::base::CreateDirectory::action_tag().0 => {
-                let action_unjson = roundtrip_to_extract_type::<
-                    crate::action::base::CreateDirectory,
-                >(action, action_tag)?;
+                let action_unjson =
+                    roundtrip_to_extract_type::<crate::action::base::CreateDirectory>(action)?;
 
                 // NOTE(cole-h): we check if it stars with /nix, in case we start creating more
                 // directories in the "toplevel" actions
@@ -221,9 +219,8 @@ async fn two_phased_can_parse_receipt_perfectly(
                 }
             },
             action_tag if action_tag == crate::action::macos::CreateNixVolume::action_tag().0 => {
-                let action_unjson = roundtrip_to_extract_type::<
-                    crate::action::macos::CreateNixVolume,
-                >(action, action_tag)?;
+                let action_unjson =
+                    roundtrip_to_extract_type::<crate::action::macos::CreateNixVolume>(action)?;
 
                 tracing::debug!("Marking create_volume, encrypt_volume (if it happened), unmount_volume as skipped so we don't undo it until phase 2");
 
@@ -256,7 +253,7 @@ async fn two_phased_can_parse_receipt_perfectly(
             {
                 let action_unjson = roundtrip_to_extract_type::<
                     crate::action::macos::CreateDeterminateNixVolume,
-                >(action, action_tag)?;
+                >(action)?;
 
                 tracing::debug!("Marking create_volume, encrypt_volume, unmount_volume as skipped so we don't undo it until phase 2");
 
@@ -466,14 +463,14 @@ async fn two_phased_cannot_parse_receipt_perfectly(
 
 fn roundtrip_to_extract_type<T: serde::de::DeserializeOwned>(
     action: &StatefulAction<Box<dyn Action>>,
-    action_tag: &str,
 ) -> eyre::Result<StatefulAction<T>> {
+    let action_name = std::any::type_name::<T>();
     let action_json = serde_json::to_string(action).with_context(|| {
-        format!("serde_json::to_string'ing {action_tag} json to extract real type")
+        format!("serde_json::to_string'ing {action_name} json to extract real type")
     })?;
     let action_unjson: StatefulAction<T> =
         serde_json::from_str(&action_json).with_context(|| {
-            format!("serde_json::from_str'ing {action_tag} json to extract real type")
+            format!("serde_json::from_str'ing {action_name} json to extract real type")
         })?;
 
     Ok(action_unjson)
