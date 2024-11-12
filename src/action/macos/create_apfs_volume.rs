@@ -11,7 +11,7 @@ use crate::action::{Action, ActionDescription};
 use crate::os::darwin::{DiskUtilApfsListOutput, DiskUtilInfoOutput};
 
 #[derive(Debug, serde::Deserialize, serde::Serialize, Clone)]
-#[serde(tag = "action_name", rename = "create_volume")]
+#[serde(tag = "action_name", rename = "create_apfs_volume")]
 pub struct CreateApfsVolume {
     disk: PathBuf,
     name: String,
@@ -53,7 +53,7 @@ impl CreateApfsVolume {
 }
 
 #[async_trait::async_trait]
-#[typetag::serde(name = "create_volume")]
+#[typetag::serde(name = "create_apfs_volume")]
 impl Action for CreateApfsVolume {
     fn action_tag() -> ActionTag {
         ActionTag("create_apfs_volume")

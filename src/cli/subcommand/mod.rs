@@ -1,13 +1,16 @@
-mod plan;
-use plan::Plan;
 mod install;
-use install::Install;
+mod plan;
 mod repair;
-use repair::Repair;
-mod uninstall;
-use uninstall::Uninstall;
 mod self_test;
+mod split_receipt;
+mod uninstall;
+
+use install::Install;
+use plan::Plan;
+use repair::Repair;
 use self_test::SelfTest;
+use split_receipt::SplitReceipt;
+use uninstall::Uninstall;
 
 #[allow(clippy::large_enum_variant)]
 #[derive(Debug, clap::Subcommand)]
@@ -17,4 +20,5 @@ pub enum NixInstallerSubcommand {
     Uninstall(Uninstall),
     SelfTest(SelfTest),
     Plan(Plan),
+    SplitReceipt(SplitReceipt),
 }

@@ -1,4 +1,7 @@
-use std::{path::PathBuf, str::FromStr};
+use std::{
+    path::{Path, PathBuf},
+    str::FromStr,
+};
 
 use crate::{
     action::{Action, ActionDescription, StatefulAction},
@@ -15,7 +18,7 @@ pub const RECEIPT_LOCATION: &str = "/nix/receipt.json";
 A set of [`Action`]s, along with some metadata, which can be carried out to drive an install or
 revert
 */
-#[derive(Debug, serde::Deserialize, serde::Serialize)]
+#[derive(Clone, Debug, serde::Deserialize, serde::Serialize)]
 pub struct InstallPlan {
     pub(crate) version: Version,
 
@@ -417,28 +420,35 @@ impl InstallPlan {
 
     pub(crate) async fn write_receipt(&self) -> Result<(), NixInstallerError> {
         let install_receipt_path = PathBuf::from(RECEIPT_LOCATION);
-        let install_receipt_path_tmp = {
-            let mut install_receipt_path_tmp = install_receipt_path.clone();
-            install_receipt_path_tmp.set_extension("tmp");
-            install_receipt_path_tmp
-        };
-        let self_json =
-            serde_json::to_string_pretty(&self).map_err(NixInstallerError::SerializingReceipt)?;
-
-        tokio::fs::create_dir_all("/nix")
-            .await
-            .map_err(|e| NixInstallerError::RecordingReceipt(PathBuf::from("/nix"), e))?;
-        tokio::fs::write(&install_receipt_path_tmp, format!("{self_json}\n"))
-            .await
-            .map_err(|e| {
-                NixInstallerError::RecordingReceipt(install_receipt_path_tmp.clone(), e)
-            })?;
-        tokio::fs::rename(&install_receipt_path_tmp, &install_receipt_path)
-            .await
-            .map_err(|e| NixInstallerError::RecordingReceipt(install_receipt_path.clone(), e))?;
+        write_receipt(self, &install_receipt_path).await?;
 
         Ok(())
     }
+}
+
+pub(crate) async fn write_receipt(
+    plan: &impl serde::Serialize,
+    install_receipt_path: &Path,
+) -> Result<(), NixInstallerError> {
+    let install_receipt_path_tmp = {
+        let mut install_receipt_path_tmp = install_receipt_path.to_path_buf();
+        install_receipt_path_tmp.set_extension("tmp");
+        install_receipt_path_tmp
+    };
+    let self_json =
+        serde_json::to_string_pretty(plan).map_err(NixInstallerError::SerializingReceipt)?;
+
+    tokio::fs::create_dir_all("/nix")
+        .await
+        .map_err(|e| NixInstallerError::RecordingReceipt(PathBuf::from("/nix"), e))?;
+    tokio::fs::write(&install_receipt_path_tmp, format!("{self_json}\n"))
+        .await
+        .map_err(|e| NixInstallerError::RecordingReceipt(install_receipt_path_tmp.clone(), e))?;
+    tokio::fs::rename(&install_receipt_path_tmp, &install_receipt_path)
+        .await
+        .map_err(|e| NixInstallerError::RecordingReceipt(install_receipt_path.to_path_buf(), e))?;
+
+    Ok(())
 }
 
 pub fn current_version() -> Result<Version, NixInstallerError> {

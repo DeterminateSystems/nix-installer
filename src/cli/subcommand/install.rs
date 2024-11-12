@@ -9,7 +9,9 @@ use crate::{
     cli::{
         ensure_root,
         interaction::{self, PromptChoice},
-        signal_channel, CommandExecute,
+        signal_channel,
+        subcommand::split_receipt::{PHASE1_RECEIPT_LOCATION, PHASE2_RECEIPT_LOCATION},
+        CommandExecute,
     },
     error::HasExpectedErrors,
     plan::RECEIPT_LOCATION,
@@ -319,6 +321,20 @@ impl CommandExecute for Install {
                 copy_self_to_nix_dir()
                     .await
                     .wrap_err("Copying `nix-installer` to `/nix/nix-installer`")?;
+
+                if Path::new(PHASE1_RECEIPT_LOCATION).exists() {
+                    tracing::debug!("Removing pre-existing uninstall phase 1 receipt at {PHASE1_RECEIPT_LOCATION} after successful install");
+                    tokio::fs::remove_file(PHASE1_RECEIPT_LOCATION)
+                        .await
+                        .wrap_err_with(|| format!("Failed to remove uninstall phase 1 receipt at {PHASE1_RECEIPT_LOCATION}"))?;
+                }
+                if Path::new(PHASE2_RECEIPT_LOCATION).exists() {
+                    tracing::debug!("Removing pre-existing uninstall phase 2 receipt at {PHASE2_RECEIPT_LOCATION} after successful install");
+                    tokio::fs::remove_file(PHASE2_RECEIPT_LOCATION)
+                        .await
+                        .wrap_err_with(|| format!("Failed to remove uninstall phase 2 receipt at {PHASE2_RECEIPT_LOCATION}"))?;
+                }
+
                 println!(
                     "\
                     {success}\n\

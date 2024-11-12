@@ -20,7 +20,7 @@ use super::CreateApfsVolume;
 Encrypt an APFS volume
  */
 #[derive(Debug, serde::Deserialize, serde::Serialize, Clone)]
-#[serde(tag = "action_name", rename = "encrypt_volume")]
+#[serde(tag = "action_name", rename = "encrypt_apfs_volume")]
 pub struct EncryptApfsVolume {
     determinate_nix: bool,
     disk: PathBuf,
@@ -124,7 +124,7 @@ impl EncryptApfsVolume {
 }
 
 #[async_trait::async_trait]
-#[typetag::serde(name = "encrypt_volume")]
+#[typetag::serde(name = "encrypt_apfs_volume")]
 impl Action for EncryptApfsVolume {
     fn action_tag() -> ActionTag {
         ActionTag("encrypt_apfs_volume")

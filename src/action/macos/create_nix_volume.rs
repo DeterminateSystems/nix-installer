@@ -22,7 +22,7 @@ pub const NIX_VOLUME_MOUNTD_DEST: &str = "/Library/LaunchDaemons/org.nixos.darwi
 
 /// Create an APFS volume
 #[derive(Debug, serde::Deserialize, serde::Serialize, Clone)]
-#[serde(tag = "action_name", rename = "create_apfs_volume")]
+#[serde(tag = "action_name", rename = "create_nix_volume")]
 pub struct CreateNixVolume {
     disk: PathBuf,
     name: String,
@@ -30,10 +30,10 @@ pub struct CreateNixVolume {
     encrypt: bool,
     create_or_append_synthetic_conf: StatefulAction<CreateOrInsertIntoFile>,
     create_synthetic_objects: StatefulAction<CreateSyntheticObjects>,
-    unmount_volume: StatefulAction<UnmountApfsVolume>,
-    create_volume: StatefulAction<CreateApfsVolume>,
+    pub(crate) unmount_volume: StatefulAction<UnmountApfsVolume>,
+    pub(crate) create_volume: StatefulAction<CreateApfsVolume>,
     create_fstab_entry: StatefulAction<CreateFstabEntry>,
-    encrypt_volume: Option<StatefulAction<EncryptApfsVolume>>,
+    pub(crate) encrypt_volume: Option<StatefulAction<EncryptApfsVolume>>,
     setup_volume_daemon: StatefulAction<CreateVolumeService>,
     bootstrap_volume: StatefulAction<BootstrapLaunchctlService>,
     kickstart_launchctl_service: StatefulAction<KickstartLaunchctlService>,
@@ -121,7 +121,7 @@ impl CreateNixVolume {
 }
 
 #[async_trait::async_trait]
-#[typetag::serde(name = "create_apfs_volume")]
+#[typetag::serde(name = "create_nix_volume")]
 impl Action for CreateNixVolume {
     fn action_tag() -> ActionTag {
         ActionTag("create_nix_volume")
@@ -138,7 +138,7 @@ impl Action for CreateNixVolume {
     fn tracing_span(&self) -> Span {
         span!(
             tracing::Level::DEBUG,
-            "create_apfs_volume",
+            "create_nix_volume",
             disk = tracing::field::display(self.disk.display()),
             name = self.name
         )

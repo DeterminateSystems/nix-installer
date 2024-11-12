@@ -8,7 +8,10 @@ use crate::{
     },
     settings::{CommonSettings, SCRATCH_DIR},
 };
+use std::os::unix::fs::MetadataExt as _;
 use std::path::PathBuf;
+
+pub(crate) const NIX_STORE_LOCATION: &str = "/nix/store";
 
 /**
 Place Nix and it's requirements onto the target
@@ -16,14 +19,20 @@ Place Nix and it's requirements onto the target
 #[derive(Debug, serde::Deserialize, serde::Serialize, Clone)]
 #[serde(tag = "action_name", rename = "provision_nix")]
 pub struct ProvisionNix {
-    fetch_nix: StatefulAction<FetchAndUnpackNix>,
-    create_nix_tree: StatefulAction<CreateNixTree>,
-    move_unpacked_nix: StatefulAction<MoveUnpackedNix>,
+    pub(crate) fetch_nix: StatefulAction<FetchAndUnpackNix>,
+    pub(crate) create_nix_tree: StatefulAction<CreateNixTree>,
+    pub(crate) move_unpacked_nix: StatefulAction<MoveUnpackedNix>,
 }
 
 impl ProvisionNix {
     #[tracing::instrument(level = "debug", skip_all)]
     pub async fn plan(settings: &CommonSettings) -> Result<StatefulAction<Self>, ActionError> {
+        if std::path::Path::new(NIX_STORE_LOCATION).exists() {
+            check_existing_nix_store_gid_matches(settings.nix_build_group_id)
+                .await
+                .map_err(Self::error)?;
+        }
+
         let fetch_nix = FetchAndUnpackNix::plan(
             settings.nix_package_url.clone(),
             PathBuf::from(SCRATCH_DIR),
@@ -143,4 +152,25 @@ impl Action for ProvisionNix {
             Err(Self::error(ActionErrorKind::MultipleChildren(errors)))
         }
     }
+}
+
+/// If there is an existing /nix/store directory, ensure that the group ID we're going to use for
+/// the nix build group matches the group that owns /nix/store to prevent weird mismatched-ownership
+/// issues.
+async fn check_existing_nix_store_gid_matches(
+    desired_nix_build_group_id: u32,
+) -> Result<(), ActionErrorKind> {
+    let previous_store_metadata = tokio::fs::metadata(NIX_STORE_LOCATION)
+        .await
+        .map_err(|e| ActionErrorKind::GettingMetadata(NIX_STORE_LOCATION.into(), e))?;
+    let previous_store_group_id = previous_store_metadata.gid();
+    if previous_store_group_id != desired_nix_build_group_id {
+        return Err(ActionErrorKind::PathGroupMismatch(
+            NIX_STORE_LOCATION.into(),
+            previous_store_group_id,
+            desired_nix_build_group_id,
+        ));
+    }
+
+    Ok(())
 }
