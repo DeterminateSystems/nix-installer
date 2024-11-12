@@ -104,15 +104,17 @@ impl CommandExecute for SplitReceipt {
         if self.force_naive_json_method {
             two_phased_cannot_parse_receipt_perfectly(&self, &install_receipt_string).await?;
         } else {
-            match serde_json::from_str::<InstallPlan>(&install_receipt_string)
-                .ok()
-                .and_then(|plan| {
-                    if plan.check_compatible().is_ok() {
-                        Some(plan)
-                    } else {
-                        None
-                    }
-                }) {
+            let maybe_compatible_plan =
+                serde_json::from_str::<InstallPlan>(&install_receipt_string)
+                    .ok()
+                    .and_then(|plan| {
+                        if plan.check_compatible().is_ok() {
+                            Some(plan)
+                        } else {
+                            None
+                        }
+                    });
+            match maybe_compatible_plan {
                 Some(plan) => {
                     two_phased_can_parse_receipt_perfectly(&self, plan).await?;
                 },
