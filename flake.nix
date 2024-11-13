@@ -2,7 +2,7 @@
   description = "The Determinate Nix Installer";
 
   inputs = {
-    nixpkgs.url = "https://flakehub.com/f/NixOS/nixpkgs/=0.1.702572";
+    nixpkgs.url = "https://flakehub.com/f/NixOS/nixpkgs/=0.1.698755";
 
     fenix = {
       url = "https://flakehub.com/f/nix-community/fenix/0.1.1584.tar.gz";
