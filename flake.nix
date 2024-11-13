@@ -2,7 +2,8 @@
   description = "The Determinate Nix Installer";
 
   inputs = {
-    nixpkgs.url = "https://flakehub.com/f/NixOS/nixpkgs/0.1.0.tar.gz";
+    # The very next version and beyond we get SIGBUS on uninstall
+    nixpkgs.url = "https://flakehub.com/f/NixOS/nixpkgs/=0.1.698755";
 
     fenix = {
       url = "https://flakehub.com/f/nix-community/fenix/0.1.1584.tar.gz";
