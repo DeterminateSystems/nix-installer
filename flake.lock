@@ -196,15 +196,16 @@
         ]
       },
       "locked": {
-        "lastModified": 1721727458,
-        "narHash": "sha256-r/xppY958gmZ4oTfLiHN0ZGuQ+RSTijDblVgVLFi1mw=",
-        "owner": "nix-community",
+        "lastModified": 1731518294,
+        "narHash": "sha256-ZsO1Ew57d01H5yn/KIJWBzstjeY0H1/suxEe1/Sph+Y=",
+        "owner": "colemickens",
         "repo": "naersk",
-        "rev": "3fb418eaf352498f6b6c30592e3beb63df42ef11",
+        "rev": "936994e7410ca45b56e6beeec9a6cf5229d63202",
         "type": "github"
       },
       "original": {
-        "owner": "nix-community",
+        "owner": "colemickens",
+        "ref": "colemickens/libiconv-test",
         "repo": "naersk",
         "type": "github"
       }

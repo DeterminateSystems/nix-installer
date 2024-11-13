@@ -10,7 +10,8 @@
     };
 
     naersk = {
-      url = "github:nix-community/naersk";
+      # url = "github:nix-community/naersk";
+      url = "github:colemickens/naersk?ref=colemickens/libiconv-test";
       inputs.nixpkgs.follows = "nixpkgs";
     };
 
