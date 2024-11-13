@@ -95,6 +95,7 @@
 
             nativeBuildInputs = with final; [ ];
             buildInputs = with final; [ ] ++ lib.optionals (final.stdenv.isDarwin) (with final.darwin.apple_sdk.frameworks; [
+              Security
               SystemConfiguration
             ]);
 
