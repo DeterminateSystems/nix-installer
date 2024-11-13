@@ -109,6 +109,8 @@
             NIX_INSTALLER_TARBALL_PATH = nixTarballs.${final.stdenv.system};
             DETERMINATE_NIXD_BINARY_PATH = optionalPathToDeterminateNixd final.stdenv.system;
 
+            release = false;
+
             override = { preBuild ? "", ... }: {
               preBuild = preBuild + ''
                 # logRun "cargo clippy --all-targets --all-features -- -D warnings"
