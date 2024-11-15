@@ -70,11 +70,20 @@ impl Action for ProvisionNix {
             fetch_nix,
             create_nix_tree,
             move_unpacked_nix,
-            nix_store_gid: _, // TODO @grahamc ... have a description, I guess
+            nix_store_gid, // TODO @grahamc ... have a description, I guess
         } = &self;
 
         let mut buf = Vec::default();
         buf.append(&mut fetch_nix.describe_execute());
+
+        if std::path::Path::new(NIX_STORE_LOCATION).exists() {
+            buf.push(ActionDescription::new(
+                "Synchronize /nix/store ownership".to_string(),
+                vec![format!(
+                    "Will update existing files in the Nix Store to use the Nix build group ID {nix_store_gid}"
+                )],
+            ));
+        }
 
         buf.append(&mut create_nix_tree.describe_execute());
         buf.append(&mut move_unpacked_nix.describe_execute());
