@@ -9,6 +9,7 @@ use crate::{
     settings::{CommonSettings, SCRATCH_DIR},
 };
 use std::os::unix::fs::MetadataExt as _;
+use std::os::unix::fs::PermissionsExt;
 use std::path::PathBuf;
 
 pub(crate) const NIX_STORE_LOCATION: &str = "/nix/store";
@@ -19,6 +20,7 @@ Place Nix and it's requirements onto the target
 #[derive(Debug, serde::Deserialize, serde::Serialize, Clone)]
 #[serde(tag = "action_name", rename = "provision_nix")]
 pub struct ProvisionNix {
+    nix_store_gid: u32,
     pub(crate) fetch_nix: StatefulAction<FetchAndUnpackNix>,
     pub(crate) create_nix_tree: StatefulAction<CreateNixTree>,
     pub(crate) move_unpacked_nix: StatefulAction<MoveUnpackedNix>,
@@ -27,12 +29,6 @@ pub struct ProvisionNix {
 impl ProvisionNix {
     #[tracing::instrument(level = "debug", skip_all)]
     pub async fn plan(settings: &CommonSettings) -> Result<StatefulAction<Self>, ActionError> {
-        if std::path::Path::new(NIX_STORE_LOCATION).exists() {
-            check_existing_nix_store_gid_matches(settings.nix_build_group_id)
-                .await
-                .map_err(Self::error)?;
-        }
-
         let fetch_nix = FetchAndUnpackNix::plan(
             settings.nix_package_url.clone(),
             PathBuf::from(SCRATCH_DIR),
@@ -46,6 +42,7 @@ impl ProvisionNix {
             .await
             .map_err(Self::error)?;
         Ok(Self {
+            nix_store_gid: settings.nix_build_group_id,
             fetch_nix,
             create_nix_tree,
             move_unpacked_nix,
@@ -73,6 +70,7 @@ impl Action for ProvisionNix {
             fetch_nix,
             create_nix_tree,
             move_unpacked_nix,
+            nix_store_gid: _, // TODO @grahamc ... have a description, I guess
         } = &self;
 
         let mut buf = Vec::default();
@@ -92,6 +90,12 @@ impl Action for ProvisionNix {
             fetch_nix_clone.try_execute().await.map_err(Self::error)?;
             Result::<_, ActionError>::Ok(fetch_nix_clone)
         });
+
+        if std::path::Path::new(NIX_STORE_LOCATION).exists() {
+            ensure_nix_store_group(self.nix_store_gid)
+                .await
+                .map_err(Self::error)?;
+        }
 
         self.create_nix_tree
             .try_execute()
@@ -115,6 +119,7 @@ impl Action for ProvisionNix {
             fetch_nix,
             create_nix_tree,
             move_unpacked_nix,
+            nix_store_gid: _,
         } = &self;
 
         let mut buf = Vec::default();
@@ -157,19 +162,85 @@ impl Action for ProvisionNix {
 /// If there is an existing /nix/store directory, ensure that the group ID we're going to use for
 /// the nix build group matches the group that owns /nix/store to prevent weird mismatched-ownership
 /// issues.
-async fn check_existing_nix_store_gid_matches(
-    desired_nix_build_group_id: u32,
-) -> Result<(), ActionErrorKind> {
+async fn ensure_nix_store_group(desired_nix_build_group_id: u32) -> Result<(), ActionErrorKind> {
     let previous_store_metadata = tokio::fs::metadata(NIX_STORE_LOCATION)
         .await
         .map_err(|e| ActionErrorKind::GettingMetadata(NIX_STORE_LOCATION.into(), e))?;
     let previous_store_group_id = previous_store_metadata.gid();
     if previous_store_group_id != desired_nix_build_group_id {
-        return Err(ActionErrorKind::PathGroupMismatch(
-            NIX_STORE_LOCATION.into(),
-            previous_store_group_id,
-            desired_nix_build_group_id,
-        ));
+        for (entry, metadata) in walkdir::WalkDir::new(NIX_STORE_LOCATION)
+        .follow_links(false)
+        .same_file_system(true)
+        // chown all of the contents of the dir before NIX_STORE_LOCATION,
+        // this means our test of "does /nix/store have the right gid?"
+        // is useful until the entire store is examined
+        .contents_first(true)
+        .into_iter()
+        .filter_map(|entry| {
+            match entry {
+                Ok(entry) => Some(entry),
+                Err(e) => {
+                    tracing::warn!(%e, "Enumerating the Nix store");
+                    None
+                }
+            }
+        })
+        .filter_map(|entry| match entry.metadata() {
+            Ok(metadata) => Some((entry, metadata)),
+            Err(e) => {
+                tracing::warn!(path = %entry.path().to_string_lossy(), %e, "Reading ownership and mode data");
+                None
+            }
+        })
+        .filter(|(_entry, metadata)| {
+            if metadata.uid() != 0 {
+                return true;
+            }
+
+            // If the dirent's group ID is the *previous* GID, reassign.
+            // NOTE(@grahamc, 2024-11-15): Nix on macOS has store paths with a group of nixbld, and sometimes a group of `wheel` (0).
+            // On NixOS, all the store paths have their GID set to 0.
+            // I've enquired into why these are different, but don't have an answer yet.
+            if metadata.gid() == previous_store_group_id {
+                return true;
+            }
+
+            // Get the user-group-other permission bits
+
+            if metadata.mode() != 0o555 || metadata.mode() != 0o444 {
+                return true;
+            }
+
+            false
+        }) {
+            if let Err(e) = std::os::unix::fs::chown(entry.path(), Some(0), Some(desired_nix_build_group_id)) {
+                tracing::warn!(path = %entry.path().to_string_lossy(), %e, "Failed to set the owner:group to 0:{}", desired_nix_build_group_id);
+            }
+            let mode = metadata.mode();
+
+            // Determine if this file is executable by anyone
+            let is_any_executable = (mode & 0o111) != 0;
+
+            if is_any_executable {
+                // If anyone can execute this file, then everyone must be able to
+                let all_executable = mode | 0o555;
+
+                if mode != all_executable {
+                    if let Err(e) = tokio::fs::set_permissions(entry.path(), std::fs::Permissions::from_mode(all_executable)).await {
+                        tracing::warn!(path = %entry.path().to_string_lossy(), %e, "Failed to set the mode to 0o555");
+                    }
+                }
+            } else {
+                let all_readable = mode | 0o444;
+
+                // Otherwise, if anyone can read the file, then everyone must be able to
+                if mode != all_readable {
+                    if let Err(e) = tokio::fs::set_permissions(entry.path(), std::fs::Permissions::from_mode(all_readable)).await {
+                        tracing::warn!(path = %entry.path().to_string_lossy(), %e, "Failed to set the mode to 0o444");
+                    }
+                }
+            }
+        }
     }
 
     Ok(())
