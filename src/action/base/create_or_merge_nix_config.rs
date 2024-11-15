@@ -500,7 +500,7 @@ mod test {
         nix_config
             .settings_mut()
             .insert("experimental-features".into(), "ca-references".into());
-        let mut action = CreateOrMergeNixConfig::plan(&test_file, nix_config).await?;
+        let mut action = CreateOrMergeNixConfig::plan(&test_file, None::<&str>, nix_config).await?;
 
         action.try_execute().await?;
 
@@ -526,7 +526,7 @@ mod test {
         nix_config
             .settings_mut()
             .insert("experimental-features".into(), "ca-references".into());
-        let mut action = CreateOrMergeNixConfig::plan(&test_file, nix_config).await?;
+        let mut action = CreateOrMergeNixConfig::plan(&test_file, None::<&str>, nix_config).await?;
 
         action.try_execute().await?;
 
@@ -554,7 +554,7 @@ mod test {
         nix_config
             .settings_mut()
             .insert("experimental-features".into(), "flakes".into());
-        let mut action = CreateOrMergeNixConfig::plan(&test_file, nix_config).await?;
+        let mut action = CreateOrMergeNixConfig::plan(&test_file, None::<&str>, nix_config).await?;
 
         action.try_execute().await?;
 
@@ -586,7 +586,7 @@ mod test {
         nix_config
             .settings_mut()
             .insert("allow-dirty".into(), "false".into());
-        let mut action = CreateOrMergeNixConfig::plan(&test_file, nix_config).await?;
+        let mut action = CreateOrMergeNixConfig::plan(&test_file, None::<&str>, nix_config).await?;
 
         action.try_execute().await?;
 
@@ -631,7 +631,7 @@ mod test {
         nix_config
             .settings_mut()
             .insert("warn-dirty".into(), "false".into());
-        match CreateOrMergeNixConfig::plan(&test_file, nix_config).await {
+        match CreateOrMergeNixConfig::plan(&test_file, None::<&str>, nix_config).await {
             Err(err) => {
                 if let ActionErrorKind::Custom(e) = err.kind() {
                     match e.downcast_ref::<CreateOrMergeNixConfigError>() {
@@ -673,7 +673,7 @@ mod test {
         nix_config
             .settings_mut()
             .insert("experimental-features".into(), "ca-references".into());
-        let mut action = CreateOrMergeNixConfig::plan(&test_file, nix_config).await?;
+        let mut action = CreateOrMergeNixConfig::plan(&test_file, None::<&str>, nix_config).await?;
 
         action.try_execute().await?;
 
@@ -705,7 +705,7 @@ mod test {
         nix_config
             .settings_mut()
             .insert("experimental-features".into(), "ca-references".into());
-        let mut action = CreateOrMergeNixConfig::plan(&test_file, nix_config).await?;
+        let mut action = CreateOrMergeNixConfig::plan(&test_file, None::<&str>, nix_config).await?;
 
         action.try_execute().await?;
 
