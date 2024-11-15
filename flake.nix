@@ -233,6 +233,10 @@
           default = pkgs.nix-installer-static;
         } // nixpkgs.lib.optionalAttrs (pkgs.stdenv.isDarwin) {
           default = pkgs.nix-installer;
+
+          determinate-nixd = pkgs.runCommand "determinate-nixd-link" {} ''
+            ln -s ${optionalPathToDeterminateNixd system} $out
+          '';
         });
 
       hydraJobs = {
