@@ -234,7 +234,7 @@
         } // nixpkgs.lib.optionalAttrs (pkgs.stdenv.isDarwin) {
           default = pkgs.nix-installer;
 
-          determinate-nixd = pkgs.runCommand "determinate-nixd-link" {} ''
+          determinate-nixd = pkgs.runCommand "determinate-nixd-link" { } ''
             ln -s ${optionalPathToDeterminateNixd system} $out
           '';
         });
