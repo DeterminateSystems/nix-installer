@@ -15,7 +15,7 @@ pub const NIX_CONF_FOLDER: &str = "/etc/nix";
 const NIX_CONF: &str = "/etc/nix/nix.conf";
 
 /**
-Place the `/etc/nix.conf` file
+Place the `/etc/nix/nix.conf` file
  */
 #[derive(Debug, serde::Deserialize, serde::Serialize, Clone)]
 #[serde(tag = "action_name", rename = "place_nix_configuration")]
