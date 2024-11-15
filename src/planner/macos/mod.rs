@@ -281,6 +281,7 @@ impl Planner for Macos {
                 ShellProfileLocations::default(),
                 &self.settings,
                 self.settings.determinate_nix.then(determinate_nix_settings),
+                self.settings.determinate_nix,
             )
             .await
             .map_err(PlannerError::Action)?

@@ -13,6 +13,7 @@ use std::path::PathBuf;
 
 pub const NIX_CONF_FOLDER: &str = "/etc/nix";
 const NIX_CONF: &str = "/etc/nix/nix.conf";
+const NIX_CUSTOM_CONF: &str = "/etc/nix/nix.custom.conf";
 
 /**
 Place the `/etc/nix/nix.conf` file
@@ -31,6 +32,7 @@ impl PlaceNixConfiguration {
         proxy: Option<Url>,
         ssl_cert_file: Option<PathBuf>,
         extra_internal_conf: Option<nix_config_parser::NixConfig>,
+        determinate_nix: bool,
         extra_conf: Vec<UrlOrPathOrString>,
         force: bool,
     ) -> Result<StatefulAction<Self>, ActionError> {
@@ -46,9 +48,17 @@ impl PlaceNixConfiguration {
         let create_directory = CreateDirectory::plan(NIX_CONF_FOLDER, None, None, 0o0755, force)
             .await
             .map_err(Self::error)?;
-        let create_or_merge_nix_config = CreateOrMergeNixConfig::plan(NIX_CONF, nix_config)
-            .await
-            .map_err(Self::error)?;
+        let create_or_merge_nix_config = CreateOrMergeNixConfig::plan(
+            NIX_CONF,
+            if determinate_nix {
+                Some(NIX_CUSTOM_CONF)
+            } else {
+                None
+            },
+            nix_config,
+        )
+        .await
+        .map_err(Self::error)?;
         Ok(Self {
             create_directory,
             create_or_merge_nix_config,

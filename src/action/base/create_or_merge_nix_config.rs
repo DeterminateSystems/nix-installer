@@ -53,6 +53,7 @@ impl CreateOrMergeNixConfig {
     #[tracing::instrument(level = "debug", skip_all)]
     pub async fn plan(
         path: impl AsRef<Path>,
+        alternate_path: Option<impl AsRef<Path>>,
         pending_nix_config: NixConfig,
     ) -> Result<StatefulAction<Self>, ActionError> {
         let path = path.as_ref().to_path_buf();
@@ -61,6 +62,12 @@ impl CreateOrMergeNixConfig {
             path,
             pending_nix_config,
         };
+
+        if let Some(alternate) = alternate_path {
+            if this.path.exists() && alternate.as_ref().exists() {
+                return Ok(StatefulAction::completed(this));
+            }
+        }
 
         if this.path.exists() {
             let (merged_nix_config, _) =
