@@ -433,7 +433,9 @@ async fn check_nix_darwin_not_installed() -> Result<(), PlannerError> {
         .unwrap_or(false);
 
     if activate_system_present || has_darwin_rebuild || has_darwin_option {
-        return Err(MacosError::UninstallNixDarwin).map_err(|e| PlannerError::Custom(Box::new(e)));
+        tracing::info!("Usually, we'd block uninstalling when nix-darwin is still around, but this branch is spicy.");
+        // return Err(MacosError::UninstallNixDarwin).map_err(|e| PlannerError::Custom(Box::new(e)));
+        return Ok(());
     };
 
     Ok(())
