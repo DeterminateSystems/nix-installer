@@ -480,7 +480,7 @@ impl Action for CreateOrMergeNixConfig {
 
         remove_file(&path)
             .await
-            .or_else(|e| ActionErrorKind::remove_ignore_not_found(&path, e))
+            .or_else(|e| ActionErrorKind::remove_ignore_not_found(path, e))
             .map_err(Self::error)?;
 
         Ok(())

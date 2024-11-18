@@ -53,8 +53,14 @@ impl ConfigureDeterminateNixdInitService {
                         super::configure_upstream_init_service::DARWIN_NIX_DAEMON_DEST,
                     )
                     .await
-                    .or_else(|e| ActionErrorKind::remove_ignore_not_found(
-                        std::path::Path::new(super::configure_upstream_init_service::DARWIN_NIX_DAEMON_DEST), e))
+                    .or_else(|e| {
+                        ActionErrorKind::remove_ignore_not_found(
+                            std::path::Path::new(
+                                super::configure_upstream_init_service::DARWIN_NIX_DAEMON_DEST,
+                            ),
+                            e,
+                        )
+                    })
                     .map_err(Self::error)?;
                 }
 

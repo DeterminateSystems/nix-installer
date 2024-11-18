@@ -265,12 +265,12 @@ impl Action for CreateDirectory {
                     if child_path_type.is_dir() {
                         remove_dir_all(child_path_path.clone())
                             .await
-                            .or_else(|e| ActionErrorKind::remove_ignore_not_found(&path, e))
+                            .or_else(|e| ActionErrorKind::remove_ignore_not_found(path, e))
                             .map_err(Self::error)?
                     } else {
                         remove_file(child_path_path)
                             .await
-                            .or_else(|e| ActionErrorKind::remove_ignore_not_found(&path, e))
+                            .or_else(|e| ActionErrorKind::remove_ignore_not_found(path, e))
                             .map_err(Self::error)?
                     }
                 }
@@ -280,7 +280,7 @@ impl Action for CreateDirectory {
             },
             (false, true, _) | (false, false, true) => remove_dir_all(path.clone())
                 .await
-                .or_else(|e| ActionErrorKind::remove_ignore_not_found(&path, e))
+                .or_else(|e| ActionErrorKind::remove_ignore_not_found(path, e))
                 .map_err(Self::error)?,
             (false, false, false) => {
                 tracing::debug!("Not removing `{}`, the folder is not empty", path.display());

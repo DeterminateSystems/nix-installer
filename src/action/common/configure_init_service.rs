@@ -364,7 +364,7 @@ impl Action for ConfigureInitService {
                         tracing::trace!(path = %service_dest.display(), "Removing");
                         tokio::fs::remove_file(service_dest)
                             .await
-                            .or_else(|e| ActionErrorKind::remove_ignore_not_found(&service_dest, e))
+                            .or_else(|e| ActionErrorKind::remove_ignore_not_found(service_dest, e))
                             .map_err(Self::error)?;
                     }
                     tracing::trace!(src = %service_src.display(), dest = %service_dest.display(), "Symlinking");
@@ -388,7 +388,7 @@ impl Action for ConfigureInitService {
                         tracing::trace!(path = %dest.display(), "Removing");
                         tokio::fs::remove_file(dest)
                             .await
-                            .or_else(|e| ActionErrorKind::remove_ignore_not_found(&dest, e))
+                            .or_else(|e| ActionErrorKind::remove_ignore_not_found(dest, e))
                             .map_err(Self::error)?;
                     }
 
@@ -611,11 +611,12 @@ impl Action for ConfigureInitService {
                 }
 
                 if Path::new(TMPFILES_DEST).exists() {
-                    if let Err(err) = tokio::fs::remove_file(TMPFILES_DEST)
-                        .await
-
-                    .or_else(|e| ActionErrorKind::remove_ignore_not_found(std::path::Path::new(TMPFILES_DEST), e))
-                    {
+                    if let Err(err) = tokio::fs::remove_file(TMPFILES_DEST).await.or_else(|e| {
+                        ActionErrorKind::remove_ignore_not_found(
+                            std::path::Path::new(TMPFILES_DEST),
+                            e,
+                        )
+                    }) {
                         errors.push(err);
                     }
                 }
@@ -641,7 +642,7 @@ impl Action for ConfigureInitService {
                 tracing::trace!(path = %dest.display(), "Removing");
                 if let Err(err) = tokio::fs::remove_file(dest)
                     .await
-                    .or_else(|e| ActionErrorKind::remove_ignore_not_found(&dest, e))
+                    .or_else(|e| ActionErrorKind::remove_ignore_not_found(dest, e))
                 {
                     errors.push(err);
                 }

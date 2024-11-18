@@ -127,7 +127,7 @@ async fn remove_existing_policy(policy_path: &Path) -> Result<(), ActionErrorKin
 
     remove_file(&policy_path)
         .await
-        .or_else(|e| ActionErrorKind::remove_ignore_not_found(&policy_path, e))?;
+        .or_else(|e| ActionErrorKind::remove_ignore_not_found(policy_path, e))?;
 
     execute_command(Command::new("restorecon").args(["-FR", "/nix"])).await?;
 
