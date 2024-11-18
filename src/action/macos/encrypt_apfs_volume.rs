@@ -37,7 +37,7 @@ impl EncryptApfsVolume {
     ) -> Result<StatefulAction<Self>, ActionError> {
         let name = name.as_ref().to_owned();
         let disk = disk.as_ref().to_path_buf();
-
+        println!("Volume name is {0}", name);
         let mut command = Command::new("/usr/bin/security");
         command.args(["find-generic-password", "-a"]);
         command.arg(&name);
