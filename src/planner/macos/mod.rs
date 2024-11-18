@@ -67,7 +67,7 @@ pub struct Macos {
     /// The label for the created APFS volume
     #[cfg_attr(
         feature = "cli",
-        clap(long, default_value = "Nix Store", env = "NIX_INSTALLER_VOLUME_LABEL")
+        clap(long, default_value = "Nixxie", env = "NIX_INSTALLER_VOLUME_LABEL")
     )]
     pub volume_label: String,
     /// The root disk of the target
@@ -339,6 +339,7 @@ impl Planner for Macos {
         } = self;
         let mut map = HashMap::default();
 
+
         map.extend(settings.settings()?);
         map.insert("volume_encrypt".into(), serde_json::to_value(encrypt)?);
         map.insert("volume_label".into(), serde_json::to_value(volume_label)?);
@@ -351,6 +352,8 @@ impl Planner for Macos {
             "case_sensitive".into(),
             serde_json::to_value(case_sensitive)?,
         );
+
+        println!("Settings: {0}", map);
 
         Ok(map)
     }
