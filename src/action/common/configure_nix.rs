@@ -11,7 +11,7 @@ use crate::{
 };
 use glob::glob;
 
-use tracing::{span, Instrument, Span};
+use tracing::{span, Span};
 
 /**
 Configure Nix and start it
@@ -160,55 +160,20 @@ impl Action for ConfigureNix {
             configure_shell_profile,
         } = self;
 
+        setup_default_profile
+            .try_execute()
+            .await
+            .map_err(Self::error)?;
+        place_nix_configuration
+            .try_execute()
+            .await
+            .map_err(Self::error)?;
         if let Some(configure_shell_profile) = configure_shell_profile {
-            let setup_default_profile_span = tracing::Span::current().clone();
-            let (place_nix_configuration_span, configure_shell_profile_span) = (
-                setup_default_profile_span.clone(),
-                setup_default_profile_span.clone(),
-            );
-            tokio::try_join!(
-                async move {
-                    setup_default_profile
-                        .try_execute()
-                        .instrument(setup_default_profile_span)
-                        .await
-                        .map_err(Self::error)
-                },
-                async move {
-                    place_nix_configuration
-                        .try_execute()
-                        .instrument(place_nix_configuration_span)
-                        .await
-                        .map_err(Self::error)
-                },
-                async move {
-                    configure_shell_profile
-                        .try_execute()
-                        .instrument(configure_shell_profile_span)
-                        .await
-                        .map_err(Self::error)
-                },
-            )?;
-        } else {
-            let setup_default_profile_span = tracing::Span::current().clone();
-            let place_nix_configuration_span = setup_default_profile_span.clone();
-            tokio::try_join!(
-                async move {
-                    setup_default_profile
-                        .try_execute()
-                        .instrument(setup_default_profile_span)
-                        .await
-                        .map_err(Self::error)
-                },
-                async move {
-                    place_nix_configuration
-                        .try_execute()
-                        .instrument(place_nix_configuration_span)
-                        .await
-                        .map_err(Self::error)
-                },
-            )?;
-        };
+            configure_shell_profile
+                .try_execute()
+                .await
+                .map_err(Self::error)?;
+        }
 
         Ok(())
     }
