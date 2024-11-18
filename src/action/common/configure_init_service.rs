@@ -10,6 +10,7 @@ use crate::execute_command;
 
 use crate::action::{Action, ActionDescription};
 use crate::settings::InitSystem;
+use crate::util::OnMissing;
 
 const TMPFILES_SRC: &str = "/nix/var/nix/profiles/default/lib/tmpfiles.d/nix-daemon.conf";
 const TMPFILES_DEST: &str = "/etc/tmpfiles.d/nix-daemon.conf";
@@ -360,13 +361,12 @@ impl Action for ConfigureInitService {
                     )
                     .await
                     .map_err(Self::error)?;
-                    if Path::new(service_dest).exists() {
-                        tracing::trace!(path = %service_dest.display(), "Removing");
-                        tokio::fs::remove_file(service_dest)
-                            .await
-                            .map_err(|e| ActionErrorKind::Remove(service_dest.into(), e))
-                            .map_err(Self::error)?;
-                    }
+
+                    crate::util::remove_file(service_dest, OnMissing::Ignore)
+                        .await
+                        .map_err(|e| ActionErrorKind::Remove(service_dest.into(), e))
+                        .map_err(Self::error)?;
+
                     tracing::trace!(src = %service_src.display(), dest = %service_dest.display(), "Symlinking");
                     tokio::fs::symlink(service_src, service_dest)
                         .await
@@ -384,13 +384,10 @@ impl Action for ConfigureInitService {
                     Self::check_if_systemd_unit_exists(src, dest)
                         .await
                         .map_err(Self::error)?;
-                    if Path::new(dest).exists() {
-                        tracing::trace!(path = %dest.display(), "Removing");
-                        tokio::fs::remove_file(dest)
-                            .await
-                            .map_err(|e| ActionErrorKind::Remove(dest.into(), e))
-                            .map_err(Self::error)?;
-                    }
+                    crate::util::remove_file(dest, OnMissing::Ignore)
+                        .await
+                        .map_err(|e| ActionErrorKind::Remove(dest.into(), e))
+                        .map_err(Self::error)?;
 
                     match src {
                         UnitSrc::Path(src) => {
@@ -610,13 +607,12 @@ impl Action for ConfigureInitService {
                     errors.push(err);
                 }
 
-                if Path::new(TMPFILES_DEST).exists() {
-                    if let Err(err) = tokio::fs::remove_file(TMPFILES_DEST)
+                if let Err(err) =
+                    crate::util::remove_file(Path::new(TMPFILES_DEST), OnMissing::Ignore)
                         .await
                         .map_err(|e| ActionErrorKind::Remove(PathBuf::from(TMPFILES_DEST), e))
-                    {
-                        errors.push(err);
-                    }
+                {
+                    errors.push(err);
                 }
 
                 if let Err(err) = execute_command(
@@ -636,26 +632,20 @@ impl Action for ConfigureInitService {
         };
 
         if let Some(dest) = &self.service_dest {
-            if dest.exists() {
-                tracing::trace!(path = %dest.display(), "Removing");
-                if let Err(err) = tokio::fs::remove_file(dest)
-                    .await
-                    .map_err(|e| ActionErrorKind::Remove(PathBuf::from(dest), e))
-                {
-                    errors.push(err);
-                }
+            if let Err(err) = crate::util::remove_file(dest, OnMissing::Ignore)
+                .await
+                .map_err(|e| ActionErrorKind::Remove(PathBuf::from(dest), e))
+            {
+                errors.push(err);
             }
         }
 
         for socket in self.socket_files.iter() {
-            if socket.dest.exists() {
-                tracing::trace!(path = %socket.dest.display(), "Removing");
-                if let Err(err) = tokio::fs::remove_file(&socket.dest)
-                    .await
-                    .map_err(|e| ActionErrorKind::Remove(socket.dest.to_path_buf(), e))
-                {
-                    errors.push(err);
-                }
+            if let Err(err) = crate::util::remove_file(&socket.dest, OnMissing::Ignore)
+                .await
+                .map_err(|e| ActionErrorKind::Remove(socket.dest.to_path_buf(), e))
+            {
+                errors.push(err);
             }
         }
 

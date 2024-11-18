@@ -17,6 +17,7 @@ use crate::{
     plan::RECEIPT_LOCATION,
     planner::Planner,
     settings::CommonSettings,
+    util::OnMissing,
     BuiltinPlanner, InstallPlan, NixInstallerError,
 };
 use clap::{ArgAction, Parser};
@@ -322,15 +323,18 @@ impl CommandExecute for Install {
                     .await
                     .wrap_err("Copying `nix-installer` to `/nix/nix-installer`")?;
 
-                if Path::new(PHASE1_RECEIPT_LOCATION).exists() {
+                let phase1_receipt_path = Path::new(PHASE1_RECEIPT_LOCATION);
+                if phase1_receipt_path.exists() {
                     tracing::debug!("Removing pre-existing uninstall phase 1 receipt at {PHASE1_RECEIPT_LOCATION} after successful install");
-                    tokio::fs::remove_file(PHASE1_RECEIPT_LOCATION)
+                    crate::util::remove_file(phase1_receipt_path, OnMissing::Ignore)
                         .await
                         .wrap_err_with(|| format!("Failed to remove uninstall phase 1 receipt at {PHASE1_RECEIPT_LOCATION}"))?;
                 }
-                if Path::new(PHASE2_RECEIPT_LOCATION).exists() {
+
+                let phase2_receipt_path = Path::new(PHASE2_RECEIPT_LOCATION);
+                if phase2_receipt_path.exists() {
                     tracing::debug!("Removing pre-existing uninstall phase 2 receipt at {PHASE2_RECEIPT_LOCATION} after successful install");
-                    tokio::fs::remove_file(PHASE2_RECEIPT_LOCATION)
+                    crate::util::remove_file(phase2_receipt_path, OnMissing::Ignore)
                         .await
                         .wrap_err_with(|| format!("Failed to remove uninstall phase 2 receipt at {PHASE2_RECEIPT_LOCATION}"))?;
                 }

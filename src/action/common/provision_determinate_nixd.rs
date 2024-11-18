@@ -1,11 +1,11 @@
 use std::os::unix::fs::PermissionsExt;
 use std::path::PathBuf;
 
-use tokio::fs::{create_dir_all, remove_file};
 use tracing::{span, Span};
 
-use crate::action::{
-    Action, ActionDescription, ActionError, ActionErrorKind, ActionTag, StatefulAction,
+use crate::{
+    action::{Action, ActionDescription, ActionError, ActionErrorKind, ActionTag, StatefulAction},
+    util::OnMissing,
 };
 
 const DETERMINATE_NIXD_BINARY_PATH: &str = "/usr/local/bin/determinate-nixd";
@@ -62,15 +62,13 @@ impl Action for ProvisionDeterminateNixd {
         let bytes = crate::settings::DETERMINATE_NIXD_BINARY
             .ok_or_else(|| Self::error(ActionErrorKind::DeterminateNixUnavailable))?;
 
-        if self.binary_location.exists() {
-            remove_file(&self.binary_location)
-                .await
-                .map_err(|e| ActionErrorKind::Remove(self.binary_location.clone(), e))
-                .map_err(Self::error)?;
-        }
+        crate::util::remove_file(&self.binary_location, OnMissing::Ignore)
+            .await
+            .map_err(|e| ActionErrorKind::Remove(self.binary_location.clone(), e))
+            .map_err(Self::error)?;
 
         if let Some(parent) = self.binary_location.parent() {
-            create_dir_all(&parent)
+            tokio::fs::create_dir_all(&parent)
                 .await
                 .map_err(|e| ActionErrorKind::CreateDirectory(parent.into(), e))
                 .map_err(Self::error)?;
@@ -98,12 +96,10 @@ impl Action for ProvisionDeterminateNixd {
 
     #[tracing::instrument(level = "debug", skip_all)]
     async fn revert(&mut self) -> Result<(), ActionError> {
-        if self.binary_location.exists() {
-            remove_file(&self.binary_location)
-                .await
-                .map_err(|e| ActionErrorKind::Remove(self.binary_location.clone(), e))
-                .map_err(Self::error)?;
-        }
+        crate::util::remove_file(&self.binary_location, OnMissing::Ignore)
+            .await
+            .map_err(|e| ActionErrorKind::Remove(self.binary_location.clone(), e))
+            .map_err(Self::error)?;
 
         Ok(())
     }

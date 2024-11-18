@@ -1,10 +1,10 @@
 use std::path::{Path, PathBuf};
 
-use tokio::fs::remove_dir_all;
 use tracing::{span, Span};
 
 use crate::action::{Action, ActionDescription, ActionErrorKind, ActionState};
 use crate::action::{ActionError, StatefulAction};
+use crate::util::OnMissing;
 
 /** Remove a directory, does nothing on revert.
 */
@@ -56,7 +56,10 @@ impl Action for RemoveDirectory {
                     self.path.clone(),
                 )));
             }
-            remove_dir_all(&self.path)
+
+            // At this point, we know the path exists, but just in case it was deleted between then
+            // and now, we still ignore the case where it no longer exists.
+            crate::util::remove_dir_all(&self.path, OnMissing::Ignore)
                 .await
                 .map_err(|e| Self::error(ActionErrorKind::Remove(self.path.clone(), e)))?;
         } else {
