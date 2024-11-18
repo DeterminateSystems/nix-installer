@@ -6,8 +6,9 @@ use std::{
 use tracing::{span, Span};
 use walkdir::WalkDir;
 
-use crate::action::{
-    Action, ActionDescription, ActionError, ActionErrorKind, ActionTag, StatefulAction,
+use crate::{
+    action::{Action, ActionDescription, ActionError, ActionErrorKind, ActionTag, StatefulAction},
+    util::OnMissing,
 };
 
 pub(crate) const DEST: &str = "/nix/";
@@ -99,7 +100,7 @@ impl Action for MoveUnpackedNix {
             let entry_dest = dest_store.join(entry.file_name());
             if entry_dest.exists() {
                 tracing::trace!(src = %entry.path().display(), dest = %entry_dest.display(), "Removing already existing package");
-                tokio::fs::remove_dir_all(&entry_dest)
+                crate::util::remove_dir_all(&entry_dest, OnMissing::Ignore)
                     .await
                     .map_err(|e| ActionErrorKind::Remove(entry_dest.clone(), e))
                     .map_err(Self::error)?;

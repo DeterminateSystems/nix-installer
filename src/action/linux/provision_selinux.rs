@@ -1,6 +1,5 @@
 use std::path::{Path, PathBuf};
 
-use tokio::fs::{create_dir_all, remove_file};
 use tokio::process::Command;
 use tracing::{span, Span};
 
@@ -8,6 +7,7 @@ use crate::action::{ActionError, ActionErrorKind, ActionTag};
 use crate::execute_command;
 
 use crate::action::{Action, ActionDescription, StatefulAction};
+use crate::util::OnMissing;
 
 pub const SELINUX_POLICY_PP_CONTENT: &[u8] = include_bytes!("selinux/nix.pp");
 pub const DETERMINATE_SELINUX_POLICY_PP_CONTENT: &[u8] =
@@ -77,7 +77,7 @@ impl Action for ProvisionSelinux {
         }
 
         if let Some(parent) = self.policy_path.parent() {
-            create_dir_all(&parent)
+            tokio::fs::create_dir_all(&parent)
                 .await
                 .map_err(|e| ActionErrorKind::CreateDirectory(parent.into(), e))
                 .map_err(Self::error)?;
@@ -125,7 +125,7 @@ impl Action for ProvisionSelinux {
 async fn remove_existing_policy(policy_path: &Path) -> Result<(), ActionErrorKind> {
     execute_command(Command::new("semodule").arg("--remove").arg("nix")).await?;
 
-    remove_file(&policy_path)
+    crate::util::remove_file(&policy_path, OnMissing::Ignore)
         .await
         .map_err(|e| ActionErrorKind::Remove(policy_path.into(), e))?;
 

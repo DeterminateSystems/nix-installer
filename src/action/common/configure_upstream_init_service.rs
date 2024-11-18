@@ -1,4 +1,4 @@
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 
 use tracing::{span, Span};
 
@@ -7,6 +7,7 @@ use crate::action::{ActionError, ActionErrorKind, ActionTag, StatefulAction};
 use crate::action::common::configure_init_service::{SocketFile, UnitSrc};
 use crate::action::{common::ConfigureInitService, Action, ActionDescription};
 use crate::settings::InitSystem;
+use crate::util::OnMissing;
 
 // Linux
 const SERVICE_SRC: &str = "/nix/var/nix/profiles/default/lib/systemd/system/nix-daemon.service";
@@ -45,23 +46,20 @@ impl ConfigureUpstreamInitService {
                 // these service files wouldn't get removed, so we can't rely on them not being
                 // there after phase 1 of the uninstall
                 // [1]: https://github.com/DeterminateSystems/nix-installer/pull/1266
-                if std::path::Path::new(
-                    super::configure_determinate_nixd_init_service::DARWIN_NIXD_DAEMON_DEST,
-                )
-                .exists()
-                {
-                    tokio::fs::remove_file(
+                crate::util::remove_file(
+                    Path::new(
                         super::configure_determinate_nixd_init_service::DARWIN_NIXD_DAEMON_DEST,
-                    )
-                    .await
-                    .map_err(|e| {
-                        Self::error(ActionErrorKind::Remove(
-                            super::configure_determinate_nixd_init_service::DARWIN_NIXD_DAEMON_DEST
-                                .into(),
-                            e,
-                        ))
-                    })?;
-                }
+                    ),
+                    OnMissing::Ignore,
+                )
+                .await
+                .map_err(|e| {
+                    Self::error(ActionErrorKind::Remove(
+                        super::configure_determinate_nixd_init_service::DARWIN_NIXD_DAEMON_DEST
+                            .into(),
+                        e,
+                    ))
+                })?;
 
                 Some(DARWIN_NIX_DAEMON_DEST.into())
             },

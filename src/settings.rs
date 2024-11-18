@@ -181,6 +181,20 @@ pub struct CommonSettings {
     )]
     pub force: bool,
 
+    /// If `nix-installer` should skip creating `/etc/nix/nix.conf`
+    #[cfg_attr(
+        feature = "cli",
+        clap(
+            long,
+            action(ArgAction::SetTrue),
+            default_value = "false",
+            global = true,
+            env = "NIX_INSTALLER_SKIP_NIX_CONF",
+            conflicts_with = "extra_conf",
+        )
+    )]
+    pub skip_nix_conf: bool,
+
     #[cfg(feature = "diagnostics")]
     /// Relate the install diagnostic to a specific value
     #[cfg_attr(
@@ -285,6 +299,7 @@ impl CommonSettings {
             proxy: Default::default(),
             extra_conf: Default::default(),
             force: false,
+            skip_nix_conf: false,
             ssl_cert_file: Default::default(),
             #[cfg(feature = "diagnostics")]
             diagnostic_attribution: None,
@@ -307,6 +322,7 @@ impl CommonSettings {
             proxy,
             extra_conf,
             force,
+            skip_nix_conf,
             ssl_cert_file,
             #[cfg(feature = "diagnostics")]
                 diagnostic_attribution: _,
@@ -351,6 +367,7 @@ impl CommonSettings {
         map.insert("ssl_cert_file".into(), serde_json::to_value(ssl_cert_file)?);
         map.insert("extra_conf".into(), serde_json::to_value(extra_conf)?);
         map.insert("force".into(), serde_json::to_value(force)?);
+        map.insert("skip_nix_conf".into(), serde_json::to_value(skip_nix_conf)?);
 
         #[cfg(feature = "diagnostics")]
         map.insert(

@@ -1191,6 +1191,7 @@
       "ssl_cert_file": null,
       "extra_conf": [],
       "force": false,
+      "skip_nix_conf": false,
       "diagnostic_attribution": null,
       "diagnostic_endpoint": "https://install.determinate.systems/nix/diagnostic"
     }

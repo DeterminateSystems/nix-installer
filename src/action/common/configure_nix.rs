@@ -11,7 +11,7 @@ use crate::{
 };
 use glob::glob;
 
-use tracing::{span, Instrument, Span};
+use tracing::{span, Span};
 
 /**
 Configure Nix and start it
@@ -21,7 +21,7 @@ Configure Nix and start it
 pub struct ConfigureNix {
     setup_default_profile: StatefulAction<SetupDefaultProfile>,
     configure_shell_profile: Option<StatefulAction<ConfigureShellProfile>>,
-    place_nix_configuration: StatefulAction<PlaceNixConfiguration>,
+    place_nix_configuration: Option<StatefulAction<PlaceNixConfiguration>>,
 }
 
 impl ConfigureNix {
@@ -44,16 +44,23 @@ impl ConfigureNix {
         } else {
             None
         };
-        let place_nix_configuration = PlaceNixConfiguration::plan(
-            settings.nix_build_group_name.clone(),
-            settings.proxy.clone(),
-            settings.ssl_cert_file.clone(),
-            extra_internal_conf.clone(),
-            settings.extra_conf.clone(),
-            settings.force,
-        )
-        .await
-        .map_err(Self::error)?;
+
+        let place_nix_configuration = if settings.skip_nix_conf {
+            None
+        } else {
+            Some(
+                PlaceNixConfiguration::plan(
+                    settings.nix_build_group_name.clone(),
+                    settings.proxy.clone(),
+                    settings.ssl_cert_file.clone(),
+                    extra_internal_conf.clone(),
+                    settings.extra_conf.clone(),
+                    settings.force,
+                )
+                .await
+                .map_err(Self::error)?,
+            )
+        };
 
         Ok(Self {
             place_nix_configuration,
@@ -145,7 +152,9 @@ impl Action for ConfigureNix {
         } = &self;
 
         let mut buf = setup_default_profile.describe_execute();
-        buf.append(&mut place_nix_configuration.describe_execute());
+        if let Some(place_nix_configuration) = place_nix_configuration {
+            buf.append(&mut place_nix_configuration.describe_execute());
+        }
         if let Some(configure_shell_profile) = configure_shell_profile {
             buf.append(&mut configure_shell_profile.describe_execute());
         }
@@ -160,55 +169,22 @@ impl Action for ConfigureNix {
             configure_shell_profile,
         } = self;
 
+        setup_default_profile
+            .try_execute()
+            .await
+            .map_err(Self::error)?;
+        if let Some(place_nix_configuration) = place_nix_configuration {
+            place_nix_configuration
+                .try_execute()
+                .await
+                .map_err(Self::error)?;
+        }
         if let Some(configure_shell_profile) = configure_shell_profile {
-            let setup_default_profile_span = tracing::Span::current().clone();
-            let (place_nix_configuration_span, configure_shell_profile_span) = (
-                setup_default_profile_span.clone(),
-                setup_default_profile_span.clone(),
-            );
-            tokio::try_join!(
-                async move {
-                    setup_default_profile
-                        .try_execute()
-                        .instrument(setup_default_profile_span)
-                        .await
-                        .map_err(Self::error)
-                },
-                async move {
-                    place_nix_configuration
-                        .try_execute()
-                        .instrument(place_nix_configuration_span)
-                        .await
-                        .map_err(Self::error)
-                },
-                async move {
-                    configure_shell_profile
-                        .try_execute()
-                        .instrument(configure_shell_profile_span)
-                        .await
-                        .map_err(Self::error)
-                },
-            )?;
-        } else {
-            let setup_default_profile_span = tracing::Span::current().clone();
-            let place_nix_configuration_span = setup_default_profile_span.clone();
-            tokio::try_join!(
-                async move {
-                    setup_default_profile
-                        .try_execute()
-                        .instrument(setup_default_profile_span)
-                        .await
-                        .map_err(Self::error)
-                },
-                async move {
-                    place_nix_configuration
-                        .try_execute()
-                        .instrument(place_nix_configuration_span)
-                        .await
-                        .map_err(Self::error)
-                },
-            )?;
-        };
+            configure_shell_profile
+                .try_execute()
+                .await
+                .map_err(Self::error)?;
+        }
 
         Ok(())
     }
@@ -224,7 +200,9 @@ impl Action for ConfigureNix {
         if let Some(configure_shell_profile) = configure_shell_profile {
             buf.append(&mut configure_shell_profile.describe_revert());
         }
-        buf.append(&mut place_nix_configuration.describe_revert());
+        if let Some(place_nix_configuration) = place_nix_configuration {
+            buf.append(&mut place_nix_configuration.describe_revert());
+        }
         buf.append(&mut setup_default_profile.describe_revert());
 
         buf
@@ -238,8 +216,10 @@ impl Action for ConfigureNix {
                 errors.push(err);
             }
         }
-        if let Err(err) = self.place_nix_configuration.try_revert().await {
-            errors.push(err);
+        if let Some(place_nix_configuration) = &mut self.place_nix_configuration {
+            if let Err(err) = place_nix_configuration.try_revert().await {
+                errors.push(err);
+            }
         }
         if let Err(err) = self.setup_default_profile.try_revert().await {
             errors.push(err);

@@ -80,6 +80,7 @@ mod plan;
 pub mod planner;
 pub mod self_test;
 pub mod settings;
+mod util;
 
 use std::{ffi::OsStr, path::Path, process::Output};
 

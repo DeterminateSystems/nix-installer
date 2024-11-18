@@ -1,5 +1,5 @@
 use std::collections::HashMap;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 
 use serde::{Deserialize, Serialize};
 use tokio::io::AsyncWriteExt;
@@ -9,6 +9,7 @@ use crate::action::common::configure_init_service::{SocketFile, UnitSrc};
 use crate::action::{common::ConfigureInitService, Action, ActionDescription};
 use crate::action::{ActionError, ActionErrorKind, ActionTag, StatefulAction};
 use crate::settings::InitSystem;
+use crate::util::OnMissing;
 
 // Linux
 const LINUX_NIXD_DAEMON_DEST: &str = "/etc/systemd/system/nix-daemon.service";
@@ -44,22 +45,17 @@ impl ConfigureDeterminateNixdInitService {
                 // these service files wouldn't get removed, so we can't rely on them not being
                 // there after phase 1 of the uninstall
                 // [1]: https://github.com/DeterminateSystems/nix-installer/pull/1266
-                if std::path::Path::new(
-                    super::configure_upstream_init_service::DARWIN_NIX_DAEMON_DEST,
+                crate::util::remove_file(
+                    Path::new(super::configure_upstream_init_service::DARWIN_NIX_DAEMON_DEST),
+                    OnMissing::Ignore,
                 )
-                .exists()
-                {
-                    tokio::fs::remove_file(
-                        super::configure_upstream_init_service::DARWIN_NIX_DAEMON_DEST,
-                    )
-                    .await
-                    .map_err(|e| {
-                        Self::error(ActionErrorKind::Remove(
-                            super::configure_upstream_init_service::DARWIN_NIX_DAEMON_DEST.into(),
-                            e,
-                        ))
-                    })?;
-                }
+                .await
+                .map_err(|e| {
+                    Self::error(ActionErrorKind::Remove(
+                        super::configure_upstream_init_service::DARWIN_NIX_DAEMON_DEST.into(),
+                        e,
+                    ))
+                })?;
 
                 Some(DARWIN_NIXD_DAEMON_DEST.into())
             },

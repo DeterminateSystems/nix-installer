@@ -5,6 +5,7 @@ use tracing::{span, Span};
 use crate::action::{ActionError, ActionErrorKind, ActionTag};
 
 use crate::action::{Action, ActionDescription, StatefulAction};
+use crate::util::OnMissing;
 
 const OFFLOAD_PATH: &str = "/home/.steamos/offload/nix";
 
@@ -68,8 +69,7 @@ impl Action for RevertCleanSteamosNixOffload {
 
         for path in paths {
             let path = path.map_err(Self::error)?;
-            tracing::trace!(path = %path.display(), "Removing");
-            tokio::fs::remove_dir_all(&path)
+            crate::util::remove_dir_all(&path, OnMissing::Error)
                 .await
                 .map_err(|e| Self::error(ActionErrorKind::Remove(path, e)))?;
         }
