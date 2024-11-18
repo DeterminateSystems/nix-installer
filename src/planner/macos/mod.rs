@@ -228,6 +228,7 @@ impl Planner for Macos {
 
         if self.settings.determinate_nix {
             println!("Creating determinate nix volume {0}", self.volume_label);
+            println!("Installer volume label: {}", std::env::var("NIX_INSTALLER_VOLUME_LABEL").unwrap_or_default());
             plan.push(
                 CreateDeterminateNixVolume::plan(
                     root_disk.unwrap(), /* We just ensured it was populated */
