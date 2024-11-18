@@ -265,7 +265,7 @@ impl Action for CreateFile {
 
         remove_file(&path)
             .await
-            .map_err(|e| ActionErrorKind::Remove(path.to_owned(), e))
+            .or_else(|e| ActionErrorKind::remove_ignore_not_found(&path, e))
             .map_err(Self::error)?;
 
         Ok(())

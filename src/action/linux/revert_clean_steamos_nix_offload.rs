@@ -71,7 +71,8 @@ impl Action for RevertCleanSteamosNixOffload {
             tracing::trace!(path = %path.display(), "Removing");
             tokio::fs::remove_dir_all(&path)
                 .await
-                .map_err(|e| Self::error(ActionErrorKind::Remove(path, e)))?;
+                .or_else(|e| ActionErrorKind::remove_ignore_not_found(&path, e))
+                .map_err(Self::error)?;
         }
 
         Ok(())

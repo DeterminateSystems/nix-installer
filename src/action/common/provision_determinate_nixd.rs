@@ -65,7 +65,7 @@ impl Action for ProvisionDeterminateNixd {
         if self.binary_location.exists() {
             remove_file(&self.binary_location)
                 .await
-                .map_err(|e| ActionErrorKind::Remove(self.binary_location.clone(), e))
+                .or_else(|e| ActionErrorKind::remove_ignore_not_found(&self.binary_location, e))
                 .map_err(Self::error)?;
         }
 
@@ -101,7 +101,7 @@ impl Action for ProvisionDeterminateNixd {
         if self.binary_location.exists() {
             remove_file(&self.binary_location)
                 .await
-                .map_err(|e| ActionErrorKind::Remove(self.binary_location.clone(), e))
+                .or_else(|e| ActionErrorKind::remove_ignore_not_found(&self.binary_location, e))
                 .map_err(Self::error)?;
         }
 

@@ -591,6 +591,14 @@ pub enum ActionErrorKind {
 }
 
 impl ActionErrorKind {
+    pub fn remove_ignore_not_found(path: &std::path::Path, e: std::io::Error) -> Result<(), Self> {
+        if e.kind() == std::io::ErrorKind::NotFound {
+            return Ok(());
+        }
+
+        Err(Self::Remove(path.to_owned(), e))
+    }
+
     pub fn command(command: &tokio::process::Command, error: std::io::Error) -> Self {
         Self::Command {
             #[cfg(feature = "diagnostics")]

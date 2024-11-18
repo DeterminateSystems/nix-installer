@@ -101,7 +101,7 @@ impl Action for MoveUnpackedNix {
                 tracing::trace!(src = %entry.path().display(), dest = %entry_dest.display(), "Removing already existing package");
                 tokio::fs::remove_dir_all(&entry_dest)
                     .await
-                    .map_err(|e| ActionErrorKind::Remove(entry_dest.clone(), e))
+                    .or_else(|e| ActionErrorKind::remove_ignore_not_found(&entry_dest, e))
                     .map_err(Self::error)?;
             }
             tracing::trace!(src = %entry.path().display(), dest = %entry_dest.display(), "Renaming");

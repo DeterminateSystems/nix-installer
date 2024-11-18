@@ -161,7 +161,8 @@ impl Action for CreateNixHookService {
     async fn revert(&mut self) -> Result<(), ActionError> {
         remove_file(&self.path)
             .await
-            .map_err(|e| Self::error(ActionErrorKind::Remove(self.path.to_owned(), e)))?;
+            .or_else(|e| ActionErrorKind::remove_ignore_not_found(&self.path, e))
+            .map_err(Self::error)?;
 
         Ok(())
     }

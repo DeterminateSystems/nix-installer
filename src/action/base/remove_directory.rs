@@ -58,7 +58,8 @@ impl Action for RemoveDirectory {
             }
             remove_dir_all(&self.path)
                 .await
-                .map_err(|e| Self::error(ActionErrorKind::Remove(self.path.clone(), e)))?;
+                .or_else(|e| ActionErrorKind::remove_ignore_not_found(&self.path, e))
+                .map_err(Self::error)?;
         } else {
             tracing::debug!("Directory `{}` not present, skipping", self.path.display(),);
         };

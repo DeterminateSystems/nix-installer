@@ -364,7 +364,7 @@ impl Action for ConfigureInitService {
                         tracing::trace!(path = %service_dest.display(), "Removing");
                         tokio::fs::remove_file(service_dest)
                             .await
-                            .map_err(|e| ActionErrorKind::Remove(service_dest.into(), e))
+                            .or_else(|e| ActionErrorKind::remove_ignore_not_found(&service_dest, e))
                             .map_err(Self::error)?;
                     }
                     tracing::trace!(src = %service_src.display(), dest = %service_dest.display(), "Symlinking");
@@ -388,7 +388,7 @@ impl Action for ConfigureInitService {
                         tracing::trace!(path = %dest.display(), "Removing");
                         tokio::fs::remove_file(dest)
                             .await
-                            .map_err(|e| ActionErrorKind::Remove(dest.into(), e))
+                            .or_else(|e| ActionErrorKind::remove_ignore_not_found(&dest, e))
                             .map_err(Self::error)?;
                     }
 
@@ -613,7 +613,8 @@ impl Action for ConfigureInitService {
                 if Path::new(TMPFILES_DEST).exists() {
                     if let Err(err) = tokio::fs::remove_file(TMPFILES_DEST)
                         .await
-                        .map_err(|e| ActionErrorKind::Remove(PathBuf::from(TMPFILES_DEST), e))
+
+                    .or_else(|e| ActionErrorKind::remove_ignore_not_found(std::path::Path::new(TMPFILES_DEST), e))
                     {
                         errors.push(err);
                     }
@@ -640,7 +641,7 @@ impl Action for ConfigureInitService {
                 tracing::trace!(path = %dest.display(), "Removing");
                 if let Err(err) = tokio::fs::remove_file(dest)
                     .await
-                    .map_err(|e| ActionErrorKind::Remove(PathBuf::from(dest), e))
+                    .or_else(|e| ActionErrorKind::remove_ignore_not_found(&dest, e))
                 {
                     errors.push(err);
                 }
@@ -652,7 +653,7 @@ impl Action for ConfigureInitService {
                 tracing::trace!(path = %socket.dest.display(), "Removing");
                 if let Err(err) = tokio::fs::remove_file(&socket.dest)
                     .await
-                    .map_err(|e| ActionErrorKind::Remove(socket.dest.to_path_buf(), e))
+                    .or_else(|e| ActionErrorKind::remove_ignore_not_found(&socket.dest, e))
                 {
                     errors.push(err);
                 }
