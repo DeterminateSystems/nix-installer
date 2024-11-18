@@ -227,6 +227,7 @@ impl Planner for Macos {
         }
 
         if self.settings.determinate_nix {
+            println!("Creating determinate nix volume {0}", self.volume_label);
             plan.push(
                 CreateDeterminateNixVolume::plan(
                     root_disk.unwrap(), /* We just ensured it was populated */
