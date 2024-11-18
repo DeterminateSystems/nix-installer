@@ -9,7 +9,6 @@ use crate::{
     settings::{CommonSettings, SCRATCH_DIR},
 };
 use std::os::unix::fs::MetadataExt as _;
-use std::os::unix::fs::PermissionsExt;
 use std::path::PathBuf;
 
 pub(crate) const NIX_STORE_LOCATION: &str = "/nix/store";
@@ -177,7 +176,7 @@ async fn ensure_nix_store_group(desired_nix_build_group_id: u32) -> Result<(), A
         .map_err(|e| ActionErrorKind::GettingMetadata(NIX_STORE_LOCATION.into(), e))?;
     let previous_store_group_id = previous_store_metadata.gid();
     if previous_store_group_id != desired_nix_build_group_id {
-        for (entry, metadata) in walkdir::WalkDir::new(NIX_STORE_LOCATION)
+        for (entry, _metadata) in walkdir::WalkDir::new(NIX_STORE_LOCATION)
         .follow_links(false)
         .same_file_system(true)
         // chown all of the contents of the dir before NIX_STORE_LOCATION,
@@ -202,10 +201,6 @@ async fn ensure_nix_store_group(desired_nix_build_group_id: u32) -> Result<(), A
             }
         })
         .filter(|(_entry, metadata)| {
-            if metadata.uid() != 0 {
-                return true;
-            }
-
             // If the dirent's group ID is the *previous* GID, reassign.
             // NOTE(@grahamc, 2024-11-15): Nix on macOS has store paths with a group of nixbld, and sometimes a group of `wheel` (0).
             // On NixOS, all the store paths have their GID set to 0.
@@ -214,40 +209,10 @@ async fn ensure_nix_store_group(desired_nix_build_group_id: u32) -> Result<(), A
                 return true;
             }
 
-            // Get the user-group-other permission bits
-
-            if metadata.mode() != 0o555 || metadata.mode() != 0o444 {
-                return true;
-            }
-
             false
         }) {
             if let Err(e) = std::os::unix::fs::chown(entry.path(), Some(0), Some(desired_nix_build_group_id)) {
                 tracing::warn!(path = %entry.path().to_string_lossy(), %e, "Failed to set the owner:group to 0:{}", desired_nix_build_group_id);
-            }
-            let mode = metadata.mode();
-
-            // Determine if this file is executable by anyone
-            let is_any_executable = (mode & 0o111) != 0;
-
-            if is_any_executable {
-                // If anyone can execute this file, then everyone must be able to
-                let all_executable = mode | 0o555;
-
-                if mode != all_executable {
-                    if let Err(e) = tokio::fs::set_permissions(entry.path(), std::fs::Permissions::from_mode(all_executable)).await {
-                        tracing::warn!(path = %entry.path().to_string_lossy(), %e, "Failed to set the mode to 0o555");
-                    }
-                }
-            } else {
-                let all_readable = mode | 0o444;
-
-                // Otherwise, if anyone can read the file, then everyone must be able to
-                if mode != all_readable {
-                    if let Err(e) = tokio::fs::set_permissions(entry.path(), std::fs::Permissions::from_mode(all_readable)).await {
-                        tracing::warn!(path = %entry.path().to_string_lossy(), %e, "Failed to set the mode to 0o444");
-                    }
-                }
             }
         }
     }
