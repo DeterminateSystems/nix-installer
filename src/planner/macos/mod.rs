@@ -139,7 +139,7 @@ impl Planner for Macos {
             root_disk: Some(default_root_disk().await?),
             case_sensitive: false,
             encrypt: None,
-            volume_label: "Nix Store".into(),
+            volume_label: "Nixxie".into(),
         })
     }
 
