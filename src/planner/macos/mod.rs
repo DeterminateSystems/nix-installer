@@ -353,8 +353,6 @@ impl Planner for Macos {
             serde_json::to_value(case_sensitive)?,
         );
 
-        println!("Settings: {0}", map);
-
         Ok(map)
     }
 
