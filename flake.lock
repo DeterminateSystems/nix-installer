@@ -17,12 +17,12 @@
         ]
       },
       "locked": {
-        "lastModified": 1731448710,
-        "narHash": "sha256-uNxfr/i8m9oyMPUxlagmOm+qQ4erUB0Pq2sRtR4qFV4=",
-        "rev": "e8698104b97ce6bce0ce6bbd46d82dccabfffd1d",
-        "revCount": 153,
+        "lastModified": 1732043483,
+        "narHash": "sha256-Ul9NJss1/eyGTE9c7bBJjN1+38A75ojGqDZHQEvsmVo=",
+        "rev": "15b053d78de610810a303afec9ce3e0160bd8c69",
+        "revCount": 156,
         "type": "tarball",
-        "url": "https://api.flakehub.com/f/pinned/DeterminateSystems/determinate/0.1.153%2Brev-e8698104b97ce6bce0ce6bbd46d82dccabfffd1d/01932265-56de-748a-a97e-9e8bfaab53a2/source.tar.gz"
+        "url": "https://api.flakehub.com/f/pinned/DeterminateSystems/determinate/0.1.156%2Brev-15b053d78de610810a303afec9ce3e0160bd8c69/019345d8-fd8d-7c5f-b852-f9eace9b13f5/source.tar.gz"
       },
       "original": {
         "type": "tarball",
@@ -32,37 +32,37 @@
     "determinate-nixd-aarch64-darwin": {
       "flake": false,
       "locked": {
-        "narHash": "sha256-XSYDoC2gHke98y83pABOnNT0E2jGE0qo1yBzY0b7/I0=",
+        "narHash": "sha256-oUDHY3Ty9aYOHOoSPRFZRut87iqJy8uKMgv3SDxMTXY=",
         "type": "file",
-        "url": "https://install.determinate.systems/determinate-nixd/tag/v0.2.2/macOS"
+        "url": "https://install.determinate.systems/determinate-nixd/tag/v0.2.3/macOS"
       },
       "original": {
         "type": "file",
-        "url": "https://install.determinate.systems/determinate-nixd/tag/v0.2.2/macOS"
+        "url": "https://install.determinate.systems/determinate-nixd/tag/v0.2.3/macOS"
       }
     },
     "determinate-nixd-aarch64-linux": {
       "flake": false,
       "locked": {
-        "narHash": "sha256-MfKT7oYAZ1BxVpsFA4SRNYxh+2fQScESO67UJy+8gQY=",
+        "narHash": "sha256-wtKTpTi6Nho1XutQjd96xgVnhoVD2CEMJQdygkUuwsk=",
         "type": "file",
-        "url": "https://install.determinate.systems/determinate-nixd/tag/v0.2.2/aarch64-linux"
+        "url": "https://install.determinate.systems/determinate-nixd/tag/v0.2.3/aarch64-linux"
       },
       "original": {
         "type": "file",
-        "url": "https://install.determinate.systems/determinate-nixd/tag/v0.2.2/aarch64-linux"
+        "url": "https://install.determinate.systems/determinate-nixd/tag/v0.2.3/aarch64-linux"
       }
     },
     "determinate-nixd-x86_64-linux": {
       "flake": false,
       "locked": {
-        "narHash": "sha256-N6ufU3p/8ooUsElSmPTArgfqCWj0emuDdLgkCFZ1ksE=",
+        "narHash": "sha256-gSGNIHpmAPJgjks/Yb9PzwubPAbPULk9LEiDpdFZtpA=",
         "type": "file",
-        "url": "https://install.determinate.systems/determinate-nixd/tag/v0.2.2/x86_64-linux"
+        "url": "https://install.determinate.systems/determinate-nixd/tag/v0.2.3/x86_64-linux"
       },
       "original": {
         "type": "file",
-        "url": "https://install.determinate.systems/determinate-nixd/tag/v0.2.2/x86_64-linux"
+        "url": "https://install.determinate.systems/determinate-nixd/tag/v0.2.3/x86_64-linux"
       }
     },
     "fenix": {
