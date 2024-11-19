@@ -3,6 +3,7 @@ name: Generate Installer Script
 on:
   schedule:
     - cron: '10 * * * *'
+  workflow_dispatch: # Allows manual triggering of the workflow
 
 jobs:
   build:
