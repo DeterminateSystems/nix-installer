@@ -125,7 +125,7 @@ impl Action for ProvisionSelinux {
 async fn remove_existing_policy(policy_path: &Path) -> Result<(), ActionErrorKind> {
     execute_command(Command::new("semodule").arg("--remove").arg("nix")).await?;
 
-    crate::util::remove_file(&policy_path, OnMissing::Ignore)
+    crate::util::remove_file(policy_path, OnMissing::Ignore)
         .await
         .map_err(|e| ActionErrorKind::Remove(policy_path.into(), e))?;
 
