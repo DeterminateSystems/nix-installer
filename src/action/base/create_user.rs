@@ -239,73 +239,104 @@ impl Action for CreateUser {
     }
 }
 
+#[tracing::instrument]
+pub(crate) async fn execute_command_retry_on_enotyetimplemented(
+    dscl_args: &[&str],
+) -> Result<(), ActionErrorKind> {
+    let mut retry_tokens: usize = 10;
+    loop {
+        let mut command = Command::new("/usr/bin/dscl");
+        command.process_group(0);
+        command.args(dscl_args);
+        command.stdin(std::process::Stdio::null());
+        tracing::trace!(%retry_tokens, command = ?command.as_std(), "Waiting for user create/update to succeed");
+
+        let output = command
+            .output()
+            .await
+            .map_err(|e| ActionErrorKind::command(&command, e))?;
+        let stderr = String::from_utf8_lossy(&output.stderr);
+
+        if output.status.success() {
+            tracing::trace!(
+                stderr = %stderr,
+                stdout = %String::from_utf8_lossy(&output.stdout),
+                "Command success"
+            );
+            break;
+        } else if retry_tokens == 0 {
+            return Err(ActionErrorKind::command_output(&command, output))?;
+        } else {
+            match output.status.code() {
+                Some(140) if stderr.contains("-14988 (eNotYetImplemented)") => {
+                    // Retry due to buggy macOS user behavior?
+                    // https://github.com/DeterminateSystems/nix-installer/issues/1300
+                    // https://github.com/ansible/ansible/issues/73505
+                },
+                _ => return Err(ActionErrorKind::command_output(&command, output)),
+            }
+
+            retry_tokens = retry_tokens.saturating_sub(1);
+        }
+
+        tokio::time::sleep(std::time::Duration::from_millis(500)).await;
+    }
+
+    Ok(())
+}
+
 #[tracing::instrument(level = "debug", skip_all)]
 async fn create_user_macos(name: &str, uid: u32, gid: u32) -> Result<(), ActionErrorKind> {
-    execute_command(
-        Command::new("/usr/bin/dscl")
-            .process_group(0)
-            .args([".", "-create", &format!("/Users/{name}")])
-            .stdin(std::process::Stdio::null()),
-    )
+    execute_command_retry_on_enotyetimplemented(&[".", "-create", &format!("/Users/{name}")])
+        .await?;
+
+    execute_command_retry_on_enotyetimplemented(&[
+        ".",
+        "-create",
+        &format!("/Users/{name}"),
+        "UniqueID",
+        &format!("{uid}"),
+    ])
     .await?;
-    execute_command(
-        Command::new("/usr/bin/dscl")
-            .process_group(0)
-            .args([
-                ".",
-                "-create",
-                &format!("/Users/{name}"),
-                "UniqueID",
-                &format!("{uid}"),
-            ])
-            .stdin(std::process::Stdio::null()),
-    )
+    execute_command_retry_on_enotyetimplemented(&[
+        ".",
+        "-create",
+        &format!("/Users/{name}"),
+        "PrimaryGroupID",
+        &format!("{gid}"),
+    ])
     .await?;
-    execute_command(
-        Command::new("/usr/bin/dscl")
-            .process_group(0)
-            .args([
-                ".",
-                "-create",
-                &format!("/Users/{name}"),
-                "PrimaryGroupID",
-                &format!("{gid}"),
-            ])
-            .stdin(std::process::Stdio::null()),
-    )
+    execute_command_retry_on_enotyetimplemented(&[
+        ".",
+        "-create",
+        &format!("/Users/{name}"),
+        "NFSHomeDirectory",
+        "/var/empty",
+    ])
     .await?;
-    execute_command(
-        Command::new("/usr/bin/dscl")
-            .process_group(0)
-            .args([
-                ".",
-                "-create",
-                &format!("/Users/{name}"),
-                "NFSHomeDirectory",
-                "/var/empty",
-            ])
-            .stdin(std::process::Stdio::null()),
-    )
+    execute_command_retry_on_enotyetimplemented(&[
+        ".",
+        "-create",
+        &format!("/Users/{name}"),
+        "UserShell",
+        "/sbin/nologin",
+    ])
     .await?;
-    execute_command(
-        Command::new("/usr/bin/dscl")
-            .process_group(0)
-            .args([
-                ".",
-                "-create",
-                &format!("/Users/{name}"),
-                "UserShell",
-                "/sbin/nologin",
-            ])
-            .stdin(std::process::Stdio::null()),
-    )
+    execute_command_retry_on_enotyetimplemented(&[
+        ".",
+        "-create",
+        &format!("/Users/{name}"),
+        "IsHidden",
+        "1",
+    ])
     .await?;
-    execute_command(
-        Command::new("/usr/bin/dscl")
-            .process_group(0)
-            .args([".", "-create", &format!("/Users/{name}"), "IsHidden", "1"])
-            .stdin(std::process::Stdio::null()),
-    )
+    execute_command_retry_on_enotyetimplemented(&[
+        ".",
+        "-create",
+        &format!("/Users/{name}"),
+        "RealName",
+        name,
+    ])
     .await?;
 
     Ok(())
