@@ -36,17 +36,20 @@ impl UnmountApfsVolume {
     ) -> Result<StatefulAction<Self>, ActionError> {
         let diskinfo = DiskUtilInfoOutput::for_volume_name(&name).await;
 
-        let mut task = Self::plan(&disk, name).await?;
+        let task = Self {
+            disk: disk.as_ref().to_owned(),
+            name,
+        };
 
         if let Ok(diskinfo) = diskinfo {
             if Path::new(&diskinfo.parent_whole_disk) == disk.as_ref()
                 && diskinfo.mount_point.as_deref() == Some("/nix".as_ref())
             {
-                task.state = crate::action::ActionState::Skipped
+                return Ok(StatefulAction::skipped(task));
             }
         }
 
-        Ok(task)
+        Ok(task.into())
     }
 }
 
