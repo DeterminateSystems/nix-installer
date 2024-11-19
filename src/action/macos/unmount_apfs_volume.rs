@@ -30,10 +30,9 @@ impl UnmountApfsVolume {
     }
 
     #[tracing::instrument(level = "debug", skip_all)]
-    pub async fn plan_skip_if_already_mounted(
+    pub async fn plan_skip_if_already_mounted_to_nix(
         disk: impl AsRef<Path>,
         name: String,
-        mount_point: impl AsRef<Path>,
     ) -> Result<StatefulAction<Self>, ActionError> {
         let diskinfo = DiskUtilInfoOutput::for_volume_name(&name).await;
 
@@ -41,7 +40,7 @@ impl UnmountApfsVolume {
 
         if let Ok(diskinfo) = diskinfo {
             if Path::new(&diskinfo.parent_whole_disk) == disk.as_ref()
-                && diskinfo.mount_point.as_deref() == Some(mount_point.as_ref())
+                && diskinfo.mount_point.as_deref() == Some("/nix".as_ref())
             {
                 task.state = crate::action::ActionState::Skipped
             }

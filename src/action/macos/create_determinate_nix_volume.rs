@@ -77,7 +77,7 @@ impl CreateDeterminateNixVolume {
             .map_err(Self::error)?;
 
         let unmount_volume = if create_volume.state == crate::action::ActionState::Completed {
-            UnmountApfsVolume::plan_skip_if_already_mounted(disk, name.clone(), "/nix")
+            UnmountApfsVolume::plan_skip_if_already_mounted_to_nix(disk, name.clone())
                 .await
                 .map_err(Self::error)?
         } else {
