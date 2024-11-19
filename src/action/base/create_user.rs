@@ -334,6 +334,10 @@ pub async fn delete_user_macos(name: &str) -> Result<(), ActionErrorKind> {
             // These Macs cannot always delete users, as sometimes there is no graphical login
             tracing::warn!("Encountered an exit code 40 with -14120 error while removing user, this is likely because the initial executing user did not have a secure token, or that there was no graphical login session. To delete the user, log in graphically, then run `/usr/bin/dscl . -delete /Users/{}`", name);
         },
+        Some(185) if stderr.contains("-14009 (eDSUnknownNodeName)") => {
+            // The user has already been deleted
+            tracing::debug!("User already deleted: /Users/{}`", name);
+        },
         _ => {
             // Something went wrong
             return Err(ActionErrorKind::command_output(&command, output));
