@@ -279,7 +279,7 @@ impl Action for CreateDirectory {
                 tracing::debug!("Not cleaning mountpoint `{}`", path.display());
             },
             (false, true, _) | (false, false, true) => {
-                crate::util::remove_dir_all(&path, OnMissing::Error)
+                crate::util::remove_dir_all(path, OnMissing::Error)
                     .await
                     .map_err(|e| ActionErrorKind::Remove(path.clone(), e))
                     .map_err(Self::error)?

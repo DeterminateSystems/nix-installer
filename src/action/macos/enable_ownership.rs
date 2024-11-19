@@ -1,4 +1,3 @@
-use std::io::Cursor;
 use std::path::{Path, PathBuf};
 
 use tokio::process::Command;
@@ -54,18 +53,9 @@ impl Action for EnableOwnership {
     #[tracing::instrument(level = "debug", skip_all)]
     async fn execute(&mut self) -> Result<(), ActionError> {
         let should_enable_ownership = {
-            let buf = execute_command(
-                Command::new("/usr/sbin/diskutil")
-                    .process_group(0)
-                    .args(["info", "-plist"])
-                    .arg(&self.path)
-                    .stdin(std::process::Stdio::null()),
-            )
-            .await
-            .map_err(Self::error)?
-            .stdout;
-            let the_plist: DiskUtilInfoOutput =
-                plist::from_reader(Cursor::new(buf)).map_err(Self::error)?;
+            let the_plist = DiskUtilInfoOutput::for_volume_path(&self.path)
+                .await
+                .map_err(Self::error)?;
 
             !the_plist.global_permissions_enabled
         };

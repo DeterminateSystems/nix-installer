@@ -1,4 +1,3 @@
-use std::io::Cursor;
 use std::path::{Path, PathBuf};
 
 use tokio::process::Command;
@@ -29,6 +28,29 @@ impl UnmountApfsVolume {
         let disk = disk.as_ref().to_owned();
         Ok(Self { disk, name }.into())
     }
+
+    #[tracing::instrument(level = "debug", skip_all)]
+    pub async fn plan_skip_if_already_mounted_to_nix(
+        disk: impl AsRef<Path>,
+        name: String,
+    ) -> Result<StatefulAction<Self>, ActionError> {
+        let diskinfo = DiskUtilInfoOutput::for_volume_name(&name).await;
+
+        let task = Self {
+            disk: disk.as_ref().to_owned(),
+            name,
+        };
+
+        if let Ok(diskinfo) = diskinfo {
+            if Path::new(&diskinfo.parent_whole_disk) == disk.as_ref()
+                && diskinfo.mount_point.as_deref() == Some("/nix".as_ref())
+            {
+                return Ok(StatefulAction::skipped(task));
+            }
+        }
+
+        Ok(task.into())
+    }
 }
 
 #[async_trait::async_trait]
@@ -57,18 +79,9 @@ impl Action for UnmountApfsVolume {
     #[tracing::instrument(level = "debug", skip_all)]
     async fn execute(&mut self) -> Result<(), ActionError> {
         let currently_mounted = {
-            let buf = execute_command(
-                Command::new("/usr/sbin/diskutil")
-                    .process_group(0)
-                    .args(["info", "-plist"])
-                    .arg(&self.name)
-                    .stdin(std::process::Stdio::null()),
-            )
-            .await
-            .map_err(Self::error)?
-            .stdout;
-            let the_plist: DiskUtilInfoOutput =
-                plist::from_reader(Cursor::new(buf)).map_err(Self::error)?;
+            let the_plist = DiskUtilInfoOutput::for_volume_name(&self.name)
+                .await
+                .map_err(Self::error)?;
 
             the_plist.is_mounted()
         };
@@ -97,18 +110,9 @@ impl Action for UnmountApfsVolume {
     #[tracing::instrument(level = "debug", skip_all)]
     async fn revert(&mut self) -> Result<(), ActionError> {
         let currently_mounted = {
-            let buf = execute_command(
-                Command::new("/usr/sbin/diskutil")
-                    .process_group(0)
-                    .args(["info", "-plist"])
-                    .arg(&self.name)
-                    .stdin(std::process::Stdio::null()),
-            )
-            .await
-            .map_err(Self::error)?
-            .stdout;
-            let the_plist: DiskUtilInfoOutput =
-                plist::from_reader(Cursor::new(buf)).map_err(Self::error)?;
+            let the_plist = DiskUtilInfoOutput::for_volume_name(&self.name)
+                .await
+                .map_err(Self::error)?;
 
             the_plist.is_mounted()
         };

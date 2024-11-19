@@ -62,13 +62,19 @@ impl CreateNixVolume {
 
         let create_synthetic_objects = CreateSyntheticObjects::plan().await.map_err(Self::error)?;
 
-        let unmount_volume = UnmountApfsVolume::plan(disk, name.clone())
-            .await
-            .map_err(Self::error)?;
-
         let create_volume = CreateApfsVolume::plan(disk, name.clone(), case_sensitive)
             .await
             .map_err(Self::error)?;
+
+        let unmount_volume = if create_volume.state == crate::action::ActionState::Completed {
+            UnmountApfsVolume::plan_skip_if_already_mounted_to_nix(disk, name.clone())
+                .await
+                .map_err(Self::error)?
+        } else {
+            UnmountApfsVolume::plan(disk, name.clone())
+                .await
+                .map_err(Self::error)?
+        };
 
         let create_fstab_entry = CreateFstabEntry::plan(name.clone(), &create_volume)
             .await
