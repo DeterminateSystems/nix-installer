@@ -1,5 +1,5 @@
 {
-  "version": "0.28.0",
+  "version": "0.29.0",
   "actions": [
     {
       "action": {
@@ -1198,7 +1198,7 @@
   },
   "diagnostic_data": {
     "attribution": null,
-    "version": "0.28.0",
+    "version": "0.29.0",
     "planner": "steam-deck",
     "configured_settings": [],
     "os_name": "SteamOS",
