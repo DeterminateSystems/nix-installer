@@ -1,24 +1,22 @@
 name: Generate Installer Script
 
 on:
-  schedule:
-    - cron: '10 * * * *'
   workflow_dispatch: # Allows manual triggering of the workflow
+    inputs:
+      testing_hydra_eval_id:
+        description: "Eval ID of Hydra job to use artifacts from for testing"
+        required: false
+        default: ""
 
 jobs:
-  build:
+  create-draft-release:
     runs-on: ubuntu-latest
     steps:
     - name: Checkout
       uses: actions/checkout@v4
     - uses: cachix/install-nix-action@v25
-    - name: Download Installer
-      run: nix-shell -p python3Packages.requests --run "python assemble_installer.py" -I nixpkgs=channel:nixos-23.11
-    - uses: stefanzweifel/git-auto-commit-action@v5
-      with:
-        commit_message: "Update installer script"
-        commit_user_name: "GitHub Actions"
-        branch: prerelease
-        # assemble_installer.py already does a fetch and checkout
-        skip_fetch: true
-        skip_checkout: true
+    - name: Create draft release
+      # The script also depends on gh and git but those are both pre-installed on the runner
+      run: nix-shell -p python3Packages.requests --run "python assemble_installer.py ${{ github.event.inputs.testing_hydra_eval_id }}" -I nixpkgs=channel:nixos-23.11
+      env:
+        GH_TOKEN: ${{ github.token }}
