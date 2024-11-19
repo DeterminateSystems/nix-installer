@@ -78,14 +78,12 @@ impl CreateDeterminateNixVolume {
                 .await
                 .map_err(Self::error)?;
 
-            let diskinfo = DiskUtilInfoOutput::for_volume_name(&name)
-                .await
-                .map_err(Self::error)?;
-
-            if Path::new(&diskinfo.parent_whole_disk) == disk
-                && diskinfo.mount_point.as_deref() == Some(Path::new("/nix"))
-            {
-                task.state = crate::action::ActionState::Skipped
+            if let Ok(diskinfo) = DiskUtilInfoOutput::for_volume_name(&name).await {
+                if Path::new(&diskinfo.parent_whole_disk) == disk
+                    && diskinfo.mount_point.as_deref() == Some(Path::new("/nix"))
+                {
+                    task.state = crate::action::ActionState::Skipped
+                }
             }
 
             task
