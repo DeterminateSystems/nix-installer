@@ -19,7 +19,6 @@ use crate::action::{
     },
     Action, ActionDescription, ActionError, ActionErrorKind, ActionTag, StatefulAction,
 };
-use crate::os::darwin::DiskUtilInfoOutput;
 
 pub const VOLUME_MOUNT_SERVICE_NAME: &str = "systems.determinate.nix-store";
 pub const VOLUME_MOUNT_SERVICE_DEST: &str =
@@ -77,22 +76,14 @@ impl CreateDeterminateNixVolume {
             .await
             .map_err(Self::error)?;
 
-        let unmount_volume = {
-            let mut task = UnmountApfsVolume::plan(disk, name.clone())
+        let unmount_volume = if create_volume.state == crate::action::ActionState::Completed {
+            UnmountApfsVolume::plan_skip_if_already_mounted(disk, name.clone(), "/nix")
                 .await
-                .map_err(Self::error)?;
-
-            if create_volume.state == crate::action::ActionState::Completed {
-                if let Ok(diskinfo) = DiskUtilInfoOutput::for_volume_name(&name).await {
-                    if Path::new(&diskinfo.parent_whole_disk) == disk
-                        && diskinfo.mount_point.as_deref() == Some(Path::new("/nix"))
-                    {
-                        task.state = crate::action::ActionState::Skipped
-                    }
-                }
-            }
-
-            task
+                .map_err(Self::error)?
+        } else {
+            UnmountApfsVolume::plan(disk, name.clone())
+                .await
+                .map_err(Self::error)?
         };
 
         let create_fstab_entry = CreateFstabEntry::plan(name.clone(), &create_volume)

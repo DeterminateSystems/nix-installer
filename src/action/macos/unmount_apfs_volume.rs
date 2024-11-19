@@ -28,6 +28,27 @@ impl UnmountApfsVolume {
         let disk = disk.as_ref().to_owned();
         Ok(Self { disk, name }.into())
     }
+
+    #[tracing::instrument(level = "debug", skip_all)]
+    pub async fn plan_skip_if_already_mounted(
+        disk: impl AsRef<Path>,
+        name: String,
+        mount_point: impl AsRef<Path>,
+    ) -> Result<StatefulAction<Self>, ActionError> {
+        let diskinfo = DiskUtilInfoOutput::for_volume_name(&name).await;
+
+        let mut task = Self::plan(&disk, name).await?;
+
+        if let Ok(diskinfo) = diskinfo {
+            if Path::new(&diskinfo.parent_whole_disk) == disk.as_ref()
+                && diskinfo.mount_point.as_deref() == Some(mount_point.as_ref())
+            {
+                task.state = crate::action::ActionState::Skipped
+            }
+        }
+
+        Ok(task)
+    }
 }
 
 #[async_trait::async_trait]
