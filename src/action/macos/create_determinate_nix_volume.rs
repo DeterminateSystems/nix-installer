@@ -73,25 +73,27 @@ impl CreateDeterminateNixVolume {
 
         let create_synthetic_objects = CreateSyntheticObjects::plan().await.map_err(Self::error)?;
 
+        let create_volume = CreateApfsVolume::plan(disk, name.clone(), case_sensitive)
+            .await
+            .map_err(Self::error)?;
+
         let unmount_volume = {
             let mut task = UnmountApfsVolume::plan(disk, name.clone())
                 .await
                 .map_err(Self::error)?;
 
-            if let Ok(diskinfo) = DiskUtilInfoOutput::for_volume_name(&name).await {
-                if Path::new(&diskinfo.parent_whole_disk) == disk
-                    && diskinfo.mount_point.as_deref() == Some(Path::new("/nix"))
-                {
-                    task.state = crate::action::ActionState::Skipped
+            if create_volume.state == crate::action::ActionState::Completed {
+                if let Ok(diskinfo) = DiskUtilInfoOutput::for_volume_name(&name).await {
+                    if Path::new(&diskinfo.parent_whole_disk) == disk
+                        && diskinfo.mount_point.as_deref() == Some(Path::new("/nix"))
+                    {
+                        task.state = crate::action::ActionState::Skipped
+                    }
                 }
             }
 
             task
         };
-
-        let create_volume = CreateApfsVolume::plan(disk, name.clone(), case_sensitive)
-            .await
-            .map_err(Self::error)?;
 
         let create_fstab_entry = CreateFstabEntry::plan(name.clone(), &create_volume)
             .await
