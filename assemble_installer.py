@@ -24,5 +24,8 @@ for build_id in hydra_eval['builds']:
     else:
         sys.exit(0)
 
+subprocess.run(["git", "fetch", "origin", "prerelease"], check=True)
+subprocess.run(["git", "checkout", "-b", "prerelease", "origin/prerelease"], check=True)
+
 for installer_url, system in installers:
     shutil.copy(f"{installer_url}/bin/nix-installer", f"nix-installer-{system}")
