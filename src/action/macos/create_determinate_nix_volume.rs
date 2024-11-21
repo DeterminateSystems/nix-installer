@@ -301,37 +301,44 @@ impl Action for CreateDeterminateNixVolume {
         let mut errors = vec![];
 
         if let Err(err) = self.enable_ownership.try_revert().await {
-            errors.push(err)
-        };
+            errors.push(err);
+        }
+
         if let Err(err) = self.kickstart_launchctl_service.try_revert().await {
-            errors.push(err)
+            errors.push(err);
         }
+
         if let Err(err) = self.bootstrap_volume.try_revert().await {
-            errors.push(err)
+            errors.push(err);
         }
+
         if let Err(err) = self.setup_volume_daemon.try_revert().await {
-            errors.push(err)
+            errors.push(err);
         }
+
         if let Err(err) = self.encrypt_volume.try_revert().await {
-            errors.push(err)
+            errors.push(err);
         }
+
         if let Err(err) = self.create_fstab_entry.try_revert().await {
-            errors.push(err)
+            errors.push(err);
         }
 
         if let Err(err) = self.unmount_volume.try_revert().await {
-            errors.push(err)
+            errors.push(err);
         }
+
         if let Err(err) = self.create_volume.try_revert().await {
-            errors.push(err)
+            errors.push(err);
         }
 
         // Purposefully not reversed
         if let Err(err) = self.create_or_append_synthetic_conf.try_revert().await {
-            errors.push(err)
+            errors.push(err);
         }
+
         if let Err(err) = self.create_synthetic_objects.try_revert().await {
-            errors.push(err)
+            errors.push(err);
         }
 
         if let Err(err) = self.create_directory.try_revert().await {
