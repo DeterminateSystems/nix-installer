@@ -316,10 +316,6 @@ impl Action for CreateDeterminateNixVolume {
             errors.push(err);
         }
 
-        if let Err(err) = self.encrypt_volume.try_revert().await {
-            errors.push(err);
-        }
-
         if let Err(err) = self.create_fstab_entry.try_revert().await {
             errors.push(err);
         }
@@ -328,8 +324,23 @@ impl Action for CreateDeterminateNixVolume {
             errors.push(err);
         }
 
+        let mut revert_create_volume_failed = false;
         if let Err(err) = self.create_volume.try_revert().await {
+            revert_create_volume_failed = true;
             errors.push(err);
+        }
+
+        // Intentionally happens after the create_volume step so we can avoid deleting the
+        // encryption password if volume deletion failed
+        if revert_create_volume_failed {
+            tracing::debug!(
+                "Not reverting encrypt_volume step (which would delete the disk encryption \
+                password) because deleting the volume failed"
+            );
+        } else {
+            if let Err(err) = self.encrypt_volume.try_revert().await {
+                errors.push(err);
+            }
         }
 
         // Purposefully not reversed
