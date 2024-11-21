@@ -163,7 +163,14 @@ impl DiagnosticData {
     }
 
     #[tracing::instrument(level = "debug", skip_all)]
-    pub async fn send(
+    pub async fn send(self, action: DiagnosticAction, status: DiagnosticStatus) {
+        if let Err(e) = self.send_impl(action, status).await {
+            tracing::debug!(?e, "Failed to send diagnostics");
+        }
+    }
+
+    #[tracing::instrument(level = "debug", skip_all)]
+    async fn send_impl(
         self,
         action: DiagnosticAction,
         status: DiagnosticStatus,
