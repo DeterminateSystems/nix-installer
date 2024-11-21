@@ -188,7 +188,7 @@ impl InstallPlan {
                                 crate::diagnostics::DiagnosticAction::Install,
                                 crate::diagnostics::DiagnosticStatus::Cancelled,
                             )
-                            .await?;
+                            .await;
                     }
 
                     return Err(NixInstallerError::Cancelled);
@@ -210,7 +210,7 @@ impl InstallPlan {
                             crate::diagnostics::DiagnosticAction::Install,
                             crate::diagnostics::DiagnosticStatus::Failure,
                         )
-                        .await?;
+                        .await;
                 }
 
                 return Err(err);
@@ -232,7 +232,7 @@ impl InstallPlan {
                         crate::diagnostics::DiagnosticAction::Install,
                         crate::diagnostics::DiagnosticStatus::Failure,
                     )
-                    .await?;
+                    .await;
             }
 
             tracing::warn!("{err:?}")
@@ -245,7 +245,7 @@ impl InstallPlan {
                         crate::diagnostics::DiagnosticAction::Install,
                         crate::diagnostics::DiagnosticStatus::Success,
                     )
-                    .await?;
+                    .await;
             }
         }
 
@@ -360,7 +360,7 @@ impl InstallPlan {
                                 crate::diagnostics::DiagnosticAction::Uninstall,
                                 crate::diagnostics::DiagnosticStatus::Cancelled,
                             )
-                            .await?;
+                            .await;
                     }
                     return Err(NixInstallerError::Cancelled);
                 }
@@ -381,7 +381,7 @@ impl InstallPlan {
                         crate::diagnostics::DiagnosticAction::Uninstall,
                         crate::diagnostics::DiagnosticStatus::Success,
                     )
-                    .await?;
+                    .await;
             }
 
             Ok(())
@@ -396,7 +396,7 @@ impl InstallPlan {
                         crate::diagnostics::DiagnosticAction::Uninstall,
                         crate::diagnostics::DiagnosticStatus::Failure,
                     )
-                    .await?;
+                    .await;
             }
 
             Err(error)
