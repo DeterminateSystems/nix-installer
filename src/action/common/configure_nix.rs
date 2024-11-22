@@ -169,16 +169,16 @@ impl Action for ConfigureNix {
             configure_shell_profile,
         } = self;
 
-        setup_default_profile
-            .try_execute()
-            .await
-            .map_err(Self::error)?;
         if let Some(place_nix_configuration) = place_nix_configuration {
             place_nix_configuration
                 .try_execute()
                 .await
                 .map_err(Self::error)?;
         }
+        setup_default_profile
+            .try_execute()
+            .await
+            .map_err(Self::error)?;
         if let Some(configure_shell_profile) = configure_shell_profile {
             configure_shell_profile
                 .try_execute()
