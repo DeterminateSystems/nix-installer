@@ -177,7 +177,7 @@ impl CommandExecute for Uninstall {
                     PromptChoice::Yes => break,
                     PromptChoice::Explain => currently_explaining = true,
                     PromptChoice::No => {
-                        interaction::clean_exit_with_message("Okay, didn't do anything! Bye!").await
+                        interaction::clean_exit_with_message("Not continuing with an uninstall. Bye!").await
                     },
                 }
             }

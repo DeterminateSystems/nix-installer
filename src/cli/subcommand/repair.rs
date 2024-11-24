@@ -171,7 +171,7 @@ impl CommandExecute for Repair {
                     PromptChoice::Yes => break,
                     PromptChoice::No => {
                         crate::cli::interaction::clean_exit_with_message(
-                            "Okay, didn't do anything! Bye!",
+                            "Not continuing with a repair. Bye!",
                         )
                         .await
                     },
