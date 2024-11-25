@@ -233,7 +233,10 @@ impl CommandExecute for Install {
                     PromptChoice::Yes => break,
                     PromptChoice::Explain => currently_explaining = true,
                     PromptChoice::No => {
-                        interaction::clean_exit_with_message("Not continuing with an installation. Bye!").await
+                        interaction::clean_exit_with_message(
+                            "Okay, not continuing with the installation. Bye!",
+                        )
+                        .await
                     },
                 }
             }
