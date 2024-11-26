@@ -8,6 +8,7 @@ use crate::{
     action::{Action, ActionDescription, ActionError, ActionErrorKind, ActionTag, StatefulAction},
     parse_ssl_cert,
     settings::UrlOrPath,
+    util::OnMissing,
 };
 
 /**
@@ -164,7 +165,15 @@ impl Action for FetchAndUnpackNix {
 
         // TODO(@Hoverbear): Pick directory
         tracing::trace!("Unpacking tar.xz");
-        let dest_clone = self.dest.clone();
+
+        // NOTE(cole-h): If the destination exists (because maybe a previous install failed), we
+        // want to remove it so that tar doesn't complain with:
+        //     trying to unpack outside of destination path: /nix/temp-install-dir
+        if self.dest.exists() {
+            crate::util::remove_dir_all(&self.dest, OnMissing::Ignore)
+                .await
+                .map_err(|e| Self::error(ActionErrorKind::Remove(self.dest.clone(), e)))?;
+        }
 
         let decoder = xz2::read::XzDecoder::new(bytes.reader());
         let mut archive = tar::Archive::new(decoder);
@@ -172,7 +181,7 @@ impl Action for FetchAndUnpackNix {
         archive.set_preserve_mtime(true);
         archive.set_unpack_xattrs(true);
         archive
-            .unpack(&dest_clone)
+            .unpack(&self.dest)
             .map_err(FetchUrlError::Unarchive)
             .map_err(Self::error)?;
 
