@@ -164,7 +164,6 @@ impl Action for FetchAndUnpackNix {
 
         // TODO(@Hoverbear): Pick directory
         tracing::trace!("Unpacking tar.xz");
-        let dest_clone = self.dest.clone();
 
         let decoder = xz2::read::XzDecoder::new(bytes.reader());
         let mut archive = tar::Archive::new(decoder);
@@ -172,7 +171,7 @@ impl Action for FetchAndUnpackNix {
         archive.set_preserve_mtime(true);
         archive.set_unpack_xattrs(true);
         archive
-            .unpack(&dest_clone)
+            .unpack(&self.dest)
             .map_err(FetchUrlError::Unarchive)
             .map_err(Self::error)?;
 
