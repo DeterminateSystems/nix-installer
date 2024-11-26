@@ -67,7 +67,7 @@ pub struct Macos {
     /// The label for the created APFS volume
     #[cfg_attr(
         feature = "cli",
-        clap(long, default_value = "Nixxie", env = "NIX_INSTALLER_VOLUME_LABEL")
+        clap(long, default_value = "Nix Store", env = "NIX_INSTALLER_VOLUME_LABEL")
     )]
     pub volume_label: String,
     /// The root disk of the target
@@ -139,7 +139,7 @@ impl Planner for Macos {
             root_disk: Some(default_root_disk().await?),
             case_sensitive: false,
             encrypt: None,
-            volume_label: "Nixxie".into(),
+            volume_label: "Nix Store".into(),
         })
     }
 
@@ -228,7 +228,10 @@ impl Planner for Macos {
 
         if self.settings.determinate_nix {
             println!("Creating determinate nix volume {0}", self.volume_label);
-            println!("Installer volume label: {}", std::env::var("NIX_INSTALLER_VOLUME_LABEL").unwrap_or_default());
+            println!(
+                "Installer volume label: {}",
+                std::env::var("NIX_INSTALLER_VOLUME_LABEL").unwrap_or_default()
+            );
             plan.push(
                 CreateDeterminateNixVolume::plan(
                     root_disk.unwrap(), /* We just ensured it was populated */
@@ -339,7 +342,6 @@ impl Planner for Macos {
             use_ec2_instance_store,
         } = self;
         let mut map = HashMap::default();
-
 
         map.extend(settings.settings()?);
         map.insert("volume_encrypt".into(), serde_json::to_value(encrypt)?);
@@ -514,5 +516,33 @@ impl HasExpectedErrors for MacosError {
             this @ MacosError::UninstallNixDarwin => Some(Box::new(this)),
             this @ MacosError::BlockedBySystemUIServerPolicy(_) => Some(Box::new(this)),
         }
+    }
+}
+
+#[cfg(all(test, feature = "cli"))]
+mod tests {
+    use super::*;
+    use clap::Parser;
+
+    #[tokio::test]
+    async fn test_volume_label() {
+        // Test default value
+        std::env::remove_var("NIX_INSTALLER_VOLUME_LABEL");
+        let macos = Macos::parse_from(Vec::<String>::new());
+        assert_eq!(
+            macos.volume_label, "Nix Store",
+            "Default value should be 'Nix Store'"
+        );
+
+        // Test env var override
+        std::env::set_var("NIX_INSTALLER_VOLUME_LABEL", "Custom Volume");
+        let macos = Macos::parse_from(Vec::<String>::new());
+        assert_eq!(
+            macos.volume_label, "Custom Volume",
+            "Environment variable should override default"
+        );
+
+        // Cleanup
+        std::env::remove_var("NIX_INSTALLER_VOLUME_LABEL");
     }
 }
