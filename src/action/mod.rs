@@ -211,7 +211,7 @@ pub mod macos;
 mod stateful;
 
 pub use stateful::{ActionState, StatefulAction};
-use std::{error::Error, process::Output};
+use std::{error::Error, os::unix::process::ExitStatusExt as _, process::Output};
 use tokio::task::JoinError;
 use tracing::Span;
 
@@ -518,15 +518,20 @@ pub enum ActionErrorKind {
         error: std::io::Error,
     },
     #[error(
-        "Failed to execute command{maybe_status} `{command}`, stdout: {stdout}\nstderr: {stderr}\n",
+        "Failed to execute command `{command}`\nstdout: {stdout}\nstderr: {stderr}\n{maybe_status}{maybe_signal}",
         command = .command,
         stdout = String::from_utf8_lossy(&.output.stdout),
         stderr = String::from_utf8_lossy(&.output.stderr),
         maybe_status = if let Some(status) = .output.status.code() {
-            format!(" with status {status}")
+            format!("exited with status code: {status}\n")
         } else {
             "".to_string()
-        }
+        },
+        maybe_signal = if let Some(signal) = .output.status.signal() {
+            format!("terminated by signal: {signal}\n")
+        } else {
+            "".to_string()
+        },
     )]
     CommandOutput {
         #[cfg(feature = "diagnostics")]
