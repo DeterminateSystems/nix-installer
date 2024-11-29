@@ -173,7 +173,7 @@ impl Action for EncryptApfsVolume {
 
         let disk_str = &self.disk.to_str().expect("Could not turn disk into string"); /* Should not reasonably ever fail */
 
-        let mut retry_tokens: usize = 60;
+        let mut retry_tokens: usize = 10;
         loop {
             let mut command = Command::new("/usr/sbin/diskutil");
             command.process_group(0);
