@@ -1,3 +1,5 @@
+use std::time::Duration;
+
 use crate::{
     action::{
         macos::NIX_VOLUME_MOUNTD_DEST, Action, ActionDescription, ActionError, ActionErrorKind,
@@ -171,13 +173,32 @@ impl Action for EncryptApfsVolume {
 
         let disk_str = &self.disk.to_str().expect("Could not turn disk into string"); /* Should not reasonably ever fail */
 
-        execute_command(
-            Command::new("/usr/sbin/diskutil")
-                .arg("mount")
-                .arg(&self.name),
-        )
-        .await
-        .map_err(Self::error)?;
+        let mut retry_tokens: usize = 60;
+        loop {
+            let mut command = Command::new("/usr/sbin/diskutil");
+            command.process_group(0);
+            command.args(["mount", &self.name]);
+            command.stdin(std::process::Stdio::null());
+            tracing::trace!(%retry_tokens, command = ?command.as_std(), "Waiting for volume mounting to succeed");
+
+            let output = command
+                .output()
+                .await
+                .map_err(|e| ActionErrorKind::command(&command, e))
+                .map_err(Self::error)?;
+
+            if output.status.success() {
+                break;
+            } else if retry_tokens == 0 {
+                return Err(Self::error(ActionErrorKind::command_output(
+                    &command, output,
+                )))?;
+            } else {
+                retry_tokens = retry_tokens.saturating_sub(1);
+            }
+
+            tokio::time::sleep(Duration::from_millis(500)).await;
+        }
 
         // Add the password to the user keychain so they can unlock it later.
         let mut cmd = Command::new("/usr/bin/security");
