@@ -337,10 +337,8 @@ impl Action for CreateDeterminateNixVolume {
                 "Not reverting encrypt_volume step (which would delete the disk encryption \
                 password) because deleting the volume failed"
             );
-        } else {
-            if let Err(err) = self.encrypt_volume.try_revert().await {
-                errors.push(err);
-            }
+        } else if let Err(err) = self.encrypt_volume.try_revert().await {
+            errors.push(err);
         }
 
         // Purposefully not reversed
