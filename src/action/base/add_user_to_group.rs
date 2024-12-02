@@ -93,6 +93,7 @@ impl AddUserToGroup {
                         .await
                         .map_err(|e| ActionErrorKind::command(&command, e))
                         .map_err(Self::error)?;
+                    let stderr = String::from_utf8_lossy(&output.stderr);
                     match output.status.code() {
                         Some(0) => {
                             // yes {user} is a member of {groupname}
@@ -104,8 +105,9 @@ impl AddUserToGroup {
                             );
                             return Ok(StatefulAction::completed(this));
                         },
-                        Some(64) => {
-                            // 64 is the exit code for "Group not found"
+                        // 64 is the exit code for "Group not found" or "Unable to find the user
+                        // record", so we have to disambiguate by checking stderr for this string
+                        Some(64) if stderr.contains("Group not found") => {
                             tracing::trace!(
                                 "Will add user `{}` to newly created group `{}`",
                                 this.name,
