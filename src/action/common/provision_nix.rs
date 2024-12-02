@@ -19,6 +19,8 @@ Place Nix and it's requirements onto the target
 #[derive(Debug, serde::Deserialize, serde::Serialize, Clone)]
 #[serde(tag = "action_name", rename = "provision_nix")]
 pub struct ProvisionNix {
+    nix_store_gid: u32,
+
     pub(crate) fetch_nix: StatefulAction<FetchAndUnpackNix>,
     pub(crate) create_nix_tree: StatefulAction<CreateNixTree>,
     pub(crate) move_unpacked_nix: StatefulAction<MoveUnpackedNix>,
@@ -27,12 +29,6 @@ pub struct ProvisionNix {
 impl ProvisionNix {
     #[tracing::instrument(level = "debug", skip_all)]
     pub async fn plan(settings: &CommonSettings) -> Result<StatefulAction<Self>, ActionError> {
-        if std::path::Path::new(NIX_STORE_LOCATION).exists() {
-            check_existing_nix_store_gid_matches(settings.nix_build_group_id)
-                .await
-                .map_err(Self::error)?;
-        }
-
         let fetch_nix = FetchAndUnpackNix::plan(
             settings.nix_package_url.clone(),
             PathBuf::from(SCRATCH_DIR),
@@ -46,6 +42,7 @@ impl ProvisionNix {
             .await
             .map_err(Self::error)?;
         Ok(Self {
+            nix_store_gid: settings.nix_build_group_id,
             fetch_nix,
             create_nix_tree,
             move_unpacked_nix,
@@ -73,6 +70,7 @@ impl Action for ProvisionNix {
             fetch_nix,
             create_nix_tree,
             move_unpacked_nix,
+            nix_store_gid,
         } = &self;
 
         let mut buf = Vec::default();
@@ -80,6 +78,13 @@ impl Action for ProvisionNix {
 
         buf.append(&mut create_nix_tree.describe_execute());
         buf.append(&mut move_unpacked_nix.describe_execute());
+
+        buf.push(ActionDescription::new(
+            "Synchronize /nix/store ownership".to_string(),
+            vec![format!(
+                "Will update existing files in the Nix Store to use the Nix build group ID {nix_store_gid}"
+            )],
+        ));
 
         buf
     }
@@ -107,6 +112,10 @@ impl Action for ProvisionNix {
             .await
             .map_err(Self::error)?;
 
+        ensure_nix_store_group(self.nix_store_gid)
+            .await
+            .map_err(Self::error)?;
+
         Ok(())
     }
 
@@ -115,6 +124,7 @@ impl Action for ProvisionNix {
             fetch_nix,
             create_nix_tree,
             move_unpacked_nix,
+            nix_store_gid: _,
         } = &self;
 
         let mut buf = Vec::default();
@@ -157,19 +167,64 @@ impl Action for ProvisionNix {
 /// If there is an existing /nix/store directory, ensure that the group ID we're going to use for
 /// the nix build group matches the group that owns /nix/store to prevent weird mismatched-ownership
 /// issues.
-async fn check_existing_nix_store_gid_matches(
-    desired_nix_build_group_id: u32,
-) -> Result<(), ActionErrorKind> {
+async fn ensure_nix_store_group(desired_nix_build_group_id: u32) -> Result<(), ActionErrorKind> {
     let previous_store_metadata = tokio::fs::metadata(NIX_STORE_LOCATION)
         .await
         .map_err(|e| ActionErrorKind::GettingMetadata(NIX_STORE_LOCATION.into(), e))?;
     let previous_store_group_id = previous_store_metadata.gid();
     if previous_store_group_id != desired_nix_build_group_id {
-        return Err(ActionErrorKind::PathGroupMismatch(
-            NIX_STORE_LOCATION.into(),
-            previous_store_group_id,
-            desired_nix_build_group_id,
-        ));
+        let entryiter = walkdir::WalkDir::new(NIX_STORE_LOCATION)
+            .follow_links(false)
+            .same_file_system(true)
+            // chown all of the contents of the dir before NIX_STORE_LOCATION,
+            // this means our test of "does /nix/store have the right gid?"
+            // is useful until the entire store is examined
+            .contents_first(true)
+            .into_iter()
+            .filter_map(|entry| {
+                match entry {
+                    Ok(entry) => Some(entry),
+                    Err(e) => {
+                        tracing::warn!(%e, "Enumerating the Nix store");
+                        None
+                    }
+                }
+            })
+            .filter_map(|entry| match entry.metadata() {
+                Ok(metadata) => Some((entry, metadata)),
+                Err(e) => {
+                    tracing::warn!(
+                        path = %entry.path().to_string_lossy(),
+                        %e,
+                        "Reading ownership and mode data"
+                    );
+                    None
+                }
+            })
+            .filter_map(|(entry, metadata)| {
+                // If the dirent's group ID is the *previous* GID, reassign.
+                // NOTE(@grahamc, 2024-11-15): Nix on macOS has store paths with a group of nixbld, and sometimes a group of `wheel` (0).
+                // On NixOS, all the store paths have their GID set to 0.
+                // The discrepancy is due to BSD's behavior around the /nix/store sticky bit.
+                // On BSD, it causes newly created files to inherit the group of the parent directory.
+                if metadata.gid() == previous_store_group_id {
+                    return Some((entry, metadata));
+                }
+
+                None
+            });
+        for (entry, _metadata) in entryiter {
+            if let Err(e) =
+                std::os::unix::fs::lchown(entry.path(), Some(0), Some(desired_nix_build_group_id))
+            {
+                tracing::warn!(
+                    path = %entry.path().to_string_lossy(),
+                    %e,
+                    "Failed to set the owner:group to 0:{}",
+                    desired_nix_build_group_id
+                );
+            }
+        }
     }
 
     Ok(())
