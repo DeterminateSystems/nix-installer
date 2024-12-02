@@ -115,6 +115,17 @@ impl AddUserToGroup {
                             );
                             // The group will be created by the installer
                         },
+                        Some(67) => {
+                            // 67 is the exit code for "user is not a member of the group", i.e.:
+                            //
+                            //     no _nixbld1 is NOT a member of nixbld
+                            tracing::trace!(
+                                "Will add existing user `{}` to existing group `{}`",
+                                this.name,
+                                this.groupname
+                            );
+                            // The user will be added to this group
+                        },
                         _ => {
                             // Some other issue
                             return Err(Self::error(ActionErrorKind::command_output(
