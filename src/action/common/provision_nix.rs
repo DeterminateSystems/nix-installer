@@ -208,7 +208,7 @@ async fn ensure_nix_store_group(desired_nix_build_group_id: u32) -> Result<(), A
 
             false
         }) {
-            if let Err(e) = std::os::unix::fs::chown(entry.path(), Some(0), Some(desired_nix_build_group_id)) {
+            if let Err(e) = std::os::unix::fs::lchown(entry.path(), Some(0), Some(desired_nix_build_group_id)) {
                 tracing::warn!(path = %entry.path().to_string_lossy(), %e, "Failed to set the owner:group to 0:{}", desired_nix_build_group_id);
             }
         }
