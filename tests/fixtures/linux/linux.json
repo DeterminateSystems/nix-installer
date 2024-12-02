@@ -16,6 +16,7 @@
     {
       "action": {
         "action_name": "provision_nix",
+        "nix_store_gid": 350,
         "fetch_nix": {
           "action": {
             "action_name": "fetch_and_unpack_nix",
