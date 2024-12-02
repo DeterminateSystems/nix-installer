@@ -197,16 +197,17 @@ async fn ensure_nix_store_group(desired_nix_build_group_id: u32) -> Result<(), A
                 None
             }
         })
-        .filter(|(_entry, metadata)| {
+        .filter_map(|e| {
             // If the dirent's group ID is the *previous* GID, reassign.
             // NOTE(@grahamc, 2024-11-15): Nix on macOS has store paths with a group of nixbld, and sometimes a group of `wheel` (0).
             // On NixOS, all the store paths have their GID set to 0.
-            // I've enquired into why these are different, but don't have an answer yet.
-            if metadata.gid() == previous_store_group_id {
-                return true;
+            // The discrepency is due to BSD's behavior around the /nix/store sticky bit.
+            // On BSD, it causes newly created files to inherit the group of the parent directory.
+            if e.1.gid() == previous_store_group_id {
+                return Some(e);
             }
 
-            false
+            None
         }) {
             if let Err(e) = std::os::unix::fs::lchown(entry.path(), Some(0), Some(desired_nix_build_group_id)) {
                 tracing::warn!(path = %entry.path().to_string_lossy(), %e, "Failed to set the owner:group to 0:{}", desired_nix_build_group_id);
