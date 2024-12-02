@@ -173,44 +173,56 @@ async fn ensure_nix_store_group(desired_nix_build_group_id: u32) -> Result<(), A
         .map_err(|e| ActionErrorKind::GettingMetadata(NIX_STORE_LOCATION.into(), e))?;
     let previous_store_group_id = previous_store_metadata.gid();
     if previous_store_group_id != desired_nix_build_group_id {
-        for (entry, _metadata) in walkdir::WalkDir::new(NIX_STORE_LOCATION)
-        .follow_links(false)
-        .same_file_system(true)
-        // chown all of the contents of the dir before NIX_STORE_LOCATION,
-        // this means our test of "does /nix/store have the right gid?"
-        // is useful until the entire store is examined
-        .contents_first(true)
-        .into_iter()
-        .filter_map(|entry| {
-            match entry {
-                Ok(entry) => Some(entry),
+        let entryiter = walkdir::WalkDir::new(NIX_STORE_LOCATION)
+            .follow_links(false)
+            .same_file_system(true)
+            // chown all of the contents of the dir before NIX_STORE_LOCATION,
+            // this means our test of "does /nix/store have the right gid?"
+            // is useful until the entire store is examined
+            .contents_first(true)
+            .into_iter()
+            .filter_map(|entry| {
+                match entry {
+                    Ok(entry) => Some(entry),
+                    Err(e) => {
+                        tracing::warn!(%e, "Enumerating the Nix store");
+                        None
+                    }
+                }
+            })
+            .filter_map(|entry| match entry.metadata() {
+                Ok(metadata) => Some((entry, metadata)),
                 Err(e) => {
-                    tracing::warn!(%e, "Enumerating the Nix store");
+                    tracing::warn!(
+                        path = %entry.path().to_string_lossy(),
+                        %e,
+                        "Reading ownership and mode data"
+                    );
                     None
                 }
-            }
-        })
-        .filter_map(|entry| match entry.metadata() {
-            Ok(metadata) => Some((entry, metadata)),
-            Err(e) => {
-                tracing::warn!(path = %entry.path().to_string_lossy(), %e, "Reading ownership and mode data");
-                None
-            }
-        })
-        .filter_map(|e| {
-            // If the dirent's group ID is the *previous* GID, reassign.
-            // NOTE(@grahamc, 2024-11-15): Nix on macOS has store paths with a group of nixbld, and sometimes a group of `wheel` (0).
-            // On NixOS, all the store paths have their GID set to 0.
-            // The discrepency is due to BSD's behavior around the /nix/store sticky bit.
-            // On BSD, it causes newly created files to inherit the group of the parent directory.
-            if e.1.gid() == previous_store_group_id {
-                return Some(e);
-            }
+            })
+            .filter_map(|(entry, metadata)| {
+                // If the dirent's group ID is the *previous* GID, reassign.
+                // NOTE(@grahamc, 2024-11-15): Nix on macOS has store paths with a group of nixbld, and sometimes a group of `wheel` (0).
+                // On NixOS, all the store paths have their GID set to 0.
+                // The discrepency is due to BSD's behavior around the /nix/store sticky bit.
+                // On BSD, it causes newly created files to inherit the group of the parent directory.
+                if metadata.gid() == previous_store_group_id {
+                    return Some((entry, metadata));
+                }
 
-            None
-        }) {
-            if let Err(e) = std::os::unix::fs::lchown(entry.path(), Some(0), Some(desired_nix_build_group_id)) {
-                tracing::warn!(path = %entry.path().to_string_lossy(), %e, "Failed to set the owner:group to 0:{}", desired_nix_build_group_id);
+                None
+            });
+        for (entry, _metadata) in entryiter {
+            if let Err(e) =
+                std::os::unix::fs::lchown(entry.path(), Some(0), Some(desired_nix_build_group_id))
+            {
+                tracing::warn!(
+                    path = %entry.path().to_string_lossy(),
+                    %e,
+                    "Failed to set the owner:group to 0:{}",
+                    desired_nix_build_group_id
+                );
             }
         }
     }
