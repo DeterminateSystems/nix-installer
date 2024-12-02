@@ -1,3 +1,5 @@
+use std::os::unix::process::ExitStatusExt;
+
 use nix::unistd::User;
 use target_lexicon::OperatingSystem;
 use tokio::process::Command;
@@ -240,9 +242,7 @@ impl Action for CreateUser {
 }
 
 #[tracing::instrument]
-pub(crate) async fn execute_command_retry_on_enotyetimplemented(
-    dscl_args: &[&str],
-) -> Result<(), ActionErrorKind> {
+async fn execute_dscl_retry_on_specific_errors(dscl_args: &[&str]) -> Result<(), ActionErrorKind> {
     let mut retry_tokens: usize = 10;
     loop {
         let mut command = Command::new("/usr/bin/dscl");
@@ -267,13 +267,16 @@ pub(crate) async fn execute_command_retry_on_enotyetimplemented(
         } else if retry_tokens == 0 {
             return Err(ActionErrorKind::command_output(&command, output))?;
         } else {
-            match output.status.code() {
-                Some(140) if stderr.contains("-14988 (eNotYetImplemented)") => {
-                    // Retry due to buggy macOS user behavior?
-                    // https://github.com/DeterminateSystems/nix-installer/issues/1300
-                    // https://github.com/ansible/ansible/issues/73505
-                },
-                _ => return Err(ActionErrorKind::command_output(&command, output)),
+            if output.status.code() == Some(140) && stderr.contains("-14988 (eNotYetImplemented)") {
+                // Retry due to buggy macOS user behavior?
+                // https://github.com/DeterminateSystems/nix-installer/issues/1300
+                // https://github.com/ansible/ansible/issues/73505
+            } else if output.status.signal() == Some(9) {
+                // If the command was SIGKILLed, let's retry and hope it doesn't happen again.
+            } else {
+                // If the command failed for a reason that we weren't "expecting", return that as an
+                // error.
+                return Err(ActionErrorKind::command_output(&command, output));
             }
 
             retry_tokens = retry_tokens.saturating_sub(1);
@@ -287,10 +290,9 @@ pub(crate) async fn execute_command_retry_on_enotyetimplemented(
 
 #[tracing::instrument(level = "debug", skip_all)]
 async fn create_user_macos(name: &str, uid: u32, gid: u32) -> Result<(), ActionErrorKind> {
-    execute_command_retry_on_enotyetimplemented(&[".", "-create", &format!("/Users/{name}")])
-        .await?;
+    execute_dscl_retry_on_specific_errors(&[".", "-create", &format!("/Users/{name}")]).await?;
 
-    execute_command_retry_on_enotyetimplemented(&[
+    execute_dscl_retry_on_specific_errors(&[
         ".",
         "-create",
         &format!("/Users/{name}"),
@@ -298,7 +300,7 @@ async fn create_user_macos(name: &str, uid: u32, gid: u32) -> Result<(), ActionE
         &format!("{uid}"),
     ])
     .await?;
-    execute_command_retry_on_enotyetimplemented(&[
+    execute_dscl_retry_on_specific_errors(&[
         ".",
         "-create",
         &format!("/Users/{name}"),
@@ -306,7 +308,7 @@ async fn create_user_macos(name: &str, uid: u32, gid: u32) -> Result<(), ActionE
         &format!("{gid}"),
     ])
     .await?;
-    execute_command_retry_on_enotyetimplemented(&[
+    execute_dscl_retry_on_specific_errors(&[
         ".",
         "-create",
         &format!("/Users/{name}"),
@@ -314,7 +316,7 @@ async fn create_user_macos(name: &str, uid: u32, gid: u32) -> Result<(), ActionE
         "/var/empty",
     ])
     .await?;
-    execute_command_retry_on_enotyetimplemented(&[
+    execute_dscl_retry_on_specific_errors(&[
         ".",
         "-create",
         &format!("/Users/{name}"),
@@ -322,7 +324,7 @@ async fn create_user_macos(name: &str, uid: u32, gid: u32) -> Result<(), ActionE
         "/sbin/nologin",
     ])
     .await?;
-    execute_command_retry_on_enotyetimplemented(&[
+    execute_dscl_retry_on_specific_errors(&[
         ".",
         "-create",
         &format!("/Users/{name}"),
@@ -330,7 +332,7 @@ async fn create_user_macos(name: &str, uid: u32, gid: u32) -> Result<(), ActionE
         "1",
     ])
     .await?;
-    execute_command_retry_on_enotyetimplemented(&[
+    execute_dscl_retry_on_specific_errors(&[
         ".",
         "-create",
         &format!("/Users/{name}"),
