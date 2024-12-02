@@ -225,8 +225,6 @@ impl Action for AddUserToGroup {
                         .args(["-o", "edit"])
                         .arg("-a")
                         .arg(&self.name)
-                        .arg("-t")
-                        .arg(&self.name)
                         .arg(&self.groupname)
                         .stdin(std::process::Stdio::null()),
                 )
