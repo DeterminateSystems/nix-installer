@@ -205,7 +205,7 @@ async fn ensure_nix_store_group(desired_nix_build_group_id: u32) -> Result<(), A
                 // If the dirent's group ID is the *previous* GID, reassign.
                 // NOTE(@grahamc, 2024-11-15): Nix on macOS has store paths with a group of nixbld, and sometimes a group of `wheel` (0).
                 // On NixOS, all the store paths have their GID set to 0.
-                // The discrepency is due to BSD's behavior around the /nix/store sticky bit.
+                // The discrepancy is due to BSD's behavior around the /nix/store sticky bit.
                 // On BSD, it causes newly created files to inherit the group of the parent directory.
                 if metadata.gid() == previous_store_group_id {
                     return Some((entry, metadata));
