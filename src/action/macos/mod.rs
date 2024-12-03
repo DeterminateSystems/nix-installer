@@ -131,7 +131,7 @@ pub(crate) async fn wait_for_nix_store_dir() -> Result<(), ActionErrorKind> {
         command.args(["info", "/nix"]);
         command.stderr(std::process::Stdio::null());
         command.stdout(std::process::Stdio::null());
-        tracing::trace!(%retry_tokens, command = ?command.as_std(), "Checking for Nix Store mount path existence");
+        tracing::debug!(%retry_tokens, command = ?command.as_std(), "Checking for Nix Store mount path existence");
         let output = command
             .output()
             .await
@@ -184,7 +184,7 @@ pub(crate) async fn retry_bootstrap(
         command.stdin(std::process::Stdio::null());
         command.stderr(std::process::Stdio::null());
         command.stdout(std::process::Stdio::null());
-        tracing::trace!(%retry_tokens, command = ?command.as_std(), "Waiting for bootstrap to succeed");
+        tracing::debug!(%retry_tokens, command = ?command.as_std(), "Waiting for bootstrap to succeed");
 
         let output = command
             .output()
@@ -237,7 +237,7 @@ pub(crate) async fn retry_bootout(domain: &str, service_name: &str) -> Result<()
         command.stdin(std::process::Stdio::null());
         command.stderr(std::process::Stdio::null());
         command.stdout(std::process::Stdio::null());
-        tracing::trace!(%retry_tokens, command = ?command.as_std(), "Waiting for bootout to succeed");
+        tracing::debug!(%retry_tokens, command = ?command.as_std(), "Waiting for bootout to succeed");
 
         let output = command
             .output()

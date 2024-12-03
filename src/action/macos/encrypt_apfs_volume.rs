@@ -179,7 +179,7 @@ impl Action for EncryptApfsVolume {
             command.process_group(0);
             command.args(["mount", &self.name]);
             command.stdin(std::process::Stdio::null());
-            tracing::trace!(%retry_tokens, command = ?command.as_std(), "Waiting for volume mounting to succeed");
+            tracing::debug!(%retry_tokens, command = ?command.as_std(), "Waiting for volume mounting to succeed");
 
             let output = command
                 .output()

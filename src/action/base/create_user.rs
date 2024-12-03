@@ -249,7 +249,7 @@ async fn execute_dscl_retry_on_specific_errors(dscl_args: &[&str]) -> Result<(),
         command.process_group(0);
         command.args(dscl_args);
         command.stdin(std::process::Stdio::null());
-        tracing::trace!(%retry_tokens, command = ?command.as_std(), "Waiting for user create/update to succeed");
+        tracing::debug!(%retry_tokens, command = ?command.as_std(), "Waiting for user create/update to succeed");
 
         let output = command
             .output()
