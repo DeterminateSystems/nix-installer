@@ -191,7 +191,7 @@ impl Action for CreateNixVolume {
             command.arg(&self.name);
             command.stderr(std::process::Stdio::null());
             command.stdout(std::process::Stdio::null());
-            tracing::trace!(%retry_tokens, command = ?command.as_std(), "Checking for Nix Store volume existence");
+            tracing::debug!(%retry_tokens, command = ?command.as_std(), "Checking for Nix Store volume existence");
             let output = command
                 .output()
                 .await

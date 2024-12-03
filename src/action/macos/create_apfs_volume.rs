@@ -162,7 +162,7 @@ impl Action for CreateApfsVolume {
             command.process_group(0);
             command.args(["apfs", "deleteVolume", &self.name]);
             command.stdin(std::process::Stdio::null());
-            tracing::trace!(%retry_tokens, command = ?command.as_std(), "Waiting for volume deletion to succeed");
+            tracing::debug!(%retry_tokens, command = ?command.as_std(), "Waiting for volume deletion to succeed");
 
             let output = command
                 .output()

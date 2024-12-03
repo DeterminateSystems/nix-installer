@@ -104,7 +104,7 @@ impl Action for KickstartLaunchctlService {
             command.stdin(std::process::Stdio::null());
             command.stderr(std::process::Stdio::null());
             command.stdout(std::process::Stdio::null());
-            tracing::trace!(%retry_tokens, command = ?command.as_std(), "Waiting for kickstart to succeed");
+            tracing::debug!(%retry_tokens, command = ?command.as_std(), "Waiting for kickstart to succeed");
 
             let output = command
                 .output()

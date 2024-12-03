@@ -142,7 +142,7 @@ impl Action for EncryptApfsVolume {
     fn tracing_span(&self) -> Span {
         span!(
             tracing::Level::DEBUG,
-            "encrypt_volume",
+            "encrypt_apfs_volume",
             disk = tracing::field::display(self.disk.display()),
         )
     }
@@ -179,7 +179,7 @@ impl Action for EncryptApfsVolume {
             command.process_group(0);
             command.args(["mount", &self.name]);
             command.stdin(std::process::Stdio::null());
-            tracing::trace!(%retry_tokens, command = ?command.as_std(), "Waiting for volume mounting to succeed");
+            tracing::debug!(%retry_tokens, command = ?command.as_std(), "Waiting for volume mounting to succeed");
 
             let output = command
                 .output()
