@@ -603,6 +603,12 @@ jobs:
     runs-on: UbuntuLatest64Cores256GX86
     needs: [lints, build-x86_64-linux]
     if: contains(github.ref, 'release-') || contains(github.head_ref, 'release-')
+    strategy:
+      matrix:
+        command:
+          - nix flake check -L
+          - nix build -L --tarball-ttl 0 --keep-going .#hydraJobs.container-test.all.x86_64-linux.all
+          - nix build -L --tarball-ttl 0 --keep-going .#hydraJobs.vm-test.all.x86_64-linux.all
     permissions:
       id-token: "write"
       contents: "read"
@@ -631,9 +637,4 @@ jobs:
         with:
           use-gha-cache: false
 
-      - run: nix flake check -L
-      - run: |
-          nix build \
-            -L --tarball-ttl 0 --keep-going \
-            .#hydraJobs.container-test.all.x86_64-linux.all \
-            .#hydraJobs.vm-test.all.x86_64-linux.all
+      - run: ${{ matrix.command }}
