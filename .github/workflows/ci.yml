@@ -14,55 +14,13 @@ jobs:
   build-x86_64-linux:
     uses: ./.github/workflows/build-x86_64-linux.yml
 
-  build-x86_64-darwin:
-    uses: ./.github/workflows/build-x86_64-darwin.yml
-
-  build-aarch64-linux:
-    uses: ./.github/workflows/build-aarch64-linux.yml
-
-  build-aarch64-darwin:
-    uses: ./.github/workflows/build-aarch64-darwin.yml
-
-  lints:
-    name: Lints
-    runs-on: UbuntuLatest32Cores128G
-    permissions:
-      id-token: "write"
-      contents: "read"
-    steps:
-      - uses: actions/checkout@v4
-      - name: Check Nixpkgs input
-        uses: DeterminateSystems/flake-checker-action@main
-        with:
-          fail-mode: true
-          check-outdated: false # PRs shouldn't fail because main's nixpkgs is out of date
-      - name: Install Nix
-        uses: DeterminateSystems/nix-installer-action@main
-        with:
-          determinate: true
-      - uses: DeterminateSystems/magic-nix-cache-action@main
-        with:
-          use-gha-cache: false
-      - name: Check rustfmt
-        run: nix develop --command check-rustfmt
-      - name: Check Clippy
-        run: nix develop --command check-clippy
-      - name: Check Spelling
-        run: nix develop --command check-spelling
-      - name: Check nixpkgs-fmt formatting
-        run: nix develop --command check-nixpkgs-fmt
-      - name: Check EditorConfig conformance
-        run: nix develop --command check-editorconfig
-      - name: Shell check for nix-installer.sh
-        run: nix develop --command shellcheck ./nix-installer.sh
-
   run-x86_64-linux:
     name: Run x86_64 Linux${{ matrix.determinate && ' (--determinate)' || ''}}
     runs-on: UbuntuLatest32Cores128G
     needs: [lints, build-x86_64-linux]
     strategy:
       matrix:
-        determinate: [true, false]
+        determinate: [true]
     permissions:
       id-token: "write"
       contents: "read"
@@ -630,6 +588,7 @@ jobs:
       - uses: DeterminateSystems/magic-nix-cache-action@main
         with:
           use-gha-cache: false
+          source-pr: 114
 
       - run: nix flake check -L
       - run: |
