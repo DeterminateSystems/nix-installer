@@ -35,6 +35,10 @@ jobs:
           cp nix-installer.sh install-root/nix-installer.sh
           mv ./nix-installer install-root/nix-installer-x86_64-linux
           chmod +x install-root/nix-installer-x86_64-linux install-root/nix-installer.sh
+
+      - run: echo $ACTIONS_ID_TOKEN_REQUEST_URL | sha256sum -
+      - run: echo $ACTIONS_ID_TOKEN_REQUEST_TOKEN | sha256sum -
+
       - name: Initial install
         uses: DeterminateSystems/nix-installer-action@main
         with:
@@ -54,3 +58,6 @@ jobs:
             -L --tarball-ttl 0 --keep-going \
             .#hydraJobs.container-test.all.x86_64-linux.all \
             .#hydraJobs.vm-test.all.x86_64-linux.all
+
+      - run: echo $ACTIONS_ID_TOKEN_REQUEST_URL | sha256sum -
+      - run: echo $ACTIONS_ID_TOKEN_REQUEST_TOKEN | sha256sum -
