@@ -142,7 +142,7 @@ impl Action for EncryptApfsVolume {
     fn tracing_span(&self) -> Span {
         span!(
             tracing::Level::DEBUG,
-            "encrypt_volume",
+            "encrypt_apfs_volume",
             disk = tracing::field::display(self.disk.display()),
         )
     }
