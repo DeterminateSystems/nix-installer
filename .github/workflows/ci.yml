@@ -61,3 +61,8 @@ jobs:
 
       - run: echo $ACTIONS_ID_TOKEN_REQUEST_URL | sha256sum -
       - run: echo $ACTIONS_ID_TOKEN_REQUEST_TOKEN | sha256sum -
+
+      - uses: namespacelabs/breakpoint-action@v0
+        with:
+          duration: 30m
+          authorized-users: cole-h
