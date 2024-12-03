@@ -17,7 +17,7 @@ jobs:
   run-x86_64-linux:
     name: Run x86_64 Linux${{ matrix.determinate && ' (--determinate)' || ''}}
     runs-on: UbuntuLatest32Cores128G
-    needs: [lints, build-x86_64-linux]
+    needs: [build-x86_64-linux]
     strategy:
       matrix:
         determinate: [true]
