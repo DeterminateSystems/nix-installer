@@ -13,7 +13,7 @@ use std::{
     path::{Path, PathBuf},
     process::Stdio,
 };
-use tokio::process::Command;
+use tokio::{io::AsyncWriteExt as _, process::Command};
 use tracing::{span, Span};
 
 use super::CreateApfsVolume;
@@ -235,17 +235,58 @@ impl Action for EncryptApfsVolume {
         execute_command(&mut cmd).await.map_err(Self::error)?;
 
         // Encrypt the mounted volume
-        execute_command(Command::new("/usr/sbin/diskutil").process_group(0).args([
-            "apfs",
-            "encryptVolume",
-            self.name.as_str(),
-            "-user",
-            "disk",
-            "-passphrase",
-            password.as_str(),
-        ]))
-        .await
-        .map_err(Self::error)?;
+        {
+            let mut command = Command::new("/usr/sbin/diskutil");
+            command.process_group(0);
+            command.args([
+                "apfs",
+                "encryptVolume",
+                self.name.as_str(),
+                "-user",
+                "disk",
+                "-stdinpassphrase",
+            ]);
+            command.stdin(Stdio::piped());
+            command.stdout(Stdio::piped());
+            command.stderr(Stdio::piped());
+            tracing::trace!(command = ?command.as_std(), "Executing");
+            let mut child = command
+                .spawn()
+                .map_err(|e| ActionErrorKind::command(&command, e))
+                .map_err(Self::error)?;
+            let mut stdin = child
+                .stdin
+                .take()
+                .expect("child should have had a stdin handle");
+            stdin
+                .write_all(password.as_bytes())
+                .await
+                .map_err(|e| ActionErrorKind::Write("/dev/stdin".into(), e))
+                .map_err(Self::error)?;
+            stdin
+                .write(b"\n")
+                .await
+                .map_err(|e| ActionErrorKind::Write("/dev/stdin".into(), e))
+                .map_err(Self::error)?;
+            let output = child
+                .wait_with_output()
+                .await
+                .map_err(|e| ActionErrorKind::command(&command, e))
+                .map_err(Self::error)?;
+            match output.status.success() {
+                true => {
+                    tracing::trace!(
+                        command = ?command.as_std(),
+                        stderr = %String::from_utf8_lossy(&output.stderr),
+                        stdout = %String::from_utf8_lossy(&output.stdout),
+                        "Command success"
+                    );
+                },
+                false => Err(Self::error(ActionErrorKind::command_output(
+                    &command, output,
+                )))?,
+            }
+        }
 
         execute_command(
             Command::new("/usr/sbin/diskutil")
