@@ -238,55 +238,52 @@ async fn ensure_nix_store_group(desired_nix_build_group_id: u32) -> Result<(), A
     Ok(())
 }
 
-/// Ensure that everything under (and including) /nix/var is owne by uid:gid 0:0.
+/// Everything under /nix/var (with the exception of /nix/var/nix/profiles/per-user/*) should be owned by 0:0.
+///
+/// This function walks /nix/var and makes sure that is true.
 /// The only exception is everything under /nix/var/nix/profiles/per-user, which we should leave alone.
 async fn ensure_nix_var_ownership() -> Result<(), ActionErrorKind> {
     let entryiter = walkdir::WalkDir::new("/nix/var")
-            .follow_links(false)
-            .same_file_system(true)
-            // chown all of the contents of the dir before NIX_STORE_LOCATION,
-            // this means our test of "does /nix/store have the right gid?"
-            // is useful until the entire store is examined
-            .contents_first(true)
-            .into_iter()
-            .filter_entry(|entry| {
-                if entry.path().parent() == Some(std::path::Path::new("/nix/var/nix/profiles/per-user")) {
-                    // False means do *not* descend into this directory
-                    // ...which we don't want to do, because the per-user subdirectories are usually owned by that user.
-                    return false;
-                }
+        .follow_links(false)
+        .same_file_system(true)
+        .contents_first(true)
+        .into_iter()
+        .filter_entry(|entry| {
+            if entry.path().parent() == Some(std::path::Path::new("/nix/var/nix/profiles/per-user"))
+            {
+                // False means do *not* descend into this directory
+                // ...which we don't want to do, because the per-user subdirectories are usually owned by that user.
+                return false;
+            }
 
-                true
-            })
-            .filter_map(|entry| {
-                match entry {
-                    Ok(entry) => Some(entry),
-                    Err(e) => {
-                        tracing::warn!(%e, "Enumerating /nix/var");
-                        None
-                    }
-                }
-            })
-            .filter_map(|entry| match entry.metadata() {
-                Ok(metadata) => Some((entry, metadata)),
-                Err(e) => {
-                    tracing::warn!(
-                        path = %entry.path().to_string_lossy(),
-                        %e,
-                        "Reading ownership and mode data"
-                    );
-                    None
-                }
-            })
-            .filter_map(|(entry, metadata)| {
-                // Everything under /nix/var, with the exception of /nix/var/nix/profiles/per-user/*
+            true
+        })
+        .filter_map(|entry| match entry {
+            Ok(entry) => Some(entry),
+            Err(e) => {
+                tracing::warn!(%e, "Enumerating /nix/var");
+                None
+            },
+        })
+        .filter_map(|entry| match entry.metadata() {
+            Ok(metadata) => Some((entry, metadata)),
+            Err(e) => {
+                tracing::warn!(
+                    path = %entry.path().to_string_lossy(),
+                    %e,
+                    "Reading ownership and mode data"
+                );
+                None
+            },
+        })
+        .filter_map(|(entry, metadata)| {
+            // Dirents that are already 0:0 are to be skipped
+            if metadata.uid() == 0 && metadata.gid() == 0 {
+                return None;
+            }
 
-                if metadata.uid() == 0 && metadata.gid() == 0 {
-                    return None;
-                }
-
-                Some((entry, metadata))
-            });
+            Some((entry, metadata))
+        });
     for (entry, _metadata) in entryiter {
         tracing::info!(
             path = %entry.path().to_string_lossy(),
