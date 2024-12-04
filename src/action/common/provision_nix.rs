@@ -266,7 +266,7 @@ async fn ensure_nix_var_ownership() -> Result<(), ActionErrorKind> {
         .filter_map(|entry| match entry {
             Ok(entry) => Some(entry),
             Err(e) => {
-                tracing::warn!(%e, "Enumerating /nix/var");
+                tracing::warn!(%e, "Failed to get entry in /nix/var");
                 None
             },
         })
@@ -276,7 +276,7 @@ async fn ensure_nix_var_ownership() -> Result<(), ActionErrorKind> {
                 tracing::warn!(
                     path = %entry.path().to_string_lossy(),
                     %e,
-                    "Reading ownership and mode data"
+                    "Failed to read ownership and mode data"
                 );
                 None
             },
@@ -290,7 +290,7 @@ async fn ensure_nix_var_ownership() -> Result<(), ActionErrorKind> {
             Some((entry, metadata))
         });
     for (entry, _metadata) in entryiter {
-        tracing::info!(
+        tracing::debug!(
             path = %entry.path().to_string_lossy(),
             "Re-owning path to 0:0"
         );
