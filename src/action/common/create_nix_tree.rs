@@ -1,3 +1,5 @@
+use std::os::unix::fs::MetadataExt;
+
 use tracing::{span, Span};
 
 use crate::action::base::CreateDirectory;
@@ -37,7 +39,7 @@ impl CreateNixTree {
         for path in PATHS {
             // We use `create_dir` over `create_dir_all` to ensure we always set permissions right
             create_directories.push(
-                CreateDirectory::plan(path, String::from("root"), None, 0o0755, true)
+                CreateDirectory::plan(path, None, None, 0o0755, true)
                     .await
                     .map_err(Self::error)?,
             )
@@ -70,10 +72,15 @@ impl Action for CreateNixTree {
                 create_directory_descriptions.push(val.description.clone())
             }
         }
-        vec![ActionDescription::new(
-            self.tracing_synopsis(),
-            create_directory_descriptions,
-        )]
+        vec![
+            ActionDescription::new(self.tracing_synopsis(), create_directory_descriptions),
+            ActionDescription::new(
+                "Synchronize /nix/var ownership".to_string(),
+                vec![format!(
+                    "Will update existing files in /nix/var to be owned by User ID 0, Group ID 0"
+                )],
+            ),
+        ]
     }
 
     #[tracing::instrument(level = "debug", skip_all)]
@@ -82,6 +89,8 @@ impl Action for CreateNixTree {
         for create_directory in self.create_directories.iter_mut() {
             create_directory.try_execute().await.map_err(Self::error)?;
         }
+
+        ensure_nix_var_ownership().await.map_err(Self::error)?;
 
         Ok(())
     }
@@ -127,4 +136,72 @@ impl Action for CreateNixTree {
             Err(Self::error(ActionErrorKind::MultipleChildren(errors)))
         }
     }
+}
+
+/// Everything under /nix/var (with two deprecated exceptions below) should be owned by 0:0.
+///
+/// * /nix/var/nix/profiles/per-user/*
+/// * /nix/var/nix/gcroots/per-user/*
+///
+/// This function walks /nix/var and makes sure that is true.
+async fn ensure_nix_var_ownership() -> Result<(), ActionErrorKind> {
+    let entryiter = walkdir::WalkDir::new("/nix/var")
+        .follow_links(false)
+        .same_file_system(true)
+        .contents_first(true)
+        .into_iter()
+        .filter_entry(|entry| {
+            let parent = entry.path().parent();
+
+            if parent == Some(std::path::Path::new("/nix/var/nix/profiles/per-user"))
+                || parent == Some(std::path::Path::new("/nix/var/nix/gcroots/per-user"))
+            {
+                // False means do *not* descend into this directory
+                // ...which we don't want to do, because the per-user subdirectories are usually owned by that user.
+                return false;
+            }
+
+            true
+        })
+        .filter_map(|entry| match entry {
+            Ok(entry) => Some(entry),
+            Err(e) => {
+                tracing::warn!(%e, "Failed to get entry in /nix/var");
+                None
+            },
+        })
+        .filter_map(|entry| match entry.metadata() {
+            Ok(metadata) => Some((entry, metadata)),
+            Err(e) => {
+                tracing::warn!(
+                    path = %entry.path().to_string_lossy(),
+                    %e,
+                    "Failed to read ownership and mode data"
+                );
+                None
+            },
+        })
+        .filter_map(|(entry, metadata)| {
+            // Dirents that are already 0:0 are to be skipped
+            if metadata.uid() == 0 && metadata.gid() == 0 {
+                return None;
+            }
+
+            Some((entry, metadata))
+        });
+    for (entry, _metadata) in entryiter {
+        tracing::debug!(
+            path = %entry.path().to_string_lossy(),
+            "Re-owning path to 0:0"
+        );
+
+        if let Err(e) = std::os::unix::fs::lchown(entry.path(), Some(0), Some(0)) {
+            tracing::warn!(
+                path = %entry.path().to_string_lossy(),
+                %e,
+                "Failed to set the owner:group to 0:0"
+            );
+        }
+    }
+    Ok(())
 }
