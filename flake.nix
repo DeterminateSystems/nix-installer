@@ -121,19 +121,6 @@
           };
         in
         rec {
-          # NOTE(cole-h): fixes build -- nixpkgs updated libsepol to 3.7 but didn't update
-          # checkpolicy to 3.7, checkpolicy links against libsepol, and libsepol 3.7 changed
-          # something in the API so checkpolicy 3.6 failed to build against libsepol 3.7
-          # Can be removed once https://github.com/NixOS/nixpkgs/pull/335146 merges.
-          checkpolicy = prev.checkpolicy.overrideAttrs ({ ... }: rec {
-            version = "3.7";
-
-            src = final.fetchurl {
-              url = "https://github.com/SELinuxProject/selinux/releases/download/${version}/checkpolicy-${version}.tar.gz";
-              sha256 = "sha256-/T4ZJUd9SZRtERaThmGvRMH4bw1oFGb9nwLqoGACoH8=";
-            };
-          });
-
           nix-installer = naerskLib.buildPackage sharedAttrs;
         } // nixpkgs.lib.optionalAttrs (prev.stdenv.system == "x86_64-linux") rec {
           default = nix-installer-static;
