@@ -85,6 +85,12 @@ impl Action for ProvisionNix {
                 "Will update existing files in the Nix Store to use the Nix build group ID {nix_store_gid}"
             )],
         ));
+        buf.push(ActionDescription::new(
+            "Synchronize /nix/var ownership".to_string(),
+            vec![format!(
+                "Will update existing files in /nix/var to be owned by User ID 0, Group ID 0"
+            )],
+        ));
 
         buf
     }
@@ -115,6 +121,8 @@ impl Action for ProvisionNix {
         ensure_nix_store_group(self.nix_store_gid)
             .await
             .map_err(Self::error)?;
+
+        ensure_nix_var_ownership().await.map_err(Self::error)?;
 
         Ok(())
     }
@@ -227,5 +235,71 @@ async fn ensure_nix_store_group(desired_nix_build_group_id: u32) -> Result<(), A
         }
     }
 
+    Ok(())
+}
+
+/// Ensure that everything under (and including) /nix/var is owne by uid:gid 0:0.
+/// The only exception is everything under /nix/var/nix/profiles/per-user, which we should leave alone.
+async fn ensure_nix_var_ownership() -> Result<(), ActionErrorKind> {
+    let entryiter = walkdir::WalkDir::new("/nix/var")
+            .follow_links(false)
+            .same_file_system(true)
+            // chown all of the contents of the dir before NIX_STORE_LOCATION,
+            // this means our test of "does /nix/store have the right gid?"
+            // is useful until the entire store is examined
+            .contents_first(true)
+            .into_iter()
+            .filter_entry(|entry| {
+                if entry.path().parent() == Some(std::path::Path::new("/nix/var/nix/profiles/per-user")) {
+                    // False means do *not* descend into this directory
+                    // ...which we don't want to do, because the per-user subdirectories are usually owned by that user.
+                    return false;
+                }
+
+                true
+            })
+            .filter_map(|entry| {
+                match entry {
+                    Ok(entry) => Some(entry),
+                    Err(e) => {
+                        tracing::warn!(%e, "Enumerating /nix/var");
+                        None
+                    }
+                }
+            })
+            .filter_map(|entry| match entry.metadata() {
+                Ok(metadata) => Some((entry, metadata)),
+                Err(e) => {
+                    tracing::warn!(
+                        path = %entry.path().to_string_lossy(),
+                        %e,
+                        "Reading ownership and mode data"
+                    );
+                    None
+                }
+            })
+            .filter_map(|(entry, metadata)| {
+                // Everything under /nix/var, with the exception of /nix/var/nix/profiles/per-user/*
+
+                if metadata.uid() == 0 && metadata.gid() == 0 {
+                    return None;
+                }
+
+                Some((entry, metadata))
+            });
+    for (entry, _metadata) in entryiter {
+        tracing::info!(
+            path = %entry.path().to_string_lossy(),
+            "Re-owning path to 0:0"
+        );
+
+        if let Err(e) = std::os::unix::fs::lchown(entry.path(), Some(0), Some(0)) {
+            tracing::warn!(
+                path = %entry.path().to_string_lossy(),
+                %e,
+                "Failed to set the owner:group to 0:0"
+            );
+        }
+    }
     Ok(())
 }
