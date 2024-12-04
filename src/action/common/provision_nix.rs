@@ -238,10 +238,12 @@ async fn ensure_nix_store_group(desired_nix_build_group_id: u32) -> Result<(), A
     Ok(())
 }
 
-/// Everything under /nix/var (with the exception of /nix/var/nix/profiles/per-user/*) should be owned by 0:0.
+/// Everything under /nix/var (with two deprecated exceptions below) should be owned by 0:0.
+///
+/// * /nix/var/nix/profiles/per-user/*
+/// * /nix/var/nix/gcroots/per-user/*
 ///
 /// This function walks /nix/var and makes sure that is true.
-/// The only exception is everything under /nix/var/nix/profiles/per-user, which we should leave alone.
 async fn ensure_nix_var_ownership() -> Result<(), ActionErrorKind> {
     let entryiter = walkdir::WalkDir::new("/nix/var")
         .follow_links(false)
@@ -249,7 +251,10 @@ async fn ensure_nix_var_ownership() -> Result<(), ActionErrorKind> {
         .contents_first(true)
         .into_iter()
         .filter_entry(|entry| {
-            if entry.path().parent() == Some(std::path::Path::new("/nix/var/nix/profiles/per-user"))
+            let parent = entry.path().parent();
+
+            if parent == Some(std::path::Path::new("/nix/var/nix/profiles/per-user"))
+                || parent == Some(std::path::Path::new("/nix/var/nix/gcroots/per-user"))
             {
                 // False means do *not* descend into this directory
                 // ...which we don't want to do, because the per-user subdirectories are usually owned by that user.
