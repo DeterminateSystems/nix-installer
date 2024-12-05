@@ -76,7 +76,7 @@ impl CreateNixVolume {
                 .map_err(Self::error)?
         };
 
-        let create_fstab_entry = CreateFstabEntry::plan(name.clone(), &create_volume)
+        let create_fstab_entry = CreateFstabEntry::plan(name.clone())
             .await
             .map_err(Self::error)?;
 
