@@ -227,6 +227,11 @@ impl Planner for Macos {
         }
 
         if self.settings.determinate_nix {
+            println!("Creating determinate nix volume {0}", self.volume_label);
+            println!(
+                "Installer volume label: {}",
+                std::env::var("NIX_INSTALLER_VOLUME_LABEL").unwrap_or_default()
+            );
             plan.push(
                 CreateDeterminateNixVolume::plan(
                     root_disk.unwrap(), /* We just ensured it was populated */
@@ -511,5 +516,33 @@ impl HasExpectedErrors for MacosError {
             this @ MacosError::UninstallNixDarwin => Some(Box::new(this)),
             this @ MacosError::BlockedBySystemUIServerPolicy(_) => Some(Box::new(this)),
         }
+    }
+}
+
+#[cfg(all(test, feature = "cli"))]
+mod tests {
+    use super::*;
+    use clap::Parser;
+
+    #[tokio::test]
+    async fn test_volume_label() {
+        // Test default value
+        std::env::remove_var("NIX_INSTALLER_VOLUME_LABEL");
+        let macos = Macos::parse_from(Vec::<String>::new());
+        assert_eq!(
+            macos.volume_label, "Nix Store",
+            "Default value should be 'Nix Store'"
+        );
+
+        // Test env var override
+        std::env::set_var("NIX_INSTALLER_VOLUME_LABEL", "Custom Volume");
+        let macos = Macos::parse_from(Vec::<String>::new());
+        assert_eq!(
+            macos.volume_label, "Custom Volume",
+            "Environment variable should override default"
+        );
+
+        // Cleanup
+        std::env::remove_var("NIX_INSTALLER_VOLUME_LABEL");
     }
 }
