@@ -166,7 +166,7 @@ impl Action for CreateFstabEntry {
             .lines()
             .filter_map(|line| {
                 // Delete nix-installer entries with a "prelude" comment
-                if line.starts_with("# nix-installer") {
+                if line.starts_with("# nix-installer created volume labelled") {
                     None
                 } else {
                     Some(line)
