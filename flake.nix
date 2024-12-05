@@ -16,7 +16,7 @@
     };
 
     nix = {
-      url = "https://flakehub.com/f/DeterminateSystems/nix/=2.24.10.tar.gz";
+      url = "https://flakehub.com/f/DeterminateSystems/nix/=2.25.3.tar.gz";
       # Omitting `inputs.nixpkgs.follows = "nixpkgs";` on purpose
     };
 
@@ -96,6 +96,7 @@
             nativeBuildInputs = with final; [ ];
             buildInputs = with final; [ ] ++ lib.optionals (final.stdenv.isDarwin) (with final.darwin.apple_sdk.frameworks; [
               SystemConfiguration
+              final.darwin.libiconv
             ]);
 
             copyBins = true;
