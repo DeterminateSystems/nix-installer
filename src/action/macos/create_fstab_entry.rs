@@ -1,8 +1,5 @@
-use std::io::SeekFrom;
 use std::path::Path;
 
-use tokio::fs::OpenOptions;
-use tokio::io::{AsyncReadExt, AsyncSeekExt, AsyncWriteExt};
 use tracing::{span, Span};
 use uuid::Uuid;
 
@@ -75,18 +72,7 @@ impl Action for CreateFstabEntry {
             },
         };
 
-        let mut fstab = tokio::fs::OpenOptions::new()
-            .create(true)
-            .truncate(false)
-            .write(true)
-            .read(true)
-            .open(fstab_path)
-            .await
-            .map_err(|e| Self::error(ActionErrorKind::Open(fstab_path.to_path_buf(), e)))?;
-
-        let mut fstab_buf = String::new();
-        fstab
-            .read_to_string(&mut fstab_buf)
+        let fstab_buf = tokio::fs::read_to_string(FSTAB_PATH)
             .await
             .map_err(|e| Self::error(ActionErrorKind::Read(fstab_path.to_owned(), e)))?;
 
@@ -118,19 +104,9 @@ impl Action for CreateFstabEntry {
 
         let updated_buf = current_fstab_lines.join("\n");
 
-        fstab
-            .seek(SeekFrom::Start(0))
+        write_atomic(fstab_path, &updated_buf)
             .await
-            .map_err(|e| Self::error(ActionErrorKind::Seek(fstab_path.to_owned(), e)))?;
-        fstab
-            .set_len(0)
-            .await
-            .map_err(|e| Self::error(ActionErrorKind::Truncate(fstab_path.to_owned(), e)))?;
-        fstab
-            .write_all(updated_buf.as_bytes())
-            .await
-            .map_err(|e| Self::error(ActionErrorKind::Write(fstab_path.to_owned(), e)))?;
-
+            .map_err(Self::error)?;
         Ok(())
     }
 
@@ -148,17 +124,8 @@ impl Action for CreateFstabEntry {
     #[tracing::instrument(level = "debug", skip_all)]
     async fn revert(&mut self) -> Result<(), ActionError> {
         let fstab_path = Path::new(FSTAB_PATH);
-        let mut fstab = OpenOptions::new()
-            .create(false)
-            .write(true)
-            .read(true)
-            .open(&fstab_path)
-            .await
-            .map_err(|e| Self::error(ActionErrorKind::Open(fstab_path.to_owned(), e)))?;
 
-        let mut fstab_buf = String::new();
-        fstab
-            .read_to_string(&mut fstab_buf)
+        let fstab_buf = tokio::fs::read_to_string(FSTAB_PATH)
             .await
             .map_err(|e| Self::error(ActionErrorKind::Read(fstab_path.to_owned(), e)))?;
 
@@ -183,18 +150,9 @@ impl Action for CreateFstabEntry {
             .collect::<Vec<&str>>()
             .join("\n");
 
-        fstab
-            .seek(SeekFrom::Start(0))
+        write_atomic(fstab_path, &updated_buf)
             .await
-            .map_err(|e| Self::error(ActionErrorKind::Seek(fstab_path.to_owned(), e)))?;
-        fstab
-            .set_len(0)
-            .await
-            .map_err(|e| Self::error(ActionErrorKind::Truncate(fstab_path.to_owned(), e)))?;
-        fstab
-            .write_all(updated_buf.as_bytes())
-            .await
-            .map_err(|e| Self::error(ActionErrorKind::Write(fstab_path.to_owned(), e)))?;
+            .map_err(Self::error)?;
 
         Ok(())
     }
@@ -215,4 +173,18 @@ impl From<CreateFstabEntryError> for ActionErrorKind {
     fn from(val: CreateFstabEntryError) -> Self {
         ActionErrorKind::Custom(Box::new(val))
     }
+}
+
+async fn write_atomic(destination: &Path, body: &str) -> Result<(), ActionErrorKind> {
+    let temp = destination.with_extension("tmp");
+
+    tokio::fs::write(&temp, body)
+        .await
+        .map_err(|e| ActionErrorKind::Write(temp.to_owned(), e))?;
+
+    tokio::fs::rename(&temp, &destination)
+        .await
+        .map_err(|e| ActionErrorKind::Rename(temp, destination.into(), e))?;
+
+    Ok(())
 }
