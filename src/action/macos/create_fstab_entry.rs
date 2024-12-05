@@ -102,7 +102,7 @@ impl Action for CreateFstabEntry {
                 }
             })
             .map(|line| {
-                if line.split(&[' ', '\t']).nth(2) == Some("/nix") {
+                if line.split(&[' ', '\t']).nth(1) == Some("/nix") {
                     // Replace the existing line with an updated version
                     line_present = true;
                     fstab_entry(&uuid)
@@ -173,7 +173,7 @@ impl Action for CreateFstabEntry {
                 }
             })
             .filter_map(|line| {
-                if line.split(&[' ', '\t']).nth(2) == Some("/nix") {
+                if line.split(&[' ', '\t']).nth(1) == Some("/nix") {
                     // Delete the mount line for /nix
                     None
                 } else {
