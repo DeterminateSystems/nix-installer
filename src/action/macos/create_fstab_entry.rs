@@ -292,7 +292,7 @@ fn fstab_prelude_comment(apfs_volume_label: &str) -> String {
 }
 
 fn fstab_entry(uuid: &Uuid) -> String {
-    format!("UUID={uuid} /nix apfs rw,noauto,nobrowse,suid,owners")
+    format!("UUID={uuid} /nix apfs rw,noatime,noauto,nobrowse,nosuid,owners")
 }
 
 #[non_exhaustive]
