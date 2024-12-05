@@ -102,6 +102,11 @@ impl Action for CreateFstabEntry {
             current_fstab_lines.push(fstab_entry(&uuid))
         }
 
+        if current_fstab_lines.last().map(|s| s.as_ref()) != Some("") {
+            // Don't leave the file without a trailing newline
+            current_fstab_lines.push("".into());
+        }
+
         let updated_buf = current_fstab_lines.join("\n");
 
         write_atomic(fstab_path, &updated_buf)
@@ -129,7 +134,7 @@ impl Action for CreateFstabEntry {
             .await
             .map_err(|e| Self::error(ActionErrorKind::Read(fstab_path.to_owned(), e)))?;
 
-        let updated_buf = fstab_buf
+        let mut current_fstab_lines = fstab_buf
             .lines()
             .filter_map(|line| {
                 // Delete nix-installer entries with a "prelude" comment
@@ -147,10 +152,14 @@ impl Action for CreateFstabEntry {
                     Some(line)
                 }
             })
-            .collect::<Vec<&str>>()
-            .join("\n");
+            .collect::<Vec<&str>>();
 
-        write_atomic(fstab_path, &updated_buf)
+        if current_fstab_lines.last() != Some(&"") {
+            // Don't leave the file without a trailing newline
+            current_fstab_lines.push("");
+        }
+
+        write_atomic(fstab_path, &current_fstab_lines.join("\n"))
             .await
             .map_err(Self::error)?;
 
