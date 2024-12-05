@@ -1,3 +1,4 @@
+// .filter_map() predicates returns Some/None, which is more clear than .filter()'s -> bool predicates.
 #![allow(clippy::unnecessary_filter_map)]
 
 /*! The Determinate [Nix](https://github.com/NixOS/nix) Installer
