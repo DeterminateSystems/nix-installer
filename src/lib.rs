@@ -1,3 +1,5 @@
+#![allow(clippy::unnecessary_filter_map)]
+
 /*! The Determinate [Nix](https://github.com/NixOS/nix) Installer
 
 `nix-installer` breaks down into three main concepts:
