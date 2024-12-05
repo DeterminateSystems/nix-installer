@@ -74,6 +74,10 @@ impl Action for CreateFstabEntry {
 
         let fstab_buf = tokio::fs::read_to_string(FSTAB_PATH)
             .await
+            .or_else(|e| match e.kind() {
+                std::io::ErrorKind::NotFound => Ok(String::new()),
+                _ => Err(e),
+            })
             .map_err(|e| Self::error(ActionErrorKind::Read(fstab_path.to_owned(), e)))?;
 
         let mut line_present = false;
@@ -132,6 +136,10 @@ impl Action for CreateFstabEntry {
 
         let fstab_buf = tokio::fs::read_to_string(FSTAB_PATH)
             .await
+            .or_else(|e| match e.kind() {
+                std::io::ErrorKind::NotFound => Ok(String::new()),
+                _ => Err(e),
+            })
             .map_err(|e| Self::error(ActionErrorKind::Read(fstab_path.to_owned(), e)))?;
 
         let mut current_fstab_lines = fstab_buf
