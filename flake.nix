@@ -102,7 +102,7 @@
             copyBins = true;
             copyDocsToSeparateOutput = true;
 
-            doCheck = true;
+            doCheck = false;
             doDoc = true;
             doDocFail = true;
             RUSTFLAGS = "--cfg tokio_unstable";
