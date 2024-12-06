@@ -1,6 +1,9 @@
 use std::path::{Path, PathBuf};
+use std::process::Stdio;
 use std::time::Duration;
 
+use rand::Rng as _;
+use tokio::io::AsyncWriteExt as _;
 use tokio::process::Command;
 use tracing::{span, Span};
 
@@ -16,6 +19,7 @@ pub struct CreateApfsVolume {
     disk: PathBuf,
     name: String,
     case_sensitive: bool,
+    determinate_nix: bool,
 }
 
 impl CreateApfsVolume {
@@ -24,7 +28,10 @@ impl CreateApfsVolume {
         disk: impl AsRef<Path>,
         name: String,
         case_sensitive: bool,
+        determinate_nix: bool,
     ) -> Result<StatefulAction<Self>, ActionError> {
+        let disk = disk.as_ref().to_path_buf();
+
         let output =
             execute_command(Command::new("/usr/sbin/diskutil").args(["apfs", "list", "-plist"]))
                 .await
@@ -35,19 +42,24 @@ impl CreateApfsVolume {
         for container in parsed.containers {
             for volume in container.volumes {
                 if volume.name.as_ref() == Some(&name) {
-                    return Ok(StatefulAction::completed(Self {
-                        disk: disk.as_ref().to_path_buf(),
-                        name,
-                        case_sensitive,
-                    }));
+                    if volume.file_vault {
+                        todo!("edge-case I'll think about later");
+                        return Ok(StatefulAction::completed(Self {
+                            disk,
+                            name,
+                            case_sensitive,
+                            determinate_nix,
+                        }));
+                    }
                 }
             }
         }
 
         Ok(StatefulAction::uncompleted(Self {
-            disk: disk.as_ref().to_path_buf(),
+            disk,
             name,
             case_sensitive,
+            determinate_nix,
         }))
     }
 }
@@ -82,31 +94,119 @@ impl Action for CreateApfsVolume {
 
     #[tracing::instrument(level = "debug", skip_all)]
     async fn execute(&mut self) -> Result<(), ActionError> {
-        let Self {
-            disk,
-            name,
-            case_sensitive,
-        } = self;
+        // Generate a random password.
+        let password: String = {
+            const CHARSET: &[u8] = b"ABCDEFGHIJKLMNOPQRSTUVWXYZ\
+                                abcdefghijklmnopqrstuvwxyz\
+                                    0123456789)(*&^%$#@!~";
+            const PASSWORD_LEN: usize = 32;
+            let mut rng = rand::thread_rng();
 
-        execute_command(
-            Command::new("/usr/sbin/diskutil")
-                .process_group(0)
-                .args([
-                    "apfs",
-                    "addVolume",
-                    &format!("{}", disk.display()),
-                    if !*case_sensitive {
-                        "APFS"
-                    } else {
-                        "Case-sensitive APFS"
-                    },
-                    name,
-                    "-nomount",
-                ])
-                .stdin(std::process::Stdio::null()),
-        )
-        .await
-        .map_err(Self::error)?;
+            (0..PASSWORD_LEN)
+                .map(|_| {
+                    let idx = rng.gen_range(0..CHARSET.len());
+                    CHARSET[idx] as char
+                })
+                .collect()
+        };
+
+        let disk_str = self.disk.display().to_string();
+
+        // Add the password to the user keychain so they can unlock it later.
+        let mut cmd = Command::new("/usr/bin/security");
+        cmd.process_group(0).args([
+            "add-generic-password",
+            "-a",
+            self.name.as_str(),
+            "-s",
+            "Nix Store",
+            "-l",
+            format!("{} encryption password", disk_str).as_str(),
+            "-D",
+            "Encrypted volume password",
+            "-j",
+            format!(
+                "Added automatically by the Nix installer for use by {{NIX_VOLUME_MOUNTD_DEST}}"
+            )
+            .as_str(),
+            "-w",
+            password.as_str(),
+            "-T",
+            "/System/Library/CoreServices/APFSUserAgent",
+            "-T",
+            "/System/Library/CoreServices/CSUserAgent",
+            "-T",
+            "/usr/bin/security",
+        ]);
+
+        if self.determinate_nix {
+            cmd.args(["-T", "/usr/local/bin/determinate-nixd"]);
+        }
+
+        cmd.arg("/Library/Keychains/System.keychain");
+
+        // Add the password to the user keychain so they can unlock it later.
+        execute_command(&mut cmd).await.map_err(Self::error)?;
+
+        // Encrypt the mounted volume
+        {
+            let mut command = Command::new("/usr/sbin/diskutil");
+            command.process_group(0);
+            command.args([
+                "apfs",
+                "addVolume",
+                &disk_str,
+                if !self.case_sensitive {
+                    "APFS"
+                } else {
+                    "Case-sensitive APFS"
+                },
+                &self.name,
+                "-stdinpassphrase",
+                "-mountpoint",
+                "/nix",
+            ]);
+            command.stdin(Stdio::piped());
+            command.stdout(Stdio::piped());
+            command.stderr(Stdio::piped());
+            tracing::trace!(command = ?command.as_std(), "Executing");
+            let mut child = command
+                .spawn()
+                .map_err(|e| ActionErrorKind::command(&command, e))
+                .map_err(Self::error)?;
+            let mut stdin = child
+                .stdin
+                .take()
+                .expect("child should have had a stdin handle");
+            stdin
+                .write_all(password.as_bytes())
+                .await
+                .map_err(|e| ActionErrorKind::Write("/dev/stdin".into(), e))
+                .map_err(Self::error)?;
+            stdin
+                .write(b"\n")
+                .await
+                .map_err(|e| ActionErrorKind::Write("/dev/stdin".into(), e))
+                .map_err(Self::error)?;
+            let output = child
+                .wait_with_output()
+                .await
+                .map_err(|e| ActionErrorKind::command(&command, e))
+                .map_err(Self::error)?;
+            match output.status.success() {
+                true => {
+                    tracing::trace!(
+                        command = ?command.as_std(),
+                        stderr = %String::from_utf8_lossy(&output.stderr),
+                        stdout = %String::from_utf8_lossy(&output.stdout),
+                        "Command success"
+                    );
+                },
+                false => Err(Self::error(ActionErrorKind::command_output(
+                    &command, output,
+                )))?,
+            }
+        }
 
         Ok(())
     }
