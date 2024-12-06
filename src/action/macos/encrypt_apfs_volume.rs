@@ -208,80 +208,39 @@ impl Action for EncryptApfsVolume {
             tokio::time::sleep(Duration::from_millis(500)).await;
         }
 
-        {
-            // Add the password to the user keychain so they can unlock it later.
-            let mut command = Command::new("/usr/bin/security");
-            command.process_group(0).args([
-                "add-generic-password",
-                "-a",
-                self.name.as_str(),
-                "-s",
-                "Nix Store",
-                "-l",
-                format!("{} encryption password", disk_str).as_str(),
-                "-D",
-                "Encrypted volume password",
-                "-j",
-                format!(
-                    "Added automatically by the Nix installer for use by {NIX_VOLUME_MOUNTD_DEST}"
-                )
+        // Add the password to the user keychain so they can unlock it later.
+        let mut cmd = Command::new("/usr/bin/security");
+        cmd.process_group(0).args([
+            "add-generic-password",
+            "-a",
+            self.name.as_str(),
+            "-s",
+            "Nix Store",
+            "-l",
+            format!("{} encryption password", disk_str).as_str(),
+            "-D",
+            "Encrypted volume password",
+            "-j",
+            format!("Added automatically by the Nix installer for use by {NIX_VOLUME_MOUNTD_DEST}")
                 .as_str(),
-                "-T",
-                "/System/Library/CoreServices/APFSUserAgent",
-                "-T",
-                "/System/Library/CoreServices/CSUserAgent",
-                "-T",
-                "/usr/bin/security",
-                "-w", // "Specify -w as the last option to be prompted."
-            ]);
+            "-w",
+            password.as_str(),
+            "-T",
+            "/System/Library/CoreServices/APFSUserAgent",
+            "-T",
+            "/System/Library/CoreServices/CSUserAgent",
+            "-T",
+            "/usr/bin/security",
+        ]);
 
-            if self.determinate_nix {
-                command.args(["-T", "/usr/local/bin/determinate-nixd"]);
-            }
-
-            command.arg("/Library/Keychains/System.keychain");
-
-            command.stdin(Stdio::piped());
-            command.stdout(Stdio::piped());
-            command.stderr(Stdio::piped());
-            tracing::trace!(command = ?command.as_std(), "Executing");
-            let mut child = command
-                .spawn()
-                .map_err(|e| ActionErrorKind::command(&command, e))
-                .map_err(Self::error)?;
-            let mut stdin = child
-                .stdin
-                .take()
-                .expect("child should have had a stdin handle");
-            stdin
-                .write_all(password.as_bytes())
-                .await
-                .map_err(|e| ActionErrorKind::Write("/dev/stdin".into(), e))
-                .map_err(Self::error)?;
-            stdin
-                .write(b"\n")
-                .await
-                .map_err(|e| ActionErrorKind::Write("/dev/stdin".into(), e))
-                .map_err(Self::error)?;
-            let output = child
-                .wait_with_output()
-                .await
-                .map_err(|e| ActionErrorKind::command(&command, e))
-                .map_err(Self::error)?;
-            match output.status.success() {
-                true => {
-                    tracing::trace!(
-                        command = ?command.as_std(),
-                        stderr = %String::from_utf8_lossy(&output.stderr),
-                        stdout = %String::from_utf8_lossy(&output.stdout),
-                        "Command success"
-                    );
-                },
-                false => Err(Self::error(ActionErrorKind::command_output(
-                    &command, output,
-                )))?,
-            }
+        if self.determinate_nix {
+            cmd.args(["-T", "/usr/local/bin/determinate-nixd"]);
         }
+
+        cmd.arg("/Library/Keychains/System.keychain");
+
+        // Add the password to the user keychain so they can unlock it later.
+        execute_command(&mut cmd).await.map_err(Self::error)?;
 
         // Encrypt the mounted volume
         {
