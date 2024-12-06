@@ -72,7 +72,7 @@ impl CreateDeterminateNixVolume {
 
         let create_synthetic_objects = CreateSyntheticObjects::plan().await.map_err(Self::error)?;
 
-        let create_volume = CreateApfsVolume::plan(disk, name.clone(), case_sensitive)
+        let create_volume = CreateApfsVolume::plan(disk, name.clone(), case_sensitive, true)
             .await
             .map_err(Self::error)?;
 

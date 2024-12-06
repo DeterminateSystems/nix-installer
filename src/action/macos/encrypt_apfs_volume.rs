@@ -40,6 +40,14 @@ impl EncryptApfsVolume {
         let name = name.as_ref().to_owned();
         let disk = disk.as_ref().to_path_buf();
 
+        if determinate_nix {
+            return Ok(StatefulAction::completed(Self {
+                determinate_nix,
+                name,
+                disk,
+            }));
+        }
+
         let mut command = Command::new("/usr/bin/security");
         command.args(["find-generic-password", "-a"]);
         command.arg(&name);
