@@ -331,7 +331,18 @@ async fn create_user_macos(name: &str, uid: u32, gid: u32) -> Result<(), ActionE
         "IsHidden",
         "1",
     ])
-    .await?;
+    .await
+    .or_else(|e| {
+        if let ActionErrorKind::CommandOutput { ref output, .. } = e {
+            if output.status.signal() == Some(9) {
+                tracing::warn!("Failed to automatically mark the user as hidden. See: https://dtr.mn/mark-user-hidden");
+                return Ok(())
+            }
+        }
+
+        Err(e)
+    })?;
+
     execute_dscl_retry_on_specific_errors(&[
         ".",
         "-create",
