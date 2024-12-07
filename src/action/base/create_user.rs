@@ -328,6 +328,14 @@ async fn create_user_macos(name: &str, uid: u32, gid: u32) -> Result<(), ActionE
         ".",
         "-create",
         &format!("/Users/{name}"),
+        "RealName",
+        name,
+    ])
+    .await?;
+    execute_dscl_retry_on_specific_errors(&[
+        ".",
+        "-create",
+        &format!("/Users/{name}"),
         "IsHidden",
         "1",
     ])
@@ -342,15 +350,6 @@ async fn create_user_macos(name: &str, uid: u32, gid: u32) -> Result<(), ActionE
 
         Err(e)
     })?;
-
-    execute_dscl_retry_on_specific_errors(&[
-        ".",
-        "-create",
-        &format!("/Users/{name}"),
-        "RealName",
-        name,
-    ])
-    .await?;
 
     Ok(())
 }
