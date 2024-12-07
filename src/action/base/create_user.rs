@@ -10,6 +10,9 @@ use crate::execute_command;
 
 use crate::action::{Action, ActionDescription, StatefulAction};
 
+static WARNED_USER_HIDDEN: std::sync::atomic::AtomicBool =
+    std::sync::atomic::AtomicBool::new(false);
+
 /**
 Create an operating system level user in the given group
 */
@@ -343,7 +346,9 @@ async fn create_user_macos(name: &str, uid: u32, gid: u32) -> Result<(), ActionE
     .or_else(|e| {
         if let ActionErrorKind::CommandOutput { ref output, .. } = e {
             if output.status.signal() == Some(9) {
-                tracing::warn!("Failed to automatically mark the user as hidden. See: https://dtr.mn/mark-user-hidden");
+                if !WARNED_USER_HIDDEN.swap(true, std::sync::atomic::Ordering::SeqCst) {
+                    tracing::warn!("Failed to automatically mark nixbld users as hidden. See: https://dtr.mn/mark-user-hidden");
+                }
                 return Ok(())
             }
         }
