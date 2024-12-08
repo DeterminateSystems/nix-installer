@@ -1,5 +1,5 @@
 {
-  "version": "0.32.0",
+  "version": "0.32.1",
   "actions": [
     {
       "action": {
@@ -1253,7 +1253,7 @@
   },
   "diagnostic_data": {
     "attribution": null,
-    "version": "0.32.0",
+    "version": "0.32.1",
     "planner": "macos",
     "configured_settings": [],
     "os_name": "unknown",
