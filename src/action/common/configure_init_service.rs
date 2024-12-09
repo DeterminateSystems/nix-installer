@@ -242,7 +242,7 @@ impl Action for ConfigureInitService {
                 let service_dest = service_dest
                     .as_ref()
                     .expect("service_dest should be set for Launchd");
-                let service = service_name
+                let service_name = service_name
                     .as_ref()
                     .expect("service_name should be set for Launchd");
                 let domain = DARWIN_LAUNCHD_DOMAIN;
@@ -259,11 +259,11 @@ impl Action for ConfigureInitService {
                         })?;
                 }
 
-                crate::action::macos::retry_bootstrap(domain, service, service_dest)
+                crate::action::macos::retry_bootstrap(domain, service_name, service_dest)
                     .await
                     .map_err(Self::error)?;
 
-                let is_disabled = crate::action::macos::service_is_disabled(domain, service)
+                let is_disabled = crate::action::macos::service_is_disabled(domain, service_name)
                     .await
                     .map_err(Self::error)?;
                 if is_disabled {
@@ -271,7 +271,7 @@ impl Action for ConfigureInitService {
                         Command::new("launchctl")
                             .process_group(0)
                             .arg("enable")
-                            .arg(format!("{domain}/{service}"))
+                            .arg(format!("{domain}/{service_name}"))
                             .stdin(std::process::Stdio::null()),
                     )
                     .await
@@ -279,7 +279,7 @@ impl Action for ConfigureInitService {
                 }
 
                 if *start_daemon {
-                    crate::action::macos::retry_kickstart(domain, service)
+                    crate::action::macos::retry_kickstart(domain, service_name)
                         .await
                         .map_err(Self::error)?;
                 }
