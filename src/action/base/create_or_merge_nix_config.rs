@@ -18,7 +18,7 @@ use crate::action::{
 /// The `nix.conf` configuration names that are safe to merge.
 // FIXME(@cole-h): make configurable by downstream users?
 const MERGEABLE_CONF_NAMES: &[&str] = &["experimental-features"];
-const NIX_CONF_MODE: u32 = 0o664;
+const NIX_CONF_MODE: u32 = 0o644;
 const NIX_CONF_COMMENT_CHAR: char = '#';
 
 #[non_exhaustive]
@@ -145,19 +145,6 @@ impl CreateOrMergeNixConfig {
 
         if !metadata.is_file() {
             return Err(Self::error(ActionErrorKind::PathWasNotFile(path)));
-        }
-
-        // Does the file have the right permissions?
-        let discovered_mode = metadata.permissions().mode();
-        // We only care about user-group-other permissions
-        let discovered_mode = discovered_mode & 0o777;
-
-        if discovered_mode != NIX_CONF_MODE {
-            return Err(Self::error(ActionErrorKind::PathModeMismatch(
-                path,
-                discovered_mode,
-                NIX_CONF_MODE,
-            )));
         }
 
         let existing_nix_config = NixConfig::parse_file(&path)
