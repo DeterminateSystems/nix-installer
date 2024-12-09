@@ -147,19 +147,6 @@ impl CreateOrMergeNixConfig {
             return Err(Self::error(ActionErrorKind::PathWasNotFile(path)));
         }
 
-        // Does the file have the right permissions?
-        let discovered_mode = metadata.permissions().mode();
-        // We only care about user-group-other permissions
-        let discovered_mode = discovered_mode & 0o777;
-
-        if discovered_mode != NIX_CONF_MODE {
-            return Err(Self::error(ActionErrorKind::PathModeMismatch(
-                path,
-                discovered_mode,
-                NIX_CONF_MODE,
-            )));
-        }
-
         let existing_nix_config = NixConfig::parse_file(&path)
             .map_err(CreateOrMergeNixConfigError::ParseNixConfig)
             .map_err(Self::error)?;
