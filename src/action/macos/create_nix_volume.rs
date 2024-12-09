@@ -19,6 +19,7 @@ use super::{
 };
 
 pub const NIX_VOLUME_MOUNTD_DEST: &str = "/Library/LaunchDaemons/org.nixos.darwin-store.plist";
+pub const NIX_VOLUME_MOUNTD_NAME: &str = "org.nixos.darwin-store";
 
 /// Create an APFS volume
 #[derive(Debug, serde::Deserialize, serde::Serialize, Clone)]
@@ -88,7 +89,7 @@ impl CreateNixVolume {
 
         let setup_volume_daemon = CreateVolumeService::plan(
             NIX_VOLUME_MOUNTD_DEST,
-            "org.nixos.darwin-store",
+            NIX_VOLUME_MOUNTD_NAME,
             name.clone(),
             "/nix",
             encrypt,
@@ -97,11 +98,11 @@ impl CreateNixVolume {
         .map_err(Self::error)?;
 
         let bootstrap_volume =
-            BootstrapLaunchctlService::plan("org.nixos.darwin-store", NIX_VOLUME_MOUNTD_DEST)
+            BootstrapLaunchctlService::plan(NIX_VOLUME_MOUNTD_NAME, NIX_VOLUME_MOUNTD_DEST)
                 .await
                 .map_err(Self::error)?;
         let kickstart_launchctl_service =
-            KickstartLaunchctlService::plan(DARWIN_LAUNCHD_DOMAIN, "org.nixos.darwin-store")
+            KickstartLaunchctlService::plan(DARWIN_LAUNCHD_DOMAIN, NIX_VOLUME_MOUNTD_NAME)
                 .await
                 .map_err(Self::error)?;
         let enable_ownership = EnableOwnership::plan("/nix").await.map_err(Self::error)?;
