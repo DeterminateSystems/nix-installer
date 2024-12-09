@@ -149,7 +149,7 @@ pub(crate) async fn wait_for_nix_store_dir() -> Result<(), ActionErrorKind> {
     Ok(())
 }
 
-/// Wait for `launchctl bootstrap {domain} {service}` to succeed up to `retry_tokens * 500ms` amount
+/// Wait for `launchctl bootstrap {domain} {service_path}` to succeed up to `retry_tokens * 500ms` amount
 /// of time.
 #[tracing::instrument]
 pub(crate) async fn retry_bootstrap(
@@ -205,7 +205,7 @@ pub(crate) async fn retry_bootstrap(
     Ok(())
 }
 
-/// Wait for `launchctl bootout {domain} {service_path}` to succeed up to `retry_tokens * 500ms` amount
+/// Wait for `launchctl bootout {domain}/{service_name}` to succeed up to `retry_tokens * 500ms` amount
 /// of time.
 #[tracing::instrument]
 pub(crate) async fn retry_bootout(domain: &str, service_name: &str) -> Result<(), ActionErrorKind> {
