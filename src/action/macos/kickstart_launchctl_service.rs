@@ -1,5 +1,4 @@
 use std::process::Output;
-use std::time::Duration;
 
 use tokio::process::Command;
 use tracing::{span, Span};
@@ -95,35 +94,9 @@ impl Action for KickstartLaunchctlService {
 
     #[tracing::instrument(level = "debug", skip_all)]
     async fn execute(&mut self) -> Result<(), ActionError> {
-        let mut retry_tokens: usize = 10;
-        loop {
-            let mut command = Command::new("launchctl");
-            command.process_group(0);
-            command.args(["kickstart", "-k"]);
-            command.arg(format!("{}/{}", self.domain, self.service));
-            command.stdin(std::process::Stdio::null());
-            command.stderr(std::process::Stdio::null());
-            command.stdout(std::process::Stdio::null());
-            tracing::debug!(%retry_tokens, command = ?command.as_std(), "Waiting for kickstart to succeed");
-
-            let output = command
-                .output()
-                .await
-                .map_err(|e| ActionErrorKind::command(&command, e))
-                .map_err(Self::error)?;
-
-            if output.status.success() {
-                break;
-            } else if retry_tokens == 0 {
-                return Err(Self::error(ActionErrorKind::command_output(
-                    &command, output,
-                )))?;
-            } else {
-                retry_tokens = retry_tokens.saturating_sub(1);
-            }
-
-            tokio::time::sleep(Duration::from_millis(500)).await;
-        }
+        super::retry_kickstart(&self.domain, &self.service)
+            .await
+            .map_err(Self::error)?;
 
         Ok(())
     }

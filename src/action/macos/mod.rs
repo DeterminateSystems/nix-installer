@@ -149,7 +149,7 @@ pub(crate) async fn wait_for_nix_store_dir() -> Result<(), ActionErrorKind> {
     Ok(())
 }
 
-/// Wait for `launchctl bootstrap {domain} {service}` to succeed up to `retry_tokens * 500ms` amount
+/// Wait for `launchctl bootstrap {domain} {service_path}` to succeed up to `retry_tokens * 500ms` amount
 /// of time.
 #[tracing::instrument]
 pub(crate) async fn retry_bootstrap(
@@ -205,7 +205,7 @@ pub(crate) async fn retry_bootstrap(
     Ok(())
 }
 
-/// Wait for `launchctl bootout {domain} {service_path}` to succeed up to `retry_tokens * 500ms` amount
+/// Wait for `launchctl bootout {domain}/{service_name}` to succeed up to `retry_tokens * 500ms` amount
 /// of time.
 #[tracing::instrument]
 pub(crate) async fn retry_bootout(domain: &str, service_name: &str) -> Result<(), ActionErrorKind> {
@@ -238,6 +238,46 @@ pub(crate) async fn retry_bootout(domain: &str, service_name: &str) -> Result<()
         command.stderr(std::process::Stdio::null());
         command.stdout(std::process::Stdio::null());
         tracing::debug!(%retry_tokens, command = ?command.as_std(), "Waiting for bootout to succeed");
+
+        let output = command
+            .output()
+            .await
+            .map_err(|e| ActionErrorKind::command(&command, e))?;
+
+        if output.status.success() {
+            break;
+        } else if retry_tokens == 0 {
+            return Err(ActionErrorKind::command_output(&command, output))?;
+        } else {
+            retry_tokens = retry_tokens.saturating_sub(1);
+        }
+
+        tokio::time::sleep(Duration::from_millis(500)).await;
+    }
+
+    Ok(())
+}
+
+/// Wait for `launchctl kickstart {domain}/{service_name}` to succeed up to `retry_tokens * 500ms` amount
+/// of time.
+#[tracing::instrument]
+pub(crate) async fn retry_kickstart(
+    domain: &str,
+    service_name: &str,
+) -> Result<(), ActionErrorKind> {
+    let service_identifier = [domain, service_name].join("/");
+
+    let mut retry_tokens: usize = 10;
+    loop {
+        let mut command = Command::new("launchctl");
+        command.process_group(0);
+        command.arg("kickstart");
+        command.arg("-k");
+        command.arg(&service_identifier);
+        command.stdin(std::process::Stdio::null());
+        command.stderr(std::process::Stdio::null());
+        command.stdout(std::process::Stdio::null());
+        tracing::debug!(%retry_tokens, command = ?command.as_std(), "Waiting for kickstart to succeed");
 
         let output = command
             .output()

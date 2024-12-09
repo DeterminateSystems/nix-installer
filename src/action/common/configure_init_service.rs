@@ -279,16 +279,9 @@ impl Action for ConfigureInitService {
                 }
 
                 if *start_daemon {
-                    execute_command(
-                        Command::new("launchctl")
-                            .process_group(0)
-                            .arg("kickstart")
-                            .arg("-k")
-                            .arg(format!("{domain}/{service}"))
-                            .stdin(std::process::Stdio::null()),
-                    )
-                    .await
-                    .map_err(Self::error)?;
+                    crate::action::macos::retry_kickstart(domain, service)
+                        .await
+                        .map_err(Self::error)?;
                 }
             },
             InitSystem::Systemd => {
