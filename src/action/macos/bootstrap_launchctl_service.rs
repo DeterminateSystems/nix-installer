@@ -41,7 +41,7 @@ impl BootstrapLaunchctlService {
                 .await
                 .map_err(|e| Self::error(ActionErrorKind::command(&command, e)))?;
             // We presume that success means it's found
-            command_output.status.success() || command_output.status.code() == Some(37)
+            command_output.status.success()
         };
 
         let is_disabled = service_is_disabled(DARWIN_LAUNCHD_DOMAIN, &service)
