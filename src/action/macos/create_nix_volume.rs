@@ -19,13 +19,14 @@ use super::{
 };
 
 pub const NIX_VOLUME_MOUNTD_DEST: &str = "/Library/LaunchDaemons/org.nixos.darwin-store.plist";
+pub const NIX_VOLUME_MOUNTD_NAME: &str = "org.nixos.darwin-store";
 
 /// Create an APFS volume
 #[derive(Debug, serde::Deserialize, serde::Serialize, Clone)]
 #[serde(tag = "action_name", rename = "create_nix_volume")]
 pub struct CreateNixVolume {
     disk: PathBuf,
-    name: String,
+    volume_label: String,
     case_sensitive: bool,
     encrypt: bool,
     create_or_append_synthetic_conf: StatefulAction<CreateOrInsertIntoFile>,
@@ -44,7 +45,7 @@ impl CreateNixVolume {
     #[tracing::instrument(level = "debug", skip_all)]
     pub async fn plan(
         disk: impl AsRef<Path>,
-        name: String,
+        volume_label: String,
         case_sensitive: bool,
         encrypt: bool,
     ) -> Result<StatefulAction<Self>, ActionError> {
@@ -62,34 +63,34 @@ impl CreateNixVolume {
 
         let create_synthetic_objects = CreateSyntheticObjects::plan().await.map_err(Self::error)?;
 
-        let create_volume = CreateApfsVolume::plan(disk, name.clone(), case_sensitive)
+        let create_volume = CreateApfsVolume::plan(disk, volume_label.clone(), case_sensitive)
             .await
             .map_err(Self::error)?;
 
         let unmount_volume = if create_volume.state == crate::action::ActionState::Completed {
-            UnmountApfsVolume::plan_skip_if_already_mounted_to_nix(disk, name.clone())
+            UnmountApfsVolume::plan_skip_if_already_mounted_to_nix(disk, volume_label.clone())
                 .await
                 .map_err(Self::error)?
         } else {
-            UnmountApfsVolume::plan(disk, name.clone())
+            UnmountApfsVolume::plan(disk, volume_label.clone())
                 .await
                 .map_err(Self::error)?
         };
 
-        let create_fstab_entry = CreateFstabEntry::plan(name.clone())
+        let create_fstab_entry = CreateFstabEntry::plan(volume_label.clone())
             .await
             .map_err(Self::error)?;
 
         let encrypt_volume = if encrypt {
-            Some(EncryptApfsVolume::plan(false, disk, &name, &create_volume).await?)
+            Some(EncryptApfsVolume::plan(false, disk, &volume_label, &create_volume).await?)
         } else {
             None
         };
 
         let setup_volume_daemon = CreateVolumeService::plan(
             NIX_VOLUME_MOUNTD_DEST,
-            "org.nixos.darwin-store",
-            name.clone(),
+            NIX_VOLUME_MOUNTD_NAME,
+            volume_label.clone(),
             "/nix",
             encrypt,
         )
@@ -97,18 +98,18 @@ impl CreateNixVolume {
         .map_err(Self::error)?;
 
         let bootstrap_volume =
-            BootstrapLaunchctlService::plan("org.nixos.darwin-store", NIX_VOLUME_MOUNTD_DEST)
+            BootstrapLaunchctlService::plan(NIX_VOLUME_MOUNTD_NAME, NIX_VOLUME_MOUNTD_DEST)
                 .await
                 .map_err(Self::error)?;
         let kickstart_launchctl_service =
-            KickstartLaunchctlService::plan(DARWIN_LAUNCHD_DOMAIN, "org.nixos.darwin-store")
+            KickstartLaunchctlService::plan(DARWIN_LAUNCHD_DOMAIN, NIX_VOLUME_MOUNTD_NAME)
                 .await
                 .map_err(Self::error)?;
         let enable_ownership = EnableOwnership::plan("/nix").await.map_err(Self::error)?;
 
         Ok(Self {
             disk: disk.to_path_buf(),
-            name,
+            volume_label,
             case_sensitive,
             encrypt,
             create_or_append_synthetic_conf,
@@ -134,9 +135,9 @@ impl Action for CreateNixVolume {
     }
     fn tracing_synopsis(&self) -> String {
         format!(
-            "Create an{maybe_encrypted} APFS volume `{name}` for Nix on `{disk}` and add it to `/etc/fstab` mounting on `/nix`",
+            "Create an{maybe_encrypted} APFS volume `{volume_label}` for Nix on `{disk}` and add it to `/etc/fstab` mounting on `/nix`",
             maybe_encrypted = if self.encrypt { " encrypted" } else { "" },
-            name = self.name,
+            volume_label = self.volume_label,
             disk = self.disk.display(),
         )
     }
@@ -146,7 +147,7 @@ impl Action for CreateNixVolume {
             tracing::Level::DEBUG,
             "create_nix_volume",
             disk = tracing::field::display(self.disk.display()),
-            name = self.name
+            volume_label = self.volume_label
         )
     }
 
@@ -188,7 +189,7 @@ impl Action for CreateNixVolume {
         loop {
             let mut command = Command::new("/usr/sbin/diskutil");
             command.args(["info", "-plist"]);
-            command.arg(&self.name);
+            command.arg(&self.volume_label);
             command.stderr(std::process::Stdio::null());
             command.stdout(std::process::Stdio::null());
             tracing::debug!(%retry_tokens, command = ?command.as_std(), "Checking for Nix Store volume existence");
@@ -261,7 +262,7 @@ impl Action for CreateNixVolume {
         vec![ActionDescription::new(
             format!(
                 "Remove the APFS volume `{}` on `{}`",
-                self.name,
+                self.volume_label,
                 self.disk.display()
             ),
             explanation,
