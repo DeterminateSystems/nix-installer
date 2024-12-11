@@ -361,6 +361,7 @@ To cut a release:
   - `nix flake check -L`
   - `nix build .#hydraJobs.container-test.all.x86_64-linux.all -L -j 6`
   - `nix build .#hydraJobs.vm-test.all.x86_64-linux.all -L -j 6`
+- Update the versions in the fixture data in `test/fixtures/**/*.json`
 - Push the branch, create a PR ("Release v0.0.1")
 - Once the PR tests pass and it has been reviewed, merge it
 - Checkout the `main` branch and `git pull`
