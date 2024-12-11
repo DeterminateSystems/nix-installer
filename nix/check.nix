@@ -36,9 +36,9 @@ in
   # EditorConfig
   check-editorconfig = (writeShellApplication {
     name = "check-editorconfig";
-    runtimeInputs = with pkgs; [ eclint ];
+    runtimeInputs = with pkgs; [ editorconfig-checker ];
     text = ''
-      eclint .
+      editorconfig-checker
     '';
   });
 

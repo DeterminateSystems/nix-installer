@@ -9,20 +9,30 @@ use crate::execute_command;
 
 use crate::action::{Action, ActionDescription, StatefulAction};
 
-const SE_LINUX_POLICY_PP_CONTENT: &[u8] = include_bytes!("selinux/nix.pp");
+pub const SELINUX_POLICY_PP_CONTENT: &[u8] = include_bytes!("selinux/nix.pp");
+pub const DETERMINATE_SELINUX_POLICY_PP_CONTENT: &[u8] =
+    include_bytes!("selinux/determinate-nix.pp");
 
 /**
 Provision the selinux/nix.pp for SELinux compatibility
 */
 #[derive(Debug, serde::Deserialize, serde::Serialize, Clone)]
+#[serde(tag = "action_name", rename = "provision_selinux")]
 pub struct ProvisionSelinux {
     policy_path: PathBuf,
+    policy_content: Vec<u8>,
 }
 
 impl ProvisionSelinux {
     #[tracing::instrument(level = "debug", skip_all)]
-    pub async fn plan(policy_path: PathBuf) -> Result<StatefulAction<Self>, ActionError> {
-        let this = Self { policy_path };
+    pub async fn plan(
+        policy_path: PathBuf,
+        policy_content: &[u8],
+    ) -> Result<StatefulAction<Self>, ActionError> {
+        let this = Self {
+            policy_path,
+            policy_content: policy_content.to_vec(),
+        };
 
         // Note: `restorecon` requires us to not just skip this, even if everything is in place.
 
@@ -73,7 +83,7 @@ impl Action for ProvisionSelinux {
                 .map_err(Self::error)?;
         }
 
-        tokio::fs::write(&self.policy_path, SE_LINUX_POLICY_PP_CONTENT)
+        tokio::fs::write(&self.policy_path, &self.policy_content)
             .await
             .map_err(|e| ActionErrorKind::Write(self.policy_path.clone(), e))
             .map_err(Self::error)?;

@@ -21,5 +21,7 @@ async fn main() -> eyre::Result<ExitCode> {
 
     cli.instrumentation.setup()?;
 
+    tracing::info!("nix-installer v{}", env!("CARGO_PKG_VERSION"));
+
     cli.execute().await
 }

@@ -15,8 +15,21 @@
     };
 
     nix = {
-      url = "github:NixOS/nix/2.21.2";
+      url = "github:NixOS/nix/2.24.9";
       # Omitting `inputs.nixpkgs.follows = "nixpkgs";` on purpose
+    };
+
+    determinate = {
+      url = "https://flakehub.com/f/DeterminateSystems/determinate/0.1.tar.gz";
+
+      # We set the overrides below so the flake.lock has many fewer nodes.
+      #
+      # The `determinate` input is used to access the builds of `determinate-nixd`.
+      # Below, we access the `packages` outputs, which download static builds of `determinate-nixd` and makes them executable.
+      # The way we consume the determinate flake means the `nix` and `nixpkgs` inputs are not meaningfully used.
+      # This means `follows` won't cause surprisingly extensive rebuilds, just trivial `chmod +x` rebuilds.
+      inputs.nixpkgs.follows = "nixpkgs";
+      inputs.nix.follows = "nix";
     };
 
     flake-compat.url = "github:edolstra/flake-compat/v1.0.0";
@@ -28,10 +41,12 @@
     , fenix
     , naersk
     , nix
+    , determinate
     , ...
     } @ inputs:
     let
-      supportedSystems = [ "i686-linux" "x86_64-linux" "aarch64-linux" "x86_64-darwin" "aarch64-darwin" ];
+      supportedSystems = [ "x86_64-linux" "aarch64-linux" "x86_64-darwin" "aarch64-darwin" ];
+      systemsSupportedByDeterminateNixd = [  ]; # avoid refs to detsys nixd for now
 
       forAllSystems = f: nixpkgs.lib.genAttrs supportedSystems (system: (forSystem system f));
 
@@ -50,18 +65,15 @@
           stable.rust-src
         ] ++ nixpkgs.lib.optionals (system == "x86_64-linux") [
           targets.x86_64-unknown-linux-musl.stable.rust-std
-        ] ++ nixpkgs.lib.optionals (system == "i686-linux") [
-          targets.i686-unknown-linux-musl.stable.rust-std
         ] ++ nixpkgs.lib.optionals (system == "aarch64-linux") [
           targets.aarch64-unknown-linux-musl.stable.rust-std
         ]);
 
-      nixTarballForSystem = system:
-        let
-          version = inputs.nix.packages.${system}.nix.version;
-        in
-        "${inputs.nix.hydraJobs.binaryTarball.${system}}/nix-${version}-${system}.tar.xz";
+      nixTarballs = forAllSystems ({ system, ... }:
+        inputs.nix.tarballs_direct.${system}
+          or "${inputs.nix.checks."${system}".binaryTarball}/nix-${inputs.nix.packages."${system}".default.version}-${system}.tar.xz");
 
+      optionalPathToDeterminateNixd = system: if builtins.elem system systemsSupportedByDeterminateNixd then "${inputs.determinate.packages.${system}.default}/bin/determinate-nixd" else null;
     in
     {
       overlays.default = final: prev:
@@ -73,7 +85,7 @@
           };
           sharedAttrs = {
             pname = "nix-installer";
-            version = "0.19.0";
+            version = (builtins.fromTOML (builtins.readFile ./Cargo.toml)).package.version;
             src = builtins.path {
               name = "nix-installer-source";
               path = self;
@@ -94,7 +106,8 @@
             RUSTFLAGS = "--cfg tokio_unstable";
             cargoTestOptions = f: f ++ [ "--all" ];
 
-            NIX_INSTALLER_TARBALL_PATH = nixTarballForSystem final.stdenv.system;
+            NIX_INSTALLER_TARBALL_PATH = nixTarballs.${final.stdenv.system};
+            DETERMINATE_NIXD_BINARY_PATH = optionalPathToDeterminateNixd final.stdenv.system;
 
             override = { preBuild ? "", ... }: {
               preBuild = preBuild + ''
@@ -107,18 +120,25 @@
           };
         in
         rec {
+          # NOTE(cole-h): fixes build -- nixpkgs updated libsepol to 3.7 but didn't update
+          # checkpolicy to 3.7, checkpolicy links against libsepol, and libsepol 3.7 changed
+          # something in the API so checkpolicy 3.6 failed to build against libsepol 3.7
+          # Can be removed once https://github.com/NixOS/nixpkgs/pull/335146 merges.
+          checkpolicy = prev.checkpolicy.overrideAttrs ({ ... }: rec {
+            version = "3.7";
+
+            src = final.fetchurl {
+              url = "https://github.com/SELinuxProject/selinux/releases/download/${version}/checkpolicy-${version}.tar.gz";
+              sha256 = "sha256-/T4ZJUd9SZRtERaThmGvRMH4bw1oFGb9nwLqoGACoH8=";
+            };
+          });
+
           nix-installer = naerskLib.buildPackage sharedAttrs;
         } // nixpkgs.lib.optionalAttrs (prev.stdenv.system == "x86_64-linux") rec {
           default = nix-installer-static;
           nix-installer-static = naerskLib.buildPackage
             (sharedAttrs // {
               CARGO_BUILD_TARGET = "x86_64-unknown-linux-musl";
-            });
-        } // nixpkgs.lib.optionalAttrs (prev.stdenv.system == "i686-linux") rec {
-          default = nix-installer-static;
-          nix-installer-static = naerskLib.buildPackage
-            (sharedAttrs // {
-              CARGO_BUILD_TARGET = "i686-unknown-linux-musl";
             });
         } // nixpkgs.lib.optionalAttrs (prev.stdenv.system == "aarch64-linux") rec {
           default = nix-installer-static;
@@ -139,15 +159,17 @@
             name = "nix-install-shell";
 
             RUST_SRC_PATH = "${toolchain}/lib/rustlib/src/rust/library";
-            NIX_INSTALLER_TARBALL_PATH = nixTarballForSystem system;
+            NIX_INSTALLER_TARBALL_PATH = nixTarballs.${system};
+            DETERMINATE_NIXD_BINARY_PATH = optionalPathToDeterminateNixd system;
 
             nativeBuildInputs = with pkgs; [ ];
             buildInputs = with pkgs; [
               toolchain
+              shellcheck
               rust-analyzer
               cargo-outdated
               cacert
-              cargo-audit
+              # cargo-audit # NOTE(cole-h): build currently broken because of time dependency and Rust 1.80
               cargo-watch
               nixpkgs-fmt
               check.check-rustfmt
@@ -156,6 +178,7 @@
               check.check-editorconfig
               check.check-semver
               check.check-clippy
+              editorconfig-checker
             ]
             ++ lib.optionals (pkgs.stdenv.isDarwin) (with pkgs; [
               libiconv
@@ -202,9 +225,6 @@
         {
           inherit (pkgs) nix-installer;
         } // nixpkgs.lib.optionalAttrs (system == "x86_64-linux") {
-          inherit (pkgs) nix-installer-static;
-          default = pkgs.nix-installer-static;
-        } // nixpkgs.lib.optionalAttrs (system == "i686-linux") {
           inherit (pkgs) nix-installer-static;
           default = pkgs.nix-installer-static;
         } // nixpkgs.lib.optionalAttrs (system == "aarch64-linux") {

@@ -14,6 +14,7 @@ use crate::os::darwin::DiskUtilInfoOutput;
 Unmount an APFS volume
  */
 #[derive(Debug, serde::Deserialize, serde::Serialize, Clone)]
+#[serde(tag = "action_name", rename = "unmount_volume")]
 pub struct UnmountApfsVolume {
     disk: PathBuf,
     name: String,
@@ -55,14 +56,12 @@ impl Action for UnmountApfsVolume {
 
     #[tracing::instrument(level = "debug", skip_all)]
     async fn execute(&mut self) -> Result<(), ActionError> {
-        let Self { disk: _, name } = self;
-
         let currently_mounted = {
             let buf = execute_command(
                 Command::new("/usr/sbin/diskutil")
                     .process_group(0)
                     .args(["info", "-plist"])
-                    .arg(&name)
+                    .arg(&self.name)
                     .stdin(std::process::Stdio::null()),
             )
             .await
@@ -71,15 +70,15 @@ impl Action for UnmountApfsVolume {
             let the_plist: DiskUtilInfoOutput =
                 plist::from_reader(Cursor::new(buf)).map_err(Self::error)?;
 
-            the_plist.mount_point.is_some()
+            the_plist.is_mounted()
         };
 
-        if !currently_mounted {
+        if currently_mounted {
             execute_command(
                 Command::new("/usr/sbin/diskutil")
                     .process_group(0)
                     .args(["unmount", "force"])
-                    .arg(name)
+                    .arg(&self.name)
                     .stdin(std::process::Stdio::null()),
             )
             .await
@@ -97,14 +96,12 @@ impl Action for UnmountApfsVolume {
 
     #[tracing::instrument(level = "debug", skip_all)]
     async fn revert(&mut self) -> Result<(), ActionError> {
-        let Self { disk: _, name } = self;
-
         let currently_mounted = {
             let buf = execute_command(
                 Command::new("/usr/sbin/diskutil")
                     .process_group(0)
                     .args(["info", "-plist"])
-                    .arg(&name)
+                    .arg(&self.name)
                     .stdin(std::process::Stdio::null()),
             )
             .await
@@ -113,15 +110,15 @@ impl Action for UnmountApfsVolume {
             let the_plist: DiskUtilInfoOutput =
                 plist::from_reader(Cursor::new(buf)).map_err(Self::error)?;
 
-            the_plist.mount_point.is_some()
+            the_plist.is_mounted()
         };
 
-        if !currently_mounted {
+        if currently_mounted {
             execute_command(
                 Command::new("/usr/sbin/diskutil")
                     .process_group(0)
                     .args(["unmount", "force"])
-                    .arg(name)
+                    .arg(&self.name)
                     .stdin(std::process::Stdio::null()),
             )
             .await

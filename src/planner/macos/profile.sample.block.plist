@@ -36,7 +36,7 @@
 						<dict>
 							<key>harddisk-internal</key>
 							<array>
-							 	<!--
+								<!--
 									This could be one of the following:
 
 									authenticate: The user is authenticated before the media is mounted.
@@ -45,7 +45,7 @@
 									eject: The media isn't mounted and is ejected, if possible. Note that some volumes aren't defined as ejectable, so using the deny key may be the best solution. This action cannot be combined with unmount controls.
 
 									We should fail ahead of time if this list contains read-only, deny, or eject.
-								 -->
+								-->
 								<string>deny</string>
 							</array>
 						</dict>

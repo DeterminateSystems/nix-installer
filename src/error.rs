@@ -19,7 +19,7 @@ pub enum NixInstallerError {
         if let Some(source) = err.source() {
             format!("{err}\n{source}\n")
         } else {
-            format!("{err}\n") 
+            format!("{err}\n")
         }
     }).collect::<Vec<_>>().join("\n"))]
     SelfTest(Vec<SelfTestError>),
@@ -28,7 +28,7 @@ pub enum NixInstallerError {
         if let Some(source) = err.source() {
             format!("{err}\n{source}\n")
         } else {
-            format!("{err}\n") 
+            format!("{err}\n")
         }
     }).collect::<Vec<_>>().join("\n"))]
     ActionRevert(Vec<ActionError>),

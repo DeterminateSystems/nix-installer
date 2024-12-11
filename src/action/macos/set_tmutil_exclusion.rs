@@ -25,6 +25,7 @@ to the list of applications which are allowed Full Disk Access.
 
  */
 #[derive(Debug, serde::Deserialize, serde::Serialize, Clone)]
+#[serde(tag = "action_name", rename = "set_tmutil_exclusion")]
 pub struct SetTmutilExclusion {
     path: PathBuf,
 }

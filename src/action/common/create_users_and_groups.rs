@@ -8,15 +8,16 @@ use crate::{
 use tracing::{span, Span};
 
 #[derive(Debug, serde::Deserialize, serde::Serialize, Clone)]
+#[serde(tag = "action_name", rename = "create_users_and_group")]
 pub struct CreateUsersAndGroups {
-    nix_build_user_count: u32,
-    nix_build_group_name: String,
-    nix_build_group_id: u32,
-    nix_build_user_prefix: String,
-    nix_build_user_id_base: u32,
-    create_group: StatefulAction<CreateGroup>,
-    create_users: Vec<StatefulAction<CreateUser>>,
-    add_users_to_groups: Vec<StatefulAction<AddUserToGroup>>,
+    pub(crate) nix_build_group_name: String,
+    pub(crate) nix_build_group_id: u32,
+    pub(crate) nix_build_user_count: u32,
+    pub(crate) nix_build_user_prefix: String,
+    pub(crate) nix_build_user_id_base: u32,
+    pub(crate) create_group: StatefulAction<CreateGroup>,
+    pub(crate) create_users: Vec<StatefulAction<CreateUser>>,
+    pub(crate) add_users_to_groups: Vec<StatefulAction<AddUserToGroup>>,
 }
 
 impl CreateUsersAndGroups {
@@ -36,6 +37,7 @@ impl CreateUsersAndGroups {
                     settings.nix_build_group_name.clone(),
                     settings.nix_build_group_id,
                     format!("Nix build user {index}"),
+                    true,
                 )
                 .await
                 .map_err(Self::error)?,

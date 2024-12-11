@@ -21,9 +21,11 @@ jobs:
       id-token: "write"
       contents: "read"
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
       - name: Install Nix
         uses: DeterminateSystems/nix-installer-action@main
+        with:
+          determinate: false
       - uses: DeterminateSystems/magic-nix-cache-action@main
         with:
           use-flakehub: false

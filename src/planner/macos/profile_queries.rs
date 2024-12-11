@@ -77,11 +77,11 @@ pub fn blocks_internal_mounting(policies: &Policies) -> Vec<TargetProfileHardDis
 
             let MountControls { harddisk_internal } = mount_controls;
 
-            return Some(TargetProfileHardDiskInternalOpts {
+            Some(TargetProfileHardDiskInternalOpts {
                 target: target_profile_item.target,
                 profile: target_profile_item.profile,
-                opts: &harddisk_internal,
-            });
+                opts: harddisk_internal,
+            })
         })
         .filter(|TargetProfileHardDiskInternalOpts { opts, .. }| {
             opts.iter().any(|x| {

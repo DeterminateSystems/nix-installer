@@ -16,6 +16,7 @@ const PROFILE_NIX_FILE_FISH: &str = "/nix/var/nix/profiles/default/etc/profile.d
 Configure any detected shell profiles to include Nix support
  */
 #[derive(Debug, serde::Deserialize, serde::Serialize, Clone)]
+#[serde(tag = "action_name", rename = "configure_shell_profile")]
 pub struct ConfigureShellProfile {
     locations: ShellProfileLocations,
     create_directories: Vec<StatefulAction<CreateDirectory>>,

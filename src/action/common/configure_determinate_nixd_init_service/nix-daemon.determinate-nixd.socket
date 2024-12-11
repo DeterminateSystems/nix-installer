@@ -1,0 +1,14 @@
+[Unit]
+Description=Determinate Nix Daemon Socket
+Before=multi-user.target
+RequiresMountsFor=/nix/store
+RequiresMountsFor=/nix/var
+RequiresMountsFor=/nix/var/nix/db
+ConditionPathIsReadWrite=/nix/var/nix/daemon-socket
+
+[Socket]
+FileDescriptorName=nix-daemon.socket
+ListenStream=/nix/var/nix/daemon-socket/socket
+
+[Install]
+WantedBy=sockets.target

@@ -43,6 +43,8 @@ ideal.
 
 A custom [`Action`] can be created then used in a custom [`Planner`](crate::planner::Planner):
 
+Note: if the struct has no fields, don't add the `serde` attribute to the struct.
+
 ```rust,no_run
 use std::{error::Error, collections::HashMap};
 use tracing::{Span, span};
@@ -54,13 +56,16 @@ use nix_installer::{
 };
 
 #[derive(Debug, serde::Deserialize, serde::Serialize, Clone)]
-pub struct MyAction {}
+#[serde(tag = "action_name", rename = "my_action")]
+pub struct MyAction {
+    my_field: String, // Just an example
+}
 
 
 impl MyAction {
     #[tracing::instrument(level = "debug", skip_all)]
     pub async fn plan() -> Result<StatefulAction<Self>, ActionError> {
-        Ok(Self {}.into())
+        Ok(Self { my_field: "my field".to_string() }.into())
     }
 }
 
@@ -166,6 +171,17 @@ impl Planner for MyPlanner {
             self.common.ssl_cert_file.clone(),
         )?)
     }
+
+    async fn platform_check(&self) -> Result<(), PlannerError> {
+        use target_lexicon::OperatingSystem;
+        match target_lexicon::OperatingSystem::host() {
+            OperatingSystem::MacOSX { .. } | OperatingSystem::Darwin => Ok(()),
+            host_os => Err(PlannerError::IncompatibleOperatingSystem {
+                planner: self.typetag_name(),
+                host_os,
+            }),
+        }
+    }
 }
 
 # async fn custom_planner_install() -> color_eyre::Result<()> {
@@ -207,7 +223,7 @@ use crate::{error::HasExpectedErrors, settings::UrlOrPathError, CertificateError
 ///
 /// Instead of calling [`execute`][Action::execute] or [`revert`][Action::revert], you should prefer [`try_execute`][StatefulAction::try_execute] and [`try_revert`][StatefulAction::try_revert]
 #[async_trait::async_trait]
-#[typetag::serde(tag = "action")]
+#[typetag::serde(tag = "action_name")]
 pub trait Action: Send + Sync + std::fmt::Debug + dyn_clone::DynClone {
     fn action_tag() -> ActionTag
     where
@@ -270,7 +286,7 @@ pub trait Action: Send + Sync + std::fmt::Debug + dyn_clone::DynClone {
 dyn_clone::clone_trait_object!(Action);
 
 /**
-A description of an [`Action`](crate::action::Action), intended for humans to review
+A description of an [`Action`], intended for humans to review
 */
 #[derive(Debug, serde::Deserialize, serde::Serialize, Clone)]
 pub struct ActionDescription {
@@ -288,7 +304,7 @@ impl ActionDescription {
 }
 
 /// A 'tag' name an action has that corresponds to the one we serialize in [`typetag]`
-pub struct ActionTag(&'static str);
+pub struct ActionTag(pub &'static str);
 
 impl std::fmt::Display for ActionTag {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
@@ -373,7 +389,7 @@ pub enum ActionErrorKind {
         if let Some(source) = err.source() {
             format!("{err}\n{source}\n")
         } else {
-            format!("{err}\n") 
+            format!("{err}\n")
         }
     }).collect::<Vec<_>>().join("\n"))]
     MultipleChildren(Vec<ActionError>),
@@ -386,6 +402,8 @@ pub enum ActionErrorKind {
         }
     }).collect::<Vec<_>>().join("\n"))]
     Multiple(Vec<ActionErrorKind>),
+    #[error("Determinate Nix planned, but this installer is not equipped to install it.")]
+    DeterminateNixUnavailable,
     /// The path already exists with different content that expected
     #[error(
         "`{0}` exists with different content than planned, consider removing it with `rm {0}`"
@@ -400,11 +418,11 @@ pub enum ActionErrorKind {
     /// The symlink already exists
     #[error("`{0}` already exists, consider removing it with `rm {0}`")]
     SymlinkExists(std::path::PathBuf),
-    #[error("`{0}` exists with a different uid ({1}) than planned ({2}), consider updating it with `chown {2} {0}`")]
+    #[error("`{0}` exists with a different uid ({1}) than planned ({2}), consider updating it with `chown {2} {0}` (you may need to do this recursively with the `-R` flag)")]
     PathUserMismatch(std::path::PathBuf, u32, u32),
-    #[error("`{0}` exists with a different gid ({1}) than planned ({2}), consider updating it with `chgrp {2} {0}`")]
+    #[error("`{0}` exists with a different gid ({1}) than planned ({2}), consider updating it with `chgrp {2} {0}` (you may need to do this recursively with the `-R` flag)")]
     PathGroupMismatch(std::path::PathBuf, u32, u32),
-    #[error("`{0}` exists with a different mode ({existing_mode:o}) than planned ({planned_mode:o}), consider updating it with `chmod {planned_mode:o} {0}`",
+    #[error("`{0}` exists with a different mode ({existing_mode:o}) than planned ({planned_mode:o}), consider updating it with `chmod {planned_mode:o} {0}` (you may need to do this recursively with the `-R` flag)",
         existing_mode = .1 & 0o777,
         planned_mode = .2 & 0o777)]
     PathModeMismatch(std::path::PathBuf, u32, u32),

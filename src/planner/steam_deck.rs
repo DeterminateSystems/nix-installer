@@ -103,7 +103,10 @@ use tokio::process::Command;
 use crate::{
     action::{
         base::{CreateDirectory, CreateFile, RemoveDirectory},
-        common::{ConfigureInitService, ConfigureNix, CreateUsersAndGroups, ProvisionNix},
+        common::{
+            ConfigureNix, ConfigureUpstreamInitService, CreateUsersAndGroups,
+            ProvisionDeterminateNixd, ProvisionNix,
+        },
         linux::{
             EnsureSteamosNixDirectory, RevertCleanSteamosNixOffload, StartSystemdUnit,
             SystemctlDaemonReload,
@@ -111,7 +114,7 @@ use crate::{
         Action, StatefulAction,
     },
     planner::{Planner, PlannerError},
-    settings::{CommonSettings, InitSystem, InstallSettingsError},
+    settings::{determinate_nix_settings, CommonSettings, InitSystem, InstallSettingsError},
     BuiltinPlanner,
 };
 
@@ -319,6 +322,15 @@ impl Planner for SteamDeck {
             )
         }
 
+        if self.settings.determinate_nix {
+            actions.push(
+                ProvisionDeterminateNixd::plan()
+                    .await
+                    .map_err(PlannerError::Action)?
+                    .boxed(),
+            );
+        }
+
         actions.append(&mut vec![
             ProvisionNix::plan(&self.settings.clone())
                 .await
@@ -328,12 +340,16 @@ impl Planner for SteamDeck {
                 .await
                 .map_err(PlannerError::Action)?
                 .boxed(),
-            ConfigureNix::plan(shell_profile_locations, &self.settings)
-                .await
-                .map_err(PlannerError::Action)?
-                .boxed(),
+            ConfigureNix::plan(
+                shell_profile_locations,
+                &self.settings,
+                self.settings.determinate_nix.then(determinate_nix_settings),
+            )
+            .await
+            .map_err(PlannerError::Action)?
+            .boxed(),
             // Init is required for the steam-deck archetype to make the `/nix` mount
-            ConfigureInitService::plan(InitSystem::Systemd, true)
+            ConfigureUpstreamInitService::plan(InitSystem::Systemd, true)
                 .await
                 .map_err(PlannerError::Action)?
                 .boxed(),
@@ -397,6 +413,17 @@ impl Planner for SteamDeck {
                 .collect::<Vec<_>>(),
             self.settings.ssl_cert_file.clone(),
         )?)
+    }
+
+    async fn platform_check(&self) -> Result<(), PlannerError> {
+        use target_lexicon::OperatingSystem;
+        match target_lexicon::OperatingSystem::host() {
+            OperatingSystem::Linux => Ok(()),
+            host_os => Err(PlannerError::IncompatibleOperatingSystem {
+                planner: self.typetag_name(),
+                host_os,
+            }),
+        }
     }
 
     async fn pre_uninstall_check(&self) -> Result<(), PlannerError> {
