@@ -39,12 +39,12 @@ impl EncryptApfsVolume {
     ) -> Result<StatefulAction<Self>, ActionError> {
         let name = name.as_ref().to_owned();
         let disk = disk.as_ref().to_path_buf();
-
+        println!("Volume name is {0}", name);
         let mut command = Command::new("/usr/bin/security");
         command.args(["find-generic-password", "-a"]);
         command.arg(&name);
         command.arg("-s");
-        command.arg("Nix Store");
+        command.arg(&name);
         command.arg("-l");
         command.arg(format!("{} encryption password", disk.display()));
         command.arg("-D");
@@ -207,7 +207,7 @@ impl Action for EncryptApfsVolume {
             "-a",
             self.name.as_str(),
             "-s",
-            "Nix Store",
+            self.name.as_str(),
             "-l",
             format!("{} encryption password", disk_str).as_str(),
             "-D",
