@@ -261,8 +261,7 @@ impl Planner for SteamDeck {
                 /etc/profile.d/nix.sh\n\
                 /etc/systemd/system/nix-daemon.socket\n\
                 /etc/tmpfiles.d/nix-daemon.conf\n\
-            ",
-                persistence = persistence.display(),
+                ",
             );
             let create_atomic_update_unit = CreateFile::plan(
                 "/etc/atomic-update.conf.d/nix.conf",
@@ -274,7 +273,7 @@ impl Planner for SteamDeck {
             )
             .await
             .map_err(PlannerError::Action)?;
-            actions.push(create_bind_mount_unit.boxed());
+            actions.push(create_atomic_update_unit.boxed());
         } else {
             let revert_clean_streamos_nix_offload = RevertCleanSteamosNixOffload::plan()
                 .await
