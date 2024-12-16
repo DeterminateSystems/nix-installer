@@ -57,6 +57,18 @@
     },
     {
       "action": {
+        "action_name": "create_file",
+        "path": "/etc/atomic-update.conf.d/nix-installer.conf",
+        "user": null,
+        "group": null,
+        "mode": 420,
+        "buf": "/etc/fish/conf.d/nix.fish\n/etc/nix/**\n/etc/profile.d/nix.sh\n/etc/systemd/system/nix-daemon.socket\n/etc/tmpfiles.d/nix-daemon.conf\n",
+        "force": false
+      },
+      "state": "Completed"
+    },
+    {
+      "action": {
         "action_name": "start_systemd_unit",
         "unit": "nix.mount",
         "enable": false

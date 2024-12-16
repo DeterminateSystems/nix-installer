@@ -254,10 +254,10 @@ impl Planner for SteamDeck {
             .map_err(PlannerError::Action)?;
             actions.push(create_bind_mount_unit.boxed());
         } else {
-            let revert_clean_streamos_nix_offload = RevertCleanSteamosNixOffload::plan()
+            let revert_clean_steamos_nix_offload = RevertCleanSteamosNixOffload::plan()
                 .await
                 .map_err(PlannerError::Action)?;
-            actions.push(revert_clean_streamos_nix_offload.boxed());
+            actions.push(revert_clean_steamos_nix_offload.boxed());
 
             let ensure_steamos_nix_directory = EnsureSteamosNixDirectory::plan()
                 .await
@@ -268,6 +268,27 @@ impl Planner for SteamDeck {
                 .await
                 .map_err(PlannerError::Action)?;
             actions.push(start_nix_mount.boxed());
+        }
+
+        if std::path::Path::new("/etc/atomic-update.conf.d").exists() {
+            let create_atomic_update_buf = "\
+                /etc/fish/conf.d/nix.fish\n\
+                /etc/nix/**\n\
+                /etc/profile.d/nix.sh\n\
+                /etc/systemd/system/nix-daemon.socket\n\
+                /etc/tmpfiles.d/nix-daemon.conf\n\
+            ";
+            let create_atomic_update_unit = CreateFile::plan(
+                "/etc/atomic-update.conf.d/nix-installer.conf",
+                None,
+                None,
+                0o0644,
+                create_atomic_update_buf.to_string(),
+                false,
+            )
+            .await
+            .map_err(PlannerError::Action)?;
+            actions.push(create_atomic_update_unit.boxed());
         }
 
         let ensure_symlinked_units_resolve_buf = "\
