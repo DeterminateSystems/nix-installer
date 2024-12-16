@@ -58,7 +58,7 @@
     {
       "action": {
         "action_name": "create_file",
-        "path": "/etc/atomic-update.conf.d/nix.conf",
+        "path": "/etc/atomic-update.conf.d/nix-installer.conf",
         "user": null,
         "group": null,
         "mode": 420,
