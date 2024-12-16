@@ -254,10 +254,10 @@ impl Planner for SteamDeck {
             .map_err(PlannerError::Action)?;
             actions.push(create_bind_mount_unit.boxed());
         } else {
-            let revert_clean_streamos_nix_offload = RevertCleanSteamosNixOffload::plan()
+            let revert_clean_steamos_nix_offload = RevertCleanSteamosNixOffload::plan()
                 .await
                 .map_err(PlannerError::Action)?;
-            actions.push(revert_clean_streamos_nix_offload.boxed());
+            actions.push(revert_clean_steamos_nix_offload.boxed());
 
             let ensure_steamos_nix_directory = EnsureSteamosNixDirectory::plan()
                 .await
