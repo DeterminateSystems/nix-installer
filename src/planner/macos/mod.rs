@@ -16,7 +16,7 @@ use crate::{
     action::{
         base::RemoveDirectory,
         common::{
-            ConfigureNix, ConfigureDeterminateNixdInitService, ConfigureUpstreamInitService,
+            ConfigureDeterminateNixdInitService, ConfigureNix, ConfigureUpstreamInitService,
             CreateUsersAndGroups, ProvisionDeterminateNixd, ProvisionNix,
         },
         macos::{

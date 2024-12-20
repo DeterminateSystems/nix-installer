@@ -69,7 +69,7 @@ jobs:
     needs: [lints, build-x86_64-linux]
     strategy:
       matrix:
-        determinate: [true, false]
+        determinate: [false]
     permissions:
       id-token: "write"
       contents: "read"
@@ -187,7 +187,7 @@ jobs:
     needs: [lints, build-x86_64-linux]
     strategy:
       matrix:
-        determinate: [true, false]
+        determinate: [false]
     permissions:
       id-token: "write"
       contents: "read"
@@ -311,7 +311,7 @@ jobs:
     needs: [lints, build-x86_64-darwin]
     strategy:
       matrix:
-        determinate: [true, false]
+        determinate: [false]
     permissions:
       id-token: "write"
       contents: "read"
@@ -402,7 +402,7 @@ jobs:
   #   needs: [lints, build-aarch64-linux]
   #   strategy:
   #     matrix:
-  #       determinate: [true, false]
+  #       determinate: [false]
   #   permissions:
   #     id-token: "write"
   #     contents: "read"
@@ -520,7 +520,7 @@ jobs:
     needs: [lints, build-aarch64-darwin]
     strategy:
       matrix:
-        determinate: [true, false]
+        determinate: [false]
     permissions:
       id-token: "write"
       contents: "read"
@@ -572,14 +572,15 @@ jobs:
           logger: pretty
       - name: echo $PATH
         run: echo $PATH
-      - name: Test `nix` with `$GITHUB_PATH`
-        if: success() || failure()
-        run: |
-          nix run nixpkgs#hello
-          nix profile install nixpkgs#hello
-          hello
-          nix store gc
-          nix run nixpkgs#hello
+      # We don't enable flakes by default.
+      # - name: Test `nix` with `$GITHUB_PATH`
+      #   if: success() || failure()
+      #   run: |
+      #     nix run nixpkgs#hello
+      #     nix profile install nixpkgs#hello
+      #     hello
+      #     nix store gc
+      #     nix run nixpkgs#hello
       # NOTE(cole-h): GHA pushed a weird image that breaks this test for whatever reason, so ignore
       # the failure for now
       - name: Test bash

@@ -8,7 +8,7 @@ use crate::{
     action::{
         base::{CreateDirectory, RemoveDirectory},
         common::{
-            ConfigureNix, ConfigureDeterminateNixdInitService, ConfigureUpstreamInitService,
+            ConfigureDeterminateNixdInitService, ConfigureNix, ConfigureUpstreamInitService,
             CreateUsersAndGroups, ProvisionDeterminateNixd, ProvisionNix,
         },
         linux::{
