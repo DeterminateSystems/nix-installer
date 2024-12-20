@@ -69,7 +69,7 @@ jobs:
     needs: [lints, build-x86_64-linux]
     strategy:
       matrix:
-        determinate: [true, false]
+        determinate: [false]
     permissions:
       id-token: "write"
       contents: "read"
@@ -187,7 +187,7 @@ jobs:
     needs: [lints, build-x86_64-linux]
     strategy:
       matrix:
-        determinate: [true, false]
+        determinate: [false]
     permissions:
       id-token: "write"
       contents: "read"
@@ -311,7 +311,7 @@ jobs:
     needs: [lints, build-x86_64-darwin]
     strategy:
       matrix:
-        determinate: [true, false]
+        determinate: [false]
     permissions:
       id-token: "write"
       contents: "read"
@@ -402,7 +402,7 @@ jobs:
   #   needs: [lints, build-aarch64-linux]
   #   strategy:
   #     matrix:
-  #       determinate: [true, false]
+  #       determinate: [false]
   #   permissions:
   #     id-token: "write"
   #     contents: "read"
@@ -520,7 +520,7 @@ jobs:
     needs: [lints, build-aarch64-darwin]
     strategy:
       matrix:
-        determinate: [true, false]
+        determinate: [false]
     permissions:
       id-token: "write"
       contents: "read"
