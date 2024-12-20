@@ -95,6 +95,8 @@
             nativeBuildInputs = with final; [ ];
             buildInputs = with final; [ ] ++ lib.optionals (final.stdenv.isDarwin) (with final.darwin.apple_sdk.frameworks; [
               SystemConfiguration
+              # temporary fix for naersk to nix flake update; see df13b0b upstream
+              final.darwin.libiconv
             ]);
 
             copyBins = true;
