@@ -2,7 +2,7 @@
   description = "Experimental Nix Installer";
 
   inputs = {
-    nixpkgs.url = "github:NixOS/nixpkgs/63c3a29ca82437c87573e4c6919b09a24ea61b0f";
+    nixpkgs.url = "github:NixOS/nixpkgs/807e9154dcb16384b1b765ebe9cd2bba2ac287fd";
 
     fenix = {
       url = "github:nix-community/fenix/73124e1356bde9411b163d636b39fe4804b7ca45";
