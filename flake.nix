@@ -18,19 +18,19 @@
       url = "github:NixOS/nix/2.24.9";
       # Omitting `inputs.nixpkgs.follows = "nixpkgs";` on purpose
     };
+    # We don't use this, so let's save download/update time
+    # determinate = {
+    #   url = "https://flakehub.com/f/DeterminateSystems/determinate/0.1.tar.gz";
 
-    determinate = {
-      url = "https://flakehub.com/f/DeterminateSystems/determinate/0.1.tar.gz";
-
-      # We set the overrides below so the flake.lock has many fewer nodes.
-      #
-      # The `determinate` input is used to access the builds of `determinate-nixd`.
-      # Below, we access the `packages` outputs, which download static builds of `determinate-nixd` and makes them executable.
-      # The way we consume the determinate flake means the `nix` and `nixpkgs` inputs are not meaningfully used.
-      # This means `follows` won't cause surprisingly extensive rebuilds, just trivial `chmod +x` rebuilds.
-      inputs.nixpkgs.follows = "nixpkgs";
-      inputs.nix.follows = "nix";
-    };
+    #   # We set the overrides below so the flake.lock has many fewer nodes.
+    #   #
+    #   # The `determinate` input is used to access the builds of `determinate-nixd`.
+    #   # Below, we access the `packages` outputs, which download static builds of `determinate-nixd` and makes them executable.
+    #   # The way we consume the determinate flake means the `nix` and `nixpkgs` inputs are not meaningfully used.
+    #   # This means `follows` won't cause surprisingly extensive rebuilds, just trivial `chmod +x` rebuilds.
+    #   inputs.nixpkgs.follows = "nixpkgs";
+    #   inputs.nix.follows = "nix";
+    # };
 
     flake-compat.url = "github:edolstra/flake-compat/v1.0.0";
   };
@@ -41,7 +41,7 @@
     , fenix
     , naersk
     , nix
-    , determinate
+      # , determinate
     , ...
     } @ inputs:
     let
