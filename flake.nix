@@ -2,10 +2,14 @@
   description = "Experimental Nix Installer";
 
   inputs = {
+    # can track upstream versioning with
+    # git show $most_recently_merged_commit:flake.lock | jq '.nodes[.nodes.root.inputs.nixpkgs].locked.rev'
     nixpkgs.url = "github:NixOS/nixpkgs/807e9154dcb16384b1b765ebe9cd2bba2ac287fd";
 
     fenix = {
-      url = "github:nix-community/fenix/73124e1356bde9411b163d636b39fe4804b7ca45";
+      # can track upstream versioning with
+      # git show $most_recently_merged_commit:flake.lock | jq '.nodes[.nodes.root.inputs.fenix].locked.rev'
+      url = "github:nix-community/fenix/a9d2e5fa8d77af05240230c9569bbbddd28ccfaf";
       inputs.nixpkgs.follows = "nixpkgs";
     };
 
