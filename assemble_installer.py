@@ -12,7 +12,11 @@ from string import Template
 # string to use latest eval on Hydra
 # TODO: using an empty string is not the cleanest
 # TODO: print script usage
-eval_id = sys.argv[1]
+# TODO: argparse or something
+if len(sys.argv) < 2:
+    eval_id = None
+else:
+    eval_id = sys.argv[1]
 
 response = requests.get('https://hydra.nixos.org/jobset/experimental-nix-installer/experimental-installer/evals', headers={'Accept': 'application/json'})
 evals = response.json()['evals']
