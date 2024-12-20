@@ -46,7 +46,7 @@
     } @ inputs:
     let
       supportedSystems = [ "x86_64-linux" "aarch64-linux" "x86_64-darwin" "aarch64-darwin" ];
-      systemsSupportedByDeterminateNixd = [  ]; # avoid refs to detsys nixd for now
+      systemsSupportedByDeterminateNixd = [ ]; # avoid refs to detsys nixd for now
 
       forAllSystems = f: nixpkgs.lib.genAttrs supportedSystems (system: (forSystem system f));
 

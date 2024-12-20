@@ -1,6 +1,6 @@
 import requests
 import subprocess
-import shutil 
+import shutil
 import sys
 
 response = requests.get('https://hydra.nixos.org/jobset/experimental-nix-installer/experimental-installer/evals', headers={'Accept': 'application/json'})
