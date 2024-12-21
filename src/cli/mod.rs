@@ -20,9 +20,9 @@ pub trait CommandExecute {
 }
 
 /**
-The Determinate Nix installer
+Experimental Nix Installer
 
-A fast, friendly, and reliable tool to help you use Nix with Flakes everywhere.
+A WIP replacement for the shell-based Nix installer (TODO: better description)
 */
 #[derive(Debug, Parser)]
 #[clap(version)]
