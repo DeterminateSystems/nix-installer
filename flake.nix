@@ -181,16 +181,9 @@
 
       packages = forAllSystems ({ system, pkgs, ... }:
         {
-          inherit (pkgs) nix-installer;
-        } // nixpkgs.lib.optionalAttrs (system == "x86_64-linux") {
-          inherit (pkgs) nix-installer-static;
-          default = pkgs.nix-installer-static;
-        } // nixpkgs.lib.optionalAttrs (system == "aarch64-linux") {
-          inherit (pkgs) nix-installer-static;
+          inherit (pkgs) nix-installer nix-installer-static;
           default = pkgs.nix-installer-static;
         } // nixpkgs.lib.optionalAttrs (pkgs.stdenv.isDarwin) {
-          default = pkgs.nix-installer;
-
           determinate-nixd = pkgs.runCommand "determinate-nixd-link" { } ''
             ln -s ${optionalPathToDeterminateNixd system} $out
           '';
