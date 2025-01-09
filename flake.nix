@@ -121,16 +121,14 @@
             '';
           };
         in
-        rec {
+        {
           nix-installer = naerskLib.buildPackage sharedAttrs;
-        } // nixpkgs.lib.optionalAttrs (prev.stdenv.system == "x86_64-linux") rec {
-          default = nix-installer-static;
+        } // nixpkgs.lib.optionalAttrs (prev.stdenv.system == "x86_64-linux") {
           nix-installer-static = naerskLib.buildPackage
             (sharedAttrs // {
               CARGO_BUILD_TARGET = "x86_64-unknown-linux-musl";
             });
-        } // nixpkgs.lib.optionalAttrs (prev.stdenv.system == "aarch64-linux") rec {
-          default = nix-installer-static;
+        } // nixpkgs.lib.optionalAttrs (prev.stdenv.system == "aarch64-linux") {
           nix-installer-static = naerskLib.buildPackage
             (sharedAttrs // {
               CARGO_BUILD_TARGET = "aarch64-unknown-linux-musl";
