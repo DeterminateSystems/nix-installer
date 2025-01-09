@@ -107,7 +107,7 @@ impl EncryptApfsVolume {
             plist::from_bytes(&output.stdout).map_err(Self::error)?;
         for container in parsed.containers {
             for volume in container.volumes {
-                if volume.name.as_ref() == Some(&name) && volume.file_vault {
+                if volume.name.as_ref() == Some(&name) && volume.file_vault.unwrap_or(false) {
                     return Ok(StatefulAction::completed(Self {
                         determinate_nix,
                         disk,

@@ -56,7 +56,7 @@ pub struct DiskUtilApfsContainer {
 #[serde(rename_all = "PascalCase")]
 pub struct DiskUtilApfsListVolume {
     pub name: Option<String>,
-    pub file_vault: bool,
+    pub file_vault: Option<bool>,
 }
 
 #[derive(serde::Deserialize, Clone, Debug)]
