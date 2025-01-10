@@ -53,11 +53,10 @@
           or "${inputs.nix.checks."${system}".binaryTarball}/nix-${inputs.nix.packages."${system}".default.version}-${system}.tar.xz");
 
       optionalPathToDeterminateNixd = system: if builtins.elem system systemsSupportedByDeterminateNixd then "${inputs.determinate.packages.${system}.default}/bin/determinate-nixd" else null;
-    in
-    {
-      overlays.default = final: prev:
+
+      installerPackage = { lib, pkgs, stdenv, buildPackages, darwin }:
         let
-          craneLib = crane.mkLib final;
+          craneLib = crane.mkLib pkgs;
           sharedAttrs = {
             src = builtins.path {
               name = "nix-installer-source";
@@ -65,42 +64,48 @@
               filter = (path: type: baseNameOf path != "nix" && baseNameOf path != ".github");
             };
 
-            nativeBuildInputs = with final; [ ];
-            buildInputs = with final; [ ] ++ lib.optionals (final.stdenv.isDarwin) (with final.darwin.apple_sdk.frameworks; [
+            # Required to link build scripts.
+            pkgsBuildBuild = [ buildPackages.stdenv.cc ];
+
+            nativeBuildInputs = [ ];
+            buildInputs = [ ] ++ lib.optionals (stdenv.isDarwin) (with darwin.apple_sdk.frameworks; [
               SystemConfiguration
-              final.darwin.libiconv
+              darwin.libiconv
             ]);
-          };
-          installerAttrs = sharedAttrs // {
-            cargoArtifacts = craneLib.buildDepsOnly sharedAttrs;
-
-            cargoTestExtraArgs = "--all";
-
-            postInstall = ''
-              cp nix-installer.sh $out/bin/nix-installer.sh
-            '';
 
             env = {
-              RUSTFLAGS = "--cfg tokio_unstable";
-              NIX_INSTALLER_TARBALL_PATH = nixTarballs.${final.stdenv.system};
-              DETERMINATE_NIXD_BINARY_PATH = optionalPathToDeterminateNixd final.stdenv.system;
+              # For whatever reason, these don’t seem to get set
+              # automatically when using crane.
+              #
+              # Possibly related: <https://github.com/NixOS/nixpkgs/pull/369424>
+              "CC_${stdenv.hostPlatform.rust.cargoEnvVarTarget}" = "${stdenv.cc.targetPrefix}cc";
+              "CXX_${stdenv.hostPlatform.rust.cargoEnvVarTarget}" = "${stdenv.cc.targetPrefix}c++";
+              "CARGO_TARGET_${stdenv.hostPlatform.rust.cargoEnvVarTarget}_LINKER" = "${stdenv.cc.targetPrefix}cc";
+              CARGO_BUILD_TARGET = stdenv.hostPlatform.rust.rustcTarget;
             };
           };
         in
-        {
-          nix-installer = craneLib.buildPackage installerAttrs;
-        } // nixpkgs.lib.optionalAttrs (prev.stdenv.system == "x86_64-linux") {
-          nix-installer-static = craneLib.buildPackage
-            (installerAttrs // {
-              CARGO_BUILD_TARGET = "x86_64-unknown-linux-musl";
-            });
-        } // nixpkgs.lib.optionalAttrs (prev.stdenv.system == "aarch64-linux") {
-          nix-installer-static = craneLib.buildPackage
-            (installerAttrs // {
-              CARGO_BUILD_TARGET = "aarch64-unknown-linux-musl";
-            });
-        };
+        craneLib.buildPackage (sharedAttrs // {
+          cargoArtifacts = craneLib.buildDepsOnly sharedAttrs;
 
+          cargoTestExtraArgs = "--all";
+
+          postInstall = ''
+            cp nix-installer.sh $out/bin/nix-installer.sh
+          '';
+
+          env = sharedAttrs.env // {
+            RUSTFLAGS = "--cfg tokio_unstable";
+            NIX_INSTALLER_TARBALL_PATH = nixTarballs.${stdenv.hostPlatform.system};
+            DETERMINATE_NIXD_BINARY_PATH = optionalPathToDeterminateNixd stdenv.hostPlatform.system;
+          };
+        });
+    in
+    {
+      overlays.default = final: prev: {
+        nix-installer = final.callPackage installerPackage { };
+        nix-installer-static = final.pkgsStatic.callPackage installerPackage { };
+      };
 
       devShells = forAllSystems ({ system, pkgs, ... }:
         let
