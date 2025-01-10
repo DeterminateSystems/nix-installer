@@ -19,13 +19,11 @@ const NIX_CONFIG_HEADER: &str = r#"
 # See `/nix/nix-installer --version` for the version details.
 
 !include nix.custom.conf
-
 "#;
 
 const CUSTOM_NIX_CONFIG_HEADER: &str = r#"
 # Written by https://github.com/DeterminateSystems/nix-installer.
 # The contents below are based on options specified at installation time.
-
 "#;
 
 /**
@@ -49,7 +47,7 @@ impl PlaceNixConfiguration {
         force: bool,
         determinate_nix: bool,
     ) -> Result<StatefulAction<Self>, ActionError> {
-        let standard_nix_config = if determinate_nix {
+        let standard_nix_config = if !determinate_nix {
             Some(Self::setup_standard_config(ssl_cert_file.as_ref()).await?)
         } else {
             None
