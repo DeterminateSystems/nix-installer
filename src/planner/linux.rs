@@ -19,9 +19,7 @@ use crate::{
     },
     error::HasExpectedErrors,
     planner::{Planner, PlannerError},
-    settings::{
-        determinate_nix_settings, CommonSettings, InitSettings, InitSystem, InstallSettingsError,
-    },
+    settings::{CommonSettings, InitSettings, InitSystem, InstallSettingsError},
     Action, BuiltinPlanner,
 };
 
@@ -81,14 +79,10 @@ impl Planner for Linux {
                 .boxed(),
         );
         plan.push(
-            ConfigureNix::plan(
-                ShellProfileLocations::default(),
-                &self.settings,
-                self.settings.determinate_nix.then(determinate_nix_settings),
-            )
-            .await
-            .map_err(PlannerError::Action)?
-            .boxed(),
+            ConfigureNix::plan(ShellProfileLocations::default(), &self.settings)
+                .await
+                .map_err(PlannerError::Action)?
+                .boxed(),
         );
 
         if has_selinux {
