@@ -59,8 +59,6 @@
         let
           craneLib = crane.mkLib final;
           sharedAttrs = {
-            pname = "nix-installer";
-            version = (builtins.fromTOML (builtins.readFile ./Cargo.toml)).package.version;
             src = builtins.path {
               name = "nix-installer-source";
               path = self;
