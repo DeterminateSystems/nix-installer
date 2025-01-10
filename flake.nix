@@ -70,20 +70,21 @@
               SystemConfiguration
               final.darwin.libiconv
             ]);
-
-            RUSTFLAGS = "--cfg tokio_unstable";
-            cargoTestExtraArgs = "--all";
-
-            NIX_INSTALLER_TARBALL_PATH = nixTarballs.${final.stdenv.system};
-            DETERMINATE_NIXD_BINARY_PATH = optionalPathToDeterminateNixd final.stdenv.system;
-
           };
           installerAttrs = sharedAttrs // {
             cargoArtifacts = craneLib.buildDepsOnly sharedAttrs;
 
+            cargoTestExtraArgs = "--all";
+
             postInstall = ''
               cp nix-installer.sh $out/bin/nix-installer.sh
             '';
+
+            env = {
+              RUSTFLAGS = "--cfg tokio_unstable";
+              NIX_INSTALLER_TARBALL_PATH = nixTarballs.${final.stdenv.system};
+              DETERMINATE_NIXD_BINARY_PATH = optionalPathToDeterminateNixd final.stdenv.system;
+            };
           };
         in
         {
