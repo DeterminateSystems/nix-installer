@@ -1,4 +1,4 @@
-{ pkgs, toolchain }:
+{ pkgs }:
 
 let
   inherit (pkgs) writeShellApplication;
@@ -8,7 +8,7 @@ in
   # Format
   check-rustfmt = (writeShellApplication {
     name = "check-rustfmt";
-    runtimeInputs = [ toolchain ];
+    runtimeInputs = with pkgs; [ cargo rustfmt ];
     text = "cargo fmt --check";
   });
 

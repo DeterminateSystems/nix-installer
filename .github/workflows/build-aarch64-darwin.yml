@@ -10,7 +10,7 @@ on:
 
 jobs:
   build-aarch64-darwin:
-    name: Build aarch64 Darwin
+    name: Build aarch64 Darwin (static)
     runs-on: macos-latest-xlarge
     concurrency: ${{ inputs.cache-key }}
     permissions:
@@ -27,7 +27,7 @@ jobs:
           use-gha-cache: false
       - name: Build the installer
         run: |
-          nix build .#packages.aarch64-darwin.nix-installer -L
+          nix build .#packages.aarch64-darwin.nix-installer-static -L
           cp result/bin/nix-installer .
       - name: Create GitHub cache from build artifacts
         uses: actions/cache/save@v3

@@ -2,18 +2,9 @@
   description = "The Determinate Nix Installer";
 
   inputs = {
-    # The very next version and beyond we get SIGBUS on uninstall
-    nixpkgs.url = "https://flakehub.com/f/NixOS/nixpkgs/=0.1.698755";
+    nixpkgs.url = "https://flakehub.com/f/NixOS/nixpkgs/0.1.tar.gz";
 
-    fenix = {
-      url = "https://flakehub.com/f/nix-community/fenix/0.1.1584.tar.gz";
-      inputs.nixpkgs.follows = "nixpkgs";
-    };
-
-    naersk = {
-      url = "github:nix-community/naersk";
-      inputs.nixpkgs.follows = "nixpkgs";
-    };
+    crane.url = "github:ipetkov/crane/v0.20.0";
 
     nix = {
       url = "https://flakehub.com/f/DeterminateSystems/nix/=2.25.3.tar.gz";
@@ -39,8 +30,7 @@
   outputs =
     { self
     , nixpkgs
-    , fenix
-    , naersk
+    , crane
     , nix
     , determinate
     , ...
@@ -57,103 +47,77 @@
         lib = pkgs.lib;
       };
 
-      fenixToolchain = system: with fenix.packages.${system};
-        combine ([
-          stable.clippy
-          stable.rustc
-          stable.cargo
-          stable.rustfmt
-          stable.rust-src
-        ] ++ nixpkgs.lib.optionals (system == "x86_64-linux") [
-          targets.x86_64-unknown-linux-musl.stable.rust-std
-        ] ++ nixpkgs.lib.optionals (system == "aarch64-linux") [
-          targets.aarch64-unknown-linux-musl.stable.rust-std
-        ]);
-
       nixTarballs = forAllSystems ({ system, ... }:
         inputs.nix.tarballs_direct.${system}
           or "${inputs.nix.checks."${system}".binaryTarball}/nix-${inputs.nix.packages."${system}".default.version}-${system}.tar.xz");
 
       optionalPathToDeterminateNixd = system: if builtins.elem system systemsSupportedByDeterminateNixd then "${inputs.determinate.packages.${system}.default}/bin/determinate-nixd" else null;
-    in
-    {
-      overlays.default = final: prev:
+
+      installerPackage = { pkgs, stdenv, buildPackages }:
         let
-          toolchain = fenixToolchain final.stdenv.system;
-          naerskLib = final.callPackage naersk {
-            cargo = toolchain;
-            rustc = toolchain;
-          };
+          craneLib = crane.mkLib pkgs;
           sharedAttrs = {
-            pname = "nix-installer";
-            version = (builtins.fromTOML (builtins.readFile ./Cargo.toml)).package.version;
             src = builtins.path {
               name = "nix-installer-source";
               path = self;
               filter = (path: type: baseNameOf path != "nix" && baseNameOf path != ".github");
             };
 
-            nativeBuildInputs = with final; [ ];
-            buildInputs = with final; [ ] ++ lib.optionals (final.stdenv.isDarwin) (with final.darwin.apple_sdk.frameworks; [
-              SystemConfiguration
-              final.darwin.libiconv
-            ]);
+            # Required to link build scripts.
+            pkgsBuildBuild = [ buildPackages.stdenv.cc ];
 
-            copyBins = true;
-            copyDocsToSeparateOutput = true;
-
-            doCheck = true;
-            doDoc = true;
-            doDocFail = true;
-            RUSTFLAGS = "--cfg tokio_unstable";
-            cargoTestOptions = f: f ++ [ "--all" ];
-
-            NIX_INSTALLER_TARBALL_PATH = nixTarballs.${final.stdenv.system};
-            DETERMINATE_NIXD_BINARY_PATH = optionalPathToDeterminateNixd final.stdenv.system;
-
-            override = { preBuild ? "", ... }: {
-              preBuild = preBuild + ''
-                # logRun "cargo clippy --all-targets --all-features -- -D warnings"
-              '';
+            env = {
+              # For whatever reason, these don’t seem to get set
+              # automatically when using crane.
+              #
+              # Possibly related: <https://github.com/NixOS/nixpkgs/pull/369424>
+              "CC_${stdenv.hostPlatform.rust.cargoEnvVarTarget}" = "${stdenv.cc.targetPrefix}cc";
+              "CXX_${stdenv.hostPlatform.rust.cargoEnvVarTarget}" = "${stdenv.cc.targetPrefix}c++";
+              "CARGO_TARGET_${stdenv.hostPlatform.rust.cargoEnvVarTarget}_LINKER" = "${stdenv.cc.targetPrefix}cc";
+              CARGO_BUILD_TARGET = stdenv.hostPlatform.rust.rustcTarget;
             };
-            postInstall = ''
-              cp nix-installer.sh $out/bin/nix-installer.sh
-            '';
           };
         in
-        rec {
-          nix-installer = naerskLib.buildPackage sharedAttrs;
-        } // nixpkgs.lib.optionalAttrs (prev.stdenv.system == "x86_64-linux") rec {
-          default = nix-installer-static;
-          nix-installer-static = naerskLib.buildPackage
-            (sharedAttrs // {
-              CARGO_BUILD_TARGET = "x86_64-unknown-linux-musl";
-            });
-        } // nixpkgs.lib.optionalAttrs (prev.stdenv.system == "aarch64-linux") rec {
-          default = nix-installer-static;
-          nix-installer-static = naerskLib.buildPackage
-            (sharedAttrs // {
-              CARGO_BUILD_TARGET = "aarch64-unknown-linux-musl";
-            });
-        };
+        craneLib.buildPackage (sharedAttrs // {
+          cargoArtifacts = craneLib.buildDepsOnly sharedAttrs;
 
+          cargoTestExtraArgs = "--all";
+
+          postInstall = ''
+            cp nix-installer.sh $out/bin/nix-installer.sh
+          '';
+
+          env = sharedAttrs.env // {
+            RUSTFLAGS = "--cfg tokio_unstable";
+            NIX_INSTALLER_TARBALL_PATH = nixTarballs.${stdenv.hostPlatform.system};
+            DETERMINATE_NIXD_BINARY_PATH = optionalPathToDeterminateNixd stdenv.hostPlatform.system;
+          };
+        });
+    in
+    {
+      overlays.default = final: prev: {
+        nix-installer = final.callPackage installerPackage { };
+        nix-installer-static = final.pkgsStatic.callPackage installerPackage { };
+      };
 
       devShells = forAllSystems ({ system, pkgs, ... }:
         let
-          toolchain = fenixToolchain system;
-          check = import ./nix/check.nix { inherit pkgs toolchain; };
+          check = import ./nix/check.nix { inherit pkgs; };
         in
         {
           default = pkgs.mkShell {
             name = "nix-install-shell";
 
-            RUST_SRC_PATH = "${toolchain}/lib/rustlib/src/rust/library";
+            RUST_SRC_PATH = "${pkgs.rustPlatform.rustcSrc}/library";
             NIX_INSTALLER_TARBALL_PATH = nixTarballs.${system};
             DETERMINATE_NIXD_BINARY_PATH = optionalPathToDeterminateNixd system;
 
             nativeBuildInputs = with pkgs; [ ];
             buildInputs = with pkgs; [
-              toolchain
+              rustc
+              cargo
+              clippy
+              rustfmt
               shellcheck
               rust-analyzer
               cargo-outdated
@@ -169,11 +133,6 @@
               check.check-clippy
               editorconfig-checker
             ]
-            ++ lib.optionals (pkgs.stdenv.isDarwin) (with pkgs; [
-              libiconv
-              darwin.apple_sdk.frameworks.Security
-              darwin.apple_sdk.frameworks.SystemConfiguration
-            ])
             ++ lib.optionals (pkgs.stdenv.isLinux) (with pkgs; [
               checkpolicy
               semodule-utils
@@ -184,8 +143,7 @@
 
       checks = forAllSystems ({ system, pkgs, ... }:
         let
-          toolchain = fenixToolchain system;
-          check = import ./nix/check.nix { inherit pkgs toolchain; };
+          check = import ./nix/check.nix { inherit pkgs; };
         in
         {
           check-rustfmt = pkgs.runCommand "check-rustfmt" { buildInputs = [ check.check-rustfmt ]; } ''
@@ -212,16 +170,9 @@
 
       packages = forAllSystems ({ system, pkgs, ... }:
         {
-          inherit (pkgs) nix-installer;
-        } // nixpkgs.lib.optionalAttrs (system == "x86_64-linux") {
-          inherit (pkgs) nix-installer-static;
-          default = pkgs.nix-installer-static;
-        } // nixpkgs.lib.optionalAttrs (system == "aarch64-linux") {
-          inherit (pkgs) nix-installer-static;
+          inherit (pkgs) nix-installer nix-installer-static;
           default = pkgs.nix-installer-static;
         } // nixpkgs.lib.optionalAttrs (pkgs.stdenv.isDarwin) {
-          default = pkgs.nix-installer;
-
           determinate-nixd = pkgs.runCommand "determinate-nixd-link" { } ''
             ln -s ${optionalPathToDeterminateNixd system} $out
           '';
