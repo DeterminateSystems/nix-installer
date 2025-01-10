@@ -13,7 +13,7 @@ use crate::{
     },
     error::HasExpectedErrors,
     planner::{Planner, PlannerError},
-    settings::{determinate_nix_settings, CommonSettings, InitSystem, InstallSettingsError},
+    settings::{CommonSettings, InitSystem, InstallSettingsError},
     Action, BuiltinPlanner,
 };
 use std::{collections::HashMap, path::PathBuf};
@@ -198,14 +198,10 @@ impl Planner for Ostree {
                 .boxed(),
         );
         plan.push(
-            ConfigureNix::plan(
-                shell_profile_locations,
-                &self.settings,
-                self.settings.determinate_nix.then(determinate_nix_settings),
-            )
-            .await
-            .map_err(PlannerError::Action)?
-            .boxed(),
+            ConfigureNix::plan(shell_profile_locations, &self.settings)
+                .await
+                .map_err(PlannerError::Action)?
+                .boxed(),
         );
 
         if has_selinux {

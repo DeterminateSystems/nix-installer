@@ -30,18 +30,11 @@ impl PlaceNixConfiguration {
         nix_build_group_name: String,
         proxy: Option<Url>,
         ssl_cert_file: Option<PathBuf>,
-        extra_internal_conf: Option<nix_config_parser::NixConfig>,
         extra_conf: Vec<UrlOrPathOrString>,
         force: bool,
     ) -> Result<StatefulAction<Self>, ActionError> {
-        let nix_config = Self::setup_nix_config(
-            nix_build_group_name,
-            proxy,
-            ssl_cert_file,
-            extra_internal_conf,
-            extra_conf,
-        )
-        .await?;
+        let nix_config =
+            Self::setup_nix_config(nix_build_group_name, proxy, ssl_cert_file, extra_conf).await?;
 
         let create_directory = CreateDirectory::plan(NIX_CONF_FOLDER, None, None, 0o0755, force)
             .await
@@ -60,7 +53,6 @@ impl PlaceNixConfiguration {
         nix_build_group_name: String,
         proxy: Option<Url>,
         ssl_cert_file: Option<PathBuf>,
-        extra_internal_conf: Option<nix_config_parser::NixConfig>,
         extra_conf: Vec<UrlOrPathOrString>,
     ) -> Result<nix_config_parser::NixConfig, ActionError> {
         let mut extra_conf_text = vec![];
@@ -121,10 +113,6 @@ impl PlaceNixConfiguration {
             .map_err(Self::error)?;
 
         let settings = nix_config.settings_mut();
-
-        if let Some(extra) = extra_internal_conf {
-            settings.extend(extra.into_settings().into_iter());
-        }
 
         settings.insert("build-users-group".to_string(), nix_build_group_name);
 
