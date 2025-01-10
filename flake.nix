@@ -81,10 +81,6 @@
           installerAttrs = sharedAttrs // {
             cargoArtifacts = craneLib.buildDepsOnly sharedAttrs;
 
-            preBuild = ''
-              # logRun "cargo clippy --all-targets --all-features -- -D warnings"
-            '';
-
             postInstall = ''
               cp nix-installer.sh $out/bin/nix-installer.sh
             '';
