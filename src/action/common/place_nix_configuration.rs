@@ -339,9 +339,8 @@ mod tests {
 
     #[tokio::test]
     async fn extra_trusted_no_error() -> eyre::Result<()> {
-        let nix_config = PlaceNixConfiguration::setup_nix_config(
+        let nix_config = PlaceNixConfiguration::setup_extra_config(
             String::from("foo"),
-            None,
             None,
             None,
             vec![
