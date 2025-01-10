@@ -54,6 +54,7 @@ impl ConfigureNix {
                     settings.ssl_cert_file.clone(),
                     settings.extra_conf.clone(),
                     settings.force,
+                    settings.determinate_nix,
                 )
                 .await
                 .map_err(Self::error)?,

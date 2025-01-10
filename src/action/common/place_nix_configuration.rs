@@ -35,7 +35,7 @@ Place the `/etc/nix/nix.conf` file
 #[serde(tag = "action_name", rename = "place_nix_configuration")]
 pub struct PlaceNixConfiguration {
     create_directory: StatefulAction<CreateDirectory>,
-    create_or_merge_standard_nix_config: StatefulAction<CreateOrMergeNixConfig>,
+    create_or_merge_standard_nix_config: Option<StatefulAction<CreateOrMergeNixConfig>>,
     create_or_merge_custom_nix_config: StatefulAction<CreateOrMergeNixConfig>,
 }
 
@@ -47,8 +47,14 @@ impl PlaceNixConfiguration {
         ssl_cert_file: Option<PathBuf>,
         extra_conf: Vec<UrlOrPathOrString>,
         force: bool,
+        determinate_nix: bool,
     ) -> Result<StatefulAction<Self>, ActionError> {
-        let standard_nix_config = Self::setup_standard_config(ssl_cert_file.as_ref()).await?;
+        let standard_nix_config = if determinate_nix {
+            Some(Self::setup_standard_config(ssl_cert_file.as_ref()).await?)
+        } else {
+            None
+        };
+
         let custom_nix_config =
             Self::setup_extra_config(nix_build_group_name, proxy, ssl_cert_file, extra_conf)
                 .await?;
@@ -57,13 +63,20 @@ impl PlaceNixConfiguration {
             .await
             .map_err(Self::error)?;
 
-        let create_or_merge_standard_nix_config = CreateOrMergeNixConfig::plan(
-            NIX_CONF,
-            standard_nix_config,
-            NIX_CONFIG_HEADER.to_string(),
-        )
-        .await
-        .map_err(Self::error)?;
+        let create_or_merge_standard_nix_config =
+            if let Some(standard_nix_config) = standard_nix_config {
+                Some(
+                    CreateOrMergeNixConfig::plan(
+                        NIX_CONF,
+                        standard_nix_config,
+                        NIX_CONFIG_HEADER.to_string(),
+                    )
+                    .await
+                    .map_err(Self::error)?,
+                )
+            } else {
+                None
+            };
 
         let create_or_merge_custom_nix_config = CreateOrMergeNixConfig::plan(
             CUSTOM_NIX_CONF,
@@ -247,12 +260,10 @@ impl Action for PlaceNixConfiguration {
         if let Some(val) = self.create_directory.describe_execute().first() {
             explanation.push(val.description.clone())
         }
-        for val in self
-            .create_or_merge_standard_nix_config
-            .describe_execute()
-            .iter()
-        {
-            explanation.push(val.description.clone())
+        if let Some(ref standard_config) = self.create_or_merge_standard_nix_config {
+            for val in standard_config.describe_execute().iter() {
+                explanation.push(val.description.clone())
+            }
         }
         for val in self
             .create_or_merge_custom_nix_config
@@ -271,10 +282,9 @@ impl Action for PlaceNixConfiguration {
             .try_execute()
             .await
             .map_err(Self::error)?;
-        self.create_or_merge_standard_nix_config
-            .try_execute()
-            .await
-            .map_err(Self::error)?;
+        if let Some(ref mut standard_config) = self.create_or_merge_standard_nix_config {
+            standard_config.try_execute().await.map_err(Self::error)?;
+        }
         self.create_or_merge_custom_nix_config
             .try_execute()
             .await
@@ -299,9 +309,13 @@ impl Action for PlaceNixConfiguration {
         if let Err(err) = self.create_or_merge_custom_nix_config.try_revert().await {
             errors.push(err);
         }
-        if let Err(err) = self.create_or_merge_standard_nix_config.try_revert().await {
-            errors.push(err);
+
+        if let Some(ref mut standard_config) = self.create_or_merge_standard_nix_config {
+            if let Err(err) = standard_config.try_revert().await {
+                errors.push(err);
+            }
         }
+
         if let Err(err) = self.create_directory.try_revert().await {
             errors.push(err);
         }
