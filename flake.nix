@@ -53,7 +53,7 @@
 
       optionalPathToDeterminateNixd = system: if builtins.elem system systemsSupportedByDeterminateNixd then "${inputs.determinate.packages.${system}.default}/bin/determinate-nixd" else null;
 
-      installerPackage = { lib, pkgs, stdenv, buildPackages, darwin }:
+      installerPackage = { pkgs, stdenv, buildPackages }:
         let
           craneLib = crane.mkLib pkgs;
           sharedAttrs = {
@@ -65,12 +65,6 @@
 
             # Required to link build scripts.
             pkgsBuildBuild = [ buildPackages.stdenv.cc ];
-
-            nativeBuildInputs = [ ];
-            buildInputs = [ ] ++ lib.optionals (stdenv.isDarwin) (with darwin.apple_sdk.frameworks; [
-              SystemConfiguration
-              darwin.libiconv
-            ]);
 
             env = {
               # For whatever reason, these don’t seem to get set
@@ -139,11 +133,6 @@
               check.check-clippy
               editorconfig-checker
             ]
-            ++ lib.optionals (pkgs.stdenv.isDarwin) (with pkgs; [
-              libiconv
-              darwin.apple_sdk.frameworks.Security
-              darwin.apple_sdk.frameworks.SystemConfiguration
-            ])
             ++ lib.optionals (pkgs.stdenv.isLinux) (with pkgs; [
               checkpolicy
               semodule-utils
