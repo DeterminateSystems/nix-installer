@@ -2,8 +2,7 @@
   description = "The Determinate Nix Installer";
 
   inputs = {
-    # The very next version and beyond we get SIGBUS on uninstall
-    nixpkgs.url = "https://flakehub.com/f/NixOS/nixpkgs/=0.1.698755";
+    nixpkgs.url = "https://flakehub.com/f/NixOS/nixpkgs/0.1.tar.gz";
 
     crane.url = "github:ipetkov/crane/v0.20.0";
 
