@@ -35,11 +35,6 @@
         url = "https://install.determinate.systems/determinate-nixd/rev/0de4fff87b3bbf09c3e510c4a57eb014f98ab247/macOS";
         flake = false;
       };
-      inputs.determinate-nixd-x86_64-darwin = {
-        url = "https://install.determinate.systems/determinate-nixd/rev/0de4fff87b3bbf09c3e510c4a57eb014f98ab247/macOS";
-        flake = false;
-        follows = "";
-      };
     };
 
     flake-compat.url = "https://flakehub.com/f/edolstra/flake-compat/1.0.0.tar.gz";
