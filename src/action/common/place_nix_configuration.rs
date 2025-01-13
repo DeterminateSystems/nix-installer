@@ -284,7 +284,7 @@ impl Action for PlaceNixConfiguration {
             standard_config.try_execute().await.map_err(Self::error)?;
         } else {
             let mut command = tokio::process::Command::new("/usr/local/bin/determinate-nixd");
-            command.args(["init"]); //, "--stop-after", "nix-configuration"]);
+            command.args(["init", "--stop-after", "nix-configuration"]);
             command.stderr(std::process::Stdio::piped());
             command.stdout(std::process::Stdio::piped());
             tracing::trace!(command = ?command.as_std(), "Initializing nix.conf");
