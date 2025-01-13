@@ -534,7 +534,7 @@ jobs:
         if: ${{ matrix.determinate }}
         with:
           duration: 30m
-          authorized-users: grahamc cole-h
+          authorized-users: grahamc, cole-h
 
       - name: Initial install
         uses: DeterminateSystems/nix-installer-action@main
