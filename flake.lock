@@ -48,7 +48,7 @@
     "determinate-nixd-aarch64-darwin": {
       "flake": false,
       "locked": {
-        "narHash": "sha256-fUzQzO1z3HyWyVWQeL/beHbVFf+KldW0xLXqyM3vwWA=",
+        "narHash": "sha256-XQ/0tqIfx4tWluxDjFnknQ9OeukSaiu0GIPex/bLfRY=",
         "type": "file",
         "url": "https://install.determinate.systems/determinate-nixd/pr/190/macOS"
       },
