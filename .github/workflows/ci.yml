@@ -297,11 +297,6 @@ jobs:
             echo "/nix exists"
             exit 1
           fi
-      - uses: namespacelabs/breakpoint-action@v0
-        if: failure()
-        with:
-          duration: 30m
-          authorized-users: grahamc, cole-h
 
   run-x86_64-darwin:
     name: Run x86_64 Darwin${{ matrix.determinate && ' (--determinate)' || ''}}
