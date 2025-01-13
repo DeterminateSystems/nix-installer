@@ -282,7 +282,24 @@ impl Action for PlaceNixConfiguration {
             .map_err(Self::error)?;
         if let Some(ref mut standard_config) = self.create_or_merge_standard_nix_config {
             standard_config.try_execute().await.map_err(Self::error)?;
+        } else {
+            let mut command = tokio::process::Command::new("/usr/local/bin/determinate-nixd");
+            command.args(["init"]); //, "--stop-after", "nix-configuration"]);
+            command.stderr(std::process::Stdio::piped());
+            command.stdout(std::process::Stdio::piped());
+            tracing::trace!(command = ?command.as_std(), "Initializing nix.conf");
+            let output = command
+                .output()
+                .await
+                .map_err(|e| ActionErrorKind::command(&command, e))
+                .map_err(Self::error)?;
+            if !output.status.success() {
+                return Err(Self::error(ActionErrorKind::command_output(
+                    &command, output,
+                )));
+            }
         }
+
         self.create_or_merge_custom_nix_config
             .try_execute()
             .await
