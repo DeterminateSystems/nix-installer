@@ -48,7 +48,7 @@
     "determinate-nixd-aarch64-darwin": {
       "flake": false,
       "locked": {
-        "narHash": "sha256-XQ/0tqIfx4tWluxDjFnknQ9OeukSaiu0GIPex/bLfRY=",
+        "narHash": "sha256-hbYsDT0JfedS64dIRxlTfOzKqZ6St6n+8ekOM7kSZLs=",
         "type": "file",
         "url": "https://install.determinate.systems/determinate-nixd/pr/190/macOS"
       },
@@ -60,7 +60,7 @@
     "determinate-nixd-aarch64-linux": {
       "flake": false,
       "locked": {
-        "narHash": "sha256-TEg1lA+ZgbjIxLaoRPEy/tWrYI317ICdXgZPFyWfgW8=",
+        "narHash": "sha256-qhRnkCOIl8N5gUUd5csCDSKOwEypbL0Cubg7BPQ1JNc=",
         "type": "file",
         "url": "https://install.determinate.systems/determinate-nixd/pr/190/aarch64-linux"
       },
@@ -72,7 +72,7 @@
     "determinate-nixd-x86_64-linux": {
       "flake": false,
       "locked": {
-        "narHash": "sha256-rk4VkdEsVjmiomTpza4ja3WggoNkeq8eMO9RoTujzZI=",
+        "narHash": "sha256-xKSPWKe/Q1yymVui/eI3SP1xl6oUBkWNFnmeSa61HiM=",
         "type": "file",
         "url": "https://install.determinate.systems/determinate-nixd/pr/190/x86_64-linux"
       },
