@@ -7,10 +7,11 @@ use clap::{
     error::{ContextKind, ContextValue},
     ArgAction,
 };
-use indexmap::map::Entry;
 use url::Url;
 
 pub const SCRATCH_DIR: &str = "/nix/temp-install-dir";
+
+pub const DEFAULT_NIX_BUILD_USER_GROUP_NAME: &str = "nixbld";
 
 pub const NIX_TARBALL_PATH: &str = env!("NIX_INSTALLER_TARBALL_PATH");
 /// The NIX_INSTALLER_TARBALL_PATH environment variable should point to a target-appropriate
@@ -87,7 +88,7 @@ pub struct CommonSettings {
         feature = "cli",
         clap(
             long,
-            default_value = "nixbld",
+            default_value = crate::settings::DEFAULT_NIX_BUILD_USER_GROUP_NAME,
             env = "NIX_INSTALLER_NIX_BUILD_GROUP_NAME",
             global = true
         )
@@ -290,7 +291,7 @@ impl CommonSettings {
         Ok(Self {
             determinate_nix: false,
             modify_profile: true,
-            nix_build_group_name: String::from("nixbld"),
+            nix_build_group_name: String::from(crate::settings::DEFAULT_NIX_BUILD_USER_GROUP_NAME),
             nix_build_group_id: default_nix_build_group_id(),
             nix_build_user_id_base: default_nix_build_user_id_base(),
             nix_build_user_count: 32,
@@ -660,31 +661,6 @@ impl crate::diagnostics::ErrorDiagnostic for InstallSettingsError {
         let static_str: &'static str = (self).into();
         static_str.to_string()
     }
-}
-
-pub fn determinate_nix_settings() -> nix_config_parser::NixConfig {
-    let mut cfg = nix_config_parser::NixConfig::new();
-    let settings = cfg.settings_mut();
-
-    settings.insert("netrc-file".into(), "/nix/var/determinate/netrc".into());
-
-    let extra_substituters = ["https://cache.flakehub.com"];
-    match settings.entry("extra-substituters".to_string()) {
-        Entry::Occupied(mut slot) => {
-            let slot_mut = slot.get_mut();
-            for extra_substituter in extra_substituters {
-                if !slot_mut.contains(extra_substituter) {
-                    *slot_mut += " ";
-                    *slot_mut += extra_substituter;
-                }
-            }
-        },
-        Entry::Vacant(slot) => {
-            let _ = slot.insert(extra_substituters.join(" "));
-        },
-    };
-
-    cfg
 }
 
 #[cfg(test)]
