@@ -229,7 +229,9 @@ impl PlaceNixConfiguration {
 
         let settings = nix_config.settings_mut();
 
-        settings.insert("build-users-group".to_string(), nix_build_group_name);
+        if nix_build_group_name != crate::settings::DEFAULT_NIX_BUILD_USER_GROUP_NAME {
+            settings.insert("build-users-group".to_string(), nix_build_group_name);
+        }
 
         Ok(nix_config)
     }

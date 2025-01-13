@@ -11,6 +11,8 @@ use url::Url;
 
 pub const SCRATCH_DIR: &str = "/nix/temp-install-dir";
 
+pub const DEFAULT_NIX_BUILD_USER_GROUP_NAME: &str = "nixbld";
+
 pub const NIX_TARBALL_PATH: &str = env!("NIX_INSTALLER_TARBALL_PATH");
 /// The NIX_INSTALLER_TARBALL_PATH environment variable should point to a target-appropriate
 /// Nix installation tarball, like nix-2.21.2-aarch64-darwin.tar.xz. The contents are embedded
@@ -86,7 +88,7 @@ pub struct CommonSettings {
         feature = "cli",
         clap(
             long,
-            default_value = "nixbld",
+            default_value = crate::settings::DEFAULT_NIX_BUILD_USER_GROUP_NAME,
             env = "NIX_INSTALLER_NIX_BUILD_GROUP_NAME",
             global = true
         )
@@ -289,7 +291,7 @@ impl CommonSettings {
         Ok(Self {
             determinate_nix: false,
             modify_profile: true,
-            nix_build_group_name: String::from("nixbld"),
+            nix_build_group_name: String::from(crate::settings::DEFAULT_NIX_BUILD_USER_GROUP_NAME),
             nix_build_group_id: default_nix_build_group_id(),
             nix_build_user_id_base: default_nix_build_user_id_base(),
             nix_build_user_count: 32,
