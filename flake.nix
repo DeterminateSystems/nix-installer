@@ -22,19 +22,6 @@
       # This means `follows` won't cause surprisingly extensive rebuilds, just trivial `chmod +x` rebuilds.
       inputs.nixpkgs.follows = "nixpkgs";
       inputs.nix.follows = "nix";
-
-      inputs.determinate-nixd-aarch64-linux = {
-        url = "https://install.determinate.systems/determinate-nixd/pr/190/aarch64-linux";
-        flake = false;
-      };
-      inputs.determinate-nixd-x86_64-linux = {
-        url = "https://install.determinate.systems/determinate-nixd/pr/190/x86_64-linux";
-        flake = false;
-      };
-      inputs.determinate-nixd-aarch64-darwin = {
-        url = "https://install.determinate.systems/determinate-nixd/pr/190/macOS";
-        flake = false;
-      };
     };
 
     flake-compat.url = "https://flakehub.com/f/edolstra/flake-compat/1.0.0.tar.gz";
