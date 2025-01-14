@@ -34,38 +34,6 @@ let
       tester = ./default/Dockerfile;
       system = "x86_64-linux";
     };
-
-    # Found via https://hub.docker.com/_/ubuntu/ under "How is the rootfs build?"
-    # Jammy (--determinate)
-    "ubuntu-v22_04-determinate" = {
-      tarball = builtins.fetchurl {
-        url = "http://cdimage.ubuntu.com/ubuntu-base/releases/22.04/release/ubuntu-base-22.04-base-amd64.tar.gz";
-        sha256 = "01sbpjb32x1z1yr9q78zrk0a6kfw5c4fxw1jqmm23g8ixryffvyz";
-      };
-      tester = ./default/Dockerfile.determinate;
-      system = "x86_64-linux";
-    };
-
-    # focal (--determinate)
-    "ubuntu-v20_04-determinate" = {
-      tarball = builtins.fetchurl {
-        url = "http://cdimage.ubuntu.com/ubuntu-base/releases/20.04/release/ubuntu-base-20.04.1-base-amd64.tar.gz";
-        sha256 = "0ryn38csmx41a415g9b3wk30csaxxlkgkdij9v4754pk877wpxlp";
-      };
-      tester = ./default/Dockerfile.determinate;
-      system = "x86_64-linux";
-    };
-
-    # bionic (--determinate)
-    "ubuntu-v18_04-determinate" = {
-      tarball = builtins.fetchurl {
-        url = "http://cdimage.ubuntu.com/ubuntu-base/releases/18.04/release/ubuntu-base-18.04.5-base-amd64.tar.gz";
-        sha256 = "1sh73pqwgyzkyssv3ngpxa2ynnkbdvjpxdw1v9ql4ghjpd3hpwlg";
-      };
-      tester = ./default/Dockerfile.determinate;
-      system = "x86_64-linux";
-    };
-
   };
 
   makeTest = containerTool: imageName:
