@@ -46,7 +46,7 @@ impl PlaceNixConfiguration {
         determinate_nix: bool,
     ) -> Result<StatefulAction<Self>, ActionError> {
         let standard_nix_config = if !determinate_nix {
-            Some(Self::setup_standard_config(ssl_cert_file.as_ref()).await?)
+            Some(Self::setup_standard_config().await?)
         } else {
             None
         };
@@ -89,9 +89,7 @@ impl PlaceNixConfiguration {
         .into())
     }
 
-    async fn setup_standard_config(
-        ssl_cert_file: Option<&PathBuf>,
-    ) -> Result<nix_config_parser::NixConfig, ActionError> {
+    async fn setup_standard_config() -> Result<nix_config_parser::NixConfig, ActionError> {
         let mut nix_config = nix_config_parser::NixConfig::new();
         let settings = nix_config.settings_mut();
 
@@ -141,15 +139,6 @@ impl PlaceNixConfiguration {
             "(nix:$name)\\040".to_string(),
         );
         settings.insert("max-jobs".to_string(), "auto".to_string());
-        if let Some(ssl_cert_file) = ssl_cert_file {
-            let ssl_cert_file_canonical = ssl_cert_file.canonicalize().map_err(|e| {
-                Self::error(ActionErrorKind::Canonicalize(ssl_cert_file.to_owned(), e))
-            })?;
-            settings.insert(
-                "ssl-cert-file".to_string(),
-                ssl_cert_file_canonical.display().to_string(),
-            );
-        }
         settings.insert(
             "extra-nix-path".to_string(),
             "nixpkgs=flake:nixpkgs".to_string(),
@@ -229,6 +218,16 @@ impl PlaceNixConfiguration {
 
         if nix_build_group_name != crate::settings::DEFAULT_NIX_BUILD_USER_GROUP_NAME {
             settings.insert("build-users-group".to_string(), nix_build_group_name);
+        }
+
+        if let Some(ssl_cert_file) = ssl_cert_file {
+            let ssl_cert_file_canonical = ssl_cert_file.canonicalize().map_err(|e| {
+                Self::error(ActionErrorKind::Canonicalize(ssl_cert_file.to_owned(), e))
+            })?;
+            settings.insert(
+                "ssl-cert-file".to_string(),
+                ssl_cert_file_canonical.display().to_string(),
+            );
         }
 
         Ok(nix_config)
