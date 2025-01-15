@@ -355,6 +355,80 @@ mod tests {
     use super::*;
 
     #[tokio::test]
+    async fn user_specified_trusted_users_effective() -> eyre::Result<()> {
+        let extra_conf = vec![UrlOrPathOrString::String(String::from(
+            "trusted-users = foouser baruser",
+        ))];
+        let nix_conf_dir = tempfile::tempdir()?;
+
+        let pnc_plan:  Result<StatefulAction<PlaceNixConfiguration>, ActionError> = {
+            let standard_nix_config =
+                Some(PlaceNixConfiguration::setup_standard_config(None).await?);
+
+            let custom_nix_config = PlaceNixConfiguration::setup_extra_config(
+                "nixbldtest".to_string(),
+                None,
+                None,
+                extra_conf,
+            )
+            .await?;
+
+            let create_directory = CreateDirectory::plan(&nix_conf_dir, None, None, 0o0755, false)
+                .await
+                .map_err(PlaceNixConfiguration::error)?;
+
+            let create_or_merge_standard_nix_config =
+                if let Some(standard_nix_config) = standard_nix_config {
+                    Some(
+                        CreateOrMergeNixConfig::plan(
+                            nix_conf_dir.path().join("nix.conf"),
+                            standard_nix_config,
+                            NIX_CONFIG_HEADER.to_string(),
+                        )
+                        .await
+                        .map_err(PlaceNixConfiguration::error)?,
+                    )
+                } else {
+                    None
+                };
+
+            let create_or_merge_custom_nix_config = CreateOrMergeNixConfig::plan(
+                nix_conf_dir.path().join("nix.custom.conf"),
+                custom_nix_config,
+                CUSTOM_NIX_CONFIG_HEADER.to_string(),
+            )
+            .await
+            .map_err(PlaceNixConfiguration::error)?;
+            Ok(PlaceNixConfiguration {
+                create_directory,
+                create_or_merge_standard_nix_config,
+                create_or_merge_custom_nix_config,
+            }
+            .into())
+        };
+
+        pnc_plan.unwrap().try_execute().await.unwrap();
+
+        let mut ncs_cmd = tokio::process::Command::new("nix");
+        ncs_cmd.arg("config");
+        ncs_cmd.arg("show");
+
+        ncs_cmd.env("NIX_CONF_DIR", nix_conf_dir.path());
+
+        let output = crate::execute_command(&mut ncs_cmd).await.unwrap();
+        let output = String::from_utf8(output.stdout).unwrap();
+
+        panic!("{}", output);
+
+        assert!(
+            output.contains("trusted-users = foouser baruser"),
+            "effective nix config does not contain the user-specified trusted-users value"
+        );
+
+        Ok(())
+    }
+
+    #[tokio::test]
     async fn extra_trusted_no_error() -> eyre::Result<()> {
         let nix_config = PlaceNixConfiguration::setup_extra_config(
             String::from("foo"),
