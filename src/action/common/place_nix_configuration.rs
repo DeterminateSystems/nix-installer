@@ -447,4 +447,179 @@ mod tests {
 
         Ok(())
     }
+
+    #[tokio::test]
+    async fn experimental_features() -> eyre::Result<()> {
+        let nix_conf_dir = tempfile::tempdir()?;
+        let nix_conf_path = nix_conf_dir.path().join("nix.conf");
+        let nix_custom_conf_path = nix_conf_dir.path().join("nix.custom.conf");
+
+        let extra_conf = PlaceNixConfiguration::parse_extra_conf(
+            None,
+            None,
+            vec![UrlOrPathOrString::String(format!(
+                "{EXPERIMENTAL_FEATURES_CONF_NAME} = foobar"
+            ))],
+        )
+        .await?;
+
+        let standard_nix_config = PlaceNixConfiguration::setup_standard_config(None).await?;
+        let custom_nix_config =
+            PlaceNixConfiguration::setup_extra_config(extra_conf, String::from("foo"), None)
+                .await?;
+        dbg!(&custom_nix_config);
+        dbg!(custom_nix_config.settings());
+        dbg!(custom_nix_config
+            .settings()
+            .get(EXTRA_EXPERIMENTAL_FEATURES_CONF_NAME));
+
+        assert!(
+            custom_nix_config
+                .settings()
+                .get(EXPERIMENTAL_FEATURES_CONF_NAME)
+                .is_none(),
+            "experimental-features in `--extra-conf` was renamed to extra-experimental-features"
+        );
+        assert!(
+            custom_nix_config
+                .settings()
+                .get(EXTRA_EXPERIMENTAL_FEATURES_CONF_NAME)
+                .unwrap()
+                .contains("foobar"),
+            "experimental-features in `--extra-conf` was renamed to extra-experimental-features"
+        );
+
+        let mut place_nix_configuration = StatefulAction::uncompleted(PlaceNixConfiguration {
+            create_directory: StatefulAction::completed(CreateDirectory {
+                path: nix_conf_dir.path().to_owned(),
+                user: None,
+                group: None,
+                mode: None,
+                is_mountpoint: false,
+                force_prune_on_revert: false,
+            }),
+            create_or_merge_standard_nix_config: Some(
+                CreateOrMergeNixConfig::plan(
+                    &nix_conf_path,
+                    standard_nix_config,
+                    NIX_CONFIG_HEADER.to_string(),
+                    Some(NIX_CONFIG_FOOTER.to_string()),
+                )
+                .await
+                .map_err(PlaceNixConfiguration::error)?,
+            ),
+            create_or_merge_custom_nix_config: CreateOrMergeNixConfig::plan(
+                &nix_custom_conf_path,
+                custom_nix_config,
+                CUSTOM_NIX_CONFIG_HEADER.to_string(),
+                None,
+            )
+            .await
+            .map_err(PlaceNixConfiguration::error)?,
+        });
+
+        place_nix_configuration
+            .try_execute()
+            .await
+            .expect("place nix config should succeed");
+
+        let custom_conf = tokio::fs::read_to_string(nix_custom_conf_path)
+            .await
+            .unwrap();
+        assert!(
+            custom_conf.contains(EXTRA_EXPERIMENTAL_FEATURES_CONF_NAME)
+                && custom_conf.contains("foobar"),
+            "experimental-features in `--extra-conf` was renamed to extra-experimental-features"
+        );
+
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn extra_trusted_users() -> eyre::Result<()> {
+        let nix_conf_dir = tempfile::tempdir()?;
+        let nix_conf_path = nix_conf_dir.path().join("nix.conf");
+        let nix_custom_conf_path = nix_conf_dir.path().join("nix.custom.conf");
+
+        let extra_conf = PlaceNixConfiguration::parse_extra_conf(
+            None,
+            None,
+            vec![UrlOrPathOrString::String(String::from(
+                "trusted-users = bob alice",
+            ))],
+        )
+        .await?;
+
+        let maybe_trusted_users = extra_conf.settings().get(TRUSTED_USERS_CONF_NAME);
+
+        let standard_nix_config =
+            PlaceNixConfiguration::setup_standard_config(maybe_trusted_users).await?;
+        let custom_nix_config =
+            PlaceNixConfiguration::setup_extra_config(extra_conf, String::from("foo"), None)
+                .await?;
+
+        assert!(
+            custom_nix_config
+                .settings()
+                .get("trusted-users")
+                .unwrap()
+                .contains("bob"),
+            "User config and internal defaults are both respected"
+        );
+        assert!(
+            standard_nix_config
+                .settings()
+                .get("trusted-users")
+                .unwrap()
+                .contains("bob"),
+            "User config and internal defaults are both respected"
+        );
+
+        let mut place_nix_configuration = StatefulAction::uncompleted(PlaceNixConfiguration {
+            create_directory: StatefulAction::completed(CreateDirectory {
+                path: nix_conf_dir.path().to_owned(),
+                user: None,
+                group: None,
+                mode: None,
+                is_mountpoint: false,
+                force_prune_on_revert: false,
+            }),
+            create_or_merge_standard_nix_config: Some(
+                CreateOrMergeNixConfig::plan(
+                    &nix_conf_path,
+                    standard_nix_config,
+                    NIX_CONFIG_HEADER.to_string(),
+                    Some(NIX_CONFIG_FOOTER.to_string()),
+                )
+                .await
+                .map_err(PlaceNixConfiguration::error)?,
+            ),
+            create_or_merge_custom_nix_config: CreateOrMergeNixConfig::plan(
+                &nix_custom_conf_path,
+                custom_nix_config,
+                CUSTOM_NIX_CONFIG_HEADER.to_string(),
+                None,
+            )
+            .await
+            .map_err(PlaceNixConfiguration::error)?,
+        });
+
+        place_nix_configuration
+            .try_execute()
+            .await
+            .expect("place nix config should succeed");
+
+        let standard_conf = tokio::fs::read_to_string(nix_conf_path).await.unwrap();
+        assert!(standard_conf.contains("trusted-user"), "trusted-user setting should exist in standard conf so that we don't break cachix users");
+
+        let custom_conf = tokio::fs::read_to_string(nix_custom_conf_path)
+            .await
+            .unwrap();
+        assert!(
+            custom_conf.contains("trusted-user"),
+            "trusted-user setting should exist in custom conf as well"
+        );
+
+        Ok(())
+    }
 }
