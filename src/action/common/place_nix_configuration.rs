@@ -97,7 +97,7 @@ impl PlaceNixConfiguration {
 
         let experimental_features = ["nix-command", "flakes"];
         settings.insert(
-            "experimental-features".to_string(),
+            "extra-experimental-features".to_string(),
             experimental_features.join(" "),
         );
 
