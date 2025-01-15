@@ -15,6 +15,7 @@ use crate::action::{
     Action, ActionDescription, ActionError, ActionErrorKind, ActionTag, StatefulAction,
 };
 
+pub(crate) const TRUSTED_USERS_CONF_NAME: &str = "trusted-users";
 pub(crate) const EXPERIMENTAL_FEATURES_CONF_NAME: &str = "experimental-features";
 pub(crate) const EXTRA_EXPERIMENTAL_FEATURES_CONF_NAME: &str = "extra-experimental-features";
 /// The `nix.conf` configuration names that are safe to merge.

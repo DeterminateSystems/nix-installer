@@ -3,7 +3,7 @@ use url::Url;
 
 use crate::action::base::create_or_merge_nix_config::{
     CreateOrMergeNixConfigError, EXPERIMENTAL_FEATURES_CONF_NAME,
-    EXTRA_EXPERIMENTAL_FEATURES_CONF_NAME,
+    EXTRA_EXPERIMENTAL_FEATURES_CONF_NAME, TRUSTED_USERS_CONF_NAME,
 };
 use crate::action::base::{CreateDirectory, CreateOrMergeNixConfig};
 use crate::action::{
@@ -48,14 +48,18 @@ impl PlaceNixConfiguration {
         force: bool,
         determinate_nix: bool,
     ) -> Result<StatefulAction<Self>, ActionError> {
+        let extra_conf = Self::parse_extra_conf(proxy, ssl_cert_file.as_ref(), extra_conf).await?;
+
         let standard_nix_config = if !determinate_nix {
-            Some(Self::setup_standard_config().await?)
+            let maybe_trusted_users = extra_conf.settings().get(TRUSTED_USERS_CONF_NAME);
+
+            Some(Self::setup_standard_config(maybe_trusted_users).await?)
         } else {
             None
         };
 
         let custom_nix_config =
-            Self::setup_extra_config(nix_build_group_name, proxy, ssl_cert_file, extra_conf)
+            Self::setup_extra_config(extra_conf, nix_build_group_name, ssl_cert_file.as_ref())
                 .await?;
 
         let create_directory = CreateDirectory::plan(NIX_CONF_FOLDER, None, None, 0o0755, force)
@@ -94,7 +98,9 @@ impl PlaceNixConfiguration {
         .into())
     }
 
-    async fn setup_standard_config() -> Result<nix_config_parser::NixConfig, ActionError> {
+    async fn setup_standard_config(
+        maybe_trusted_users: Option<&String>,
+    ) -> Result<nix_config_parser::NixConfig, ActionError> {
         let mut nix_config = nix_config_parser::NixConfig::new();
         let settings = nix_config.settings_mut();
 
@@ -153,13 +159,32 @@ impl PlaceNixConfiguration {
             "https://install.determinate.systems/nix-upgrade/stable/universal".to_string(),
         );
 
+        // NOTE(cole-h): This is a workaround to hopefully unbreak users of Cachix.
+        // When `cachix use`ing a cache, the Cachix CLI will sanity-check the system configuration
+        // at `/etc/nix/nix.conf` to ensure that the user doing this will actually be able to
+        // configure trusted settings (such as `trusted-public-keys`).
+        // However, because we now write the `--extra-conf` into the `nix.custom.conf` (which is how
+        // users, including our first-party DeterminateSystems/nix-installer-action, would configure
+        // the `trusted-users` setting), and Cachix does not currently handle `include`s
+        // properly[1][2], Cachix bails out thinking that the user is not a trusted user[3] even
+        // though it is (it's just configured in another file).
+        //
+        // [1]: https://github.com/cachix/cachix/issues/680
+        // [2]: https://github.com/cachix/cachix/pull/681
+        // [3]: https://github.com/DeterminateSystems/nix-installer/issues/1389
+        if let Some(trusted_users) = maybe_trusted_users {
+            settings.insert(
+                TRUSTED_USERS_CONF_NAME.to_string(),
+                trusted_users.to_owned(),
+            );
+        }
+
         Ok(nix_config)
     }
 
-    async fn setup_extra_config(
-        nix_build_group_name: String,
+    async fn parse_extra_conf(
         proxy: Option<Url>,
-        ssl_cert_file: Option<PathBuf>,
+        ssl_cert_file: Option<&PathBuf>,
         extra_conf: Vec<UrlOrPathOrString>,
     ) -> Result<nix_config_parser::NixConfig, ActionError> {
         let mut extra_conf_text = vec![];
@@ -215,11 +240,19 @@ impl PlaceNixConfiguration {
         }
 
         let extra_conf = extra_conf_text.join("\n");
-        let mut nix_config = nix_config_parser::NixConfig::parse_string(extra_conf, None)
+        let nix_config = nix_config_parser::NixConfig::parse_string(extra_conf, None)
             .map_err(CreateOrMergeNixConfigError::ParseNixConfig)
             .map_err(Self::error)?;
 
-        let settings = nix_config.settings_mut();
+        Ok(nix_config)
+    }
+
+    async fn setup_extra_config(
+        mut extra_conf: nix_config_parser::NixConfig,
+        nix_build_group_name: String,
+        ssl_cert_file: Option<&PathBuf>,
+    ) -> Result<nix_config_parser::NixConfig, ActionError> {
+        let settings = extra_conf.settings_mut();
 
         if nix_build_group_name != crate::settings::DEFAULT_NIX_BUILD_USER_GROUP_NAME {
             settings.insert("build-users-group".to_string(), nix_build_group_name);
@@ -257,7 +290,7 @@ impl PlaceNixConfiguration {
             );
         }
 
-        Ok(nix_config)
+        Ok(extra_conf)
     }
 }
 
@@ -380,8 +413,7 @@ mod tests {
 
     #[tokio::test]
     async fn extra_trusted_no_error() -> eyre::Result<()> {
-        let nix_config = PlaceNixConfiguration::setup_extra_config(
-            String::from("foo"),
+        let extra_conf = PlaceNixConfiguration::parse_extra_conf(
             None,
             None,
             vec![
@@ -390,6 +422,10 @@ mod tests {
             ],
         )
         .await?;
+
+        let nix_config =
+            PlaceNixConfiguration::setup_extra_config(extra_conf, String::from("foo"), None)
+                .await?;
 
         assert!(
             nix_config
