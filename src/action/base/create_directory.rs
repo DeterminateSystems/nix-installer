@@ -21,11 +21,11 @@ If `force_prune_on_revert` is set, the folder will always be deleted on
 #[serde(tag = "action_name", rename = "create_directory")]
 pub struct CreateDirectory {
     pub(crate) path: PathBuf,
-    user: Option<String>,
-    group: Option<String>,
-    mode: Option<u32>,
-    is_mountpoint: bool,
-    force_prune_on_revert: bool,
+    pub(crate) user: Option<String>,
+    pub(crate) group: Option<String>,
+    pub(crate) mode: Option<u32>,
+    pub(crate) is_mountpoint: bool,
+    pub(crate) force_prune_on_revert: bool,
 }
 
 impl CreateDirectory {
