@@ -1,7 +1,10 @@
 use tracing::{span, Span};
 use url::Url;
 
-use crate::action::base::create_or_merge_nix_config::CreateOrMergeNixConfigError;
+use crate::action::base::create_or_merge_nix_config::{
+    CreateOrMergeNixConfigError, EXPERIMENTAL_FEATURES_CONF_NAME,
+    EXTRA_EXPERIMENTAL_FEATURES_CONF_NAME,
+};
 use crate::action::base::{CreateDirectory, CreateOrMergeNixConfig};
 use crate::action::{
     Action, ActionDescription, ActionError, ActionErrorKind, ActionTag, StatefulAction,
@@ -229,6 +232,28 @@ impl PlaceNixConfiguration {
             settings.insert(
                 "ssl-cert-file".to_string(),
                 ssl_cert_file_canonical.display().to_string(),
+            );
+        }
+
+        // NOTE(cole-h): We want to ensure our experimental-features are not clobbered by user
+        // config, so if a user specifies that, we exchange it for the `extra-` variant that just
+        // appends to the list of experimental features.
+        // If the user does indeed want to completely overwrite our experimental features, they can
+        // modify nix.custom.conf to their heart's desire. In most cases, however, they likely just
+        // want their setting to take effect (and probably have no opinion on or would even prefer
+        // our standard experimental features continue to take effect).
+        if let Some((idx, _key, experimental_features)) =
+            settings.shift_remove_full(EXPERIMENTAL_FEATURES_CONF_NAME)
+        {
+            tracing::debug!(
+                "User specified {EXPERIMENTAL_FEATURES_CONF_NAME} in extra-conf, but this would \
+                override our desired configuration, so force it to be \
+                {EXTRA_EXPERIMENTAL_FEATURES_CONF_NAME} instead"
+            );
+            settings.shift_insert(
+                idx,
+                EXTRA_EXPERIMENTAL_FEATURES_CONF_NAME.to_string(),
+                experimental_features,
             );
         }
 

@@ -15,9 +15,12 @@ use crate::action::{
     Action, ActionDescription, ActionError, ActionErrorKind, ActionTag, StatefulAction,
 };
 
+pub(crate) const EXPERIMENTAL_FEATURES_CONF_NAME: &str = "experimental-features";
+pub(crate) const EXTRA_EXPERIMENTAL_FEATURES_CONF_NAME: &str = "extra-experimental-features";
 /// The `nix.conf` configuration names that are safe to merge.
 // FIXME(@cole-h): make configurable by downstream users?
-const MERGEABLE_CONF_NAMES: &[&str] = &["experimental-features"];
+// NOTE(cole-h): evaluate if any additions here need to be handled in PlaceNixConfiguration::setup_extra_config
+const MERGEABLE_CONF_NAMES: &[&str] = &[EXPERIMENTAL_FEATURES_CONF_NAME];
 const NIX_CONF_MODE: u32 = 0o644;
 const NIX_CONF_COMMENT_CHAR: char = '#';
 
