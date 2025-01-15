@@ -90,6 +90,7 @@ impl PlaceNixConfiguration {
         )
         .await
         .map_err(Self::error)?;
+
         Ok(Self {
             create_directory,
             create_or_merge_standard_nix_config,
@@ -412,7 +413,7 @@ mod tests {
     use super::*;
 
     #[tokio::test]
-    async fn extra_trusted_no_error() -> eyre::Result<()> {
+    async fn extra_trusted_cache() -> eyre::Result<()> {
         let extra_conf = PlaceNixConfiguration::parse_extra_conf(
             None,
             None,
