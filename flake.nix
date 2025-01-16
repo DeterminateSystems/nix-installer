@@ -132,6 +132,7 @@
               check.check-semver
               check.check-clippy
               editorconfig-checker
+              toml-cli
             ]
             ++ lib.optionals (pkgs.stdenv.isLinux) (with pkgs; [
               checkpolicy
