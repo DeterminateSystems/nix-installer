@@ -348,7 +348,8 @@ You can also remove your `$HOME/nix-installer-wsl-tests-temp` folder whenever yo
 
 This package uses [Semantic Versioning](https://semver.org/). When determining the version number for a new release refer to Semantic Versioning for guidance. You can use the `check-semver` command alias from within the development environment to validate your changes don't break semver.
 
-To cut a release:
+To cut a release, run `./prepare-release.sh 0.0.1`.
+This script will:
 
 - Create a release branch from `main` (`git checkout -b release-v0.0.1`)
   - Release PRs should not contain any installer-related changes which require review
@@ -356,13 +357,12 @@ To cut a release:
   - `nix flake update --commit-lock-file`
   - `cargo update --aggressive`
   - `cargo outdated --ignore-external-rel --aggressive`
-- Ensure the VM / container tests still pass with the following:
-  - NOTE: At time of writing, these are run in CI on release branches
+- Update the versions in the fixture data in `test/fixtures/**/*.json`
+- Push the branch, create a PR ("Release v0.0.1").
+  This pull request will automatically run VM and container tests:
   - `nix flake check -L`
   - `nix build .#hydraJobs.container-test.all.x86_64-linux.all -L -j 6`
   - `nix build .#hydraJobs.vm-test.all.x86_64-linux.all -L -j 6`
-- Update the versions in the fixture data in `test/fixtures/**/*.json`
-- Push the branch, create a PR ("Release v0.0.1")
 - Once the PR tests pass and it has been reviewed, merge it
 - Checkout the `main` branch and `git pull`
 - Prepare a draft release that creates the new tag on publish
