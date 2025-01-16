@@ -17,7 +17,8 @@ cargo update --aggressive
 git add Cargo.lock
 git commit -m "Update Cargo.lock prior to v$version"
 
-sed -i '/^version = ".*"$/s/^.*/version = "'"$version"'"/' Cargo.toml
+toml set ./Cargo.toml package.version "$version" > Cargo.toml.next
+mv Cargo.toml.next Cargo.toml
 git add Cargo.toml
 
 cargo fetch
