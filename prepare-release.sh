@@ -13,8 +13,15 @@ git fetch
 git checkout origin/main
 git checkout -B "release-v$version"
 
+cargo update --aggressive
+git add Cargo.lock
+git commit -m "Update Cargo.lock prior to v$version"
+
 sed -i '/^version = ".*"$/s/^.*/version = "'"$version"'"/' Cargo.toml
 git add Cargo.toml
+
+cargo fetch
+git add Cargo.lock
 
 for fname in $(find ./tests/fixtures -name '*.json'); do
   cat "$fname" \
@@ -26,9 +33,6 @@ done
 
 git commit -m "Update Cargo.toml and fixtures to v$version"
 
-cargo update --aggressive
-git add Cargo.lock
-git commit -m "Update Cargo.lock prior to v$version"
 
 nix flake update --commit-lock-file
 
