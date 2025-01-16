@@ -13,9 +13,11 @@ git fetch
 git checkout origin/main
 git checkout -B "release-v$version"
 
+nix flake update --commit-lock-file
+
 cargo update --aggressive
 git add Cargo.lock
-git commit -m "Update Cargo.lock prior to v$version"
+git commit -m "Update Cargo.lock dependencies"
 
 toml set ./Cargo.toml package.version "$version" > Cargo.toml.next
 mv Cargo.toml.next Cargo.toml
@@ -32,10 +34,7 @@ for fname in $(find ./tests/fixtures -name '*.json'); do
   git add "$fname"
 done
 
-git commit -m "Update Cargo.toml and fixtures to v$version"
-
-
-nix flake update --commit-lock-file
+git commit -m "Release v$version"
 
 cargo outdated --ignore-external-rel --aggressive
 
