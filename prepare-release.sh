@@ -11,8 +11,7 @@ fi
 
 git fetch
 git checkout origin/main
-git branch -D "release-v$version" || true
-git checkout -b "release-v$version"
+git checkout -B "release-v$version"
 
 sed -i '/^version = ".*"$/s/^.*/version = "'"$version"'"/' Cargo.toml
 git add Cargo.toml
