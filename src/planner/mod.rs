@@ -226,6 +226,15 @@ impl BuiltinPlanner {
         Ok(built)
     }
 
+    pub fn common_settings_mut(&mut self) -> &mut CommonSettings {
+        match self {
+            BuiltinPlanner::Linux(inner) => &mut inner.settings,
+            BuiltinPlanner::SteamDeck(inner) => &mut inner.settings,
+            BuiltinPlanner::Ostree(inner) => &mut inner.settings,
+            BuiltinPlanner::Macos(inner) => &mut inner.settings,
+        }
+    }
+
     pub async fn configured_settings(
         &self,
     ) -> Result<HashMap<String, serde_json::Value>, PlannerError> {

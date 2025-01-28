@@ -1,4 +1,5 @@
 use std::{
+    io::IsTerminal as _,
     os::unix::prelude::PermissionsExt,
     path::{Path, PathBuf},
     process::ExitCode,
@@ -75,7 +76,7 @@ pub struct Install {
 #[async_trait::async_trait]
 impl CommandExecute for Install {
     #[tracing::instrument(level = "trace", skip_all)]
-    async fn execute<T>(self, feedback: T) -> eyre::Result<ExitCode>
+    async fn execute<T>(self, mut feedback: T) -> eyre::Result<ExitCode>
     where
         T: crate::feedback::Feedback,
     {
@@ -119,7 +120,7 @@ impl CommandExecute for Install {
                 .wrap_err("Reading plan")?;
             serde_json::from_str(&install_plan_string)?
         } else {
-            let planner = match maybe_planner {
+            let mut planner = match maybe_planner {
                 Some(planner) => planner,
                 None => BuiltinPlanner::from_common_settings(settings.clone())
                     .await
@@ -157,6 +158,64 @@ impl CommandExecute for Install {
                     return Ok(ExitCode::SUCCESS);
                 },
                 None => {
+                    let planner_settings = planner.common_settings_mut();
+
+                    if !planner_settings.determinate_nix && !no_confirm {
+                        if !std::io::stdin().is_terminal() {
+                            let msg = feedback
+                                    .get_feature_ptr_payload::<String>("dni-det-msg-noninteractive-ptr")
+                                    .await
+                                    .unwrap_or("Consider using Determinate Nix, for less fuss: http://dtr.mn/determinate-nix".into());
+                            tracing::info!("{}", msg);
+                        } else {
+                            let base_prompt = feedback
+                                .get_feature_ptr_payload::<String>(
+                                    "dni-det-msg-interactive-prompt-ptr",
+                                )
+                                .await
+                                .unwrap_or(
+                                    "Install Determinate Nix? See: http://dtr.mn/determinate-nix"
+                                        .into(),
+                                );
+                            let explanation = feedback
+                                .get_feature_ptr_payload::<String>(
+                                    "dni-det-msg-interactive-explanation-ptr",
+                                )
+                                .await
+                                .unwrap_or("Determinate Nix is the easy button for Nix.".into());
+
+                            let mut currently_explaining = explain;
+
+                            loop {
+                                let prompt = if currently_explaining {
+                                    &format!("{base_prompt}\n{explanation}")
+                                } else {
+                                    &base_prompt
+                                };
+
+                                let response = interaction::prompt(
+                                    prompt.green().to_string(),
+                                    PromptChoice::Yes,
+                                    currently_explaining,
+                                )
+                                .await?;
+
+                                match response {
+                                    PromptChoice::Explain => {
+                                        currently_explaining = true;
+                                    },
+                                    PromptChoice::Yes => {
+                                        planner_settings.determinate_nix = true;
+                                        break;
+                                    },
+                                    PromptChoice::No => {
+                                        break;
+                                    },
+                                }
+                            }
+                        }
+                    }
+
                     let res = planner.plan().await;
                     match res {
                         Ok(plan) => plan,
