@@ -5,7 +5,6 @@ use std::{
 };
 
 use crate::{
-    action::ActionState,
     cli::{
         ensure_root,
         interaction::{self, PromptChoice},
@@ -15,7 +14,6 @@ use crate::{
     },
     error::HasExpectedErrors,
     plan::RECEIPT_LOCATION,
-    planner::Planner,
     settings::CommonSettings,
     util::OnMissing,
     BuiltinPlanner, InstallPlan, NixInstallerError,
@@ -84,7 +82,7 @@ impl CommandExecute for Install {
         let Self {
             no_confirm,
             plan,
-            planner,
+            planner: maybe_planner,
             settings,
             explain,
         } = self;
@@ -111,105 +109,67 @@ impl CommandExecute for Install {
             false => format!("curl --proto '=https' --tlsv1.2 -sSf -L https://install.determinate.systems/nix/tag/v{} | sh -s -- uninstall", env!("CARGO_PKG_VERSION")),
         };
 
-        let mut install_plan = match (planner, plan) {
-            (Some(planner), None) => {
-                let chosen_planner: Box<dyn Planner> = planner.clone().boxed();
+        if plan.is_some() && maybe_planner.is_some() {
+            return Err(eyre!("`--plan` conflicts with passing a planner, a planner creates plans, so passing an existing plan doesn't make sense"));
+        }
 
-                match existing_receipt {
-                    Some(existing_receipt) => {
-                        if let Err(e) = existing_receipt.check_compatible() {
-                            eprintln!(
-                                "{}",
-                                format!("\
-                                    {e}\n\
-                                    \n\
-                                    Found existing plan in `{RECEIPT_LOCATION}` which was created by a version incompatible `nix-installer`.\n\
-                                    {EXISTING_INCOMPATIBLE_PLAN_GUIDANCE}\n\
-                                ").red()
-                            );
-                            return Ok(ExitCode::FAILURE)
-                        }
-                        if existing_receipt.planner.typetag_name() != chosen_planner.typetag_name() {
-                            eprintln!("{}", format!("Found existing plan in `{RECEIPT_LOCATION}` which used a different planner, try uninstalling the existing install with `{uninstall_command}`").red());
-                            return Ok(ExitCode::FAILURE)
-                        }
-                        if existing_receipt.planner.settings().map_err(|e| eyre!(e))? != chosen_planner.settings().map_err(|e| eyre!(e))? {
-                            eprintln!("{}", format!("Found existing plan in `{RECEIPT_LOCATION}` which used different planner settings, try uninstalling the existing install with `{uninstall_command}`").red());
-                            return Ok(ExitCode::FAILURE)
-                        }
-                        eprintln!("{}", format!("Found existing plan in `{RECEIPT_LOCATION}`, with the same settings, already completed. Try uninstalling (`{uninstall_command}`) and reinstalling if Nix isn't working").red());
-                        return Ok(ExitCode::SUCCESS)
-                    },
-                    None => {
-                        let res = planner.plan().await;
-                        match res {
-                            Ok(plan) => plan,
-                            Err(err) => {
-                                if let Some(expected) = err.expected() {
-                                    eprintln!("{}", expected.red());
-                                    return Ok(ExitCode::FAILURE);
-                                }
-                                return Err(err)?;
-                            }
-                        }
-                    },
-                }
-            },
-            (None, Some(plan_path)) => {
-                let install_plan_string = tokio::fs::read_to_string(&plan_path)
+        let mut install_plan = if let Some(plan_path) = plan {
+            let install_plan_string = tokio::fs::read_to_string(&plan_path)
                 .await
                 .wrap_err("Reading plan")?;
-                serde_json::from_str(&install_plan_string)?
-            },
-            (None, None) => {
-                let builtin_planner = BuiltinPlanner::from_common_settings(settings.clone())
+            serde_json::from_str(&install_plan_string)?
+        } else {
+            let planner = match maybe_planner {
+                Some(planner) => planner,
+                None => BuiltinPlanner::from_common_settings(settings.clone())
                     .await
-                    .map_err(|e| eyre::eyre!(e))?;
+                    .map_err(|e| eyre::eyre!(e))?,
+            };
 
-                match existing_receipt {
-                    Some(existing_receipt) => {
-                        if let Err(e) = existing_receipt.check_compatible() {
-                            eprintln!(
-                                "{}",
-                                format!("\
-                                    {e}\n\
-                                    \n\
-                                    Found existing plan in `{RECEIPT_LOCATION}` which was created by a version incompatible `nix-installer`.\n\
-                                    {EXISTING_INCOMPATIBLE_PLAN_GUIDANCE}\n\
-                                ").red()
-                            );
-                            return Ok(ExitCode::FAILURE)
-                        }
-                        if existing_receipt.planner.typetag_name() != builtin_planner.typetag_name() {
-                            eprintln!("{}", format!("Found existing plan in `{RECEIPT_LOCATION}` which used a different planner, try uninstalling the existing install with `{uninstall_command}`").red());
-                            return Ok(ExitCode::FAILURE)
-                        }
-                        if existing_receipt.planner.settings().map_err(|e| eyre!(e))? != builtin_planner.settings().map_err(|e| eyre!(e))? {
-                            eprintln!("{}", format!("Found existing plan in `{RECEIPT_LOCATION}` which used different planner settings, try uninstalling the existing install with `{uninstall_command}`").red());
-                            return Ok(ExitCode::FAILURE)
-                        }
-                        if existing_receipt.actions.iter().all(|v| v.state == ActionState::Completed) {
-                            eprintln!("{}", format!("Found existing plan in `{RECEIPT_LOCATION}`, with the same settings, already completed. Try uninstalling (`{uninstall_command}`) and reinstalling if Nix isn't working").yellow());
-                            return Ok(ExitCode::SUCCESS)
-                        }
-                        existing_receipt
-                    },
-                    None => {
-                        let res = builtin_planner.plan().await;
-                        match res {
-                            Ok(plan) => plan,
-                            Err(err) => {
-                                if let Some(expected) = err.expected() {
-                                    eprintln!("{}", expected.red());
-                                    return Ok(ExitCode::FAILURE);
-                                }
-                                return Err(err)?;
+            match existing_receipt {
+                Some(existing_receipt) => {
+                    if let Err(e) = existing_receipt.check_compatible() {
+                        eprintln!(
+                            "{}",
+                            format!("\
+                                {e}\n\
+                                \n\
+                                Found existing plan in `{RECEIPT_LOCATION}` which was created by a version incompatible `nix-installer`.\n\
+                                {EXISTING_INCOMPATIBLE_PLAN_GUIDANCE}\n\
+                            ").red()
+                        );
+                        return Ok(ExitCode::FAILURE);
+                    }
+
+                    if existing_receipt.planner.typetag_name() != planner.typetag_name() {
+                        eprintln!("{}", format!("Found existing plan in `{RECEIPT_LOCATION}` which used a different planner, try uninstalling the existing install with `{uninstall_command}`").red());
+                        return Ok(ExitCode::FAILURE);
+                    }
+
+                    if existing_receipt.planner.settings().map_err(|e| eyre!(e))?
+                        != planner.settings().map_err(|e| eyre!(e))?
+                    {
+                        eprintln!("{}", format!("Found existing plan in `{RECEIPT_LOCATION}` which used different planner settings, try uninstalling the existing install with `{uninstall_command}`").red());
+                        return Ok(ExitCode::FAILURE);
+                    }
+
+                    eprintln!("{}", format!("Found existing plan in `{RECEIPT_LOCATION}`, with the same settings, already completed. Try uninstalling (`{uninstall_command}`) and reinstalling if Nix isn't working").red());
+                    return Ok(ExitCode::SUCCESS);
+                },
+                None => {
+                    let res = planner.plan().await;
+                    match res {
+                        Ok(plan) => plan,
+                        Err(err) => {
+                            if let Some(expected) = err.expected() {
+                                eprintln!("{}", expected.red());
+                                return Ok(ExitCode::FAILURE);
                             }
-                        }
-                    },
-                }
-            },
-            (Some(_), Some(_)) => return Err(eyre!("`--plan` conflicts with passing a planner, a planner creates plans, so passing an existing plan doesn't make sense")),
+                            return Err(err)?;
+                        },
+                    }
+                },
+            }
         };
 
         if let Err(err) = install_plan.pre_install_check().await {
