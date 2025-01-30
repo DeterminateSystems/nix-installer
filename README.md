@@ -499,26 +499,26 @@ These settings are available for all commands.
 
 ### Installation (`nix-installer install`)
 
-| Flag(s)                    | Description                                                                                        | Default (if any)                                     | Environment variable                   |
-| -------------------------- | -------------------------------------------------------------------------------------------------- | ---------------------------------------------------- | -------------------------------------- |
-| `--determinate`            | Installs [Determinate]                                                                             | `NIX_INSTALLER_DETERMINATE`                          |
-| `--diagnostic-attribution` | Relate the install diagnostic to a specific value                                                  |                                                      | `NIX_INSTALLER_DIAGNOSTIC_ATTRIBUTION` |
-| `--diagnostic-endpoint`    | The URL or file path for an installation diagnostic to be sent                                     | `https://install.determinate.systems/nix/diagnostic` | `NIX_INSTALLER_DIAGNOSTIC_ENDPOINT`    |
-| `--explain`                | Provide an explanation of the changes the installation process will make to your system            | `false`                                              | `NIX_INSTALLER_EXPLAIN`                |
-| `--extra-conf`             | Extra configuration lines for `/etc/nix.conf`                                                      |                                                      | `NIX_INSTALLER_EXTRA_CONF`             |
-| `--force`                  | Whether the installer should forcibly recreate files it finds existing                             | `false`                                              | `NIX_INSTALLER_FORCE`                  |
-| `--init`                   | Which init system to configure (if `--init none` Nix will be root-only)                            | `launchd` (macOS), `systemd` (Linux)                 | `NIX_INSTALLER_INIT`                   |
-| `--nix-build-group-id`     | The Nix build group GID                                                                            | `350` (macOS), `30000` (Linux)                       | `NIX_INSTALLER_NIX_BUILD_GROUP_ID`     |
-| `--nix-build-group-name`   | The Nix build group name                                                                           | `nixbld`                                             | `NIX_INSTALLER_NIX_BUILD_GROUP_NAME`   |
-| `--nix-build-user-count`   | The number of build users to create                                                                | `32`                                                 | `NIX_INSTALLER_NIX_BUILD_USER_COUNT`   |
-| `--nix-build-user-id-base` | The Nix build user base UID (ascending) (NOTE: the first UID will be this base + 1)                | `350` (macOS), `30000` (Linux)                       | `NIX_INSTALLER_NIX_BUILD_USER_ID_BASE` |
-| `--nix-build-user-prefix`  | The Nix build user prefix (user numbers will be postfixed)                                         | `_nixbld` (macOS), `nixbld` (Linux)                  | `NIX_INSTALLER_NIX_BUILD_USER_PREFIX`  |
-| `--nix-package-url`        | The Nix package URL                                                                                |                                                      | `NIX_INSTALLER_NIX_PACKAGE_URL`        |
-| `--no-confirm`             | Run installation without requiring explicit user confirmation                                      | `false`                                              | `NIX_INSTALLER_NO_CONFIRM`             |
-| `--no-modify-profile`      | Modify the user profile to automatically load Nix.                                                 | `true`                                               | `NIX_INSTALLER_MODIFY_PROFILE`         |
-| `--proxy`                  | The proxy to use (if any); valid proxy bases are `https://$URL`, `http://$URL` and `socks5://$URL` |                                                      | `NIX_INSTALLER_PROXY`                  |
-| `--ssl-cert-file`          | An SSL cert to use (if any); used for fetching Nix and sets `ssl-cert-file` in `/etc/nix/nix.conf` |                                                      | `NIX_INSTALLER_SSL_CERT_FILE`          |
-| `--no-start-daemon`        | Start the daemon (if not `--init none`)                                                            | `true`                                               | `NIX_INSTALLER_START_DAEMON`           |
+| Flag(s)                    | Description                                                                                        | Default (if any)                     | Environment variable                   |
+| -------------------------- | -------------------------------------------------------------------------------------------------- | ------------------------------------ | -------------------------------------- |
+| `--determinate`            | Installs [Determinate]                                                                             | `NIX_INSTALLER_DETERMINATE`          |
+| `--diagnostic-attribution` | Relate the install diagnostic to a specific distinct user ID                                       |                                      | `NIX_INSTALLER_DIAGNOSTIC_ATTRIBUTION` |
+| `--diagnostic-endpoint`    | The URL or file path for an installation diagnostic to be sent                                     |                                      | `NIX_INSTALLER_DIAGNOSTIC_ENDPOINT`    |
+| `--explain`                | Provide an explanation of the changes the installation process will make to your system            | `false`                              | `NIX_INSTALLER_EXPLAIN`                |
+| `--extra-conf`             | Extra configuration lines for `/etc/nix.conf`                                                      |                                      | `NIX_INSTALLER_EXTRA_CONF`             |
+| `--force`                  | Whether the installer should forcibly recreate files it finds existing                             | `false`                              | `NIX_INSTALLER_FORCE`                  |
+| `--init`                   | Which init system to configure (if `--init none` Nix will be root-only)                            | `launchd` (macOS), `systemd` (Linux) | `NIX_INSTALLER_INIT`                   |
+| `--nix-build-group-id`     | The Nix build group GID                                                                            | `350` (macOS), `30000` (Linux)       | `NIX_INSTALLER_NIX_BUILD_GROUP_ID`     |
+| `--nix-build-group-name`   | The Nix build group name                                                                           | `nixbld`                             | `NIX_INSTALLER_NIX_BUILD_GROUP_NAME`   |
+| `--nix-build-user-count`   | The number of build users to create                                                                | `32`                                 | `NIX_INSTALLER_NIX_BUILD_USER_COUNT`   |
+| `--nix-build-user-id-base` | The Nix build user base UID (ascending) (NOTE: the first UID will be this base + 1)                | `350` (macOS), `30000` (Linux)       | `NIX_INSTALLER_NIX_BUILD_USER_ID_BASE` |
+| `--nix-build-user-prefix`  | The Nix build user prefix (user numbers will be postfixed)                                         | `_nixbld` (macOS), `nixbld` (Linux)  | `NIX_INSTALLER_NIX_BUILD_USER_PREFIX`  |
+| `--nix-package-url`        | The Nix package URL                                                                                |                                      | `NIX_INSTALLER_NIX_PACKAGE_URL`        |
+| `--no-confirm`             | Run installation without requiring explicit user confirmation                                      | `false`                              | `NIX_INSTALLER_NO_CONFIRM`             |
+| `--no-modify-profile`      | Modify the user profile to automatically load Nix.                                                 | `true`                               | `NIX_INSTALLER_MODIFY_PROFILE`         |
+| `--proxy`                  | The proxy to use (if any); valid proxy bases are `https://$URL`, `http://$URL` and `socks5://$URL` |                                      | `NIX_INSTALLER_PROXY`                  |
+| `--ssl-cert-file`          | An SSL cert to use (if any); used for fetching Nix and sets `ssl-cert-file` in `/etc/nix/nix.conf` |                                      | `NIX_INSTALLER_SSL_CERT_FILE`          |
+| `--no-start-daemon`        | Start the daemon (if not `--init none`)                                                            | `true`                               | `NIX_INSTALLER_START_DAEMON`           |
 
 You can also specify a planner with the first argument:
 
@@ -564,23 +564,18 @@ nix-installer uninstall /path/to/receipt.json
 ## Diagnostics
 
 The goal of Determinate Nix Installer is to successfully and correctly install Nix.
-The `curl | sh` pipeline and the installer collects a little bit of diagnostic information to help us make that true.
+The `curl | sh` pipeline and the installer collects a little bit of anonymous diagnostic information to help us make that true.
 
-Here is a table of the [diagnostic data we collect][diagnosticdata]:
+The anonymous diagnostics we collect to help us improve the installer includes:
 
-| Field                 | Use                                                                                                                                 |
-| --------------------- | ----------------------------------------------------------------------------------------------------------------------------------- |
-| `version`             | The version of Determinate Nix Installer.                                                                                           |
-| `planner`             | The method of installing Nix (`linux`, `macos`, `steam-deck`)                                                                       |
-| `configured_settings` | The names of planner settings which were changed from their default. Does _not_ include the values.                                 |
-| `os_name`             | The running operating system.                                                                                                       |
-| `os_version`          | The version of the operating system.                                                                                                |
-| `triple`              | The architecture/operating system/binary format of your system.                                                                     |
-| `is_ci`               | Whether the installer is being used in CI (e.g. GitHub Actions).                                                                    |
-| `action`              | Either `Install` or `Uninstall`.                                                                                                    |
-| `status`              | One of `Success`, `Failure`, `Pending`, or `Cancelled`.                                                                             |
-| `attribution`         | Optionally defined by the user, associate the diagnostics of this run to the provided value.                                        |
-| `failure_chain`       | A high level description of what the failure was, if any. For example: `Command("diskutil")` if the command `diskutil list` failed. |
+- The installer version
+- Which planner is used (`linux`, `macos`, `steam-deck`)
+- What action was taken (install, uninstall)
+- The result (`Success`, `Failure`, `Pending`, or `Cancelled`)
+- The customized planner setting names (_not_ the values)
+- Information about your host, like the OS and version, architecture, binary format, etc.
+- Whether you're in CI or not
+- A high level description of what the failure was, like if a specific command failed.
 
 To disable diagnostic reporting, set the diagnostics URL to an empty string by passing `--diagnostic-endpoint=""` or setting `NIX_INSTALLER_DIAGNOSTIC_ENDPOINT=""`.
 
@@ -595,7 +590,6 @@ You can read the full privacy policy for [Determinate Systems][detsys], the crea
 [determinate-flake]: https://github.com/DeterminateSystems/determinate
 [detsys]: https://determinate.systems
 [docker]: https://docker.com
-[diagnosticdata]: https://github.com/DeterminateSystems/nix-installer/blob/f9f927840d532b71f41670382a30cfcbea2d8a35/src/diagnostics.rs#L29-L43
 [enabling-systemd]: https://devblogs.microsoft.com/commandline/systemd-support-is-now-available-in-wsl/#how-can-you-get-systemd-on-your-machine
 [flakehub]: https://flakehub.com
 [flakes]: https://zero-to-nix.com/concepts/flakes

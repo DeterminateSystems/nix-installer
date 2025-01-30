@@ -9,14 +9,17 @@ pub(crate) mod subcommand;
 use clap::Parser;
 use eyre::WrapErr;
 use owo_colors::OwoColorize;
-use std::{ffi::CString, process::ExitCode};
+use std::{ffi::CString, path::PathBuf, process::ExitCode};
 use tokio::sync::broadcast::{Receiver, Sender};
+use url::Url;
 
 use self::subcommand::NixInstallerSubcommand;
 
 #[async_trait::async_trait]
 pub trait CommandExecute {
-    async fn execute(self) -> eyre::Result<ExitCode>;
+    async fn execute<T>(self, feedback: T) -> eyre::Result<ExitCode>
+    where
+        T: crate::feedback::Feedback;
 }
 
 /**
@@ -27,6 +30,46 @@ A fast, friendly, and reliable tool to help you use Nix with Flakes everywhere.
 #[derive(Debug, Parser)]
 #[clap(version)]
 pub struct NixInstallerCli {
+    /// The proxy to use (if any); valid proxy bases are `https://$URL`, `http://$URL` and `socks5://$URL`
+    #[cfg_attr(
+        feature = "cli",
+        clap(long, env = "NIX_INSTALLER_PROXY", global = true)
+    )]
+    pub proxy: Option<Url>,
+
+    /// An SSL cert to use (if any); used for fetching Nix and sets `ssl-cert-file` in `/etc/nix/nix.conf`
+    #[cfg_attr(
+        feature = "cli",
+        clap(long, env = "NIX_INSTALLER_SSL_CERT_FILE", global = true)
+    )]
+    pub ssl_cert_file: Option<PathBuf>,
+
+    #[cfg(feature = "diagnostics")]
+    /// Relate the install diagnostic to a specific value
+    #[cfg_attr(
+        feature = "cli",
+        clap(
+            long,
+            default_value = None,
+            env = "NIX_INSTALLER_DIAGNOSTIC_ATTRIBUTION",
+            global = true
+        )
+    )]
+    pub diagnostic_attribution: Option<String>,
+
+    #[cfg(feature = "diagnostics")]
+    /// The URL or file path for an anonymous installation diagnostic to be sent
+    ///
+    /// To disable diagnostic reporting, unset the default with `--diagnostic-endpoint ""`, or `NIX_INSTALLER_DIAGNOSTIC_ENDPOINT=""`
+    #[clap(
+        long,
+        env = "NIX_INSTALLER_DIAGNOSTIC_ENDPOINT",
+        global = true,
+        num_args = 0..=1, // Required to allow `--diagnostic-endpoint` or `NIX_INSTALLER_DIAGNOSTIC_ENDPOINT=""`
+        default_value = None
+    )]
+    pub diagnostic_endpoint: Option<String>,
+
     #[clap(flatten)]
     pub instrumentation: arg::Instrumentation,
 
@@ -37,19 +80,30 @@ pub struct NixInstallerCli {
 #[async_trait::async_trait]
 impl CommandExecute for NixInstallerCli {
     #[tracing::instrument(level = "trace", skip_all)]
-    async fn execute(self) -> eyre::Result<ExitCode> {
+    async fn execute<T>(self, feedback: T) -> eyre::Result<ExitCode>
+    where
+        T: crate::feedback::Feedback,
+    {
         let Self {
+            proxy: _,
+            ssl_cert_file: _,
+            #[cfg(feature = "diagnostics")]
+                diagnostic_attribution: _,
+            #[cfg(feature = "diagnostics")]
+                diagnostic_endpoint: _,
             instrumentation: _,
             subcommand,
         } = self;
 
         match subcommand {
-            NixInstallerSubcommand::Plan(plan) => plan.execute().await,
-            NixInstallerSubcommand::SelfTest(self_test) => self_test.execute().await,
-            NixInstallerSubcommand::Install(install) => install.execute().await,
-            NixInstallerSubcommand::Repair(repair) => repair.execute().await,
-            NixInstallerSubcommand::Uninstall(revert) => revert.execute().await,
-            NixInstallerSubcommand::SplitReceipt(split_receipt) => split_receipt.execute().await,
+            NixInstallerSubcommand::Plan(plan) => plan.execute(feedback).await,
+            NixInstallerSubcommand::SelfTest(self_test) => self_test.execute(feedback).await,
+            NixInstallerSubcommand::Install(install) => install.execute(feedback).await,
+            NixInstallerSubcommand::Repair(repair) => repair.execute(feedback).await,
+            NixInstallerSubcommand::Uninstall(revert) => revert.execute(feedback).await,
+            NixInstallerSubcommand::SplitReceipt(split_receipt) => {
+                split_receipt.execute(feedback).await
+            },
         }
     }
 }
@@ -119,6 +173,8 @@ pub fn ensure_root() -> eyre::Result<()> {
                 "HTTP_PROXY" | "http_proxy" | "HTTPS_PROXY" | "https_proxy" => true,
                 // Our own environments
                 key if key.starts_with("NIX_INSTALLER") => true,
+                // Our own environments
+                key if key.starts_with("DETSYS_") => true,
                 _ => false,
             };
             if preserve {
@@ -130,7 +186,7 @@ pub fn ensure_root() -> eyre::Result<()> {
         if is_ci::cached() {
             // Normally `sudo` would erase those envs, so we detect and pass that along specifically to avoid having to pass around
             // a bunch of environment variables
-            env_list.push("NIX_INSTALLER_CI=1".to_string());
+            env_list.push("DETSYS_IDS_IN_CI=1".to_string());
         }
 
         if !env_list.is_empty() {

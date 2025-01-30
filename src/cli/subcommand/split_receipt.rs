@@ -51,7 +51,10 @@ pub struct SplitReceipt {
 #[async_trait::async_trait]
 impl CommandExecute for SplitReceipt {
     #[tracing::instrument(level = "debug", skip_all)]
-    async fn execute(self) -> eyre::Result<ExitCode> {
+    async fn execute<T>(self, _feedback: T) -> eyre::Result<ExitCode>
+    where
+        T: crate::feedback::Feedback,
+    {
         ensure_root()?;
 
         let timestamp_millis = SystemTime::now()
@@ -165,8 +168,6 @@ async fn two_phased_can_parse_receipt_perfectly(
         version: phase1_plan.version.clone(),
         actions: Vec::new(),
         planner: phase1_plan.planner.clone(),
-        #[cfg(feature = "diagnostics")]
-        diagnostic_data: phase1_plan.diagnostic_data.clone(),
     };
 
     for action in phase1_plan.actions.iter_mut() {

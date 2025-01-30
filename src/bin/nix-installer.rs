@@ -2,6 +2,7 @@ use std::{io::IsTerminal, process::ExitCode};
 
 use clap::Parser;
 use nix_installer::cli::CommandExecute;
+use nix_installer::feedback::FeedbackWorker;
 
 #[tokio::main]
 async fn main() -> eyre::Result<ExitCode> {
@@ -23,5 +24,21 @@ async fn main() -> eyre::Result<ExitCode> {
 
     tracing::info!("nix-installer v{}", env!("CARGO_PKG_VERSION"));
 
-    cli.execute().await
+    #[cfg(not(feature = "diagnostics"))]
+    let (feedback, feedback_worker) = nix_installer::feedback::dev_null();
+
+    #[cfg(feature = "diagnostics")]
+    let (feedback, feedback_worker) = nix_installer::feedback::diagnostics(
+        cli.diagnostic_attribution.clone(),
+        cli.diagnostic_endpoint.clone(),
+        cli.ssl_cert_file.clone(),
+        cli.proxy.clone(),
+    )
+    .await;
+
+    let err = cli.execute(feedback).await;
+
+    feedback_worker.submit().await;
+
+    err
 }

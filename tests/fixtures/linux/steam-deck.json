@@ -9,36 +9,32 @@
     },
     {
       "action": {
-        "action_name": "create_directory",
-        "path": "/home/nix",
-        "user": null,
-        "group": null,
-        "mode": 493,
-        "is_mountpoint": false,
-        "force_prune_on_revert": true
+        "action_name": "revert_clean_steamos_nix_offload"
       },
       "state": "Completed"
     },
     {
       "action": {
-        "action_name": "create_file",
-        "path": "/etc/systemd/system/nix-directory.service",
-        "user": null,
-        "group": null,
-        "mode": 420,
-        "buf": "[Unit]\nDescription=Create a `/nix` directory to be used for bind mounting\nPropagatesStopTo=nix-daemon.service\nPropagatesStopTo=nix.mount\nDefaultDependencies=no\nAfter=grub-recordfail.service\nAfter=steamos-finish-oobe-migration.service\n\n[Service]\nType=oneshot\nExecStart=steamos-readonly disable\nExecStart=mkdir -vp /nix\nExecStart=chmod -v 0755 /nix\nExecStart=chown -v root /nix\nExecStart=chgrp -v root /nix\nExecStart=steamos-readonly enable\nExecStop=steamos-readonly disable\nExecStop=rmdir /nix\nExecStop=steamos-readonly enable\nRemainAfterExit=true\n",
-        "force": false
+        "action_name": "ensure_steamos_nix_directory"
       },
       "state": "Completed"
     },
     {
       "action": {
+        "action_name": "start_systemd_unit",
+        "unit": "nix.mount",
+        "enable": true
+      },
+      "state": "Skipped"
+    },
+    {
+      "action": {
         "action_name": "create_file",
-        "path": "/etc/systemd/system/nix.mount",
+        "path": "/etc/atomic-update.conf.d/nix-installer.conf",
         "user": null,
         "group": null,
         "mode": 420,
-        "buf": "[Unit]\nDescription=Mount `/home/nix` on `/nix`\nPropagatesStopTo=nix-daemon.service\nPropagatesStopTo=nix-directory.service\nAfter=nix-directory.service\nRequires=nix-directory.service\nConditionPathIsDirectory=/nix\nDefaultDependencies=no\n\n[Mount]\nWhat=/home/nix\nWhere=/nix\nType=none\nDirectoryMode=0755\nOptions=bind\n\n[Install]\nRequiredBy=nix-daemon.service\nRequiredBy=nix-daemon.socket\n\n            ",
+        "buf": "/etc/fish/conf.d/nix.fish\n/etc/nix/**\n/etc/profile.d/nix.sh\n/etc/systemd/system/nix-daemon.socket\n/etc/tmpfiles.d/nix-daemon.conf\n",
         "force": false
       },
       "state": "Completed"
@@ -57,28 +53,8 @@
     },
     {
       "action": {
-        "action_name": "create_file",
-        "path": "/etc/atomic-update.conf.d/nix-installer.conf",
-        "user": null,
-        "group": null,
-        "mode": 420,
-        "buf": "/etc/fish/conf.d/nix.fish\n/etc/nix/**\n/etc/profile.d/nix.sh\n/etc/systemd/system/nix-daemon.socket\n/etc/tmpfiles.d/nix-daemon.conf\n",
-        "force": false
-      },
-      "state": "Completed"
-    },
-    {
-      "action": {
-        "action_name": "start_systemd_unit",
-        "unit": "nix.mount",
-        "enable": false
-      },
-      "state": "Completed"
-    },
-    {
-      "action": {
         "action_name": "provision_nix",
-        "nix_store_gid": 350,
+        "nix_store_gid": 30000,
         "fetch_nix": {
           "action": {
             "action_name": "fetch_and_unpack_nix",
@@ -97,7 +73,7 @@
                 "action": {
                   "action_name": "create_directory",
                   "path": "/nix/var",
-                  "user": "root",
+                  "user": null,
                   "group": null,
                   "mode": 493,
                   "is_mountpoint": false,
@@ -109,7 +85,7 @@
                 "action": {
                   "action_name": "create_directory",
                   "path": "/nix/var/log",
-                  "user": "root",
+                  "user": null,
                   "group": null,
                   "mode": 493,
                   "is_mountpoint": false,
@@ -121,7 +97,7 @@
                 "action": {
                   "action_name": "create_directory",
                   "path": "/nix/var/log/nix",
-                  "user": "root",
+                  "user": null,
                   "group": null,
                   "mode": 493,
                   "is_mountpoint": false,
@@ -133,7 +109,7 @@
                 "action": {
                   "action_name": "create_directory",
                   "path": "/nix/var/log/nix/drvs",
-                  "user": "root",
+                  "user": null,
                   "group": null,
                   "mode": 493,
                   "is_mountpoint": false,
@@ -145,7 +121,7 @@
                 "action": {
                   "action_name": "create_directory",
                   "path": "/nix/var/nix",
-                  "user": "root",
+                  "user": null,
                   "group": null,
                   "mode": 493,
                   "is_mountpoint": false,
@@ -157,7 +133,7 @@
                 "action": {
                   "action_name": "create_directory",
                   "path": "/nix/var/nix/db",
-                  "user": "root",
+                  "user": null,
                   "group": null,
                   "mode": 493,
                   "is_mountpoint": false,
@@ -169,7 +145,7 @@
                 "action": {
                   "action_name": "create_directory",
                   "path": "/nix/var/nix/gcroots",
-                  "user": "root",
+                  "user": null,
                   "group": null,
                   "mode": 493,
                   "is_mountpoint": false,
@@ -181,7 +157,7 @@
                 "action": {
                   "action_name": "create_directory",
                   "path": "/nix/var/nix/gcroots/per-user",
-                  "user": "root",
+                  "user": null,
                   "group": null,
                   "mode": 493,
                   "is_mountpoint": false,
@@ -193,7 +169,7 @@
                 "action": {
                   "action_name": "create_directory",
                   "path": "/nix/var/nix/profiles",
-                  "user": "root",
+                  "user": null,
                   "group": null,
                   "mode": 493,
                   "is_mountpoint": false,
@@ -205,7 +181,7 @@
                 "action": {
                   "action_name": "create_directory",
                   "path": "/nix/var/nix/profiles/per-user",
-                  "user": "root",
+                  "user": null,
                   "group": null,
                   "mode": 493,
                   "is_mountpoint": false,
@@ -217,7 +193,7 @@
                 "action": {
                   "action_name": "create_directory",
                   "path": "/nix/var/nix/temproots",
-                  "user": "root",
+                  "user": null,
                   "group": null,
                   "mode": 493,
                   "is_mountpoint": false,
@@ -229,7 +205,7 @@
                 "action": {
                   "action_name": "create_directory",
                   "path": "/nix/var/nix/userpool",
-                  "user": "root",
+                  "user": null,
                   "group": null,
                   "mode": 493,
                   "is_mountpoint": false,
@@ -241,7 +217,7 @@
                 "action": {
                   "action_name": "create_directory",
                   "path": "/nix/var/nix/daemon-socket",
-                  "user": "root",
+                  "user": null,
                   "group": null,
                   "mode": 493,
                   "is_mountpoint": false,
@@ -999,18 +975,6 @@
               {
                 "action": {
                   "action_name": "create_directory",
-                  "path": "/etc/zsh",
-                  "user": null,
-                  "group": null,
-                  "mode": 493,
-                  "is_mountpoint": false,
-                  "force_prune_on_revert": false
-                },
-                "state": "Completed"
-              },
-              {
-                "action": {
-                  "action_name": "create_directory",
                   "path": "/etc/fish/conf.d",
                   "user": null,
                   "group": null,
@@ -1117,10 +1081,9 @@
               "action": {
                 "action_name": "create_or_merge_nix_config",
                 "path": "/etc/nix/nix.conf",
-                "header": "# Generated by...",
                 "pending_nix_config": {
                   "settings": {
-                    "experimental-features": "nix-command flakes",
+                    "extra-experimental-features": "nix-command flakes",
                     "auto-optimise-store": "true",
                     "always-allow-substitutes": "true",
                     "extra-trusted-substituters": "https://cache.flakehub.com",
@@ -1130,7 +1093,9 @@
                     "extra-nix-path": "nixpkgs=flake:nixpkgs",
                     "upgrade-nix-store-path-url": "https://install.determinate.systems/nix-upgrade/stable/universal"
                   }
-                }
+                },
+                "header": "# Generated by https://github.com/DeterminateSystems/nix-installer.\n# See `/nix/nix-installer --version` for the version details.\n",
+                "footer": "!include nix.custom.conf"
               },
               "state": "Completed"
             },
@@ -1138,12 +1103,11 @@
               "action": {
                 "action_name": "create_or_merge_nix_config",
                 "path": "/etc/nix/nix.custom.conf",
-                "header": "# user settings...",
                 "pending_nix_config": {
-                  "settings": {
-                    "build-users-group": "nixbld"
-                  }
-                }
+                  "settings": {}
+                },
+                "header": "# Written by https://github.com/DeterminateSystems/nix-installer.\n# The contents below are based on options specified at installation time.\n",
+                "footer": null
               },
               "state": "Completed"
             }
@@ -1217,22 +1181,7 @@
       "ssl_cert_file": null,
       "extra_conf": [],
       "force": false,
-      "skip_nix_conf": false,
-      "diagnostic_attribution": null,
-      "diagnostic_endpoint": "https://install.determinate.systems/nix/diagnostic"
+      "skip_nix_conf": false
     }
-  },
-  "diagnostic_data": {
-    "attribution": null,
-    "version": "0.35.0",
-    "planner": "steam-deck",
-    "configured_settings": [],
-    "os_name": "SteamOS",
-    "os_version": "",
-    "triple": "x86_64-unknown-linux-musl",
-    "is_ci": false,
-    "endpoint": "https://install.determinate.systems/nix/diagnostic",
-    "ssl_cert_file": null,
-    "failure_chain": null
   }
 }

@@ -157,12 +157,9 @@ pub struct CommonSettings {
     )]
     pub nix_package_url: Option<UrlOrPath>,
 
-    /// The proxy to use (if any); valid proxy bases are `https://$URL`, `http://$URL` and `socks5://$URL`
-    #[cfg_attr(feature = "cli", clap(long, env = "NIX_INSTALLER_PROXY"))]
+    #[clap(from_global)]
     pub proxy: Option<Url>,
-
-    /// An SSL cert to use (if any); used for fetching Nix and sets `ssl-cert-file` in `/etc/nix/nix.conf`
-    #[cfg_attr(feature = "cli", clap(long, env = "NIX_INSTALLER_SSL_CERT_FILE"))]
+    #[clap(from_global)]
     pub ssl_cert_file: Option<PathBuf>,
 
     /// Extra configuration lines for `/etc/nix.conf`
@@ -195,48 +192,6 @@ pub struct CommonSettings {
         )
     )]
     pub skip_nix_conf: bool,
-
-    #[cfg(feature = "diagnostics")]
-    /// Relate the install diagnostic to a specific value
-    #[cfg_attr(
-        feature = "cli",
-        clap(
-            long,
-            default_value = None,
-            env = "NIX_INSTALLER_DIAGNOSTIC_ATTRIBUTION",
-            global = true
-        )
-    )]
-    pub diagnostic_attribution: Option<String>,
-
-    #[cfg(feature = "diagnostics")]
-    /// The URL or file path for an installation diagnostic to be sent
-    ///
-    /// Sample of the data sent:
-    ///
-    /// {
-    ///     "attribution": null,
-    ///     "version": "0.4.0",
-    ///     "planner": "linux",
-    ///     "configured_settings": [ "modify_profile" ],
-    ///     "os_name": "Ubuntu",
-    ///     "os_version": "22.04.1 LTS (Jammy Jellyfish)",
-    ///     "triple": "x86_64-unknown-linux-gnu",
-    ///     "is_ci": false,
-    ///     "action": "Install",
-    ///     "status": "Success"
-    /// }
-    ///
-    /// To disable diagnostic reporting, unset the default with `--diagnostic-endpoint ""`, or `NIX_INSTALLER_DIAGNOSTIC_ENDPOINT=""`
-    #[clap(
-        long,
-        env = "NIX_INSTALLER_DIAGNOSTIC_ENDPOINT",
-        global = true,
-        value_parser = crate::diagnostics::diagnostic_endpoint_validator,
-        num_args = 0..=1, // Required to allow `--diagnostic-endpoint` or `NIX_INSTALLER_DIAGNOSTIC_ENDPOINT=""`
-        default_value = "https://install.determinate.systems/nix/diagnostic"
-    )]
-    pub diagnostic_endpoint: Option<String>,
 }
 
 pub(crate) fn default_nix_build_user_id_base() -> u32 {
@@ -302,10 +257,6 @@ impl CommonSettings {
             force: false,
             skip_nix_conf: false,
             ssl_cert_file: Default::default(),
-            #[cfg(feature = "diagnostics")]
-            diagnostic_attribution: None,
-            #[cfg(feature = "diagnostics")]
-            diagnostic_endpoint: Some("https://install.determinate.systems/nix/diagnostic".into()),
         })
     }
 
@@ -325,10 +276,6 @@ impl CommonSettings {
             force,
             skip_nix_conf,
             ssl_cert_file,
-            #[cfg(feature = "diagnostics")]
-                diagnostic_attribution: _,
-            #[cfg(feature = "diagnostics")]
-            diagnostic_endpoint,
         } = self;
         let mut map = HashMap::default();
 
@@ -369,12 +316,6 @@ impl CommonSettings {
         map.insert("extra_conf".into(), serde_json::to_value(extra_conf)?);
         map.insert("force".into(), serde_json::to_value(force)?);
         map.insert("skip_nix_conf".into(), serde_json::to_value(skip_nix_conf)?);
-
-        #[cfg(feature = "diagnostics")]
-        map.insert(
-            "diagnostic_endpoint".into(),
-            serde_json::to_value(diagnostic_endpoint)?,
-        );
 
         Ok(map)
     }

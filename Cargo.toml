@@ -12,7 +12,7 @@ documentation = "https://docs.rs/nix-installer/latest/nix_installer"
 default = ["cli", "diagnostics", "determinate-nix"]
 determinate-nix = []
 cli = ["eyre", "color-eyre", "clap", "tracing-subscriber", "tracing-error"]
-diagnostics = ["is_ci"]
+diagnostics = ["detsys-ids-client", "is_ci"]
 
 [[bin]]
 name = "nix-installer"
@@ -23,6 +23,7 @@ async-trait = { version = "0.1.57", default-features = false }
 bytes = { version = "1.2.1", default-features = false, features = ["std", "serde"] }
 clap = { version = "4", features = ["std", "color", "usage", "help", "error-context", "suggestions", "derive", "env"], optional = true }
 color-eyre = { version = "0.6.2", default-features = false, features = [ "track-caller", "issue-url", "tracing-error", "capture-spantrace", "color-spantrace" ], optional = true }
+detsys-ids-client = { git = "https://github.com/DeterminateSystems/detsys-ids-client.git", optional = true }
 eyre = { version = "0.6.8", default-features = false, features = [ "track-caller" ], optional = true }
 glob = { version = "0.3.0", default-features = false }
 nix = { version = "0.29.0", default-features = false, features = ["user", "fs", "process", "term"] }

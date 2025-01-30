@@ -13,6 +13,7 @@ A custom [`Planner`] can be created:
 ```rust,no_run
 use std::{error::Error, collections::HashMap};
 use nix_installer::{
+    feedback,
     InstallPlan,
     settings::{CommonSettings, InstallSettingsError},
     planner::{Planner, PlannerError},
@@ -69,20 +70,6 @@ impl Planner for MyPlanner {
         Ok(settings)
     }
 
-    #[cfg(feature = "diagnostics")]
-    async fn diagnostic_data(&self) -> Result<nix_installer::diagnostics::DiagnosticData, PlannerError> {
-        Ok(nix_installer::diagnostics::DiagnosticData::new(
-            self.common.diagnostic_attribution.clone(),
-            self.common.diagnostic_endpoint.clone(),
-            self.typetag_name().into(),
-            self.configured_settings()
-                .await?
-                .into_keys()
-                .collect::<Vec<_>>(),
-            self.common.ssl_cert_file.clone(),
-        )?)
-    }
-
     async fn platform_check(&self) -> Result<(), PlannerError> {
         use target_lexicon::OperatingSystem;
         match target_lexicon::OperatingSystem::host() {
@@ -98,14 +85,14 @@ impl Planner for MyPlanner {
 # async fn custom_planner_install() -> color_eyre::Result<()> {
 let planner = MyPlanner::default().await?;
 let mut plan = InstallPlan::plan(planner).await?;
-match plan.install(None).await {
+match plan.install(feedback::DevNull{}, None).await {
     Ok(()) => tracing::info!("Done"),
     Err(e) => {
         match e.source() {
             Some(source) => tracing::error!("{e}: {}", source),
             None => tracing::error!("{e}"),
         };
-        plan.uninstall(None).await?;
+        plan.uninstall(feedback::DevNull{}, None).await?;
     },
 };
 
@@ -163,9 +150,6 @@ pub trait Planner: std::fmt::Debug + Send + Sync + dyn_clone::DynClone {
     async fn pre_install_check(&self) -> Result<(), PlannerError> {
         Ok(())
     }
-
-    #[cfg(feature = "diagnostics")]
-    async fn diagnostic_data(&self) -> Result<crate::diagnostics::DiagnosticData, PlannerError>;
 }
 
 dyn_clone::clone_trait_object!(Planner);
@@ -285,18 +269,6 @@ impl BuiltinPlanner {
             BuiltinPlanner::SteamDeck(i) => i.settings(),
             BuiltinPlanner::Ostree(i) => i.settings(),
             BuiltinPlanner::Macos(i) => i.settings(),
-        }
-    }
-
-    #[cfg(feature = "diagnostics")]
-    pub async fn diagnostic_data(
-        &self,
-    ) -> Result<crate::diagnostics::DiagnosticData, PlannerError> {
-        match self {
-            BuiltinPlanner::Linux(i) => i.diagnostic_data().await,
-            BuiltinPlanner::SteamDeck(i) => i.diagnostic_data().await,
-            BuiltinPlanner::Ostree(i) => i.diagnostic_data().await,
-            BuiltinPlanner::Macos(i) => i.diagnostic_data().await,
         }
     }
 }
