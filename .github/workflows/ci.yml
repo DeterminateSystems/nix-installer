@@ -602,7 +602,7 @@ jobs:
     name: Run x86_64 Linux release check matrix
     runs-on: UbuntuLatest64Cores256GX86
     needs: [lints, build-x86_64-linux]
-    if: contains(github.ref, 'release-') || contains(github.head_ref, 'release-')
+    if: startsWith(github.ref, 'release-') || startsWith(github.head_ref, 'release-')
     strategy:
       matrix:
         command:
@@ -642,7 +642,7 @@ jobs:
     name: Run x86_64 Linux release checks
     runs-on: ubuntu-latest
     needs: [run-x86_64-linux-release-check-matrix]
-    if: (contains(github.ref, 'release-') || contains(github.head_ref, 'release-')) && always()
+    if: (startsWith(github.ref, 'release-') || startsWith(github.head_ref, 'release-')) && always()
     steps:
       - run: "true"
       - run: |
