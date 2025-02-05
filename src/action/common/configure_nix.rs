@@ -73,7 +73,7 @@ impl ConfigureNix {
         unpacked_path: &Path,
     ) -> Result<(PathBuf, PathBuf), ActionError> {
         // Find a `nix` package
-        let nix_pkg_glob = format!("{}/nix-*/store/*-nix-*.*.*", unpacked_path.display());
+        let nix_pkg_glob = format!("{}/nix-*/store/*-nix-*.*.*/bin", unpacked_path.display());
         let mut found_nix_pkg = None;
         for entry in glob(&nix_pkg_glob).map_err(Self::error)? {
             match entry {
@@ -82,7 +82,7 @@ impl ConfigureNix {
                     if let Some(_existing) = found_nix_pkg {
                         return Err(Self::error(ConfigureNixError::MultipleNixPackages))?;
                     } else {
-                        found_nix_pkg = Some(path);
+                        found_nix_pkg = path.parent().map(ToOwned::to_owned);
                     }
                     break;
                 },
