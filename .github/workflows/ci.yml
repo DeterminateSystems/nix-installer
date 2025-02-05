@@ -642,7 +642,7 @@ jobs:
     name: Run x86_64 Linux release checks
     runs-on: ubuntu-latest
     needs: [run-x86_64-linux-release-check-matrix]
-    if: contains(github.ref, 'release-') || contains(github.head_ref, 'release-')
+    if: (contains(github.ref, 'release-') || contains(github.head_ref, 'release-')) && always()
     steps:
       - run: "true"
       - run: |
