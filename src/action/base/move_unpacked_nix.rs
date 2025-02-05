@@ -91,12 +91,19 @@ impl Action for MoveUnpackedNix {
                 .map_err(Self::error)?;
         }
 
+        // Read the entire source directory before modifying it, to
+        // avoid seeing entries twice (e.g. on XFS).
+        let mut entries = vec![];
         while let Some(entry) = src_store_listing
             .next_entry()
             .await
             .map_err(|e| ActionErrorKind::ReadDir(src_store.clone(), e))
             .map_err(Self::error)?
         {
+            entries.push(entry);
+        }
+
+        for entry in entries {
             let entry_dest = dest_store.join(entry.file_name());
             if entry_dest.exists() {
                 tracing::trace!(src = %entry.path().display(), dest = %entry_dest.display(), "Removing already existing package");
