@@ -1,5 +1,5 @@
 {
-  "version": "0.34.0",
+  "version": "0.35.0",
   "actions": [
     {
       "action": {
@@ -1164,7 +1164,7 @@
   },
   "diagnostic_data": {
     "attribution": null,
-    "version": "0.34.0",
+    "version": "0.35.0",
     "planner": "linux",
     "configured_settings": [],
     "os_name": "Ubuntu",
