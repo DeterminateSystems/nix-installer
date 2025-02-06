@@ -77,17 +77,24 @@ impl Shell {
     #[tracing::instrument(skip_all)]
     pub async fn self_test(&self) -> Result<(), SelfTestError> {
         let executable = self.executable();
-        let mut command = match &self {
-            // On Mac, `bash -ic nix` won't work, but `bash -lc nix` will.
+
+        let mut command = if let Ok(uid) = std::env::var("NIX_INSTALLER_CURRENT_UID") {
+            let mut command = Command::new("sudo");
+            command.arg("-u");
+            command.arg(format!("#{uid}"));
+            command.arg(executable);
+            command
+        } else {
+            Command::new(executable)
+        };
+
+        match &self {
+            // On macOS and Ubuntu (at least), `bash -ic nix` won't work, but `bash -lc nix` will.
             Shell::Sh | Shell::Bash => {
-                let mut command = Command::new(executable);
                 command.arg("-lc");
-                command
             },
             Shell::Zsh | Shell::Fish => {
-                let mut command = Command::new(executable);
                 command.arg("-ic");
-                command
             },
         };
 

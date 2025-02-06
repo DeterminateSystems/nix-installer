@@ -133,6 +133,16 @@ pub fn ensure_root() -> eyre::Result<()> {
             env_list.push("NIX_INSTALLER_CI=1".to_string());
         }
 
+        // Record the current user's UID so that we can run the self-tests as this user.
+        // This works around issues where root users have a shell profile / config file that e.g.
+        // runs `mesg n` (which changes the permissions of `/dev/tty` and prevents SSH from doing
+        // certain things), as happens with Ubuntu 24.04.
+        // https://github.com/DeterminateSystems/nix-installer/issues/1412
+        env_list.push(format!(
+            "NIX_INSTALLER_CURRENT_UID={}",
+            nix::unistd::Uid::current()
+        ));
+
         if !env_list.is_empty() {
             arg_vec_cstring
                 .push(CString::new("env").wrap_err("Building a `env` argument for `sudo`")?);
