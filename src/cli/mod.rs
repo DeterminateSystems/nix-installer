@@ -84,18 +84,7 @@ impl CommandExecute for NixInstallerCli {
     where
         T: crate::feedback::Feedback,
     {
-        let Self {
-            proxy: _,
-            ssl_cert_file: _,
-            #[cfg(feature = "diagnostics")]
-                diagnostic_attribution: _,
-            #[cfg(feature = "diagnostics")]
-                diagnostic_endpoint: _,
-            instrumentation: _,
-            subcommand,
-        } = self;
-
-        match subcommand {
+        match self.subcommand {
             NixInstallerSubcommand::Plan(plan) => plan.execute(feedback).await,
             NixInstallerSubcommand::SelfTest(self_test) => self_test.execute(feedback).await,
             NixInstallerSubcommand::Install(install) => install.execute(feedback).await,
