@@ -32,6 +32,8 @@ const EXISTING_INCOMPATIBLE_PLAN_GUIDANCE: &str = "\
     If you are using `nix-installer` in an automated curing process and seeing this message, consider pinning the version you use via https://github.com/DeterminateSystems/nix-installer#accessing-other-versions.\
 ";
 
+const PRE_PKG_SUGGEST: &str = "For a more robust Nix installation, use the Determinate package for macOS: https://dtr.mn/determinate-nix";
+
 const DETERMINATE_MSG_EXPLAINER: &str = "\
 Determinate Nix is Determinate Systems' validated and secure downstream Nix distribution for enterprises. \
 It comes bundled with Determinate Nixd, a helpful daemon that automates some otherwise-unpleasant aspects of using Nix, such as garbage collection, and enables you to easily authenticate with FlakeHub.
@@ -119,6 +121,18 @@ impl CommandExecute for Install {
 
         if plan.is_some() && maybe_planner.is_some() {
             return Err(eyre!("`--plan` conflicts with passing a planner, a planner creates plans, so passing an existing plan doesn't make sense"));
+        }
+
+        if matches!(
+            target_lexicon::OperatingSystem::host(),
+            target_lexicon::OperatingSystem::MacOSX { .. }
+                | target_lexicon::OperatingSystem::Darwin
+        ) {
+            let msg = feedback
+                .get_feature_ptr_payload::<String>("dni-det-msg-start-pkg-ptr")
+                .await
+                .unwrap_or(PRE_PKG_SUGGEST.into());
+            tracing::info!("{}", msg);
         }
 
         let mut post_install_message = None;

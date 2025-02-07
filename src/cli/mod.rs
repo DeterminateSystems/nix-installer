@@ -15,6 +15,14 @@ use url::Url;
 
 use self::subcommand::NixInstallerSubcommand;
 
+const FAIL_PKG_SUGGEST: &str = "\
+The Determinate Nix Installer failed.
+
+Try our macOS-native package instead, which can handle almost anything:
+
+https://dtr.mn/determinate-nix\
+";
+
 #[async_trait::async_trait]
 pub trait CommandExecute {
     async fn execute<T>(self, feedback: T) -> eyre::Result<ExitCode>
@@ -80,14 +88,34 @@ pub struct NixInstallerCli {
 #[async_trait::async_trait]
 impl CommandExecute for NixInstallerCli {
     #[tracing::instrument(level = "trace", skip_all)]
-    async fn execute<T>(self, feedback: T) -> eyre::Result<ExitCode>
+    async fn execute<T>(self, mut feedback: T) -> eyre::Result<ExitCode>
     where
         T: crate::feedback::Feedback,
     {
         match self.subcommand {
             NixInstallerSubcommand::Plan(plan) => plan.execute(feedback).await,
             NixInstallerSubcommand::SelfTest(self_test) => self_test.execute(feedback).await,
-            NixInstallerSubcommand::Install(install) => install.execute(feedback).await,
+            NixInstallerSubcommand::Install(install) => {
+                let ret = install.execute(feedback.clone()).await;
+
+                if matches!(
+                    target_lexicon::OperatingSystem::host(),
+                    target_lexicon::OperatingSystem::MacOSX { .. }
+                        | target_lexicon::OperatingSystem::Darwin
+                ) {
+                    if let Err(ref _e) = ret {
+                        let msg = feedback
+                            .get_feature_ptr_payload::<String>("dni-det-msg-fail-pkg-ptr")
+                            .await
+                            .unwrap_or(FAIL_PKG_SUGGEST.into());
+                        tracing::warn!("{}", msg);
+
+                        return Ok(1.into());
+                    }
+                }
+
+                ret
+            },
             NixInstallerSubcommand::Repair(repair) => repair.execute(feedback).await,
             NixInstallerSubcommand::Uninstall(revert) => revert.execute(feedback).await,
             NixInstallerSubcommand::SplitReceipt(split_receipt) => {
