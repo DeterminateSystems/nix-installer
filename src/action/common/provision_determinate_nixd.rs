@@ -8,6 +8,8 @@ use crate::{
     util::OnMissing,
 };
 
+use super::place_nix_configuration::{NIX_CONF, NIX_CONF_FOLDER};
+
 const DETERMINATE_NIXD_BINARY_PATH: &str = "/usr/local/bin/determinate-nixd";
 /**
 Provision the determinate-nixd binary
@@ -100,6 +102,26 @@ impl Action for ProvisionDeterminateNixd {
             .await
             .map_err(|e| ActionErrorKind::Remove(self.binary_location.clone(), e))
             .map_err(Self::error)?;
+
+        // NOTE(cole-h): If /etc/nix/nix.conf exists and we're reverting Determinate, we can safely
+        // remove it, since determinate-nixd manages it.
+        let nix_conf_path = PathBuf::from(NIX_CONF);
+        crate::util::remove_file(&nix_conf_path, OnMissing::Ignore)
+            .await
+            .map_err(|e| ActionErrorKind::Remove(nix_conf_path, e))
+            .map_err(Self::error)?;
+
+        // NOTE(cole-h): If /etc/nix/nix.conf was the last file in /etc/nix, then let's clean up the
+        // entire directory too.
+        let nix_conf_dir = PathBuf::from(NIX_CONF_FOLDER);
+        if let Some(mut entries) = tokio::fs::read_dir(&nix_conf_dir).await.ok() {
+            if entries.next_entry().await.ok().flatten().is_none() {
+                crate::util::remove_dir_all(&nix_conf_dir, OnMissing::Ignore)
+                    .await
+                    .map_err(|e| ActionErrorKind::Remove(nix_conf_dir, e))
+                    .map_err(Self::error)?;
+            }
+        }
 
         Ok(())
     }
