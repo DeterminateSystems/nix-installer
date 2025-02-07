@@ -16,7 +16,7 @@ use std::{
 use tokio::{io::AsyncWriteExt as _, process::Command};
 use tracing::{span, Span};
 
-use super::CreateApfsVolume;
+use super::{CreateApfsVolume, KEYCHAIN_NIX_STORE_SERVICE};
 
 /**
 Encrypt an APFS volume
@@ -44,7 +44,7 @@ impl EncryptApfsVolume {
         command.args(["find-generic-password", "-a"]);
         command.arg(&name);
         command.arg("-s");
-        command.arg("Nix Store");
+        command.arg(KEYCHAIN_NIX_STORE_SERVICE);
         command.arg("-l");
         command.arg(format!("{} encryption password", disk.display()));
         command.arg("-D");
@@ -207,7 +207,7 @@ impl Action for EncryptApfsVolume {
             "-a",
             self.name.as_str(),
             "-s",
-            "Nix Store",
+            KEYCHAIN_NIX_STORE_SERVICE,
             "-l",
             format!("{} encryption password", disk_str).as_str(),
             "-D",
@@ -324,7 +324,7 @@ impl Action for EncryptApfsVolume {
                 "-a",
                 self.name.as_str(),
                 "-s",
-                self.name.as_str(),
+                KEYCHAIN_NIX_STORE_SERVICE,
                 "-l",
                 format!("{} encryption password", disk_str).as_str(),
                 "-D",

@@ -45,6 +45,7 @@ use crate::execute_command;
 use super::ActionErrorKind;
 
 pub const DARWIN_LAUNCHD_DOMAIN: &str = "system";
+pub const KEYCHAIN_NIX_STORE_SERVICE: &str = "Nix Store";
 
 pub(crate) async fn get_disk_info_for_label(
     apfs_volume_label: &str,
