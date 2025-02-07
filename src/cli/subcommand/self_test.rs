@@ -11,7 +11,10 @@ pub struct SelfTest {}
 #[async_trait::async_trait]
 impl CommandExecute for SelfTest {
     #[tracing::instrument(level = "debug", skip_all, fields())]
-    async fn execute(self) -> eyre::Result<ExitCode> {
+    async fn execute<T>(self, _feedback: T) -> eyre::Result<ExitCode>
+    where
+        T: crate::feedback::Feedback,
+    {
         crate::self_test::self_test()
             .await
             .map_err(NixInstallerError::SelfTest)?;
