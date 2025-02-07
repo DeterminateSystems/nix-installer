@@ -208,9 +208,9 @@ impl CommandExecute for Install {
 
                             loop {
                                 let prompt = if currently_explaining {
-                                    &format!("{}\n{explanation}\n", base_prompt.green())
+                                    &format!("\n{}\n{explanation}\n", base_prompt.green())
                                 } else {
-                                    &format!("{}", base_prompt.green())
+                                    &format!("\n{}", base_prompt.green())
                                 };
 
                                 let response = interaction::prompt(
