@@ -19,7 +19,7 @@ use crate::{
     execute_command,
 };
 
-use super::get_disk_info_for_label;
+use super::{get_disk_info_for_label, KEYCHAIN_NIX_STORE_SERVICE};
 
 /** Create a plist for a `launchctl` service to mount the given `apfs_volume_label` on the given `mount_point`.
  */
@@ -265,10 +265,11 @@ async fn generate_mount_plist(
     encrypt: bool,
 ) -> Result<LaunchctlMountPlist, ActionErrorKind> {
     let apfs_volume_label_with_quotes = format!("\"{apfs_volume_label}\"");
+    let nix_store_with_quotes = format!("\"{KEYCHAIN_NIX_STORE_SERVICE}\"");
     // The official Nix scripts uppercase the UUID, so we do as well for compatibility.
     let uuid_string = uuid.to_string().to_uppercase();
     let mount_command = if encrypt {
-        let encrypted_command = format!("/usr/bin/security find-generic-password -a {apfs_volume_label_with_quotes} -s \"Nix Store\" -w |  /usr/sbin/diskutil apfs unlockVolume {apfs_volume_label_with_quotes} -mountpoint {mount_point:?} -stdinpassphrase");
+        let encrypted_command = format!("/usr/bin/security find-generic-password -a {apfs_volume_label_with_quotes} -s {nix_store_with_quotes} -w | /usr/sbin/diskutil apfs unlockVolume {apfs_volume_label_with_quotes} -mountpoint {mount_point:?} -stdinpassphrase");
         vec!["/bin/sh".into(), "-c".into(), encrypted_command]
     } else {
         vec![
