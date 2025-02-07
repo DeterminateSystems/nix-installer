@@ -174,14 +174,14 @@ impl Planner for MyPlanner {
 # async fn custom_planner_install() -> color_eyre::Result<()> {
 let planner = MyPlanner::default().await?;
 let mut plan = InstallPlan::plan(planner).await?;
-match plan.install(feedback::DevNull{}, None).await {
+match plan.install(feedback::devnull::DevNull{}, None).await {
     Ok(()) => tracing::info!("Done"),
     Err(e) => {
         match e.source() {
             Some(source) => tracing::error!("{e}: {}", source),
             None => tracing::error!("{e}"),
         };
-        plan.uninstall(feedback::DevNull{}, None).await?;
+        plan.uninstall(feedback::devnull::DevNull{}, None).await?;
     },
 };
 

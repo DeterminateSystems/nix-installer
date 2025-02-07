@@ -21,14 +21,14 @@ use std::error::Error;
 use nix_installer::{feedback, InstallPlan};
 # async fn default_install() -> color_eyre::Result<()> {
 let mut plan = InstallPlan::default().await?;
-match plan.install(feedback::DevNull {}, None).await {
+match plan.install(feedback::devnull::DevNull {}, None).await {
     Ok(()) => tracing::info!("Done"),
     Err(e) => {
         match e.source() {
             Some(source) => tracing::error!("{e}: {}", source),
             None => tracing::error!("{e}"),
         };
-        plan.uninstall(feedback::DevNull {}, None).await?;
+        plan.uninstall(feedback::devnull::DevNull {}, None).await?;
     },
 };
 #
@@ -52,14 +52,14 @@ let planner = nix_installer::planner::macos::Macos::default().await?;
 // Customize any settings...
 
 let mut plan = InstallPlan::plan(planner).await?;
-match plan.install(feedback::DevNull{}, None).await {
+match plan.install(feedback::devnull::DevNull{}, None).await {
     Ok(()) => tracing::info!("Done"),
     Err(e) => {
         match e.source() {
             Some(source) => tracing::error!("{e}: {}", source),
             None => tracing::error!("{e}"),
         };
-        plan.uninstall(feedback::DevNull{}, None).await?;
+        plan.uninstall(feedback::devnull::DevNull{}, None).await?;
     },
 };
 #
