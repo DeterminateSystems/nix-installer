@@ -5,14 +5,12 @@ use std::{
 
 use nix_config_parser::NixConfig;
 use rand::Rng;
-use tokio::{
-    fs::{remove_file, OpenOptions},
-    io::AsyncWriteExt,
-};
+use tokio::{fs::OpenOptions, io::AsyncWriteExt};
 use tracing::{span, Span};
 
-use crate::action::{
-    Action, ActionDescription, ActionError, ActionErrorKind, ActionTag, StatefulAction,
+use crate::{
+    action::{Action, ActionDescription, ActionError, ActionErrorKind, ActionTag, StatefulAction},
+    util::OnMissing,
 };
 
 pub(crate) const TRUSTED_USERS_CONF_NAME: &str = "trusted-users";
@@ -457,7 +455,7 @@ impl Action for CreateOrMergeNixConfig {
 
     #[tracing::instrument(level = "debug", skip_all)]
     async fn revert(&mut self) -> Result<(), ActionError> {
-        remove_file(&self.path)
+        crate::util::remove_file(&self.path, OnMissing::Ignore)
             .await
             .map_err(|e| Self::error(ActionErrorKind::Remove(self.path.to_owned(), e)))?;
 

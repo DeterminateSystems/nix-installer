@@ -2,15 +2,12 @@ use serde::{Deserialize, Serialize};
 use tracing::{span, Span};
 
 use std::{path::PathBuf, process::Stdio};
-use tokio::{
-    fs::{remove_file, OpenOptions},
-    io::AsyncWriteExt,
-    process::Command,
-};
+use tokio::{fs::OpenOptions, io::AsyncWriteExt, process::Command};
 
 use crate::{
     action::{Action, ActionDescription, ActionError, ActionErrorKind, ActionTag, StatefulAction},
     execute_command,
+    util::OnMissing,
 };
 
 use super::DARWIN_LAUNCHD_DOMAIN;
@@ -159,7 +156,7 @@ impl Action for CreateNixHookService {
 
     #[tracing::instrument(level = "debug", skip_all)]
     async fn revert(&mut self) -> Result<(), ActionError> {
-        remove_file(&self.path)
+        crate::util::remove_file(&self.path, OnMissing::Ignore)
             .await
             .map_err(|e| Self::error(ActionErrorKind::Remove(self.path.to_owned(), e)))?;
 
