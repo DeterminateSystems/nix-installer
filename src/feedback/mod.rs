@@ -1,11 +1,6 @@
 pub mod client;
 pub mod devnull;
 
-pub use client::dev_null;
-#[cfg(feature = "diagnostics")]
-pub use client::diagnostics;
-pub use devnull::DevNull;
-
 pub trait Feedback: Clone + Send {
     fn set_planner(
         &mut self,

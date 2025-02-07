@@ -25,10 +25,10 @@ async fn main() -> eyre::Result<ExitCode> {
     tracing::info!("nix-installer v{}", env!("CARGO_PKG_VERSION"));
 
     #[cfg(not(feature = "diagnostics"))]
-    let (feedback, feedback_worker) = nix_installer::feedback::dev_null();
+    let (feedback, feedback_worker) = nix_installer::feedback::devnull::dev_null();
 
     #[cfg(feature = "diagnostics")]
-    let (feedback, feedback_worker) = nix_installer::feedback::diagnostics(
+    let (feedback, feedback_worker) = nix_installer::diagnostics::diagnostics(
         cli.diagnostic_attribution.clone(),
         cli.diagnostic_endpoint.clone(),
         cli.ssl_cert_file.clone(),

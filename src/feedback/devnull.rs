@@ -1,4 +1,9 @@
+use super::client::{Client, Worker};
 use super::{Feedback, FeedbackWorker};
+
+pub fn dev_null() -> (Client, Worker) {
+    (Client::DevNull(DevNull), Worker::DevNull(DevNullWorker))
+}
 
 #[derive(Clone)]
 pub struct DevNull;

@@ -95,6 +95,29 @@ impl Report {
     }
 }
 
+pub async fn diagnostics(
+    attribution: Option<String>,
+    endpoint: Option<String>,
+    ssl_cert_file: Option<std::path::PathBuf>,
+    proxy: Option<url::Url>,
+) -> (
+    crate::feedback::client::Client,
+    crate::feedback::client::Worker,
+) {
+    DiagnosticData::new(attribution, endpoint, ssl_cert_file, proxy)
+        .await
+        .map(|(c, w)| {
+            (
+                crate::feedback::client::Client::DiagnosticsData(c),
+                crate::feedback::client::Worker::DiagnosticsData(w),
+            )
+        })
+        .unwrap_or_else(|e| {
+            tracing::debug!(%e, "Failed to construct the diagnostic data feedback provider.");
+            crate::feedback::devnull::dev_null()
+        })
+}
+
 /// A preparation of data to be sent to the `endpoint`.
 #[derive(Clone)]
 pub struct DiagnosticData {

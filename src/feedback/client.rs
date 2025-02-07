@@ -1,27 +1,5 @@
-use super::{
-    devnull::{DevNull, DevNullWorker},
-    Feedback, FeedbackWorker,
-};
-
-pub fn dev_null() -> (Client, Worker) {
-    (Client::DevNull(DevNull), Worker::DevNull(DevNullWorker))
-}
-
-#[cfg(feature = "diagnostics")]
-pub async fn diagnostics(
-    attribution: Option<String>,
-    endpoint: Option<String>,
-    ssl_cert_file: Option<std::path::PathBuf>,
-    proxy: Option<url::Url>,
-) -> (Client, Worker) {
-    crate::diagnostics::DiagnosticData::new(attribution, endpoint, ssl_cert_file, proxy)
-        .await
-        .map(|(c, w)| (Client::DiagnosticsData(c), Worker::DiagnosticsData(w)))
-        .unwrap_or_else(|e| {
-            tracing::debug!(%e, "Failed to construct the diagnostic data feedback provider.");
-            dev_null()
-        })
-}
+use super::devnull::{DevNull, DevNullWorker};
+use super::{Feedback, FeedbackWorker};
 
 #[derive(Clone)]
 pub enum Client {
