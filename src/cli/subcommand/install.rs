@@ -114,6 +114,8 @@ impl CommandExecute for Install {
             return Err(eyre!("`--plan` conflicts with passing a planner, a planner creates plans, so passing an existing plan doesn't make sense"));
         }
 
+        let mut post_install_message = None;
+
         let mut install_plan = if let Some(plan_path) = plan {
             let install_plan_string = tokio::fs::read_to_string(&plan_path)
                 .await
@@ -160,13 +162,13 @@ impl CommandExecute for Install {
                 None => {
                     let planner_settings = planner.common_settings_mut();
 
-                    if !planner_settings.determinate_nix && !no_confirm {
-                        if !std::io::stdin().is_terminal() {
+                    if !planner_settings.determinate_nix {
+                        if !std::io::stdin().is_terminal() || no_confirm {
                             let msg = feedback
                                     .get_feature_ptr_payload::<String>("dni-det-msg-noninteractive-ptr")
                                     .await
                                     .unwrap_or("Consider using Determinate Nix, for less fuss: http://dtr.mn/determinate-nix".into());
-                            tracing::info!("{}", msg);
+                            post_install_message = Some(msg);
                         } else {
                             let base_prompt = feedback
                                 .get_feature_ptr_payload::<String>(
@@ -382,6 +384,10 @@ impl CommandExecute for Install {
                             ". /nix/var/nix/profiles/default/etc/profile.d/nix-daemon.sh".bold(),
                     },
                 );
+
+                if let Some(post_message) = post_install_message {
+                    println!("{post_message}");
+                }
             },
         }
 
