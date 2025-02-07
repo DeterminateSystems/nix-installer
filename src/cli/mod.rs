@@ -18,9 +18,7 @@ use self::subcommand::NixInstallerSubcommand;
 const FAIL_PKG_SUGGEST: &str = "\
 The Determinate Nix Installer failed.
 
-Try our macOS-native package instead, which can handle almost anything:
-
-https://dtr.mn/determinate-nix\
+Try our macOS-native package instead, which can handle almost anything: https://dtr.mn/determinate-nix\
 ";
 
 #[async_trait::async_trait]
@@ -109,7 +107,7 @@ impl CommandExecute for NixInstallerCli {
                             .get_feature_ptr_payload::<String>("dni-det-msg-fail-pkg-ptr")
                             .await
                             .unwrap_or(FAIL_PKG_SUGGEST.into());
-                        tracing::warn!("{}", msg);
+                        tracing::warn!("{}\n", msg.trim());
 
                         return Ok(ExitCode::FAILURE);
                     }

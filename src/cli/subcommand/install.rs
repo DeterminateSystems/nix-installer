@@ -132,7 +132,7 @@ impl CommandExecute for Install {
                 .get_feature_ptr_payload::<String>("dni-det-msg-start-pkg-ptr")
                 .await
                 .unwrap_or(PRE_PKG_SUGGEST.into());
-            tracing::info!("{}", msg);
+            tracing::info!("{}", msg.trim());
         }
 
         let mut post_install_message = None;
@@ -208,9 +208,13 @@ impl CommandExecute for Install {
 
                             loop {
                                 let prompt = if currently_explaining {
-                                    &format!("\n{}\n{explanation}\n", base_prompt.green())
+                                    &format!(
+                                        "\n{}\n{}\n",
+                                        base_prompt.trim().green(),
+                                        explanation.trim()
+                                    )
                                 } else {
-                                    &format!("\n{}", base_prompt.green())
+                                    &format!("\n{}", base_prompt.trim().green())
                                 };
 
                                 let response = interaction::prompt(
@@ -404,7 +408,7 @@ impl CommandExecute for Install {
                 );
 
                 if let Some(post_message) = post_install_message {
-                    println!("{post_message}");
+                    println!("{}", post_message.trim());
                 }
             },
         }
