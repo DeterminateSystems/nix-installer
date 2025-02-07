@@ -32,6 +32,13 @@ const EXISTING_INCOMPATIBLE_PLAN_GUIDANCE: &str = "\
     If you are using `nix-installer` in an automated curing process and seeing this message, consider pinning the version you use via https://github.com/DeterminateSystems/nix-installer#accessing-other-versions.\
 ";
 
+const DETERMINATE_MSG_EXPLAINER: &str = "\
+Determinate Nix is Determinate Systems' validated and secure downstream Nix distribution for enterprises. \
+It comes bundled with Determinate Nixd, a helpful daemon that automates some otherwise-unpleasant aspects of using Nix, such as garbage collection, and enables you to easily authenticate with FlakeHub.
+
+For more details: http://dtr.mn/determinate-nix\
+";
+
 /**
 Install Nix using a planner
 
@@ -184,7 +191,7 @@ impl CommandExecute for Install {
                                     "dni-det-msg-interactive-explanation-ptr",
                                 )
                                 .await
-                                .unwrap_or("Determinate Nix is the easy button for Nix.".into());
+                                .unwrap_or(DETERMINATE_MSG_EXPLAINER.into());
 
                             let mut currently_explaining = explain;
 
