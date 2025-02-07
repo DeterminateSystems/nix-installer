@@ -114,6 +114,7 @@ impl Shell {
             "Testing Nix install via `{executable}`"
         );
         let output = command
+            .stdin(std::process::Stdio::null())
             .output()
             .await
             .map_err(|error| SelfTestError::Command {
