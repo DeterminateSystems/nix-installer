@@ -221,11 +221,21 @@ impl crate::feedback::Feedback for DiagnosticData {
             .add_fact("planner", planner.typetag_name().into())
             .await;
 
-        if let Ok(settings) = planner.configured_settings().await {
+        if let Ok(ref settings) = planner.configured_settings().await {
             self.ids_client
                 .add_fact(
                     "configured_settings",
-                    settings.into_keys().collect::<Vec<_>>().into(),
+                    settings.keys().cloned().collect::<Vec<_>>().into(),
+                )
+                .await;
+
+            self.ids_client
+                .add_fact(
+                    "install_determinate_nix",
+                    settings
+                        .get("determinate_nix")
+                        .cloned()
+                        .unwrap_or(serde_json::Value::Bool(false)),
                 )
                 .await;
         }
