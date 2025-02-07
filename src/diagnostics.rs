@@ -234,8 +234,8 @@ impl crate::feedback::Feedback for DiagnosticData {
                     "install_determinate_nix",
                     settings
                         .get("determinate_nix")
-                        .map(|v| v.clone())
-                        .unwrap_or_else(|| serde_json::Value::Bool(false)),
+                        .cloned()
+                        .unwrap_or(serde_json::Value::Bool(false)),
                 )
                 .await;
         }
