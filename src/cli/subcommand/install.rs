@@ -36,7 +36,7 @@ const DETERMINATE_MSG_EXPLAINER: &str = "\
 Determinate Nix is Determinate Systems' validated and secure downstream Nix distribution for enterprises. \
 It comes bundled with Determinate Nixd, a helpful daemon that automates some otherwise-unpleasant aspects of using Nix, such as garbage collection, and enables you to easily authenticate with FlakeHub.
 
-For more details: http://dtr.mn/determinate-nix
+For more details: https://dtr.mn/determinate-nix\
 ";
 
 /**
@@ -174,7 +174,7 @@ impl CommandExecute for Install {
                             let msg = feedback
                                     .get_feature_ptr_payload::<String>("dni-det-msg-noninteractive-ptr")
                                     .await
-                                    .unwrap_or("Consider using Determinate Nix, for less fuss: http://dtr.mn/determinate-nix\n".into());
+                                    .unwrap_or("Consider using Determinate Nix, for less fuss: https://dtr.mn/determinate-nix\n".into());
                             post_install_message = Some(msg);
                         } else {
                             let base_prompt = feedback
