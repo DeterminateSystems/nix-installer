@@ -103,14 +103,15 @@ impl CommandExecute for NixInstallerCli {
                     target_lexicon::OperatingSystem::MacOSX { .. }
                         | target_lexicon::OperatingSystem::Darwin
                 ) {
-                    if let Err(ref _e) = ret {
+                    #[allow(clippy::collapsible_if)]
+                    if ret.is_err() || ret.as_ref().is_ok_and(|code| code == &ExitCode::FAILURE) {
                         let msg = feedback
                             .get_feature_ptr_payload::<String>("dni-det-msg-fail-pkg-ptr")
                             .await
                             .unwrap_or(FAIL_PKG_SUGGEST.into());
                         tracing::warn!("{}", msg);
 
-                        return Ok(1.into());
+                        return Ok(ExitCode::FAILURE);
                     }
                 }
 
