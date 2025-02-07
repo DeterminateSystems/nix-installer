@@ -183,7 +183,6 @@ impl CommandExecute for Install {
                                 )
                                 .await
                                 .unwrap_or("Install Determinate Nix?".into());
-                            let base_prompt = base_prompt.green();
                             let explanation = feedback
                                 .get_feature_ptr_payload::<String>(
                                     "dni-det-msg-interactive-explanation-ptr",
@@ -195,9 +194,9 @@ impl CommandExecute for Install {
 
                             loop {
                                 let prompt = if currently_explaining {
-                                    &format!("{base_prompt}\n{explanation}\n")
+                                    &format!("{}\n{explanation}\n", base_prompt.green())
                                 } else {
-                                    &format!("{base_prompt}")
+                                    &format!("{}", base_prompt.green())
                                 };
 
                                 let response = interaction::prompt(
