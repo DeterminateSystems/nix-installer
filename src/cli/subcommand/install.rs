@@ -216,10 +216,13 @@ impl CommandExecute for Install {
                         }
                     }
 
+                    feedback.set_planner(&planner).await?;
+
                     let res = planner.plan().await;
                     match res {
                         Ok(plan) => plan,
                         Err(err) => {
+                            feedback.planning_failed(&err).await;
                             if let Some(expected) = err.expected() {
                                 eprintln!("{}", expected.red());
                                 return Ok(ExitCode::FAILURE);
@@ -230,6 +233,8 @@ impl CommandExecute for Install {
                 },
             }
         };
+
+        feedback.planning_succeeded().await;
 
         if let Err(err) = install_plan.pre_install_check().await {
             if let Some(expected) = err.expected() {
