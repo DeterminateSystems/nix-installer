@@ -188,7 +188,7 @@ impl CommandExecute for Install {
                             let msg = feedback
                                     .get_feature_ptr_payload::<String>("dni-det-msg-noninteractive-ptr")
                                     .await
-                                    .unwrap_or("Consider using Determinate Nix, for less fuss: https://dtr.mn/determinate-nix\n".into());
+                                    .unwrap_or("Consider using Determinate Nix, for less fuss: https://dtr.mn/determinate-nix".into());
                             post_install_message = Some(msg);
                         } else {
                             let base_prompt = feedback
@@ -209,7 +209,7 @@ impl CommandExecute for Install {
                             loop {
                                 let prompt = if currently_explaining {
                                     &format!(
-                                        "\n{}\n{}\n",
+                                        "\n{}\n{}",
                                         base_prompt.trim().green(),
                                         explanation.trim()
                                     )
@@ -408,7 +408,7 @@ impl CommandExecute for Install {
                 );
 
                 if let Some(post_message) = post_install_message {
-                    println!("{}", post_message.trim());
+                    println!("{}\n", post_message.trim());
                 }
             },
         }
