@@ -1,7 +1,8 @@
 use nix::unistd::{chown, Group, User};
 
-use crate::action::{
-    Action, ActionDescription, ActionError, ActionErrorKind, ActionTag, StatefulAction,
+use crate::{
+    action::{Action, ActionDescription, ActionError, ActionErrorKind, ActionTag, StatefulAction},
+    util::OnMissing,
 };
 use rand::Rng;
 use std::{
@@ -10,7 +11,7 @@ use std::{
     path::{Path, PathBuf},
 };
 use tokio::{
-    fs::{remove_file, File, OpenOptions},
+    fs::{File, OpenOptions},
     io::{AsyncReadExt, AsyncSeekExt, AsyncWriteExt},
 };
 use tracing::{span, Span};
@@ -367,7 +368,7 @@ impl Action for CreateOrInsertIntoFile {
         }
 
         if file_contents.is_empty() {
-            remove_file(&path)
+            crate::util::remove_file(&path, OnMissing::Ignore)
                 .await
                 .map_err(|e| ActionErrorKind::Remove(path.to_owned(), e))
                 .map_err(Self::error)?;
