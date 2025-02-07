@@ -90,37 +90,65 @@ impl CommandExecute for NixInstallerCli {
     where
         T: crate::feedback::Feedback,
     {
-        match self.subcommand {
-            NixInstallerSubcommand::Plan(plan) => plan.execute(feedback).await,
-            NixInstallerSubcommand::SelfTest(self_test) => self_test.execute(feedback).await,
-            NixInstallerSubcommand::Install(install) => {
-                let ret = install.execute(feedback.clone()).await;
+        let feedback_clone = feedback.clone();
 
-                if matches!(
-                    target_lexicon::OperatingSystem::host(),
-                    target_lexicon::OperatingSystem::MacOSX { .. }
-                        | target_lexicon::OperatingSystem::Darwin
-                ) {
-                    #[allow(clippy::collapsible_if)]
-                    if ret.is_err() || ret.as_ref().is_ok_and(|code| code == &ExitCode::FAILURE) {
-                        let msg = feedback
-                            .get_feature_ptr_payload::<String>("dni-det-msg-fail-pkg-ptr")
-                            .await
-                            .unwrap_or(FAIL_PKG_SUGGEST.into());
-                        tracing::warn!("{}\n", msg.trim());
+        let is_install_subcommand = matches!(self.subcommand, NixInstallerSubcommand::Install(_));
 
-                        return Ok(ExitCode::FAILURE);
+        let ret = match self.subcommand {
+            NixInstallerSubcommand::Plan(plan) => plan.execute(feedback_clone).await,
+            NixInstallerSubcommand::SelfTest(self_test) => self_test.execute(feedback_clone).await,
+            NixInstallerSubcommand::Install(install) => install.execute(feedback_clone).await,
+            NixInstallerSubcommand::Repair(repair) => repair.execute(feedback_clone).await,
+            NixInstallerSubcommand::Uninstall(revert) => revert.execute(feedback_clone).await,
+            NixInstallerSubcommand::SplitReceipt(split_receipt) => {
+                split_receipt.execute(feedback_clone).await
+            },
+        };
+
+        let maybe_cancelled = ret.as_ref().err().and_then(|err| {
+            err.root_cause()
+                .downcast_ref::<crate::NixInstallerError>()
+                .and_then(|err| {
+                    if matches!(err, crate::NixInstallerError::Cancelled) {
+                        return Some(err);
                     }
+                    None
+                })
+        });
+
+        if let Some(cancelled) = maybe_cancelled {
+            eprintln!("{}", cancelled.red());
+            return Ok(ExitCode::FAILURE);
+        }
+
+        let is_macos = matches!(
+            target_lexicon::OperatingSystem::host(),
+            target_lexicon::OperatingSystem::MacOSX { .. }
+                | target_lexicon::OperatingSystem::Darwin
+        );
+
+        if is_install_subcommand && is_macos {
+            let is_ok_but_failed = ret.as_ref().is_ok_and(|code| code == &ExitCode::FAILURE);
+            let is_error = ret.as_ref().is_err();
+
+            if is_error || is_ok_but_failed {
+                let msg = feedback
+                    .get_feature_ptr_payload::<String>("dni-det-msg-fail-pkg-ptr")
+                    .await
+                    .unwrap_or(FAIL_PKG_SUGGEST.into());
+
+                // NOTE: If the error bubbled up, print it before we log the pkg suggestion
+                if let Err(ref err) = ret {
+                    eprintln!("{err:?}\n");
                 }
 
-                ret
-            },
-            NixInstallerSubcommand::Repair(repair) => repair.execute(feedback).await,
-            NixInstallerSubcommand::Uninstall(revert) => revert.execute(feedback).await,
-            NixInstallerSubcommand::SplitReceipt(split_receipt) => {
-                split_receipt.execute(feedback).await
-            },
+                tracing::warn!("{}\n", msg.trim());
+
+                return Ok(ExitCode::FAILURE);
+            }
         }
+
+        ret
     }
 }
 

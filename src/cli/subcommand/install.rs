@@ -306,7 +306,13 @@ impl CommandExecute for Install {
                         was_expected = true;
                         eprintln!("{}", expected.red())
                     }
-                    if !was_expected {
+
+                    let was_cancelled = matches!(err, NixInstallerError::Cancelled);
+                    if was_cancelled {
+                        eprintln!("{}", err.red());
+                    }
+
+                    if !was_expected && !was_cancelled {
                         let error = eyre!(err).wrap_err("Install failure");
                         tracing::error!("{:?}", error);
                     };
