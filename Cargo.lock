@@ -352,7 +352,8 @@ dependencies = [
 [[package]]
 name = "detsys-ids-client"
 version = "0.1.0"
-source = "git+https://github.com/DeterminateSystems/detsys-ids-client.git#1844cd3b886ee3a7b3d0bc2a62e59b0b55bd5daa"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "2c127dc742454102f5e9c30867ac42c9acc8e6263ee4366c42ea3388dcacb5bb"
 dependencies = [
  "chrono",
  "detsys-srv",
