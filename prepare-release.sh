@@ -2,6 +2,8 @@
 
 set -eux
 
+
+main() {
 version=$1
 
 if ! echo "$version" | grep -q "^[[:digit:]]\+\.[[:digit:]]\+\.[[:digit:]]\+$"; then
@@ -28,7 +30,7 @@ git add Cargo.lock
 
 for fname in $(find ./tests/fixtures -name '*.json'); do
   cat "$fname" \
-    | jq '.version = $version | .diagnostic_data.version = $version' --arg version "$version" \
+    | jq '.version = $version' --arg version "$version" \
     > "$fname.next"
   mv "$fname.next" "$fname"
   git add "$fname"
@@ -39,3 +41,6 @@ git commit -m "Release v$version"
 cargo outdated --ignore-external-rel --aggressive
 
 echo "Complete"
+}
+
+main "$@"
