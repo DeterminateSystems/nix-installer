@@ -368,7 +368,7 @@ impl Action for CreateOrInsertIntoFile {
         }
 
         if file_contents.is_empty() {
-            crate::util::remove_file(&path, OnMissing::Ignore)
+            crate::util::remove_file(path, OnMissing::Ignore)
                 .await
                 .map_err(|e| ActionErrorKind::Remove(path.to_owned(), e))
                 .map_err(Self::error)?;

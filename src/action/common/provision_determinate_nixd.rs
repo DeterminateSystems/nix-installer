@@ -114,7 +114,7 @@ impl Action for ProvisionDeterminateNixd {
         // NOTE(cole-h): If /etc/nix/nix.conf was the last file in /etc/nix, then let's clean up the
         // entire directory too.
         let nix_conf_dir = PathBuf::from(NIX_CONF_FOLDER);
-        if let Some(mut entries) = tokio::fs::read_dir(&nix_conf_dir).await.ok() {
+        if let Ok(mut entries) = tokio::fs::read_dir(&nix_conf_dir).await {
             if entries.next_entry().await.ok().flatten().is_none() {
                 crate::util::remove_dir_all(&nix_conf_dir, OnMissing::Ignore)
                     .await
