@@ -197,17 +197,11 @@ impl CommandExecute for Install {
                                 )
                                 .await
                                 .unwrap_or("Install Determinate Nix?".into());
-                            let explanation = feedback
-                                .get_feature_ptr_payload::<String>(
-                                    "dni-det-msg-interactive-explanation-ptr",
-                                )
-                                .await
-                                .unwrap_or(DETERMINATE_MSG_EXPLAINER.into());
 
-                            let mut currently_explaining = explain;
+                            let mut explanation: Option<String> = None;
 
                             loop {
-                                let prompt = if currently_explaining {
+                                let prompt = if let Some(ref explanation) = explanation {
                                     &format!(
                                         "\n{}\n{}",
                                         base_prompt.trim().green(),
@@ -220,13 +214,20 @@ impl CommandExecute for Install {
                                 let response = interaction::prompt(
                                     prompt.to_string(),
                                     PromptChoice::Yes,
-                                    currently_explaining,
+                                    explanation.is_some(),
                                 )
                                 .await?;
 
                                 match response {
                                     PromptChoice::Explain => {
-                                        currently_explaining = true;
+                                        explanation = Some(
+                                            feedback
+                                                .get_feature_ptr_payload::<String>(
+                                                    "dni-det-msg-interactive-explanation-ptr",
+                                                )
+                                                .await
+                                                .unwrap_or(DETERMINATE_MSG_EXPLAINER.into()),
+                                        );
                                     },
                                     PromptChoice::Yes => {
                                         planner_settings.determinate_nix = true;
