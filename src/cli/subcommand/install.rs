@@ -82,6 +82,14 @@ pub struct Install {
     pub planner: Option<BuiltinPlanner>,
 }
 
+#[derive(Eq, PartialEq)]
+enum InstallCase {
+    DeterminateInteractive,
+    DeterminateScripted,
+    UpstreamInteractive,
+    UpstreamScripted,
+}
+
 #[async_trait::async_trait]
 impl CommandExecute for Install {
     #[tracing::instrument(level = "trace", skip_all)]
@@ -135,7 +143,7 @@ impl CommandExecute for Install {
             tracing::info!("{}", msg.trim());
         }
 
-        let mut post_install_message = None;
+        let mut case: Option<InstallCase> = None;
 
         let mut install_plan = if let Some(plan_path) = plan {
             let install_plan_string = tokio::fs::read_to_string(&plan_path)
@@ -183,63 +191,64 @@ impl CommandExecute for Install {
                 None => {
                     let planner_settings = planner.common_settings_mut();
 
-                    if !planner_settings.determinate_nix {
-                        if !std::io::stdin().is_terminal() || no_confirm {
-                            let msg = feedback
-                                    .get_feature_ptr_payload::<String>("dni-det-msg-noninteractive-ptr")
-                                    .await
-                                    .unwrap_or("Consider using Determinate Nix, for less fuss: https://dtr.mn/determinate-nix".into());
-                            post_install_message = Some(msg);
-                        } else {
-                            let base_prompt = feedback
-                                .get_feature_ptr_payload::<String>(
-                                    "dni-det-msg-interactive-prompt-ptr",
-                                )
-                                .await
-                                .unwrap_or("Install Determinate Nix?".into());
+                    if !planner_settings.determinate_nix
+                        && std::io::stdin().is_terminal()
+                        && !no_confirm
+                    {
+                        let base_prompt = feedback
+                            .get_feature_ptr_payload::<String>("dni-det-msg-interactive-prompt-ptr")
+                            .await
+                            .unwrap_or("Install Determinate Nix?".into());
 
-                            let mut explanation: Option<String> = None;
+                        let mut explanation: Option<String> = None;
 
-                            loop {
-                                let prompt = if let Some(ref explanation) = explanation {
-                                    &format!(
-                                        "\n{}\n{}",
-                                        base_prompt.trim().green(),
-                                        explanation.trim()
-                                    )
-                                } else {
-                                    &format!("\n{}", base_prompt.trim().green())
-                                };
+                        loop {
+                            let prompt = if let Some(ref explanation) = explanation {
+                                &format!("\n{}\n{}", base_prompt.trim().green(), explanation.trim())
+                            } else {
+                                &format!("\n{}", base_prompt.trim().green())
+                            };
 
-                                let response = interaction::prompt(
-                                    prompt.to_string(),
-                                    PromptChoice::Yes,
-                                    explanation.is_some(),
-                                )
-                                .await?;
+                            let response = interaction::prompt(
+                                prompt.to_string(),
+                                PromptChoice::Yes,
+                                explanation.is_some(),
+                            )
+                            .await?;
 
-                                match response {
-                                    PromptChoice::Explain => {
-                                        explanation = Some(
-                                            feedback
-                                                .get_feature_ptr_payload::<String>(
-                                                    "dni-det-msg-interactive-explanation-ptr",
-                                                )
-                                                .await
-                                                .unwrap_or(DETERMINATE_MSG_EXPLAINER.into()),
-                                        );
-                                    },
-                                    PromptChoice::Yes => {
-                                        planner_settings.determinate_nix = true;
-                                        break;
-                                    },
-                                    PromptChoice::No => {
-                                        break;
-                                    },
-                                }
+                            match response {
+                                PromptChoice::Explain => {
+                                    explanation = Some(
+                                        feedback
+                                            .get_feature_ptr_payload::<String>(
+                                                "dni-det-msg-interactive-explanation-ptr",
+                                            )
+                                            .await
+                                            .unwrap_or(DETERMINATE_MSG_EXPLAINER.into()),
+                                    );
+                                },
+                                PromptChoice::Yes => {
+                                    planner_settings.determinate_nix = true;
+                                    break;
+                                },
+                                PromptChoice::No => {
+                                    break;
+                                },
                             }
                         }
                     }
+
+                    case = Some(
+                        match (
+                            planner_settings.determinate_nix,
+                            std::io::stdin().is_terminal() && !no_confirm,
+                        ) {
+                            (true, true) => InstallCase::DeterminateInteractive,
+                            (true, false) => InstallCase::DeterminateScripted,
+                            (false, true) => InstallCase::UpstreamInteractive,
+                            (false, false) => InstallCase::UpstreamScripted,
+                        },
+                    );
 
                     feedback.set_planner(&planner).await?;
 
@@ -414,8 +423,17 @@ impl CommandExecute for Install {
                     },
                 );
 
-                if let Some(post_message) = post_install_message {
-                    println!("{}\n", post_message.trim());
+                let feat = match case {
+                    Some(InstallCase::DeterminateInteractive) => Some("dni-post-det-int-ptr"),
+                    Some(InstallCase::UpstreamInteractive) => Some("dni-post-ups-int-ptr"),
+                    Some(InstallCase::UpstreamScripted) => Some("dni-post-ups-scr-ptr"),
+                    _ => None,
+                };
+                if let Some(feat) = feat {
+                    let msg = feedback.get_feature_ptr_payload::<String>(feat).await;
+                    if let Some(msg) = msg {
+                        println!("{}\n", msg.trim());
+                    }
                 }
             },
         }
