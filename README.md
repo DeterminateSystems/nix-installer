@@ -48,7 +48,7 @@ This would install Nix on an `x86_64-linux` system but you can replace that with
 
 ### Install Determinate
 
-If you're on macOS (but not [nix-darwin]) or Linux (but not [NixOS]), you can install [Determinate] using Determinate Nix Installer by adding the `--determinate` flag:
+If you're on macOS or Linux (but not [NixOS]), you can install [Determinate] using Determinate Nix Installer by adding the `--determinate` flag:
 
 ```shell
 curl --proto '=https' --tlsv1.2 -sSf -L https://install.determinate.systems/nix | \
@@ -56,7 +56,7 @@ curl --proto '=https' --tlsv1.2 -sSf -L https://install.determinate.systems/nix 
 ```
 
 > [!TIP]
-> If you use [nix-darwin] or [NixOS], we recommend installing Determinate using modules provided by the [`determinate` flake][determinate-flake].
+> If you use [NixOS], we recommend installing Determinate using modules provided by the [`determinate` flake][determinate-flake].
 
 Determinate is:
 
