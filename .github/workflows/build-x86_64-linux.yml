@@ -30,7 +30,7 @@ jobs:
           nix build .#packages.x86_64-linux.nix-installer-static -L
           cp result/bin/nix-installer .
       - name: Create GitHub cache from build artifacts
-        uses: actions/cache/save@v3
+        uses: actions/cache/save@v4
         with:
           path: nix-installer
           key: ${{ inputs.cache-key }}
