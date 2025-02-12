@@ -19,7 +19,7 @@ nix flake update --commit-lock-file
 
 cargo update --aggressive
 git add Cargo.lock
-git commit -m "Update Cargo.lock dependencies"
+git commit -m "Update Cargo.lock dependencies" || true # "fails" if there are no changes
 
 toml set ./Cargo.toml package.version "$version" > Cargo.toml.next
 mv Cargo.toml.next Cargo.toml
