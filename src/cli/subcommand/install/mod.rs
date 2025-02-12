@@ -1,5 +1,6 @@
+mod determinate;
+
 use std::{
-    io::IsTerminal as _,
     os::unix::prelude::PermissionsExt,
     path::{Path, PathBuf},
     process::ExitCode,
@@ -30,15 +31,6 @@ const EXISTING_INCOMPATIBLE_PLAN_GUIDANCE: &str = "\
     If you are trying to upgrade Nix, try running `sudo -i nix upgrade-nix` instead.\n\
     If you are trying to install Nix over an existing install (from an incompatible `nix-installer` install), try running `/nix/nix-installer uninstall` then try to install again.\n\
     If you are using `nix-installer` in an automated curing process and seeing this message, consider pinning the version you use via https://github.com/DeterminateSystems/nix-installer#accessing-other-versions.\
-";
-
-const PRE_PKG_SUGGEST: &str = "For a more robust Nix installation, use the Determinate package for macOS: https://dtr.mn/determinate-nix";
-
-const DETERMINATE_MSG_EXPLAINER: &str = "\
-Determinate Nix is Determinate Systems' validated and secure downstream Nix distribution for enterprises. \
-It comes bundled with Determinate Nixd, a helpful daemon that automates some otherwise-unpleasant aspects of using Nix, such as garbage collection, and enables you to easily authenticate with FlakeHub.
-
-For more details: https://dtr.mn/determinate-nix\
 ";
 
 /**
@@ -82,14 +74,6 @@ pub struct Install {
     pub planner: Option<BuiltinPlanner>,
 }
 
-#[derive(Eq, PartialEq)]
-enum InstallCase {
-    DeterminateInteractive,
-    DeterminateScripted,
-    UpstreamInteractive,
-    UpstreamScripted,
-}
-
 #[async_trait::async_trait]
 impl CommandExecute for Install {
     #[tracing::instrument(level = "trace", skip_all)]
@@ -131,19 +115,9 @@ impl CommandExecute for Install {
             return Err(eyre!("`--plan` conflicts with passing a planner, a planner creates plans, so passing an existing plan doesn't make sense"));
         }
 
-        if matches!(
-            target_lexicon::OperatingSystem::host(),
-            target_lexicon::OperatingSystem::MacOSX { .. }
-                | target_lexicon::OperatingSystem::Darwin
-        ) {
-            let msg = feedback
-                .get_feature_ptr_payload::<String>("dni-det-msg-start-pkg-ptr")
-                .await
-                .unwrap_or(PRE_PKG_SUGGEST.into());
-            tracing::info!("{}", msg.trim());
-        }
+        determinate::inform_macos_about_pkg(&feedback).await;
 
-        let mut case: Option<InstallCase> = None;
+        let mut post_install_message = None;
 
         let mut install_plan = if let Some(plan_path) = plan {
             let install_plan_string = tokio::fs::read_to_string(&plan_path)
@@ -158,112 +132,52 @@ impl CommandExecute for Install {
                     .map_err(|e| eyre::eyre!(e))?,
             };
 
-            match existing_receipt {
-                Some(existing_receipt) => {
-                    if let Err(e) = existing_receipt.check_compatible() {
-                        eprintln!(
-                            "{}",
-                            format!("\
-                                {e}\n\
-                                \n\
-                                Found existing plan in `{RECEIPT_LOCATION}` which was created by a version incompatible `nix-installer`.\n\
-                                {EXISTING_INCOMPATIBLE_PLAN_GUIDANCE}\n\
-                            ").red()
+            if let Some(existing_receipt) = existing_receipt {
+                if let Err(e) = existing_receipt.check_compatible() {
+                    eprintln!(
+                        "{}",
+                        format!("\
+                            {e}\n\
+                            \n\
+                            Found existing plan in `{RECEIPT_LOCATION}` which was created by a version incompatible `nix-installer`.\n\
+                            {EXISTING_INCOMPATIBLE_PLAN_GUIDANCE}\n\
+                        ").red()
                         );
+                    return Ok(ExitCode::FAILURE);
+                }
+
+                if existing_receipt.planner.typetag_name() != planner.typetag_name() {
+                    eprintln!("{}", format!("Found existing plan in `{RECEIPT_LOCATION}` which used a different planner, try uninstalling the existing install with `{uninstall_command}`").red());
+                    return Ok(ExitCode::FAILURE);
+                }
+
+                if existing_receipt.planner.settings().map_err(|e| eyre!(e))?
+                    != planner.settings().map_err(|e| eyre!(e))?
+                {
+                    eprintln!("{}", format!("Found existing plan in `{RECEIPT_LOCATION}` which used different planner settings, try uninstalling the existing install with `{uninstall_command}`").red());
+                    return Ok(ExitCode::FAILURE);
+                }
+
+                eprintln!("{}", format!("Found existing plan in `{RECEIPT_LOCATION}`, with the same settings, already completed. Try uninstalling (`{uninstall_command}`) and reinstalling if Nix isn't working").red());
+                return Ok(ExitCode::SUCCESS);
+            }
+
+            post_install_message =
+                determinate::prompt_for_determinate(&mut feedback, &mut planner, no_confirm)
+                    .await?;
+
+            feedback.set_planner(&planner).await?;
+
+            let res = planner.plan().await;
+            match res {
+                Ok(plan) => plan,
+                Err(err) => {
+                    feedback.planning_failed(&err).await;
+                    if let Some(expected) = err.expected() {
+                        eprintln!("{}", expected.red());
                         return Ok(ExitCode::FAILURE);
                     }
-
-                    if existing_receipt.planner.typetag_name() != planner.typetag_name() {
-                        eprintln!("{}", format!("Found existing plan in `{RECEIPT_LOCATION}` which used a different planner, try uninstalling the existing install with `{uninstall_command}`").red());
-                        return Ok(ExitCode::FAILURE);
-                    }
-
-                    if existing_receipt.planner.settings().map_err(|e| eyre!(e))?
-                        != planner.settings().map_err(|e| eyre!(e))?
-                    {
-                        eprintln!("{}", format!("Found existing plan in `{RECEIPT_LOCATION}` which used different planner settings, try uninstalling the existing install with `{uninstall_command}`").red());
-                        return Ok(ExitCode::FAILURE);
-                    }
-
-                    eprintln!("{}", format!("Found existing plan in `{RECEIPT_LOCATION}`, with the same settings, already completed. Try uninstalling (`{uninstall_command}`) and reinstalling if Nix isn't working").red());
-                    return Ok(ExitCode::SUCCESS);
-                },
-                None => {
-                    let planner_settings = planner.common_settings_mut();
-
-                    if !planner_settings.determinate_nix
-                        && std::io::stdin().is_terminal()
-                        && !no_confirm
-                    {
-                        let base_prompt = feedback
-                            .get_feature_ptr_payload::<String>("dni-det-msg-interactive-prompt-ptr")
-                            .await
-                            .unwrap_or("Install Determinate Nix?".into());
-
-                        let mut explanation: Option<String> = None;
-
-                        loop {
-                            let prompt = if let Some(ref explanation) = explanation {
-                                &format!("\n{}\n{}", base_prompt.trim().green(), explanation.trim())
-                            } else {
-                                &format!("\n{}", base_prompt.trim().green())
-                            };
-
-                            let response = interaction::prompt(
-                                prompt.to_string(),
-                                PromptChoice::Yes,
-                                explanation.is_some(),
-                            )
-                            .await?;
-
-                            match response {
-                                PromptChoice::Explain => {
-                                    explanation = Some(
-                                        feedback
-                                            .get_feature_ptr_payload::<String>(
-                                                "dni-det-msg-interactive-explanation-ptr",
-                                            )
-                                            .await
-                                            .unwrap_or(DETERMINATE_MSG_EXPLAINER.into()),
-                                    );
-                                },
-                                PromptChoice::Yes => {
-                                    planner_settings.determinate_nix = true;
-                                    break;
-                                },
-                                PromptChoice::No => {
-                                    break;
-                                },
-                            }
-                        }
-                    }
-
-                    case = Some(
-                        match (
-                            planner_settings.determinate_nix,
-                            std::io::stdin().is_terminal() && !no_confirm,
-                        ) {
-                            (true, true) => InstallCase::DeterminateInteractive,
-                            (true, false) => InstallCase::DeterminateScripted,
-                            (false, true) => InstallCase::UpstreamInteractive,
-                            (false, false) => InstallCase::UpstreamScripted,
-                        },
-                    );
-
-                    feedback.set_planner(&planner).await?;
-
-                    let res = planner.plan().await;
-                    match res {
-                        Ok(plan) => plan,
-                        Err(err) => {
-                            feedback.planning_failed(&err).await;
-                            if let Some(expected) = err.expected() {
-                                eprintln!("{}", expected.red());
-                                return Ok(ExitCode::FAILURE);
-                            }
-                            return Err(err)?;
-                        },
-                    }
+                    return Err(err)?;
                 },
             }
         };
@@ -423,17 +337,8 @@ impl CommandExecute for Install {
                     },
                 );
 
-                let feat = match case {
-                    Some(InstallCase::DeterminateInteractive) => Some("dni-post-det-int-ptr"),
-                    Some(InstallCase::UpstreamInteractive) => Some("dni-post-ups-int-ptr"),
-                    Some(InstallCase::UpstreamScripted) => Some("dni-post-ups-scr-ptr"),
-                    _ => None,
-                };
-                if let Some(feat) = feat {
-                    let msg = feedback.get_feature_ptr_payload::<String>(feat).await;
-                    if let Some(msg) = msg {
-                        println!("{}\n", msg.trim());
-                    }
+                if let Some(msg) = post_install_message {
+                    println!("{}\n", msg.trim());
                 }
             },
         }

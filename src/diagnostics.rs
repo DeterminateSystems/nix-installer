@@ -198,7 +198,7 @@ impl ErrorDiagnostic for DiagnosticError {
 
 impl crate::feedback::Feedback for DiagnosticData {
     async fn get_feature_ptr_payload<T: serde::de::DeserializeOwned + Send + std::fmt::Debug>(
-        &mut self,
+        &self,
         name: impl Into<String> + std::fmt::Debug + Send,
     ) -> Option<T> {
         self.ids_client.get_feature_ptr_payload::<T>(name).await

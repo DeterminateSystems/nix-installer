@@ -86,7 +86,7 @@ pub struct NixInstallerCli {
 #[async_trait::async_trait]
 impl CommandExecute for NixInstallerCli {
     #[tracing::instrument(level = "trace", skip_all)]
-    async fn execute<T>(self, mut feedback: T) -> eyre::Result<ExitCode>
+    async fn execute<T>(self, feedback: T) -> eyre::Result<ExitCode>
     where
         T: crate::feedback::Feedback,
     {

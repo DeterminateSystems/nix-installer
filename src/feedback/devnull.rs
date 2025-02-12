@@ -9,7 +9,7 @@ pub fn dev_null() -> (Client, Worker) {
 pub struct DevNull;
 impl Feedback for DevNull {
     async fn get_feature_ptr_payload<T: serde::de::DeserializeOwned + Send>(
-        &mut self,
+        &self,
         _name: impl Into<String> + core::marker::Send,
     ) -> Option<T> {
         None
