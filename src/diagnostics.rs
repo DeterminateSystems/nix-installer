@@ -131,28 +131,19 @@ impl DiagnosticData {
         ssl_cert_file: Option<PathBuf>,
         proxy: Option<Url>,
     ) -> Result<(Self, Worker), detsys_ids_client::transport::TransportsError> {
-        let mut builder: Builder = detsys_ids_client::builder!();
-
-        if let Some(endpoint) = endpoint {
-            builder.set_endpoint(endpoint);
-        }
+        let mut builder: Builder = detsys_ids_client::builder!()
+            .set_endpoint(endpoint)
+            .set_proxy(proxy);
 
         if let Some(ssl_cert_file) = ssl_cert_file.and_then(|v| v.canonicalize().ok()) {
-            builder.try_set_ssl_cert_file(ssl_cert_file).await?;
+            builder = builder.set_certificate(crate::parse_ssl_cert(&ssl_cert_file).await.ok());
         }
 
-        if std::env::var("DETSYS_CORRELATION").ok() != attribution {
+        if std::env::var("DETSYS_CORRELATION").ok() != attribution && attribution.is_some() {
             // Don't set the attribution if the attribution was set to the same as DETSYS_CORRELATION
-            if let Some(attribution) = attribution {
-                builder.set_distinct_id(attribution);
-            }
+            builder = builder.set_distinct_id(attribution.map(|v| v.into()));
         }
-
-        if let Some(proxy) = proxy {
-            builder.set_proxy(proxy);
-        }
-
-        let (ids_client, ids_worker) = builder.build().await?;
+        let (ids_client, ids_worker) = builder.build_or_default().await;
 
         Ok((Self { ids_client }, ids_worker))
     }
