@@ -280,6 +280,10 @@ impl CommandExecute for Install {
                                 eprintln!("{}", expected.red());
                                 return Ok(ExitCode::FAILURE);
                             }
+                            if matches!(err, NixInstallerError::Cancelled) {
+                                eprintln!("{}", err.red());
+                                return Ok(ExitCode::FAILURE);
+                            }
                             return Err(err)?;
                         },
                         _ => {
@@ -295,6 +299,10 @@ impl CommandExecute for Install {
                 } else {
                     if let Some(expected) = err.expected() {
                         eprintln!("{}", expected.red());
+                        return Ok(ExitCode::FAILURE);
+                    }
+                    if matches!(err, NixInstallerError::Cancelled) {
+                        eprintln!("{}", err.red());
                         return Ok(ExitCode::FAILURE);
                     }
 
