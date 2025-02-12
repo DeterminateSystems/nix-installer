@@ -92,7 +92,7 @@ jobs:
         run: mkdir -p ./artifacts
 
       - name: Fetch cached x86_64-linux binary
-        uses: actions/cache/restore@v3
+        uses: actions/cache/restore@v4
         with:
           path: nix-installer
           key: release-x86_64-linux-artifacts-${{ github.sha }}
@@ -100,7 +100,7 @@ jobs:
         run: mv ./nix-installer ./artifacts/nix-installer-x86_64-linux
 
       - name: Fetch cached aarch64-linux binary
-        uses: actions/cache/restore@v3
+        uses: actions/cache/restore@v4
         with:
           path: nix-installer
           key: release-aarch64-linux-artifacts-${{ github.sha }}
@@ -108,7 +108,7 @@ jobs:
         run: mv ./nix-installer ./artifacts/nix-installer-aarch64-linux
 
       - name: Fetch cached x86_64-darwin binary
-        uses: actions/cache/restore@v3
+        uses: actions/cache/restore@v4
         with:
           path: nix-installer
           key: release-x86_64-darwin-artifacts-${{ github.sha }}
@@ -116,7 +116,7 @@ jobs:
         run: mv ./nix-installer ./artifacts/nix-installer-x86_64-darwin
 
       - name: Fetch cached aarch64-darwin binary
-        uses: actions/cache/restore@v3
+        uses: actions/cache/restore@v4
         with:
           path: nix-installer
           key: release-aarch64-darwin-artifacts-${{ github.sha }}
