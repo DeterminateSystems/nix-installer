@@ -1,14 +1,14 @@
 pub mod client;
 pub mod devnull;
 
-pub trait Feedback: Clone + Send {
+pub trait Feedback: Clone + Send + Sync {
     fn set_planner(
         &mut self,
         planner: &crate::planner::BuiltinPlanner,
     ) -> impl std::future::Future<Output = Result<(), crate::planner::PlannerError>> + Send;
 
     fn get_feature_ptr_payload<T: serde::de::DeserializeOwned + Send + std::fmt::Debug>(
-        &mut self,
+        &self,
         name: impl Into<String> + Send + std::fmt::Debug,
     ) -> impl std::future::Future<Output = Option<T>> + Send;
 
