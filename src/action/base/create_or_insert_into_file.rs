@@ -203,6 +203,13 @@ impl Action for CreateOrInsertIntoFile {
         // that the final file goes in, so that we can rename it
         // atomically
         let parent_dir = path.parent().expect("File must be in a directory");
+        if !parent_dir.exists() {
+            tokio::fs::create_dir_all(&parent_dir)
+                .await
+                .map_err(|e| ActionErrorKind::CreateDirectory(parent_dir.to_owned(), e))
+                .map_err(Self::error)?;
+        }
+
         let mut temp_file_path = parent_dir.to_owned();
         {
             let mut rng = rand::thread_rng();
