@@ -50,6 +50,18 @@ impl PlaceNixConfiguration {
     ) -> Result<StatefulAction<Self>, ActionError> {
         let extra_conf = Self::parse_extra_conf(proxy, ssl_cert_file.as_ref(), extra_conf).await?;
 
+        let is_macos = matches!(
+            target_lexicon::OperatingSystem::host(),
+            target_lexicon::OperatingSystem::MacOSX { .. }
+                | target_lexicon::OperatingSystem::Darwin
+        );
+        let configured_ssl_cert_file = if determinate_nix && is_macos {
+            // On macOS, determinate-nixd will handle configuring the ssl-cert-file option for Nix
+            None
+        } else {
+            ssl_cert_file
+        };
+
         let standard_nix_config = if !determinate_nix {
             let maybe_trusted_users = extra_conf.settings().get(TRUSTED_USERS_CONF_NAME);
 
@@ -58,9 +70,12 @@ impl PlaceNixConfiguration {
             None
         };
 
-        let custom_nix_config =
-            Self::setup_extra_config(extra_conf, nix_build_group_name, ssl_cert_file.as_ref())
-                .await?;
+        let custom_nix_config = Self::setup_extra_config(
+            extra_conf,
+            nix_build_group_name,
+            configured_ssl_cert_file.as_ref(),
+        )
+        .await?;
 
         let create_directory = CreateDirectory::plan(NIX_CONF_FOLDER, None, None, 0o0755, force)
             .await
