@@ -1,5 +1,7 @@
 use std::path::Path;
 
+use crate::action::ActionErrorKind;
+
 #[derive(Debug, PartialEq, Eq)]
 pub(crate) enum OnMissing {
     Ignore,
@@ -32,4 +34,18 @@ pub(crate) async fn remove_dir_all(path: &Path, on_missing: OnMissing) -> std::i
         },
         e @ Err(_) => e,
     }
+}
+
+pub(crate) async fn write_atomic(destination: &Path, body: &str) -> Result<(), ActionErrorKind> {
+    let temp = destination.with_extension("tmp");
+
+    tokio::fs::write(&temp, body)
+        .await
+        .map_err(|e| ActionErrorKind::Write(temp.to_owned(), e))?;
+
+    tokio::fs::rename(&temp, &destination)
+        .await
+        .map_err(|e| ActionErrorKind::Rename(temp, destination.into(), e))?;
+
+    Ok(())
 }
