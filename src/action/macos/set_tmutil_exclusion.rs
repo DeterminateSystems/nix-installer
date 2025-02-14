@@ -1,3 +1,4 @@
+use std::os::unix::process::ExitStatusExt as _;
 use std::path::{Path, PathBuf};
 
 use tokio::process::Command;
@@ -67,17 +68,28 @@ impl Action for SetTmutilExclusion {
 
     #[tracing::instrument(level = "debug", skip_all)]
     async fn execute(&mut self) -> Result<(), ActionError> {
-        execute_command(
+        let tmutil_ret = execute_command(
             Command::new("tmutil")
                 .process_group(0)
                 .arg("addexclusion")
                 .arg(&self.path)
                 .stdin(std::process::Stdio::null()),
         )
-        .await
-        .map_err(Self::error)?;
+        .await;
 
-        Ok(())
+        match tmutil_ret {
+            Ok(_) => Ok(()),
+            Err(err) => {
+                if let crate::action::ActionErrorKind::CommandOutput { ref output, .. } = err {
+                    if output.status.signal() == Some(9) {
+                        tracing::debug!(%err, "tmutil failed because it was killed with signal 9; ignoring");
+                        return Ok(());
+                    }
+                }
+
+                Err(Self::error(err))?
+            },
+        }
     }
 
     fn revert_description(&self) -> Vec<ActionDescription> {
@@ -86,16 +98,27 @@ impl Action for SetTmutilExclusion {
 
     #[tracing::instrument(level = "debug", skip_all)]
     async fn revert(&mut self) -> Result<(), ActionError> {
-        execute_command(
+        let tmutil_ret = execute_command(
             Command::new("tmutil")
                 .process_group(0)
                 .arg("removeexclusion")
                 .arg(&self.path)
                 .stdin(std::process::Stdio::null()),
         )
-        .await
-        .map_err(Self::error)?;
+        .await;
 
-        Ok(())
+        match tmutil_ret {
+            Ok(_) => Ok(()),
+            Err(err) => {
+                if let crate::action::ActionErrorKind::CommandOutput { ref output, .. } = err {
+                    if output.status.signal() == Some(9) {
+                        tracing::debug!(%err, "tmutil failed because it was killed with signal 9; ignoring");
+                        return Ok(());
+                    }
+                }
+
+                Err(Self::error(err))?
+            },
+        }
     }
 }
