@@ -113,7 +113,7 @@ impl Action for CreateFstabEntry {
 
         let updated_buf = current_fstab_lines.join("\n");
 
-        write_atomic(fstab_path, &updated_buf)
+        crate::util::write_atomic(fstab_path, &updated_buf)
             .await
             .map_err(Self::error)?;
         Ok(())
@@ -167,7 +167,7 @@ impl Action for CreateFstabEntry {
             current_fstab_lines.push("");
         }
 
-        write_atomic(fstab_path, &current_fstab_lines.join("\n"))
+        crate::util::write_atomic(fstab_path, &current_fstab_lines.join("\n"))
             .await
             .map_err(Self::error)?;
 
@@ -190,18 +190,4 @@ impl From<CreateFstabEntryError> for ActionErrorKind {
     fn from(val: CreateFstabEntryError) -> Self {
         ActionErrorKind::Custom(Box::new(val))
     }
-}
-
-async fn write_atomic(destination: &Path, body: &str) -> Result<(), ActionErrorKind> {
-    let temp = destination.with_extension("tmp");
-
-    tokio::fs::write(&temp, body)
-        .await
-        .map_err(|e| ActionErrorKind::Write(temp.to_owned(), e))?;
-
-    tokio::fs::rename(&temp, &destination)
-        .await
-        .map_err(|e| ActionErrorKind::Rename(temp, destination.into(), e))?;
-
-    Ok(())
 }

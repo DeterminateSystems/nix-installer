@@ -71,8 +71,15 @@ impl CreateOrMergeNixConfig {
         };
 
         if this.path.exists() {
-            let (merged_nix_config, _) =
-                Self::validate_existing_nix_config(&this.pending_nix_config, &this.path)?;
+            let is_existing_custom_conf =
+                crate::action::common::place_nix_configuration::CUSTOM_NIX_CONFIG_HEADER
+                    == this.header;
+            let (merged_nix_config, _) = Self::validate_nix_config_against_path(
+                &this.pending_nix_config,
+                &this.path,
+                is_existing_custom_conf,
+            )
+            .await?;
 
             if !merged_nix_config.settings().is_empty() {
                 return Ok(StatefulAction::uncompleted(this));
@@ -142,11 +149,12 @@ impl CreateOrMergeNixConfig {
         Ok((merged_nix_config, existing_nix_config.clone()))
     }
 
-    fn validate_existing_nix_config(
+    async fn validate_nix_config_against_path(
         pending_nix_config: &NixConfig,
-        path: &Path,
+        existing_config_file: &Path,
+        is_existing_custom_conf: bool,
     ) -> Result<(NixConfig, NixConfig), ActionError> {
-        let path = path.to_path_buf();
+        let path = existing_config_file.to_path_buf();
         let metadata = path
             .metadata()
             .map_err(|e| Self::error(ActionErrorKind::GettingMetadata(path.clone(), e)))?;
@@ -155,7 +163,13 @@ impl CreateOrMergeNixConfig {
             return Err(Self::error(ActionErrorKind::PathWasNotFile(path)));
         }
 
-        let existing_nix_config = NixConfig::parse_file(&path)
+        let parse_ret = if is_existing_custom_conf {
+            Self::maybe_comment_out_invalid_conf(&path).await?
+        } else {
+            NixConfig::parse_file(&path)
+        };
+
+        let existing_nix_config = parse_ret
             .map_err(CreateOrMergeNixConfigError::ParseNixConfig)
             .map_err(Self::error)?;
 
@@ -167,6 +181,43 @@ impl CreateOrMergeNixConfig {
         .map_err(Self::error)?;
 
         Ok((merged_nix_config, existing_nix_config))
+    }
+
+    async fn maybe_comment_out_invalid_conf(
+        path: &Path,
+    ) -> Result<Result<NixConfig, nix_config_parser::ParseError>, ActionError> {
+        let contents = tokio::fs::read_to_string(path)
+            .await
+            .map_err(|e| ActionErrorKind::Read(path.to_path_buf(), e))
+            .map_err(Self::error)?;
+        let mut lines = contents
+            .lines()
+            .map(str::trim)
+            .map(String::from)
+            .collect::<Vec<_>>();
+        lines.push(String::new());
+
+        let parse_ret = loop {
+            let parse_ret = NixConfig::parse_string(lines.join("\n"), Some(path));
+
+            if let Err(nix_config_parser::ParseError::IllegalConfiguration(bad_line, _)) = parse_ret
+            {
+                for line in lines.iter_mut() {
+                    if *line == bad_line {
+                        line.insert_str(0, "# ");
+                        break;
+                    }
+                }
+            } else {
+                break parse_ret;
+            }
+        };
+
+        crate::util::write_atomic(path, &lines.join("\n"))
+            .await
+            .map_err(Self::error)?;
+
+        Ok(parse_ret)
     }
 }
 
@@ -264,7 +315,8 @@ impl Action for CreateOrMergeNixConfig {
 
         let (mut merged_nix_config, mut existing_nix_config) = if self.path.exists() {
             let (merged_nix_config, existing_nix_config) =
-                Self::validate_existing_nix_config(&self.pending_nix_config, &self.path)?;
+                Self::validate_nix_config_against_path(&self.pending_nix_config, &self.path, false)
+                    .await?;
             (merged_nix_config, Some(existing_nix_config))
         } else {
             (self.pending_nix_config.clone(), None)
