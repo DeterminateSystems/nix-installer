@@ -125,7 +125,7 @@ If you're hacking on `nix-installer`, you likely already have Nix and cannot tes
 
 > That's probably a good thing! You should test in a sandbox.
 
-Automated [`qemu` tests][#qemu-vm-tests] exist and should be preferred for oneshot testing of changes.
+Automated [`qemu` tests](#qemu-vm-tests) exist and should be preferred for oneshot testing of changes.
 
 For interactive testing, tools like [`libvirt`](https://libvirt.org/) via [`virt-manager`](https://virt-manager.org/) or [`vagrant`](https://www.vagrantup.com/) can be used to spin up machines and run experiments.
 

@@ -316,90 +316,12 @@ See [this document](./docs/quirks.md) for information on resolving these issues:
 
 ## Building a binary
 
-Since you'll be using the installer to install Nix on systems without Nix, the default build is a static binary.
-
-To build a portable Linux binary on a system with Nix:
-
-```shell
-# to build a local copy
-nix build -L ".#nix-installer-static"
-# to build the remote main development branch
-nix build -L "github:determinatesystems/nix-installer#nix-installer-static"
-# for a specific version of the installer:
-export NIX_INSTALLER_TAG="v0.6.0"
-nix build -L "github:determinatesystems/nix-installer/$NIX_INSTALLER_TAG#nix-installer-static"
-```
-
-On macOS:
-
-```shell
-# to build a local copy
-nix build -L ".#nix-installer"
-# to build the remote main development branch
-nix build -L "github:determinatesystems/nix-installer#nix-installer"
-# for a specific version of the installer:
-export NIX_INSTALLER_TAG="v0.6.0"
-nix build -L "github:determinatesystems/nix-installer/$NIX_INSTALLER_TAG#nix-installer"
-```
-
-Then copy `result/bin/nix-installer` to the machine you wish to run it on.
-You can also add the installer to a system without Nix using [cargo], as there are no system dependencies to worry about:
-
-```shell
-# to build and run a local copy
-RUSTFLAGS="--cfg tokio_unstable" cargo run -- --help
-# to build the remote main development branch
-RUSTFLAGS="--cfg tokio_unstable" cargo install --git https://github.com/DeterminateSystems/nix-installer
-nix-installer --help
-# for a specific version of the installer:
-export NIX_INSTALLER_TAG="v0.6.0"
-RUSTFLAGS="--cfg tokio_unstable" cargo install --git https://github.com/DeterminateSystems/nix-installer --tag $NIX_INSTALLER_TAG
-nix-installer --help
-```
-
-To make this build portable, pass the `--target x86_64-unknown-linux-musl` option.
-
-> [!NOTE]
-> We currently require `--cfg tokio_unstable` as we utilize [Tokio's process groups](https://docs.rs/tokio/1.24.1/tokio/process/struct.Command.html#method.process_group), which wrap stable `std` APIs, but are unstable due to it requiring an MSRV bump.
+See [this guide](./docs/building.md) for instructions on building and distributing the installer yourself.
 
 ## As a Rust library
 
-> [!WARNING]
-> Using Determinate Nix Installer as a [Rust] library is still experimental.
-> This feature is likely to be removed in the future without an advocate.
-> If you're using this, please let us know and we can provide a path to stabilization.
-
-Add the [`nix-installer` library][lib] to your dependencies:
-
-```shell
-cargo add nix-installer
-```
-
-If you're building a CLI, check out the `cli` feature flag for [`clap`][clap] integration.
-
-You'll also need to edit your `.cargo/config.toml` to use `tokio_unstable` as we utilize [Tokio's process groups][process-groups], which wrap stable `std` APIs, but are unstable due to it requiring an MSRV bump:
-
-```toml
-# .cargo/config.toml
-[build]
-rustflags=["--cfg", "tokio_unstable"]
-```
-
-You'll also need to set the `NIX_INSTALLER_TARBALL_PATH` environment variable to point to a target-appropriate Nix installation tarball, like nix-2.21.2-aarch64-darwin.tar.xz.
-The contents are embedded in the resulting binary instead of downloaded at installation time.
-
-Then it's possible to review the [documentation](https://docs.rs/nix-installer/latest/nix_installer/):
-
-```shell
-cargo doc --open -p nix-installer
-```
-
-Documentation is also available via `nix build`:
-
-```shell
-nix build github:DeterminateSystems/nix-installer#nix-installer.doc
-firefox result-doc/nix-installer/index.html
-```
+The Determinate Nix Installer is available as a standard [Rust] library.
+See [this guide](./docs/rust-library.md) for instructions on using the library in your own Rust code.
 
 ## Accessing other versions
 
@@ -549,8 +471,6 @@ You can read the full privacy policy for [Determinate Systems][detsys], the crea
 
 [actions]: https://github.com/features/actions
 [cache]: https://docs.determinate.systems/flakehub/cache
-[cargo]: https://doc.rust-lang.org/cargo
-[clap]: https://clap.rs
 [det-nix]: https://docs.determinate.systems/determinate-nix
 [determinate]: https://docs.determinate.systems
 [determinate-flake]: https://github.com/DeterminateSystems/determinate
@@ -562,7 +482,6 @@ You can read the full privacy policy for [Determinate Systems][detsys], the crea
 [forked-installer]: https://github.com/nixos/experimental-nix-installer
 [gitlab]: https://gitlab.com
 [gitlab-ci]: https://docs.gitlab.com/ee/ci
-[lib]: https://docs.rs/nix-installer
 [macos-upgrades]: https://determinate.systems/posts/nix-survival-mode-on-macos/
 [nix]: https://nixos.org
 [nix-installer-action]: https://github.com/DeterminateSystems/nix-installer-action
@@ -572,7 +491,6 @@ You can read the full privacy policy for [Determinate Systems][detsys], the crea
 [podman]: https://podman.io
 [privacy]: https://determinate.systems/policies/privacy
 [private-flakes]: https://docs.determinate.systems/flakehub/private-flakes
-[process-groups]: https://docs.rs/tokio/1.24.1/tokio/process/struct.Command.html#method.process_group
 [recommended-nix]: https://github.com/DeterminateSystems/nix/releases/latest
 [releases]: https://github.com/DeterminateSystems/nix-installer/releases
 [rust]: https://rust-lang.org
