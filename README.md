@@ -292,7 +292,7 @@ Subtle differences in the shell implementations and tool used in the scripts mak
 Determinate Nix installer has numerous advantages over these options:
 
 - It installs Nix with [flakes] enabled by default
-- It enables Nix to survive macOS upgrades
+- It enables Nix to [survive macOS upgrades][survival-mode]
 - It keeps an installation _receipt_ for easy [uninstallation](#uninstalling)
 - It uses [planners](#planners) to create appropriate install plans for complicated targets&mdash;plans that you can review prior to installation
 - It enables you to perform a best-effort reversion in the facing of a failed install
@@ -310,130 +310,18 @@ The working group maintains a [foundation-owned fork of the installer][forked-in
 ## Quirks
 
 While Determinate Nix Installer tries to provide a comprehensive and unquirky experience, there are unfortunately some issues that may require manual intervention or operator choices.
+See [this document](./docs/quirks.md) for information on resolving these issues:
 
-### Using MacOS after removing Nix while nix-darwin was still installed, network requests fail
-
-If Nix was previously uninstalled without uninstalling [nix-darwin] first, you may experience errors similar to this:
-
-```shell
-nix shell nixpkgs#curl
-
-error: unable to download 'https://cache.nixos.org/g8bqlgmpa4yg601w561qy2n576i6g0vh.narinfo': Problem with the SSL CA cert (path? access rights?) (77)
-```
-
-This occurs because `nix-darwin` provisions an `org.nixos.activate-system` service which remains after Nix is uninstalled.
-The `org.nixos.activate-system` service in this state interacts with the newly installed Nix and changes the SSL certificates it uses to be a broken symlink.
-
-```shell
-ls -lah /etc/ssl/certs
-
-total 0
-drwxr-xr-x  3 root  wheel    96B Oct 17 08:26 .
-drwxr-xr-x  6 root  wheel   192B Sep 16 06:28 ..
-lrwxr-xr-x  1 root  wheel    41B Oct 17 08:26 ca-certificates.crt -> /etc/static/ssl/certs/ca-certificates.crt
-```
-
-The problem is compounded by the matter that the [`nix-darwin` uninstaller](https://github.com/LnL7/nix-darwin#uninstalling) will not work after uninstalling Nix, since it uses Nix and requires network connectivity.
-
-It's possible to resolve this situation by removing the `org.nixos.activate-system` service and the `ca-certificates`:
-
-```shell
-sudo rm /Library/LaunchDaemons/org.nixos.activate-system.plist
-sudo launchctl bootout system/org.nixos.activate-system
-/nix/nix-installer uninstall
-sudo rm /etc/ssl/certs/ca-certificates.crt
-```
-
-Run the installer again and it should work.
-
-Up-to-date versions of the installer will refuse to uninstall until [nix-darwin] is uninstalled first, helping to mitigate this problem.
+- [Using MacOS after removing Nix while nix-darwin was still installed, network requests fail](./docs/quirks.md#using-macos-after-removing-nix-while-nix-darwin-was-still-installed-network-requests-fail)
 
 ## Building a binary
 
-Since you'll be using the installer to install Nix on systems without Nix, the default build is a static binary.
-
-To build a portable Linux binary on a system with Nix:
-
-```shell
-# to build a local copy
-nix build -L ".#nix-installer-static"
-# to build the remote main development branch
-nix build -L "github:determinatesystems/nix-installer#nix-installer-static"
-# for a specific version of the installer:
-export NIX_INSTALLER_TAG="v0.6.0"
-nix build -L "github:determinatesystems/nix-installer/$NIX_INSTALLER_TAG#nix-installer-static"
-```
-
-On macOS:
-
-```shell
-# to build a local copy
-nix build -L ".#nix-installer"
-# to build the remote main development branch
-nix build -L "github:determinatesystems/nix-installer#nix-installer"
-# for a specific version of the installer:
-export NIX_INSTALLER_TAG="v0.6.0"
-nix build -L "github:determinatesystems/nix-installer/$NIX_INSTALLER_TAG#nix-installer"
-```
-
-Then copy `result/bin/nix-installer` to the machine you wish to run it on.
-You can also add the installer to a system without Nix using [cargo], as there are no system dependencies to worry about:
-
-```shell
-# to build and run a local copy
-RUSTFLAGS="--cfg tokio_unstable" cargo run -- --help
-# to build the remote main development branch
-RUSTFLAGS="--cfg tokio_unstable" cargo install --git https://github.com/DeterminateSystems/nix-installer
-nix-installer --help
-# for a specific version of the installer:
-export NIX_INSTALLER_TAG="v0.6.0"
-RUSTFLAGS="--cfg tokio_unstable" cargo install --git https://github.com/DeterminateSystems/nix-installer --tag $NIX_INSTALLER_TAG
-nix-installer --help
-```
-
-To make this build portable, pass the `--target x86_64-unknown-linux-musl` option.
-
-> [!NOTE]
-> We currently require `--cfg tokio_unstable` as we utilize [Tokio's process groups](https://docs.rs/tokio/1.24.1/tokio/process/struct.Command.html#method.process_group), which wrap stable `std` APIs, but are unstable due to it requiring an MSRV bump.
+See [this guide](./docs/building.md) for instructions on building and distributing the installer yourself.
 
 ## As a Rust library
 
-> [!WARNING]
-> Using Determinate Nix Installer as a [Rust] library is still experimental.
-> This feature is likely to be removed in the future without an advocate.
-> If you're using this, please let us know and we can provide a path to stabilization.
-
-Add the [`nix-installer` library][lib] to your dependencies:
-
-```shell
-cargo add nix-installer
-```
-
-If you're building a CLI, check out the `cli` feature flag for [`clap`][clap] integration.
-
-You'll also need to edit your `.cargo/config.toml` to use `tokio_unstable` as we utilize [Tokio's process groups][process-groups], which wrap stable `std` APIs, but are unstable due to it requiring an MSRV bump:
-
-```toml
-# .cargo/config.toml
-[build]
-rustflags=["--cfg", "tokio_unstable"]
-```
-
-You'll also need to set the `NIX_INSTALLER_TARBALL_PATH` environment variable to point to a target-appropriate Nix installation tarball, like nix-2.21.2-aarch64-darwin.tar.xz.
-The contents are embedded in the resulting binary instead of downloaded at installation time.
-
-Then it's possible to review the [documentation](https://docs.rs/nix-installer/latest/nix_installer/):
-
-```shell
-cargo doc --open -p nix-installer
-```
-
-Documentation is also available via `nix build`:
-
-```shell
-nix build github:DeterminateSystems/nix-installer#nix-installer.doc
-firefox result-doc/nix-installer/index.html
-```
+The Determinate Nix Installer is available as a standard [Rust] library.
+See [this guide](./docs/rust-library.md) for instructions on using the library in your own Rust code.
 
 ## Accessing other versions
 
@@ -583,8 +471,6 @@ You can read the full privacy policy for [Determinate Systems][detsys], the crea
 
 [actions]: https://github.com/features/actions
 [cache]: https://docs.determinate.systems/flakehub/cache
-[cargo]: https://doc.rust-lang.org/cargo
-[clap]: https://clap.rs
 [det-nix]: https://docs.determinate.systems/determinate-nix
 [determinate]: https://docs.determinate.systems
 [determinate-flake]: https://github.com/DeterminateSystems/determinate
@@ -596,10 +482,8 @@ You can read the full privacy policy for [Determinate Systems][detsys], the crea
 [forked-installer]: https://github.com/nixos/experimental-nix-installer
 [gitlab]: https://gitlab.com
 [gitlab-ci]: https://docs.gitlab.com/ee/ci
-[lib]: https://docs.rs/nix-installer
 [macos-upgrades]: https://determinate.systems/posts/nix-survival-mode-on-macos/
 [nix]: https://nixos.org
-[nix-darwin]: https://github.com/LnL7/nix-darwin
 [nix-installer-action]: https://github.com/DeterminateSystems/nix-installer-action
 [nixgl]: https://github.com/guibou/nixGL
 [nixos]: https://zero-to-nix.com/concepts/nixos
@@ -607,13 +491,13 @@ You can read the full privacy policy for [Determinate Systems][detsys], the crea
 [podman]: https://podman.io
 [privacy]: https://determinate.systems/policies/privacy
 [private-flakes]: https://docs.determinate.systems/flakehub/private-flakes
-[process-groups]: https://docs.rs/tokio/1.24.1/tokio/process/struct.Command.html#method.process_group
 [recommended-nix]: https://github.com/DeterminateSystems/nix/releases/latest
 [releases]: https://github.com/DeterminateSystems/nix-installer/releases
 [rust]: https://rust-lang.org
 [selinux]: https://selinuxproject.org
 [semver]: https://docs.determinate.systems/flakehub/concepts/semver
 [steam-deck]: https://store.steampowered.com/steamdeck
+[survival-mode]: https://determinate.systems/posts/nix-survival-mode-on-macos
 [systemd]: https://systemd.io
 [upstream-nix]: https://github.com/NixOS/nix
 [wg]: https://discourse.nixos.org/t/nix-installer-workgroup/21495
