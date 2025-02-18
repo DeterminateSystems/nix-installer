@@ -1,4 +1,3 @@
-
 ## Quirks
 
 While Determinate Nix Installer tries to provide a comprehensive and unquirky experience, there are unfortunately some issues that may require manual intervention or operator choices.
