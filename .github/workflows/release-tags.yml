@@ -4,9 +4,9 @@ concurrency:
   group: release
 
 on:
-  push:
-    tags:
-      - "v*.*.*"
+  release:
+    types:
+      - released
 
 permissions:
   contents: write # In order to upload artifacts to GitHub releases
@@ -31,6 +31,7 @@ jobs:
       cache-key: release-aarch64-darwin-artifacts-${{ github.sha }}
 
   release:
+    environment: production
     runs-on: ubuntu-latest
     needs:
       - build-x86_64-linux
