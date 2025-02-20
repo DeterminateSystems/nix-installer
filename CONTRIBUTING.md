@@ -349,7 +349,7 @@ You can also remove your `$HOME/nix-installer-wsl-tests-temp` folder whenever yo
 > [!NOTE]
 > The documentation below describes a process that used to be mostly manual, and is now driven externally.
 > The material below is generally kept up to date for documentation, manual releases, and external use purposes.
-> Determinate employees, Consult the internal release documentation for more details: https://www.notion.so/14553fe7e1dd809eb80affb37228a7c8.
+> Determinate Systems employees, consult the internal release documentation for more details: https://www.notion.so/14553fe7e1dd809eb80affb37228a7c8.
 
 This package uses [Semantic Versioning](https://semver.org/). When determining the version number for a new release refer to Semantic Versioning for guidance. You can use the `check-semver` command alias from within the development environment to validate your changes don't break semver.
 
