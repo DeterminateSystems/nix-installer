@@ -28,7 +28,7 @@ jobs:
       extra-commands-early: |
         for fname in $(find ./tests/fixtures -name '*.json'); do
           cat "$fname" \
-            | jq '.version = $version' --arg version "$version" \
+            | jq '.version = $version' --arg version "${{ inputs.version }}" \
             > "$fname.next"
           mv "$fname.next" "$fname"
           git add "$fname"
