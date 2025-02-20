@@ -348,8 +348,8 @@ You can also remove your `$HOME/nix-installer-wsl-tests-temp` folder whenever yo
 
 This package uses [Semantic Versioning](https://semver.org/). When determining the version number for a new release refer to Semantic Versioning for guidance. You can use the `check-semver` command alias from within the development environment to validate your changes don't break semver.
 
-To cut a release, run `./prepare-release.sh 0.0.1` inside `nix develop`.
-This script will:
+To cut a release, run the GitHub Actions workflow `propose-release.yml`.
+This will:
 
 - Create a release branch from `main` (`git checkout -b release-v0.0.1`)
   - Release PRs should not contain any installer-related changes which require review
