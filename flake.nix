@@ -7,7 +7,7 @@
     crane.url = "github:ipetkov/crane/v0.20.0";
 
     nix = {
-      url = "https://flakehub.com/f/DeterminateSystems/nix/=2.26.2.tar.gz";
+      url = "https://flakehub.com/f/DeterminateSystems/nix/=2.26.1";
       # Omitting `inputs.nixpkgs.follows = "nixpkgs";` on purpose
     };
 
