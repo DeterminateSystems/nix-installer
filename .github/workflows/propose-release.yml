@@ -35,7 +35,6 @@ jobs:
         done
         git commit -m "Update test fixtures with the new nix-installer version" || true
 
-        sed -ix 's#https://flakehub.com/f/DeterminateSystems/nix/=.*";#https://flakehub.com/f/DeterminateSystems/nix/=${{ inputs.nix-version }}";#' ./flake.nix
-        rm flake.nixx
+        sed -i 's#https://flakehub.com/f/DeterminateSystems/nix/=.*";#https://flakehub.com/f/DeterminateSystems/nix/=${{ inputs.nix-version }}";#' ./flake.nix
         git add flake.nix
         git commit -m "Update Nix release to ${{ inputs.nix-version }}"
