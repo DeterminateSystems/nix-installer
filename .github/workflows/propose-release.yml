@@ -17,7 +17,7 @@ concurrency:
 
 jobs:
   propose-release:
-    uses: DeterminateSystems/propose-release/.github/workflows/workflow.yml@main
+    uses: DeterminateSystems/propose-release/.github/workflows/workflow.yml@revert-3-revert-2-cpr-patch-confusion
     permissions:
       id-token: "write"
       contents: "write"
