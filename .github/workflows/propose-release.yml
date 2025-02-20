@@ -1,0 +1,41 @@
+on:
+  workflow_dispatch:
+    inputs:
+      reference-id:
+        type: string
+        required: true
+      version:
+        type: string
+        required: true
+      nix-version:
+        type: string
+        required: true
+
+concurrency:
+  group: ${{ github.workflow }}
+  cancel-in-progress: true
+
+jobs:
+  propose-release:
+    uses: DeterminateSystems/propose-release/.github/workflows/workflow.yml@main
+    permissions:
+      id-token: "write"
+      contents: "write"
+      pull-requests: write
+    with:
+      reference-id: ${{ inputs.reference-id }}
+      version: ${{ inputs.version }}
+      extra-commands-early: |
+        for fname in $(find ./tests/fixtures -name '*.json'); do
+          cat "$fname" \
+            | jq '.version = $version' --arg version "$version" \
+            > "$fname.next"
+          mv "$fname.next" "$fname"
+          git add "$fname"
+        done
+        git commit -m "Update test fixtures with the new nix-installer version" || true
+
+        sed -ix 's#https://flakehub.com/f/DeterminateSystems/nix/=.*";#https://flakehub.com/f/DeterminateSystems/nix/=${{ inputs.nix-version }}";#' ./flake.nix
+        rm flake.nixx
+        git add flake.nix
+        git commit -m "Update Nix release to ${{ inputs.nix-version }}"
