@@ -64,7 +64,7 @@
             };
 
             # Required to link build scripts.
-            pkgsBuildBuild = [ buildPackages.stdenv.cc ];
+            depsBuildBuild = [ buildPackages.stdenv.cc ];
 
             env = {
               # For whatever reason, these don’t seem to get set
