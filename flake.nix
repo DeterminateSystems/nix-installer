@@ -12,7 +12,7 @@
     };
 
     determinate = {
-      url = "https://flakehub.com/f/DeterminateSystems/determinate/0.1.tar.gz";
+      url = "https://flakehub.com/f/DeterminateSystems/determinate/*";
 
       # We set the overrides below so the flake.lock has many fewer nodes.
       #
