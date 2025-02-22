@@ -20,7 +20,7 @@ async fn main() -> eyre::Result<ExitCode> {
 
     let cli = nix_installer::cli::NixInstallerCli::parse();
 
-    cli.instrumentation.setup()?;
+    let _guard = cli.instrumentation.setup()?;
 
     tracing::info!("nix-installer v{}", env!("CARGO_PKG_VERSION"));
 

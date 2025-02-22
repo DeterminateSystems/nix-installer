@@ -1,10 +1,12 @@
-use eyre::WrapErr;
 use std::error::Error;
 use std::io::IsTerminal;
+
+use eyre::WrapErr;
 use tracing_error::ErrorLayer;
-use tracing_subscriber::{
-    filter::Directive, layer::SubscriberExt, util::SubscriberInitExt, EnvFilter,
-};
+use tracing_subscriber::filter::Directive;
+use tracing_subscriber::layer::SubscriberExt;
+use tracing_subscriber::util::SubscriberInitExt;
+use tracing_subscriber::{EnvFilter, Layer as _};
 
 #[derive(Clone, Default, Debug, clap::ValueEnum)]
 pub enum Logger {
@@ -52,45 +54,56 @@ impl Instrumentation {
         .to_string()
     }
 
-    pub fn setup(&self) -> eyre::Result<()> {
-        let filter_layer = self.filter_layer()?;
+    pub fn setup(&self) -> eyre::Result<tracing_appender::non_blocking::WorkerGuard> {
+        let log_path = format!("/tmp/nix-installer.log");
+        let trace_log_file = std::fs::File::create(&log_path)?;
+        let (nonblocking, guard) = tracing_appender::non_blocking(trace_log_file);
+        let file_layer = tracing_subscriber::fmt::layer()
+            .with_writer(nonblocking)
+            .with_filter(EnvFilter::new(format!(
+                "{}=trace",
+                env!("CARGO_PKG_NAME").replace('-', "_"),
+            )));
 
         let registry = tracing_subscriber::registry()
-            .with(filter_layer)
-            .with(ErrorLayer::default());
+            .with(ErrorLayer::default())
+            .with(file_layer);
+
+        let filter_layer = self.filter_layer()?;
 
         match self.logger {
             Logger::Compact => {
-                let fmt_layer = self.fmt_layer_compact();
-                registry.with(fmt_layer).try_init()?
+                let fmt_layer = self.fmt_layer_compact(filter_layer);
+                registry.with(fmt_layer).try_init()?;
             },
             Logger::Full => {
-                let fmt_layer = self.fmt_layer_full();
-                registry.with(fmt_layer).try_init()?
+                let fmt_layer = self.fmt_layer_full(filter_layer);
+                registry.with(fmt_layer).try_init()?;
             },
             Logger::Pretty => {
-                let fmt_layer = self.fmt_layer_pretty();
-                registry.with(fmt_layer).try_init()?
+                let fmt_layer = self.fmt_layer_pretty(filter_layer);
+                registry.with(fmt_layer).try_init()?;
             },
             Logger::Json => {
-                let fmt_layer = self.fmt_layer_json();
-                registry.with(fmt_layer).try_init()?
+                let fmt_layer = self.fmt_layer_json(filter_layer);
+                registry.with(fmt_layer).try_init()?;
             },
         }
 
-        Ok(())
+        Ok(guard)
     }
 
-    pub fn fmt_layer_full<S>(&self) -> impl tracing_subscriber::layer::Layer<S>
+    pub fn fmt_layer_full<S>(&self, filter: EnvFilter) -> impl tracing_subscriber::layer::Layer<S>
     where
         S: tracing::Subscriber + for<'span> tracing_subscriber::registry::LookupSpan<'span>,
     {
         tracing_subscriber::fmt::Layer::new()
             .with_ansi(std::io::stderr().is_terminal())
             .with_writer(std::io::stderr)
+            .with_filter(filter)
     }
 
-    pub fn fmt_layer_pretty<S>(&self) -> impl tracing_subscriber::layer::Layer<S>
+    pub fn fmt_layer_pretty<S>(&self, filter: EnvFilter) -> impl tracing_subscriber::layer::Layer<S>
     where
         S: tracing::Subscriber + for<'span> tracing_subscriber::registry::LookupSpan<'span>,
     {
@@ -98,9 +111,10 @@ impl Instrumentation {
             .with_ansi(std::io::stderr().is_terminal())
             .with_writer(std::io::stderr)
             .pretty()
+            .with_filter(filter)
     }
 
-    pub fn fmt_layer_json<S>(&self) -> impl tracing_subscriber::layer::Layer<S>
+    pub fn fmt_layer_json<S>(&self, filter: EnvFilter) -> impl tracing_subscriber::layer::Layer<S>
     where
         S: tracing::Subscriber + for<'span> tracing_subscriber::registry::LookupSpan<'span>,
     {
@@ -108,9 +122,13 @@ impl Instrumentation {
             .with_ansi(std::io::stderr().is_terminal())
             .with_writer(std::io::stderr)
             .json()
+            .with_filter(filter)
     }
 
-    pub fn fmt_layer_compact<S>(&self) -> impl tracing_subscriber::layer::Layer<S>
+    pub fn fmt_layer_compact<S>(
+        &self,
+        filter: EnvFilter,
+    ) -> impl tracing_subscriber::layer::Layer<S>
     where
         S: tracing::Subscriber + for<'span> tracing_subscriber::registry::LookupSpan<'span>,
     {
@@ -124,6 +142,7 @@ impl Instrumentation {
             .with_thread_names(false)
             .with_file(false)
             .with_line_number(false)
+            .with_filter(filter)
     }
 
     pub fn filter_layer(&self) -> eyre::Result<EnvFilter> {
