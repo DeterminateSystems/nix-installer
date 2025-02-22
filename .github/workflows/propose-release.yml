@@ -37,4 +37,4 @@ jobs:
 
         sed -i 's#https://flakehub.com/f/DeterminateSystems/nix/=.*";#https://flakehub.com/f/DeterminateSystems/nix/=${{ inputs.nix-version }}";#' ./flake.nix
         git add flake.nix
-        git commit -m "Update Nix release to ${{ inputs.nix-version }}"
+        git commit -m "Update Nix release to ${{ inputs.nix-version }}" || true
