@@ -298,6 +298,13 @@ jobs:
             exit 1
           fi
 
+      - name: Breakpoint if tests failed
+        if: failure()
+        uses: namespacelabs/breakpoint-action@v0
+        with:
+          duration: 30m
+          authorized-users: grahamc
+
   run-x86_64-darwin:
     name: Run x86_64 Darwin${{ matrix.determinate && ' (--determinate)' || ''}}
     runs-on: macos-13
