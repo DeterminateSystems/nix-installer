@@ -51,7 +51,7 @@ async fn sample_tree(dirname: &str, filename: &str, content: &str) -> PathBuf {
 
     assert!(
         cmdret.status.success(),
-        "Runnning nix-store add failed: {:#?}",
+        "Running nix-store add failed: {:#?}",
         cmdret,
     );
 
