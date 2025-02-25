@@ -118,7 +118,7 @@ impl Action for SetupDefaultProfile {
             nix_store_path: &nix_pkg,
             nss_ca_cert_path: &nss_ca_cert_pkg,
 
-            profile: std::path::Path::new("/nix/var/nix/profiles/default/"),
+            profile: std::path::Path::new("/nix/var/nix/profiles/per-user/root/profile"),
             pkgs: &[&nix_pkg, &nss_ca_cert_pkg],
         })
         .install_packages()

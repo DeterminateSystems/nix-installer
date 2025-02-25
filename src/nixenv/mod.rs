@@ -300,7 +300,7 @@ fn collect_children<P: AsRef<std::path::Path>>(
     base_path: P,
 ) -> Result<HashSet<PathBuf>, std::io::Error> {
     let base_path = base_path.as_ref();
-    let paths = walkdir::WalkDir::new(&base_path)
+    let paths = walkdir::WalkDir::new(base_path)
         .follow_links(true)
         .into_iter()
         .filter_map(|entry| -> Option<walkdir::DirEntry> {
