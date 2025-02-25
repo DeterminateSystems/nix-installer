@@ -75,6 +75,7 @@ impl NixEnv<'_> {
 
         // Construct an empty profile
         {
+            // See: https://github.com/DeterminateSystems/nix-src/blob/f60b21563990ec11d87dd4abe57b8b187d6b6fb3/src/nix-env/buildenv.nix
             let output = tokio::process::Command::new(self.nix_store_path.join("bin/nix"))
                 .set_nix_options(self.nss_ca_cert_path)?
                 .args([
