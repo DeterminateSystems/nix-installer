@@ -54,8 +54,18 @@ pub(crate) struct NixEnv<'a> {
     pub pkgs: &'a [&'a Path],
 }
 
+pub enum WriteToDefaultProfile {
+    WriteToDefault,
+
+    #[cfg(test)]
+    Isolated,
+}
+
 impl NixEnv<'_> {
-    pub(crate) async fn install_packages(&self) -> Result<(), NixEnvError> {
+    pub(crate) async fn install_packages(
+        &self,
+        to_default: WriteToDefaultProfile,
+    ) -> Result<(), NixEnvError> {
         self.validate_paths_can_cohabitate().await?;
 
         let tmp = tempfile::tempdir().map_err(NixEnvError::CreateTempDir)?;
@@ -64,7 +74,7 @@ impl NixEnv<'_> {
         self.make_empty_profile(&temporary_profile).await?;
 
         if let Ok(canon_profile) = self.profile.canonicalize() {
-            self.set_profile_to(&temporary_profile, &canon_profile)
+            self.set_profile_to(Some(&temporary_profile), &canon_profile)
                 .await?;
         }
 
@@ -96,8 +106,15 @@ impl NixEnv<'_> {
             self.install_path(&temporary_profile, pkg).await?;
         }
 
-        self.set_profile_to(self.profile, &temporary_profile)
-            .await?;
+        self.set_profile_to(
+            match to_default {
+                #[cfg(test)]
+                WriteToDefaultProfile::Isolated => Some(self.profile),
+                WriteToDefaultProfile::WriteToDefault => None,
+            },
+            &temporary_profile,
+        )
+        .await?;
 
         Ok(())
     }
@@ -163,16 +180,22 @@ impl NixEnv<'_> {
 
     async fn set_profile_to(
         &self,
-        profile: &Path,
+        profile: Option<&Path>,
         canon_profile: &Path,
     ) -> Result<(), NixEnvError> {
         tracing::info!("Duplicating the existing profile into the scratch profile");
 
-        let output = tokio::process::Command::new(self.nix_store_path.join("bin/nix-env"))
-            .process_group(0)
-            .set_nix_options(self.nss_ca_cert_path)?
-            .arg("--profile")
-            .arg(profile)
+        let mut cmd = tokio::process::Command::new(self.nix_store_path.join("bin/nix-env"));
+
+        cmd.process_group(0);
+        cmd.set_nix_options(self.nss_ca_cert_path)?;
+
+        if let Some(profile) = profile {
+            cmd.arg("--profile");
+            cmd.arg(profile);
+        }
+
+        let output = cmd
             .arg("--set")
             .arg(canon_profile)
             .output()
