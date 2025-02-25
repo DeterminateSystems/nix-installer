@@ -17,10 +17,10 @@ pub enum NixEnvError {
     CreateTempDir(std::io::Error),
 
     #[error("Failed to start the nix command `{0}`: {1}")]
-    StartNixCommand(&'static str, std::io::Error),
+    StartNixCommand(String, std::io::Error),
 
     #[error("Failed to run the nix command `{0}`: {1:?}")]
-    NixCommand(&'static str, std::process::Output),
+    NixCommand(String, std::process::Output),
     #[error("Failed to add the package {0} to the profile: {1:?}")]
     AddPackage(PathBuf, std::process::Output),
 
@@ -95,11 +95,13 @@ impl NixEnv<'_> {
                 .arg(&temporary_profile)
                 .output()
                 .await
-                .map_err(|e| NixEnvError::StartNixCommand("nix build-ing an empty profile", e))?;
+                .map_err(|e| {
+                    NixEnvError::StartNixCommand("nix build-ing an empty profile".to_string(), e)
+                })?;
 
             if !output.status.success() {
                 return Err(NixEnvError::NixCommand(
-                    "nix build-ing an empty profile",
+                    "nix build-ing an empty profile".to_string(),
                     output,
                 ));
             }
@@ -118,14 +120,14 @@ impl NixEnv<'_> {
                 .await
                 .map_err(|e| {
                     NixEnvError::StartNixCommand(
-                        "Duplicating the default profile into the scratch profile",
+                        "Duplicating the default profile into the scratch profile".to_string(),
                         e,
                     )
                 })?;
 
             if !output.status.success() {
                 return Err(NixEnvError::NixCommand(
-                    "Duplicating the default profile into the scratch profile",
+                    "Duplicating the default profile into the scratch profile".to_string(),
                     output,
                 ));
             }
@@ -144,12 +146,15 @@ impl NixEnv<'_> {
                 .output()
                 .await
                 .map_err(|e| {
-                    NixEnvError::StartNixCommand("nix-env --query'ing installed packages", e)
+                    NixEnvError::StartNixCommand(
+                        "nix-env --query'ing installed packages".to_string(),
+                        e,
+                    )
                 })?;
 
             if !output.status.success() {
                 return Err(NixEnvError::NixCommand(
-                    "nix-env --query'ing installed packages",
+                    "nix-env --query'ing installed packages".to_string(),
                     output,
                 ));
             }
@@ -193,14 +198,20 @@ impl NixEnv<'_> {
                                 .await
                                 .map_err(|e| {
                                     NixEnvError::StartNixCommand(
-                                        "nix-env --uninstall'ing a conflicting package",
+                                        format!(
+                                            "nix-env --uninstall'ing conflicting package {:?}",
+                                            root_path
+                                        ),
                                         e,
                                     )
                                 })?;
 
                         if !output.status.success() {
                             return Err(NixEnvError::NixCommand(
-                                "nix-env --uninstall'ing a conflicting package",
+                                format!(
+                                    "nix-env --uninstall'ing conflicting package {:?}",
+                                    root_path
+                                ),
                                 output,
                             ));
                         }
@@ -209,7 +220,7 @@ impl NixEnv<'_> {
             }
 
             let output = tokio::process::Command::new(self.nix_store_path.join("bin/nix-env"))
-                .set_nix_options(self.nss_ca_cert_path)
+                .set_nix_options(self.nss_ca_cert_path)?
                 .arg("--profile")
                 .arg(&temporary_profile)
                 .arg("--install")
@@ -217,7 +228,10 @@ impl NixEnv<'_> {
                 .output()
                 .await
                 .map_err(|e| {
-                    NixEnvError::StartNixCommand("Adding a new package to the profile", e)
+                    NixEnvError::StartNixCommand(
+                        format!("Adding the package {:?} to the profile", pkg),
+                        e,
+                    )
                 })?;
 
             if !output.status.success() {
@@ -237,7 +251,7 @@ impl NixEnv<'_> {
                 .await
                 .map_err(|e| {
                     NixEnvError::StartNixCommand(
-                        "nix-env --profile ... --set ... the user's profile",
+                        "nix-env --profile ... --set ... the user's profile".to_string(),
                         e,
                     )
                 })?;
@@ -368,10 +382,10 @@ mod tests {
             .arg(&sub_dir)
             .output()
             .await
-            .map_err(|e| NixEnvError::StartNixCommand("nix store add", e))?;
+            .map_err(|e| NixEnvError::StartNixCommand("nix store add".to_string(), e))?;
 
         if !cmdret.status.success() {
-            return Err(NixEnvError::NixCommand("nix store add", cmdret));
+            return Err(NixEnvError::NixCommand("nix store add".to_string(), cmdret));
         }
 
         if cmdret.stdout.last() == Some(&b'\n') {
