@@ -76,7 +76,6 @@ impl NixEnv<'_> {
         // Construct an empty profile
         {
             let output = tokio::process::Command::new(self.nix_store_path.join("bin/nix"))
-                .process_group(0)
                 .set_nix_options(self.nss_ca_cert_path)?
                 .args([
                     "build",
@@ -109,7 +108,7 @@ impl NixEnv<'_> {
             tracing::info!("Duplicating the existing profile into the scratch profile");
 
             let output = tokio::process::Command::new(self.nix_store_path.join("bin/nix-env"))
-                .process_group(0)
+                .set_nix_options(self.nss_ca_cert_path)?
                 .arg("--profile")
                 .arg(&temporary_profile)
                 .arg("--set")
@@ -131,7 +130,7 @@ impl NixEnv<'_> {
         let mut installed_paths: HashMap<PathBuf, HashSet<PathBuf>> = HashMap::new();
         {
             let output = tokio::process::Command::new(self.nix_store_path.join("bin/nix-env"))
-                .process_group(0)
+                .set_nix_options(self.nss_ca_cert_path)?
                 .arg("--profile")
                 .arg(&temporary_profile)
                 .args(["--query", "--installed", "--out-path", "--json"])
@@ -179,7 +178,7 @@ impl NixEnv<'_> {
                     {
                         let output =
                             tokio::process::Command::new(self.nix_store_path.join("bin/nix-env"))
-                                .process_group(0)
+                                .set_nix_options(self.nss_ca_cert_path)?
                                 .arg("--profile")
                                 .arg(&temporary_profile)
                                 .arg("--uninstall")
@@ -204,7 +203,7 @@ impl NixEnv<'_> {
             }
 
             let output = tokio::process::Command::new(self.nix_store_path.join("bin/nix-env"))
-                .process_group(0)
+                .set_nix_options(self.nss_ca_cert_path)
                 .arg("--profile")
                 .arg(&temporary_profile)
                 .arg("--install")
@@ -223,7 +222,7 @@ impl NixEnv<'_> {
         // Finish by setting the user provided profile to the new version we've constructed
         {
             let output = tokio::process::Command::new(self.nix_store_path.join("bin/nix-env"))
-                .process_group(0)
+                .set_nix_options(self.nss_ca_cert_path)?
                 .arg("--profile")
                 .arg(self.profile)
                 .arg("--set")
@@ -293,6 +292,7 @@ impl Nixy for tokio::process::Command {
         nss_ca_cert_pkg: &Path,
     ) -> Result<&mut tokio::process::Command, NixEnvError> {
         Ok(self
+            .process_group(0)
             .args(["--option", "substitute", "false"])
             .args(["--option", "post-build-hook", ""])
             .env("HOME", dirs::home_dir().ok_or(NixEnvError::NoRootHome)?)
@@ -312,10 +312,12 @@ mod tests {
 
     use super::NixEnv;
     use super::NixEnvError;
+    use super::Nixy;
 
     async fn should_skip() -> bool {
         let cmdret = tokio::process::Command::new("nix")
-            .process_group(0)
+            .set_nix_options(Path::new("/dev/null"))
+            .unwrap()
             .arg("--version")
             .output()
             .await;
@@ -354,7 +356,8 @@ mod tests {
             .map_err(|e| NixEnvError::Write(file.to_path_buf(), e))?;
 
         let mut cmdret = tokio::process::Command::new("nix")
-            .process_group(0)
+            .set_nix_options(Path::new("/dev/null"))
+            .unwrap()
             .args(&["store", "add"])
             .arg(&sub_dir)
             .output()
