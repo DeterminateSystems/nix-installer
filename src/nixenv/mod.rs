@@ -80,6 +80,7 @@ impl NixEnv<'_> {
         {
             // See: https://github.com/DeterminateSystems/nix-src/blob/f60b21563990ec11d87dd4abe57b8b187d6b6fb3/src/nix-env/buildenv.nix
             let output = tokio::process::Command::new(self.nix_store_path.join("bin/nix"))
+                .process_group(0)
                 .set_nix_options(self.nss_ca_cert_path)?
                 .args([
                     "build",
@@ -114,6 +115,7 @@ impl NixEnv<'_> {
             tracing::info!("Duplicating the existing profile into the scratch profile");
 
             let output = tokio::process::Command::new(self.nix_store_path.join("bin/nix-env"))
+                .process_group(0)
                 .set_nix_options(self.nss_ca_cert_path)?
                 .arg("--profile")
                 .arg(&temporary_profile)
@@ -141,6 +143,7 @@ impl NixEnv<'_> {
         let mut installed_paths: HashMap<PathBuf, HashSet<PathBuf>> = HashMap::new();
         {
             let output = tokio::process::Command::new(self.nix_store_path.join("bin/nix-env"))
+                .process_group(0)
                 .set_nix_options(self.nss_ca_cert_path)?
                 .arg("--profile")
                 .arg(&temporary_profile)
@@ -192,6 +195,7 @@ impl NixEnv<'_> {
                     {
                         let output =
                             tokio::process::Command::new(self.nix_store_path.join("bin/nix-env"))
+                                .process_group(0)
                                 .set_nix_options(self.nss_ca_cert_path)?
                                 .arg("--profile")
                                 .arg(&temporary_profile)
@@ -223,6 +227,7 @@ impl NixEnv<'_> {
             }
 
             let output = tokio::process::Command::new(self.nix_store_path.join("bin/nix-env"))
+                .process_group(0)
                 .set_nix_options(self.nss_ca_cert_path)?
                 .arg("--profile")
                 .arg(&temporary_profile)
@@ -245,6 +250,7 @@ impl NixEnv<'_> {
         // Finish by setting the user provided profile to the new version we've constructed
         {
             let output = tokio::process::Command::new(self.nix_store_path.join("bin/nix-env"))
+                .process_group(0)
                 .set_nix_options(self.nss_ca_cert_path)?
                 .arg("--profile")
                 .arg(self.profile)
@@ -315,7 +321,6 @@ impl NixCommandExt for tokio::process::Command {
         nss_ca_cert_pkg: &Path,
     ) -> Result<&mut tokio::process::Command, NixEnvError> {
         Ok(self
-            .process_group(0)
             .args(["--option", "substitute", "false"])
             .args(["--option", "post-build-hook", ""])
             .env("HOME", dirs::home_dir().ok_or(NixEnvError::NoRootHome)?)
