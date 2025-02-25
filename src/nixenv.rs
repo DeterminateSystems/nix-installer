@@ -116,11 +116,16 @@ impl NixEnv<'_> {
                 .arg(canon_profile)
                 .output()
                 .await
-                .map_err(|e| NixEnvError::StartNixCommand("nix build-ing an empty profile", e))?;
+                .map_err(|e| {
+                    NixEnvError::StartNixCommand(
+                        "Duplicating the default profile into the scratch profile",
+                        e,
+                    )
+                })?;
 
             if !output.status.success() {
                 return Err(NixEnvError::NixCommand(
-                    "nix build-ing an empty profile",
+                    "Duplicating the default profile into the scratch profile",
                     output,
                 ));
             }
