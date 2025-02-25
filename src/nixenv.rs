@@ -27,7 +27,7 @@ pub enum NixEnvError {
     #[error("Failed to update the user's profile at {0}: {1:?}")]
     UpdateProfile(PathBuf, std::process::Output),
 
-    #[error("Deserializing installed packages: {0}")]
+    #[error("Deserializing the list of installed packages for the profile: {0}")]
     Deserialization(#[from] serde_json::Error),
 
     #[cfg(test)]
