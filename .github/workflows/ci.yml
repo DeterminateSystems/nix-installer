@@ -260,6 +260,12 @@ jobs:
           hello
           sudo -i nix store gc
           sudo -i nix run nixpkgs#hello
+      - name: Breakpoint if tests failed
+        if: failure() || success()
+        uses: namespacelabs/breakpoint-action@v0
+        with:
+          duration: 30m
+          authorized-users: grahamc
       - name: Test bash
         run: sudo -i nix-instantiate -E 'builtins.currentTime' --eval
         if: success() || failure()
