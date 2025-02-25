@@ -299,23 +299,31 @@ struct PackageInfo {
 fn collect_children<P: AsRef<std::path::Path>>(
     base_path: P,
 ) -> Result<HashSet<PathBuf>, std::io::Error> {
+    let base_path = base_path.as_ref();
     let paths = walkdir::WalkDir::new(&base_path)
         .follow_links(true)
         .into_iter()
-        .filter_map(|entry| {
-            let entry = entry.ok()?;
+        .filter_map(|entry| -> Option<walkdir::DirEntry> {
+            let entry = entry
+                .inspect_err(
+                    |e| tracing::info!(?base_path, %e, "Error walking the file tree, skipping."),
+                )
+                .ok()?;
+
             if entry.file_type().is_dir() {
                 None
             } else {
                 Some(entry)
             }
         })
-        .map(|entry| {
-            entry
-                .path()
-                .strip_prefix(&base_path)
-                .unwrap_or_else(|_| entry.path())
-                .to_path_buf()
+        .filter_map(|entry| {
+            entry.path()
+                .strip_prefix(base_path)
+                .inspect_err(
+                    |e| tracing::info!(?base_path, path = ?entry.path(), %e, "Error stripping the prefix from the path, skipping."),
+                )
+                .ok()
+                .map(PathBuf::from)
         })
         .collect::<HashSet<PathBuf>>();
     Ok(paths)
