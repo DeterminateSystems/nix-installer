@@ -55,9 +55,56 @@ pub(crate) struct NixEnv<'a> {
 }
 
 impl NixEnv<'_> {
+    pub(crate) async fn install_packages(&self) -> Result<(), NixEnvError> {
+        self.validate_paths_can_cohabitate().await?;
+
+        let tmp = tempfile::tempdir().map_err(NixEnvError::CreateTempDir)?;
+        let temporary_profile = tmp.path().join("profile");
+
+        self.make_empty_profile(&temporary_profile).await?;
+
+        if let Ok(canon_profile) = self.profile.canonicalize() {
+            self.reset_profile_to(&temporary_profile, &canon_profile)
+                .await?;
+        }
+
+        let paths_by_pkg_output = self
+            .collect_paths_by_package_output(&temporary_profile)
+            .await?;
+
+        for pkg in self.pkgs {
+            let pkg_outputs =
+                collect_children(pkg).map_err(NixEnvError::EnumeratingStorePathContent)?;
+
+            for (root_path, children) in &paths_by_pkg_output {
+                let conflicts = children
+                    .intersection(&pkg_outputs)
+                    .collect::<Vec<&PathBuf>>();
+
+                if !conflicts.is_empty() {
+                    tracing::debug!(
+                        ?temporary_profile,
+                        ?root_path,
+                        ?conflicts,
+                        "Uninstalling path from the scratch profile due to conflicts"
+                    );
+
+                    self.uninstall_path(&temporary_profile, root_path).await?;
+                }
+            }
+
+            self.install_path(&temporary_profile, pkg).await?;
+        }
+
+        self.reset_profile_to(self.profile, &temporary_profile)
+            .await?;
+
+        Ok(())
+    }
+
     /// Collect all the paths in the new set of packages.
     /// Returns an error if they have paths that will conflict with each other when installed.
-    async fn collect_new_paths(&self) -> Result<HashSet<PathBuf>, NixEnvError> {
+    async fn validate_paths_can_cohabitate(&self) -> Result<HashSet<PathBuf>, NixEnvError> {
         let mut all_new_paths = HashSet::<PathBuf>::new();
 
         for pkg in self.pkgs {
@@ -78,22 +125,15 @@ impl NixEnv<'_> {
         Ok(all_new_paths)
     }
 
-    pub(crate) async fn install_packages(&self) -> Result<(), NixEnvError> {
-        self.collect_new_paths().await?;
-
-        let tmp = tempfile::tempdir().map_err(NixEnvError::CreateTempDir)?;
-        let temporary_profile = tmp.path().join("profile");
-
-        // Construct an empty profile
-        {
-            // See: https://github.com/DeterminateSystems/nix-src/blob/f60b21563990ec11d87dd4abe57b8b187d6b6fb3/src/nix-env/buildenv.nix
-            let output = tokio::process::Command::new(self.nix_store_path.join("bin/nix"))
-                .process_group(0)
-                .set_nix_options(self.nss_ca_cert_path)?
-                .args([
-                    "build",
-                    "--expr",
-                    r#"
+    async fn make_empty_profile(&self, profile: &Path) -> Result<(), NixEnvError> {
+        // See: https://github.com/DeterminateSystems/nix-src/blob/f60b21563990ec11d87dd4abe57b8b187d6b6fb3/src/nix-env/buildenv.nix
+        let output = tokio::process::Command::new(self.nix_store_path.join("bin/nix"))
+            .process_group(0)
+            .set_nix_options(self.nss_ca_cert_path)?
+            .args([
+                "build",
+                "--expr",
+                r#"
                     derivation {
                         name = "user-environment";
                         system = "builtin";
@@ -102,50 +142,62 @@ impl NixEnv<'_> {
                         manifest = builtins.toFile "env-manifest.nix" "[]";
                     }
                 "#,
-                    "--out-link",
-                ])
-                .arg(&temporary_profile)
-                .output()
-                .await
-                .map_err(|e| {
-                    NixEnvError::StartNixCommand("nix build-ing an empty profile".to_string(), e)
-                })?;
+                "--out-link",
+            ])
+            .arg(profile)
+            .output()
+            .await
+            .map_err(|e| {
+                NixEnvError::StartNixCommand("nix build-ing an empty profile".to_string(), e)
+            })?;
 
-            if !output.status.success() {
-                return Err(NixEnvError::NixCommand(
-                    "nix build-ing an empty profile".to_string(),
-                    output,
-                ));
-            }
+        if !output.status.success() {
+            return Err(NixEnvError::NixCommand(
+                "nix build-ing an empty profile".to_string(),
+                output,
+            ));
         }
 
-        if let Ok(canon_profile) = self.profile.canonicalize() {
-            tracing::info!("Duplicating the existing profile into the scratch profile");
+        Ok(())
+    }
 
-            let output = tokio::process::Command::new(self.nix_store_path.join("bin/nix-env"))
-                .process_group(0)
-                .set_nix_options(self.nss_ca_cert_path)?
-                .arg("--profile")
-                .arg(&temporary_profile)
-                .arg("--set")
-                .arg(canon_profile)
-                .output()
-                .await
-                .map_err(|e| {
-                    NixEnvError::StartNixCommand(
-                        "Duplicating the default profile into the scratch profile".to_string(),
-                        e,
-                    )
-                })?;
+    async fn reset_profile_to(
+        &self,
+        profile: &Path,
+        canon_profile: &Path,
+    ) -> Result<(), NixEnvError> {
+        tracing::info!("Duplicating the existing profile into the scratch profile");
 
-            if !output.status.success() {
-                return Err(NixEnvError::NixCommand(
+        let output = tokio::process::Command::new(self.nix_store_path.join("bin/nix-env"))
+            .process_group(0)
+            .set_nix_options(self.nss_ca_cert_path)?
+            .arg("--profile")
+            .arg(profile)
+            .arg("--set")
+            .arg(canon_profile)
+            .output()
+            .await
+            .map_err(|e| {
+                NixEnvError::StartNixCommand(
                     "Duplicating the default profile into the scratch profile".to_string(),
-                    output,
-                ));
-            }
+                    e,
+                )
+            })?;
+
+        if !output.status.success() {
+            return Err(NixEnvError::NixCommand(
+                "Duplicating the default profile into the scratch profile".to_string(),
+                output,
+            ));
         }
 
+        Ok(())
+    }
+
+    async fn collect_paths_by_package_output(
+        &self,
+        profile: &Path,
+    ) -> Result<HashMap<PathBuf, HashSet<PathBuf>>, NixEnvError> {
         // Query packages that are already installed in the profile.
         // Constructs a map of (store path in the profile) -> (hash set of paths that are inside that store path)
         let mut installed_paths: HashMap<PathBuf, HashSet<PathBuf>> = HashMap::new();
@@ -154,7 +206,7 @@ impl NixEnv<'_> {
                 .process_group(0)
                 .set_nix_options(self.nss_ca_cert_path)?
                 .arg("--profile")
-                .arg(&temporary_profile)
+                .arg(profile)
                 .args(["--query", "--installed", "--out-path", "--json"])
                 .stdin(std::process::Stdio::null())
                 .output()
@@ -183,102 +235,55 @@ impl NixEnv<'_> {
             }
         }
 
-        for pkg in self.pkgs {
-            let pkg_outputs =
-                collect_children(pkg).map_err(NixEnvError::EnumeratingStorePathContent)?;
+        Ok(installed_paths)
+    }
 
-            for (root_path, children) in &installed_paths {
-                let conflicts = children
-                    .intersection(&pkg_outputs)
-                    .collect::<Vec<&PathBuf>>();
+    async fn uninstall_path(&self, profile: &Path, remove: &Path) -> Result<(), NixEnvError> {
+        let output = tokio::process::Command::new(self.nix_store_path.join("bin/nix-env"))
+            .process_group(0)
+            .set_nix_options(self.nss_ca_cert_path)?
+            .arg("--profile")
+            .arg(profile)
+            .arg("--uninstall")
+            .arg(remove)
+            .output()
+            .await
+            .map_err(|e| {
+                NixEnvError::StartNixCommand(
+                    format!("nix-env --uninstall'ing conflicting package {:?}", remove),
+                    e,
+                )
+            })?;
 
-                if !conflicts.is_empty() {
-                    tracing::debug!(
-                        ?temporary_profile,
-                        ?root_path,
-                        ?conflicts,
-                        "Uninstalling path from the scratch profile due to conflicts"
-                    );
-
-                    {
-                        let output =
-                            tokio::process::Command::new(self.nix_store_path.join("bin/nix-env"))
-                                .process_group(0)
-                                .set_nix_options(self.nss_ca_cert_path)?
-                                .arg("--profile")
-                                .arg(&temporary_profile)
-                                .arg("--uninstall")
-                                .arg(root_path)
-                                .output()
-                                .await
-                                .map_err(|e| {
-                                    NixEnvError::StartNixCommand(
-                                        format!(
-                                            "nix-env --uninstall'ing conflicting package {:?}",
-                                            root_path
-                                        ),
-                                        e,
-                                    )
-                                })?;
-
-                        if !output.status.success() {
-                            return Err(NixEnvError::NixCommand(
-                                format!(
-                                    "nix-env --uninstall'ing conflicting package {:?}",
-                                    root_path
-                                ),
-                                output,
-                            ));
-                        }
-                    }
-                }
-            }
-
-            let output = tokio::process::Command::new(self.nix_store_path.join("bin/nix-env"))
-                .process_group(0)
-                .set_nix_options(self.nss_ca_cert_path)?
-                .arg("--profile")
-                .arg(&temporary_profile)
-                .arg("--install")
-                .arg(pkg)
-                .output()
-                .await
-                .map_err(|e| {
-                    NixEnvError::StartNixCommand(
-                        format!("Adding the package {:?} to the profile", pkg),
-                        e,
-                    )
-                })?;
-
-            if !output.status.success() {
-                return Err(NixEnvError::AddPackage(pkg.to_path_buf(), output));
-            }
+        if !output.status.success() {
+            return Err(NixEnvError::NixCommand(
+                format!("nix-env --uninstall'ing conflicting package {:?}", remove),
+                output,
+            ));
         }
 
-        // Finish by setting the user provided profile to the new version we've constructed
-        {
-            let output = tokio::process::Command::new(self.nix_store_path.join("bin/nix-env"))
-                .process_group(0)
-                .set_nix_options(self.nss_ca_cert_path)?
-                .arg("--profile")
-                .arg(self.profile)
-                .arg("--set")
-                .arg(&temporary_profile)
-                .output()
-                .await
-                .map_err(|e| {
-                    NixEnvError::StartNixCommand(
-                        "nix-env --profile ... --set ... the user's profile".to_string(),
-                        e,
-                    )
-                })?;
+        Ok(())
+    }
 
-            if !output.status.success() {
-                return Err(NixEnvError::UpdateProfile(
-                    self.profile.to_path_buf(),
-                    output,
-                ));
-            }
+    async fn install_path(&self, profile: &Path, add: &Path) -> Result<(), NixEnvError> {
+        let output = tokio::process::Command::new(self.nix_store_path.join("bin/nix-env"))
+            .process_group(0)
+            .set_nix_options(self.nss_ca_cert_path)?
+            .arg("--profile")
+            .arg(profile)
+            .arg("--install")
+            .arg(add)
+            .output()
+            .await
+            .map_err(|e| {
+                NixEnvError::StartNixCommand(
+                    format!("Adding the package {:?} to the profile", add),
+                    e,
+                )
+            })?;
+
+        if !output.status.success() {
+            return Err(NixEnvError::AddPackage(add.to_path_buf(), output));
         }
 
         Ok(())
