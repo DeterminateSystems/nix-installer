@@ -32,18 +32,6 @@ pub enum NixEnvError {
 
     #[error("Deserializing the list of installed packages for the profile: {0}")]
     Deserialization(#[from] serde_json::Error),
-
-    #[cfg(test)]
-    #[error("Failed to create a temp file named `{0}`: {1}")]
-    CreateTempFile(PathBuf, std::io::Error),
-
-    #[cfg(test)]
-    #[error("Failed to write to a file named `{0}`: {1}")]
-    Write(PathBuf, std::io::Error),
-
-    #[cfg(test)]
-    #[error("Failed to add a path to the store {0:?}")]
-    AddPathFailed(std::ffi::OsString),
 }
 
 pub(crate) struct NixEnv<'a> {

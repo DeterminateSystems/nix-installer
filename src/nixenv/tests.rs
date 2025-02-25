@@ -5,7 +5,6 @@ use tokio::io::AsyncWriteExt;
 
 use super::NixCommandExt;
 use super::NixEnv;
-use super::NixEnvError;
 use super::WriteToDefaultProfile;
 
 async fn should_skip() -> bool {
@@ -24,13 +23,11 @@ async fn should_skip() -> bool {
     }
 }
 
-async fn sample_tree(dirname: &str, filename: &str, content: &str) -> Result<PathBuf, NixEnvError> {
-    let temp_dir = tempfile::tempdir().map_err(NixEnvError::CreateTempDir)?;
+async fn sample_tree(dirname: &str, filename: &str, content: &str) -> PathBuf {
+    let temp_dir = tempfile::tempdir().unwrap();
 
     let sub_dir = temp_dir.path().join(dirname);
-    tokio::fs::create_dir(&sub_dir)
-        .await
-        .map_err(NixEnvError::CreateTempDir)?;
+    tokio::fs::create_dir(&sub_dir).await.unwrap();
 
     let file = sub_dir.join(filename);
 
@@ -39,11 +36,9 @@ async fn sample_tree(dirname: &str, filename: &str, content: &str) -> Result<Pat
         .write(true)
         .open(&file)
         .await
-        .map_err(|e| NixEnvError::CreateTempFile(file.to_path_buf(), e))?;
+        .unwrap();
 
-    f.write_all(content.as_bytes())
-        .await
-        .map_err(|e| NixEnvError::Write(file.to_path_buf(), e))?;
+    f.write_all(content.as_bytes()).await.unwrap();
 
     let mut cmdret = tokio::process::Command::new("nix")
         .set_nix_options(Path::new("/dev/null"))
@@ -52,11 +47,13 @@ async fn sample_tree(dirname: &str, filename: &str, content: &str) -> Result<Pat
         .arg(&sub_dir)
         .output()
         .await
-        .map_err(|e| NixEnvError::StartNixCommand("nix store add".to_string(), e))?;
+        .unwrap();
 
-    if !cmdret.status.success() {
-        return Err(NixEnvError::NixCommand("nix store add".to_string(), cmdret));
-    }
+    assert!(
+        cmdret.status.success(),
+        "Runnning nix-store add failed: {:#?}",
+        cmdret,
+    );
 
     if cmdret.stdout.last() == Some(&b'\n') {
         cmdret.stdout.remove(cmdret.stdout.len() - 1);
@@ -64,13 +61,13 @@ async fn sample_tree(dirname: &str, filename: &str, content: &str) -> Result<Pat
 
     let p = PathBuf::from(std::ffi::OsString::from_vec(cmdret.stdout));
 
-    if p.exists() {
-        Ok(p)
-    } else {
-        Err(NixEnvError::AddPathFailed(std::ffi::OsString::from_vec(
-            cmdret.stderr,
-        )))
-    }
+    assert!(
+        p.exists(),
+        "Adding a path to the Nix store failed...: {:#?}",
+        cmdret.stderr
+    );
+
+    p
 }
 
 #[tokio::test]
@@ -82,8 +79,8 @@ async fn test_detect_intersection() {
     let profile = tempfile::tempdir().unwrap();
     let profile_path = profile.path().join("profile");
 
-    let tree_1 = sample_tree("foo", "foo", "a").await.unwrap();
-    let tree_2 = sample_tree("bar", "foo", "b").await.unwrap();
+    let tree_1 = sample_tree("foo", "foo", "a").await;
+    let tree_2 = sample_tree("bar", "foo", "b").await;
 
     (NixEnv {
         nix_store_path: Path::new("/nix/var/nix/profiles/default/"),
@@ -105,8 +102,8 @@ async fn test_no_intersection() {
     let profile = tempfile::tempdir().unwrap();
     let profile_path = profile.path().join("profile");
 
-    let tree_1 = sample_tree("foo", "foo", "a").await.unwrap();
-    let tree_2 = sample_tree("bar", "bar", "b").await.unwrap();
+    let tree_1 = sample_tree("foo", "foo", "a").await;
+    let tree_2 = sample_tree("bar", "bar", "b").await;
 
     (NixEnv {
         nix_store_path: Path::new("/nix/var/nix/profiles/default/"),
@@ -131,8 +128,8 @@ async fn test_no_intersection() {
         "b"
     );
 
-    let tree_3 = sample_tree("baz", "baz", "c").await.unwrap();
-    let tree_4 = sample_tree("tux", "tux", "d").await.unwrap();
+    let tree_3 = sample_tree("baz", "baz", "c").await;
+    let tree_4 = sample_tree("tux", "tux", "d").await;
 
     (NixEnv {
         nix_store_path: Path::new("/nix/var/nix/profiles/default/"),
@@ -167,8 +164,8 @@ async fn test_overlap_replaces() {
     let profile = tempfile::tempdir().unwrap();
     let profile_path = profile.path().join("profile");
 
-    let tree_base = sample_tree("fizz", "fizz", "fizz").await.unwrap();
-    let tree_1 = sample_tree("foo", "foo", "a").await.unwrap();
+    let tree_base = sample_tree("fizz", "fizz", "fizz").await;
+    let tree_1 = sample_tree("foo", "foo", "a").await;
     (NixEnv {
         nix_store_path: Path::new("/nix/var/nix/profiles/default/"),
         nss_ca_cert_path: Path::new("/nix/var/nix/profiles/default/"),
@@ -192,7 +189,7 @@ async fn test_overlap_replaces() {
         "a"
     );
 
-    let tree_2 = sample_tree("foo", "foo", "b").await.unwrap();
+    let tree_2 = sample_tree("foo", "foo", "b").await;
     (NixEnv {
         nix_store_path: Path::new("/nix/var/nix/profiles/default/"),
         nss_ca_cert_path: Path::new("/nix/var/nix/profiles/default/"),
@@ -210,7 +207,7 @@ async fn test_overlap_replaces() {
         "b"
     );
 
-    let tree_3 = sample_tree("bar", "foo", "c").await.unwrap();
+    let tree_3 = sample_tree("bar", "foo", "c").await;
     (NixEnv {
         nix_store_path: Path::new("/nix/var/nix/profiles/default/"),
         nss_ca_cert_path: Path::new("/nix/var/nix/profiles/default/"),
