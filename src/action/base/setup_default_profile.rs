@@ -157,8 +157,8 @@ pub enum SetupDefaultProfileError {
     #[error("No root home found to place channel configuration in")]
     NoRootHome,
 
-    #[error("Failed to install packages with nix-env: {0}")]
-    NixEnv(crate::nixenv::NixEnvError),
+    #[error("Failed to install packages with nix-env")]
+    NixEnv(#[from] crate::nixenv::NixEnvError),
 }
 
 impl From<SetupDefaultProfileError> for ActionErrorKind {
