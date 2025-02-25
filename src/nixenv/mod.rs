@@ -64,7 +64,7 @@ impl NixEnv<'_> {
         self.make_empty_profile(&temporary_profile).await?;
 
         if let Ok(canon_profile) = self.profile.canonicalize() {
-            self.reset_profile_to(&temporary_profile, &canon_profile)
+            self.set_profile_to(&temporary_profile, &canon_profile)
                 .await?;
         }
 
@@ -96,7 +96,7 @@ impl NixEnv<'_> {
             self.install_path(&temporary_profile, pkg).await?;
         }
 
-        self.reset_profile_to(self.profile, &temporary_profile)
+        self.set_profile_to(self.profile, &temporary_profile)
             .await?;
 
         Ok(())
@@ -161,7 +161,7 @@ impl NixEnv<'_> {
         Ok(())
     }
 
-    async fn reset_profile_to(
+    async fn set_profile_to(
         &self,
         profile: &Path,
         canon_profile: &Path,
