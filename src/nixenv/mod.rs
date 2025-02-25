@@ -171,7 +171,7 @@ impl NixEnv<'_> {
         profile: Option<&Path>,
         canon_profile: &Path,
     ) -> Result<(), NixEnvError> {
-        tracing::info!("Duplicating the existing profile into the scratch profile");
+        tracing::debug!("Duplicating the existing profile into the scratch profile");
 
         let mut cmd = tokio::process::Command::new(self.nix_store_path.join("bin/nix-env"));
 
@@ -317,7 +317,7 @@ fn collect_children<P: AsRef<std::path::Path>>(
         .filter_map(|entry| -> Option<walkdir::DirEntry> {
             let entry = entry
                 .inspect_err(
-                    |e| tracing::info!(?base_path, %e, "Error walking the file tree, skipping."),
+                    |e| tracing::debug!(?base_path, %e, "Error walking the file tree, skipping."),
                 )
                 .ok()?;
 
@@ -331,7 +331,7 @@ fn collect_children<P: AsRef<std::path::Path>>(
             entry.path()
                 .strip_prefix(base_path)
                 .inspect_err(
-                    |e| tracing::info!(?base_path, path = ?entry.path(), %e, "Error stripping the prefix from the path, skipping."),
+                    |e| tracing::debug!(?base_path, path = ?entry.path(), %e, "Error stripping the prefix from the path, skipping."),
                 )
                 .ok()
                 .map(PathBuf::from)
