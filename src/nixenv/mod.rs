@@ -55,7 +55,9 @@ pub(crate) struct NixEnv<'a> {
 }
 
 impl NixEnv<'_> {
-    pub(crate) async fn install_packages(&self) -> Result<(), NixEnvError> {
+    /// Collect all the paths in the new set of packages.
+    /// Returns an error if they have paths that will conflict with each other when installed.
+    async fn collect_new_paths(&self) -> Result<HashSet<PathBuf>, NixEnvError> {
         let mut all_new_paths = HashSet::<PathBuf>::new();
 
         for pkg in self.pkgs {
@@ -72,6 +74,12 @@ impl NixEnv<'_> {
 
             all_new_paths.extend(candidates.into_iter());
         }
+
+        Ok(all_new_paths)
+    }
+
+    pub(crate) async fn install_packages(&self) -> Result<(), NixEnvError> {
+        self.collect_new_paths().await?;
 
         let tmp = tempfile::tempdir().map_err(NixEnvError::CreateTempDir)?;
         let temporary_profile = tmp.path().join("profile");
