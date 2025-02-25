@@ -115,17 +115,18 @@ impl Action for SetupDefaultProfile {
             )));
         };
 
-        (crate::nixenv::NixEnv {
+        let nixenv = crate::nixenv::NixEnv {
             nix_store_path: &nix_pkg,
             nss_ca_cert_path: &nss_ca_cert_pkg,
 
             profile: std::path::Path::new("/nix/var/nix/profiles/default"),
             pkgs: &[&nix_pkg, &nss_ca_cert_pkg],
-        })
-        .install_packages(WriteToDefaultProfile::WriteToDefault)
-        .await
-        .map_err(SetupDefaultProfileError::NixEnv)
-        .map_err(Self::error)?;
+        };
+        nixenv
+            .install_packages(WriteToDefaultProfile::WriteToDefault)
+            .await
+            .map_err(SetupDefaultProfileError::NixEnv)
+            .map_err(Self::error)?;
 
         set_env(
             "NIX_SSL_CERT_FILE",
