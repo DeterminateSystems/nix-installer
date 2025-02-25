@@ -2,7 +2,7 @@ use std::path::PathBuf;
 
 use crate::{
     action::{common::ConfigureNix, ActionError, ActionErrorKind, ActionTag, StatefulAction},
-    execute_command, set_env,
+    set_env,
 };
 
 use tokio::{io::AsyncWriteExt, process::Command};
@@ -114,48 +114,16 @@ impl Action for SetupDefaultProfile {
             )));
         };
 
-        // Install `nix` itself into the store
-        execute_command(
-            Command::new(nix_pkg.join("bin/nix-env"))
-                .process_group(0)
-                .args(["--option", "substitute", "false"])
-                .args(["--option", "post-build-hook", ""])
-                .arg("-i")
-                .arg(&nix_pkg)
-                .stdin(std::process::Stdio::null())
-                .env(
-                    "HOME",
-                    dirs::home_dir()
-                        .ok_or_else(|| Self::error(SetupDefaultProfileError::NoRootHome))?,
-                )
-                .env(
-                    "NIX_SSL_CERT_FILE",
-                    nss_ca_cert_pkg.join("etc/ssl/certs/ca-bundle.crt"),
-                ), /* This is apparently load bearing... */
-        )
-        .await
-        .map_err(Self::error)?;
+        (crate::nixenv::NixEnv {
+            nix_store_path: &nix_pkg,
+            nss_ca_cert_path: &nss_ca_cert_pkg,
 
-        // Install `nix` itself into the store
-        execute_command(
-            Command::new(nix_pkg.join("bin/nix-env"))
-                .process_group(0)
-                .args(["--option", "substitute", "false"])
-                .args(["--option", "post-build-hook", ""])
-                .arg("-i")
-                .arg(&nss_ca_cert_pkg)
-                .stdin(std::process::Stdio::null())
-                .env(
-                    "HOME",
-                    dirs::home_dir()
-                        .ok_or_else(|| Self::error(SetupDefaultProfileError::NoRootHome))?,
-                )
-                .env(
-                    "NIX_SSL_CERT_FILE",
-                    nss_ca_cert_pkg.join("etc/ssl/certs/ca-bundle.crt"),
-                ), /* This is apparently load bearing... */
-        )
+            profile: std::path::Path::new("/nix/var/nix/profiles/default/"),
+            pkgs: &[&nix_pkg, &nss_ca_cert_pkg],
+        })
+        .install_packages()
         .await
+        .map_err(SetupDefaultProfileError::NixEnv)
         .map_err(Self::error)?;
 
         set_env(
@@ -186,6 +154,9 @@ impl Action for SetupDefaultProfile {
 pub enum SetupDefaultProfileError {
     #[error("No root home found to place channel configuration in")]
     NoRootHome,
+
+    #[error("Failed to install packages with nix-env: {0}")]
+    NixEnv(crate::nixenv::NixEnvError),
 }
 
 impl From<SetupDefaultProfileError> for ActionErrorKind {

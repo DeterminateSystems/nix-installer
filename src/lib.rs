@@ -76,6 +76,7 @@ pub mod cli;
 pub mod diagnostics;
 mod error;
 pub mod feedback;
+mod nixenv;
 mod os;
 mod plan;
 pub mod planner;
