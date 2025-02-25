@@ -285,14 +285,14 @@ fn collect_children<P: AsRef<std::path::Path>>(
     Ok(paths)
 }
 
-trait Nixy {
+trait NixCommandExt {
     fn set_nix_options(
         &mut self,
         nss_ca_cert_pkg: &Path,
     ) -> Result<&mut tokio::process::Command, NixEnvError>;
 }
 
-impl Nixy for tokio::process::Command {
+impl NixCommandExt for tokio::process::Command {
     fn set_nix_options(
         &mut self,
         nss_ca_cert_pkg: &Path,
@@ -316,9 +316,9 @@ mod tests {
 
     use tokio::io::AsyncWriteExt;
 
+    use super::NixCommandExt;
     use super::NixEnv;
     use super::NixEnvError;
-    use super::Nixy;
 
     async fn should_skip() -> bool {
         let cmdret = tokio::process::Command::new("nix")
