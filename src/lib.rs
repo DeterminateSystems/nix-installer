@@ -74,6 +74,7 @@ pub mod action;
 pub mod cli;
 #[cfg(feature = "diagnostics")]
 pub mod diagnostics;
+mod distribution;
 mod error;
 pub mod feedback;
 mod nixenv;

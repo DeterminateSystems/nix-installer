@@ -113,6 +113,7 @@ use crate::{
         },
         Action, StatefulAction,
     },
+    distribution::Distribution,
     planner::{Planner, PlannerError},
     settings::{CommonSettings, InitSystem, InstallSettingsError},
     BuiltinPlanner,
@@ -343,7 +344,7 @@ impl Planner for SteamDeck {
             )
         }
 
-        if self.settings.determinate_nix {
+        if self.settings.distribution() == Distribution::Determinate {
             actions.push(
                 ProvisionDeterminateNixd::plan()
                     .await

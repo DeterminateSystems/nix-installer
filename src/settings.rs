@@ -9,6 +9,8 @@ use clap::{
 };
 use url::Url;
 
+use crate::distribution::Distribution;
+
 pub const SCRATCH_DIR: &str = "/nix/temp-install-dir";
 
 pub const DEFAULT_NIX_BUILD_USER_GROUP_NAME: &str = "nixbld";
@@ -318,6 +320,14 @@ impl CommonSettings {
         map.insert("skip_nix_conf".into(), serde_json::to_value(skip_nix_conf)?);
 
         Ok(map)
+    }
+
+    pub fn distribution(&self) -> Distribution {
+        if self.determinate_nix {
+            Distribution::Determinate
+        } else {
+            Distribution::Nix
+        }
     }
 }
 

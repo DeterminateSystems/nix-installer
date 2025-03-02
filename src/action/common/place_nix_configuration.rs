@@ -9,6 +9,7 @@ use crate::action::base::{CreateDirectory, CreateOrMergeNixConfig};
 use crate::action::{
     Action, ActionDescription, ActionError, ActionErrorKind, ActionTag, StatefulAction,
 };
+use crate::distribution::Distribution;
 use crate::parse_ssl_cert;
 use crate::settings::UrlOrPathOrString;
 use std::path::PathBuf;
@@ -46,7 +47,7 @@ impl PlaceNixConfiguration {
         ssl_cert_file: Option<PathBuf>,
         extra_conf: Vec<UrlOrPathOrString>,
         force: bool,
-        determinate_nix: bool,
+        distribution: Distribution,
     ) -> Result<StatefulAction<Self>, ActionError> {
         let extra_conf = Self::parse_extra_conf(proxy, ssl_cert_file.as_ref(), extra_conf).await?;
 
@@ -55,14 +56,14 @@ impl PlaceNixConfiguration {
             target_lexicon::OperatingSystem::MacOSX { .. }
                 | target_lexicon::OperatingSystem::Darwin
         );
-        let configured_ssl_cert_file = if determinate_nix && is_macos {
+        let configured_ssl_cert_file = if distribution == Distribution::Determinate && is_macos {
             // On macOS, determinate-nixd will handle configuring the ssl-cert-file option for Nix
             None
         } else {
             ssl_cert_file
         };
 
-        let standard_nix_config = if !determinate_nix {
+        let standard_nix_config = if distribution != Distribution::Determinate {
             let maybe_trusted_users = extra_conf.settings().get(TRUSTED_USERS_CONF_NAME);
 
             Some(Self::setup_standard_config(maybe_trusted_users).await?)

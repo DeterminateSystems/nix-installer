@@ -5,6 +5,7 @@ use crate::{
         macos::NIX_VOLUME_MOUNTD_DEST, Action, ActionDescription, ActionError, ActionErrorKind,
         ActionState, ActionTag, StatefulAction,
     },
+    distribution::Distribution,
     execute_command,
     os::darwin::DiskUtilApfsListOutput,
 };
@@ -24,7 +25,7 @@ Encrypt an APFS volume
 #[derive(Debug, serde::Deserialize, serde::Serialize, Clone)]
 #[serde(tag = "action_name", rename = "encrypt_apfs_volume")]
 pub struct EncryptApfsVolume {
-    determinate_nix: bool,
+    distribution: Distribution,
     disk: PathBuf,
     name: String,
 }
@@ -32,7 +33,7 @@ pub struct EncryptApfsVolume {
 impl EncryptApfsVolume {
     #[tracing::instrument(level = "debug", skip_all)]
     pub async fn plan(
-        determinate_nix: bool,
+        distribution: Distribution,
         disk: impl AsRef<Path>,
         name: impl AsRef<str>,
         planned_create_apfs_volume: &StatefulAction<CreateApfsVolume>,
@@ -63,7 +64,7 @@ impl EncryptApfsVolume {
             if planned_create_apfs_volume.state == ActionState::Completed {
                 // We detected a created volume already, and a password exists, so we can keep using that and skip doing anything
                 return Ok(StatefulAction::completed(Self {
-                    determinate_nix,
+                    distribution,
                     name,
                     disk,
                 }));
@@ -109,7 +110,7 @@ impl EncryptApfsVolume {
             for volume in container.volumes {
                 if volume.name.as_ref() == Some(&name) && volume.file_vault.unwrap_or(false) {
                     return Ok(StatefulAction::completed(Self {
-                        determinate_nix,
+                        distribution,
                         disk,
                         name,
                     }));
@@ -118,7 +119,7 @@ impl EncryptApfsVolume {
         }
 
         Ok(StatefulAction::uncompleted(Self {
-            determinate_nix,
+            distribution,
             name,
             disk,
         }))
@@ -225,7 +226,7 @@ impl Action for EncryptApfsVolume {
             "/usr/bin/security",
         ]);
 
-        if self.determinate_nix {
+        if self.distribution == Distribution::Determinate {
             cmd.args(["-T", "/usr/local/bin/determinate-nixd"]);
         }
 
