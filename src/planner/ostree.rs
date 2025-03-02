@@ -16,7 +16,10 @@ use crate::{
     settings::{CommonSettings, InitSystem, InstallSettingsError},
     Action, BuiltinPlanner,
 };
-use std::{collections::HashMap, path::PathBuf};
+use std::{
+    collections::HashMap,
+    path::{Path, PathBuf},
+};
 
 use super::{
     linux::{
@@ -25,6 +28,19 @@ use super::{
     },
     ShellProfileLocations,
 };
+
+// Fedora's ostree's fish package creates `/etc/fish` but fish doesn't read from it.
+// Its fish does read from /usr/local/share/fish/, but the directory doesn't exist --
+// so we ignore it.
+//
+// We use this const to forcefully create this directory and add it to shell locations
+// to think about updating.
+//
+// This may not be suitable for all possible ostree based distros, but it'll fix
+// a good number of selftest failures we're seeing.
+//
+// See: https://github.com/DeterminateSystems/nix-installer/issues/707
+pub const OSTREE_FISH_PROFILE_LOCATION: &str = "/usr/local/share/fish/";
 
 /// A planner suitable for immutable systems using ostree, such as Fedora Silverblue
 #[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
@@ -163,10 +179,8 @@ impl Planner for Ostree {
             .iter()
             .position(|v| *v == PathBuf::from("/usr/share/fish/"))
         {
-            shell_profile_locations
-                .fish
-                .vendor_confd_prefixes
-                .remove(index);
+            shell_profile_locations.fish.vendor_confd_prefixes =
+                vec![OSTREE_FISH_PROFILE_LOCATION.into()];
         }
 
         plan.push(
@@ -197,6 +211,16 @@ impl Planner for Ostree {
                 .map_err(PlannerError::Action)?
                 .boxed(),
         );
+
+        if Path::new("/etc/fish").is_dir() {
+            plan.push(
+                CreateDirectory::plan(&OSTREE_FISH_PROFILE_LOCATION, None, None, 0o0755, true)
+                    .await
+                    .map_err(PlannerError::Action)?
+                    .boxed(),
+            );
+        }
+
         plan.push(
             ConfigureNix::plan(shell_profile_locations, &self.settings)
                 .await
