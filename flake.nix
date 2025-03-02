@@ -89,7 +89,7 @@
 
           env = sharedAttrs.env // {
             RUSTFLAGS = "--cfg tokio_unstable";
-            DETERMINATE_NIX_TARBALL_PATH = nixTarballs.${stdenv.hostPlatform.system};
+            NIX_INSTALLER_TARBALL_PATH = nixTarballs.${stdenv.hostPlatform.system};
             DETERMINATE_NIXD_BINARY_PATH = optionalPathToDeterminateNixd stdenv.hostPlatform.system;
           };
         });
@@ -109,7 +109,7 @@
             name = "nix-install-shell";
 
             RUST_SRC_PATH = "${pkgs.rustPlatform.rustcSrc}/library";
-            DETERMINATE_NIX_TARBALL_PATH = nixTarballs.${system};
+            NIX_INSTALLER_TARBALL_PATH = nixTarballs.${system};
             DETERMINATE_NIXD_BINARY_PATH = optionalPathToDeterminateNixd system;
 
             nativeBuildInputs = with pkgs; [ ];
