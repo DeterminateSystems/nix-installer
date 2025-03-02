@@ -30,6 +30,7 @@ impl ProvisionNix {
     #[tracing::instrument(level = "debug", skip_all)]
     pub async fn plan(settings: &CommonSettings) -> Result<StatefulAction<Self>, ActionError> {
         let fetch_nix = FetchAndUnpackNix::plan(
+            settings.distribution(),
             settings.nix_package_url.clone(),
             PathBuf::from(SCRATCH_DIR),
             settings.proxy.clone(),

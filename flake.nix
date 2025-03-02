@@ -109,6 +109,7 @@
             name = "nix-install-shell";
 
             RUST_SRC_PATH = "${pkgs.rustPlatform.rustcSrc}/library";
+            NIX_TARBALL_URL = "https://releases.nixos.org/nix/nix-2.26.2/nix-2.26.2-${stdenv.hostPlatform.system}.tar.xz";
             DETERMINATE_NIX_TARBALL_PATH = nixTarballs.${system};
             DETERMINATE_NIXD_BINARY_PATH = optionalPathToDeterminateNixd system;
 
