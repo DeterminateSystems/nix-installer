@@ -7,7 +7,7 @@
     crane.url = "github:ipetkov/crane/v0.20.0";
 
     nix = {
-      url = "https://flakehub.com/f/DeterminateSystems/nix/=2.26.2";
+      url = "https://flakehub.com/f/DeterminateSystems/nix-priv/*";
       # Omitting `inputs.nixpkgs.follows = "nixpkgs";` on purpose
     };
 
@@ -49,7 +49,7 @@
 
       nixTarballs = forAllSystems ({ system, ... }:
         inputs.nix.tarballs_direct.${system}
-          or "${inputs.nix.checks."${system}".binaryTarball}/nix-${inputs.nix.packages."${system}".default.version}-${system}.tar.xz");
+          or "${inputs.nix.packages."${system}".binaryTarball}/nix-${inputs.nix.packages."${system}".default.version}-${system}.tar.xz");
 
       optionalPathToDeterminateNixd = system: if builtins.elem system systemsSupportedByDeterminateNixd then "${inputs.determinate.packages.${system}.default}/bin/determinate-nixd" else null;
 
@@ -109,7 +109,7 @@
             name = "nix-install-shell";
 
             RUST_SRC_PATH = "${pkgs.rustPlatform.rustcSrc}/library";
-            NIX_TARBALL_URL = "https://releases.nixos.org/nix/nix-2.26.2/nix-2.26.2-${stdenv.hostPlatform.system}.tar.xz";
+            NIX_TARBALL_URL = "https://releases.nixos.org/nix/nix-2.26.2/nix-2.26.2-${pkgs.stdenv.hostPlatform.system}.tar.xz";
             DETERMINATE_NIX_TARBALL_PATH = nixTarballs.${system};
             DETERMINATE_NIXD_BINARY_PATH = optionalPathToDeterminateNixd system;
 

@@ -38,7 +38,7 @@ pub enum TarballLocation {
     InMemory(&'static str, &'static [u8]),
 }
 
-pub const NIX_TARBALL_URL: &str = Some(env!("NIX_TARBALL_URL"));
+pub const NIX_TARBALL_URL: &str = env!("NIX_TARBALL_URL");
 
 #[cfg(feature = "determinate-nix")]
 pub const DETERMINATE_NIX_TARBALL_PATH: Option<&str> = Some(env!("DETERMINATE_NIX_TARBALL_PATH"));
