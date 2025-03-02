@@ -15,11 +15,17 @@ pub const SCRATCH_DIR: &str = "/nix/temp-install-dir";
 
 pub const DEFAULT_NIX_BUILD_USER_GROUP_NAME: &str = "nixbld";
 
-pub const NIX_TARBALL_PATH: &str = env!("NIX_INSTALLER_TARBALL_PATH");
-/// The NIX_INSTALLER_TARBALL_PATH environment variable should point to a target-appropriate
-/// Nix installation tarball, like nix-2.21.2-aarch64-darwin.tar.xz. The contents are embedded
-/// in the resulting binary.
-pub const NIX_TARBALL: &[u8] = include_bytes!(env!("NIX_INSTALLER_TARBALL_PATH"));
+pub const NIX_TARBALL_URL: &str =
+    "https://releases.nixos.org/nix/nix-2.26.2/nix-2.26.2-x86_64-linux.tar.xz";
+
+#[cfg(feature = "determinate-nix")]
+pub const DETERMINATE_NIX_TARBALL_PATH: Option<&str> = Some(env!("DETERMINATE_NIX_TARBALL_PATH"));
+#[cfg(feature = "determinate-nix")]
+/// The DETERMINATE_NIX_TARBALL environment variable should point to a target-appropriate
+/// Determinate Nix installation tarball, like determinate-nix-2.21.2-aarch64-darwin.tar.xz.
+/// The contents are embedded in the resulting binary.
+pub const DETERMINATE_NIX_TARBALL: Option<&[u8]> =
+    Some(include_bytes!(env!("DETERMINATE_NIX_TARBALL_PATH")));
 
 #[cfg(feature = "determinate-nix")]
 /// The DETERMINATE_NIXD_BINARY_PATH environment variable should point to a target-appropriate
@@ -29,10 +35,11 @@ pub const DETERMINATE_NIXD_BINARY: Option<&[u8]> =
     Some(include_bytes!(env!("DETERMINATE_NIXD_BINARY_PATH")));
 
 #[cfg(not(feature = "determinate-nix"))]
-/// The DETERMINATE_NIXD_BINARY_PATH environment variable should point to a target-appropriate
-/// static build of the Determinate Nixd binary. The contents are embedded in the resulting
-/// binary if the determinate-nix feature is turned on.
 pub const DETERMINATE_NIXD_BINARY: Option<&[u8]> = None;
+#[cfg(not(feature = "determinate-nix"))]
+pub const DETERMINATE_NIX_TARBALL: Option<&[u8]> = None;
+#[cfg(not(feature = "determinate-nix"))]
+pub const DETERMINATE_NIX_TARBALL_PATH: Option<&str> = None;
 
 #[derive(Debug, serde::Deserialize, serde::Serialize, Clone, Copy, PartialEq, Eq)]
 #[cfg_attr(feature = "cli", derive(clap::ValueEnum))]
