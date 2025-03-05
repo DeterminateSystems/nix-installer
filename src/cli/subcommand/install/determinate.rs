@@ -8,6 +8,12 @@ use crate::planner::BuiltinPlanner;
 
 const PRE_PKG_SUGGEST: &str = "For a more robust Nix installation, use the Determinate package for macOS: https://dtr.mn/determinate-nix";
 
+const INSTALL_DETERMINATE_NIX_PROMPT: &str = "\
+Install Determinate Nix?\
+\
+Selecting 'no' will install Nix from NixOS.org, without automated garbage collection and enterprise certificate support.\
+";
+
 const DETERMINATE_MSG_EXPLAINER: &str = "\
 Determinate Nix is Determinate Systems' validated and secure downstream Nix distribution for enterprises. \
 It comes bundled with Determinate Nixd, a helpful daemon that automates some otherwise-unpleasant aspects of using Nix, such as garbage collection, and enables you to easily authenticate with FlakeHub.
@@ -39,7 +45,7 @@ pub(crate) async fn prompt_for_determinate<T: Feedback>(
         let base_prompt = feedback
             .get_feature_ptr_payload::<String>("dni-det-msg-interactive-prompt-ptr")
             .await
-            .unwrap_or("Install Determinate Nix?".into());
+            .unwrap_or(INSTALL_DETERMINATE_NIX_PROMPT.into());
 
         let mut explanation: Option<String> = None;
 
