@@ -344,7 +344,7 @@ impl Planner for SteamDeck {
             )
         }
 
-        if self.settings.distribution() == Distribution::Determinate {
+        if self.settings.distribution() == Distribution::DeterminateNix {
             actions.push(
                 ProvisionDeterminateNixd::plan()
                     .await

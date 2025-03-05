@@ -226,7 +226,7 @@ impl Action for EncryptApfsVolume {
             "/usr/bin/security",
         ]);
 
-        if self.distribution == Distribution::Determinate {
+        if self.distribution == Distribution::DeterminateNix {
             cmd.args(["-T", "/usr/local/bin/determinate-nixd"]);
         }
 

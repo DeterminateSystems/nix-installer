@@ -145,7 +145,8 @@ impl Planner for Macos {
     }
 
     async fn plan(&self) -> Result<Vec<StatefulAction<Box<dyn Action>>>, PlannerError> {
-        if self.use_ec2_instance_store && self.settings.distribution() != Distribution::Determinate
+        if self.use_ec2_instance_store
+            && self.settings.distribution() != Distribution::DeterminateNix
         {
             return Err(PlannerError::Ec2InstanceStoreRequiresDeterminateNix);
         }
@@ -165,7 +166,7 @@ impl Planner for Macos {
         // however this match accounts for Determinate Nix so the receipt indicates encrypt: true.
         // This is a goofy thing to do, but it is in an attempt to make a more globally coherent plan / receipt.
         let encrypt = match (self.settings.distribution(), self.encrypt) {
-            (Distribution::Determinate, _) => true,
+            (Distribution::DeterminateNix, _) => true,
             (_, Some(choice)) => {
                 if let Some(diskutil_info) =
                     crate::action::macos::get_disk_info_for_label(&self.volume_label)
@@ -219,7 +220,7 @@ impl Planner for Macos {
 
         let mut plan = vec![];
 
-        if self.settings.distribution() == Distribution::Determinate {
+        if self.settings.distribution() == Distribution::DeterminateNix {
             plan.push(
                 ProvisionDeterminateNixd::plan()
                     .await
@@ -229,7 +230,7 @@ impl Planner for Macos {
         }
 
         match self.settings.distribution() {
-            Distribution::Determinate => {
+            Distribution::DeterminateNix => {
                 plan.push(
                     CreateDeterminateNixVolume::plan(
                         root_disk.unwrap(), /* We just ensured it was populated */
@@ -305,7 +306,7 @@ impl Planner for Macos {
         }
 
         match self.settings.distribution() {
-            Distribution::Determinate => {
+            Distribution::DeterminateNix => {
                 plan.push(
                     ConfigureDeterminateNixdInitService::plan(InitSystem::Launchd, true)
                         .await

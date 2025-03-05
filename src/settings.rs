@@ -305,7 +305,7 @@ impl CommonSettings {
 
     pub fn distribution(&self) -> Distribution {
         if self.determinate_nix {
-            Distribution::Determinate
+            Distribution::DeterminateNix
         } else {
             Distribution::Nix
         }

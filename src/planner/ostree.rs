@@ -177,7 +177,7 @@ impl Planner for Ostree {
                 .boxed(),
         );
 
-        if self.settings.distribution() == Distribution::Determinate {
+        if self.settings.distribution() == Distribution::DeterminateNix {
             plan.push(
                 ProvisionDeterminateNixd::plan()
                     .await
@@ -209,7 +209,7 @@ impl Planner for Ostree {
             plan.push(
                 ProvisionSelinux::plan(
                     "/etc/nix-installer/selinux/packages/nix.pp".into(),
-                    if self.settings.distribution() == Distribution::Determinate {
+                    if self.settings.distribution() == Distribution::DeterminateNix {
                         DETERMINATE_SELINUX_POLICY_PP_CONTENT
                     } else {
                         SELINUX_POLICY_PP_CONTENT

@@ -56,14 +56,14 @@ impl PlaceNixConfiguration {
             target_lexicon::OperatingSystem::MacOSX { .. }
                 | target_lexicon::OperatingSystem::Darwin
         );
-        let configured_ssl_cert_file = if distribution == Distribution::Determinate && is_macos {
+        let configured_ssl_cert_file = if distribution == Distribution::DeterminateNix && is_macos {
             // On macOS, determinate-nixd will handle configuring the ssl-cert-file option for Nix
             None
         } else {
             ssl_cert_file
         };
 
-        let standard_nix_config = if distribution != Distribution::Determinate {
+        let standard_nix_config = if distribution != Distribution::DeterminateNix {
             let maybe_trusted_users = extra_conf.settings().get(TRUSTED_USERS_CONF_NAME);
 
             Some(Self::setup_standard_config(maybe_trusted_users).await?)

@@ -5,7 +5,7 @@ use crate::settings::UrlOrPath;
 #[derive(Copy, Clone, Debug, PartialEq, serde::Serialize, serde::Deserialize)]
 pub enum Distribution {
     Nix,
-    Determinate,
+    DeterminateNix,
 }
 
 impl Distribution {
@@ -23,7 +23,7 @@ impl Distribution {
                 UrlOrPath::from_str(NIX_TARBALL_URL)
                     .expect("Fault: the built-in Nix tarball URL does not parse."),
             ),
-            Distribution::Determinate => {
+            Distribution::DeterminateNix => {
                 TarballLocation::InMemory(
                     DETERMINATE_NIX_TARBALL_PATH.expect("Fault: this build of Determinate Nix Installer is not equipped to install Determinate Nix."),
                     DETERMINATE_NIX_TARBALL.expect("Fault: this build of Determinate Nix Installer is not equipped to install Determinate Nix.")

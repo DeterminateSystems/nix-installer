@@ -94,7 +94,8 @@ impl CreateDeterminateNixVolume {
             .map_err(Self::error)?;
 
         let encrypt_volume =
-            EncryptApfsVolume::plan(Distribution::Determinate, disk, &name, &create_volume).await?;
+            EncryptApfsVolume::plan(Distribution::DeterminateNix, disk, &name, &create_volume)
+                .await?;
 
         let setup_volume_daemon = CreateDeterminateVolumeService::plan(
             VOLUME_MOUNT_SERVICE_DEST,

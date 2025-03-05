@@ -58,7 +58,7 @@ impl Planner for Linux {
                 .boxed(),
         );
 
-        if self.settings.distribution() == Distribution::Determinate {
+        if self.settings.distribution() == Distribution::DeterminateNix {
             plan.push(
                 ProvisionDeterminateNixd::plan()
                     .await
@@ -91,7 +91,7 @@ impl Planner for Linux {
                 ProvisionSelinux::plan(
                     FHS_SELINUX_POLICY_PATH.into(),
                     match self.settings.distribution() {
-                        Distribution::Determinate => DETERMINATE_SELINUX_POLICY_PP_CONTENT,
+                        Distribution::DeterminateNix => DETERMINATE_SELINUX_POLICY_PP_CONTENT,
                         Distribution::Nix => SELINUX_POLICY_PP_CONTENT,
                     },
                 )
@@ -109,7 +109,7 @@ impl Planner for Linux {
         );
 
         match self.settings.distribution() {
-            Distribution::Determinate => {
+            Distribution::DeterminateNix => {
                 plan.push(
                     ConfigureDeterminateNixdInitService::plan(
                         self.init.init,
