@@ -33,7 +33,7 @@ curl --proto '=https' --tlsv1.2 -sSf -L https://install.determinate.systems/nix 
   sh -s -- install
 ```
 
-This will prompt to ask if you want Determinate Nix, or the Nix from NixOS.org.
+This prompts you if you want [Determinate Nix](https://docs.determinate.systems/determinate-nix) or the Nix from [nixos.org](https://nixos.org/download).
 If you would like to skip the prompt and install Determinate Nix directly, you can pass `--determinate` directly:
 
 ```shell
