@@ -99,7 +99,8 @@
             "url_or_path": null,
             "dest": "/nix/temp-install-dir",
             "proxy": null,
-            "ssl_cert_file": null
+            "ssl_cert_file": null,
+            "distribution": "Nix"
           },
           "state": "Completed"
         },
