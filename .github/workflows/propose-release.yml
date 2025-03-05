@@ -7,7 +7,7 @@ on:
       version:
         type: string
         required: true
-      nix-version:
+      determinate-nix-version:
         type: string
         required: true
 
@@ -35,6 +35,6 @@ jobs:
         done
         git commit -m "Update test fixtures with the new nix-installer version" || true
 
-        sed -i 's#https://flakehub.com/f/DeterminateSystems/nix/=.*";#https://flakehub.com/f/DeterminateSystems/nix/=${{ inputs.nix-version }}";#' ./flake.nix
+        sed -i 's#https://flakehub.com/f/DeterminateSystems/nix-src/=.*";#https://flakehub.com/f/DeterminateSystems/nix-src/=${{ inputs.determinate-nix-version }}";#' ./flake.nix
         git add flake.nix
-        git commit -m "Update Nix release to ${{ inputs.nix-version }}" || true
+        git commit -m "Update Determinate Nix release to ${{ inputs.determinate-nix-version }}" || true

@@ -7,6 +7,7 @@ use which::which;
 
 use super::ShellProfileLocations;
 use crate::action::common::provision_nix::NIX_STORE_LOCATION;
+use crate::distribution::Distribution;
 use crate::planner::HasExpectedErrors;
 
 mod profile_queries;
@@ -144,7 +145,9 @@ impl Planner for Macos {
     }
 
     async fn plan(&self) -> Result<Vec<StatefulAction<Box<dyn Action>>>, PlannerError> {
-        if self.use_ec2_instance_store && !self.settings.determinate_nix {
+        if self.use_ec2_instance_store
+            && self.settings.distribution() != Distribution::DeterminateNix
+        {
             return Err(PlannerError::Ec2InstanceStoreRequiresDeterminateNix);
         }
 
@@ -162,9 +165,9 @@ impl Planner for Macos {
         // The encrypt variable isn't used in Determinate Nix since we have our own plan step for it,
         // however this match accounts for Determinate Nix so the receipt indicates encrypt: true.
         // This is a goofy thing to do, but it is in an attempt to make a more globally coherent plan / receipt.
-        let encrypt = match (self.settings.determinate_nix, self.encrypt) {
-            (true, _) => true,
-            (false, Some(choice)) => {
+        let encrypt = match (self.settings.distribution(), self.encrypt) {
+            (Distribution::DeterminateNix, _) => true,
+            (_, Some(choice)) => {
                 if let Some(diskutil_info) =
                     crate::action::macos::get_disk_info_for_label(&self.volume_label)
                         .await
@@ -181,7 +184,7 @@ impl Planner for Macos {
                     choice
                 }
             },
-            (false, None) => {
+            (_, None) => {
                 let root_disk_is_encrypted = {
                     let output = Command::new("/usr/bin/fdesetup")
                         .arg("isactive")
@@ -217,7 +220,7 @@ impl Planner for Macos {
 
         let mut plan = vec![];
 
-        if self.settings.determinate_nix {
+        if self.settings.distribution() == Distribution::DeterminateNix {
             plan.push(
                 ProvisionDeterminateNixd::plan()
                     .await
@@ -226,31 +229,35 @@ impl Planner for Macos {
             );
         }
 
-        if self.settings.determinate_nix {
-            plan.push(
-                CreateDeterminateNixVolume::plan(
-                    root_disk.unwrap(), /* We just ensured it was populated */
-                    self.volume_label.clone(),
-                    self.case_sensitive,
-                    self.settings.force,
-                    self.use_ec2_instance_store,
-                )
-                .await
-                .map_err(PlannerError::Action)?
-                .boxed(),
-            );
-        } else {
-            plan.push(
-                CreateNixVolume::plan(
-                    root_disk.unwrap(), /* We just ensured it was populated */
-                    self.volume_label.clone(),
-                    self.case_sensitive,
-                    encrypt,
-                )
-                .await
-                .map_err(PlannerError::Action)?
-                .boxed(),
-            );
+        match self.settings.distribution() {
+            Distribution::DeterminateNix => {
+                plan.push(
+                    CreateDeterminateNixVolume::plan(
+                        root_disk.unwrap(), /* We just ensured it was populated */
+                        self.volume_label.clone(),
+                        self.case_sensitive,
+                        self.settings.force,
+                        self.use_ec2_instance_store,
+                    )
+                    .await
+                    .map_err(PlannerError::Action)?
+                    .boxed(),
+                );
+            },
+            Distribution::Nix => {
+                plan.push(
+                    CreateNixVolume::plan(
+                        root_disk.unwrap(), /* We just ensured it was populated */
+                        self.volume_label.clone(),
+                        self.case_sensitive,
+                        encrypt,
+                        self.settings.distribution(),
+                    )
+                    .await
+                    .map_err(PlannerError::Action)?
+                    .boxed(),
+                );
+            },
         }
 
         plan.push(
@@ -298,21 +305,25 @@ impl Planner for Macos {
             );
         }
 
-        if self.settings.determinate_nix {
-            plan.push(
-                ConfigureDeterminateNixdInitService::plan(InitSystem::Launchd, true)
-                    .await
-                    .map_err(PlannerError::Action)?
-                    .boxed(),
-            );
-        } else {
-            plan.push(
-                ConfigureUpstreamInitService::plan(InitSystem::Launchd, true)
-                    .await
-                    .map_err(PlannerError::Action)?
-                    .boxed(),
-            );
+        match self.settings.distribution() {
+            Distribution::DeterminateNix => {
+                plan.push(
+                    ConfigureDeterminateNixdInitService::plan(InitSystem::Launchd, true)
+                        .await
+                        .map_err(PlannerError::Action)?
+                        .boxed(),
+                );
+            },
+            Distribution::Nix => {
+                plan.push(
+                    ConfigureUpstreamInitService::plan(InitSystem::Launchd, true)
+                        .await
+                        .map_err(PlannerError::Action)?
+                        .boxed(),
+                );
+            },
         }
+
         plan.push(
             RemoveDirectory::plan(crate::settings::SCRATCH_DIR)
                 .await

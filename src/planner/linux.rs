@@ -17,6 +17,7 @@ use crate::{
         },
         StatefulAction,
     },
+    distribution::Distribution,
     error::HasExpectedErrors,
     planner::{Planner, PlannerError},
     settings::{CommonSettings, InitSettings, InitSystem, InstallSettingsError},
@@ -57,7 +58,7 @@ impl Planner for Linux {
                 .boxed(),
         );
 
-        if self.settings.determinate_nix {
+        if self.settings.distribution() == Distribution::DeterminateNix {
             plan.push(
                 ProvisionDeterminateNixd::plan()
                     .await
@@ -89,10 +90,9 @@ impl Planner for Linux {
             plan.push(
                 ProvisionSelinux::plan(
                     FHS_SELINUX_POLICY_PATH.into(),
-                    if self.settings.determinate_nix {
-                        DETERMINATE_SELINUX_POLICY_PP_CONTENT
-                    } else {
-                        SELINUX_POLICY_PP_CONTENT
+                    match self.settings.distribution() {
+                        Distribution::DeterminateNix => DETERMINATE_SELINUX_POLICY_PP_CONTENT,
+                        Distribution::Nix => SELINUX_POLICY_PP_CONTENT,
                     },
                 )
                 .await
@@ -108,20 +108,26 @@ impl Planner for Linux {
                 .boxed(),
         );
 
-        if self.settings.determinate_nix {
-            plan.push(
-                ConfigureDeterminateNixdInitService::plan(self.init.init, self.init.start_daemon)
+        match self.settings.distribution() {
+            Distribution::DeterminateNix => {
+                plan.push(
+                    ConfigureDeterminateNixdInitService::plan(
+                        self.init.init,
+                        self.init.start_daemon,
+                    )
                     .await
                     .map_err(PlannerError::Action)?
                     .boxed(),
-            );
-        } else {
-            plan.push(
-                ConfigureUpstreamInitService::plan(self.init.init, self.init.start_daemon)
-                    .await
-                    .map_err(PlannerError::Action)?
-                    .boxed(),
-            );
+                );
+            },
+            Distribution::Nix => {
+                plan.push(
+                    ConfigureUpstreamInitService::plan(self.init.init, self.init.start_daemon)
+                        .await
+                        .map_err(PlannerError::Action)?
+                        .boxed(),
+                );
+            },
         }
         plan.push(
             RemoveDirectory::plan(crate::settings::SCRATCH_DIR)

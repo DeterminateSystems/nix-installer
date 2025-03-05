@@ -23,7 +23,7 @@ pub struct ProvisionDeterminateNixd {
 impl ProvisionDeterminateNixd {
     #[tracing::instrument(level = "debug", skip_all)]
     pub async fn plan() -> Result<StatefulAction<Self>, ActionError> {
-        crate::settings::DETERMINATE_NIXD_BINARY
+        crate::distribution::DETERMINATE_NIXD_BINARY
             .ok_or_else(|| Self::error(ActionErrorKind::DeterminateNixUnavailable))?;
 
         let this = Self {
@@ -61,7 +61,7 @@ impl Action for ProvisionDeterminateNixd {
 
     #[tracing::instrument(level = "debug", skip_all)]
     async fn execute(&mut self) -> Result<(), ActionError> {
-        let bytes = crate::settings::DETERMINATE_NIXD_BINARY
+        let bytes = crate::distribution::DETERMINATE_NIXD_BINARY
             .ok_or_else(|| Self::error(ActionErrorKind::DeterminateNixUnavailable))?;
 
         crate::util::remove_file(&self.binary_location, OnMissing::Ignore)

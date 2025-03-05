@@ -9,28 +9,11 @@ use clap::{
 };
 use url::Url;
 
+use crate::distribution::Distribution;
+
 pub const SCRATCH_DIR: &str = "/nix/temp-install-dir";
 
 pub const DEFAULT_NIX_BUILD_USER_GROUP_NAME: &str = "nixbld";
-
-pub const NIX_TARBALL_PATH: &str = env!("NIX_INSTALLER_TARBALL_PATH");
-/// The NIX_INSTALLER_TARBALL_PATH environment variable should point to a target-appropriate
-/// Nix installation tarball, like nix-2.21.2-aarch64-darwin.tar.xz. The contents are embedded
-/// in the resulting binary.
-pub const NIX_TARBALL: &[u8] = include_bytes!(env!("NIX_INSTALLER_TARBALL_PATH"));
-
-#[cfg(feature = "determinate-nix")]
-/// The DETERMINATE_NIXD_BINARY_PATH environment variable should point to a target-appropriate
-/// static build of the Determinate Nixd binary. The contents are embedded in the resulting
-/// binary if the determinate-nix feature is turned on.
-pub const DETERMINATE_NIXD_BINARY: Option<&[u8]> =
-    Some(include_bytes!(env!("DETERMINATE_NIXD_BINARY_PATH")));
-
-#[cfg(not(feature = "determinate-nix"))]
-/// The DETERMINATE_NIXD_BINARY_PATH environment variable should point to a target-appropriate
-/// static build of the Determinate Nixd binary. The contents are embedded in the resulting
-/// binary if the determinate-nix feature is turned on.
-pub const DETERMINATE_NIXD_BINARY: Option<&[u8]> = None;
 
 #[derive(Debug, serde::Deserialize, serde::Serialize, Clone, Copy, PartialEq, Eq)]
 #[cfg_attr(feature = "cli", derive(clap::ValueEnum))]
@@ -318,6 +301,14 @@ impl CommonSettings {
         map.insert("skip_nix_conf".into(), serde_json::to_value(skip_nix_conf)?);
 
         Ok(map)
+    }
+
+    pub fn distribution(&self) -> Distribution {
+        if self.determinate_nix {
+            Distribution::DeterminateNix
+        } else {
+            Distribution::Nix
+        }
     }
 }
 

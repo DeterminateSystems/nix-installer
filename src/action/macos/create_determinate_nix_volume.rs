@@ -7,9 +7,6 @@ use tokio::process::Command;
 use tracing::{span, Span};
 
 use super::{create_fstab_entry::CreateFstabEntry, DARWIN_LAUNCHD_DOMAIN};
-use crate::action::macos::{
-    BootstrapLaunchctlService, CreateDeterminateVolumeService, KickstartLaunchctlService,
-};
 use crate::action::{
     base::{create_or_insert_into_file, CreateDirectory, CreateOrInsertIntoFile},
     common::place_nix_configuration::NIX_CONF_FOLDER,
@@ -18,6 +15,12 @@ use crate::action::{
         UnmountApfsVolume,
     },
     Action, ActionDescription, ActionError, ActionErrorKind, ActionTag, StatefulAction,
+};
+use crate::{
+    action::macos::{
+        BootstrapLaunchctlService, CreateDeterminateVolumeService, KickstartLaunchctlService,
+    },
+    distribution::Distribution,
 };
 
 pub const VOLUME_MOUNT_SERVICE_NAME: &str = "systems.determinate.nix-store";
@@ -90,7 +93,9 @@ impl CreateDeterminateNixVolume {
             .await
             .map_err(Self::error)?;
 
-        let encrypt_volume = EncryptApfsVolume::plan(true, disk, &name, &create_volume).await?;
+        let encrypt_volume =
+            EncryptApfsVolume::plan(Distribution::DeterminateNix, disk, &name, &create_volume)
+                .await?;
 
         let setup_volume_daemon = CreateDeterminateVolumeService::plan(
             VOLUME_MOUNT_SERVICE_DEST,

@@ -1,10 +1,13 @@
-use crate::action::{
-    base::{create_or_insert_into_file, CreateOrInsertIntoFile},
-    macos::{
-        BootstrapLaunchctlService, CreateApfsVolume, CreateSyntheticObjects, EnableOwnership,
-        EncryptApfsVolume, UnmountApfsVolume,
+use crate::{
+    action::{
+        base::{create_or_insert_into_file, CreateOrInsertIntoFile},
+        macos::{
+            BootstrapLaunchctlService, CreateApfsVolume, CreateSyntheticObjects, EnableOwnership,
+            EncryptApfsVolume, UnmountApfsVolume,
+        },
+        Action, ActionDescription, ActionError, ActionErrorKind, ActionTag, StatefulAction,
     },
-    Action, ActionDescription, ActionError, ActionErrorKind, ActionTag, StatefulAction,
+    distribution::Distribution,
 };
 use std::{
     path::{Path, PathBuf},
@@ -48,6 +51,7 @@ impl CreateNixVolume {
         name: String,
         case_sensitive: bool,
         encrypt: bool,
+        distribution: Distribution,
     ) -> Result<StatefulAction<Self>, ActionError> {
         let disk = disk.as_ref();
         let create_or_append_synthetic_conf = CreateOrInsertIntoFile::plan(
@@ -82,7 +86,7 @@ impl CreateNixVolume {
             .map_err(Self::error)?;
 
         let encrypt_volume = if encrypt {
-            Some(EncryptApfsVolume::plan(false, disk, &name, &create_volume).await?)
+            Some(EncryptApfsVolume::plan(distribution, disk, &name, &create_volume).await?)
         } else {
             None
         };

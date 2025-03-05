@@ -11,6 +11,7 @@ use crate::{
         },
         StatefulAction,
     },
+    distribution::Distribution,
     error::HasExpectedErrors,
     planner::{Planner, PlannerError},
     settings::{CommonSettings, InitSystem, InstallSettingsError},
@@ -176,7 +177,7 @@ impl Planner for Ostree {
                 .boxed(),
         );
 
-        if self.settings.determinate_nix {
+        if self.settings.distribution() == Distribution::DeterminateNix {
             plan.push(
                 ProvisionDeterminateNixd::plan()
                     .await
@@ -208,7 +209,7 @@ impl Planner for Ostree {
             plan.push(
                 ProvisionSelinux::plan(
                     "/etc/nix-installer/selinux/packages/nix.pp".into(),
-                    if self.settings.determinate_nix {
+                    if self.settings.distribution() == Distribution::DeterminateNix {
                         DETERMINATE_SELINUX_POLICY_PP_CONTENT
                     } else {
                         SELINUX_POLICY_PP_CONTENT
