@@ -186,12 +186,12 @@
           inherit forSystem;
           inherit (nixpkgs) lib;
 
-          binaryTarball = nix.tarballs_indirect;
+          binaryTarball = nix.hydraJobs.binaryTarball;
         };
         container-test = import ./nix/tests/container-test {
           inherit forSystem;
 
-          binaryTarball = nix.tarballs_indirect;
+          binaryTarball = nix.hydraJobs.binaryTarball;
         };
       };
     };
