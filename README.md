@@ -52,7 +52,7 @@ chmod +x nix-installer
 ./nix-installer
 ```
 
-This will install Nix or Determinate Nix on an `x86_64-linux` system but you can replace that with the system of your choice.
+This installs Nix or Determinate Nix on an `x86_64-linux` system but you can replace that with the system of your choice.
 
 ### Planners
 
