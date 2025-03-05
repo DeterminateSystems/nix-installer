@@ -4,7 +4,7 @@
 [![Docs.rs](https://img.shields.io/docsrs/nix-installer)](https://docs.rs/nix-installer/latest/nix_installer)
 
 **Determinate Nix Installer** is a fast, friendly, and reliable way to install and manage [Nix] everywhere, including macOS, Linux, Windows Subsystem for Linux (WSL), SELinux, the Valve Steam Deck, and more.
-It installs Nix with [flakes] enabled by default, it offers support for seamlessly [uninstalling Nix](#uninstalling), it enables Nix to survive [macOS upgrades][macos-upgrades], and [much more](#features).
+It installs either [Nix](https://nixos.org) or [Determinate Nix](https://docs.determinate.systems/determinate-nix) (with [flakes] enabled by default), it offers support for seamlessly [uninstalling Nix](#uninstalling), it enables Nix to survive [macOS upgrades][macos-upgrades], and [much more](#features).
 
 This one-liner is the quickest way to get started on any supported system:
 
@@ -12,9 +12,6 @@ This one-liner is the quickest way to get started on any supported system:
 curl --proto '=https' --tlsv1.2 -sSf -L https://install.determinate.systems/nix | \
   sh -s -- install
 ```
-
-> [!TIP]
-> To install [Determinate] using the installer, see the instructions [below](#install-determinate).
 
 Determinate Nix Installer has successfully completed over **7 million** installs in a number of environments, including [Github Actions](#as-a-github-action) and [GitLab](#on-gitlab):
 
@@ -27,28 +24,17 @@ Determinate Nix Installer has successfully completed over **7 million** installs
 | [Podman] Linux containers                                            | ✓ (via [systemd]) |      ✓      |      Stable       |
 | [Docker] containers                                                  |                   |      ✓      |      Stable       |
 
-## Install Nix
+## Installation
 
-You can install Nix with the default [planner](#planners) and options by running this script:
+You can install with the default [planner](#planners) and options by running this script:
 
 ```shell
 curl --proto '=https' --tlsv1.2 -sSf -L https://install.determinate.systems/nix | \
   sh -s -- install
 ```
 
-To download a platform-specific installer binary yourself:
-
-```shell
-curl -sL -o nix-installer https://install.determinate.systems/nix/nix-installer-x86_64-linux
-chmod +x nix-installer
-./nix-installer
-```
-
-This would install Nix on an `x86_64-linux` system but you can replace that with the system of your choice.
-
-### Install Determinate
-
-If you're on macOS or Linux (but not [NixOS]), you can install [Determinate] using Determinate Nix Installer by adding the `--determinate` flag:
+This prompts you if you want [Determinate Nix](https://docs.determinate.systems/determinate-nix) or the Nix from [nixos.org](https://nixos.org/download).
+If you would like to skip the prompt and install Determinate Nix directly, you can pass `--determinate` directly:
 
 ```shell
 curl --proto '=https' --tlsv1.2 -sSf -L https://install.determinate.systems/nix | \
@@ -58,10 +44,15 @@ curl --proto '=https' --tlsv1.2 -sSf -L https://install.determinate.systems/nix 
 > [!TIP]
 > If you use [NixOS], we recommend installing Determinate using modules provided by the [`determinate` flake][determinate-flake].
 
-Determinate is:
+To download a platform-specific installer binary yourself:
 
-- [**Determinate Nix**][det-nix], [Determinate Systems][detsys]' validated and secure downstream Nix distribution for enterprises.
-- [**FlakeHub**][flakehub], a platform for publishing and discovering [Nix flakes][flakes] that provides features like [semantic versioning][semver] (SemVer) for flakes, [private flakes][private-flakes], and [FlakeHub Cache][cache].
+```shell
+curl -sL -o nix-installer https://install.determinate.systems/nix/nix-installer-x86_64-linux
+chmod +x nix-installer
+./nix-installer
+```
+
+This installs Nix or Determinate Nix on an `x86_64-linux` system but you can replace that with the system of your choice.
 
 ### Planners
 
