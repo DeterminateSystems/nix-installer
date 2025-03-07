@@ -40,7 +40,7 @@ jobs:
         uses: DeterminateSystems/nix-installer-action@main
         with:
           determinate: true
-      - uses: DeterminateSystems/magic-nix-cache-action@main
+      - uses: DeterminateSystems/flakehub-cache-action@main
         with:
           use-gha-cache: false
       - name: Check rustfmt
@@ -633,7 +633,7 @@ jobs:
           local-root: install-root/
           log-directives: nix_installer=debug
           logger: pretty
-      - uses: DeterminateSystems/magic-nix-cache-action@main
+      - uses: DeterminateSystems/flakehub-cache-action@main
         with:
           use-gha-cache: false
       - run: ${{ matrix.command }}
