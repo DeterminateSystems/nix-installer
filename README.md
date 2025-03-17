@@ -177,6 +177,19 @@ For containers (without an init):
 > sudo -i nix run nixpkgs#hello
 > ```
 
+> [!WARNING]
+> If you want to add a `flake.nix`, first declare a working directory (such as `/src`) in your `Dockerfile`.
+> You cannot lock a flake placed at the docker image root (`/`) ([see details](https://github.com/DeterminateSystems/nix-installer/issues/1066)).
+> You would get a `file '/dev/full' has an unsupported type` during the docker build.
+>
+> ```dockerfile
+> # append this to the below dockerfiles
+> WORKDIR /src
+> # now flakes will work
+> RUN nix flake init
+> RUN nix flake lock
+> ```
+
 ```dockerfile
 # Dockerfile
 FROM ubuntu:latest
