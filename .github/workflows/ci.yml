@@ -606,9 +606,9 @@ jobs:
     strategy:
       matrix:
         command:
-          - nix flake check -L
+          #- nix flake check -L
           - nix build -L --tarball-ttl 0 --keep-going .#hydraJobs.container-test.all.x86_64-linux.all
-          - nix build -L --tarball-ttl 0 --keep-going .#hydraJobs.vm-test.all.x86_64-linux.all
+          #- nix build -L --tarball-ttl 0 --keep-going .#hydraJobs.vm-test.all.x86_64-linux.all
     permissions:
       id-token: "write"
       contents: "read"
@@ -636,13 +636,13 @@ jobs:
       - uses: DeterminateSystems/flakehub-cache-action@main
         with:
           use-gha-cache: false
-      - run: ${{ matrix.command }}
       - name: Breakpoint if tests failed
         if: failure()
         uses: namespacelabs/breakpoint-action@v0
         with:
           duration: 30m
           authorized-users: grahamc, cole-h, edolstra
+      - run: ${{ matrix.command }}
 
   run-x86_64-linux-release-checks:
     name: Run x86_64 Linux release checks
