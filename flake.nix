@@ -36,6 +36,7 @@
     , ...
     } @ inputs:
     let
+      nix_tarball_url_prefix = "https://releases.nixos.org/nix/nix-2.26.2/nix-2.26.2-";
       supportedSystems = [ "x86_64-linux" "aarch64-linux" "x86_64-darwin" "aarch64-darwin" ];
       systemsSupportedByDeterminateNixd = [ "x86_64-linux" "aarch64-linux" "x86_64-darwin" "aarch64-darwin" ];
 
@@ -89,7 +90,7 @@
 
           env = sharedAttrs.env // {
             RUSTFLAGS = "--cfg tokio_unstable";
-            NIX_TARBALL_URL = "https://releases.nixos.org/nix/nix-2.26.2/nix-2.26.2-${pkgs.stdenv.hostPlatform.system}.tar.xz";
+            NIX_TARBALL_URL = "${nix_tarball_url_prefix}${pkgs.stdenv.hostPlatform.system}.tar.xz";
             DETERMINATE_NIX_TARBALL_PATH = nixTarballs.${stdenv.hostPlatform.system};
             DETERMINATE_NIXD_BINARY_PATH = optionalPathToDeterminateNixd stdenv.hostPlatform.system;
           };
@@ -110,7 +111,7 @@
             name = "nix-install-shell";
 
             RUST_SRC_PATH = "${pkgs.rustPlatform.rustcSrc}/library";
-            NIX_TARBALL_URL = "https://releases.nixos.org/nix/nix-2.26.2/nix-2.26.2-${pkgs.stdenv.hostPlatform.system}.tar.xz";
+            NIX_TARBALL_URL = "${nix_tarball_url_prefix}${pkgs.stdenv.hostPlatform.system}.tar.xz";
             DETERMINATE_NIX_TARBALL_PATH = nixTarballs.${system};
             DETERMINATE_NIXD_BINARY_PATH = optionalPathToDeterminateNixd system;
 
