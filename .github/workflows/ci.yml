@@ -608,7 +608,7 @@ jobs:
         command:
           #- nix flake check -L
           - nix build -L --tarball-ttl 0 --keep-going .#hydraJobs.container-test.all.x86_64-linux.all
-          #- nix build -L --tarball-ttl 0 --keep-going .#hydraJobs.vm-test.all.x86_64-linux.all
+          - nix build -L --tarball-ttl 0 --keep-going .#hydraJobs.vm-test.all.x86_64-linux.all
     permissions:
       id-token: "write"
       contents: "read"
