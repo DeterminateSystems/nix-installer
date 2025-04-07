@@ -23,8 +23,12 @@ pub struct ProvisionDeterminateNixd {
 impl ProvisionDeterminateNixd {
     #[tracing::instrument(level = "debug", skip_all)]
     pub async fn plan() -> Result<StatefulAction<Self>, ActionError> {
-        crate::distribution::DETERMINATE_NIXD_BINARY
-            .ok_or_else(|| Self::error(ActionErrorKind::DeterminateNixUnavailable))?;
+        let _binary_bytes = crate::distribution::determinate_nixd_binary_or(
+            std::env::var("DETSYS_DNIXD_BINARY_PATH")
+                .ok()
+                .map(PathBuf::from),
+        )
+        .map_err(Self::error)?;
 
         let this = Self {
             binary_location: DETERMINATE_NIXD_BINARY_PATH.into(),
@@ -61,8 +65,12 @@ impl Action for ProvisionDeterminateNixd {
 
     #[tracing::instrument(level = "debug", skip_all)]
     async fn execute(&mut self) -> Result<(), ActionError> {
-        let bytes = crate::distribution::DETERMINATE_NIXD_BINARY
-            .ok_or_else(|| Self::error(ActionErrorKind::DeterminateNixUnavailable))?;
+        let binary_bytes = crate::distribution::determinate_nixd_binary_or(
+            std::env::var("DETSYS_DNIXD_BINARY_PATH")
+                .ok()
+                .map(PathBuf::from),
+        )
+        .map_err(Self::error)?;
 
         crate::util::remove_file(&self.binary_location, OnMissing::Ignore)
             .await
@@ -76,7 +84,7 @@ impl Action for ProvisionDeterminateNixd {
                 .map_err(Self::error)?;
         }
 
-        tokio::fs::write(&self.binary_location, bytes)
+        tokio::fs::write(&self.binary_location, binary_bytes)
             .await
             .map_err(|e| ActionErrorKind::Write(self.binary_location.clone(), e))
             .map_err(Self::error)?;
