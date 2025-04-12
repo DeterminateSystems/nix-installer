@@ -245,7 +245,7 @@ fn generate_plist() -> DeterminateNixDaemonPlist {
                 Socket {
                     sock_family: SocketFamily::Unix,
                     sock_passive: true,
-                    sock_path_name: "/var/run/determinate-nixd.socket".into(),
+                    sock_path_name: "/private/var/run/determinate-nixd.socket".into(),
                 },
             ),
             (
@@ -253,7 +253,7 @@ fn generate_plist() -> DeterminateNixDaemonPlist {
                 Socket {
                     sock_family: SocketFamily::Unix,
                     sock_passive: true,
-                    sock_path_name: "/var/run/nix-daemon.socket".into(),
+                    sock_path_name: "/private/var/run/nix-daemon.socket".into(),
                 },
             ),
         ]),
