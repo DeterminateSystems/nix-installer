@@ -356,6 +356,9 @@ jobs:
           logger: pretty
       - name: echo $PATH
         run: echo $PATH
+      - uses: namespacelabs/breakpoint-action@v0
+        with:
+          authorized-users: grahamc
       - name: Test `nix` with `$GITHUB_PATH`
         if: success() || failure()
         run: |
