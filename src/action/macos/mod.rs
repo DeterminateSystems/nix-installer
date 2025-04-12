@@ -36,7 +36,7 @@ pub use kickstart_launchctl_service::KickstartLaunchctlService;
 use serde::Deserialize;
 pub use set_tmutil_exclusion::SetTmutilExclusion;
 pub use set_tmutil_exclusions::SetTmutilExclusions;
-use tokio::process::Command;
+use tokio::{fs, process::Command};
 pub use unmount_apfs_volume::UnmountApfsVolume;
 use uuid::Uuid;
 
@@ -257,6 +257,22 @@ pub(crate) async fn retry_bootout(domain: &str, service_name: &str) -> Result<()
     }
 
     Ok(())
+}
+
+/// Attempt to manually unlink a socket path. When reinstalling, launchd can
+/// sometimes fail to remove sockets when `launchctl bootstrap` is invoked,
+/// leaving only these slightly cryptic errors:
+///
+/// ```
+/// 2025-04-12 14:22:58.165233 (system/systems.determinate.nix-daemon - determinate-nixd.socket) <Error>: Failed to unlinkat() old socket path: path=/var/run/determinate-nixd.socket, error=Invalid argument (22)
+/// 2025-04-12 14:22:58.165279 (system/systems.determinate.nix-daemon - nix-daemon.socket) <Error>: Failed to unlinkat() old socket path: path=/var/run/nix-daemon.socket, error=Invalid argument (22)
+/// ```
+#[tracing::instrument]
+pub(crate) async fn remove_socket_path(path: &Path) {
+    // WIP: this soft fails
+    if let Err(err) = fs::remove_file(path).await {
+        tracing::warn!(?err, ?path, "Could not clean up unused socket");
+    }
 }
 
 /// Wait for `launchctl kickstart {domain}/{service_name}` to succeed up to `retry_tokens * 500ms` amount
