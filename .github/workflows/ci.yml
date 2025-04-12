@@ -358,7 +358,7 @@ jobs:
         run: echo $PATH
       - uses: namespacelabs/breakpoint-action@v0
         with:
-          authorized-users: grahamc
+          authorized-users: grahamc, cole-h, gustavderdrache
       - name: Test `nix` with `$GITHUB_PATH`
         if: success() || failure()
         run: |
