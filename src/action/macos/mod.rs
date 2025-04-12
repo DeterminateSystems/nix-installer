@@ -269,7 +269,6 @@ pub(crate) async fn retry_bootout(domain: &str, service_name: &str) -> Result<()
 /// ```
 #[tracing::instrument]
 pub(crate) async fn remove_socket_path(path: &Path) {
-    // WIP: this soft fails
     if let Err(err) = fs::remove_file(path).await {
         tracing::warn!(?err, ?path, "Could not clean up unused socket");
     }
