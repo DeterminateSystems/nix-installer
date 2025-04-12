@@ -263,7 +263,7 @@ pub(crate) async fn retry_bootout(domain: &str, service_name: &str) -> Result<()
 /// sometimes fail to remove sockets when `launchctl bootstrap` is invoked,
 /// leaving only these slightly cryptic errors:
 ///
-/// ```
+/// ```text
 /// 2025-04-12 14:22:58.165233 (system/systems.determinate.nix-daemon - determinate-nixd.socket) <Error>: Failed to unlinkat() old socket path: path=/var/run/determinate-nixd.socket, error=Invalid argument (22)
 /// 2025-04-12 14:22:58.165279 (system/systems.determinate.nix-daemon - nix-daemon.socket) <Error>: Failed to unlinkat() old socket path: path=/var/run/nix-daemon.socket, error=Invalid argument (22)
 /// ```
