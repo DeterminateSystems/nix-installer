@@ -1,4 +1,4 @@
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 
 use tokio::process::Command;
 use tracing::{span, Span};
@@ -136,6 +136,9 @@ impl Action for BootstrapLaunchctlService {
         crate::action::macos::retry_bootout(DARWIN_LAUNCHD_DOMAIN, &self.service)
             .await
             .map_err(Self::error)?;
+
+        crate::action::macos::remove_socket_path(Path::new("/var/run/nix-daemon.socket")).await;
+        crate::action::macos::remove_socket_path(Path::new("/var/run/determinate-nixd.socket")).await;
 
         Ok(())
     }
