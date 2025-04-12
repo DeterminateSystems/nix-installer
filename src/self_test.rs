@@ -115,6 +115,7 @@ impl Shell {
         );
         let output = command
             .stdin(std::process::Stdio::null())
+            .env("NIX_REMOTE", "daemon")
             .output()
             .await
             .map_err(|error| SelfTestError::Command {
