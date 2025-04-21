@@ -8,6 +8,7 @@ use crate::action::{
 };
 
 const PATHS: &[&str] = &[
+    "/nix",
     "/nix/var",
     "/nix/var/log",
     "/nix/var/log/nix",
