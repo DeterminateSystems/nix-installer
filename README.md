@@ -1,6 +1,7 @@
 # Determinate Nix Installer
 
 [![Crates.io](https://img.shields.io/crates/v/nix-installer)](https://crates.io/crates/nix-installer)
+[![CI](https://github.com/DeterminateSystems/nix-installer/actions/workflows/ci.yml/badge.svg)](https://github.com/DeterminateSystems/nix-installer/actions)
 [![Docs.rs](https://img.shields.io/docsrs/nix-installer)](https://docs.rs/nix-installer/latest/nix_installer)
 [![License](https://img.shields.io/github/license/DeterminateSystems/nix-installer)](https://github.com/DeterminateSystems/nix-installer/blob/main/LICENSE)
 
