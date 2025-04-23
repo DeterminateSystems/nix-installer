@@ -8,8 +8,7 @@ license = "LGPL-2.1"
 repository = "https://github.com/NixOS/experimental-nix-installer"
 
 [features]
-default = ["cli", "nix-community"]
-nix-community = []
+default = ["cli"]
 determinate-nix = []
 cli = ["eyre", "color-eyre", "clap", "tracing-subscriber", "tracing-error"]
 diagnostics = ["is_ci"]
