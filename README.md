@@ -4,7 +4,6 @@
 [![CI](https://github.com/DeterminateSystems/nix-installer/actions/workflows/ci.yml/badge.svg)](https://github.com/DeterminateSystems/nix-installer/actions)
 [![Docs.rs](https://img.shields.io/docsrs/nix-installer)](https://docs.rs/nix-installer/latest/nix_installer)
 [![License](https://img.shields.io/github/license/DeterminateSystems/nix-installer)](https://github.com/DeterminateSystems/nix-installer/blob/main/LICENSE)
-[![Twitter](https://img.shields.io/twitter/follow/DeterminateSys)](https://x.com/DeterminateSys)
 [![Discord](https://img.shields.io/discord/1116012109709463613)](https://discord.com/invite/a4EcQQ8STr)
 
 **Determinate Nix Installer** is a fast, friendly, and reliable way to install and manage [Nix] everywhere, including macOS, Linux, Windows Subsystem for Linux (WSL), SELinux, the Valve Steam Deck, and more.
