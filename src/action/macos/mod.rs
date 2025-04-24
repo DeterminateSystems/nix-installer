@@ -18,8 +18,8 @@ pub(crate) mod set_tmutil_exclusion;
 pub(crate) mod set_tmutil_exclusions;
 pub(crate) mod unmount_apfs_volume;
 
-use std::{io::ErrorKind, path::Path};
 use std::time::Duration;
+use std::{io::ErrorKind, path::Path};
 
 pub use bootstrap_launchctl_service::BootstrapLaunchctlService;
 pub use configure_remote_building::ConfigureRemoteBuilding;
