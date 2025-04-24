@@ -18,7 +18,7 @@ pub(crate) mod set_tmutil_exclusion;
 pub(crate) mod set_tmutil_exclusions;
 pub(crate) mod unmount_apfs_volume;
 
-use std::path::Path;
+use std::{io::ErrorKind, path::Path};
 use std::time::Duration;
 
 pub use bootstrap_launchctl_service::BootstrapLaunchctlService;
@@ -270,7 +270,9 @@ pub(crate) async fn retry_bootout(domain: &str, service_name: &str) -> Result<()
 #[tracing::instrument]
 pub(crate) async fn remove_socket_path(path: &Path) {
     if let Err(err) = fs::remove_file(path).await {
-        tracing::warn!(?err, ?path, "Could not clean up unused socket");
+        if err.kind() != ErrorKind::NotFound {
+            tracing::warn!(?err, ?path, "Could not clean up unused socket");
+        }
     }
 }
 
