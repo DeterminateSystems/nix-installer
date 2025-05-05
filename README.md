@@ -99,6 +99,10 @@ If you've installed [Determinate Nix][det-nix], you can upgrade it using [Determ
 sudo determinate-nixd upgrade
 ```
 
+> [!NOTE]
+> Not sure if you're using Determinate Nix?
+> Run `nix --version` and if you see a version like `nix (Determinate Nix 3.4.1) 2.28.2` then you're running Determinate Nix.
+
 If you've installed [upstream Nix][upstream-nix], you can upgrade it by running:
 
 ```shell
