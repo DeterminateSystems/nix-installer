@@ -7,7 +7,7 @@
 [![Discord](https://img.shields.io/discord/1116012109709463613)](https://determinate.systems/discord)
 
 **Determinate Nix Installer** is a fast, friendly, and reliable way to install and manage [Nix] everywhere, including macOS, Linux, Windows Subsystem for Linux (WSL), SELinux, the Valve Steam Deck, and more.
-It installs either [Nix](https://nixos.org) or [Determinate Nix](https://docs.determinate.systems/determinate-nix) (with [flakes] enabled by default), it offers support for seamlessly [uninstalling Nix](#uninstalling), it enables Nix to survive [macOS upgrades][macos-upgrades], and [much more](#features).
+It installs either [Nix](https://nixos.org) or [Determinate Nix][det-nix] (with [flakes] enabled by default), it offers support for seamlessly [uninstalling Nix](#uninstalling), it enables Nix to survive [macOS upgrades][macos-upgrades], and [much more](#features).
 
 This one-liner is the quickest way to get started on any supported system:
 
@@ -93,7 +93,17 @@ Consult our [troubleshooting guide](./docs/troubleshooting.md) to see if your pr
 
 ### Upgrading Nix
 
-You can upgrade Nix to [our currently recommended version of Nix][recommended-nix] by running:
+If you've installed [Determinate Nix][det-nix], you can upgrade it using [Determinate Nixd][dnixd]:
+
+```shell
+sudo determinate-nixd upgrade
+```
+
+> [!NOTE]
+> Not sure if you're using Determinate Nix?
+> Run `nix --version` and if you see a version like `nix (Determinate Nix 3.4.1) 2.28.2` then you're running Determinate Nix.
+
+If you've installed [upstream Nix][upstream-nix], you can upgrade it by running:
 
 ```shell
 sudo -i nix upgrade-nix
@@ -482,6 +492,7 @@ You can read the full privacy policy for [Determinate Systems][detsys], the crea
 [determinate]: https://docs.determinate.systems
 [determinate-flake]: https://github.com/DeterminateSystems/determinate
 [detsys]: https://determinate.systems
+[dnixd]: https://docs.determinate.systems/determinate-nix#determinate-nixd
 [docker]: https://docker.com
 [enabling-systemd]: https://devblogs.microsoft.com/commandline/systemd-support-is-now-available-in-wsl/#how-can-you-get-systemd-on-your-machine
 [flakehub]: https://flakehub.com
@@ -498,7 +509,6 @@ You can read the full privacy policy for [Determinate Systems][detsys], the crea
 [podman]: https://podman.io
 [privacy]: https://determinate.systems/policies/privacy
 [private-flakes]: https://docs.determinate.systems/flakehub/private-flakes
-[recommended-nix]: https://github.com/DeterminateSystems/nix/releases/latest
 [releases]: https://github.com/DeterminateSystems/nix-installer/releases
 [rust]: https://rust-lang.org
 [selinux]: https://selinuxproject.org
