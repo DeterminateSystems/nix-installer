@@ -23,8 +23,6 @@
       inputs.nixpkgs.follows = "nixpkgs";
       inputs.nix.follows = "nix";
     };
-
-    flake-compat.url = "https://flakehub.com/f/edolstra/flake-compat/1.0.0.tar.gz";
   };
 
   outputs =
