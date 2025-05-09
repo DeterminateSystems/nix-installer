@@ -457,13 +457,7 @@ impl Action for ConfigureInitService {
                     steps.push(format!("Run `systemctl disable {}`", name));
                 }
 
-                steps.push(format!(
-                    "Run `systemctl disable {0}`",
-                    self.service_src
-                        .as_ref()
-                        .expect("service_src should be defined for systemd")
-                        .display()
-                ));
+                steps.push("Run `systemctl disable nix-daemon.service`".to_string());
                 steps.push("Run `systemd-tempfiles --remove --prefix=/nix/var/nix`".to_string());
                 steps.push("Run `systemctl daemon-reload`".to_string());
 
