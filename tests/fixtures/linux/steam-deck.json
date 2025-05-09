@@ -1126,7 +1126,9 @@
             "action_name": "configure_init_service",
             "init": "Systemd",
             "start_daemon": true,
-            "service_src": "/nix/var/nix/profiles/default/lib/systemd/system/nix-daemon.service",
+            "service_src": {
+              "Path": "/nix/var/nix/profiles/default/lib/systemd/system/nix-daemon.service"
+            },
             "service_name": null,
             "service_dest": "/etc/systemd/system/nix-daemon.service",
             "socket_files": [
