@@ -66,7 +66,7 @@ The [determinate-nix-action] is updated and tagged for every Determinate release
 For example, `DeterminateSystems/determinate-nix-action@v3.5.2` will always install Determinate Nix v3.5.2.
 
 Additionally, an extra tag on the major version is kept up to date with the current release.
-For example, `DeterminateSystems/determinate-nix-action@v3` will install the most recent release in the `v3.x.y` series.
+The `DeterminateSystems/determinate-nix-action@v3` reference, for example, installs the most recent release in the `v3.x.y` series.
 
 ### Planners
 
