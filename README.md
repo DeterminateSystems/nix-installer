@@ -9,10 +9,18 @@
 **Determinate Nix Installer** is the best way to install [Nix].
 It works on macOS, Linux, Windows Subsystem for Linux (WSL), SELinux, the Valve Steam Deck, and more.
 It installs either [Nix](https://nixos.org) or [Determinate Nix][det-nix] (with [flakes] enabled by default), it offers support for seamlessly [uninstalling Nix](#uninstalling), it enables Nix to survive [macOS upgrades][macos-upgrades], and [much more](#features).
-This one-liner is the quickest way to get started on any supported system:
+
+The quickest way to have a great Nix experience is with Determinate Nix.
+This one liner will do just that on any supported system:
 
 ```shell
 curl -fsSL https://install.determinate.systems/nix | sh -s -- install --determinate
+```
+
+If you'd prefer upstream Nix:
+
+```shell
+curl -fsSL https://install.determinate.systems/nix | sh -s -- install
 ```
 
 > [!TIP]
@@ -248,7 +256,7 @@ We **strongly recommend** first [enabling systemd][enabling-systemd] and then in
 
 ```shell
 curl --proto '=https' --tlsv1.2 -sSf -L https://install.determinate.systems/nix | \
-  sh -s -- install --determinate
+  sh -s -- install
 ```
 
 If [WSLg][wslg] is enabled, you can do things like open a Linux Firefox from Windows on Powershell:
@@ -283,8 +291,11 @@ If you'd like to bypass the confirmation step, you can apply the `--no-confirm` 
 
 ```shell
 curl --proto '=https' --tlsv1.2 -sSf -L https://install.determinate.systems/nix | \
-  sh -s -- install --determinate --no-confirm
+  sh -s -- install --no-confirm
 ```
+
+> [!TIP]
+> If you're looking for Determinate Nix, make sure to pass `--determinate` at the same time.
 
 This is especially useful when using the installer in non-interactive scripts.
 
