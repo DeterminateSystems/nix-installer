@@ -18,7 +18,7 @@ curl -fsSL https://install.determinate.systems/nix | sh -s -- install --determin
 > [!TIP]
 > The **best way to get Determinate Nix on macOS** is with the <a href="https://install.determinate.systems/determinate-pkg/stable/Universal">macOS package <img src="https://docs.determinate.systems/img/pkg.png" width="20px" /></a>.
 
-Determinate Nix Installer successfully complete over **1 million** installs per month in a number of environments, including [Github Actions](#as-a-github-action) and [GitLab](#on-gitlab):
+Determinate Nix Installer successfully completes over **1 million** installs per month in a number of environments, including [Github Actions](#as-a-github-action) and [GitLab](#on-gitlab):
 
 | Platform                                                             |    Multi user?    | `root` only |     Maturity      |
 | -------------------------------------------------------------------- | :---------------: | :---------: | :---------------: |
