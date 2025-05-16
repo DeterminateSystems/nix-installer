@@ -10,7 +10,7 @@
 It works on macOS, Linux, Windows Subsystem for Linux (WSL), SELinux, the Valve Steam Deck, and more.
 It installs either [Nix](https://nixos.org) or [Determinate Nix][det-nix] (with [flakes] enabled by default), it offers support for seamlessly [uninstalling Nix](#uninstalling), it enables Nix to survive [macOS upgrades][macos-upgrades], and [much more](#features).
 
-The quickest way to have a great Nix experience is with Determinate Nix.
+The quickest way to have a great Nix experience is with [Determinate Nix][det-nix].
 This one liner will do just that on any supported system:
 
 ```shell
