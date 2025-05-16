@@ -37,12 +37,8 @@ jobs:
           fail-mode: true
           check-outdated: false # PRs shouldn't fail because main's nixpkgs is out of date
       - name: Install Nix
-        uses: DeterminateSystems/nix-installer-action@main
-        with:
-          determinate: true
+        uses: DeterminateSystems/determinate-nix-action@main
       - uses: DeterminateSystems/flakehub-cache-action@main
-        with:
-          use-gha-cache: false
       - name: Check rustfmt
         run: nix develop --command check-rustfmt
       - name: Check Clippy
@@ -634,8 +630,6 @@ jobs:
           log-directives: nix_installer=debug
           logger: pretty
       - uses: DeterminateSystems/flakehub-cache-action@main
-        with:
-          use-gha-cache: false
       - run: ${{ matrix.command }}
 
   run-x86_64-linux-release-checks:

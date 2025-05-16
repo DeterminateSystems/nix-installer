@@ -19,12 +19,8 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: Install Nix
-        uses: DeterminateSystems/nix-installer-action@main
-        with:
-          determinate: true
+        uses: DeterminateSystems/determinate-nix-action@main
       - uses: DeterminateSystems/flakehub-cache-action@main
-        with:
-          use-gha-cache: false
       - name: Build the installer
         run: |
           nix build .#packages.x86_64-darwin.nix-installer-static -L
