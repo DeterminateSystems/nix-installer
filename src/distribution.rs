@@ -53,12 +53,30 @@ pub const DETERMINATE_NIX_TARBALL: Option<&[u8]> =
 /// The DETERMINATE_NIXD_BINARY_PATH environment variable should point to a target-appropriate
 /// static build of the Determinate Nixd binary. The contents are embedded in the resulting
 /// binary if the determinate-nix feature is turned on.
-pub const DETERMINATE_NIXD_BINARY: Option<&[u8]> =
+const DETERMINATE_NIXD_BINARY: Option<&[u8]> =
     Some(include_bytes!(env!("DETERMINATE_NIXD_BINARY_PATH")));
 
 #[cfg(not(feature = "determinate-nix"))]
-pub const DETERMINATE_NIXD_BINARY: Option<&[u8]> = None;
+const DETERMINATE_NIXD_BINARY: Option<&[u8]> = None;
 #[cfg(not(feature = "determinate-nix"))]
 pub const DETERMINATE_NIX_TARBALL: Option<&[u8]> = None;
 #[cfg(not(feature = "determinate-nix"))]
 pub const DETERMINATE_NIX_TARBALL_PATH: Option<&str> = None;
+
+pub const fn maybe_determinate_nixd_binary() -> Option<&'static [u8]> {
+    DETERMINATE_NIXD_BINARY
+}
+
+pub fn determinate_nixd_binary_or(
+    binary_path: Option<std::path::PathBuf>,
+) -> Result<Vec<u8>, crate::action::ActionErrorKind> {
+    let maybe_binary_bytes = maybe_determinate_nixd_binary();
+    if let Some(binary_path) = binary_path {
+        Ok(std::fs::read(&binary_path)
+            .map_err(|e| crate::action::ActionErrorKind::Read(binary_path, e))?)
+    } else if let Some(binary_bytes) = maybe_binary_bytes {
+        Ok(binary_bytes.to_vec())
+    } else {
+        Err(crate::action::ActionErrorKind::DeterminateNixUnavailable)?
+    }
+}
