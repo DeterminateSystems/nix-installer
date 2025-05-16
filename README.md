@@ -6,17 +6,27 @@
 [![License](https://img.shields.io/github/license/DeterminateSystems/nix-installer)](https://github.com/DeterminateSystems/nix-installer/blob/main/LICENSE)
 [![Discord](https://img.shields.io/discord/1116012109709463613)](https://determinate.systems/discord)
 
-**Determinate Nix Installer** is a fast, friendly, and reliable way to install and manage [Nix] everywhere, including macOS, Linux, Windows Subsystem for Linux (WSL), SELinux, the Valve Steam Deck, and more.
+**Determinate Nix Installer** is the best way to install [Nix].
+It works on macOS, Linux, Windows Subsystem for Linux (WSL), SELinux, the Valve Steam Deck, and more.
 It installs either [Nix](https://nixos.org) or [Determinate Nix][det-nix] (with [flakes] enabled by default), it offers support for seamlessly [uninstalling Nix](#uninstalling), it enables Nix to survive [macOS upgrades][macos-upgrades], and [much more](#features).
 
-This one-liner is the quickest way to get started on any supported system:
+The quickest way to have a great Nix experience is with [Determinate Nix][det-nix].
+This one liner will do just that on any supported system:
 
 ```shell
-curl --proto '=https' --tlsv1.2 -sSf -L https://install.determinate.systems/nix | \
-  sh -s -- install
+curl -fsSL https://install.determinate.systems/nix | sh -s -- install --determinate
 ```
 
-Determinate Nix Installer has successfully completed over **7 million** installs in a number of environments, including [Github Actions](#as-a-github-action) and [GitLab](#on-gitlab):
+If you'd prefer upstream Nix:
+
+```shell
+curl -fsSL https://install.determinate.systems/nix | sh -s -- install
+```
+
+> [!TIP]
+> The **best way to get Determinate Nix on macOS** is with the <a href="https://install.determinate.systems/determinate-pkg/stable/Universal">macOS package</a>.
+
+Determinate Nix Installer successfully completes over **1 million** installs per month in a number of environments, including [Github Actions](#as-a-github-action) and [GitLab](#on-gitlab):
 
 | Platform                                                             |    Multi user?    | `root` only |     Maturity      |
 | -------------------------------------------------------------------- | :---------------: | :---------: | :---------------: |
@@ -27,35 +37,44 @@ Determinate Nix Installer has successfully completed over **7 million** installs
 | [Podman] Linux containers                                            | ✓ (via [systemd]) |      ✓      |      Stable       |
 | [Docker] containers                                                  |                   |      ✓      |      Stable       |
 
-## Installation
+### As a Github Action
 
-You can install with the default [planner](#planners) and options by running this script:
+You can install Determinate Nix on [GitHub Actions][actions] using [`determinate-nix-action`][determinate-nix-action].
+Here's an example configuration:
 
-```shell
-curl --proto '=https' --tlsv1.2 -sSf -L https://install.determinate.systems/nix | \
-  sh -s -- install
+```yaml
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+jobs:
+  build:
+    name: Build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: DeterminateSystems/determinate-nix-action@v3
+      - name: Run `nix build`
+        run: nix build .
 ```
 
-This prompts you if you want [Determinate Nix](https://docs.determinate.systems/determinate-nix) or the Nix from [nixos.org](https://nixos.org/download).
-If you would like to skip the prompt and install Determinate Nix directly, you can pass `--determinate` directly:
+If you would rather use upstream Nix, use [`nix-installer-action`][nix-installer-action]:
 
-```shell
-curl --proto '=https' --tlsv1.2 -sSf -L https://install.determinate.systems/nix | \
-  sh -s -- install --determinate
+```yaml
+jobs:
+  build:
+    steps:
+      - uses: DeterminateSystems/nix-installer-action@main
 ```
 
-> [!TIP]
-> If you use [NixOS], we recommend installing Determinate using modules provided by the [`determinate` flake][determinate-flake].
+#### Pinning the GitHub Action
 
-To download a platform-specific installer binary yourself:
+The [determinate-nix-action] is updated and tagged for every Determinate release.
+For example, `DeterminateSystems/determinate-nix-action@v3.5.2` will always install Determinate Nix v3.5.2.
 
-```shell
-curl -sL -o nix-installer https://install.determinate.systems/nix/nix-installer-x86_64-linux
-chmod +x nix-installer
-./nix-installer
-```
-
-This installs Nix or Determinate Nix on an `x86_64-linux` system but you can replace that with the system of your choice.
+Additionally, an extra tag on the major version is kept up to date with the current release.
+The `DeterminateSystems/determinate-nix-action@v3` reference, for example, installs the most recent release in the `v3.x.y` series.
 
 ### Planners
 
@@ -117,29 +136,6 @@ You can remove Nix installed by Determinate Nix Installer by running:
 
 ```shell
 /nix/nix-installer uninstall
-```
-
-### As a Github Action
-
-You can install Nix on [GitHub Actions][actions] using [`nix-installer-action`][nix-installer-action].
-Here's an example configuration:
-
-```yaml
-on:
-  pull_request:
-  push:
-    branches: [main]
-
-jobs:
-  build:
-    name: Build
-    runs-on: ubuntu-22.04
-    steps:
-      - uses: actions/checkout@v4
-      - name: Install Nix
-        uses: DeterminateSystems/nix-installer-action@main
-      - name: Run `nix build`
-        run: nix build .
 ```
 
 ### On GitLab
@@ -298,6 +294,9 @@ curl --proto '=https' --tlsv1.2 -sSf -L https://install.determinate.systems/nix 
   sh -s -- install --no-confirm
 ```
 
+> [!TIP]
+> If you're looking for Determinate Nix, make sure to pass `--determinate` at the same time.
+
 This is especially useful when using the installer in non-interactive scripts.
 
 ## Features
@@ -352,16 +351,6 @@ curl --proto '=https' --tlsv1.2 -sSf -L https://install.determinate.systems/nix/
 ```
 
 To discover which versions are available, or download the binaries for any release, check the [Github Releases][releases].
-
-You can download and use these releases directly.
-Here's an example:
-
-```shell
-VERSION="v0.6.0"
-ARCH="aarch64-linux"
-curl -sSf -L https://github.com/DeterminateSystems/nix-installer/releases/download/${VERSION}/nix-installer-${ARCH} -o nix-installer
-./nix-installer install
-```
 
 Each installer version has an [associated supported nix version](src/settings.rs)&mdash;if you pin the installer version, you'll also indirectly pin to the associated nix version.
 
@@ -491,6 +480,7 @@ You can read the full privacy policy for [Determinate Systems][detsys], the crea
 [det-nix]: https://docs.determinate.systems/determinate-nix
 [determinate]: https://docs.determinate.systems
 [determinate-flake]: https://github.com/DeterminateSystems/determinate
+[determinate-nix-action]: https://github.com/DeterminateSystems/determinate-nix-action
 [detsys]: https://determinate.systems
 [dnixd]: https://docs.determinate.systems/determinate-nix#determinate-nixd
 [docker]: https://docker.com
