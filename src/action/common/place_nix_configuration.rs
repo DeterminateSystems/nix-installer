@@ -136,12 +136,18 @@ impl PlaceNixConfiguration {
 
         // base, unintrusive Determinate Nix options
         {
-            // Add FlakeHub cache to the list of possible substituters, but disabled by default.
-            // This allows a user to turn on FlakeHub Cache by adding it to the `extra-substituters`
-            // list without being a trusted user.
+            // Add FlakeHub Cache and install.determinate.systems to the list of possible substituters, but disabled by default.
+            // Users are then able to substitute from these caches by adding them to `extra-substituters` list without being a trusted user.
+            //
+            // * Adds cache.flakehub.com
+            //   This means FlakeHub Cache users don't need to reconfigure Nix as a trusted user.
+            //
+            // * Adds install.determinate.systems
+            //   install.determinate.systems serves a binary cache of FlakeHub Cache-signed artifacts.
+            //   The cache only contains a few projects, intended to support anonymous user upgrades.
             settings.insert(
                 "extra-trusted-substituters".to_string(),
-                "https://cache.flakehub.com".to_string(),
+                "https://cache.flakehub.com https://install.determinate.systems".to_string(),
             );
 
             // Add FlakeHub's cache signing keys to the allowed list, but unused unless a user
