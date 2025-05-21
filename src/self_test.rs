@@ -105,7 +105,7 @@ impl Shell {
             .as_millis();
 
         command.arg(format!(
-            r#"nix build --option substitute false --option post-build-hook '' --no-link --expr 'derivation {{ name = "self-test-{executable}-{timestamp_millis}"; system = "{SYSTEM}"; builder = "/bin/sh"; args = ["-c" "echo hello > \$out"]; }}'"#
+            r#"exec nix build --option substitute false --option post-build-hook '' --no-link --expr 'derivation {{ name = "self-test-{executable}-{timestamp_millis}"; system = "{SYSTEM}"; builder = "/bin/sh"; args = ["-c" "echo hello > \$out"]; }}'"#
         ));
         let command_str = format!("{:?}", command.as_std());
 
