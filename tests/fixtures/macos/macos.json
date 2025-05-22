@@ -1213,7 +1213,9 @@
             "action_name": "configure_init_service",
             "init": "Launchd",
             "start_daemon": true,
-            "service_src": "/nix/var/nix/profiles/default/Library/LaunchDaemons/org.nixos.nix-daemon.plist",
+            "service_src": {
+              "Path": "/nix/var/nix/profiles/default/Library/LaunchDaemons/org.nixos.nix-daemon.plist"
+            },
             "service_name": "org.nixos.nix-daemon",
             "service_dest": "/Library/LaunchDaemons/org.nixos.nix-daemon.plist",
             "socket_files": [

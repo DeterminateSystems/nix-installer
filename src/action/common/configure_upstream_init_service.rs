@@ -34,9 +34,9 @@ impl ConfigureUpstreamInitService {
         init: InitSystem,
         start_daemon: bool,
     ) -> Result<StatefulAction<Self>, ActionError> {
-        let service_src: Option<PathBuf> = match init {
-            InitSystem::Launchd => Some(DARWIN_NIX_DAEMON_SOURCE.into()),
-            InitSystem::Systemd => Some(SERVICE_SRC.into()),
+        let service_src: Option<UnitSrc> = match init {
+            InitSystem::Launchd => Some(UnitSrc::Path(DARWIN_NIX_DAEMON_SOURCE.into())),
+            InitSystem::Systemd => Some(UnitSrc::Path(SERVICE_SRC.into())),
             InitSystem::None => None,
         };
         let service_dest: Option<PathBuf> = match init {
