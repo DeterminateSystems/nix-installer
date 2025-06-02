@@ -307,7 +307,7 @@ impl NixProfile<'_> {
             .process_group(0)
             .set_nix_options(self.nss_ca_cert_path)?
             .arg("profile")
-            .arg("add")
+            .arg("install") // lol
             .arg("--profile")
             .arg(profile)
             .arg(add)
