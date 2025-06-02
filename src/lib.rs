@@ -78,6 +78,7 @@ mod distribution;
 mod error;
 pub mod feedback;
 mod nixenv;
+mod nixprofile;
 mod os;
 mod plan;
 pub mod planner;
