@@ -261,8 +261,7 @@ impl NixProfile<'_> {
                     element
                         .store_paths
                         .into_iter()
-                        .map(|path| collect_children(path).unwrap_or_default())
-                        .flatten()
+                        .flat_map(|path| collect_children(path).unwrap_or_default())
                         .collect(),
                 );
             }

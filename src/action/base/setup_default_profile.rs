@@ -2,7 +2,7 @@ use std::path::PathBuf;
 
 use crate::{
     action::{common::ConfigureNix, ActionError, ActionErrorKind, ActionTag, StatefulAction},
-    nixenv::WriteToDefaultProfile,
+    nixprofile::WriteToDefaultProfile,
     set_env,
 };
 
@@ -115,17 +115,17 @@ impl Action for SetupDefaultProfile {
             )));
         };
 
-        let nixenv = crate::nixenv::NixEnv {
+        let nixprofile = crate::nixprofile::NixProfile {
             nix_store_path: &nix_pkg,
             nss_ca_cert_path: &nss_ca_cert_pkg,
 
             profile: std::path::Path::new("/nix/var/nix/profiles/default"),
             pkgs: &[&nix_pkg, &nss_ca_cert_pkg],
         };
-        nixenv
+        nixprofile
             .install_packages(WriteToDefaultProfile::WriteToDefault)
             .await
-            .map_err(SetupDefaultProfileError::NixEnv)
+            .map_err(SetupDefaultProfileError::NixProfile)
             .map_err(Self::error)?;
 
         set_env(
@@ -159,6 +159,9 @@ pub enum SetupDefaultProfileError {
 
     #[error("Failed to install packages with nix-env")]
     NixEnv(#[from] crate::nixenv::NixEnvError),
+
+    #[error("Failed to install packages with nix profile")]
+    NixProfile(#[from] crate::nixprofile::NixProfileError),
 }
 
 impl From<SetupDefaultProfileError> for ActionErrorKind {
