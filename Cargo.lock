@@ -1300,7 +1300,7 @@ dependencies = [
 
 [[package]]
 name = "nix-installer"
-version = "3.6.1"
+version = "3.6.2"
 dependencies = [
  "async-trait",
  "bytes 1.10.1",
