@@ -115,14 +115,14 @@ impl Action for SetupDefaultProfile {
             )));
         };
 
-        let nixprofile = crate::profile::nixprofile::NixProfile {
+        let profile = crate::profile::Profile {
             nix_store_path: &nix_pkg,
             nss_ca_cert_path: &nss_ca_cert_pkg,
 
             profile: std::path::Path::new("/nix/var/nix/profiles/default"),
             pkgs: &[&nix_pkg, &nss_ca_cert_pkg],
         };
-        nixprofile
+        profile
             .install_packages(WriteToDefaultProfile::WriteToDefault)
             .await
             .map_err(SetupDefaultProfileError::NixProfile)

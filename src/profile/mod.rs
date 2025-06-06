@@ -1,4 +1,4 @@
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 
 pub(crate) mod nixenv;
 pub(crate) mod nixprofile;
@@ -44,6 +44,44 @@ pub enum WriteToDefaultProfile {
 pub enum BackendType {
     NixEnv,
     NixProfile,
+}
+
+pub(crate) struct Profile<'a> {
+    pub nix_store_path: &'a Path,
+    pub nss_ca_cert_path: &'a Path,
+
+    pub profile: &'a Path,
+    pub pkgs: &'a [&'a Path],
+}
+
+impl Profile<'_> {
+    pub(crate) async fn install_packages(
+        &self,
+        to_default: WriteToDefaultProfile,
+    ) -> Result<(), Error> {
+        match get_profile_backend_type(self.profile).await {
+            Some(BackendType::NixProfile) => {
+                nixprofile::NixProfile {
+                    nix_store_path: self.nix_store_path,
+                    nss_ca_cert_path: self.nss_ca_cert_path,
+                    profile: self.profile,
+                    pkgs: self.pkgs,
+                }
+                .install_packages(to_default)
+                .await
+            },
+            _ => {
+                nixenv::NixEnv {
+                    nix_store_path: self.nix_store_path,
+                    nss_ca_cert_path: self.nss_ca_cert_path,
+                    profile: self.profile,
+                    pkgs: self.pkgs,
+                }
+                .install_packages(to_default)
+                .await
+            },
+        }
+    }
 }
 
 pub async fn get_profile_backend_type(profile: &std::path::Path) -> Option<BackendType> {
