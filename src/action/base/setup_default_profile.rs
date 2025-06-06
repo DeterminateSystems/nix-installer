@@ -160,8 +160,8 @@ pub enum SetupDefaultProfileError {
     #[error("Failed to install packages with nix-env")]
     NixEnv(#[from] crate::profile::nixenv::NixEnvError),
 
-    #[error("Failed to install packages with nix profile")]
-    NixProfile(#[from] crate::profile::nixprofile::NixProfileError),
+    #[error(transparent)]
+    NixProfile(#[from] crate::profile::Error),
 }
 
 impl From<SetupDefaultProfileError> for ActionErrorKind {
