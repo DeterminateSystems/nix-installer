@@ -176,29 +176,24 @@ impl NixProfile<'_> {
     ) -> Result<(), NixProfileError> {
         tracing::debug!("Duplicating the existing profile into the scratch profile");
 
-        let mut cmd = tokio::process::Command::new(self.nix_store_path.join("bin/nix-env"));
+        let mut cmd = tokio::process::Command::new(self.nix_store_path.join("bin/nix"));
 
         cmd.process_group(0);
         cmd.set_nix_options(self.nss_ca_cert_path)?;
 
-        // cmd.args(&["profile", "add"]);
+        cmd.arg("build");
 
         if let Some(profile) = profile {
             cmd.arg("--profile");
             cmd.arg(profile);
         }
 
-        let output = cmd
-            .arg("--set")
-            .arg(canon_profile)
-            .output()
-            .await
-            .map_err(|e| {
-                NixProfileError::StartNixCommand(
-                    "Duplicating the default profile into the scratch profile".to_string(),
-                    e,
-                )
-            })?;
+        let output = cmd.arg(canon_profile).output().await.map_err(|e| {
+            NixProfileError::StartNixCommand(
+                "Duplicating the default profile into the scratch profile".to_string(),
+                e,
+            )
+        })?;
 
         if !output.status.success() {
             return Err(NixProfileError::NixCommand(
@@ -307,7 +302,7 @@ impl NixProfile<'_> {
             .process_group(0)
             .set_nix_options(self.nss_ca_cert_path)?
             .arg("profile")
-            .arg("install") // lol
+            .arg("install") // "add" in determinate nix, but "install" is an alias
             .arg("--profile")
             .arg(profile)
             .arg(add)
