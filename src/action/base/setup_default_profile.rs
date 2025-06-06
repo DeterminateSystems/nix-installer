@@ -2,7 +2,7 @@ use std::path::PathBuf;
 
 use crate::{
     action::{common::ConfigureNix, ActionError, ActionErrorKind, ActionTag, StatefulAction},
-    profile::nixprofile::WriteToDefaultProfile,
+    profile::WriteToDefaultProfile,
     set_env,
 };
 

@@ -12,17 +12,10 @@ pub(crate) struct NixEnv<'a> {
     pub pkgs: &'a [&'a Path],
 }
 
-pub enum WriteToDefaultProfile {
-    WriteToDefault,
-
-    #[cfg(test)]
-    Isolated,
-}
-
 impl NixEnv<'_> {
     pub(crate) async fn install_packages(
         &self,
-        to_default: WriteToDefaultProfile,
+        to_default: super::WriteToDefaultProfile,
     ) -> Result<(), super::Error> {
         self.validate_paths_can_cohabitate().await?;
 
@@ -67,8 +60,8 @@ impl NixEnv<'_> {
         self.set_profile_to(
             match to_default {
                 #[cfg(test)]
-                WriteToDefaultProfile::Isolated => Some(self.profile),
-                WriteToDefaultProfile::WriteToDefault => None,
+                super::WriteToDefaultProfile::Isolated => Some(self.profile),
+                super::WriteToDefaultProfile::WriteToDefault => None,
             },
             &temporary_profile,
         )

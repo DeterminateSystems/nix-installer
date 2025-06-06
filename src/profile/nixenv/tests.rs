@@ -3,9 +3,9 @@ use std::path::{Path, PathBuf};
 
 use tokio::io::AsyncWriteExt;
 
+use super::super::WriteToDefaultProfile;
 use super::NixCommandExt;
 use super::NixEnv;
-use super::WriteToDefaultProfile;
 
 async fn should_skip() -> bool {
     let cmdret = tokio::process::Command::new("nix")

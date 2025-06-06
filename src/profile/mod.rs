@@ -32,3 +32,10 @@ pub enum Error {
     #[error("Deserializing the list of installed packages for the profile: {0}")]
     Deserialization(#[from] serde_json::Error),
 }
+
+pub enum WriteToDefaultProfile {
+    WriteToDefault,
+
+    #[cfg(test)]
+    Isolated,
+}
