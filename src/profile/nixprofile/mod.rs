@@ -142,6 +142,7 @@ impl NixProfile<'_> {
         cmd.set_nix_options(self.nss_ca_cert_path)?;
 
         cmd.arg("build");
+        cmd.arg("--no-link"); // otherwise it creates a ./result symlink
 
         if let Some(profile) = profile {
             cmd.arg("--profile");
