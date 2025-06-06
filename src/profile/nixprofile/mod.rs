@@ -136,25 +136,27 @@ impl NixProfile<'_> {
     ) -> Result<(), super::Error> {
         tracing::debug!("Duplicating the existing profile into the scratch profile");
 
-        let mut cmd = tokio::process::Command::new(self.nix_store_path.join("bin/nix"));
+        let mut cmd = tokio::process::Command::new(self.nix_store_path.join("bin/nix-env"));
 
         cmd.process_group(0);
         cmd.set_nix_options(self.nss_ca_cert_path)?;
-
-        cmd.arg("build");
-        cmd.arg("--no-link"); // otherwise it creates a ./result symlink
 
         if let Some(profile) = profile {
             cmd.arg("--profile");
             cmd.arg(profile);
         }
 
-        let output = cmd.arg(canon_profile).output().await.map_err(|e| {
-            super::Error::StartNixCommand(
-                "Duplicating the default profile into the scratch profile".to_string(),
-                e,
-            )
-        })?;
+        let output = cmd
+            .arg("--set")
+            .arg(canon_profile)
+            .output()
+            .await
+            .map_err(|e| {
+                super::Error::StartNixCommand(
+                    "Duplicating the default profile into the scratch profile".to_string(),
+                    e,
+                )
+            })?;
 
         if !output.status.success() {
             return Err(super::Error::NixCommand(
