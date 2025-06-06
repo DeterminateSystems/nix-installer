@@ -39,3 +39,30 @@ pub enum WriteToDefaultProfile {
     #[cfg(test)]
     Isolated,
 }
+
+#[derive(Debug, Clone, Copy, Eq, PartialEq)]
+pub enum BackendType {
+    NixEnv,
+    NixProfile,
+}
+
+pub async fn get_profile_backend_type(profile: &std::path::Path) -> Option<BackendType> {
+    // If the file has a manifest.json, that means `nix profile` touched it, and ONLY `nix profile` can touch it.
+    if tokio::fs::metadata(profile.join("manifest.json"))
+        .await
+        .is_ok()
+    {
+        return Some(BackendType::NixProfile);
+    }
+
+    // If the file has a manifest.nix, that means it was created by `nix-env`.
+    if tokio::fs::metadata(profile.join("manifest.nix"))
+        .await
+        .is_ok()
+    {
+        return Some(BackendType::NixEnv);
+    }
+
+    // If neither of those exist, it can be managed by either, so express no preference.
+    return None;
+}
