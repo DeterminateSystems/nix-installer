@@ -1,23 +1,24 @@
-name: update-flake-lock
+name: "Flake.lock: update Nix dependencies"
+
 on:
-  workflow_dispatch:
+  workflow_dispatch: # allows manual triggering
   schedule:
-    - cron: "0 0 * * 0"
+    - cron: '0 0 * * 0' # runs weekly on Sunday at 00:00
 
 jobs:
-  lockfile:
-    runs-on: ubuntu-22.04
+  nix-flake-update:
     permissions:
-      id-token: "write"
-      contents: "read"
+      contents: write
+      id-token: write
+      issues: write
+      pull-requests: write
+    runs-on: ubuntu-latest
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-      - name: Install Nix
-        uses: DeterminateSystems/determinate-nix-action@main
-      - name: Enable FlakeHub Cache
-        uses: DeterminateSystems/flakehub-cache-action@main
-      - name: Check flake
-        uses: DeterminateSystems/flake-checker-action@main
-      - name: Update flake.lock
-        uses: DeterminateSystems/update-flake-lock@main
+      - uses: actions/checkout@v4
+      - uses: DeterminateSystems/determinate-nix-action@v3
+      - uses: DeterminateSystems/update-flake-lock@main
+        with:
+          pr-title: "Update Nix flake inputs" # Title of PR to be created
+          pr-labels: |                  # Labels to be set on the PR
+            dependencies
+            automated
