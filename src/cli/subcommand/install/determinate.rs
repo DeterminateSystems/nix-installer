@@ -9,8 +9,8 @@ use crate::planner::BuiltinPlanner;
 const PRE_PKG_SUGGEST: &str = "For a more robust Nix installation, use the Determinate package for macOS: https://dtr.mn/determinate-nix";
 
 const INSTALL_DETERMINATE_NIX_PROMPT: &str = "\
-Install Determinate Nix?\
-\
+Install Determinate Nix?
+
 Selecting 'no' will install Nix from NixOS.org, without automated garbage collection and enterprise certificate support.\
 ";
 
