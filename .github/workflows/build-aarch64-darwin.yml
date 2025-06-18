@@ -2,11 +2,6 @@ name: Build aarch64 Darwin
 
 on:
   workflow_call:
-    inputs:
-      cache-key:
-        type: string
-        required: false
-        default: aarch64-darwin-artifacts-${{ github.sha }}
 
 jobs:
   build-aarch64-darwin:
@@ -25,8 +20,8 @@ jobs:
         run: |
           nix build .#packages.aarch64-darwin.nix-installer-static -L
           cp result/bin/nix-installer .
-      - name: Create GitHub cache from build artifacts
-        uses: actions/cache/save@v4
+      - name: Create GitHub artifacts from build outputs
+        uses: actions/upload-artifact@v4
         with:
           path: nix-installer
-          key: ${{ inputs.cache-key }}
+          name: nix-installer-aarch64-darwin
