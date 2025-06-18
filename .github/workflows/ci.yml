@@ -75,6 +75,8 @@ jobs:
           cp nix-installer.sh install-root/nix-installer.sh
           mv ./nix-installer install-root/nix-installer-x86_64-linux
           chmod +x install-root/nix-installer-x86_64-linux install-root/nix-installer.sh
+          file install-root/nix-installer-x86_64-linux
+          ls -al install-root/nix-installer-x86_64-linux
       - run: sudo apt install fish zsh
       - name: Initial install
         uses: DeterminateSystems/nix-installer-action@main
@@ -193,6 +195,8 @@ jobs:
           cp nix-installer.sh install-root/nix-installer.sh
           mv ./nix-installer install-root/nix-installer-x86_64-linux
           chmod +x install-root/nix-installer-x86_64-linux install-root/nix-installer.sh
+          file install-root/nix-installer-x86_64-linux
+          ls -al install-root/nix-installer-x86_64-linux
       - run: sudo apt install fish zsh
       - name: Initial install
         uses: DeterminateSystems/nix-installer-action@main
@@ -317,6 +321,8 @@ jobs:
           cp nix-installer.sh install-root/nix-installer.sh
           mv ./nix-installer install-root/nix-installer-x86_64-darwin
           chmod +x install-root/nix-installer-x86_64-darwin install-root/nix-installer.sh
+          file install-root/nix-installer-x86_64-darwin
+          ls -al install-root/nix-installer-x86_64-darwin
       - run: brew install fish coreutils
       - name: Initial install
         uses: DeterminateSystems/nix-installer-action@main
@@ -407,6 +413,8 @@ jobs:
           cp nix-installer.sh install-root/nix-installer.sh
           mv ./nix-installer install-root/nix-installer-aarch64-linux
           chmod +x install-root/nix-installer-aarch64-linux install-root/nix-installer.sh
+          file install-root/nix-installer-aarch64-linux
+          ls -al install-root/nix-installer-aarch64-linux
       - run: sudo apt install -y fish zsh
       - name: Initial install
         uses: DeterminateSystems/nix-installer-action@main
@@ -525,6 +533,8 @@ jobs:
           cp nix-installer.sh install-root/nix-installer.sh
           mv ./nix-installer install-root/nix-installer-aarch64-darwin
           chmod +x install-root/nix-installer-aarch64-darwin install-root/nix-installer.sh
+          file install-root/nix-installer-aarch64-darwin
+          ls -al install-root/nix-installer-aarch64-darwin
       - run: brew install fish coreutils
       - name: Initial install
         uses: DeterminateSystems/nix-installer-action@main
@@ -621,6 +631,8 @@ jobs:
           cp nix-installer.sh install-root/nix-installer.sh
           mv ./nix-installer install-root/nix-installer-x86_64-linux
           chmod +x install-root/nix-installer-x86_64-linux install-root/nix-installer.sh
+          file install-root/nix-installer-x86_64-linux
+          ls -al install-root/nix-installer-x86_64-linux
       - name: Initial install
         uses: DeterminateSystems/nix-installer-action@main
         with:
