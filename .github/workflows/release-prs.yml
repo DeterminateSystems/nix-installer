@@ -86,23 +86,25 @@ jobs:
       - name: Fetch x86_64-linux binary artifact
         uses: actions/download-artifact@v4
         with:
-          path: ./artifacts/nix-installer-x86_64-linux
           name: nix-installer-x86_64-linux
       - name: Fetch aarch64-linux binary artifact
         uses: actions/download-artifact@v4
         with:
-          path: ./artifacts/nix-installer-aarch64-linux
           name: nix-installer-aarch64-linux
       - name: Fetch x86_64-darwin binary artifact
         uses: actions/download-artifact@v4
         with:
-          path: ./artifacts/nix-installer-x86_64-darwin
           name: nix-installer-x86_64-darwin
       - name: Fetch aarch64-darwin binary artifact
         uses: actions/download-artifact@v4
         with:
-          path: ./artifacts/nix-installer-aarch64-darwin
           name: nix-installer-aarch64-darwin
+      - name: Move binaries into upload staging dir
+        run: |
+          mv nix-installer-x86_64-linux artifacts/
+          mv nix-installer-aarch64-linux artifacts/
+          mv nix-installer-x86_64-darwin artifacts/
+          mv nix-installer-aarch64-darwin artifacts/
 
       - name: Configure AWS Credentials
         uses: aws-actions/configure-aws-credentials@v2

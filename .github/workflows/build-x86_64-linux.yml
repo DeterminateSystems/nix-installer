@@ -18,9 +18,9 @@ jobs:
       - name: Build the installer
         run: |
           nix build .#packages.x86_64-linux.nix-installer-static -L
-          cp result/bin/nix-installer .
+          cp result/bin/nix-installer ./nix-installer-x86_64-linux
       - name: Create GitHub artifacts from build outputs
         uses: actions/upload-artifact@v4
         with:
-          path: nix-installer
+          path: nix-installer-x86_64-linux
           name: nix-installer-x86_64-linux

@@ -67,16 +67,13 @@ jobs:
       - name: Restore Github cache artifacts
         uses: actions/download-artifact@v4
         with:
-          path: nix-installer
           name: nix-installer-x86_64-linux
       - name: Move & set executable
         run: |
           mkdir install-root
           cp nix-installer.sh install-root/nix-installer.sh
-          mv ./nix-installer/nix-installer install-root/nix-installer-x86_64-linux
+          mv ./nix-installer-x86_64-linux install-root/
           chmod +x install-root/nix-installer-x86_64-linux install-root/nix-installer.sh
-          file install-root/nix-installer-x86_64-linux
-          ls -al install-root/nix-installer-x86_64-linux
       - run: sudo apt install fish zsh
       - name: Initial install
         uses: DeterminateSystems/nix-installer-action@main
@@ -187,16 +184,13 @@ jobs:
       - name: Restore Github cache artifacts
         uses: actions/download-artifact@v4
         with:
-          path: nix-installer
           name: nix-installer-x86_64-linux
       - name: Move & set executable
         run: |
           mkdir install-root
           cp nix-installer.sh install-root/nix-installer.sh
-          mv ./nix-installer/nix-installer install-root/nix-installer-x86_64-linux
+          mv ./nix-installer-x86_64-linux install-root/
           chmod +x install-root/nix-installer-x86_64-linux install-root/nix-installer.sh
-          file install-root/nix-installer-x86_64-linux
-          ls -al install-root/nix-installer-x86_64-linux
       - run: sudo apt install fish zsh
       - name: Initial install
         uses: DeterminateSystems/nix-installer-action@main
@@ -313,16 +307,13 @@ jobs:
       - name: Restore Github cache artifacts
         uses: actions/download-artifact@v4
         with:
-          path: nix-installer
           name: nix-installer-x86_64-darwin
       - name: Move & set executable
         run: |
           mkdir install-root
           cp nix-installer.sh install-root/nix-installer.sh
-          mv ./nix-installer/nix-installer install-root/nix-installer-x86_64-darwin
+          mv ./nix-installer-x86_64-darwin install-root/
           chmod +x install-root/nix-installer-x86_64-darwin install-root/nix-installer.sh
-          file install-root/nix-installer-x86_64-darwin
-          ls -al install-root/nix-installer-x86_64-darwin
       - run: brew install fish coreutils
       - name: Initial install
         uses: DeterminateSystems/nix-installer-action@main
@@ -405,16 +396,13 @@ jobs:
       - name: Restore Github cache artifacts
         uses: actions/download-artifact@v4
         with:
-          path: nix-installer
           name: nix-installer-aarch64-linux
       - name: Move & set executable
         run: |
           mkdir install-root
           cp nix-installer.sh install-root/nix-installer.sh
-          mv ./nix-installer/nix-installer install-root/nix-installer-aarch64-linux
+          mv ./nix-installer-aarch64-linux install-root/
           chmod +x install-root/nix-installer-aarch64-linux install-root/nix-installer.sh
-          file install-root/nix-installer-aarch64-linux
-          ls -al install-root/nix-installer-aarch64-linux
       - run: sudo apt install -y fish zsh
       - name: Initial install
         uses: DeterminateSystems/nix-installer-action@main
@@ -525,16 +513,13 @@ jobs:
       - name: Restore Github cache artifacts
         uses: actions/download-artifact@v4
         with:
-          path: nix-installer
           name: nix-installer-aarch64-darwin
       - name: Move & set executable
         run: |
           mkdir install-root
           cp nix-installer.sh install-root/nix-installer.sh
-          mv ./nix-installer/nix-installer install-root/nix-installer-aarch64-darwin
+          mv ./nix-installer-aarch64-darwin install-root/
           chmod +x install-root/nix-installer-aarch64-darwin install-root/nix-installer.sh
-          file install-root/nix-installer-aarch64-darwin
-          ls -al install-root/nix-installer-aarch64-darwin
       - run: brew install fish coreutils
       - name: Initial install
         uses: DeterminateSystems/nix-installer-action@main
@@ -623,16 +608,13 @@ jobs:
       - name: Restore Github cache artifacts
         uses: actions/download-artifact@v4
         with:
-          path: nix-installer
           name: nix-installer-x86_64-linux
       - name: Move & set executable
         run: |
           mkdir install-root
           cp nix-installer.sh install-root/nix-installer.sh
-          mv ./nix-installer/nix-installer install-root/nix-installer-x86_64-linux
+          mv ./nix-installer-x86_64-linux install-root/
           chmod +x install-root/nix-installer-x86_64-linux install-root/nix-installer.sh
-          file install-root/nix-installer-x86_64-linux
-          ls -al install-root/nix-installer-x86_64-linux
       - name: Initial install
         uses: DeterminateSystems/nix-installer-action@main
         with:
