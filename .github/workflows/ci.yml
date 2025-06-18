@@ -73,7 +73,7 @@ jobs:
         run: |
           mkdir install-root
           cp nix-installer.sh install-root/nix-installer.sh
-          mv ./nix-installer install-root/nix-installer-x86_64-linux
+          mv ./nix-installer/nix-installer install-root/nix-installer-x86_64-linux
           chmod +x install-root/nix-installer-x86_64-linux install-root/nix-installer.sh
           file install-root/nix-installer-x86_64-linux
           ls -al install-root/nix-installer-x86_64-linux
@@ -193,7 +193,7 @@ jobs:
         run: |
           mkdir install-root
           cp nix-installer.sh install-root/nix-installer.sh
-          mv ./nix-installer install-root/nix-installer-x86_64-linux
+          mv ./nix-installer/nix-installer install-root/nix-installer-x86_64-linux
           chmod +x install-root/nix-installer-x86_64-linux install-root/nix-installer.sh
           file install-root/nix-installer-x86_64-linux
           ls -al install-root/nix-installer-x86_64-linux
@@ -319,7 +319,7 @@ jobs:
         run: |
           mkdir install-root
           cp nix-installer.sh install-root/nix-installer.sh
-          mv ./nix-installer install-root/nix-installer-x86_64-darwin
+          mv ./nix-installer/nix-installer install-root/nix-installer-x86_64-darwin
           chmod +x install-root/nix-installer-x86_64-darwin install-root/nix-installer.sh
           file install-root/nix-installer-x86_64-darwin
           ls -al install-root/nix-installer-x86_64-darwin
@@ -411,7 +411,7 @@ jobs:
         run: |
           mkdir install-root
           cp nix-installer.sh install-root/nix-installer.sh
-          mv ./nix-installer install-root/nix-installer-aarch64-linux
+          mv ./nix-installer/nix-installer install-root/nix-installer-aarch64-linux
           chmod +x install-root/nix-installer-aarch64-linux install-root/nix-installer.sh
           file install-root/nix-installer-aarch64-linux
           ls -al install-root/nix-installer-aarch64-linux
@@ -531,7 +531,7 @@ jobs:
         run: |
           mkdir install-root
           cp nix-installer.sh install-root/nix-installer.sh
-          mv ./nix-installer install-root/nix-installer-aarch64-darwin
+          mv ./nix-installer/nix-installer install-root/nix-installer-aarch64-darwin
           chmod +x install-root/nix-installer-aarch64-darwin install-root/nix-installer.sh
           file install-root/nix-installer-aarch64-darwin
           ls -al install-root/nix-installer-aarch64-darwin
@@ -629,7 +629,7 @@ jobs:
         run: |
           mkdir install-root
           cp nix-installer.sh install-root/nix-installer.sh
-          mv ./nix-installer install-root/nix-installer-x86_64-linux
+          mv ./nix-installer/nix-installer install-root/nix-installer-x86_64-linux
           chmod +x install-root/nix-installer-x86_64-linux install-root/nix-installer.sh
           file install-root/nix-installer-x86_64-linux
           ls -al install-root/nix-installer-x86_64-linux
