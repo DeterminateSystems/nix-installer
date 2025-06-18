@@ -27,8 +27,6 @@ jobs:
         || (github.event.action != 'labeled' && contains(github.event.pull_request.labels.*.name, 'upload to s3'))
       )
     uses: ./.github/workflows/build-x86_64-linux.yml
-    with:
-      cache-key: release-x86_64-linux-artifacts-${{ github.sha }}
   build-aarch64-linux:
     # Only intra-repo PRs are allowed to have PR artifacts uploaded
     # We only want to trigger once the upload once in the case the upload label is added, not when any label is added
@@ -40,8 +38,6 @@ jobs:
         || (github.event.action != 'labeled' && contains(github.event.pull_request.labels.*.name, 'upload to s3'))
       )
     uses: ./.github/workflows/build-aarch64-linux.yml
-    with:
-      cache-key: release-aarch64-linux-artifacts-${{ github.sha }}
   build-x86_64-darwin:
     # Only intra-repo PRs are allowed to have PR artifacts uploaded
     # We only want to trigger once the upload once in the case the upload label is added, not when any label is added
@@ -53,8 +49,6 @@ jobs:
         || (github.event.action != 'labeled' && contains(github.event.pull_request.labels.*.name, 'upload to s3'))
       )
     uses: ./.github/workflows/build-x86_64-darwin.yml
-    with:
-      cache-key: release-x86_64-darwin-artifacts-${{ github.sha }}
   build-aarch64-darwin:
     # Only intra-repo PRs are allowed to have PR artifacts uploaded
     # We only want to trigger once the upload once in the case the upload label is added, not when any label is added
@@ -66,8 +60,6 @@ jobs:
         || (github.event.action != 'labeled' && contains(github.event.pull_request.labels.*.name, 'upload to s3'))
       )
     uses: ./.github/workflows/build-aarch64-darwin.yml
-    with:
-      cache-key: release-aarch64-darwin-artifacts-${{ github.sha }}
 
   release:
     # Only intra-repo PRs are allowed to have PR artifacts uploaded
@@ -91,37 +83,28 @@ jobs:
       - name: Create artifacts directory
         run: mkdir -p ./artifacts
 
-      - name: Fetch cached x86_64-linux binary
-        uses: actions/cache/restore@v4
+      - name: Fetch x86_64-linux binary artifact
+        uses: actions/download-artifact@v4
         with:
-          path: nix-installer
-          key: release-x86_64-linux-artifacts-${{ github.sha }}
-      - name: Move artifact to artifacts directory
-        run: mv ./nix-installer ./artifacts/nix-installer-x86_64-linux
-
-      - name: Fetch cached aarch64-linux binary
-        uses: actions/cache/restore@v4
+          name: nix-installer-x86_64-linux
+      - name: Fetch aarch64-linux binary artifact
+        uses: actions/download-artifact@v4
         with:
-          path: nix-installer
-          key: release-aarch64-linux-artifacts-${{ github.sha }}
-      - name: Move artifact to artifacts directory
-        run: mv ./nix-installer ./artifacts/nix-installer-aarch64-linux
-
-      - name: Fetch cached x86_64-darwin binary
-        uses: actions/cache/restore@v4
+          name: nix-installer-aarch64-linux
+      - name: Fetch x86_64-darwin binary artifact
+        uses: actions/download-artifact@v4
         with:
-          path: nix-installer
-          key: release-x86_64-darwin-artifacts-${{ github.sha }}
-      - name: Move artifact to artifacts directory
-        run: mv ./nix-installer ./artifacts/nix-installer-x86_64-darwin
-
-      - name: Fetch cached aarch64-darwin binary
-        uses: actions/cache/restore@v4
+          name: nix-installer-x86_64-darwin
+      - name: Fetch aarch64-darwin binary artifact
+        uses: actions/download-artifact@v4
         with:
-          path: nix-installer
-          key: release-aarch64-darwin-artifacts-${{ github.sha }}
-      - name: Move artifact to artifacts directory
-        run: mv ./nix-installer ./artifacts/nix-installer-aarch64-darwin
+          name: nix-installer-aarch64-darwin
+      - name: Move binaries into upload staging dir
+        run: |
+          mv nix-installer-x86_64-linux artifacts/
+          mv nix-installer-aarch64-linux artifacts/
+          mv nix-installer-x86_64-darwin artifacts/
+          mv nix-installer-aarch64-darwin artifacts/
 
       - name: Configure AWS Credentials
         uses: aws-actions/configure-aws-credentials@v2

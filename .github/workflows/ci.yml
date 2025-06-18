@@ -65,15 +65,14 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: Restore Github cache artifacts
-        uses: actions/cache/restore@v4
+        uses: actions/download-artifact@v4
         with:
-          path: nix-installer
-          key: x86_64-linux-artifacts-${{ github.sha }}
+          name: nix-installer-x86_64-linux
       - name: Move & set executable
         run: |
           mkdir install-root
           cp nix-installer.sh install-root/nix-installer.sh
-          mv ./nix-installer install-root/nix-installer-x86_64-linux
+          mv ./nix-installer-x86_64-linux install-root/
           chmod +x install-root/nix-installer-x86_64-linux install-root/nix-installer.sh
       - run: sudo apt install fish zsh
       - name: Initial install
@@ -183,15 +182,14 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: Restore Github cache artifacts
-        uses: actions/cache/restore@v4
+        uses: actions/download-artifact@v4
         with:
-          path: nix-installer
-          key: x86_64-linux-artifacts-${{ github.sha }}
+          name: nix-installer-x86_64-linux
       - name: Move & set executable
         run: |
           mkdir install-root
           cp nix-installer.sh install-root/nix-installer.sh
-          mv ./nix-installer install-root/nix-installer-x86_64-linux
+          mv ./nix-installer-x86_64-linux install-root/
           chmod +x install-root/nix-installer-x86_64-linux install-root/nix-installer.sh
       - run: sudo apt install fish zsh
       - name: Initial install
@@ -307,15 +305,14 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: Restore Github cache artifacts
-        uses: actions/cache/restore@v4
+        uses: actions/download-artifact@v4
         with:
-          path: nix-installer
-          key: x86_64-darwin-artifacts-${{ github.sha }}
+          name: nix-installer-x86_64-darwin
       - name: Move & set executable
         run: |
           mkdir install-root
           cp nix-installer.sh install-root/nix-installer.sh
-          mv ./nix-installer install-root/nix-installer-x86_64-darwin
+          mv ./nix-installer-x86_64-darwin install-root/
           chmod +x install-root/nix-installer-x86_64-darwin install-root/nix-installer.sh
       - run: brew install fish coreutils
       - name: Initial install
@@ -397,15 +394,14 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: Restore Github cache artifacts
-        uses: actions/cache/restore@v4
+        uses: actions/download-artifact@v4
         with:
-          path: nix-installer
-          key: aarch64-linux-artifacts-${{ github.sha }}
+          name: nix-installer-aarch64-linux
       - name: Move & set executable
         run: |
           mkdir install-root
           cp nix-installer.sh install-root/nix-installer.sh
-          mv ./nix-installer install-root/nix-installer-aarch64-linux
+          mv ./nix-installer-aarch64-linux install-root/
           chmod +x install-root/nix-installer-aarch64-linux install-root/nix-installer.sh
       - run: sudo apt install -y fish zsh
       - name: Initial install
@@ -515,15 +511,14 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: Restore Github cache artifacts
-        uses: actions/cache/restore@v4
+        uses: actions/download-artifact@v4
         with:
-          path: nix-installer
-          key: aarch64-darwin-artifacts-${{ github.sha }}
+          name: nix-installer-aarch64-darwin
       - name: Move & set executable
         run: |
           mkdir install-root
           cp nix-installer.sh install-root/nix-installer.sh
-          mv ./nix-installer install-root/nix-installer-aarch64-darwin
+          mv ./nix-installer-aarch64-darwin install-root/
           chmod +x install-root/nix-installer-aarch64-darwin install-root/nix-installer.sh
       - run: brew install fish coreutils
       - name: Initial install
@@ -611,15 +606,14 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: Restore Github cache artifacts
-        uses: actions/cache/restore@v4
+        uses: actions/download-artifact@v4
         with:
-          path: nix-installer
-          key: x86_64-linux-artifacts-${{ github.sha }}
+          name: nix-installer-x86_64-linux
       - name: Move & set executable
         run: |
           mkdir install-root
           cp nix-installer.sh install-root/nix-installer.sh
-          mv ./nix-installer install-root/nix-installer-x86_64-linux
+          mv ./nix-installer-x86_64-linux install-root/
           chmod +x install-root/nix-installer-x86_64-linux install-root/nix-installer.sh
       - name: Initial install
         uses: DeterminateSystems/nix-installer-action@main

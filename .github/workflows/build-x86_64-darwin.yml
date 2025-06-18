@@ -2,17 +2,11 @@ name: Build x86_64 Darwin
 
 on:
   workflow_call:
-    inputs:
-      cache-key:
-        type: string
-        required: false
-        default: x86_64-darwin-artifacts-${{ github.sha }}
 
 jobs:
   build-x86_64-darwin:
     name: Build x86_64 Darwin (static)
     runs-on: namespace-profile-mac-m2-12c28g
-    concurrency: ${{ inputs.cache-key }}
     permissions:
       id-token: "write"
       contents: "read"
@@ -24,9 +18,9 @@ jobs:
       - name: Build the installer
         run: |
           nix build .#packages.x86_64-darwin.nix-installer-static -L
-          cp result/bin/nix-installer .
-      - name: Create GitHub cache from build artifacts
-        uses: actions/cache/save@v4
+          cp result/bin/nix-installer ./nix-installer-x86_64-darwin
+      - name: Create GitHub artifacts from build outputs
+        uses: actions/upload-artifact@v4
         with:
-          path: nix-installer
-          key: ${{ inputs.cache-key }}
+          path: nix-installer-x86_64-darwin
+          name: nix-installer-x86_64-darwin
