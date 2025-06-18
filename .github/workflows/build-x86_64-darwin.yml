@@ -7,7 +7,6 @@ jobs:
   build-x86_64-darwin:
     name: Build x86_64 Darwin (static)
     runs-on: namespace-profile-mac-m2-12c28g
-    concurrency: ${{ inputs.cache-key }}
     permissions:
       id-token: "write"
       contents: "read"

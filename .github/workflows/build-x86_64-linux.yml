@@ -7,7 +7,6 @@ jobs:
   build-x86_64-linux:
     name: Build x86_64 Linux (static)
     runs-on: UbuntuLatest32Cores128G
-    concurrency: ${{ inputs.cache-key }}
     permissions:
       id-token: "write"
       contents: "read"
