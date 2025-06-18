@@ -38,20 +38,20 @@ jobs:
 
       - name: Fetch x86_64-linux binary artifact
         uses: actions/download-artifact@v4
-          path: ./artifacts/nix-installer
+          path: ./artifacts/nix-installer-x86_64-linux
           name: nix-installer-x86_64-linux
       - name: Fetch aarch64-linux binary artifact
         uses: actions/download-artifact@v4
-          path: ./artifacts/nix-installer
+          path: ./artifacts/nix-installer-aarch64-linux
           name: nix-installer-aarch64-linux
       - name: Fetch x86_64-darwin binary artifact
         uses: actions/download-artifact@v4
-          path: ./artifacts/nix-installer
+          path: ./artifacts/nix-installer-x86_64-darwin
           name: nix-installer-x86_64-darwin
       - name: Fetch aarch64-darwin binary artifact
         uses: actions/download-artifact@v4
         with:
-          path: ./artifacts/nix-installer
+          path: ./artifacts/nix-installer-aarch64-darwin
           name: nix-installer-aarch64-darwin
 
       - name: Configure AWS Credentials
