@@ -65,10 +65,10 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: Restore Github cache artifacts
-        uses: actions/cache/restore@v4
+        uses: actions/download-artifact@v4
         with:
           path: nix-installer
-          key: x86_64-linux-artifacts-${{ github.sha }}
+          name: nix-installer-x86_64-linux
       - name: Move & set executable
         run: |
           mkdir install-root
@@ -183,10 +183,10 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: Restore Github cache artifacts
-        uses: actions/cache/restore@v4
+        uses: actions/download-artifact@v4
         with:
           path: nix-installer
-          key: x86_64-linux-artifacts-${{ github.sha }}
+          name: nix-installer-x86_64-linux
       - name: Move & set executable
         run: |
           mkdir install-root
@@ -307,10 +307,10 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: Restore Github cache artifacts
-        uses: actions/cache/restore@v4
+        uses: actions/download-artifact@v4
         with:
           path: nix-installer
-          key: x86_64-darwin-artifacts-${{ github.sha }}
+          name: nix-installer-x86_64-darwin
       - name: Move & set executable
         run: |
           mkdir install-root
@@ -397,10 +397,10 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: Restore Github cache artifacts
-        uses: actions/cache/restore@v4
+        uses: actions/download-artifact@v4
         with:
           path: nix-installer
-          key: aarch64-linux-artifacts-${{ github.sha }}
+          name: nix-installer-aarch64-linux
       - name: Move & set executable
         run: |
           mkdir install-root
@@ -515,10 +515,10 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: Restore Github cache artifacts
-        uses: actions/cache/restore@v4
+        uses: actions/download-artifact@v4
         with:
           path: nix-installer
-          key: aarch64-darwin-artifacts-${{ github.sha }}
+          name: nix-installer-aarch64-darwin
       - name: Move & set executable
         run: |
           mkdir install-root
@@ -611,10 +611,10 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: Restore Github cache artifacts
-        uses: actions/cache/restore@v4
+        uses: actions/download-artifact@v4
         with:
           path: nix-installer
-          key: x86_64-linux-artifacts-${{ github.sha }}
+          name: nix-installer-x86_64-linux
       - name: Move & set executable
         run: |
           mkdir install-root
