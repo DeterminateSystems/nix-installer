@@ -1,8 +1,5 @@
 name: Release PR
 
-concurrency:
-  group: release
-
 on:
   pull_request:
     types:

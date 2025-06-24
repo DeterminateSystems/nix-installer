@@ -14,10 +14,6 @@ on:
         type: string
         required: true
 
-concurrency:
-  group: ${{ github.workflow }}
-  cancel-in-progress: true
-
 jobs:
   propose-release:
     uses: DeterminateSystems/propose-release/.github/workflows/workflow.yml@main
