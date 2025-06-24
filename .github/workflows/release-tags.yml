@@ -1,8 +1,5 @@
 name: Release Tags
 
-concurrency:
-  group: release
-
 on:
   release:
     types:
