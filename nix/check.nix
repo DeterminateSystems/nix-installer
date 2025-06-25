@@ -19,7 +19,7 @@ in
     text = ''
       codespell \
         --ignore-words-list="ba,sur,crate,pullrequest,pullrequests,ser,distroname" \
-        --skip="./target,.git,./src/action/linux/selinux" \
+        --skip="./target,.git,./src/action/linux/selinux,*.lock" \
         .
     '';
   });
