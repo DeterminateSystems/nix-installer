@@ -397,9 +397,9 @@ dependencies = [
 
 [[package]]
 name = "detsys-ids-client"
-version = "0.5.0"
+version = "0.5.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "1c7e29f1de75a39c6e134c4ec37bcf83ee998407c6969c53944ef2be8d40c1b1"
+checksum = "e0a92f21fc659182a2e75bb41cbf64d3a4e6a851bfea0adbae7495ab3c4513c8"
 dependencies = [
  "async-compression",
  "chrono",
