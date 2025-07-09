@@ -6,9 +6,12 @@
 [![License](https://img.shields.io/github/license/DeterminateSystems/nix-installer)](https://github.com/DeterminateSystems/nix-installer/blob/main/LICENSE)
 [![Discord](https://img.shields.io/discord/1116012109709463613)](https://determinate.systems/discord)
 
-**Determinate Nix Installer** is the best way to install [Nix].
-It works on macOS, Linux, Windows Subsystem for Linux (WSL), SELinux, the Valve Steam Deck, and more.
-It installs either [Nix](https://nixos.org) or [Determinate Nix][det-nix] (with [flakes] enabled by default), it offers support for seamlessly [uninstalling Nix](#uninstalling), it enables Nix to survive [macOS upgrades][macos-upgrades], and [much more](#features).
+**Determinate Nix Installer** is the easiest and most reliable way to install [Nix]—and it's also our longest-running project.
+
+When we created Determinate Nix, we added support for it directly into the installer via the ```--determinate``` flag.
+
+The installer works across a wide range of enivorments, including macOS, Linux, Windows Subsystem for Linux (WSL), SELinux, the Valve Steam Deck, and more.
+It can install either [Nix](https://nixos.org) or [Determinate Nix][det-nix] (with [flakes] enabled by default), it offers support for seamlessly [uninstalling Nix](#uninstalling), it enables Nix to survive [macOS upgrades][macos-upgrades], and [much more](#features).
 
 The quickest way to have a great Nix experience is with [Determinate Nix][det-nix].
 This one liner will do just that on any supported system:
@@ -26,7 +29,7 @@ curl -fsSL https://install.determinate.systems/nix | sh -s -- install
 > [!TIP]
 > The **best way to get Determinate Nix on macOS** is with the <a href="https://install.determinate.systems/determinate-pkg/stable/Universal">macOS package</a>.
 
-Determinate Nix Installer successfully completes over **1 million** installs per month in a number of environments, including [Github Actions](#as-a-github-action) and [GitLab](#on-gitlab):
+Determinate Nix Installer successfully completes over **1 million** installs per 50-days in a number of environments, including [Github Actions](#as-a-github-action) and [GitLab](#on-gitlab):
 
 | Platform                                                             |    Multi user?    | `root` only |     Maturity      |
 | -------------------------------------------------------------------- | :---------------: | :---------: | :---------------: |
