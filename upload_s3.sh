@@ -47,12 +47,17 @@ check_reupload() {
   dest="$1"
 
   for file in $(find "$dest" -type f); do
-    artifact_path="$dest"/"$(basename "$artifact")"
-    md5="$(md5sum "$artifact" | cut -d' ' -f1)"
+    artifact_path="$dest"/"$(basename "$file")"
+    md5="$(md5sum "$file" | cut -d' ' -f1)"
     obj="$(aws s3api head-object --bucket "$AWS_BUCKET" --key "$artifact_path" || echo '{}')"
     obj_md5="$(jq -r .ETag <<<"$obj" | jq -r)" # head-object call returns ETag quoted, so `jq -r` again to unquote it
 
-    if [[ "$md5" == "$obj_md5" ]]; then
+    # Object doesn't exist, so let's check the next one
+    if [[ "$obj_md5" == "null" ]]; then
+      continue
+    fi
+
+    if [[ "$md5" != "$obj_md5" ]]; then
       echo "Artifact $artifact was already uploaded; exiting"
       # If we already uploaded to a tag, that's probably bad
       is_tag && exit 1 || exit 0
@@ -65,7 +70,22 @@ if ! is_tag; then
   check_reupload "$GIT_ISH"
 fi
 
-aws s3 sync "$DEST"/ s3://"$AWS_BUCKET"/"$DEST"/ --acl public-read
-if ! is_tag; then
-  aws s3 sync "$GIT_ISH"/ s3://"$AWS_BUCKET"/"$GIT_ISH"/ --acl public-read
+sync_args=(--acl public-read)
+
+# NOTE(cole-h): never allow reuploading to a tag
+if is_tag; then
+  sync_args+=(--if-none-match '*')
 fi
+
+# NOTE(cole-h): never allow reuploading to a rev
+if ! is_tag; then
+  find "$GIT_ISH/" -type f -print0 |
+    while IFS= read -r -d '' artifact; do
+      aws s3api put-object --bucket "$AWS_BUCKET" --key "$artifact" --body "$artifact" "${sync_args[@]}" --if-none-match '*'
+    done
+fi
+
+find "$DEST/" -type f -print0 |
+  while IFS= read -r -d '' artifact; do
+    aws s3api put-object --bucket "$AWS_BUCKET" --key "$artifact" --body "$artifact" "${sync_args[@]}"
+  done
