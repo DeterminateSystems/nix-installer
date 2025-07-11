@@ -6,11 +6,11 @@
 [![License](https://img.shields.io/github/license/DeterminateSystems/nix-installer)](https://github.com/DeterminateSystems/nix-installer/blob/main/LICENSE)
 [![Discord](https://img.shields.io/discord/1116012109709463613)](https://determinate.systems/discord)
 
-**Determinate Nix Installer** is the easiest and most reliable way to install [Nix]—and it's also our longest-running project.
+**Determinate Nix Installer** is the easiest and most reliable way to install [Nix]— as well as our longest-running project.
 
-When we created Determinate Nix, we added support for it directly into the installer via the ```--determinate``` flag.
+When we created Determinate Nix, we added support for it directly into the installer via the `--determinate` flag.
 
-The installer works across a wide range of enivorments, including macOS, Linux, Windows Subsystem for Linux (WSL), SELinux, the Valve Steam Deck, and more.
+The installer works across a wide range of environments, including macOS, Linux, Windows Subsystem for Linux (WSL), SELinux, the Valve Steam Deck, and more.
 It can install either [Nix](https://nixos.org) or [Determinate Nix][det-nix] (with [flakes] enabled by default), it offers support for seamlessly [uninstalling Nix](#uninstalling), it enables Nix to survive [macOS upgrades][macos-upgrades], and [much more](#features).
 
 The quickest way to have a great Nix experience is with [Determinate Nix][det-nix].
