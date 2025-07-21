@@ -107,10 +107,17 @@ impl Action for MoveUnpackedNix {
             let entry_dest = dest_store.join(entry.file_name());
             if entry_dest.exists() {
                 tracing::trace!(src = %entry.path().display(), dest = %entry_dest.display(), "Removing already existing package");
-                crate::util::remove_dir_all(&entry_dest, OnMissing::Ignore)
-                    .await
-                    .map_err(|e| ActionErrorKind::Remove(entry_dest.clone(), e))
-                    .map_err(Self::error)?;
+                if entry_dest.is_dir() {
+                    crate::util::remove_dir_all(&entry_dest, OnMissing::Ignore)
+                        .await
+                        .map_err(|e| ActionErrorKind::Remove(entry_dest.clone(), e))
+                        .map_err(Self::error)?;
+                } else {
+                    crate::util::remove_file(&entry_dest, OnMissing::Ignore)
+                        .await
+                        .map_err(|e| ActionErrorKind::Remove(entry_dest.clone(), e))
+                        .map_err(Self::error)?;
+                }
             }
             tracing::trace!(src = %entry.path().display(), dest = %entry_dest.display(), "Renaming");
             tokio::fs::rename(&entry.path(), &entry_dest)
