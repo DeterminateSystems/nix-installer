@@ -6,7 +6,7 @@
 [![License](https://img.shields.io/github/license/DeterminateSystems/nix-installer)](https://github.com/DeterminateSystems/nix-installer/blob/main/LICENSE)
 [![Discord](https://img.shields.io/discord/1116012109709463613)](https://determinate.systems/discord)
 
-**Determinate Nix Installer** is the easiest and most reliable way to install [Nix]— as well as our longest-running project.
+**Determinate Nix Installer** is the easiest and most reliable way to install [Nix]&mdash;as well as our longest-running project.
 
 When we created Determinate Nix, we added support for it directly into the installer via the `--determinate` flag.
 
