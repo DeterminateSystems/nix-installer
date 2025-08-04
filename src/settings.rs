@@ -140,9 +140,9 @@ pub struct CommonSettings {
     )]
     pub nix_package_url: Option<UrlOrPath>,
 
-    #[clap(from_global)]
+    #[cfg_attr(all(feature = "cli"), clap(from_global))]
     pub proxy: Option<Url>,
-    #[clap(from_global)]
+    #[cfg_attr(all(feature = "cli"), clap(from_global))]
     pub ssl_cert_file: Option<PathBuf>,
 
     /// Extra configuration lines for `/etc/nix.conf`
