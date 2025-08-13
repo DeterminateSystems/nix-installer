@@ -19,7 +19,7 @@ It installs Nix with [flakes] enabled by default, it offers support for seamless
 This one-liner is the quickest way to get started on any supported system:
 
 ```shell
-curl --proto '=https' --tlsv1.2 -sSf -L https://artifacts.nixos.org/nix | \
+curl --proto '=https' --tlsv1.2 -sSf -L https://artifacts.nixos.org/experimental-installer | \
   sh -s -- install
 ```
 
@@ -42,14 +42,14 @@ Determinate Nix Installer has successfully completed over **7 million** installs
 You can install Nix with the default [planner](#planners) and options by running this script:
 
 ```shell
-curl --proto '=https' --tlsv1.2 -sSf -L https://artifacts.nixos.org/nix | \
+curl --proto '=https' --tlsv1.2 -sSf -L https://artifacts.nixos.org/experimental-installer | \
   sh -s -- install
 ```
 
 To download a platform-specific installer binary yourself:
 
 ```shell
-curl -sL -o nix-installer https://artifacts.nixos.org/nix/nix-installer-x86_64-linux
+curl -sL -o nix-installer https://artifacts.nixos.org/experimental-installer/nix-installer-x86_64-linux
 chmod +x nix-installer
 ./nix-installer
 ```
@@ -61,7 +61,7 @@ This would install Nix on an `x86_64-linux` system but you can replace that with
 If you're on macOS (but not [nix-darwin]) or Linux (but not [NixOS]), you can install [Determinate] using Determinate Nix Installer by adding the `--determinate` flag:
 
 ```shell
-curl --proto '=https' --tlsv1.2 -sSf -L https://artifacts.nixos.org/nix | \
+curl --proto '=https' --tlsv1.2 -sSf -L https://artifacts.nixos.org/experimental-installer | \
   sh -s -- install --determinate
 ```
 
@@ -92,7 +92,7 @@ To see the options for Linux, for example:
 You can configure planners using environment variables or command arguments:
 
 ```shell
-curl --proto '=https' --tlsv1.2 -sSf -L https://artifacts.nixos.org/nix | \
+curl --proto '=https' --tlsv1.2 -sSf -L https://artifacts.nixos.org/experimental-installer | \
   NIX_BUILD_GROUP_NAME=nixbuilder sh -s -- install --nix-build-group-id 4000
 
 # Alternatively:
@@ -158,7 +158,7 @@ On the default [GitLab] runners, you can install Nix using this configuration:
 ```yaml
 test:
   script:
-    - curl --proto '=https' --tlsv1.2 -sSf -L https://artifacts.nixos.org/nix | sh -s -- install linux --no-confirm --init none
+    - curl --proto '=https' --tlsv1.2 -sSf -L https://artifacts.nixos.org/experimental-installer | sh -s -- install linux --no-confirm --init none
     - . /nix/var/nix/profiles/default/etc/profile.d/nix-daemon.sh
     - nix run nixpkgs#hello
     - nix profile install nixpkgs#hello
@@ -179,7 +179,7 @@ If you are using different runners, the above example may need to be adjusted.
 If you don't use [systemd], you can still install Nix by explicitly specifying the `linux` plan and `--init none`:
 
 ```shell
-curl --proto '=https' --tlsv1.2 -sSf -L https://artifacts.nixos.org/nix | \
+curl --proto '=https' --tlsv1.2 -sSf -L https://artifacts.nixos.org/experimental-installer | \
   sh -s -- install linux --init none
 ```
 
@@ -201,7 +201,7 @@ For containers (without an init):
 FROM ubuntu:latest
 RUN apt update -y
 RUN apt install curl -y
-RUN curl --proto '=https' --tlsv1.2 -sSf -L https://artifacts.nixos.org/nix | sh -s -- install linux \
+RUN curl --proto '=https' --tlsv1.2 -sSf -L https://artifacts.nixos.org/experimental-installer | sh -s -- install linux \
   --extra-conf "sandbox = false" \
   --init none \
   --no-confirm
@@ -226,7 +226,7 @@ For containers with a [systemd] init:
 FROM ubuntu:latest
 RUN apt update -y
 RUN apt install curl systemd -y
-RUN curl --proto '=https' --tlsv1.2 -sSf -L https://artifacts.nixos.org/nix | sh -s -- install linux \
+RUN curl --proto '=https' --tlsv1.2 -sSf -L https://artifacts.nixos.org/experimental-installer | sh -s -- install linux \
   --extra-conf "sandbox = false" \
   --no-start-daemon \
   --no-confirm
@@ -252,7 +252,7 @@ Omitting this will negatively impact compatibility with container tools like [Po
 We **strongly recommend** first [enabling systemd][enabling-systemd] and then installing Nix as normal:
 
 ```shell
-curl --proto '=https' --tlsv1.2 -sSf -L https://artifacts.nixos.org/nix | \
+curl --proto '=https' --tlsv1.2 -sSf -L https://artifacts.nixos.org/experimental-installer | \
   sh -s -- install
 ```
 
@@ -278,7 +278,7 @@ If enabling systemd is not an option, pass `--init none` at the end of the comma
 > ```
 
 ```shell
-curl --proto '=https' --tlsv1.2 -sSf -L https://artifacts.nixos.org/nix | \
+curl --proto '=https' --tlsv1.2 -sSf -L https://artifacts.nixos.org/experimental-installer | \
   sh -s -- install linux --init none
 ```
 
@@ -287,7 +287,7 @@ curl --proto '=https' --tlsv1.2 -sSf -L https://artifacts.nixos.org/nix | \
 If you'd like to bypass the confirmation step, you can apply the `--no-confirm` flag:
 
 ```shell
-curl --proto '=https' --tlsv1.2 -sSf -L https://artifacts.nixos.org/nix | \
+curl --proto '=https' --tlsv1.2 -sSf -L https://artifacts.nixos.org/experimental-installer | \
   sh -s -- install --no-confirm
 ```
 
@@ -452,7 +452,7 @@ Here's an example:
 
 ```shell
 VERSION="v0.6.0"
-curl --proto '=https' --tlsv1.2 -sSf -L https://artifacts.nixos.org/nix/tag/${VERSION}/nix-installer.sh | \
+curl --proto '=https' --tlsv1.2 -sSf -L https://artifacts.nixos.org/experimental-installer/tag/${VERSION}/nix-installer.sh | \
   sh -s -- install
 ```
 
