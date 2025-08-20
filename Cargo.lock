@@ -1313,7 +1313,7 @@ dependencies = [
 
 [[package]]
 name = "nix-installer"
-version = "3.8.5"
+version = "3.8.6"
 dependencies = [
  "async-trait",
  "bytes 1.10.1",
