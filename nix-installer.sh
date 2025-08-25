@@ -280,7 +280,7 @@ downloader() {
     if [ "$1" = --check ]; then
         need_cmd "$_dld"
     elif [ "$_dld" = curl ]; then
-        check_curl_for_retry_and_speed_limit_support
+        check_curl_for_retry_support
         _retry="$RETVAL"
         get_ciphersuites_for_curl
         _ciphersuites="$RETVAL"
@@ -402,24 +402,15 @@ check_help_for() {
 }
 
 # Check if curl supports the --retry flag, then pass it to the curl invocation.
-# Note that --speed-limit and --speed-time were in the very first commit of curl.
-# So this should be pretty much ubiquitously safe.
-check_curl_for_retry_and_speed_limit_support() {
+check_curl_for_retry_support() {
   local _retry_supported=""
-
   # "unspecified" is for arch, allows for possibility old OS using macports, homebrew, etc.
-  if check_help_for "notspecified" "curl" "--retry" \
-      && check_help_for "notspecified" "curl" "--speed-limit" \
-      && check_help_for "notspecified" "curl" "--speed-time"; then
-
-    # 250000 is approximately 20% of the bandwidth of typical DSL
-    # these limits mean users below these limits will see failures.
-    # I don't believe we have any users like this, and if we do -- please open a ticket.
-    _retry_supported="--retry 3 --speed-limit 250000 --speed-time 15"
+  if check_help_for "notspecified" "curl" "--retry"; then
+    _retry_supported="--retry 3"
   fi
+
   RETVAL="$_retry_supported"
 }
-
 
 # Return cipher suite string specified by user, otherwise return strong TLS 1.2-1.3 cipher suites
 # if support by local tools is detected. Detection currently supports these curl backends:
