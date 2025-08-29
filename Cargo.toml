@@ -38,7 +38,7 @@ thiserror = { version = "1.0.61", default-features = false }
 tokio = { version = "1.21.0", default-features = false, features = ["time", "io-std", "process", "fs", "signal", "tracing", "rt-multi-thread", "macros", "io-util", "parking_lot" ] }
 tracing = { version = "0.1.36", default-features = false, features = [ "std", "attributes" ] }
 tracing-error = { version = "0.2.0", default-features = false, optional = true, features = ["traced-error"] }
-tracing-subscriber = { version = "0.3.15", default-features = false, features = [ "std", "registry", "fmt", "json", "ansi", "env-filter" ], optional = true }
+tracing-subscriber = { version = "0.3.20", default-features = false, features = [ "std", "registry", "fmt", "json", "ansi", "env-filter" ], optional = true }
 url = { version = "2.3.1", default-features = false, features = ["serde"] }
 xz2 = { version = "0.1.7", default-features = false, features = ["static", "tokio"] }
 plist = { version = "=1.7.2", default-features = false, features = [ "serde" ]}
