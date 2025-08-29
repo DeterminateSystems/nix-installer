@@ -9,7 +9,9 @@ pub enum Client {
 }
 
 impl Feedback for Client {
-    async fn get_feature_ptr_payload<T: serde::de::DeserializeOwned + Send + std::fmt::Debug>(
+    async fn get_feature_ptr_payload<
+        T: serde::ser::Serialize + serde::de::DeserializeOwned + Send + std::fmt::Debug,
+    >(
         &self,
         name: impl Into<String> + core::marker::Send + std::fmt::Debug,
     ) -> Option<T> {

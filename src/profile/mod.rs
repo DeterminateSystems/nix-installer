@@ -102,5 +102,5 @@ pub async fn get_profile_backend_type(profile: &std::path::Path) -> Option<Backe
     }
 
     // If neither of those exist, it can be managed by either, so express no preference.
-    return None;
+    None
 }

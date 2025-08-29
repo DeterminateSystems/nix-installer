@@ -145,6 +145,11 @@ impl DiagnosticData {
         }
         let (ids_client, ids_worker) = builder.build_or_default().await;
 
+        ids_client
+            .wait_for_checkin(Some(std::time::Duration::from_millis(500)))
+            .await
+            .ok();
+
         Ok((Self { ids_client }, ids_worker))
     }
 
@@ -197,7 +202,9 @@ impl ErrorDiagnostic for DiagnosticError {
 }
 
 impl crate::feedback::Feedback for DiagnosticData {
-    async fn get_feature_ptr_payload<T: serde::de::DeserializeOwned + Send + std::fmt::Debug>(
+    async fn get_feature_ptr_payload<
+        T: serde::ser::Serialize + serde::de::DeserializeOwned + Send + std::fmt::Debug,
+    >(
         &self,
         name: impl Into<String> + std::fmt::Debug + Send,
     ) -> Option<T> {
