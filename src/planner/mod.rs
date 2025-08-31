@@ -215,12 +215,16 @@ impl BuiltinPlanner {
         Ok(Self::Linux(linux::Linux::default().await?))
     }
 
-    pub async fn from_common_settings(settings: CommonSettings) -> Result<Self, PlannerError> {
+
+    pub async fn from_settings(settings: CommonSettings, init_settings: crate::settings::InitSettings) -> Result<Self, PlannerError> {
         let mut built = Self::default().await?;
         match &mut built {
             BuiltinPlanner::Linux(inner) => inner.settings = settings,
             BuiltinPlanner::SteamDeck(inner) => inner.settings = settings,
-            BuiltinPlanner::Ostree(inner) => inner.settings = settings,
+            BuiltinPlanner::Ostree(inner) => {
+                inner.settings = settings;
+                inner.init_settings = init_settings;
+            },
             BuiltinPlanner::Macos(inner) => inner.settings = settings,
         }
         Ok(built)

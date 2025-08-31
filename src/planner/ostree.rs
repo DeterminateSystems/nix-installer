@@ -36,6 +36,8 @@ pub struct Ostree {
     persistence: PathBuf,
     #[cfg_attr(feature = "cli", clap(flatten))]
     pub settings: CommonSettings,
+    #[cfg_attr(feature = "cli", clap(flatten))]
+    pub init_settings: crate::settings::InitSettings,
 }
 
 #[async_trait::async_trait]
@@ -45,6 +47,7 @@ impl Planner for Ostree {
         Ok(Self {
             persistence: PathBuf::from("/var/home/nix"),
             settings: CommonSettings::default().await?,
+            init_settings: crate::settings::InitSettings::default().await.map_err(PlannerError::Settings)?,
         })
     }
 
@@ -229,17 +232,19 @@ impl Planner for Ostree {
         );
 
         plan.push(
-            ConfigureUpstreamInitService::plan(InitSystem::Systemd, true)
+            ConfigureUpstreamInitService::plan(InitSystem::Systemd, self.init_settings.start_daemon)
                 .await
                 .map_err(PlannerError::Action)?
                 .boxed(),
         );
-        plan.push(
-            StartSystemdUnit::plan("ensure-symlinked-units-resolve.service".to_string(), true)
-                .await
-                .map_err(PlannerError::Action)?
-                .boxed(),
-        );
+        if self.init_settings.start_daemon {
+            plan.push(
+                StartSystemdUnit::plan("ensure-symlinked-units-resolve.service".to_string(), true)
+                    .await
+                    .map_err(PlannerError::Action)?
+                    .boxed(),
+            );
+        }
         plan.push(
             RemoveDirectory::plan(crate::settings::SCRATCH_DIR)
                 .await

@@ -56,6 +56,9 @@ pub struct Install {
     #[clap(flatten)]
     pub settings: CommonSettings,
 
+    #[clap(flatten)]
+    pub init_settings: crate::settings::InitSettings,
+
     /// Provide an explanation of the changes the installation process will make to your system
     #[clap(
         long,
@@ -87,6 +90,7 @@ impl CommandExecute for Install {
             planner: maybe_planner,
             settings,
             explain,
+            init_settings,
         } = self;
 
         ensure_root()?;
@@ -127,7 +131,7 @@ impl CommandExecute for Install {
         } else {
             let mut planner = match maybe_planner {
                 Some(planner) => planner,
-                None => BuiltinPlanner::from_common_settings(settings.clone())
+                None => BuiltinPlanner::from_settings(settings.clone(), init_settings.clone())
                     .await
                     .map_err(|e| eyre::eyre!(e))?,
             };
