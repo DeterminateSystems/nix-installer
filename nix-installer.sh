@@ -11,16 +11,21 @@
 # It runs on Unix shells like {a,ba,da,k,z}sh. It uses the common `local`
 # extension. Note: Most shells limit `local` to 1 var per line, contra bash.
 
-# This script is based off https://github.com/rust-lang/rustup/blob/f8d7b3baba7a63237cb2b82ef49a68a37dd0633c/rustup-init.sh
+# This script is based off https://github.com/rust-lang/rustup/blob/2d429e8e172d5854b6dd7244ecbb0dc3da88a678/rustup-init.sh
 
-if [ "$KSH_VERSION" = 'Version JM 93t+ 2010-03-05' ]; then
-    # The version of ksh93 that ships with many illumos systems does not
-    # support the "local" extension.  Print a message rather than fail in
-    # subtle ways later on:
-    echo 'nix-installer does not work with this ksh93 version; please try bash!' >&2
-    exit 1
-fi
+# Some versions of ksh have no `local` keyword. Alias it to `typeset`, but
+# beware this makes variables global with f()-style function syntax in ksh93.
+# mksh has this alias by default.
+has_local() {
+    # shellcheck disable=SC2034  # deliberately unused
+    local _has_local
+}
 
+has_local 2>/dev/null || alias local=typeset
+
+is_zsh() {
+    [ -n "${ZSH_VERSION-}" ]
+}
 
 set -u
 
@@ -84,18 +89,14 @@ main() {
         need_tty=no
     fi
 
-    if $_ansi_escapes_are_valid; then
-        printf "\33[1minfo:\33[0m downloading installer \33[4m%s\33[0m\n" "$_url" 1>&2
-    else
-        printf 'info: downloading installer (%s)\n' "$_url" 1>&2
-    fi
+    say 'downloading installer'
 
     ensure mkdir -p "$_dir"
     ensure downloader "$_url" "$_file" "$_arch"
     ensure chmod u+x "$_file"
     if [ ! -x "$_file" ]; then
-        printf '%s\n' "Cannot execute $_file (likely because of mounting /tmp as noexec)." 1>&2
-        printf '%s\n' "Please copy the file to a location where you can execute binaries and run ./nix-installer${_ext}." 1>&2
+        err "Cannot execute $_file (likely because of mounting /tmp as noexec)." 1>&2
+        err "Please copy the file to a location where you can execute binaries and run ./nix-installer${_ext}." 1>&2
         exit 1
     fi
 
@@ -106,6 +107,7 @@ main() {
         # to explicitly connect /dev/tty to the installer's stdin.
         if [ ! -t 1 ]; then
             err "Unable to run interactively. Run with --no-confirm to accept defaults, --help for additional options"
+            exit 1;
         fi
 
         ignore "$_file" "$@" < /dev/tty
@@ -121,12 +123,23 @@ main() {
     return "$_retval"
 }
 
-check_proc() {
-    # Check for /proc by looking for the /proc/self/exe link
+get_current_exe() {
+    # Returns the executable used for system architecture detection
     # This is only run on Linux
-    if ! test -L /proc/self/exe ; then
-        err "fatal: Unable to find /proc/self/exe.  Is /proc mounted?  Installation cannot proceed without /proc."
+    local _current_exe
+    if test -L /proc/self/exe ; then
+        _current_exe=/proc/self/exe
+    else
+        warn "Unable to find /proc/self/exe. System architecture detection might be inaccurate."
+        if test -n "$SHELL" ; then
+            _current_exe=$SHELL
+        else
+            need_cmd /bin/sh
+            _current_exe=/bin/sh
+        fi
+        warn "Falling back to $_current_exe."
     fi
+    echo "$_current_exe"
 }
 
 get_architecture() {
@@ -137,9 +150,6 @@ get_architecture() {
     if [ "$_ostype" = Linux ]; then
         if [ "$(uname -o)" = Android ]; then
             _ostype=Android
-        fi
-        if ldd --version 2>&1 | grep -q 'musl'; then
-            _clibtype="musl"
         fi
     fi
 
@@ -155,7 +165,7 @@ get_architecture() {
             # See: <https://support.apple.com/en-us/HT208436>
 
             # Avoid `sysctl: unknown oid` stderr output and/or non-zero exit code.
-            if sysctl hw.optional.x86_64 2> /dev/null || true | grep -q ': 1'; then
+            if (sysctl hw.optional.x86_64 2> /dev/null || true) | grep -q ': 1'; then
                 _cputype=x86_64
             fi
         elif [ "$_cputype" = x86_64 ]; then
@@ -164,7 +174,7 @@ get_architecture() {
             # Rosetta 2 is built exclusively for x86-64 and cannot run i386 binaries.
 
             # Avoid `sysctl: unknown oid` stderr output and/or non-zero exit code.
-            if sysctl hw.optional.arm64 2> /dev/null || true | grep -q ': 1'; then
+            if (sysctl hw.optional.arm64 2> /dev/null || true) | grep -q ': 1'; then
                 _cputype=arm64
             fi
         fi
@@ -188,9 +198,10 @@ get_architecture() {
         fi
     fi
 
+    local _current_exe
     case "$_ostype" in
         Linux)
-            check_proc
+            _current_exe=$(get_current_exe)
             _ostype=linux
             ;;
 
@@ -200,6 +211,7 @@ get_architecture() {
 
         *)
             err "unrecognized OS type: $_ostype"
+            exit 1
             ;;
 
     esac
@@ -224,18 +236,32 @@ get_architecture() {
     RETVAL="$_arch"
 }
 
-say() {
-    printf 'nix-installer: %s\n' "$1"
+__print() {
+    if $_ansi_escapes_are_valid; then
+        printf '\33[1m%s:\33[0m %s\n' "$1" "$2" >&2
+    else
+        printf '%s: %s\n' "$1" "$2" >&2
+    fi
 }
 
+warn() {
+    __print 'warn' "$1" >&2
+}
+
+say() {
+    __print 'info' "$1" >&2
+}
+
+# NOTE: you are required to exit yourself
+# we don't do it here because of multiline errors
 err() {
-    say "$1" >&2
-    exit 1
+    __print 'error' "$1" >&2
 }
 
 need_cmd() {
     if ! check_cmd "$1"; then
         err "need '$1' (command not found)"
+        exit 1
     fi
 }
 
@@ -244,14 +270,20 @@ check_cmd() {
 }
 
 assert_nz() {
-    if [ -z "$1" ]; then err "assert_nz $2"; fi
+    if [ -z "$1" ]; then
+        err "assert_nz $2"
+        exit 1
+    fi
 }
 
 # Run a command that should never fail. If the command fails execution
 # will immediately terminate with an error showing the failing
 # command.
 ensure() {
-    if ! "$@"; then err "command failed: $*"; fi
+    if ! "$@"; then
+        err "command failed: $*"
+        exit 1
+    fi
 }
 
 # This is just for indicating that commands' results are being
@@ -264,13 +296,31 @@ ignore() {
 # This wraps curl or wget. Try curl first, if not installed,
 # use wget instead.
 downloader() {
+    # zsh does not split words by default, Required for curl retry arguments below.
+    is_zsh && setopt local_options shwordsplit
+
     local _dld
     local _ciphersuites
     local _err
     local _status
     local _retry
     if check_cmd curl; then
-        _dld=curl
+        # Check if we have a broken snap curl
+        # https://github.com/boukendesho/curl-snap/issues/1
+        _curl_path=$(command -v curl)
+        if echo "$_curl_path" | grep "/snap/" > /dev/null 2>&1; then
+            if check_cmd wget; then
+                _dld=wget
+            else
+                err "curl installed with snap cannot be used to install Rust"
+                err "due to missing permissions. Please uninstall it and"
+                err "reinstall curl with a different package manager (e.g., apt)."
+                err "See https://github.com/boukendesho/curl-snap/issues/1"
+                exit 1
+            fi
+        else
+            _dld=curl
+        fi
     elif check_cmd wget; then
         _dld=wget
     else
@@ -280,42 +330,38 @@ downloader() {
     if [ "$1" = --check ]; then
         need_cmd "$_dld"
     elif [ "$_dld" = curl ]; then
-        check_curl_for_retry_and_speed_limit_support
+        check_curl_for_retry_support
         _retry="$RETVAL"
         get_ciphersuites_for_curl
         _ciphersuites="$RETVAL"
         if [ -n "$_ciphersuites" ]; then
-            if [ -n "${NIX_INSTALLER_FORCE_ALLOW_HTTP-}" ]; then
-                # shellcheck disable=SC2086 # ignore because $_retry could be a flag (e.g. `--retry 5`)
-                _err=$(curl $_retry --silent --show-error --fail --location "$1" --output "$2" 2>&1)
-            else
-                # shellcheck disable=SC2086 # ignore because $_retry could be a flag (e.g. `--retry 5`)
-                _err=$(curl $_retry --proto '=https' --tlsv1.2 --ciphers "$_ciphersuites" --silent --show-error --fail --location "$1" --output "$2" 2>&1)
-            fi
+            # shellcheck disable=SC2086
+            _err=$(curl $_retry --proto '=https' --tlsv1.2 --ciphers "$_ciphersuites" --silent --show-error --fail --location "$1" --output "$2" 2>&1)
             _status=$?
         else
-            echo "Warning: Not enforcing strong cipher suites for TLS, this is potentially less secure"
+            warn "Not enforcing strong cipher suites for TLS, this is potentially less secure"
             if ! check_help_for "$3" curl --proto --tlsv1.2; then
-                echo "Warning: Not enforcing TLS v1.2, this is potentially less secure"
-                # shellcheck disable=SC2086 # ignore because $_retry could be a flag (e.g. `--retry 5`)
+                warn "Not enforcing TLS v1.2, this is potentially less secure"
+                # shellcheck disable=SC2086
                 _err=$(curl $_retry --silent --show-error --fail --location "$1" --output "$2" 2>&1)
                 _status=$?
             else
-                # shellcheck disable=SC2086 # ignore because $_retry could be a flag (e.g. `--retry 5`)
+                # shellcheck disable=SC2086
                 _err=$(curl $_retry --proto '=https' --tlsv1.2 --silent --show-error --fail --location "$1" --output "$2" 2>&1)
                 _status=$?
             fi
         fi
         if [ -n "$_err" ]; then
-            echo "$_err" >&2
+            warn "$_err"
             if echo "$_err" | grep -q 404$; then
                 err "installer for platform '$3' not found, this may be unsupported"
+                exit 1
             fi
         fi
         return $_status
     elif [ "$_dld" = wget ]; then
         if [ "$(wget -V 2>&1|head -2|tail -1|cut -f1 -d" ")" = "BusyBox" ]; then
-            echo "Warning: using the BusyBox version of wget.  Not enforcing strong cipher suites for TLS or TLS v1.2, this is potentially less secure"
+            warn "using the BusyBox version of wget.  Not enforcing strong cipher suites for TLS or TLS v1.2, this is potentially less secure"
             _err=$(wget "$1" -O "$2" 2>&1)
             _status=$?
         else
@@ -325,9 +371,9 @@ downloader() {
                 _err=$(wget --https-only --secure-protocol=TLSv1_2 --ciphers "$_ciphersuites" "$1" -O "$2" 2>&1)
                 _status=$?
             else
-                echo "Warning: Not enforcing strong cipher suites for TLS, this is potentially less secure"
+                warn "Not enforcing strong cipher suites for TLS, this is potentially less secure"
                 if ! check_help_for "$3" wget --https-only --secure-protocol; then
-                    echo "Warning: Not enforcing TLS v1.2, this is potentially less secure"
+                    warn "Not enforcing TLS v1.2, this is potentially less secure"
                     _err=$(wget "$1" -O "$2" 2>&1)
                     _status=$?
                 else
@@ -337,14 +383,16 @@ downloader() {
             fi
         fi
         if [ -n "$_err" ]; then
-            echo "$_err" >&2
+            warn "$_err"
             if echo "$_err" | grep -q ' 404 Not Found$'; then
                 err "installer for platform '$3' not found, this may be unsupported"
+                exit 1
             fi
         fi
         return $_status
     else
         err "Unknown downloader"   # should not reach here
+        exit 1
     fi
 }
 
@@ -368,24 +416,27 @@ check_help_for() {
 
         *darwin*)
         if check_cmd sw_vers; then
-            case $(sw_vers -productVersion) in
-                10.*)
+            local _os_version
+            local _os_major
+            _os_version=$(sw_vers -productVersion)
+            _os_major=$(echo "$_os_version" | cut -d. -f1)
+            case $_os_major in
+                10)
                     # If we're running on macOS, older than 10.13, then we always
                     # fail to find these options to force fallback
-                    if [ "$(sw_vers -productVersion | cut -d. -f2)" -lt 13 ]; then
+                    if [ "$(echo "$_os_version" | cut -d. -f2)" -lt 13 ]; then
                         # Older than 10.13
-                        echo "Warning: Detected macOS platform older than 10.13"
+                        warn "Detected macOS platform older than 10.13"
                         return 1
                     fi
                     ;;
-                11.*)
-                    # We assume Big Sur will be OK for now
-                    ;;
                 *)
-                    # Unknown product version, warn and continue
-                    echo "Warning: Detected unknown macOS major version: $(sw_vers -productVersion)"
-                    echo "Warning TLS capabilities detection may fail"
-                    ;;
+                    if ! { [ "$_os_major" -eq "$_os_major" ] 2>/dev/null && [ "$_os_major" -ge 11 ]; }; then
+                        # Unknown product version, warn and continue
+                        warn "Detected unknown macOS major version: $_os_version"
+                        warn "TLS capabilities detection may fail"
+                    fi
+                    ;; # We assume that macOS v11+ will always be okay.
             esac
         fi
         ;;
@@ -393,7 +444,7 @@ check_help_for() {
     esac
 
     for _arg in "$@"; do
-        if ! "$_cmd" --help $_category | grep -q -- "$_arg"; then
+        if ! "$_cmd" --help "$_category" | grep -q -- "$_arg"; then
             return 1
         fi
     done
@@ -404,20 +455,29 @@ check_help_for() {
 # Check if curl supports the --retry flag, then pass it to the curl invocation.
 # Note that --speed-limit and --speed-time were in the very first commit of curl.
 # So this should be pretty much ubiquitously safe.
-check_curl_for_retry_and_speed_limit_support() {
-  local _retry_supported=""
+check_curl_for_retry_support() {
+  local _retry_part=""
+  local _continue_part=""
+  local _speed_limit_part=""
 
   # "unspecified" is for arch, allows for possibility old OS using macports, homebrew, etc.
-  if check_help_for "notspecified" "curl" "--retry" \
-      && check_help_for "notspecified" "curl" "--speed-limit" \
-      && check_help_for "notspecified" "curl" "--speed-time"; then
+  if check_help_for "notspecified" "curl" "--retry"; then
+      _retry_part="--retry 3"
 
-    # 250000 is approximately 20% of the bandwidth of typical DSL
-    # these limits mean users below these limits will see failures.
-    # I don't believe we have any users like this, and if we do -- please open a ticket.
-    _retry_supported="--retry 3 --speed-limit 250000 --speed-time 15"
+      if check_help_for "notspecified" "curl" "--continue-at"; then
+          # "-C -" tells curl to automatically find where to resume the download when retrying.
+          _continue_part="--continue-at -"
+      fi
+
+      if check_help_for "notspecified" "curl" "--speed-limit" \
+          && check_help_for "notspecified" "curl" "--speed-time"; then
+        # 250000 is approximately 20% of the bandwidth of typical DSL
+        # these limits mean users below these limits will see failures.
+        _speed_limit_part="--speed-limit 250000 --speed-time 15"
+      fi
   fi
-  RETVAL="$_retry_supported"
+
+  RETVAL="$_retry_part $_continue_part $_speed_limit_part"
 }
 
 
