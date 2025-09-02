@@ -29,7 +29,7 @@ jobs:
       - build-aarch64-darwin
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
       - name: Create artifacts directory
         run: mkdir -p ./artifacts
 
