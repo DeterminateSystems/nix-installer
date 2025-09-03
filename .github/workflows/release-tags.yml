@@ -34,19 +34,19 @@ jobs:
         run: mkdir -p ./artifacts
 
       - name: Fetch x86_64-linux binary artifact
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v5
         with:
           name: nix-installer-x86_64-linux
       - name: Fetch aarch64-linux binary artifact
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v5
         with:
           name: nix-installer-aarch64-linux
       - name: Fetch x86_64-darwin binary artifact
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v5
         with:
           name: nix-installer-x86_64-darwin
       - name: Fetch aarch64-darwin binary artifact
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v5
         with:
           name: nix-installer-aarch64-darwin
       - name: Move binaries into upload staging dir
