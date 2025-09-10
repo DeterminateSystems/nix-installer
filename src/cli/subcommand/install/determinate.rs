@@ -41,7 +41,10 @@ pub(crate) async fn prompt_for_determinate<T: Feedback>(
 ) -> eyre::Result<Option<String>> {
     let planner_settings = planner.common_settings_mut();
 
-    if !planner_settings.determinate_nix && std::io::stdin().is_terminal() && !no_confirm {
+    if planner_settings.distribution().is_upstream()
+        && std::io::stdin().is_terminal()
+        && !no_confirm
+    {
         let base_prompt = feedback
             .get_feature_ptr_payload::<String>("dni-det-msg-interactive-prompt-ptr")
             .await
@@ -86,7 +89,7 @@ pub(crate) async fn prompt_for_determinate<T: Feedback>(
     }
 
     let post_install_message_feature = match (
-        planner_settings.determinate_nix,
+        planner_settings.distribution().is_determinate(),
         std::io::stdin().is_terminal() && !no_confirm,
     ) {
         (true, true) => Some("dni-post-det-int-ptr"),

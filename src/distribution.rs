@@ -9,6 +9,13 @@ pub enum Distribution {
 }
 
 impl Distribution {
+    pub fn is_determinate(&self) -> bool {
+        self == &Self::DeterminateNix
+    }
+    pub fn is_upstream(&self) -> bool {
+        self == &Self::Nix
+    }
+
     pub fn tarball_location_or(&self, user_preference: &Option<UrlOrPath>) -> TarballLocation {
         if let Some(pref) = user_preference {
             return TarballLocation::UrlOrPath(pref.clone());

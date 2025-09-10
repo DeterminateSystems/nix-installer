@@ -226,6 +226,15 @@ impl BuiltinPlanner {
         Ok(built)
     }
 
+    pub fn common_settings(&self) -> &CommonSettings {
+        match self {
+            BuiltinPlanner::Linux(inner) => &inner.settings,
+            BuiltinPlanner::SteamDeck(inner) => &inner.settings,
+            BuiltinPlanner::Ostree(inner) => &inner.settings,
+            BuiltinPlanner::Macos(inner) => &inner.settings,
+        }
+    }
+
     pub fn common_settings_mut(&mut self) -> &mut CommonSettings {
         match self {
             BuiltinPlanner::Linux(inner) => &mut inner.settings,

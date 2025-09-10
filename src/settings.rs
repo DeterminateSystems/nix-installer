@@ -53,6 +53,18 @@ pub struct CommonSettings {
     )]
     pub determinate_nix: bool,
 
+    /// Prefer installing upstream Nix if possible when run in an automated context.
+    #[cfg_attr(
+        feature = "cli",
+        clap(
+            long = "prefer-upstream-nix",
+            env = "NIX_INSTALLER_PREFER_UPSTREAM_NIX",
+            // Note this default is replicated in a default() implementation
+            default_value = "true"
+        )
+    )]
+    pub prefer_upstream: bool,
+
     /// Modify the user profile to automatically load Nix
     #[cfg_attr(
         feature = "cli",
@@ -228,6 +240,7 @@ impl CommonSettings {
 
         Ok(Self {
             determinate_nix: false,
+            prefer_upstream: true,
             modify_profile: true,
             nix_build_group_name: String::from(crate::settings::DEFAULT_NIX_BUILD_USER_GROUP_NAME),
             nix_build_group_id: default_nix_build_group_id(),
@@ -247,6 +260,7 @@ impl CommonSettings {
     pub fn settings(&self) -> Result<HashMap<String, serde_json::Value>, InstallSettingsError> {
         let Self {
             determinate_nix,
+            prefer_upstream,
             modify_profile,
             nix_build_group_name,
             nix_build_group_id,
@@ -265,6 +279,10 @@ impl CommonSettings {
         map.insert(
             "determinate_nix".into(),
             serde_json::to_value(determinate_nix)?,
+        );
+        map.insert(
+            "prefer_upstream".into(),
+            serde_json::to_value(prefer_upstream)?,
         );
         map.insert(
             "modify_profile".into(),
@@ -306,8 +324,11 @@ impl CommonSettings {
     pub fn distribution(&self) -> Distribution {
         if self.determinate_nix {
             Distribution::DeterminateNix
-        } else {
+        } else if self.prefer_upstream {
+            // If the user passed --prefer-upstream (or it defaults to true), default back to Nix
             Distribution::Nix
+        } else {
+            Distribution::DeterminateNix
         }
     }
 }

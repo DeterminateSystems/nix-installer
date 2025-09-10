@@ -1173,6 +1173,7 @@
     "persistence": "/home/nix",
     "settings": {
       "determinate_nix": false,
+      "prefer_upstream": true,
       "modify_profile": true,
       "nix_build_group_name": "nixbld",
       "nix_build_group_id": 30000,
