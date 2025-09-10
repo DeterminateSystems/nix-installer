@@ -31,10 +31,7 @@ impl Distribution {
                     .expect("Fault: the built-in Nix tarball URL does not parse."),
             ),
             Distribution::DeterminateNix => {
-                TarballLocation::InMemory(
-                    DETERMINATE_NIX_TARBALL_PATH.expect("Fault: this build of Determinate Nix Installer is not equipped to install Determinate Nix."),
-                    DETERMINATE_NIX_TARBALL.expect("Fault: this build of Determinate Nix Installer is not equipped to install Determinate Nix.")
-                )
+                TarballLocation::InMemory(DETERMINATE_NIX_TARBALL_PATH, DETERMINATE_NIX_TARBALL)
             },
         }
     }
@@ -47,25 +44,13 @@ pub enum TarballLocation {
 
 pub const NIX_TARBALL_URL: &str = env!("NIX_TARBALL_URL");
 
-#[cfg(feature = "determinate-nix")]
-pub const DETERMINATE_NIX_TARBALL_PATH: Option<&str> = Some(env!("DETERMINATE_NIX_TARBALL_PATH"));
-#[cfg(feature = "determinate-nix")]
+pub const DETERMINATE_NIX_TARBALL_PATH: &str = env!("DETERMINATE_NIX_TARBALL_PATH");
 /// The DETERMINATE_NIX_TARBALL environment variable should point to a target-appropriate
 /// Determinate Nix installation tarball, like determinate-nix-2.21.2-aarch64-darwin.tar.xz.
 /// The contents are embedded in the resulting binary.
-pub const DETERMINATE_NIX_TARBALL: Option<&[u8]> =
-    Some(include_bytes!(env!("DETERMINATE_NIX_TARBALL_PATH")));
+pub const DETERMINATE_NIX_TARBALL: &[u8] = include_bytes!(env!("DETERMINATE_NIX_TARBALL_PATH"));
 
-#[cfg(feature = "determinate-nix")]
 /// The DETERMINATE_NIXD_BINARY_PATH environment variable should point to a target-appropriate
 /// static build of the Determinate Nixd binary. The contents are embedded in the resulting
-/// binary if the determinate-nix feature is turned on.
-pub const DETERMINATE_NIXD_BINARY: Option<&[u8]> =
-    Some(include_bytes!(env!("DETERMINATE_NIXD_BINARY_PATH")));
-
-#[cfg(not(feature = "determinate-nix"))]
-pub const DETERMINATE_NIXD_BINARY: Option<&[u8]> = None;
-#[cfg(not(feature = "determinate-nix"))]
-pub const DETERMINATE_NIX_TARBALL: Option<&[u8]> = None;
-#[cfg(not(feature = "determinate-nix"))]
-pub const DETERMINATE_NIX_TARBALL_PATH: Option<&str> = None;
+/// binary.
+pub const DETERMINATE_NIXD_BINARY: &[u8] = include_bytes!(env!("DETERMINATE_NIXD_BINARY_PATH"));
