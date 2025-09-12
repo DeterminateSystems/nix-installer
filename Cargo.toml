@@ -9,8 +9,7 @@ repository = "https://github.com/DeterminateSystems/nix-installer"
 documentation = "https://docs.rs/nix-installer/latest/nix_installer"
 
 [features]
-default = ["cli", "diagnostics", "determinate-nix"]
-determinate-nix = []
+default = ["cli", "diagnostics"]
 cli = ["eyre", "color-eyre", "clap", "tracing-subscriber", "tracing-error"]
 diagnostics = ["detsys-ids-client", "is_ci"]
 
@@ -73,6 +72,6 @@ lto = true
 # available in docs.rs's build. It doesn't influence docs, so it's fine to set it to a bogus (but
 # existing-file) value.
 cargo-args = [
-    "--config", "env.NIX_INSTALLER_TARBALL_PATH=\"../Cargo.toml\"",
+    "--config", "env.DETERMINATE_NIX_TARBALL_PATH=\"../Cargo.toml\"",
     "--config", "env.DETERMINATE_NIXD_BINARY_PATH=\"../Cargo.toml\""
 ]
