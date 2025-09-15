@@ -36,6 +36,8 @@ pub struct Ostree {
     persistence: PathBuf,
     #[cfg_attr(feature = "cli", clap(flatten))]
     pub settings: CommonSettings,
+    #[cfg_attr(feature = "cli", clap(flatten))]
+    pub init: InitSettings,
 }
 
 #[async_trait::async_trait]
@@ -45,6 +47,7 @@ impl Planner for Ostree {
         Ok(Self {
             persistence: PathBuf::from("/var/home/nix"),
             settings: CommonSettings::default().await?,
+            init: InitSettings::default().await?,
         })
     }
 
@@ -171,7 +174,7 @@ impl Planner for Ostree {
         }
 
         plan.push(
-            StartOrEnableSystemdUnit::plan("nix.mount".to_string(), false, true)
+            StartOrEnableSystemdUnit::plan("nix.mount".to_string(), false, self.init.start_daemon)
                 .await
                 .map_err(PlannerError::Action)?
                 .boxed(),
@@ -229,7 +232,7 @@ impl Planner for Ostree {
         );
 
         plan.push(
-            ConfigureUpstreamInitService::plan(InitSystem::Systemd, true)
+            ConfigureUpstreamInitService::plan(InitSystem::Systemd, self.init.start_daemon)
                 .await
                 .map_err(PlannerError::Action)?
                 .boxed(),
@@ -238,7 +241,7 @@ impl Planner for Ostree {
             StartOrEnableSystemdUnit::plan(
                 "ensure-symlinked-units-resolve.service".to_string(),
                 true,
-                true,
+                self.init.start_daemon,
             )
             .await
             .map_err(PlannerError::Action)?
@@ -264,10 +267,12 @@ impl Planner for Ostree {
         let Self {
             persistence,
             settings,
+            init,
         } = self;
         let mut map = HashMap::default();
 
         map.extend(settings.settings()?);
+        map.extend(init.settings()?);
         map.insert(
             "persistence".to_string(),
             serde_json::to_value(persistence)?,
@@ -306,7 +311,9 @@ impl Planner for Ostree {
     async fn pre_uninstall_check(&self) -> Result<(), PlannerError> {
         check_not_wsl1()?;
 
-        check_systemd_active()?;
+        if self.init.init == InitSystem::Systemd && self.init.start_daemon {
+            check_systemd_active()?;
+        }
 
         Ok(())
     }
@@ -318,7 +325,9 @@ impl Planner for Ostree {
 
         check_not_wsl1()?;
 
-        check_systemd_active()?;
+        if self.init.init == InitSystem::Systemd && self.init.start_daemon {
+            check_systemd_active()?;
+        }
 
         Ok(())
     }
