@@ -7,14 +7,14 @@ use crate::{
         },
         linux::{
             provision_selinux::{DETERMINATE_SELINUX_POLICY_PP_CONTENT, SELINUX_POLICY_PP_CONTENT},
-            ProvisionSelinux, StartSystemdUnit, SystemctlDaemonReload,
+            ProvisionSelinux, StartOrEnableSystemdUnit, SystemctlDaemonReload,
         },
         StatefulAction,
     },
     distribution::Distribution,
     error::HasExpectedErrors,
     planner::{Planner, PlannerError},
-    settings::{CommonSettings, InitSystem, InstallSettingsError},
+    settings::{CommonSettings, InitSettings, InitSystem, InstallSettingsError},
     Action, BuiltinPlanner,
 };
 use std::{collections::HashMap, path::PathBuf};
@@ -171,7 +171,7 @@ impl Planner for Ostree {
         }
 
         plan.push(
-            StartSystemdUnit::plan("nix.mount".to_string(), false)
+            StartOrEnableSystemdUnit::plan("nix.mount".to_string(), false, true)
                 .await
                 .map_err(PlannerError::Action)?
                 .boxed(),
@@ -235,10 +235,14 @@ impl Planner for Ostree {
                 .boxed(),
         );
         plan.push(
-            StartSystemdUnit::plan("ensure-symlinked-units-resolve.service".to_string(), true)
-                .await
-                .map_err(PlannerError::Action)?
-                .boxed(),
+            StartOrEnableSystemdUnit::plan(
+                "ensure-symlinked-units-resolve.service".to_string(),
+                true,
+                true,
+            )
+            .await
+            .map_err(PlannerError::Action)?
+            .boxed(),
         );
         plan.push(
             RemoveDirectory::plan(crate::settings::SCRATCH_DIR)

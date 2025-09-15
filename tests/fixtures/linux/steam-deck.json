@@ -21,7 +21,7 @@
     },
     {
       "action": {
-        "action_name": "start_systemd_unit",
+        "action_name": "start_or_enable_systemd_unit",
         "unit": "nix.mount",
         "enable": true
       },
@@ -1148,7 +1148,7 @@
     },
     {
       "action": {
-        "action_name": "start_systemd_unit",
+        "action_name": "start_or_enable_systemd_unit",
         "unit": "ensure-symlinked-units-resolve.service",
         "enable": true
       },
