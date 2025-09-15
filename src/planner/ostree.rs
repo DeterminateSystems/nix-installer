@@ -53,14 +53,17 @@ impl Planner for Ostree {
 
     async fn plan(&self) -> Result<Vec<StatefulAction<Box<dyn Action>>>, PlannerError> {
         let has_selinux = detect_selinux().await?;
-        let mut plan = vec![
-            // Primarily for uninstall
-            SystemctlDaemonReload::plan()
-                .await
-                .map_err(PlannerError::Action)?
-                .boxed(),
-        ];
+        let mut plan = vec![];
 
+        if self.init.start_daemon {
+            // Primarily for uninstall
+            plan.push(
+                SystemctlDaemonReload::plan()
+                    .await
+                    .map_err(PlannerError::Action)?
+                    .boxed(),
+            )
+        }
         plan.push(
             CreateDirectory::plan(&self.persistence, None, None, 0o0755, true)
                 .await
@@ -253,12 +256,15 @@ impl Planner for Ostree {
                 .map_err(PlannerError::Action)?
                 .boxed(),
         );
-        plan.push(
-            SystemctlDaemonReload::plan()
-                .await
-                .map_err(PlannerError::Action)?
-                .boxed(),
-        );
+
+        if self.init.start_daemon {
+            plan.push(
+                SystemctlDaemonReload::plan()
+                    .await
+                    .map_err(PlannerError::Action)?
+                    .boxed(),
+            );
+        }
 
         Ok(plan)
     }
