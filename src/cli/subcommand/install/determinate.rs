@@ -53,9 +53,9 @@ pub(crate) async fn prompt_for_determinate<T: Feedback>(
         eprintln!();
         eprintln!(
             "{} The Determinate Nix Installer will stop distributing upstream Nix from the {} GitHub repo on {}.",
-            "NixOS/nix".italic(),
             "Important:".bold().red().italic(),
-            "January 1, 2026".italic()
+            "NixOS/nix".italic(),
+            "January 1, 2026".bold()
         );
 
         eprintln!("\n{}", "Timeline".bold().underline());
