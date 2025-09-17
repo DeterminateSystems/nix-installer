@@ -11,15 +11,15 @@ const PRE_PKG_SUGGEST: &str = "For a more robust Nix installation, use the Deter
 const INSTALL_DETERMINATE_NIX_PROMPT: &str = "\
 Install Determinate Nix?
 
-It has stable flakes, lazy trees, parallel evaluation, and more.
+It offers stable flakes, lazy trees, parallel evaluation, a wide variety of developer experience improvements, and more.
 
-Selecting 'no' will install upstream Nix, which comes from NixOS.org.\
+Selecting 'no' installs upstream Nix, which comes from nixos.org.\
 ";
 
 const DETERMINATE_MSG_EXPLAINER: &str = "\
 Determinate Nix is Determinate Systems' validated and secure downstream Nix distribution for enterprises. \
-It is the direct result of our work to ship meaningful user experience and reliability improvements to Nix.
-It comes bundled with Determinate Nixd, a helpful daemon that automates some otherwise-unpleasant aspects of using Nix, such as garbage collection, and enables you to easily authenticate with FlakeHub.
+This distribution enables us to ship user experience and reliability improvements to Nix on an accelerated schedule and independently of community decision-making processes.
+It comes bundled with Determinate Nixd, a helpful daemon that automates some otherwise-unpleasant aspects of using Nix, such as configuration and garbage collection, and enables you to easily authenticate with FlakeHub.
 
 For more details: https://dtr.mn/determinate-nix\
 ";
@@ -52,7 +52,7 @@ pub(crate) async fn prompt_for_determinate<T: Feedback>(
 
         eprintln!();
         eprintln!(
-            "{} The Determinate Nix Installer will stop distributing upstream Nix no sooner than {}.",
+            "{} The Determinate Nix Installer will stop distributing upstream Nix from the NixOS/nix GitHub repo on {}.",
             "Important:".bold().red().italic(),
             "January 1, 2026".italic()
         );
@@ -60,19 +60,19 @@ pub(crate) async fn prompt_for_determinate<T: Feedback>(
         eprintln!("\n{}", "Timeline".bold().underline());
 
         eprintln!(
-            "* {}: we are changing the installer to default to Determinate Nix.",
+            "* {}: the installer will begin to default to Determinate Nix.",
             "November 10".bold()
         );
         eprintln!(
-            "  You can add the `{}` flag now to keep upstream Nix as the default.",
+            "  After this date, you'll need to apply the `{}` flag to install upstream Nix as the default.",
             "--prefer-upstream-nix".italic()
         );
         eprintln!(
-            "* {}: we are removing support for installing upstream Nix.",
+            "* {}: installing upstream Nix will no longer be supported.",
             "January 1".bold()
         );
         eprintln!(
-            "  The `{}` flag will not have an effect any longer.",
+            "  The `{}` flag will no longer have any effect.",
             "--prefer-upstream-nix".italic()
         );
 
