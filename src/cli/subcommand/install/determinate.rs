@@ -52,7 +52,8 @@ pub(crate) async fn prompt_for_determinate<T: Feedback>(
 
         eprintln!();
         eprintln!(
-            "{} The Determinate Nix Installer will stop distributing upstream Nix from the NixOS/nix GitHub repo on {}.",
+            "{} The Determinate Nix Installer will stop distributing upstream Nix from the {} GitHub repo on {}.",
+            "NixOS/nix".italic(),
             "Important:".bold().red().italic(),
             "January 1, 2026".italic()
         );
@@ -77,7 +78,8 @@ pub(crate) async fn prompt_for_determinate<T: Feedback>(
         );
 
         eprintln!(
-            "\nThe DeterminateSystems/nix-installer-action GitHub Action is also affected.\n"
+            "\nThe {} GitHub Action is also affected.\n",
+            "DeterminateSystems/nix-installer-action".italic()
         );
         eprintln!(
             "{} https://determinate.systems/blog/installer-dropping-upstream/",
