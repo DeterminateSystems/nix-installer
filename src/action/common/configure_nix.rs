@@ -89,10 +89,15 @@ impl ConfigureNix {
                     // If we are curing, the user may have multiple of these installed
                     if let Some(_existing) = found_nix_pkg {
                         return Err(Self::error(ConfigureNixError::MultipleNixPackages))?;
-                    } else {
-                        found_nix_pkg = Some(path);
                     }
-                    break;
+
+                    // Ensure we don't pick up any of the split components introduced in Nix 2.29
+                    // (or any other path happened to be named `nix`...)
+                    let subpath = path.join("bin/nix");
+                    if subpath.exists() {
+                        found_nix_pkg = Some(path);
+                        break;
+                    }
                 },
                 Err(_) => continue, /* Ignore it */
             };
