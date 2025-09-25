@@ -74,7 +74,7 @@ impl AddUserToGroup {
 
             // See if group membership needs to be done
             match OperatingSystem::host() {
-                OperatingSystem::MacOSX(_) | OperatingSystem::Darwin(_) => {
+                OperatingSystem::MacOSX { .. } | OperatingSystem::Darwin(_) => {
                     let mut command = Command::new("/usr/sbin/dseditgroup");
                     command.process_group(0);
                     command.args(["-o", "checkmember", "-m"]);
@@ -194,7 +194,7 @@ impl Action for AddUserToGroup {
     async fn execute(&mut self) -> Result<(), ActionError> {
         use target_lexicon::OperatingSystem;
         match OperatingSystem::host() {
-            OperatingSystem::MacOSX(_) | OperatingSystem::Darwin(_) => {
+            OperatingSystem::MacOSX { .. } | OperatingSystem::Darwin(_) => {
                 execute_command(
                     Command::new("/usr/bin/dscl")
                         .process_group(0)
@@ -275,7 +275,7 @@ impl Action for AddUserToGroup {
 
         use target_lexicon::OperatingSystem;
         match target_lexicon::OperatingSystem::host() {
-            OperatingSystem::MacOSX(_) | OperatingSystem::Darwin(_) => {
+            OperatingSystem::MacOSX { .. } | OperatingSystem::Darwin(_) => {
                 execute_command(
                     Command::new("/usr/bin/dscl")
                         .process_group(0)

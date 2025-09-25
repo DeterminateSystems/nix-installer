@@ -92,7 +92,7 @@ impl Action for CreateGroup {
 
         use OperatingSystem;
         match OperatingSystem::host() {
-            OperatingSystem::MacOSX(_) | OperatingSystem::Darwin(_) => {
+            OperatingSystem::MacOSX { .. } | OperatingSystem::Darwin(_) => {
                 execute_command(
                     Command::new("/usr/sbin/dseditgroup")
                         .process_group(0)
@@ -154,7 +154,7 @@ impl Action for CreateGroup {
 
         use OperatingSystem;
         match OperatingSystem::host() {
-            OperatingSystem::MacOSX(_) | OperatingSystem::Darwin(_) => {
+            OperatingSystem::MacOSX { .. } | OperatingSystem::Darwin(_) => {
                 execute_command(
                     Command::new("/usr/bin/dscl")
                         .args([".", "-delete", &format!("/Groups/{name}")])

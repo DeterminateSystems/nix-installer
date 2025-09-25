@@ -21,7 +21,7 @@ You'll also need to edit your `.cargo/config.toml` to use `tokio_unstable` as we
 rustflags=["--cfg", "tokio_unstable"]
 ```
 
-You'll also need to set the `NIX_INSTALLER_TARBALL_PATH` environment variable to point to a target-appropriate Nix installation tarball, like nix-2.31.1-aarch64-darwin.tar.xz.
+You'll also need to set the `DETERMINATE_NIX_TARBALL_PATH` environment variable to point to a target-appropriate Nix installation tarball, like nix-2.31.1-aarch64-darwin.tar.xz.
 The contents are embedded in the resulting binary instead of downloaded at installation time.
 
 Then it's possible to review the [documentation]:
