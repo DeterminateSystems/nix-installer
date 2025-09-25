@@ -24,7 +24,7 @@ impl DeleteUser {
         let this = Self { name: name.clone() };
 
         match OperatingSystem::host() {
-            OperatingSystem::MacOSX { .. } | OperatingSystem::Darwin => (),
+            OperatingSystem::MacOSX { .. } | OperatingSystem::Darwin(_) => (),
             _ => {
                 if !(which::which("userdel").is_ok() || which::which("deluser").is_ok()) {
                     return Err(Self::error(ActionErrorKind::MissingUserDeletionCommand));
@@ -75,7 +75,7 @@ impl Action for DeleteUser {
     #[tracing::instrument(level = "debug", skip_all)]
     async fn execute(&mut self) -> Result<(), ActionError> {
         match OperatingSystem::host() {
-            OperatingSystem::MacOSX { .. } | OperatingSystem::Darwin => {
+            OperatingSystem::MacOSX { .. } | OperatingSystem::Darwin(_) => {
                 delete_user_macos(&self.name).await.map_err(Self::error)?;
             },
             _ => {

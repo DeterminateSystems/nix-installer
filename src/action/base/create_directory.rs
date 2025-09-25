@@ -301,7 +301,7 @@ async fn path_is_mountpoint(path: &Path) -> Result<bool, ActionErrorKind> {
     };
 
     let mut mount_command = match OperatingSystem::host() {
-        OperatingSystem::MacOSX { .. } | OperatingSystem::Darwin => {
+        OperatingSystem::MacOSX { .. } | OperatingSystem::Darwin(_) => {
             let mut cmd = Command::new("/sbin/mount");
             cmd.arg("-d"); // `-d` means `--dry-run`
             cmd
@@ -331,7 +331,7 @@ async fn path_is_mountpoint(path: &Path) -> Result<bool, ActionErrorKind> {
 
         let split_token = match OperatingSystem::host() {
             // Each line on MacOS looks like `/dev/disk3s6 on /System/Volumes/VM (apfs, local, noexec, journaled, noatime, nobrowse)`
-            OperatingSystem::MacOSX { .. } | OperatingSystem::Darwin => "(",
+            OperatingSystem::MacOSX { .. } | OperatingSystem::Darwin(_) => "(",
             // Each line on Linux looks like `portal on /run/user/1000/doc type fuse.portal (rw,nosuid,nodev,relatime,user_id=1000,group_id=100)`
             _ => "type",
         };

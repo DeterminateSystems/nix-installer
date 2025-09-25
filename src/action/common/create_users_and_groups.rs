@@ -155,12 +155,7 @@ impl Action for CreateUsersAndGroups {
         // Mac is apparently not threadsafe here...
         use target_lexicon::OperatingSystem;
         match OperatingSystem::host() {
-            OperatingSystem::MacOSX {
-                major: _,
-                minor: _,
-                patch: _,
-            }
-            | OperatingSystem::Darwin => {
+            OperatingSystem::MacOSX(_) | OperatingSystem::Darwin(_) => {
                 for create_user in create_users.iter_mut() {
                     create_user.try_execute().await.map_err(Self::error)?;
                 }

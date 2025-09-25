@@ -5,31 +5,21 @@ let
   images = {
 
     # Found via https://hub.docker.com/_/ubuntu/ under "How is the rootfs build?"
+    # Noble
+    "ubuntu-v24_04" = {
+      tarball = builtins.fetchurl {
+        url = "https://cdimage.ubuntu.com/ubuntu-base/releases/24.04/release/ubuntu-base-24.04.3-base-amd64.tar.gz";
+        sha256 = "1ybl31qj4ixyxi89h80gh71mpllnkqklbyj6pfrqil0ajgiwvhkb";
+      };
+      tester = ./default/Dockerfile;
+      system = "x86_64-linux";
+    };
+
     # Jammy
     "ubuntu-v22_04" = {
       tarball = builtins.fetchurl {
-        url = "http://cdimage.ubuntu.com/ubuntu-base/releases/22.04/release/ubuntu-base-22.04-base-amd64.tar.gz";
-        sha256 = "01sbpjb32x1z1yr9q78zrk0a6kfw5c4fxw1jqmm23g8ixryffvyz";
-      };
-      tester = ./default/Dockerfile;
-      system = "x86_64-linux";
-    };
-
-    # focal
-    "ubuntu-v20_04" = {
-      tarball = builtins.fetchurl {
-        url = "http://cdimage.ubuntu.com/ubuntu-base/releases/20.04/release/ubuntu-base-20.04.1-base-amd64.tar.gz";
-        sha256 = "0ryn38csmx41a415g9b3wk30csaxxlkgkdij9v4754pk877wpxlp";
-      };
-      tester = ./default/Dockerfile;
-      system = "x86_64-linux";
-    };
-
-    # bionic
-    "ubuntu-v18_04" = {
-      tarball = builtins.fetchurl {
-        url = "http://cdimage.ubuntu.com/ubuntu-base/releases/18.04/release/ubuntu-base-18.04.5-base-amd64.tar.gz";
-        sha256 = "1sh73pqwgyzkyssv3ngpxa2ynnkbdvjpxdw1v9ql4ghjpd3hpwlg";
+        url = "https://cdimage.ubuntu.com/ubuntu-base/releases/22.04/release/ubuntu-base-22.04.5-base-amd64.tar.gz";
+        sha256 = "06pz70j6jrki5x2q90yii7wzjxkwxmv10fziymp81sikif4xhb14";
       };
       tester = ./default/Dockerfile;
       system = "x86_64-linux";
@@ -97,4 +87,3 @@ container-tests // {
     });
   };
 }
-

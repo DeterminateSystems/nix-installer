@@ -76,24 +76,24 @@ jobs:
       - build-aarch64-darwin
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
       - name: Create artifacts directory
         run: mkdir -p ./artifacts
 
       - name: Fetch x86_64-linux binary artifact
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v5
         with:
           name: nix-installer-x86_64-linux
       - name: Fetch aarch64-linux binary artifact
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v5
         with:
           name: nix-installer-aarch64-linux
       - name: Fetch x86_64-darwin binary artifact
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v5
         with:
           name: nix-installer-x86_64-darwin
       - name: Fetch aarch64-darwin binary artifact
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v5
         with:
           name: nix-installer-aarch64-darwin
       - name: Move binaries into upload staging dir
@@ -104,7 +104,7 @@ jobs:
           mv nix-installer-aarch64-darwin artifacts/
 
       - name: Configure AWS Credentials
-        uses: aws-actions/configure-aws-credentials@v2
+        uses: aws-actions/configure-aws-credentials@v5
         with:
           role-to-assume: ${{ secrets.AWS_S3_UPLOAD_ROLE }}
           aws-region: us-east-2

@@ -54,7 +54,7 @@ impl PlaceNixConfiguration {
         let is_macos = matches!(
             target_lexicon::OperatingSystem::host(),
             target_lexicon::OperatingSystem::MacOSX { .. }
-                | target_lexicon::OperatingSystem::Darwin
+                | target_lexicon::OperatingSystem::Darwin(_)
         );
         let configured_ssl_cert_file = if distribution == Distribution::DeterminateNix && is_macos {
             // On macOS, determinate-nixd will handle configuring the ssl-cert-file option for Nix

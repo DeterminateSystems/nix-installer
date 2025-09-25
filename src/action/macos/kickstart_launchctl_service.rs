@@ -139,6 +139,6 @@ impl Action for KickstartLaunchctlService {
 
 #[derive(Debug, thiserror::Error)]
 pub enum KickstartLaunchctlServiceError {
-    #[error("Command `{0}` failed, stderr: {}", String::from_utf8(.1.stderr.clone()).unwrap_or_else(|_e| String::from("<Non-UTF-8>")))]
+    #[error("Command `{0}` failed, stderr: {msg}", msg = String::from_utf8(.1.stderr.clone()).unwrap_or_else(|_e| String::from("<Non-UTF-8>")))]
     CannotStopService(String, Output),
 }

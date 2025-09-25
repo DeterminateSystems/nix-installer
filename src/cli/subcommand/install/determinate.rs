@@ -27,7 +27,7 @@ For more details: https://dtr.mn/determinate-nix\
 pub(crate) async fn inform_macos_about_pkg<T: Feedback>(feedback: &T) {
     if matches!(
         target_lexicon::OperatingSystem::host(),
-        target_lexicon::OperatingSystem::MacOSX { .. } | target_lexicon::OperatingSystem::Darwin
+        target_lexicon::OperatingSystem::MacOSX { .. } | target_lexicon::OperatingSystem::Darwin(_)
     ) {
         let msg = feedback
             .get_feature_ptr_payload::<String>("dni-det-msg-start-pkg-ptr")
