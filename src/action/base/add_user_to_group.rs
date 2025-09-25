@@ -139,7 +139,7 @@ impl AddUserToGroup {
                     .await
                     .map_err(Self::error)?;
                     let output_str = String::from_utf8(output.stdout).map_err(Self::error)?;
-                    let user_in_group = output_str.split(' ').any(|v| v == this.groupname);
+                    let user_in_group = output_str.split_whitespace().any(|v| v == this.groupname);
 
                     if user_in_group {
                         tracing::debug!(
@@ -242,9 +242,7 @@ impl Action for AddUserToGroup {
                     .await
                     .map_err(Self::error)?;
                 } else {
-                    return Err(Self::error(Self::error(
-                        ActionErrorKind::MissingAddUserToGroupCommand,
-                    )));
+                    return Err(Self::error(ActionErrorKind::MissingAddUserToGroupCommand));
                 }
             },
         }

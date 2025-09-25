@@ -77,7 +77,7 @@ impl CreateDirectory {
                 let expected_gid = Group::from_name(group.as_str())
                     .map_err(|e| ActionErrorKind::GettingGroupId(group.clone(), e))
                     .map_err(Self::error)?
-                    .ok_or_else(|| ActionErrorKind::NoUser(group.clone()))
+                    .ok_or_else(|| ActionErrorKind::NoGroup(group.clone()))
                     .map_err(Self::error)?
                     .gid;
                 let found_gid = metadata.gid();
