@@ -27,7 +27,7 @@ impl CreateGroup {
         };
 
         match OperatingSystem::host() {
-            OperatingSystem::MacOSX { .. } | OperatingSystem::Darwin => (),
+            OperatingSystem::MacOSX { .. } | OperatingSystem::Darwin(_) => (),
             _ => {
                 if !(which::which("groupadd").is_ok() || which::which("addgroup").is_ok()) {
                     return Err(Self::error(ActionErrorKind::MissingGroupCreationCommand));
@@ -92,12 +92,7 @@ impl Action for CreateGroup {
 
         use OperatingSystem;
         match OperatingSystem::host() {
-            OperatingSystem::MacOSX {
-                major: _,
-                minor: _,
-                patch: _,
-            }
-            | OperatingSystem::Darwin => {
+            OperatingSystem::MacOSX { .. } | OperatingSystem::Darwin(_) => {
                 execute_command(
                     Command::new("/usr/sbin/dseditgroup")
                         .process_group(0)
@@ -159,12 +154,7 @@ impl Action for CreateGroup {
 
         use OperatingSystem;
         match OperatingSystem::host() {
-            OperatingSystem::MacOSX {
-                major: _,
-                minor: _,
-                patch: _,
-            }
-            | OperatingSystem::Darwin => {
+            OperatingSystem::MacOSX { .. } | OperatingSystem::Darwin(_) => {
                 execute_command(
                     Command::new("/usr/bin/dscl")
                         .args([".", "-delete", &format!("/Groups/{name}")])

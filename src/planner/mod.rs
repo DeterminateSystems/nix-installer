@@ -73,7 +73,7 @@ impl Planner for MyPlanner {
     async fn platform_check(&self) -> Result<(), PlannerError> {
         use target_lexicon::OperatingSystem;
         match target_lexicon::OperatingSystem::host() {
-            OperatingSystem::MacOSX { .. } | OperatingSystem::Darwin => Ok(()),
+            OperatingSystem::MacOSX { .. } | OperatingSystem::Darwin(_) => Ok(()),
             host_os => Err(PlannerError::IncompatibleOperatingSystem {
                 planner: self.typetag_name(),
                 host_os,
@@ -185,11 +185,11 @@ impl BuiltinPlanner {
                 Ok(Self::Linux(linux::Linux::default().await?))
             },
             (Architecture::X86_64, OperatingSystem::MacOSX { .. })
-            | (Architecture::X86_64, OperatingSystem::Darwin) => {
+            | (Architecture::X86_64, OperatingSystem::Darwin(_)) => {
                 Ok(Self::Macos(macos::Macos::default().await?))
             },
             (Architecture::Aarch64(_), OperatingSystem::MacOSX { .. })
-            | (Architecture::Aarch64(_), OperatingSystem::Darwin) => {
+            | (Architecture::Aarch64(_), OperatingSystem::Darwin(_)) => {
                 Ok(Self::Macos(macos::Macos::default().await?))
             },
             _ => Err(PlannerError::UnsupportedArchitecture(target_lexicon::HOST)),
@@ -332,7 +332,7 @@ pub struct FishShellProfileLocations {
     under which Fish will look for the file named by
     `confd_suffix`.
 
-    More info: <https://fishshell.com/docs/3.3/index.html#configuration-files>
+    More info: <https://fishshell.com/docs/current/language.html#configuration>
     */
     pub vendor_confd_prefixes: Vec<PathBuf>,
 }

@@ -56,7 +56,7 @@ jobs:
     name: Build
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - uses: DeterminateSystems/determinate-nix-action@v3
       - name: Run `nix build`
         run: nix build .
@@ -74,7 +74,7 @@ jobs:
 #### Pinning the GitHub Action
 
 The [determinate-nix-action] is updated and tagged for every Determinate release.
-For example, `DeterminateSystems/determinate-nix-action@v3.5.2` will always install Determinate Nix v3.5.2.
+For example, `DeterminateSystems/determinate-nix-action@v3.11.2` will always install Determinate Nix v3.11.2.
 
 Additionally, an extra tag on the major version is kept up to date with the current release.
 The `DeterminateSystems/determinate-nix-action@v3` reference, for example, installs the most recent release in the `v3.x.y` series.
@@ -348,7 +348,7 @@ You can pin to a specific version of Determinate Nix Installer by modifying the 
 Here's an example:
 
 ```shell
-VERSION="v0.6.0"
+VERSION="v3.11.2"
 curl --proto '=https' --tlsv1.2 -sSf -L https://install.determinate.systems/nix/tag/${VERSION} | \
   sh -s -- install
 ```

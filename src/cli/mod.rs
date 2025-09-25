@@ -124,7 +124,7 @@ impl CommandExecute for NixInstallerCli {
         let is_macos = matches!(
             target_lexicon::OperatingSystem::host(),
             target_lexicon::OperatingSystem::MacOSX { .. }
-                | target_lexicon::OperatingSystem::Darwin
+                | target_lexicon::OperatingSystem::Darwin(_)
         );
 
         if is_install_subcommand && is_macos {

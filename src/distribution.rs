@@ -46,7 +46,7 @@ pub const NIX_TARBALL_URL: &str = env!("NIX_TARBALL_URL");
 
 pub const DETERMINATE_NIX_TARBALL_PATH: &str = env!("DETERMINATE_NIX_TARBALL_PATH");
 /// The DETERMINATE_NIX_TARBALL environment variable should point to a target-appropriate
-/// Determinate Nix installation tarball, like determinate-nix-2.21.2-aarch64-darwin.tar.xz.
+/// Determinate Nix installation tarball, like determinate-nix-2.31.1-aarch64-darwin.tar.xz.
 /// The contents are embedded in the resulting binary.
 pub const DETERMINATE_NIX_TARBALL: &[u8] = include_bytes!(env!("DETERMINATE_NIX_TARBALL_PATH"));
 

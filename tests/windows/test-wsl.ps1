@@ -4,8 +4,8 @@ $ErrorActionPreference = "Stop"
 
 
 # 22.04 https://cloud-images.ubuntu.com/wsl/jammy/current/
-$url = "https://cloud-images.ubuntu.com/wsl/jammy/current/ubuntu-jammy-wsl-amd64-wsl.rootfs.tar.gz"
-$File = "ubuntu-jammy-wsl-amd64-wsl.rootfs.tar.gz"
+$url = "https://cloud-images.ubuntu.com/wsl/jammy/current/ubuntu-jammy-wsl-amd64-ubuntu22.04lts.rootfs.tar.gz"
+$File = "ubuntu-jammy-wsl-amd64-ubuntu22.04lts.rootfs.tar.gz"
 $Name = "ubuntu-jammy"
 
 
@@ -14,7 +14,7 @@ $Image = "$TemporaryDirectory\$File"
 if (!(Test-Path -Path $Image)) {
     Write-Output "Fetching $File to $Image..."
     New-Item $TemporaryDirectory -ItemType Directory | Out-Null
-    Invoke-WebRequest -Uri "https://cloud-images.ubuntu.com/wsl/jammy/current/ubuntu-jammy-wsl-amd64-wsl.rootfs.tar.gz" -OutFile $Image
+    Invoke-WebRequest -Uri "https://cloud-images.ubuntu.com/wsl/jammy/current/ubuntu-jammy-wsl-amd64-ubuntu22.04lts.rootfs.tar.gz" -OutFile $Image
 } else {
     Write-Output "Found existing $Image..."
 }
@@ -50,7 +50,7 @@ if ($Systemd) {
     }
 }
 
-Write-Output "Building and runnings nix-installer in $DistroName..."
+Write-Output "Building and running nix-installer in $DistroName..."
 Copy-Item -Recurse "$PSScriptRoot\..\.." -Destination "\\wsl$\$DistroName\nix-installer"
 $MaybeInitChoice = switch ($Systemd) {
     $true { "" }

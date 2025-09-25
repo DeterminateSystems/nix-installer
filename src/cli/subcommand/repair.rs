@@ -195,7 +195,7 @@ impl CommandExecute for Repair {
                 repair_actions.push(reconfigure);
 
                 match OperatingSystem::host() {
-                    OperatingSystem::MacOSX { .. } | OperatingSystem::Darwin => {
+                    OperatingSystem::MacOSX { .. } | OperatingSystem::Darwin(_) => {
                         let reconfigure = crate::action::macos::ConfigureRemoteBuilding::plan()
                             .await
                             .map_err(PlannerError::Action)?
@@ -217,7 +217,7 @@ impl CommandExecute for Repair {
             } => {
                 if !matches!(
                     OperatingSystem::host(),
-                    OperatingSystem::MacOSX { .. } | OperatingSystem::Darwin
+                    OperatingSystem::MacOSX { .. } | OperatingSystem::Darwin(_)
                 ) {
                     return Err(color_eyre::eyre::eyre!(
                         "The `sequoia` repair command is only available on macOS"

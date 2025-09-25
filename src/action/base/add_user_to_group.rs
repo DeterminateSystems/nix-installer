@@ -38,7 +38,7 @@ impl AddUserToGroup {
         };
 
         match OperatingSystem::host() {
-            OperatingSystem::MacOSX { .. } | OperatingSystem::Darwin => (),
+            OperatingSystem::MacOSX { .. } | OperatingSystem::Darwin(_) => (),
             _ => {
                 if !(which::which("addgroup").is_ok() || which::which("gpasswd").is_ok()) {
                     return Err(Self::error(ActionErrorKind::MissingAddUserToGroupCommand));
@@ -74,12 +74,7 @@ impl AddUserToGroup {
 
             // See if group membership needs to be done
             match OperatingSystem::host() {
-                OperatingSystem::MacOSX {
-                    major: _,
-                    minor: _,
-                    patch: _,
-                }
-                | OperatingSystem::Darwin => {
+                OperatingSystem::MacOSX { .. } | OperatingSystem::Darwin(_) => {
                     let mut command = Command::new("/usr/sbin/dseditgroup");
                     command.process_group(0);
                     command.args(["-o", "checkmember", "-m"]);
@@ -144,7 +139,7 @@ impl AddUserToGroup {
                     .await
                     .map_err(Self::error)?;
                     let output_str = String::from_utf8(output.stdout).map_err(Self::error)?;
-                    let user_in_group = output_str.split(' ').any(|v| v == this.groupname);
+                    let user_in_group = output_str.split_whitespace().any(|v| v == this.groupname);
 
                     if user_in_group {
                         tracing::debug!(
@@ -199,12 +194,7 @@ impl Action for AddUserToGroup {
     async fn execute(&mut self) -> Result<(), ActionError> {
         use target_lexicon::OperatingSystem;
         match OperatingSystem::host() {
-            OperatingSystem::MacOSX {
-                major: _,
-                minor: _,
-                patch: _,
-            }
-            | OperatingSystem::Darwin => {
+            OperatingSystem::MacOSX { .. } | OperatingSystem::Darwin(_) => {
                 execute_command(
                     Command::new("/usr/bin/dscl")
                         .process_group(0)
@@ -252,9 +242,7 @@ impl Action for AddUserToGroup {
                     .await
                     .map_err(Self::error)?;
                 } else {
-                    return Err(Self::error(Self::error(
-                        ActionErrorKind::MissingAddUserToGroupCommand,
-                    )));
+                    return Err(Self::error(ActionErrorKind::MissingAddUserToGroupCommand));
                 }
             },
         }
@@ -285,12 +273,7 @@ impl Action for AddUserToGroup {
 
         use target_lexicon::OperatingSystem;
         match target_lexicon::OperatingSystem::host() {
-            OperatingSystem::MacOSX {
-                major: _,
-                minor: _,
-                patch: _,
-            }
-            | OperatingSystem::Darwin => {
+            OperatingSystem::MacOSX { .. } | OperatingSystem::Darwin(_) => {
                 execute_command(
                     Command::new("/usr/bin/dscl")
                         .process_group(0)

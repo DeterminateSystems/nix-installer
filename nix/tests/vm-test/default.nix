@@ -438,23 +438,10 @@ let
   images = {
 
     # End of standard support https://wiki.ubuntu.com/Releases
-    # No systemd
-    /*
-      "ubuntu-v14_04" = {
+    "ubuntu-v20_04" = {
       image = import <nix/fetchurl.nix> {
-      url = "https://app.vagrantup.com/ubuntu/boxes/trusty64/versions/20190514.0.0/providers/virtualbox.box";
-      hash = "sha256-iUUXyRY8iW7DGirb0zwGgf1fRbLA7wimTJKgP7l/OQ8=";
-      };
-      rootDisk = "box-disk1.vmdk";
-      system = "x86_64-linux";
-      };
-    */
-
-    # End of standard support https://wiki.ubuntu.com/Releases
-    "ubuntu-v16_04" = {
-      image = import <nix/fetchurl.nix> {
-        url = "https://app.vagrantup.com/generic/boxes/ubuntu1604/versions/4.1.12/providers/libvirt.box";
-        hash = "sha256-lO4oYQR2tCh5auxAYe6bPOgEqOgv3Y3GC1QM1tEEEU8=";
+        url = "https://app.vagrantup.com/generic/boxes/ubuntu2004/versions/4.3.12/providers/libvirt.box";
+        hash = "sha256-lo6fkz6N/Q9mdD+RWoUssak9TVod0F7QSgZvxnMj9IQ=";
       };
       rootDisk = "box.img";
       system = "x86_64-linux";
@@ -462,64 +449,37 @@ let
 
     "ubuntu-v22_04" = {
       image = import <nix/fetchurl.nix> {
-        url = "https://app.vagrantup.com/generic/boxes/ubuntu2204/versions/4.1.12/providers/libvirt.box";
-        hash = "sha256-HNll0Qikw/xGIcogni5lz01vUv+R3o8xowP2EtqjuUQ=";
+        url = "https://app.vagrantup.com/generic/boxes/ubuntu2204/versions/4.3.12/providers/libvirt.box";
+        hash = "sha256-xiUt25lRPIpM/HKepJbS15Pp9+PraPR1BLT6lVZko5k=";
       };
       rootDisk = "box.img";
       system = "x86_64-linux";
     };
 
-    "fedora-v36" = {
+    "fedora-v38" = {
       image = import <nix/fetchurl.nix> {
-        url = "https://app.vagrantup.com/generic/boxes/fedora36/versions/4.1.12/providers/libvirt.box";
-        hash = "sha256-rxPgnDnFkTDwvdqn2CV3ZUo3re9AdPtSZ9SvOHNvaks=";
-      };
-      rootDisk = "box.img";
-      system = "x86_64-linux";
-      upstreamScriptsWork = false; # SELinux!
-    };
-
-    "fedora-v37" = {
-      image = import <nix/fetchurl.nix> {
-        url = "https://app.vagrantup.com/generic/boxes/fedora37/versions/4.2.14/providers/libvirt.box";
-        hash = "sha256-rxPgnDnFkTDwvdqn2CV3ZUo3re9AdPtSZ9SvOHNvaks=";
+        url = "https://app.vagrantup.com/generic/boxes/fedora38/versions/4.3.12/providers/libvirt.box";
+        hash = "sha256-nz+sW771/P6yeUJmpfUYSTYxLFgq0mkfu8h/mflhPV8=";
       };
       rootDisk = "box.img";
       system = "x86_64-linux";
       upstreamScriptsWork = false; # SELinux!
     };
 
-    # Currently fails with 'error while loading shared libraries:
-    # libsodium.so.23: cannot stat shared object: Invalid argument'.
-    /*
-      "rhel-v6" = {
+    "fedora-v39" = {
       image = import <nix/fetchurl.nix> {
-      url = "https://app.vagrantup.com/generic/boxes/rhel6/versions/4.1.12/providers/libvirt.box";
-      hash = "sha256-QwzbvRoRRGqUCQptM7X/InRWFSP2sqwRt2HaaO6zBGM=";
+        url = "https://app.vagrantup.com/generic/boxes/fedora39/versions/4.3.12/providers/libvirt.box";
+        hash = "sha256-VJbWmcy3XiEm7cUAXtod8VlFwsIwnVYlZ/LYTuoj9WI=";
       };
       rootDisk = "box.img";
-      upstreamScriptsWork = false; # SELinux!
       system = "x86_64-linux";
-      };
-    */
-
-    "rhel-v7" = {
-      image = import <nix/fetchurl.nix> {
-        url = "https://app.vagrantup.com/generic/boxes/rhel7/versions/4.1.12/providers/libvirt.box";
-        hash = "sha256-b4afnqKCO9oWXgYHb9DeQ2berSwOjS27rSd9TxXDc/U=";
-      };
-      rootDisk = "box.img";
       upstreamScriptsWork = false; # SELinux!
-      system = "x86_64-linux";
-      skip = [
-        "install-determinate" # RHEL v7 has systemd 219 (2015-02-16); determinate-nixd requires at least 227 (2015-10-07)
-      ];
     };
 
     "rhel-v8" = {
       image = import <nix/fetchurl.nix> {
-        url = "https://app.vagrantup.com/generic/boxes/rhel8/versions/4.1.12/providers/libvirt.box";
-        hash = "sha256-zFOPjSputy1dPgrQRixBXmlyN88cAKjJ21VvjSWUCUY=";
+        url = "https://app.vagrantup.com/generic/boxes/rhel8/versions/4.3.12/providers/libvirt.box";
+        hash = "sha256-1BTKt196Qb381zkyzPTOzzbnMGbIloebEpyycLu2myY=";
       };
       rootDisk = "box.img";
       system = "x86_64-linux";
@@ -528,8 +488,8 @@ let
 
     "rhel-v9" = {
       image = import <nix/fetchurl.nix> {
-        url = "https://app.vagrantup.com/generic/boxes/rhel9/versions/4.1.12/providers/libvirt.box";
-        hash = "sha256-vL/FbB3kK1rcSaR627nWmScYGKGk4seSmAdq6N5diMg=";
+        url = "https://app.vagrantup.com/generic/boxes/rhel9/versions/4.3.12/providers/libvirt.box";
+        hash = "sha256-Gp3VSqSOnyysHFqQDoeBjYrshEHfqQw3XPzS3VxZaPA=";
       };
       rootDisk = "box.img";
       system = "x86_64-linux";

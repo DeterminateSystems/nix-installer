@@ -117,7 +117,7 @@ impl CreateOrInsertIntoFile {
                 let expected_gid = Group::from_name(group.as_str())
                     .map_err(|e| ActionErrorKind::GettingGroupId(group.clone(), e))
                     .map_err(Self::error)?
-                    .ok_or_else(|| ActionErrorKind::NoUser(group.clone()))
+                    .ok_or_else(|| ActionErrorKind::NoGroup(group.clone()))
                     .map_err(Self::error)?
                     .gid;
                 let found_gid = metadata.gid();
@@ -212,8 +212,8 @@ impl Action for CreateOrInsertIntoFile {
 
         let mut temp_file_path = parent_dir.to_owned();
         {
-            let mut rng = rand::thread_rng();
-            temp_file_path.push(format!("nix-installer-tmp.{}", rng.gen::<u32>()));
+            let mut rng = rand::rng();
+            temp_file_path.push(format!("nix-installer-tmp.{}", rng.random::<u32>()));
         }
         let mut temp_file = OpenOptions::new()
             .create(true)

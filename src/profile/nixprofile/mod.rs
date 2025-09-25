@@ -285,6 +285,7 @@ impl NixProfile<'_> {
 #[derive(Debug, serde::Deserialize)]
 struct PackageInfo {
     #[serde(default)]
+    #[allow(dead_code)]
     outputs: HashMap<String, PathBuf>,
 }
 

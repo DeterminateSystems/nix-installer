@@ -45,7 +45,7 @@ impl CreateUser {
         };
 
         match OperatingSystem::host() {
-            OperatingSystem::MacOSX { .. } | OperatingSystem::Darwin => (),
+            OperatingSystem::MacOSX { .. } | OperatingSystem::Darwin(_) => (),
             _ => {
                 if !(which::which("useradd").is_ok() || which::which("adduser").is_ok()) {
                     return Err(Self::error(ActionErrorKind::MissingUserCreationCommand));
@@ -131,7 +131,7 @@ impl Action for CreateUser {
         } = self;
 
         match OperatingSystem::host() {
-            OperatingSystem::MacOSX { .. } | OperatingSystem::Darwin => {
+            OperatingSystem::MacOSX { .. } | OperatingSystem::Darwin(_) => {
                 create_user_macos(name, *uid, *gid)
                     .await
                     .map_err(Self::error)?;
@@ -212,7 +212,7 @@ impl Action for CreateUser {
     #[tracing::instrument(level = "debug", skip_all)]
     async fn revert(&mut self) -> Result<(), ActionError> {
         match OperatingSystem::host() {
-            OperatingSystem::MacOSX { .. } | OperatingSystem::Darwin => {
+            OperatingSystem::MacOSX { .. } | OperatingSystem::Darwin(_) => {
                 delete_user_macos(&self.name).await.map_err(Self::error)?;
             },
             _ => {
