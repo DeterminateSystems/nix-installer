@@ -6,50 +6,71 @@ on:
   push:
 
 permissions:
-  id-token: "write"
   contents: "read"
 
 jobs:
-  build-x86_64-linux:
-    uses: ./.github/workflows/build-x86_64-linux.yml
-    with:
-      runs-on: ubuntu-latest
+  build:
+    name: Build (${{ matrix.system }})
 
-  build-x86_64-darwin:
-    uses: ./.github/workflows/build-x86_64-darwin.yml
-    with:
-      runs-on: macos-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-24.04
+            system: x86_64-linux
+          # TODO: need runner; GH's supposedly coming late this year
+          # - os: ubuntu-24.04-arm
+          #   system: aarch64-linux
+          - os: macos-15-intel
+            system: x86_64-darwin
+          - os: macos-15
+            system: aarch64-darwin
 
-  # TODO: need runner; GH's supposedly coming late this year
-  # build-aarch64-linux:
-  #   uses: ./.github/workflows/build-aarch64-linux.yml
+    runs-on: ${{ matrix.os }}
 
-  build-aarch64-darwin:
-    uses: ./.github/workflows/build-aarch64-darwin.yml
-    with:
-      runs-on: macos-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install Nix
+        uses: ./.github/actions/install-nix-action
+
+      - name: Build the installer
+        run: |
+          if [[ $RUNNER_OS == "Linux" ]]; then
+            ATTR="nix-installer-static"
+          elif [[ $RUNNER_OS == "macOS" ]]; then
+            ATTR="nix-installer"
+          else
+            echo "error: '$RUNNER_OS' is an unsupported operating system"
+          fi
+          nix build ".#$ATTR" -L
+          cp result/bin/nix-installer .
+
+      - name: Create GitHub cache from build artifacts
+        uses: actions/cache/save@v3
+        with:
+          path: nix-installer
+          key: ${{ matrix.system }}-artifacts-${{ github.sha }}
 
   lints:
     name: Lints
+
     runs-on: ubuntu-latest
-    permissions:
-      id-token: "write"
-      contents: "read"
+
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
       - name: Check Nixpkgs input
         uses: DeterminateSystems/flake-checker-action@main
         with:
           fail-mode: true
           check-outdated: false # PRs shouldn't fail because main's nixpkgs is out of date
+
       - name: Install Nix
-        uses: DeterminateSystems/nix-installer-action@main
-        with:
-          determinate: false
-      - uses: DeterminateSystems/magic-nix-cache-action@main
-        with:
-          use-flakehub: false
-          use-gha-cache: false
+        uses: ./.github/actions/install-nix-action
+
       - name: Check rustfmt
         run: nix develop --command check-rustfmt
       - name: Check Clippy
@@ -63,168 +84,75 @@ jobs:
       - name: Shell check for nix-installer.sh
         run: nix develop --command shellcheck ./nix-installer.sh
 
-  run-x86_64-linux:
-    name: Run x86_64 Linux${{ matrix.determinate && ' (--determinate)' || ''}}
-    runs-on: ubuntu-latest
-    needs: [lints, build-x86_64-linux]
+  run:
+    name: Run (${{ matrix.system }}${{ matrix.no-init && ', no init' || '' }})
+
+    needs: [ build ]
+
     strategy:
+      fail-fast: false
       matrix:
-        determinate: [false]
-    permissions:
-      id-token: "write"
-      contents: "read"
+        include:
+          - os: ubuntu-24.04
+            system: x86_64-linux
+          - os: ubuntu-24.04
+            system: x86_64-linux
+            no-init: true
+          # TODO: need runner; GH's supposedly coming late this year
+          # - os: ubuntu-24.04-arm
+          #   system: aarch64-linux
+          - os: macos-15-intel
+            system: x86_64-darwin
+          - os: macos-15
+            system: aarch64-darwin
+
+    runs-on: ${{ matrix.os }}
+
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
       - name: Restore Github cache artifacts
         uses: actions/cache/restore@v3
         with:
           path: nix-installer
-          key: x86_64-linux-artifacts-${{ github.sha }}
+          key: ${{ matrix.system }}-artifacts-${{ github.sha }}
+
       - name: Move & set executable
         run: |
           mkdir install-root
           cp nix-installer.sh install-root/nix-installer.sh
-          mv ./nix-installer install-root/nix-installer-x86_64-linux
-          chmod +x install-root/nix-installer-x86_64-linux install-root/nix-installer.sh
-      - run: sudo apt install fish zsh
-      - name: Initial install
-        uses: DeterminateSystems/nix-installer-action@main
-        with:
-          backtrace: full
-          determinate: ${{ matrix.determinate }}
-          local-root: install-root/
-          log-directives: nix_installer=debug
-          logger: pretty
-      - name: "Validate dnixd is ${{ matrix.determinate && 'installed' || 'uninstalled' }}"
+          mv ./nix-installer install-root/nix-installer-${{ matrix.system }}
+          chmod +x install-root/nix-installer-${{ matrix.system }} install-root/nix-installer.sh
+
+      - name: Install dependencies
         run: |
-          if test -x /usr/local/bin/determinate-nixd; then
-            echo "determinate-nixd is present"
-            ${{ matrix.determinate }}
+          if [[ $RUNNER_OS == "Linux" ]]; then
+            sudo apt install fish zsh
+          elif [[ $RUNNER_OS = "macOS" ]]; then
+            brew install coreutils fish
           else
-            echo "determinate-nixd is not present"
-            ${{ !matrix.determinate }}
-          fi
-      - name: Initial uninstall (without a `nix run` first)
-        run: sudo -E /nix/nix-installer uninstall
-        env:
-          NIX_INSTALLER_NO_CONFIRM: true
-          NIX_INSTALLER_LOGGER: pretty
-          NIX_INSTALLER_LOG_DIRECTIVES: nix_installer=debug
-          RUST_BACKTRACE: full
-      - name: Ensure `nix` is removed
-        run: |
-          if systemctl is-active nix-daemon.socket; then
-            echo "nix-daemon.socket was still running"
-            exit 1
-          fi
-          if systemctl is-active nix-daemon.service; then
-            echo "nix-daemon.service was still running"
-            exit 1
-          fi
-          if [ -e /nix ]; then
-            echo "/nix exists"
-            exit 1
-          fi
-      - name: Repeated install
-        uses: DeterminateSystems/nix-installer-action@main
-        with:
-          backtrace: full
-          determinate: ${{ matrix.determinate }}
-          local-root: install-root/
-          log-directives: nix_installer=debug
-          logger: pretty
-      - name: echo $PATH
-        run: echo $PATH
-      - name: Test `nix` with `$GITHUB_PATH`
-        if: success() || failure()
-        run: |
-          nix-shell -p hello --command hello
-          nix-env --install hello
-          hello
-          nix-store --gc
-          nix-shell -p hello --command hello
-      - name: Test bash
-        run: nix-instantiate -E 'builtins.currentTime' --eval
-        if: success() || failure()
-        shell: bash --login {0}
-      - name: Test sh
-        run: nix-instantiate -E 'builtins.currentTime' --eval
-        if: success() || failure()
-        shell: sh -l {0}
-      - name: Test zsh
-        run: nix-instantiate -E 'builtins.currentTime' --eval
-        if: success() || failure()
-        shell: zsh --login --interactive {0}
-      - name: Test fish
-        run: nix-instantiate -E 'builtins.currentTime' --eval
-        if: success() || failure()
-        shell: fish --login {0}
-      - name: Repeated uninstall
-        run: sudo -E /nix/nix-installer uninstall
-        env:
-          NIX_INSTALLER_NO_CONFIRM: true
-          NIX_INSTALLER_LOGGER: pretty
-          NIX_INSTALLER_LOG_DIRECTIVES: nix_installer=debug
-          RUST_BACKTRACE: full
-      - name: Ensure `nix` is removed
-        run: |
-          if systemctl is-active nix-daemon.socket; then
-            echo "nix-daemon.socket was still running"
-            exit 1
-          fi
-          if systemctl is-active nix-daemon.service; then
-            echo "nix-daemon.service was still running"
-            exit 1
-          fi
-          if [ -e /nix ]; then
-            echo "/nix exists"
+            echo "Unsupported runner operating system: $RUNNER_OS"
             exit 1
           fi
 
-  run-x86_64-linux-no-init:
-    name: Run x86_64 Linux (No init${{ matrix.determinate && ', --determinate' || ''}})
-    runs-on: ubuntu-latest
-    needs: [lints, build-x86_64-linux]
-    strategy:
-      matrix:
-        determinate: [false]
-    permissions:
-      id-token: "write"
-      contents: "read"
-    steps:
-      - uses: actions/checkout@v4
-      - name: Restore Github cache artifacts
-        uses: actions/cache/restore@v3
-        with:
-          path: nix-installer
-          key: x86_64-linux-artifacts-${{ github.sha }}
-      - name: Move & set executable
-        run: |
-          mkdir install-root
-          cp nix-installer.sh install-root/nix-installer.sh
-          mv ./nix-installer install-root/nix-installer-x86_64-linux
-          chmod +x install-root/nix-installer-x86_64-linux install-root/nix-installer.sh
-      - run: sudo apt install fish zsh
       - name: Initial install
-        uses: DeterminateSystems/nix-installer-action@main
+        uses: ./.github/actions/install-nix-action
         with:
-          backtrace: full
-          determinate: ${{ matrix.determinate }}
-          init: none
-          local-root: install-root/
-          log-directives: nix_installer=debug
-          logger: pretty
-          planner: linux
-      - name: "Validate dnixd is ${{ matrix.determinate && 'installed' || 'uninstalled' }}"
+          dogfood: true
+          dogfood-path: install-root/
+          use-cache: false
+          no-init: ${{ matrix.no-init }}
+
+      - name: "Validate dnixd is uninstalled"
         run: |
           if test -x /usr/local/bin/determinate-nixd; then
             echo "determinate-nixd is present"
-            ${{ matrix.determinate }}
-          else
-            echo "determinate-nixd is not present"
-            ${{ !matrix.determinate }}
+            exit 1
           fi
+
       - name: Ensure daemon was not configured with init
+        if: ${{ matrix.no-init != '' }}
         run: |
           if systemctl is-active nix-daemon.socket; then
             echo "nix-daemon.socket was running"
@@ -234,6 +162,7 @@ jobs:
             echo "nix-daemon.service was running"
             exit 1
           fi
+
       - name: Initial uninstall (without a `nix run` first)
         run: sudo -E /nix/nix-installer uninstall
         env:
@@ -241,63 +170,16 @@ jobs:
           NIX_INSTALLER_LOGGER: pretty
           NIX_INSTALLER_LOG_DIRECTIVES: nix_installer=debug
           RUST_BACKTRACE: full
+
       - name: Ensure `nix` is removed
-        run: |
-          if [ -e /nix ]; then
-            echo "/nix exists"
-            exit 1
-          fi
-      - name: Repeated install
-        uses: DeterminateSystems/nix-installer-action@main
-        with:
-          backtrace: full
-          determinate: ${{ matrix.determinate }}
-          init: none
-          local-root: install-root/
-          log-directives: nix_installer=debug
-          logger: pretty
-          planner: linux
-      - name: echo $PATH
-        run: echo $PATH
-      - name: Test `nix` with `$GITHUB_PATH`
-        if: success() || failure()
-        run: |
-          sudo -i nix-shell -p hello --command hello
-          sudo -i nix-env --install hello
-          sudo -i hello
-          sudo -i nix-store --gc
-          sudo -i nix-shell -p hello --command hello
-      - name: Test bash
-        run: sudo -i nix-instantiate -E 'builtins.currentTime' --eval
-        if: success() || failure()
-        shell: bash --login {0}
-      - name: Test sh
-        run: sudo -i nix-instantiate -E 'builtins.currentTime' --eval
-        if: success() || failure()
-        shell: sh -l {0}
-      - name: Test zsh
-        run: sudo -i nix-instantiate -E 'builtins.currentTime' --eval
-        if: success() || failure()
-        shell: zsh --login --interactive {0}
-      - name: Test fish
-        run: sudo -i nix-instantiate -E 'builtins.currentTime' --eval
-        if: success() || failure()
-        shell: fish --login {0}
-      - name: Repeated uninstall
-        run: sudo -E /nix/nix-installer uninstall
-        env:
-          NIX_INSTALLER_NO_CONFIRM: true
-          NIX_INSTALLER_LOGGER: pretty
-          NIX_INSTALLER_LOG_DIRECTIVES: nix_installer=debug
-          RUST_BACKTRACE: full
-      - name: Ensure `nix` is removed
+        if: ${{ runner.os == 'Linux' }}
         run: |
           if systemctl is-active nix-daemon.socket; then
-            echo "nix-daemon.socket was running"
+            echo "nix-daemon.socket was still running"
             exit 1
           fi
           if systemctl is-active nix-daemon.service; then
-            echo "nix-daemon.service was running"
+            echo "nix-daemon.service was still running"
             exit 1
           fi
           if [ -e /nix ]; then
@@ -305,88 +187,43 @@ jobs:
             exit 1
           fi
 
-  run-x86_64-darwin:
-    name: Run x86_64 Darwin${{ matrix.determinate && ' (--determinate)' || ''}}
-    runs-on: macos-13
-    needs: [lints, build-x86_64-darwin]
-    strategy:
-      matrix:
-        determinate: [false]
-    permissions:
-      id-token: "write"
-      contents: "read"
-    steps:
-      - uses: actions/checkout@v4
-      - name: Restore Github cache artifacts
-        uses: actions/cache/restore@v3
-        with:
-          path: nix-installer
-          key: x86_64-darwin-artifacts-${{ github.sha }}
-      - name: Move & set executable
-        run: |
-          mkdir install-root
-          cp nix-installer.sh install-root/nix-installer.sh
-          mv ./nix-installer install-root/nix-installer-x86_64-darwin
-          chmod +x install-root/nix-installer-x86_64-darwin install-root/nix-installer.sh
-      - run: brew install fish coreutils
-      - name: Initial install
-        uses: DeterminateSystems/nix-installer-action@main
-        with:
-          backtrace: full
-          determinate: ${{ matrix.determinate }}
-          local-root: install-root/
-          log-directives: nix_installer=debug
-          logger: pretty
-      - name: "Validate dnixd is ${{ matrix.determinate && 'installed' || 'uninstalled' }}"
-        run: |
-          if test -x /usr/local/bin/determinate-nixd; then
-            echo "determinate-nixd is present"
-            ${{ matrix.determinate }}
-          else
-            echo "determinate-nixd is not present"
-            ${{ !matrix.determinate }}
-          fi
-      - name: Initial uninstall (without a `nix run` first)
-        run: sudo -E /nix/nix-installer uninstall
-        env:
-          NIX_INSTALLER_NO_CONFIRM: true
-          NIX_INSTALLER_LOGGER: pretty
-          NIX_INSTALLER_LOG_DIRECTIVES: nix_installer=debug
-          RUST_BACKTRACE: full
       - name: Repeated install
-        uses: DeterminateSystems/nix-installer-action@main
+        uses: ./.github/actions/install-nix-action
         with:
-          backtrace: full
-          determinate: ${{ matrix.determinate }}
-          local-root: install-root/
-          log-directives: nix_installer=debug
-          logger: pretty
+          dogfood: true
+          dogfood-path: install-root/
+          use-cache: false
+          no-init: ${{ matrix.no-init }}
+
       - name: echo $PATH
-        run: echo $PATH
+        run: echo "$PATH"
+
+        # FIXME: Better handle running these commands in the `no-init` test case
       - name: Test `nix` with `$GITHUB_PATH`
-        if: success() || failure()
+        if: ${{ always() }}
         run: |
-          nix-shell -p hello --command hello
-          nix-env --install hello
+          ${{ matrix.no-init && 'sudo -i ' || '' }}nix-shell -p hello --command hello
+          ${{ matrix.no-init && 'sudo -i ' || '' }}nix-env --install hello
           hello
-          nix-store --gc
-          nix-shell -p hello --command hello
+          ${{ matrix.no-init && 'sudo -i ' || '' }}nix-store --gc
+          ${{ matrix.no-init && 'sudo -i ' || '' }}nix-shell -p hello --command hello
       - name: Test bash
-        run: nix-instantiate -E 'builtins.currentTime' --eval
-        if: success() || failure()
+        run: ${{ matrix.no-init && 'sudo -i ' || '' }}nix-instantiate -E 'builtins.currentTime' --eval
+        if: ${{ always() }}
         shell: bash --login {0}
       - name: Test sh
-        run: nix-instantiate -E 'builtins.currentTime' --eval
-        if: success() || failure()
+        run: ${{ matrix.no-init && 'sudo -i ' || '' }}nix-instantiate -E 'builtins.currentTime' --eval
+        if: ${{ always() }}
         shell: sh -l {0}
       - name: Test zsh
-        run: nix-instantiate -E 'builtins.currentTime' --eval
-        if: success() || failure()
+        run: ${{ matrix.no-init && 'sudo -i ' || '' }}nix-instantiate -E 'builtins.currentTime' --eval
+        if: ${{ always() }}
         shell: zsh --login --interactive {0}
       - name: Test fish
-        run: nix-instantiate -E 'builtins.currentTime' --eval
-        if: success() || failure()
+        run: ${{ matrix.no-init && 'sudo -i ' || '' }}nix-instantiate -E 'builtins.currentTime' --eval
+        if: ${{ always() }}
         shell: fish --login {0}
+
       - name: Repeated uninstall
         run: sudo -E /nix/nix-installer uninstall
         env:
@@ -395,250 +232,55 @@ jobs:
           NIX_INSTALLER_LOG_DIRECTIVES: nix_installer=debug
           RUST_BACKTRACE: full
 
-  # TODO: need runner
-  # run-aarch64-linux:
-  #   name: Run aarch64 Linux${{ matrix.determinate && ' (--determinate)' || ''}}
-  #   runs-on: namespace-profile-default-arm64
-  #   needs: [lints, build-aarch64-linux]
-  #   strategy:
-  #     matrix:
-  #       determinate: [false]
-  #   permissions:
-  #     id-token: "write"
-  #     contents: "read"
-  #   steps:
-  #     - uses: actions/checkout@v4
-  #     - name: Restore Github cache artifacts
-  #       uses: actions/cache/restore@v3
-  #       with:
-  #         path: nix-installer
-  #         key: aarch64-linux-artifacts-${{ github.sha }}
-  #     - name: Move & set executable
-  #       run: |
-  #         mkdir install-root
-  #         cp nix-installer.sh install-root/nix-installer.sh
-  #         mv ./nix-installer install-root/nix-installer-aarch64-linux
-  #         chmod +x install-root/nix-installer-aarch64-linux install-root/nix-installer.sh
-  #     - run: sudo apt install -y fish zsh
-  #     - name: Initial install
-  #       uses: DeterminateSystems/nix-installer-action@main
-  #       with:
-  #         backtrace: full
-  #         determinate: ${{ matrix.determinate }}
-  #         local-root: install-root/
-  #         log-directives: nix_installer=debug
-  #         logger: pretty
-  #     - name: "Validate dnixd is ${{ matrix.determinate && 'installed' || 'uninstalled' }}"
-  #       run: |
-  #         if test -x /usr/local/bin/determinate-nixd; then
-  #           echo "determinate-nixd is present"
-  #           ${{ matrix.determinate }}
-  #         else
-  #           echo "determinate-nixd is not present"
-  #           ${{ !matrix.determinate }}
-  #         fi
-  #     - name: Initial uninstall (without a `nix run` first)
-  #       run: sudo -E /nix/nix-installer uninstall
-  #       env:
-  #         NIX_INSTALLER_NO_CONFIRM: true
-  #         NIX_INSTALLER_LOGGER: pretty
-  #         NIX_INSTALLER_LOG_DIRECTIVES: nix_installer=debug
-  #         RUST_BACKTRACE: full
-  #     - name: Ensure `nix` is removed
-  #       run: |
-  #         if systemctl is-active nix-daemon.socket; then
-  #           echo "nix-daemon.socket was still running"
-  #           exit 1
-  #         fi
-  #         if systemctl is-active nix-daemon.service; then
-  #           echo "nix-daemon.service was still running"
-  #           exit 1
-  #         fi
-  #         if [ -e /nix ]; then
-  #           echo "/nix exists"
-  #           exit 1
-  #         fi
-  #     - name: Repeated install
-  #       uses: DeterminateSystems/nix-installer-action@main
-  #       with:
-  #         backtrace: full
-  #         determinate: ${{ matrix.determinate }}
-  #         local-root: install-root/
-  #         log-directives: nix_installer=debug
-  #         logger: pretty
-  #     - name: echo $PATH
-  #       run: echo $PATH
-  #     - name: Test `nix` with `$GITHUB_PATH`
-  #       if: success() || failure()
-  #       run: |
-  #         nix run nixpkgs#hello
-  #         nix profile install nixpkgs#hello
-  #         hello
-  #         nix store gc
-  #         nix run nixpkgs#hello
-  #     - name: Test bash
-  #       run: nix-instantiate -E 'builtins.currentTime' --eval
-  #       if: success() || failure()
-  #       shell: bash --login {0}
-  #     - name: Test sh
-  #       run: nix-instantiate -E 'builtins.currentTime' --eval
-  #       if: success() || failure()
-  #       shell: sh -l {0}
-  #     - name: Test zsh
-  #       run: nix-instantiate -E 'builtins.currentTime' --eval
-  #       if: success() || failure()
-  #       shell: zsh --login --interactive {0}
-  #     - name: Test fish
-  #       run: nix-instantiate -E 'builtins.currentTime' --eval
-  #       if: success() || failure()
-  #       shell: fish --login {0}
-  #     - name: Repeated uninstall
-  #       run: sudo -E /nix/nix-installer uninstall
-  #       env:
-  #         NIX_INSTALLER_NO_CONFIRM: true
-  #         NIX_INSTALLER_LOGGER: pretty
-  #         NIX_INSTALLER_LOG_DIRECTIVES: nix_installer=debug
-  #         RUST_BACKTRACE: full
-  #     - name: Ensure `nix` is removed
-  #       run: |
-  #         if systemctl is-active nix-daemon.socket; then
-  #           echo "nix-daemon.socket was still running"
-  #           exit 1
-  #         fi
-  #         if systemctl is-active nix-daemon.service; then
-  #           echo "nix-daemon.service was still running"
-  #           exit 1
-  #         fi
-  #         if [ -e /nix ]; then
-  #           echo "/nix exists"
-  #           exit 1
-  #         fi
-
-  run-aarch64-darwin:
-    name: Run aarch64 Darwin${{ matrix.determinate && ' (--determinate)' || ''}}
-    runs-on: macos-latest
-    needs: [lints, build-aarch64-darwin]
-    strategy:
-      matrix:
-        determinate: [false]
-    permissions:
-      id-token: "write"
-      contents: "read"
-    steps:
-      - uses: actions/checkout@v4
-      - name: Restore Github cache artifacts
-        uses: actions/cache/restore@v3
-        with:
-          path: nix-installer
-          key: aarch64-darwin-artifacts-${{ github.sha }}
-      - name: Move & set executable
+      - name: Ensure `nix` is removed
+        if: ${{ runner.os == 'Linux' }}
         run: |
-          mkdir install-root
-          cp nix-installer.sh install-root/nix-installer.sh
-          mv ./nix-installer install-root/nix-installer-aarch64-darwin
-          chmod +x install-root/nix-installer-aarch64-darwin install-root/nix-installer.sh
-      - run: brew install fish coreutils
-      - name: Initial install
-        uses: DeterminateSystems/nix-installer-action@main
-        with:
-          backtrace: full
-          determinate: ${{ matrix.determinate }}
-          local-root: install-root/
-          log-directives: nix_installer=debug
-          logger: pretty
-      - name: "Validate dnixd is ${{ matrix.determinate && 'installed' || 'uninstalled' }}"
-        run: |
-          if test -x /usr/local/bin/determinate-nixd; then
-            echo "determinate-nixd is present"
-            ${{ matrix.determinate }}
-          else
-            echo "determinate-nixd is not present"
-            ${{ !matrix.determinate }}
+          if systemctl is-active nix-daemon.socket; then
+            echo "nix-daemon.socket was still running"
+            exit 1
           fi
-      - name: Initial uninstall (without a `nix run` first)
-        run: sudo -E /nix/nix-installer uninstall
-        env:
-          NIX_INSTALLER_NO_CONFIRM: true
-          NIX_INSTALLER_LOGGER: pretty
-          NIX_INSTALLER_LOG_DIRECTIVES: nix_installer=debug
-          RUST_BACKTRACE: full
-      - name: Repeated install
-        uses: DeterminateSystems/nix-installer-action@main
-        with:
-          backtrace: full
-          determinate: ${{ matrix.determinate }}
-          local-root: install-root/
-          log-directives: nix_installer=debug
-          logger: pretty
-      - name: echo $PATH
-        run: echo $PATH
-      # We don't enable flakes by default.
-      # - name: Test `nix` with `$GITHUB_PATH`
-      #   if: success() || failure()
-      #   run: |
-      #     nix run nixpkgs#hello
-      #     nix profile install nixpkgs#hello
-      #     hello
-      #     nix store gc
-      #     nix run nixpkgs#hello
-      # NOTE(cole-h): GHA pushed a weird image that breaks this test for whatever reason, so ignore
-      # the failure for now
-      - name: Test bash
-        run: nix-instantiate -E 'builtins.currentTime' --eval || true
-        if: success() || failure()
-        shell: bash --login {0}
-      - name: Test sh
-        run: nix-instantiate -E 'builtins.currentTime' --eval
-        if: success() || failure()
-        shell: sh -l {0}
-      - name: Test zsh
-        run: nix-instantiate -E 'builtins.currentTime' --eval
-        if: success() || failure()
-        shell: zsh --login --interactive {0}
-      - name: Test fish
-        run: nix-instantiate -E 'builtins.currentTime' --eval
-        if: success() || failure()
-        shell: fish --login {0}
-      - name: Repeated uninstall
-        run: sudo -E /nix/nix-installer uninstall
-        env:
-          NIX_INSTALLER_NO_CONFIRM: true
-          NIX_INSTALLER_LOGGER: pretty
-          NIX_INSTALLER_LOG_DIRECTIVES: nix_installer=debug
-          RUST_BACKTRACE: full
+          if systemctl is-active nix-daemon.service; then
+            echo "nix-daemon.service was still running"
+            exit 1
+          fi
+          if [ -e /nix ]; then
+            echo "/nix exists"
+            exit 1
+          fi
 
-  run-x86_64-linux-release-checks:
-    name: Run x86_64 Linux release checks
-    runs-on: ubuntu-latest
-    needs: [lints, build-x86_64-linux]
-    if: contains(github.ref, 'release-') || contains(github.head_ref, 'release-')
-    permissions:
-      id-token: "write"
-      contents: "read"
+  release-checks:
+    name: Run release checks
+    if: ${{ contains(github.ref, 'release-') || contains(github.head_ref, 'release-') }}
+
+    needs: [build, lints]
+
+    runs-on: ubuntu-24.04
+
+    env:
+      SYSTEM: x86_64-linux
+
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
       - name: Restore Github cache artifacts
         uses: actions/cache/restore@v3
         with:
           path: nix-installer
-          key: x86_64-linux-artifacts-${{ github.sha }}
+          key: ${{ env.SYSTEM }}-artifacts-${{ github.sha }}
+
       - name: Move & set executable
         run: |
           mkdir install-root
           cp nix-installer.sh install-root/nix-installer.sh
-          mv ./nix-installer install-root/nix-installer-x86_64-linux
-          chmod +x install-root/nix-installer-x86_64-linux install-root/nix-installer.sh
+          mv ./nix-installer "install-root/nix-installer-$SYSTEM"
+          chmod +x "install-root/nix-installer-$SYSTEM" install-root/nix-installer.sh
+
       - name: Initial install
-        uses: DeterminateSystems/nix-installer-action@main
+        uses: ./.github/actions/install-nix-action
         with:
-          backtrace: full
-          determinate: true
-          local-root: install-root/
-          log-directives: nix_installer=debug
-          logger: pretty
-      - uses: DeterminateSystems/magic-nix-cache-action@main
-        with:
-          use-gha-cache: false
+          dogfood: true
+          dogfood-path: install-root/
 
       - run: nix flake check -L
       - run: |
