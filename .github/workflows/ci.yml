@@ -195,31 +195,28 @@ jobs:
       - name: echo $PATH
         run: echo "$PATH"
 
-        # FIXME: Better handle running these commands in the `no-init` test case
-      - name: Test `nix` with `$GITHUB_PATH`
-        if: ${{ always() }}
+        # TODO: Find a better way to invoke these commands with `sudo` in the no-init cases
+      - name: Test installation
+        if: ${{ matrix.no-init == '' }}
         run: |
-          ${{ matrix.no-init && 'sudo -i ' || '' }}nix-shell -p hello --command hello
-          ${{ matrix.no-init && 'sudo -i ' || '' }}nix-env --install hello
+          nix-shell -p hello --command hello
+          nix-env --install hello
           hello
-          ${{ matrix.no-init && 'sudo -i ' || '' }}nix-store --gc
-          ${{ matrix.no-init && 'sudo -i ' || '' }}nix-shell -p hello --command hello
-      - name: Test bash
-        run: ${{ matrix.no-init && 'sudo -i ' || '' }}nix-instantiate -E 'builtins.currentTime' --eval
-        if: ${{ always() }}
-        shell: bash --login {0}
-      - name: Test sh
-        run: ${{ matrix.no-init && 'sudo -i ' || '' }}nix-instantiate -E 'builtins.currentTime' --eval
-        if: ${{ always() }}
-        shell: sh -l {0}
-      - name: Test zsh
-        run: ${{ matrix.no-init && 'sudo -i ' || '' }}nix-instantiate -E 'builtins.currentTime' --eval
-        if: ${{ always() }}
-        shell: zsh --login --interactive {0}
-      - name: Test fish
-        run: ${{ matrix.no-init && 'sudo -i ' || '' }}nix-instantiate -E 'builtins.currentTime' --eval
-        if: ${{ always() }}
-        shell: fish --login {0}
+          nix-store --gc
+          nix-shell -p hello --command hello
+
+          /nix/nix-installer self-test
+
+      - name: Test installation (no init)
+        if: ${{ matrix.no-init != '' }}
+        run: |
+          sudo -i nix-shell -p hello --command hello
+          sudo -i nix-env --install hello
+          sudo -i hello
+          sudo -i nix-store --gc
+          sudo -i nix-shell -p hello --command hello
+
+          sudo -E /nix/nix-installer self-test
 
       - name: Repeated uninstall
         run: sudo -E /nix/nix-installer uninstall
