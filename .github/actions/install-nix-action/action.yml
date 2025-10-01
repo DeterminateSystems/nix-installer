@@ -1,0 +1,39 @@
+name: "Install Nix"
+description: "Helper action for installing Nix"
+
+inputs:
+  dogfood:
+    description: "Whether to dogfood the latest version of the installer"
+    default: false
+  dogfood-path:
+    description: "Path to the local `nix-installer` binary root"
+    required: false
+  use-cache:
+    description: "Whether to cache paths in /nix/store"
+    default: true
+  no-init:
+    description: "Whether to install Nix without init system integration"
+    default: false
+
+runs:
+  using: "composite"
+  steps:
+    - uses: DeterminateSystems/nix-installer-action@786fff0690178f1234e4e1fe9b536e94f5433196 # v20
+      with:
+        diagnostic-endpoint: ''
+        determinate: false
+
+        backtrace: ${{ inputs.dogfood == 'true' && 'full' || '' }}
+        local-root: ${{ inputs.dogfood == 'true' && inputs.dogfood-path || '' }}
+        log-directives: ${{ inputs.dogfood == 'true' && 'nix_installer=debug' || '' }}
+        logger: ${{ inputs.dogfood == 'true' && 'pretty' || '' }}
+
+        init: ${{ inputs.no-init == 'true' && 'none' || '' }}
+        planner: ${{ inputs.no-init == 'true' && 'linux' || '' }}
+
+    - uses: DeterminateSystems/magic-nix-cache-action@565684385bcd71bad329742eefe8d12f2e765b39 # v13
+      if: ${{ inputs.use-cache == 'true' }}
+      with:
+        diagnostic-endpoint: ''
+        use-flakehub: false
+        use-gha-cache: true
