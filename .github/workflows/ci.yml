@@ -45,13 +45,18 @@ jobs:
             echo "error: '$RUNNER_OS' is an unsupported operating system"
           fi
           nix build ".#$ATTR" -L
-          cp result/bin/nix-installer .
+
+      - name: Create installer bundle
+        run: |
+          mkdir install-root/
+          cp nix-installer.sh install-root/nix-installer.sh
+          cp result/bin/nix-installer install-root/nix-installer-${{ matrix.system }}
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
           name: nix-installer-${{ matrix.system }}
-          path: nix-installer
+          path: install-root/
 
   lints:
     name: Lints
@@ -112,16 +117,17 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Download artifact
+        id: download-installer
         uses: actions/download-artifact@v5
         with:
           name: nix-installer-${{ matrix.system }}
+          path: install-root/
 
-      - name: Move & set executable
+      - name: Set installer components as executable
+        env:
+          INSTALL_ROOT: ${{ steps.download-installer.outputs.download-path }}
         run: |
-          mkdir install-root
-          cp nix-installer.sh install-root/nix-installer.sh
-          mv ./nix-installer install-root/nix-installer-${{ matrix.system }}
-          chmod +x install-root/nix-installer-${{ matrix.system }} install-root/nix-installer.sh
+          find "$INSTALL_ROOT" -type f -exec chmod +x {} +
 
       - name: Install dependencies
         run: |
@@ -138,7 +144,7 @@ jobs:
         uses: ./.github/actions/install-nix-action
         with:
           dogfood: true
-          dogfood-path: install-root/
+          dogfood-path: ${{ steps.download-installer.outputs.download-path }}
           use-cache: false
           no-init: ${{ matrix.no-init }}
 
@@ -189,7 +195,7 @@ jobs:
         uses: ./.github/actions/install-nix-action
         with:
           dogfood: true
-          dogfood-path: install-root/
+          dogfood-path: ${{ steps.download-installer.outputs.download-path }}
           use-cache: false
           no-init: ${{ matrix.no-init }}
 
@@ -259,22 +265,23 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Restore Github cache artifacts
+        id: download-installer
         uses: actions/download-artifact@v5
         with:
           name: nix-installer-${{ env.SYSTEM }}
+          path: install-root/
 
-      - name: Move & set executable
+      - name: Set installer components as executable
+        env:
+          INSTALL_ROOT: ${{ steps.download-installer.outputs.download-path }}
         run: |
-          mkdir install-root
-          cp nix-installer.sh install-root/nix-installer.sh
-          mv ./nix-installer "install-root/nix-installer-$SYSTEM"
-          chmod +x "install-root/nix-installer-$SYSTEM" install-root/nix-installer.sh
+          find "$INSTALL_ROOT" -type f -exec chmod +x {} +
 
       - name: Initial install
         uses: ./.github/actions/install-nix-action
         with:
           dogfood: true
-          dogfood-path: install-root/
+          dogfood-path: ${{ steps.download-installer.outputs.download-path }}
 
       - run: nix flake check -L
       - run: |
