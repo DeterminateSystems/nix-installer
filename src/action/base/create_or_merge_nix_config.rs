@@ -5,20 +5,22 @@ use std::{
 
 use nix_config_parser::NixConfig;
 use rand::Rng;
-use tokio::{
-    fs::{remove_file, OpenOptions},
-    io::AsyncWriteExt,
-};
+use tokio::{fs::OpenOptions, io::AsyncWriteExt};
 use tracing::{span, Span};
 
-use crate::action::{
-    Action, ActionDescription, ActionError, ActionErrorKind, ActionTag, StatefulAction,
+use crate::{
+    action::{Action, ActionDescription, ActionError, ActionErrorKind, ActionTag, StatefulAction},
+    util::OnMissing,
 };
 
+pub(crate) const TRUSTED_USERS_CONF_NAME: &str = "trusted-users";
+pub(crate) const EXPERIMENTAL_FEATURES_CONF_NAME: &str = "experimental-features";
+pub(crate) const EXTRA_EXPERIMENTAL_FEATURES_CONF_NAME: &str = "extra-experimental-features";
 /// The `nix.conf` configuration names that are safe to merge.
 // FIXME(@cole-h): make configurable by downstream users?
-const MERGEABLE_CONF_NAMES: &[&str] = &["experimental-features"];
-const NIX_CONF_MODE: u32 = 0o664;
+// NOTE(cole-h): evaluate if any additions here need to be handled in PlaceNixConfiguration::setup_extra_config
+const MERGEABLE_CONF_NAMES: &[&str] = &[EXPERIMENTAL_FEATURES_CONF_NAME];
+const NIX_CONF_MODE: u32 = 0o644;
 const NIX_CONF_COMMENT_CHAR: char = '#';
 
 #[non_exhaustive]
@@ -47,6 +49,8 @@ impl From<CreateOrMergeNixConfigError> for ActionErrorKind {
 pub struct CreateOrMergeNixConfig {
     pub(crate) path: PathBuf,
     pending_nix_config: NixConfig,
+    header: String,
+    footer: Option<String>,
 }
 
 impl CreateOrMergeNixConfig {
@@ -54,17 +58,28 @@ impl CreateOrMergeNixConfig {
     pub async fn plan(
         path: impl AsRef<Path>,
         pending_nix_config: NixConfig,
+        header: String,
+        footer: Option<String>,
     ) -> Result<StatefulAction<Self>, ActionError> {
         let path = path.as_ref().to_path_buf();
 
         let this = Self {
             path,
             pending_nix_config,
+            header,
+            footer,
         };
 
         if this.path.exists() {
-            let (merged_nix_config, _) =
-                Self::validate_existing_nix_config(&this.pending_nix_config, &this.path)?;
+            let is_existing_custom_conf =
+                crate::action::common::place_nix_configuration::CUSTOM_NIX_CONFIG_HEADER
+                    == this.header;
+            let (merged_nix_config, _) = Self::validate_nix_config_against_path(
+                &this.pending_nix_config,
+                &this.path,
+                is_existing_custom_conf,
+            )
+            .await?;
 
             if !merged_nix_config.settings().is_empty() {
                 return Ok(StatefulAction::uncompleted(this));
@@ -134,11 +149,12 @@ impl CreateOrMergeNixConfig {
         Ok((merged_nix_config, existing_nix_config.clone()))
     }
 
-    fn validate_existing_nix_config(
+    async fn validate_nix_config_against_path(
         pending_nix_config: &NixConfig,
-        path: &Path,
+        existing_config_file: &Path,
+        is_existing_custom_conf: bool,
     ) -> Result<(NixConfig, NixConfig), ActionError> {
-        let path = path.to_path_buf();
+        let path = existing_config_file.to_path_buf();
         let metadata = path
             .metadata()
             .map_err(|e| Self::error(ActionErrorKind::GettingMetadata(path.clone(), e)))?;
@@ -147,20 +163,13 @@ impl CreateOrMergeNixConfig {
             return Err(Self::error(ActionErrorKind::PathWasNotFile(path)));
         }
 
-        // Does the file have the right permissions?
-        let discovered_mode = metadata.permissions().mode();
-        // We only care about user-group-other permissions
-        let discovered_mode = discovered_mode & 0o777;
+        let parse_ret = if is_existing_custom_conf {
+            Self::maybe_comment_out_invalid_conf(&path).await?
+        } else {
+            NixConfig::parse_file(&path)
+        };
 
-        if discovered_mode != NIX_CONF_MODE {
-            return Err(Self::error(ActionErrorKind::PathModeMismatch(
-                path,
-                discovered_mode,
-                NIX_CONF_MODE,
-            )));
-        }
-
-        let existing_nix_config = NixConfig::parse_file(&path)
+        let existing_nix_config = parse_ret
             .map_err(CreateOrMergeNixConfigError::ParseNixConfig)
             .map_err(Self::error)?;
 
@@ -173,6 +182,43 @@ impl CreateOrMergeNixConfig {
 
         Ok((merged_nix_config, existing_nix_config))
     }
+
+    async fn maybe_comment_out_invalid_conf(
+        path: &Path,
+    ) -> Result<Result<NixConfig, nix_config_parser::ParseError>, ActionError> {
+        let contents = tokio::fs::read_to_string(path)
+            .await
+            .map_err(|e| ActionErrorKind::Read(path.to_path_buf(), e))
+            .map_err(Self::error)?;
+        let mut lines = contents
+            .lines()
+            .map(str::trim)
+            .map(String::from)
+            .collect::<Vec<_>>();
+        lines.push(String::new());
+
+        let parse_ret = loop {
+            let parse_ret = NixConfig::parse_string(lines.join("\n"), Some(path));
+
+            if let Err(nix_config_parser::ParseError::IllegalConfiguration(bad_line, _)) = parse_ret
+            {
+                for line in lines.iter_mut() {
+                    if *line == bad_line {
+                        line.insert_str(0, "# ");
+                        break;
+                    }
+                }
+            } else {
+                break parse_ret;
+            }
+        };
+
+        crate::util::write_atomic(path, &lines.join("\n"))
+            .await
+            .map_err(Self::error)?;
+
+        Ok(parse_ret)
+    }
 }
 
 #[async_trait::async_trait]
@@ -183,7 +229,7 @@ impl Action for CreateOrMergeNixConfig {
     }
     fn tracing_synopsis(&self) -> String {
         format!(
-            "Merge or create nix.conf file `{path}`",
+            "Merge or create Nix configuration file `{path}`",
             path = self.path.display(),
         )
     }
@@ -229,16 +275,11 @@ impl Action for CreateOrMergeNixConfig {
 
     #[tracing::instrument(level = "debug", skip_all)]
     async fn execute(&mut self) -> Result<(), ActionError> {
-        let Self {
-            path,
-            pending_nix_config,
-        } = self;
-
         if tracing::enabled!(tracing::Level::TRACE) {
             let span = tracing::Span::current();
             span.record(
                 "pending_nix_config",
-                pending_nix_config
+                self.pending_nix_config
                     .settings()
                     .iter()
                     .map(|(k, v)| format!("{k}='{v}'"))
@@ -250,7 +291,7 @@ impl Action for CreateOrMergeNixConfig {
         // Create a temporary file in the same directory as the one
         // that the final file goes in, so that we can rename it
         // atomically
-        let parent_dir = path.parent().expect("File must be in a directory");
+        let parent_dir = self.path.parent().expect("File must be in a directory");
         let mut temp_file_path = parent_dir.to_owned();
         {
             let mut rng = rand::thread_rng();
@@ -272,20 +313,21 @@ impl Action for CreateOrMergeNixConfig {
                 Self::error(ActionErrorKind::Open(temp_file_path.clone(), e))
             })?;
 
-        let (mut merged_nix_config, mut existing_nix_config) = if path.exists() {
+        let (mut merged_nix_config, mut existing_nix_config) = if self.path.exists() {
             let (merged_nix_config, existing_nix_config) =
-                Self::validate_existing_nix_config(pending_nix_config, path)?;
+                Self::validate_nix_config_against_path(&self.pending_nix_config, &self.path, false)
+                    .await?;
             (merged_nix_config, Some(existing_nix_config))
         } else {
-            (pending_nix_config.clone(), None)
+            (self.pending_nix_config.clone(), None)
         };
 
         let mut new_config = String::new();
 
         if let Some(existing_nix_config) = existing_nix_config.as_mut() {
-            let mut discovered_buf = tokio::fs::read_to_string(&path)
+            let mut discovered_buf = tokio::fs::read_to_string(&self.path)
                 .await
-                .map_err(|e| Self::error(ActionErrorKind::Read(path.to_path_buf(), e)))?;
+                .map_err(|e| Self::error(ActionErrorKind::Read(self.path.to_path_buf(), e)))?;
 
             // We append a newline to ensure that, in the case there are comments at the end of the
             // file and _NO_ trailing newline, we still preserve the entire block of comments.
@@ -410,15 +452,19 @@ impl Action for CreateOrMergeNixConfig {
             new_config.push('\n');
         }
 
-        new_config
-            .push_str("# Generated by https://github.com/NixOS/experimental-nix-installer.\n");
-        new_config.push_str("# See `/nix/nix-installer --version` for the version details.\n");
+        new_config.push_str(&self.header);
         new_config.push('\n');
 
         for (name, value) in merged_nix_config.settings() {
             new_config.push_str(name);
             new_config.push_str(" = ");
             new_config.push_str(value);
+            new_config.push('\n');
+        }
+
+        if let Some(footer) = &self.footer {
+            new_config.push('\n');
+            new_config.push_str(footer);
             new_config.push('\n');
         }
 
@@ -431,7 +477,7 @@ impl Action for CreateOrMergeNixConfig {
             .map_err(|e| {
                 Self::error(ActionErrorKind::SetPermissions(
                     NIX_CONF_MODE,
-                    path.to_owned(),
+                    self.path.to_owned(),
                     e,
                 ))
             })?;
@@ -439,12 +485,12 @@ impl Action for CreateOrMergeNixConfig {
             .sync_all()
             .await
             .map_err(|e| Self::error(ActionErrorKind::Sync(temp_file_path.clone(), e)))?;
-        tokio::fs::rename(&temp_file_path, &path)
+        tokio::fs::rename(&temp_file_path, &self.path)
             .await
             .map_err(|e| {
                 Self::error(ActionErrorKind::Rename(
                     temp_file_path.to_owned(),
-                    path.to_owned(),
+                    self.path.to_owned(),
                     e,
                 ))
             })?;
@@ -453,27 +499,17 @@ impl Action for CreateOrMergeNixConfig {
     }
 
     fn revert_description(&self) -> Vec<ActionDescription> {
-        let Self {
-            path,
-            pending_nix_config: _,
-        } = &self;
-
         vec![ActionDescription::new(
-            format!("Delete file `{}`", path.display()),
-            vec![format!("Delete file `{}`", path.display())],
+            format!("Delete file `{}`", self.path.display()),
+            vec![format!("Delete file `{}`", self.path.display())],
         )]
     }
 
     #[tracing::instrument(level = "debug", skip_all)]
     async fn revert(&mut self) -> Result<(), ActionError> {
-        let Self {
-            path,
-            pending_nix_config: _,
-        } = self;
-
-        remove_file(&path)
+        crate::util::remove_file(&self.path, OnMissing::Ignore)
             .await
-            .map_err(|e| Self::error(ActionErrorKind::Remove(path.to_owned(), e)))?;
+            .map_err(|e| Self::error(ActionErrorKind::Remove(self.path.to_owned(), e)))?;
 
         Ok(())
     }
@@ -493,13 +529,21 @@ mod test {
         nix_config
             .settings_mut()
             .insert("experimental-features".into(), "ca-references".into());
-        let mut action = CreateOrMergeNixConfig::plan(&test_file, nix_config).await?;
+        let mut action = CreateOrMergeNixConfig::plan(
+            &test_file,
+            nix_config,
+            "# Generated by".to_string(),
+            Some("# opa".into()),
+        )
+        .await?;
 
         action.try_execute().await?;
 
         let s = std::fs::read_to_string(&test_file)?;
         assert!(s.contains("# Generated by"));
         assert!(s.contains("ca-references"));
+
+        assert!(s.contains("# opa"));
         assert!(NixConfig::parse_file(&test_file).is_ok());
 
         action.try_revert().await?;
@@ -519,7 +563,13 @@ mod test {
         nix_config
             .settings_mut()
             .insert("experimental-features".into(), "ca-references".into());
-        let mut action = CreateOrMergeNixConfig::plan(&test_file, nix_config).await?;
+        let mut action = CreateOrMergeNixConfig::plan(
+            &test_file,
+            nix_config,
+            "# Generated by".to_string(),
+            None,
+        )
+        .await?;
 
         action.try_execute().await?;
 
@@ -547,7 +597,13 @@ mod test {
         nix_config
             .settings_mut()
             .insert("experimental-features".into(), "flakes".into());
-        let mut action = CreateOrMergeNixConfig::plan(&test_file, nix_config).await?;
+        let mut action = CreateOrMergeNixConfig::plan(
+            &test_file,
+            nix_config,
+            "# Generated by".to_string(),
+            None,
+        )
+        .await?;
 
         action.try_execute().await?;
 
@@ -579,7 +635,13 @@ mod test {
         nix_config
             .settings_mut()
             .insert("allow-dirty".into(), "false".into());
-        let mut action = CreateOrMergeNixConfig::plan(&test_file, nix_config).await?;
+        let mut action = CreateOrMergeNixConfig::plan(
+            &test_file,
+            nix_config,
+            "# Generated by".to_string(),
+            None,
+        )
+        .await?;
 
         action.try_execute().await?;
 
@@ -624,7 +686,7 @@ mod test {
         nix_config
             .settings_mut()
             .insert("warn-dirty".into(), "false".into());
-        match CreateOrMergeNixConfig::plan(&test_file, nix_config).await {
+        match CreateOrMergeNixConfig::plan(&test_file, nix_config, "".to_string(), None).await {
             Err(err) => {
                 if let ActionErrorKind::Custom(e) = err.kind() {
                     match e.downcast_ref::<CreateOrMergeNixConfigError>() {
@@ -666,7 +728,13 @@ mod test {
         nix_config
             .settings_mut()
             .insert("experimental-features".into(), "ca-references".into());
-        let mut action = CreateOrMergeNixConfig::plan(&test_file, nix_config).await?;
+        let mut action = CreateOrMergeNixConfig::plan(
+            &test_file,
+            nix_config,
+            "# Generated by".to_string(),
+            None,
+        )
+        .await?;
 
         action.try_execute().await?;
 
@@ -698,7 +766,13 @@ mod test {
         nix_config
             .settings_mut()
             .insert("experimental-features".into(), "ca-references".into());
-        let mut action = CreateOrMergeNixConfig::plan(&test_file, nix_config).await?;
+        let mut action = CreateOrMergeNixConfig::plan(
+            &test_file,
+            nix_config,
+            "# Generated by".to_string(),
+            None,
+        )
+        .await?;
 
         action.try_execute().await?;
 

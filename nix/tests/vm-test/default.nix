@@ -192,6 +192,20 @@ let
       uninstall = installCases.install-default.uninstall;
       uninstallCheck = installCases.install-default.uninstallCheck;
     };
+    install-invalid-custom-conf = {
+      preinstall = ''
+        sudo mkdir -p /etc/nix
+        sudo touch /etc/nix/nix.custom.conf
+        sudo chmod 777 /etc/nix/nix.custom.conf
+        echo "foobar" > /etc/nix/nix.custom.conf
+      '';
+      install = installCases.install-default.install;
+      check = installCases.install-default.check + ''
+        grep --quiet "^# foobar" /etc/nix/nix.custom.conf
+      '';
+      uninstall = installCases.install-default.uninstall;
+      uninstallCheck = installCases.install-default.uninstallCheck;
+    };
     install-determinate = {
       install = nix-installer-install-determinate;
       check = ''

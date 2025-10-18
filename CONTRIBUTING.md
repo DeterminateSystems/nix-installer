@@ -36,7 +36,7 @@ If you're hacking on `experimental-nix-installer`, you likely already have Nix a
 
 > That's probably a good thing! You should test in a sandbox.
 
-Automated [`qemu` tests][#qemu-vm-tests] exist and should be preferred for oneshot testing of changes.
+Automated [`qemu` tests](#qemu-vm-tests) exist and should be preferred for oneshot testing of changes.
 
 For interactive testing, tools like [`libvirt`](https://libvirt.org/) via [`virt-manager`](https://virt-manager.org/) or [`vagrant`](https://www.vagrantup.com/) can be used to spin up machines and run experiments.
 
@@ -257,9 +257,23 @@ You can also remove your `$HOME/nix-installer-wsl-tests-temp` folder whenever yo
 
 # Releases
 
+> [!NOTE]
+> The documentation below describes a process that used to be mostly manual, and is now driven externally.
+> The material below is generally kept up to date for documentation, manual releases, and external use purposes.
+> Determinate Systems employees, consult the internal release documentation for more details: https://www.notion.so/14553fe7e1dd809eb80affb37228a7c8.
+
 This package uses [Semantic Versioning](https://semver.org/). When determining the version number for a new release refer to Semantic Versioning for guidance. You can use the `check-semver` command alias from within the development environment to validate your changes don't break semver.
 
-To cut a release:
+To cut a release, run the GitHub Actions workflow `propose-release.yml`.
+Specify these parameters:
+
+- reference-id: provide a fresh UUID
+- version: in the `X.Y.Z` format.
+  No leading `v`.
+- nix-version: The version of Nix to use in the flake.nix, in the format of `X.Y.Z`.
+  No leading `v`.
+
+This will:
 
 - Create a release branch from `main` (`git checkout -b release-v0.0.1`)
   - Release PRs should not contain any installer-related changes which require review
@@ -267,17 +281,17 @@ To cut a release:
   - `nix flake update --commit-lock-file`
   - `cargo update --aggressive`
   - `cargo outdated --ignore-external-rel --aggressive`
-- Ensure the VM / container tests still pass with the following:
-  - NOTE: At time of writing, these are run in CI on release branches
+- Update the versions in the fixture data in `test/fixtures/**/*.json`
+- Open a pull request, where the GitHub Actions will run these tests:
+
   - `nix flake check -L`
   - `nix build .#hydraJobs.container-test.all.x86_64-linux.all -L -j 6`
   - `nix build .#hydraJobs.vm-test.all.x86_64-linux.all -L -j 6`
-- Push the branch, create a PR ("Release v0.0.1")
-- Once the PR tests pass and it has been reviewed, merge it
-- Checkout the `main` branch and `git pull`
-- Prepare a draft release that creates the new tag on publish
-  - Create a changelog following the format of the last release
-- Undraft the release
+
+- Once the PR tests pass and it has been reviewed, merge it.
+
+- Create a release / new tag named `vX.Y.Z`
+  - Generate a changelog using the GitHub "make a changelog" button
 - CI will produce artifacts and upload them to the release
 - Once you are certain the release is good, `cargo publish` it
   - **Warning:** While you can re-release Github releases, it is not possible to do the same on `crates.io`

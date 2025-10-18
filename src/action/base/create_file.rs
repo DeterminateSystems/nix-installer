@@ -6,12 +6,13 @@ use std::{
     path::{Path, PathBuf},
 };
 use tokio::{
-    fs::{remove_file, File, OpenOptions},
+    fs::{File, OpenOptions},
     io::{AsyncReadExt, AsyncWriteExt},
 };
 
-use crate::action::{
-    Action, ActionDescription, ActionError, ActionErrorKind, ActionTag, StatefulAction,
+use crate::{
+    action::{Action, ActionDescription, ActionError, ActionErrorKind, ActionTag, StatefulAction},
+    util::OnMissing,
 };
 
 /** Create a file at the given location with the provided `buf`,
@@ -258,12 +259,8 @@ impl Action for CreateFile {
             buf: _,
             force: _,
         } = self;
-        // The user already deleted it
-        if !path.exists() {
-            return Ok(());
-        }
 
-        remove_file(&path)
+        crate::util::remove_file(path, OnMissing::Ignore)
             .await
             .map_err(|e| ActionErrorKind::Remove(path.to_owned(), e))
             .map_err(Self::error)?;

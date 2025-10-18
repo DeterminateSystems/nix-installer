@@ -1,15 +1,13 @@
 use serde::{Deserialize, Serialize};
 use tracing::{span, Span};
 
-use std::path::PathBuf;
-use tokio::{
-    fs::{remove_file, OpenOptions},
-    io::AsyncWriteExt,
-    process::Command,
-};
+use std::{path::PathBuf, process::Stdio};
+use tokio::{fs::OpenOptions, io::AsyncWriteExt, process::Command};
 
-use crate::action::{
-    Action, ActionDescription, ActionError, ActionErrorKind, ActionTag, StatefulAction,
+use crate::{
+    action::{Action, ActionDescription, ActionError, ActionErrorKind, ActionTag, StatefulAction},
+    execute_command,
+    util::OnMissing,
 };
 
 use super::DARWIN_LAUNCHD_DOMAIN;
@@ -37,26 +35,24 @@ impl CreateNixHookService {
 
         // If the service is currently loaded or running, we need to unload it during execute (since we will then recreate it and reload it)
         // This `launchctl` command may fail if the service isn't loaded
-        let mut check_loaded_command = Command::new("launchctl");
-        check_loaded_command.process_group(0);
-        check_loaded_command.arg("print");
-        check_loaded_command.arg(format!("system/{}", this.service_label));
-        tracing::trace!(
-            command = format!("{:?}", check_loaded_command.as_std()),
-            "Executing"
-        );
-        let check_loaded_output = check_loaded_command
-            .output()
-            .await
-            .map_err(|e| ActionErrorKind::command(&check_loaded_command, e))
-            .map_err(Self::error)?;
-        this.needs_bootout = check_loaded_output.status.success();
-        if this.needs_bootout {
+        let check_loaded = execute_command(
+            Command::new("launchctl")
+                .arg("print")
+                .arg(format!("{DARWIN_LAUNCHD_DOMAIN}/{}", this.service_label))
+                .stdin(Stdio::null())
+                .stdout(Stdio::null())
+                .stderr(Stdio::null()),
+        )
+        .await
+        .ok();
+
+        if check_loaded.is_some() {
             tracing::debug!(
                 "Detected loaded service `{}` which needs unload before replacing `{}`",
                 this.service_label,
                 this.path.display(),
             );
+            this.needs_bootout = true;
         }
 
         if this.path.exists() {
@@ -127,7 +123,7 @@ impl Action for CreateNixHookService {
         } = self;
 
         if *needs_bootout {
-            crate::action::macos::retry_bootout(DARWIN_LAUNCHD_DOMAIN, service_label, path)
+            crate::action::macos::retry_bootout(DARWIN_LAUNCHD_DOMAIN, service_label)
                 .await
                 .map_err(Self::error)?;
         }
@@ -160,7 +156,7 @@ impl Action for CreateNixHookService {
 
     #[tracing::instrument(level = "debug", skip_all)]
     async fn revert(&mut self) -> Result<(), ActionError> {
-        remove_file(&self.path)
+        crate::util::remove_file(&self.path, OnMissing::Ignore)
             .await
             .map_err(|e| Self::error(ActionErrorKind::Remove(self.path.to_owned(), e)))?;
 

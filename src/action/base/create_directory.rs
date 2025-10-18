@@ -4,13 +4,13 @@ use std::path::{Path, PathBuf};
 use nix::unistd::{chown, Group, User};
 
 use target_lexicon::OperatingSystem;
-use tokio::fs::{create_dir_all, remove_dir_all, remove_file};
 use tokio::process::Command;
 use tracing::{span, Span};
 
 use crate::action::{Action, ActionDescription, ActionErrorKind, ActionState};
 use crate::action::{ActionError, StatefulAction};
 use crate::execute_command;
+use crate::util::OnMissing;
 
 /** Create a directory at the given location, optionally with an owning user, group, and mode.
 
@@ -20,12 +20,12 @@ If `force_prune_on_revert` is set, the folder will always be deleted on
 #[derive(Debug, serde::Deserialize, serde::Serialize, Clone)]
 #[serde(tag = "action_name", rename = "create_directory")]
 pub struct CreateDirectory {
-    path: PathBuf,
-    user: Option<String>,
-    group: Option<String>,
-    mode: Option<u32>,
-    is_mountpoint: bool,
-    force_prune_on_revert: bool,
+    pub(crate) path: PathBuf,
+    pub(crate) user: Option<String>,
+    pub(crate) group: Option<String>,
+    pub(crate) mode: Option<u32>,
+    pub(crate) is_mountpoint: bool,
+    pub(crate) force_prune_on_revert: bool,
 }
 
 impl CreateDirectory {
@@ -184,7 +184,7 @@ impl Action for CreateDirectory {
             None
         };
 
-        create_dir_all(&path)
+        tokio::fs::create_dir_all(&path)
             .await
             .map_err(|e| ActionErrorKind::CreateDirectory(path.clone(), e))
             .map_err(Self::error)?;
@@ -263,12 +263,12 @@ impl Action for CreateDirectory {
                         .map_err(|e| ActionErrorKind::GettingMetadata(child_path_path.clone(), e))
                         .map_err(Self::error)?;
                     if child_path_type.is_dir() {
-                        remove_dir_all(child_path_path.clone())
+                        crate::util::remove_dir_all(&child_path_path, OnMissing::Error)
                             .await
                             .map_err(|e| ActionErrorKind::Remove(path.clone(), e))
                             .map_err(Self::error)?
                     } else {
-                        remove_file(child_path_path)
+                        crate::util::remove_file(&child_path_path, OnMissing::Error)
                             .await
                             .map_err(|e| ActionErrorKind::Remove(path.clone(), e))
                             .map_err(Self::error)?
@@ -278,10 +278,12 @@ impl Action for CreateDirectory {
             (true, _, false) => {
                 tracing::debug!("Not cleaning mountpoint `{}`", path.display());
             },
-            (false, true, _) | (false, false, true) => remove_dir_all(path.clone())
-                .await
-                .map_err(|e| ActionErrorKind::Remove(path.clone(), e))
-                .map_err(Self::error)?,
+            (false, true, _) | (false, false, true) => {
+                crate::util::remove_dir_all(path, OnMissing::Error)
+                    .await
+                    .map_err(|e| ActionErrorKind::Remove(path.clone(), e))
+                    .map_err(Self::error)?
+            },
             (false, false, false) => {
                 tracing::debug!("Not removing `{}`, the folder is not empty", path.display());
             },

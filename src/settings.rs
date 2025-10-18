@@ -7,29 +7,13 @@ use clap::{
     error::{ContextKind, ContextValue},
     ArgAction,
 };
-use indexmap::map::Entry;
 use url::Url;
+
+use crate::distribution::Distribution;
 
 pub const SCRATCH_DIR: &str = "/nix/temp-install-dir";
 
-pub const NIX_TARBALL_PATH: &str = env!("NIX_INSTALLER_TARBALL_PATH");
-/// The NIX_INSTALLER_TARBALL_PATH environment variable should point to a target-appropriate
-/// Nix installation tarball, like nix-2.21.2-aarch64-darwin.tar.xz. The contents are embedded
-/// in the resulting binary.
-pub const NIX_TARBALL: &[u8] = include_bytes!(env!("NIX_INSTALLER_TARBALL_PATH"));
-
-#[cfg(feature = "determinate-nix")]
-/// The DETERMINATE_NIXD_BINARY_PATH environment variable should point to a target-appropriate
-/// static build of the Determinate Nixd binary. The contents are embedded in the resulting
-/// binary if the determinate-nix feature is turned on.
-pub const DETERMINATE_NIXD_BINARY: Option<&[u8]> =
-    Some(include_bytes!(env!("DETERMINATE_NIXD_BINARY_PATH")));
-
-#[cfg(not(feature = "determinate-nix"))]
-/// The DETERMINATE_NIXD_BINARY_PATH environment variable should point to a target-appropriate
-/// static build of the Determinate Nixd binary. The contents are embedded in the resulting
-/// binary if the determinate-nix feature is turned on.
-pub const DETERMINATE_NIXD_BINARY: Option<&[u8]> = None;
+pub const DEFAULT_NIX_BUILD_USER_GROUP_NAME: &str = "nixbld";
 
 #[derive(Debug, serde::Deserialize, serde::Serialize, Clone, Copy, PartialEq, Eq)]
 #[cfg_attr(feature = "cli", derive(clap::ValueEnum))]
@@ -71,6 +55,18 @@ pub struct CommonSettings {
     )]
     pub determinate_nix: bool,
 
+    /// Prefer installing upstream Nix if possible when run in an automated context.
+    #[cfg_attr(
+        feature = "cli",
+        clap(
+            long = "prefer-upstream-nix",
+            env = "NIX_INSTALLER_PREFER_UPSTREAM_NIX",
+            // Note this default is replicated in a default() implementation
+            default_value = "true"
+        )
+    )]
+    pub prefer_upstream: bool,
+
     /// Modify the user profile to automatically load Nix
     #[cfg_attr(
         feature = "cli",
@@ -89,7 +85,7 @@ pub struct CommonSettings {
         feature = "cli",
         clap(
             long,
-            default_value = "nixbld",
+            default_value = crate::settings::DEFAULT_NIX_BUILD_USER_GROUP_NAME,
             env = "NIX_INSTALLER_NIX_BUILD_GROUP_NAME",
             global = true
         )
@@ -158,12 +154,9 @@ pub struct CommonSettings {
     )]
     pub nix_package_url: Option<UrlOrPath>,
 
-    /// The proxy to use (if any); valid proxy bases are `https://$URL`, `http://$URL` and `socks5://$URL`
-    #[cfg_attr(feature = "cli", clap(long, env = "NIX_INSTALLER_PROXY"))]
+    #[clap(from_global)]
     pub proxy: Option<Url>,
-
-    /// An SSL cert to use (if any); used for fetching Nix and sets `ssl-cert-file` in `/etc/nix/nix.conf`
-    #[cfg_attr(feature = "cli", clap(long, env = "NIX_INSTALLER_SSL_CERT_FILE"))]
+    #[clap(from_global)]
     pub ssl_cert_file: Option<PathBuf>,
 
     /// Extra configuration lines for `/etc/nix.conf`
@@ -182,6 +175,20 @@ pub struct CommonSettings {
         )
     )]
     pub force: bool,
+
+    /// If `nix-installer` should skip creating `/etc/nix/nix.conf`
+    #[cfg_attr(
+        feature = "cli",
+        clap(
+            long,
+            action(ArgAction::SetTrue),
+            default_value = "false",
+            global = true,
+            env = "NIX_INSTALLER_SKIP_NIX_CONF",
+            conflicts_with = "extra_conf",
+        )
+    )]
+    pub skip_nix_conf: bool,
 
     #[cfg(feature = "diagnostics")]
     /// Relate the install diagnostic to a specific value
@@ -221,7 +228,7 @@ pub struct CommonSettings {
         global = true,
         value_parser = crate::diagnostics::diagnostic_endpoint_validator,
         num_args = 0..=1, // Required to allow `--diagnostic-endpoint` or `NIX_INSTALLER_DIAGNOSTIC_ENDPOINT=""`
-        default_value = "https://install.determinate.systems/nix/diagnostic"
+        default_value = ""
     )]
     pub diagnostic_endpoint: Option<String>,
 
@@ -290,8 +297,9 @@ impl CommonSettings {
 
         Ok(Self {
             determinate_nix: false,
+            prefer_upstream: true,
             modify_profile: true,
-            nix_build_group_name: String::from("nixbld"),
+            nix_build_group_name: String::from(crate::settings::DEFAULT_NIX_BUILD_USER_GROUP_NAME),
             nix_build_group_id: default_nix_build_group_id(),
             nix_build_user_id_base: default_nix_build_user_id_base(),
             nix_build_user_count: 32,
@@ -300,11 +308,8 @@ impl CommonSettings {
             proxy: Default::default(),
             extra_conf: Default::default(),
             force: false,
+            skip_nix_conf: false,
             ssl_cert_file: Default::default(),
-            #[cfg(feature = "diagnostics")]
-            diagnostic_attribution: None,
-            #[cfg(feature = "diagnostics")]
-            diagnostic_endpoint: Some("https://install.determinate.systems/nix/diagnostic".into()),
             add_channel: false,
         })
     }
@@ -313,6 +318,7 @@ impl CommonSettings {
     pub fn settings(&self) -> Result<HashMap<String, serde_json::Value>, InstallSettingsError> {
         let Self {
             determinate_nix,
+            prefer_upstream,
             modify_profile,
             nix_build_group_name,
             nix_build_group_id,
@@ -323,11 +329,12 @@ impl CommonSettings {
             proxy,
             extra_conf,
             force,
+            skip_nix_conf,
             ssl_cert_file,
             #[cfg(feature = "diagnostics")]
                 diagnostic_attribution: _,
             #[cfg(feature = "diagnostics")]
-            diagnostic_endpoint,
+            diagnostic_endpoint: _,
             add_channel,
         } = self;
         let mut map = HashMap::default();
@@ -335,6 +342,10 @@ impl CommonSettings {
         map.insert(
             "determinate_nix".into(),
             serde_json::to_value(determinate_nix)?,
+        );
+        map.insert(
+            "prefer_upstream".into(),
+            serde_json::to_value(prefer_upstream)?,
         );
         map.insert(
             "modify_profile".into(),
@@ -368,16 +379,22 @@ impl CommonSettings {
         map.insert("ssl_cert_file".into(), serde_json::to_value(ssl_cert_file)?);
         map.insert("extra_conf".into(), serde_json::to_value(extra_conf)?);
         map.insert("force".into(), serde_json::to_value(force)?);
-
-        #[cfg(feature = "diagnostics")]
-        map.insert(
-            "diagnostic_endpoint".into(),
-            serde_json::to_value(diagnostic_endpoint)?,
-        );
+        map.insert("skip_nix_conf".into(), serde_json::to_value(skip_nix_conf)?);
 
         map.insert("add_channel".into(), serde_json::to_value(add_channel)?);
 
         Ok(map)
+    }
+
+    pub fn distribution(&self) -> Distribution {
+        if self.determinate_nix {
+            Distribution::DeterminateNix
+        } else if self.prefer_upstream {
+            // If the user passed --prefer-upstream (or it defaults to true), default back to Nix
+            Distribution::Nix
+        } else {
+            Distribution::DeterminateNix
+        }
     }
 }
 
@@ -707,29 +724,4 @@ mod tests {
         );
         Ok(())
     }
-}
-
-pub fn determinate_nix_settings() -> nix_config_parser::NixConfig {
-    let mut cfg = nix_config_parser::NixConfig::new();
-    let settings = cfg.settings_mut();
-
-    settings.insert("netrc-file".into(), "/nix/var/determinate/netrc".into());
-
-    let extra_substituters = ["https://cache.flakehub.com"];
-    match settings.entry("extra-substituters".to_string()) {
-        Entry::Occupied(mut slot) => {
-            let slot_mut = slot.get_mut();
-            for extra_substituter in extra_substituters {
-                if !slot_mut.contains(extra_substituter) {
-                    *slot_mut += " ";
-                    *slot_mut += extra_substituter;
-                }
-            }
-        },
-        Entry::Vacant(slot) => {
-            let _ = slot.insert(extra_substituters.join(" "));
-        },
-    };
-
-    cfg
 }

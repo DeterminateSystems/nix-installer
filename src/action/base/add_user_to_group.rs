@@ -93,6 +93,7 @@ impl AddUserToGroup {
                         .await
                         .map_err(|e| ActionErrorKind::command(&command, e))
                         .map_err(Self::error)?;
+                    let stderr = String::from_utf8_lossy(&output.stderr);
                     match output.status.code() {
                         Some(0) => {
                             // yes {user} is a member of {groupname}
@@ -104,14 +105,26 @@ impl AddUserToGroup {
                             );
                             return Ok(StatefulAction::completed(this));
                         },
-                        Some(64) => {
-                            // 64 is the exit code for "Group not found"
+                        // 64 is the exit code for "Group not found" or "Unable to find the user
+                        // record", so we have to disambiguate by checking stderr for this string
+                        Some(64) if stderr.contains("Group not found") => {
                             tracing::trace!(
                                 "Will add user `{}` to newly created group `{}`",
                                 this.name,
                                 this.groupname
                             );
                             // The group will be created by the installer
+                        },
+                        Some(67) => {
+                            // 67 is the exit code for "user is not a member of the group", i.e.:
+                            //
+                            //     no _nixbld1 is NOT a member of nixbld
+                            tracing::trace!(
+                                "Will add existing user `{}` to existing group `{}`",
+                                this.name,
+                                this.groupname
+                            );
+                            // The user will be added to this group
                         },
                         _ => {
                             // Some other issue
@@ -211,8 +224,6 @@ impl Action for AddUserToGroup {
                         .process_group(0)
                         .args(["-o", "edit"])
                         .arg("-a")
-                        .arg(&self.name)
-                        .arg("-t")
                         .arg(&self.name)
                         .arg(&self.groupname)
                         .stdin(std::process::Stdio::null()),

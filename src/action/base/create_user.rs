@@ -1,3 +1,5 @@
+use std::os::unix::process::ExitStatusExt;
+
 use nix::unistd::User;
 use target_lexicon::OperatingSystem;
 use tokio::process::Command;
@@ -7,6 +9,9 @@ use crate::action::{ActionError, ActionErrorKind, ActionTag};
 use crate::execute_command;
 
 use crate::action::{Action, ActionDescription, StatefulAction};
+
+static WARNED_USER_HIDDEN: std::sync::atomic::AtomicBool =
+    std::sync::atomic::AtomicBool::new(false);
 
 /**
 Create an operating system level user in the given group
@@ -239,74 +244,117 @@ impl Action for CreateUser {
     }
 }
 
+#[tracing::instrument]
+async fn execute_dscl_retry_on_specific_errors(dscl_args: &[&str]) -> Result<(), ActionErrorKind> {
+    let mut retry_tokens: usize = 10;
+    loop {
+        let mut command = Command::new("/usr/bin/dscl");
+        command.process_group(0);
+        command.args(dscl_args);
+        command.stdin(std::process::Stdio::null());
+        tracing::debug!(%retry_tokens, command = ?command.as_std(), "Waiting for user create/update to succeed");
+
+        let output = command
+            .output()
+            .await
+            .map_err(|e| ActionErrorKind::command(&command, e))?;
+        let stderr = String::from_utf8_lossy(&output.stderr);
+
+        if output.status.success() {
+            tracing::trace!(
+                stderr = %stderr,
+                stdout = %String::from_utf8_lossy(&output.stdout),
+                "Command success"
+            );
+            break;
+        } else if retry_tokens == 0 {
+            return Err(ActionErrorKind::command_output(&command, output))?;
+        } else {
+            if output.status.code() == Some(140) && stderr.contains("-14988 (eNotYetImplemented)") {
+                // Retry due to buggy macOS user behavior?
+                // https://github.com/DeterminateSystems/nix-installer/issues/1300
+                // https://github.com/ansible/ansible/issues/73505
+            } else if output.status.signal() == Some(9) {
+                // If the command was SIGKILLed, let's retry and hope it doesn't happen again.
+            } else {
+                // If the command failed for a reason that we weren't "expecting", return that as an
+                // error.
+                return Err(ActionErrorKind::command_output(&command, output));
+            }
+
+            retry_tokens = retry_tokens.saturating_sub(1);
+        }
+
+        tokio::time::sleep(std::time::Duration::from_millis(500)).await;
+    }
+
+    Ok(())
+}
+
 #[tracing::instrument(level = "debug", skip_all)]
 async fn create_user_macos(name: &str, uid: u32, gid: u32) -> Result<(), ActionErrorKind> {
-    execute_command(
-        Command::new("/usr/bin/dscl")
-            .process_group(0)
-            .args([".", "-create", &format!("/Users/{name}")])
-            .stdin(std::process::Stdio::null()),
-    )
+    execute_dscl_retry_on_specific_errors(&[".", "-create", &format!("/Users/{name}")]).await?;
+
+    execute_dscl_retry_on_specific_errors(&[
+        ".",
+        "-create",
+        &format!("/Users/{name}"),
+        "UniqueID",
+        &format!("{uid}"),
+    ])
     .await?;
-    execute_command(
-        Command::new("/usr/bin/dscl")
-            .process_group(0)
-            .args([
-                ".",
-                "-create",
-                &format!("/Users/{name}"),
-                "UniqueID",
-                &format!("{uid}"),
-            ])
-            .stdin(std::process::Stdio::null()),
-    )
+    execute_dscl_retry_on_specific_errors(&[
+        ".",
+        "-create",
+        &format!("/Users/{name}"),
+        "PrimaryGroupID",
+        &format!("{gid}"),
+    ])
     .await?;
-    execute_command(
-        Command::new("/usr/bin/dscl")
-            .process_group(0)
-            .args([
-                ".",
-                "-create",
-                &format!("/Users/{name}"),
-                "PrimaryGroupID",
-                &format!("{gid}"),
-            ])
-            .stdin(std::process::Stdio::null()),
-    )
+    execute_dscl_retry_on_specific_errors(&[
+        ".",
+        "-create",
+        &format!("/Users/{name}"),
+        "NFSHomeDirectory",
+        "/var/empty",
+    ])
     .await?;
-    execute_command(
-        Command::new("/usr/bin/dscl")
-            .process_group(0)
-            .args([
-                ".",
-                "-create",
-                &format!("/Users/{name}"),
-                "NFSHomeDirectory",
-                "/var/empty",
-            ])
-            .stdin(std::process::Stdio::null()),
-    )
+    execute_dscl_retry_on_specific_errors(&[
+        ".",
+        "-create",
+        &format!("/Users/{name}"),
+        "UserShell",
+        "/sbin/nologin",
+    ])
     .await?;
-    execute_command(
-        Command::new("/usr/bin/dscl")
-            .process_group(0)
-            .args([
-                ".",
-                "-create",
-                &format!("/Users/{name}"),
-                "UserShell",
-                "/sbin/nologin",
-            ])
-            .stdin(std::process::Stdio::null()),
-    )
+    execute_dscl_retry_on_specific_errors(&[
+        ".",
+        "-create",
+        &format!("/Users/{name}"),
+        "RealName",
+        name,
+    ])
     .await?;
-    execute_command(
-        Command::new("/usr/bin/dscl")
-            .process_group(0)
-            .args([".", "-create", &format!("/Users/{name}"), "IsHidden", "1"])
-            .stdin(std::process::Stdio::null()),
-    )
-    .await?;
+    execute_dscl_retry_on_specific_errors(&[
+        ".",
+        "-create",
+        &format!("/Users/{name}"),
+        "IsHidden",
+        "1",
+    ])
+    .await
+    .or_else(|e| {
+        if let ActionErrorKind::CommandOutput { ref output, .. } = e {
+            if output.status.signal() == Some(9) {
+                if !WARNED_USER_HIDDEN.swap(true, std::sync::atomic::Ordering::SeqCst) {
+                    tracing::warn!("Failed to automatically mark nixbld users as hidden. See: https://dtr.mn/mark-user-hidden");
+                }
+                return Ok(())
+            }
+        }
+
+        Err(e)
+    })?;
 
     Ok(())
 }
@@ -333,6 +381,10 @@ pub async fn delete_user_macos(name: &str) -> Result<(), ActionErrorKind> {
             // The user is on an ephemeral Mac, like detsys uses
             // These Macs cannot always delete users, as sometimes there is no graphical login
             tracing::warn!("Encountered an exit code 40 with -14120 error while removing user, this is likely because the initial executing user did not have a secure token, or that there was no graphical login session. To delete the user, log in graphically, then run `/usr/bin/dscl . -delete /Users/{}`", name);
+        },
+        Some(185) if stderr.contains("-14009 (eDSUnknownNodeName)") => {
+            // The user has already been deleted
+            tracing::debug!("User already deleted: /Users/{}`", name);
         },
         _ => {
             // Something went wrong

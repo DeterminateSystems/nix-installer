@@ -1,12 +1,14 @@
 use std::os::unix::fs::PermissionsExt;
 use std::path::PathBuf;
 
-use tokio::fs::{create_dir_all, remove_file};
 use tracing::{span, Span};
 
-use crate::action::{
-    Action, ActionDescription, ActionError, ActionErrorKind, ActionTag, StatefulAction,
+use crate::{
+    action::{Action, ActionDescription, ActionError, ActionErrorKind, ActionTag, StatefulAction},
+    util::OnMissing,
 };
+
+use super::place_nix_configuration::{NIX_CONF, NIX_CONF_FOLDER};
 
 const DETERMINATE_NIXD_BINARY_PATH: &str = "/usr/local/bin/determinate-nixd";
 /**
@@ -21,14 +23,9 @@ pub struct ProvisionDeterminateNixd {
 impl ProvisionDeterminateNixd {
     #[tracing::instrument(level = "debug", skip_all)]
     pub async fn plan() -> Result<StatefulAction<Self>, ActionError> {
-        crate::settings::DETERMINATE_NIXD_BINARY
-            .ok_or_else(|| Self::error(ActionErrorKind::DeterminateNixUnavailable))?;
-
-        let this = Self {
+        Ok(StatefulAction::uncompleted(Self {
             binary_location: DETERMINATE_NIXD_BINARY_PATH.into(),
-        };
-
-        Ok(StatefulAction::uncompleted(this))
+        }))
     }
 }
 
@@ -59,18 +56,15 @@ impl Action for ProvisionDeterminateNixd {
 
     #[tracing::instrument(level = "debug", skip_all)]
     async fn execute(&mut self) -> Result<(), ActionError> {
-        let bytes = crate::settings::DETERMINATE_NIXD_BINARY
-            .ok_or_else(|| Self::error(ActionErrorKind::DeterminateNixUnavailable))?;
+        let bytes = crate::distribution::DETERMINATE_NIXD_BINARY;
 
-        if self.binary_location.exists() {
-            remove_file(&self.binary_location)
-                .await
-                .map_err(|e| ActionErrorKind::Remove(self.binary_location.clone(), e))
-                .map_err(Self::error)?;
-        }
+        crate::util::remove_file(&self.binary_location, OnMissing::Ignore)
+            .await
+            .map_err(|e| ActionErrorKind::Remove(self.binary_location.clone(), e))
+            .map_err(Self::error)?;
 
         if let Some(parent) = self.binary_location.parent() {
-            create_dir_all(&parent)
+            tokio::fs::create_dir_all(&parent)
                 .await
                 .map_err(|e| ActionErrorKind::CreateDirectory(parent.into(), e))
                 .map_err(Self::error)?;
@@ -98,11 +92,29 @@ impl Action for ProvisionDeterminateNixd {
 
     #[tracing::instrument(level = "debug", skip_all)]
     async fn revert(&mut self) -> Result<(), ActionError> {
-        if self.binary_location.exists() {
-            remove_file(&self.binary_location)
-                .await
-                .map_err(|e| ActionErrorKind::Remove(self.binary_location.clone(), e))
-                .map_err(Self::error)?;
+        crate::util::remove_file(&self.binary_location, OnMissing::Ignore)
+            .await
+            .map_err(|e| ActionErrorKind::Remove(self.binary_location.clone(), e))
+            .map_err(Self::error)?;
+
+        // NOTE(cole-h): If /etc/nix/nix.conf exists and we're reverting Determinate, we can safely
+        // remove it, since determinate-nixd manages it.
+        let nix_conf_path = PathBuf::from(NIX_CONF);
+        crate::util::remove_file(&nix_conf_path, OnMissing::Ignore)
+            .await
+            .map_err(|e| ActionErrorKind::Remove(nix_conf_path, e))
+            .map_err(Self::error)?;
+
+        // NOTE(cole-h): If /etc/nix/nix.conf was the last file in /etc/nix, then let's clean up the
+        // entire directory too.
+        let nix_conf_dir = PathBuf::from(NIX_CONF_FOLDER);
+        if let Ok(mut entries) = tokio::fs::read_dir(&nix_conf_dir).await {
+            if entries.next_entry().await.ok().flatten().is_none() {
+                crate::util::remove_dir_all(&nix_conf_dir, OnMissing::Ignore)
+                    .await
+                    .map_err(|e| ActionErrorKind::Remove(nix_conf_dir, e))
+                    .map_err(Self::error)?;
+            }
         }
 
         Ok(())

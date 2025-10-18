@@ -1,7 +1,8 @@
 use nix::unistd::{chown, Group, User};
 
-use crate::action::{
-    Action, ActionDescription, ActionError, ActionErrorKind, ActionTag, StatefulAction,
+use crate::{
+    action::{Action, ActionDescription, ActionError, ActionErrorKind, ActionTag, StatefulAction},
+    util::OnMissing,
 };
 use rand::Rng;
 use std::{
@@ -10,7 +11,7 @@ use std::{
     path::{Path, PathBuf},
 };
 use tokio::{
-    fs::{remove_file, File, OpenOptions},
+    fs::{File, OpenOptions},
     io::{AsyncReadExt, AsyncSeekExt, AsyncWriteExt},
 };
 use tracing::{span, Span};
@@ -202,6 +203,13 @@ impl Action for CreateOrInsertIntoFile {
         // that the final file goes in, so that we can rename it
         // atomically
         let parent_dir = path.parent().expect("File must be in a directory");
+        if !parent_dir.exists() {
+            tokio::fs::create_dir_all(&parent_dir)
+                .await
+                .map_err(|e| ActionErrorKind::CreateDirectory(parent_dir.to_owned(), e))
+                .map_err(Self::error)?;
+        }
+
         let mut temp_file_path = parent_dir.to_owned();
         {
             let mut rng = rand::thread_rng();
@@ -367,7 +375,7 @@ impl Action for CreateOrInsertIntoFile {
         }
 
         if file_contents.is_empty() {
-            remove_file(&path)
+            crate::util::remove_file(path, OnMissing::Ignore)
                 .await
                 .map_err(|e| ActionErrorKind::Remove(path.to_owned(), e))
                 .map_err(Self::error)?;

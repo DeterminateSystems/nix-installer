@@ -49,6 +49,7 @@ Note: if the struct has no fields, don't add the `serde` attribute to the struct
 use std::{error::Error, collections::HashMap};
 use tracing::{Span, span};
 use nix_installer::{
+    feedback,
     InstallPlan,
     settings::{CommonSettings, InstallSettingsError},
     planner::{Planner, PlannerError},
@@ -158,20 +159,6 @@ impl Planner for MyPlanner {
         Ok(settings)
     }
 
-    #[cfg(feature = "diagnostics")]
-    async fn diagnostic_data(&self) -> Result<nix_installer::diagnostics::DiagnosticData, PlannerError> {
-        Ok(nix_installer::diagnostics::DiagnosticData::new(
-            self.common.diagnostic_attribution.clone(),
-            self.common.diagnostic_endpoint.clone(),
-            self.typetag_name().into(),
-            self.configured_settings()
-                .await?
-                .into_keys()
-                .collect::<Vec<_>>(),
-            self.common.ssl_cert_file.clone(),
-        )?)
-    }
-
     async fn platform_check(&self) -> Result<(), PlannerError> {
         use target_lexicon::OperatingSystem;
         match target_lexicon::OperatingSystem::host() {
@@ -187,14 +174,14 @@ impl Planner for MyPlanner {
 # async fn custom_planner_install() -> color_eyre::Result<()> {
 let planner = MyPlanner::default().await?;
 let mut plan = InstallPlan::plan(planner).await?;
-match plan.install(None).await {
+match plan.install(feedback::devnull::DevNull{}, None).await {
     Ok(()) => tracing::info!("Done"),
     Err(e) => {
         match e.source() {
             Some(source) => tracing::error!("{e}: {}", source),
             None => tracing::error!("{e}"),
         };
-        plan.uninstall(None).await?;
+        plan.uninstall(feedback::devnull::DevNull{}, None).await?;
     },
 };
 
@@ -211,7 +198,7 @@ pub mod macos;
 mod stateful;
 
 pub use stateful::{ActionState, StatefulAction};
-use std::{error::Error, process::Output};
+use std::{error::Error, os::unix::process::ExitStatusExt as _, process::Output};
 use tokio::task::JoinError;
 use tracing::Span;
 
@@ -518,15 +505,20 @@ pub enum ActionErrorKind {
         error: std::io::Error,
     },
     #[error(
-        "Failed to execute command{maybe_status} `{command}`, stdout: {stdout}\nstderr: {stderr}\n",
+        "Failed to execute command `{command}`\nstdout: {stdout}\nstderr: {stderr}\n{maybe_status}{maybe_signal}",
         command = .command,
         stdout = String::from_utf8_lossy(&.output.stdout),
         stderr = String::from_utf8_lossy(&.output.stderr),
         maybe_status = if let Some(status) = .output.status.code() {
-            format!(" with status {status}")
+            format!("exited with status code: {status}\n")
         } else {
             "".to_string()
-        }
+        },
+        maybe_signal = if let Some(signal) = .output.status.signal() {
+            format!("terminated by signal: {signal}\n")
+        } else {
+            "".to_string()
+        },
     )]
     CommandOutput {
         #[cfg(feature = "diagnostics")]

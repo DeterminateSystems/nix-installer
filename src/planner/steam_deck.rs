@@ -113,8 +113,9 @@ use crate::{
         },
         Action, StatefulAction,
     },
+    distribution::Distribution,
     planner::{Planner, PlannerError},
-    settings::{determinate_nix_settings, CommonSettings, InitSystem, InstallSettingsError},
+    settings::{CommonSettings, InitSystem, InstallSettingsError},
     BuiltinPlanner,
 };
 
@@ -254,10 +255,10 @@ impl Planner for SteamDeck {
             .map_err(PlannerError::Action)?;
             actions.push(create_bind_mount_unit.boxed());
         } else {
-            let revert_clean_streamos_nix_offload = RevertCleanSteamosNixOffload::plan()
+            let revert_clean_steamos_nix_offload = RevertCleanSteamosNixOffload::plan()
                 .await
                 .map_err(PlannerError::Action)?;
-            actions.push(revert_clean_streamos_nix_offload.boxed());
+            actions.push(revert_clean_steamos_nix_offload.boxed());
 
             let ensure_steamos_nix_directory = EnsureSteamosNixDirectory::plan()
                 .await
@@ -268,6 +269,27 @@ impl Planner for SteamDeck {
                 .await
                 .map_err(PlannerError::Action)?;
             actions.push(start_nix_mount.boxed());
+        }
+
+        if std::path::Path::new("/etc/atomic-update.conf.d").exists() {
+            let create_atomic_update_buf = "\
+                /etc/fish/conf.d/nix.fish\n\
+                /etc/nix/**\n\
+                /etc/profile.d/nix.sh\n\
+                /etc/systemd/system/nix-daemon.socket\n\
+                /etc/tmpfiles.d/nix-daemon.conf\n\
+            ";
+            let create_atomic_update_unit = CreateFile::plan(
+                "/etc/atomic-update.conf.d/nix-installer.conf",
+                None,
+                None,
+                0o0644,
+                create_atomic_update_buf.to_string(),
+                false,
+            )
+            .await
+            .map_err(PlannerError::Action)?;
+            actions.push(create_atomic_update_unit.boxed());
         }
 
         let ensure_symlinked_units_resolve_buf = "\
@@ -322,7 +344,7 @@ impl Planner for SteamDeck {
             )
         }
 
-        if self.settings.determinate_nix {
+        if self.settings.distribution() == Distribution::DeterminateNix {
             actions.push(
                 ProvisionDeterminateNixd::plan()
                     .await
@@ -340,14 +362,10 @@ impl Planner for SteamDeck {
                 .await
                 .map_err(PlannerError::Action)?
                 .boxed(),
-            ConfigureNix::plan(
-                shell_profile_locations,
-                &self.settings,
-                self.settings.determinate_nix.then(determinate_nix_settings),
-            )
-            .await
-            .map_err(PlannerError::Action)?
-            .boxed(),
+            ConfigureNix::plan(shell_profile_locations, &self.settings)
+                .await
+                .map_err(PlannerError::Action)?
+                .boxed(),
             // Init is required for the steam-deck archetype to make the `/nix` mount
             ConfigureUpstreamInitService::plan(InitSystem::Systemd, true)
                 .await
@@ -399,20 +417,6 @@ impl Planner for SteamDeck {
         }
 
         Ok(settings)
-    }
-
-    #[cfg(feature = "diagnostics")]
-    async fn diagnostic_data(&self) -> Result<crate::diagnostics::DiagnosticData, PlannerError> {
-        Ok(crate::diagnostics::DiagnosticData::new(
-            self.settings.diagnostic_attribution.clone(),
-            self.settings.diagnostic_endpoint.clone(),
-            self.typetag_name().into(),
-            self.configured_settings()
-                .await?
-                .into_keys()
-                .collect::<Vec<_>>(),
-            self.settings.ssl_cert_file.clone(),
-        )?)
     }
 
     async fn platform_check(&self) -> Result<(), PlannerError> {

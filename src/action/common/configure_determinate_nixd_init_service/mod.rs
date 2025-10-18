@@ -1,20 +1,22 @@
 use std::collections::HashMap;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 
 use serde::{Deserialize, Serialize};
-use tokio::io::AsyncWriteExt;
 use tracing::{span, Span};
 
 use crate::action::common::configure_init_service::{SocketFile, UnitSrc};
 use crate::action::{common::ConfigureInitService, Action, ActionDescription};
 use crate::action::{ActionError, ActionErrorKind, ActionTag, StatefulAction};
 use crate::settings::InitSystem;
+use crate::util::OnMissing;
 
 // Linux
 const LINUX_NIXD_DAEMON_DEST: &str = "/etc/systemd/system/nix-daemon.service";
+const LINUX_NIXD_SERVICE_NAME: &str = "nix-daemon.service";
 
 // Darwin
-const DARWIN_NIXD_DAEMON_DEST: &str = "/Library/LaunchDaemons/systems.determinate.nix-daemon.plist";
+pub(crate) const DARWIN_NIXD_DAEMON_DEST: &str =
+    "/Library/LaunchDaemons/systems.determinate.nix-daemon.plist";
 const DARWIN_NIXD_SERVICE_NAME: &str = "systems.determinate.nix-daemon";
 
 /**
@@ -37,19 +39,57 @@ impl ConfigureDeterminateNixdInitService {
         start_daemon: bool,
     ) -> Result<StatefulAction<Self>, ActionError> {
         let service_dest: Option<PathBuf> = match init {
-            InitSystem::Launchd => Some(DARWIN_NIXD_DAEMON_DEST.into()),
+            InitSystem::Launchd => {
+                // NOTE(cole-h): if the upstream daemon exists and we're installing determinate-
+                // nixd, we need to remove the old daemon unit -- we used to have a bug[1] where
+                // these service files wouldn't get removed, so we can't rely on them not being
+                // there after phase 1 of the uninstall
+                // [1]: https://github.com/DeterminateSystems/nix-installer/pull/1266
+                crate::util::remove_file(
+                    Path::new(super::configure_upstream_init_service::DARWIN_NIX_DAEMON_DEST),
+                    OnMissing::Ignore,
+                )
+                .await
+                .map_err(|e| {
+                    Self::error(ActionErrorKind::Remove(
+                        super::configure_upstream_init_service::DARWIN_NIX_DAEMON_DEST.into(),
+                        e,
+                    ))
+                })?;
+
+                Some(DARWIN_NIXD_DAEMON_DEST.into())
+            },
             InitSystem::Systemd => Some(LINUX_NIXD_DAEMON_DEST.into()),
             InitSystem::None => None,
         };
         let service_name: Option<String> = match init {
             InitSystem::Launchd => Some(DARWIN_NIXD_SERVICE_NAME.into()),
+            InitSystem::Systemd => Some(LINUX_NIXD_SERVICE_NAME.into()),
             _ => None,
+        };
+
+        let service_file: Option<UnitSrc> = match init {
+            InitSystem::Launchd => {
+                let generated_plist = generate_plist();
+
+                let mut buf = Vec::new();
+                plist::to_writer_xml(&mut buf, &generated_plist).map_err(Self::error)?;
+
+                Some(UnitSrc::Literal(
+                    String::from_utf8(buf)
+                        .map_err(|e| Self::error(ActionErrorKind::FromUtf8(e)))?,
+                ))
+            },
+            InitSystem::Systemd => Some(UnitSrc::Literal(
+                include_str!("./nix-daemon.determinate-nixd.service").to_string(),
+            )),
+            InitSystem::None => None {},
         };
 
         let configure_init_service = ConfigureInitService::plan(
             init,
             start_daemon,
-            None,
+            service_file,
             service_dest,
             service_name,
             vec![
@@ -106,44 +146,7 @@ impl Action for ConfigureDeterminateNixdInitService {
 
     #[tracing::instrument(level = "debug", skip_all)]
     async fn execute(&mut self) -> Result<(), ActionError> {
-        let Self {
-            init,
-            configure_init_service,
-        } = self;
-
-        if *init == InitSystem::Launchd {
-            let daemon_file = DARWIN_NIXD_DAEMON_DEST;
-
-            // This is the only part that is actually different from configure_init_service, beyond variable parameters.
-
-            let generated_plist = generate_plist();
-
-            let mut options = tokio::fs::OpenOptions::new();
-            options.create(true).write(true).read(true);
-
-            let mut file = options
-                .open(&daemon_file)
-                .await
-                .map_err(|e| Self::error(ActionErrorKind::Open(PathBuf::from(daemon_file), e)))?;
-
-            let mut buf = Vec::new();
-            plist::to_writer_xml(&mut buf, &generated_plist).map_err(Self::error)?;
-            file.write_all(&buf)
-                .await
-                .map_err(|e| Self::error(ActionErrorKind::Write(PathBuf::from(daemon_file), e)))?;
-        } else if *init == InitSystem::Systemd {
-            let daemon_file = PathBuf::from(LINUX_NIXD_DAEMON_DEST);
-
-            tokio::fs::write(
-                &daemon_file,
-                include_str!("./nix-daemon.determinate-nixd.service"),
-            )
-            .await
-            .map_err(|e| ActionErrorKind::Write(daemon_file.clone(), e))
-            .map_err(Self::error)?;
-        }
-
-        configure_init_service
+        self.configure_init_service
             .try_execute()
             .await
             .map_err(Self::error)?;
@@ -162,27 +165,9 @@ impl Action for ConfigureDeterminateNixdInitService {
     async fn revert(&mut self) -> Result<(), ActionError> {
         self.configure_init_service.try_revert().await?;
 
-        let file_to_remove = match self.init {
-            InitSystem::Launchd => Some(DARWIN_NIXD_DAEMON_DEST),
-            InitSystem::Systemd => Some(LINUX_NIXD_DAEMON_DEST),
-            InitSystem::None => None,
-        };
-
-        if let Some(file_to_remove) = file_to_remove {
-            tracing::trace!(path = %file_to_remove, "Removing");
-            tokio::fs::remove_file(file_to_remove)
-                .await
-                .map_err(|e| ActionErrorKind::Remove(file_to_remove.into(), e))
-                .map_err(Self::error)?;
-        }
-
         Ok(())
     }
 }
-
-#[non_exhaustive]
-#[derive(Debug, thiserror::Error)]
-pub enum ConfigureDeterminateNixDaemonServiceError {}
 
 #[derive(Deserialize, Clone, Debug, Serialize, PartialEq)]
 #[serde(rename_all = "PascalCase")]

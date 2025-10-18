@@ -106,7 +106,7 @@ impl HasExpectedErrors for NixInstallerError {
             NixInstallerError::RecordingReceipt(_, _) => None,
             NixInstallerError::CopyingSelf(_) => None,
             NixInstallerError::SerializingReceipt(_) => None,
-            this @ NixInstallerError::Cancelled => Some(Box::new(this)),
+            NixInstallerError::Cancelled => None,
             NixInstallerError::SemVer(_) => None,
             NixInstallerError::Planner(planner_error) => planner_error.expected(),
             NixInstallerError::InstallSettings(_) => None,

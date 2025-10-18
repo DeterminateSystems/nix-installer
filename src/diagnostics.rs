@@ -5,19 +5,19 @@ When enabled with the `diagnostics` feature (default) this module provides autom
 That endpoint can be a URL such as `https://our.project.org/nix-installer/diagnostics` or `file:///home/$USER/diagnostic.json` which receives a [`DiagnosticReport`] in JSON format.
 */
 
-use std::{path::PathBuf, time::Duration};
+use std::path::PathBuf;
 
-use os_release::OsRelease;
+use detsys_ids_client::{Builder, Map, Recorder, Worker};
 use reqwest::Url;
 
 use crate::{
-    action::ActionError, parse_ssl_cert, planner::PlannerError, settings::InstallSettingsError,
-    CertificateError, NixInstallerError,
+    action::ActionError, planner::PlannerError, settings::InstallSettingsError, CertificateError,
+    NixInstallerError,
 };
 
 /// The static of an action attempt
 #[derive(Debug, serde::Deserialize, serde::Serialize, Clone)]
-pub enum DiagnosticStatus {
+pub enum Status {
     Cancelled,
     Success,
     Pending,
@@ -26,79 +26,32 @@ pub enum DiagnosticStatus {
 
 /// The action attempted
 #[derive(Debug, serde::Deserialize, serde::Serialize, Clone, Copy)]
-pub enum DiagnosticAction {
+pub enum Action {
+    Plan,
     Install,
     Uninstall,
+    SelfTest,
 }
 
 /// A report sent to an endpoint
-#[derive(Debug, serde::Deserialize, serde::Serialize, Clone)]
-pub struct DiagnosticReport {
-    pub attribution: Option<String>,
-    pub version: String,
-    pub planner: String,
-    pub configured_settings: Vec<String>,
-    pub os_name: String,
-    pub os_version: String,
-    pub triple: String,
-    pub is_ci: bool,
-    pub action: DiagnosticAction,
-    pub status: DiagnosticStatus,
-    /// Generally this includes the [`strum::IntoStaticStr`] representation of the error, we take special care not to include parameters of the error (which may include secrets)
-    pub failure_chain: Option<Vec<String>>,
-}
-
-/// A preparation of data to be sent to the `endpoint`.
-#[derive(Debug, serde::Deserialize, serde::Serialize, Clone, Default)]
-pub struct DiagnosticData {
-    attribution: Option<String>,
-    version: String,
-    planner: String,
-    configured_settings: Vec<String>,
-    os_name: String,
-    os_version: String,
-    triple: String,
-    is_ci: bool,
-    endpoint: Option<Url>,
-    ssl_cert_file: Option<PathBuf>,
+#[derive(serde::Deserialize, serde::Serialize, Clone)]
+pub struct Report {
+    action: Action,
+    status: Status,
     /// Generally this includes the [`strum::IntoStaticStr`] representation of the error, we take special care not to include parameters of the error (which may include secrets)
     failure_chain: Option<Vec<String>>,
 }
 
-impl DiagnosticData {
-    pub fn new(
-        attribution: Option<String>,
-        endpoint: Option<String>,
-        planner: String,
-        configured_settings: Vec<String>,
-        ssl_cert_file: Option<PathBuf>,
-    ) -> Result<Self, DiagnosticError> {
-        let endpoint = match endpoint {
-            Some(endpoint) => diagnostic_endpoint_parser(&endpoint)?,
-            None => None,
-        };
-        let (os_name, os_version) = match OsRelease::new() {
-            Ok(os_release) => (os_release.name, os_release.version),
-            Err(_) => ("unknown".into(), "unknown".into()),
-        };
-        let is_ci = is_ci::cached()
-            || std::env::var("NIX_INSTALLER_CI").unwrap_or_else(|_| "0".into()) == "1";
-        Ok(Self {
-            attribution,
-            endpoint,
-            version: env!("CARGO_PKG_VERSION").into(),
-            planner,
-            configured_settings,
-            os_name,
-            os_version,
-            triple: target_lexicon::HOST.to_string(),
-            is_ci,
-            ssl_cert_file: ssl_cert_file.and_then(|v| v.canonicalize().ok()),
+impl Report {
+    fn new(action: Action, status: Status) -> Self {
+        Report {
+            action,
+            status,
             failure_chain: None,
-        })
+        }
     }
 
-    pub fn failure(mut self, err: &NixInstallerError) -> Self {
+    fn set_failure_chain(mut self, err: &NixInstallerError) -> Self {
         let mut failure_chain = vec![];
         let diagnostic = err.diagnostic();
         failure_chain.push(diagnostic);
@@ -130,87 +83,80 @@ impl DiagnosticData {
         }
 
         self.failure_chain = Some(failure_chain);
+
         self
     }
 
-    pub fn report(&self, action: DiagnosticAction, status: DiagnosticStatus) -> DiagnosticReport {
-        let Self {
-            attribution,
-            version,
-            planner,
-            configured_settings,
-            os_name,
-            os_version,
-            triple,
-            is_ci,
-            endpoint: _,
-            ssl_cert_file: _,
-            failure_chain,
-        } = self;
-        DiagnosticReport {
-            attribution: attribution.clone(),
-            version: version.clone(),
-            planner: planner.clone(),
-            configured_settings: configured_settings.clone(),
-            os_name: os_name.clone(),
-            os_version: os_version.clone(),
-            triple: triple.clone(),
-            is_ci: *is_ci,
-            action,
-            status,
-            failure_chain: failure_chain.clone(),
+    fn into_properties(self) -> Option<Map> {
+        match serde_json::to_value(&self) {
+            Ok(serde_json::Value::Object(m)) => Some(m),
+            _ => None,
         }
     }
+}
 
-    #[tracing::instrument(level = "debug", skip_all)]
-    pub async fn send(
-        self,
-        action: DiagnosticAction,
-        status: DiagnosticStatus,
-    ) -> Result<(), DiagnosticError> {
-        let serialized = serde_json::to_string_pretty(&self.report(action, status))?;
+pub async fn diagnostics(
+    attribution: Option<String>,
+    endpoint: Option<String>,
+    ssl_cert_file: Option<std::path::PathBuf>,
+    proxy: Option<url::Url>,
+) -> (
+    crate::feedback::client::Client,
+    crate::feedback::client::Worker,
+) {
+    DiagnosticData::new(attribution, endpoint, ssl_cert_file, proxy)
+        .await
+        .map(|(c, w)| {
+            (
+                crate::feedback::client::Client::DiagnosticsData(c),
+                crate::feedback::client::Worker::DiagnosticsData(w),
+            )
+        })
+        .unwrap_or_else(|e| {
+            tracing::debug!(%e, "Failed to construct the diagnostic data feedback provider.");
+            crate::feedback::devnull::dev_null()
+        })
+}
 
-        let endpoint = match self.endpoint {
-            Some(endpoint) => endpoint,
-            None => return Ok(()),
-        };
+/// A preparation of data to be sent to the `endpoint`.
+#[derive(Clone)]
+pub struct DiagnosticData {
+    ids_client: Recorder,
+}
 
-        match endpoint.scheme() {
-            "https" | "http" => {
-                tracing::debug!("Sending diagnostic to `{endpoint}`");
-                let mut buildable_client = reqwest::Client::builder();
-                if let Some(ssl_cert_file) = &self.ssl_cert_file {
-                    let ssl_cert = parse_ssl_cert(ssl_cert_file).await.ok();
-                    if let Some(ssl_cert) = ssl_cert {
-                        buildable_client = buildable_client.add_root_certificate(ssl_cert);
-                    }
-                }
-                let client = buildable_client.build().map_err(DiagnosticError::Reqwest)?;
+impl DiagnosticData {
+    pub async fn new(
+        attribution: Option<String>,
+        endpoint: Option<String>,
+        ssl_cert_file: Option<PathBuf>,
+        proxy: Option<Url>,
+    ) -> Result<(Self, Worker), detsys_ids_client::transport::TransportsError> {
+        let mut builder: Builder = detsys_ids_client::builder!()
+            .endpoint(endpoint)
+            .proxy(proxy);
 
-                let res = client
-                    .post(endpoint.clone())
-                    .body(serialized)
-                    .header("Content-Type", "application/json")
-                    .timeout(Duration::from_millis(3000))
-                    .send()
-                    .await;
+        if let Some(ssl_cert_file) = ssl_cert_file.and_then(|v| v.canonicalize().ok()) {
+            builder.set_certificate(crate::parse_ssl_cert(&ssl_cert_file).await.ok());
+        }
 
-                if let Err(_err) = res {
-                    tracing::info!("Failed to send diagnostic to `{endpoint}`, continuing")
-                }
-            },
-            "file" => {
-                let path = endpoint.path();
-                tracing::debug!("Writing diagnostic to `{path}`");
-                let res = tokio::fs::write(path, serialized).await;
+        if std::env::var("DETSYS_CORRELATION").ok() != attribution && attribution.is_some() {
+            // Don't set the attribution if the attribution was set to the same as DETSYS_CORRELATION
+            builder.set_distinct_id(attribution.map(|v| v.into()));
+        }
+        let (ids_client, ids_worker) = builder.build_or_default().await;
 
-                if let Err(_err) = res {
-                    tracing::info!("Failed to send diagnostic to `{path}`, continuing")
-                }
-            },
-            _ => return Err(DiagnosticError::UnknownUrlScheme),
-        };
-        Ok(())
+        ids_client
+            .wait_for_checkin(Some(std::time::Duration::from_millis(500)))
+            .await
+            .ok();
+
+        Ok((Self { ids_client }, ids_worker))
+    }
+
+    async fn record(&mut self, report: Report) {
+        self.ids_client
+            .record("diagnostic", report.into_properties())
+            .await;
     }
 }
 
@@ -255,23 +201,101 @@ impl ErrorDiagnostic for DiagnosticError {
     }
 }
 
-pub fn diagnostic_endpoint_parser(input: &str) -> Result<Option<Url>, DiagnosticError> {
-    match Url::parse(input) {
-        Ok(v) => match v.scheme() {
-            "https" | "http" | "file" => Ok(Some(v)),
-            _ => Err(DiagnosticError::UnknownUrlScheme),
-        },
-        Err(url::ParseError::RelativeUrlWithoutBase) => {
-            match Url::parse(&format!("file://{input}")) {
-                Ok(v) => Ok(Some(v)),
-                Err(file_error) => Err(file_error)?,
-            }
-        },
-        Err(url_error) => Err(url_error)?,
+impl crate::feedback::Feedback for DiagnosticData {
+    async fn get_feature_ptr_payload<
+        T: serde::ser::Serialize + serde::de::DeserializeOwned + Send + std::fmt::Debug,
+    >(
+        &self,
+        name: impl Into<String> + std::fmt::Debug + Send,
+    ) -> Option<T> {
+        self.ids_client.get_feature_ptr_payload::<T>(name).await
+    }
+
+    async fn set_planner(
+        &mut self,
+        planner: &crate::planner::BuiltinPlanner,
+    ) -> Result<(), crate::planner::PlannerError> {
+        self.ids_client
+            .set_fact("planner", planner.typetag_name().into())
+            .await;
+
+        self.ids_client
+            .set_fact(
+                "install_determinate_nix",
+                planner
+                    .common_settings()
+                    .distribution()
+                    .is_determinate()
+                    .into(),
+            )
+            .await;
+
+        if let Ok(ref settings) = planner.configured_settings().await {
+            self.ids_client
+                .set_fact(
+                    "configured_settings",
+                    settings.keys().cloned().collect::<Vec<_>>().into(),
+                )
+                .await;
+        }
+
+        Ok(())
+    }
+
+    async fn planning_failed(&mut self, error: &crate::error::NixInstallerError) {
+        self.record(Report::new(Action::Plan, Status::Failure).set_failure_chain(error))
+            .await;
+    }
+
+    async fn planning_succeeded(&mut self) {
+        self.record(Report::new(Action::Plan, Status::Success))
+            .await;
+    }
+
+    async fn install_cancelled(&mut self) {
+        self.record(Report::new(Action::Install, Status::Cancelled))
+            .await;
+    }
+
+    async fn install_failed(&mut self, error: &crate::error::NixInstallerError) {
+        self.record(Report::new(Action::Install, Status::Failure).set_failure_chain(error))
+            .await;
+    }
+
+    async fn self_test_failed(&mut self, error: &crate::error::NixInstallerError) {
+        self.ids_client
+            .record(
+                "nix-installer:self-test-failure",
+                Report::new(Action::SelfTest, Status::Failure)
+                    .set_failure_chain(error)
+                    .into_properties(),
+            )
+            .await
+    }
+
+    async fn install_succeeded(&mut self) {
+        self.record(Report::new(Action::Install, Status::Success))
+            .await;
+    }
+
+    async fn uninstall_cancelled(&mut self) {
+        self.record(Report::new(Action::Uninstall, Status::Cancelled))
+            .await;
+    }
+
+    async fn uninstall_failed(&mut self, error: &crate::error::NixInstallerError) {
+        self.record(Report::new(Action::Uninstall, Status::Failure).set_failure_chain(error))
+            .await;
+    }
+
+    async fn uninstall_succeeded(&mut self) {
+        self.record(Report::new(Action::Uninstall, Status::Success))
+            .await;
     }
 }
 
-pub fn diagnostic_endpoint_validator(input: &str) -> Result<String, DiagnosticError> {
-    let _ = diagnostic_endpoint_parser(input)?;
-    Ok(input.to_string())
+impl crate::feedback::FeedbackWorker for Worker {
+    async fn submit(self) {
+        self.wait().await;
+    }
 }

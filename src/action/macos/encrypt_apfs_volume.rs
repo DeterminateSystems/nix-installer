@@ -1,8 +1,11 @@
+use std::time::Duration;
+
 use crate::{
     action::{
         macos::NIX_VOLUME_MOUNTD_DEST, Action, ActionDescription, ActionError, ActionErrorKind,
         ActionState, ActionTag, StatefulAction,
     },
+    distribution::Distribution,
     execute_command,
     os::darwin::DiskUtilApfsListOutput,
 };
@@ -11,18 +14,18 @@ use std::{
     path::{Path, PathBuf},
     process::Stdio,
 };
-use tokio::process::Command;
+use tokio::{io::AsyncWriteExt as _, process::Command};
 use tracing::{span, Span};
 
-use super::CreateApfsVolume;
+use super::{CreateApfsVolume, KEYCHAIN_NIX_STORE_SERVICE};
 
 /**
 Encrypt an APFS volume
  */
 #[derive(Debug, serde::Deserialize, serde::Serialize, Clone)]
-#[serde(tag = "action_name", rename = "encrypt_volume")]
+#[serde(tag = "action_name", rename = "encrypt_apfs_volume")]
 pub struct EncryptApfsVolume {
-    determinate_nix: bool,
+    distribution: Distribution,
     disk: PathBuf,
     name: String,
 }
@@ -30,7 +33,7 @@ pub struct EncryptApfsVolume {
 impl EncryptApfsVolume {
     #[tracing::instrument(level = "debug", skip_all)]
     pub async fn plan(
-        determinate_nix: bool,
+        distribution: Distribution,
         disk: impl AsRef<Path>,
         name: impl AsRef<str>,
         planned_create_apfs_volume: &StatefulAction<CreateApfsVolume>,
@@ -42,9 +45,9 @@ impl EncryptApfsVolume {
         command.args(["find-generic-password", "-a"]);
         command.arg(&name);
         command.arg("-s");
-        command.arg("Nix Store");
+        command.arg(KEYCHAIN_NIX_STORE_SERVICE);
         command.arg("-l");
-        command.arg(&format!("{} encryption password", disk.display()));
+        command.arg(format!("{} encryption password", disk.display()));
         command.arg("-D");
         command.arg("Encrypted volume password");
         command.process_group(0);
@@ -61,7 +64,7 @@ impl EncryptApfsVolume {
             if planned_create_apfs_volume.state == ActionState::Completed {
                 // We detected a created volume already, and a password exists, so we can keep using that and skip doing anything
                 return Ok(StatefulAction::completed(Self {
-                    determinate_nix,
+                    distribution,
                     name,
                     disk,
                 }));
@@ -72,10 +75,27 @@ impl EncryptApfsVolume {
                 name, disk,
             )));
         } else if planned_create_apfs_volume.state == ActionState::Completed {
-            // The user has a volume already created, but a password not set. This means we probably can't decrypt the volume.
-            return Err(Self::error(
-                EncryptApfsVolumeError::MissingPasswordForExistingVolume(name, disk),
-            ));
+            #[derive(serde::Deserialize)]
+            #[serde(rename_all = "PascalCase")]
+            struct DiskUtilDiskInfoOutput {
+                file_vault: bool,
+            }
+
+            let output =
+                execute_command(Command::new("/usr/sbin/diskutil").args(["info", "-plist", &name]))
+                    .await
+                    .map_err(Self::error)?;
+
+            let parsed: DiskUtilDiskInfoOutput =
+                plist::from_bytes(&output.stdout).map_err(Self::error)?;
+
+            // The user has an already-encrypted volume, but we couldn't retrieve the password.
+            // We won't be able to decrypt the volume.
+            if parsed.file_vault {
+                return Err(Self::error(
+                    EncryptApfsVolumeError::MissingPasswordForExistingVolume(name, disk),
+                ));
+            }
         }
 
         // Ensure if the disk already exists, that it's encrypted
@@ -88,24 +108,18 @@ impl EncryptApfsVolume {
             plist::from_bytes(&output.stdout).map_err(Self::error)?;
         for container in parsed.containers {
             for volume in container.volumes {
-                if volume.name.as_ref() == Some(&name) {
-                    if volume.encryption {
-                        return Err(Self::error(
-                            EncryptApfsVolumeError::ExistingVolumeNotEncrypted(name, disk),
-                        ));
-                    } else {
-                        return Ok(StatefulAction::completed(Self {
-                            determinate_nix,
-                            disk,
-                            name,
-                        }));
-                    }
+                if volume.name.as_ref() == Some(&name) && volume.file_vault.unwrap_or(false) {
+                    return Ok(StatefulAction::completed(Self {
+                        distribution,
+                        disk,
+                        name,
+                    }));
                 }
             }
         }
 
         Ok(StatefulAction::uncompleted(Self {
-            determinate_nix,
+            distribution,
             name,
             disk,
         }))
@@ -113,7 +127,7 @@ impl EncryptApfsVolume {
 }
 
 #[async_trait::async_trait]
-#[typetag::serde(name = "encrypt_volume")]
+#[typetag::serde(name = "encrypt_apfs_volume")]
 impl Action for EncryptApfsVolume {
     fn action_tag() -> ActionTag {
         ActionTag("encrypt_apfs_volume")
@@ -129,7 +143,7 @@ impl Action for EncryptApfsVolume {
     fn tracing_span(&self) -> Span {
         span!(
             tracing::Level::DEBUG,
-            "encrypt_volume",
+            "encrypt_apfs_volume",
             disk = tracing::field::display(self.disk.display()),
         )
     }
@@ -160,13 +174,32 @@ impl Action for EncryptApfsVolume {
 
         let disk_str = &self.disk.to_str().expect("Could not turn disk into string"); /* Should not reasonably ever fail */
 
-        execute_command(
-            Command::new("/usr/sbin/diskutil")
-                .arg("mount")
-                .arg(&self.name),
-        )
-        .await
-        .map_err(Self::error)?;
+        let mut retry_tokens: usize = 60;
+        loop {
+            let mut command = Command::new("/usr/sbin/diskutil");
+            command.process_group(0);
+            command.args(["mount", &self.name]);
+            command.stdin(std::process::Stdio::null());
+            tracing::debug!(%retry_tokens, command = ?command.as_std(), "Waiting for volume mounting to succeed");
+
+            let output = command
+                .output()
+                .await
+                .map_err(|e| ActionErrorKind::command(&command, e))
+                .map_err(Self::error)?;
+
+            if output.status.success() {
+                break;
+            } else if retry_tokens == 0 {
+                return Err(Self::error(ActionErrorKind::command_output(
+                    &command, output,
+                )))?;
+            } else {
+                retry_tokens = retry_tokens.saturating_sub(1);
+            }
+
+            tokio::time::sleep(Duration::from_millis(500)).await;
+        }
 
         // Add the password to the user keychain so they can unlock it later.
         let mut cmd = Command::new("/usr/bin/security");
@@ -175,7 +208,7 @@ impl Action for EncryptApfsVolume {
             "-a",
             self.name.as_str(),
             "-s",
-            "Nix Store",
+            KEYCHAIN_NIX_STORE_SERVICE,
             "-l",
             format!("{} encryption password", disk_str).as_str(),
             "-D",
@@ -193,7 +226,7 @@ impl Action for EncryptApfsVolume {
             "/usr/bin/security",
         ]);
 
-        if self.determinate_nix {
+        if self.distribution == Distribution::DeterminateNix {
             cmd.args(["-T", "/usr/local/bin/determinate-nixd"]);
         }
 
@@ -203,17 +236,58 @@ impl Action for EncryptApfsVolume {
         execute_command(&mut cmd).await.map_err(Self::error)?;
 
         // Encrypt the mounted volume
-        execute_command(Command::new("/usr/sbin/diskutil").process_group(0).args([
-            "apfs",
-            "encryptVolume",
-            self.name.as_str(),
-            "-user",
-            "disk",
-            "-passphrase",
-            password.as_str(),
-        ]))
-        .await
-        .map_err(Self::error)?;
+        {
+            let mut command = Command::new("/usr/sbin/diskutil");
+            command.process_group(0);
+            command.args([
+                "apfs",
+                "encryptVolume",
+                self.name.as_str(),
+                "-user",
+                "disk",
+                "-stdinpassphrase",
+            ]);
+            command.stdin(Stdio::piped());
+            command.stdout(Stdio::piped());
+            command.stderr(Stdio::piped());
+            tracing::trace!(command = ?command.as_std(), "Executing");
+            let mut child = command
+                .spawn()
+                .map_err(|e| ActionErrorKind::command(&command, e))
+                .map_err(Self::error)?;
+            let mut stdin = child
+                .stdin
+                .take()
+                .expect("child should have had a stdin handle");
+            stdin
+                .write_all(password.as_bytes())
+                .await
+                .map_err(|e| ActionErrorKind::Write("/dev/stdin".into(), e))
+                .map_err(Self::error)?;
+            stdin
+                .write(b"\n")
+                .await
+                .map_err(|e| ActionErrorKind::Write("/dev/stdin".into(), e))
+                .map_err(Self::error)?;
+            let output = child
+                .wait_with_output()
+                .await
+                .map_err(|e| ActionErrorKind::command(&command, e))
+                .map_err(Self::error)?;
+            match output.status.success() {
+                true => {
+                    tracing::trace!(
+                        command = ?command.as_std(),
+                        stderr = %String::from_utf8_lossy(&output.stderr),
+                        stdout = %String::from_utf8_lossy(&output.stdout),
+                        "Command success"
+                    );
+                },
+                false => Err(Self::error(ActionErrorKind::command_output(
+                    &command, output,
+                )))?,
+            }
+        }
 
         execute_command(
             Command::new("/usr/sbin/diskutil")
@@ -251,7 +325,7 @@ impl Action for EncryptApfsVolume {
                 "-a",
                 self.name.as_str(),
                 "-s",
-                self.name.as_str(),
+                KEYCHAIN_NIX_STORE_SERVICE,
                 "-l",
                 format!("{} encryption password", disk_str).as_str(),
                 "-D",

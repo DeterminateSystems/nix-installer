@@ -18,8 +18,8 @@ pub(crate) mod set_tmutil_exclusion;
 pub(crate) mod set_tmutil_exclusions;
 pub(crate) mod unmount_apfs_volume;
 
-use std::path::Path;
 use std::time::Duration;
+use std::{io::ErrorKind, path::Path};
 
 pub use bootstrap_launchctl_service::BootstrapLaunchctlService;
 pub use configure_remote_building::ConfigureRemoteBuilding;
@@ -36,7 +36,7 @@ pub use kickstart_launchctl_service::KickstartLaunchctlService;
 use serde::Deserialize;
 pub use set_tmutil_exclusion::SetTmutilExclusion;
 pub use set_tmutil_exclusions::SetTmutilExclusions;
-use tokio::process::Command;
+use tokio::{fs, process::Command};
 pub use unmount_apfs_volume::UnmountApfsVolume;
 use uuid::Uuid;
 
@@ -45,8 +45,11 @@ use crate::execute_command;
 use super::ActionErrorKind;
 
 pub const DARWIN_LAUNCHD_DOMAIN: &str = "system";
+pub const KEYCHAIN_NIX_STORE_SERVICE: &str = "Nix Store";
 
-async fn get_uuid_for_label(apfs_volume_label: &str) -> Result<Option<Uuid>, ActionErrorKind> {
+pub(crate) async fn get_disk_info_for_label(
+    apfs_volume_label: &str,
+) -> Result<Option<DiskUtilApfsInfoOutput>, ActionErrorKind> {
     let mut command = Command::new("/usr/sbin/diskutil");
     command.process_group(0);
     command.arg("info");
@@ -63,32 +66,39 @@ async fn get_uuid_for_label(apfs_volume_label: &str) -> Result<Option<Uuid>, Act
         .await
         .map_err(|e| ActionErrorKind::command(&command, e))?;
 
-    let parsed: DiskUtilApfsInfoOutput = plist::from_bytes(&output.stdout)?;
+    if let Ok(diskutil_info) = plist::from_bytes::<DiskUtilApfsInfoOutput>(&output.stdout) {
+        return Ok(Some(diskutil_info));
+    }
 
-    if let Some(error_message) = parsed.error_message {
+    if let Ok(diskutil_error) = plist::from_bytes::<DiskUtilApfsInfoError>(&output.stdout) {
+        let error_message = diskutil_error.error_message;
         let expected_not_found = format!("Could not find disk: {apfs_volume_label}");
         if error_message.contains(&expected_not_found) {
-            Ok(None)
+            return Ok(None);
         } else {
-            Err(ActionErrorKind::DiskUtilInfoError {
+            return Err(ActionErrorKind::DiskUtilInfoError {
                 command: command_str,
                 message: error_message,
-            })
+            });
         }
-    } else if let Some(uuid) = parsed.volume_uuid {
-        Ok(Some(uuid))
-    } else {
-        Err(ActionErrorKind::command_output(&command, output))
     }
+
+    Err(ActionErrorKind::command_output(&command, output))
 }
 
 #[derive(Deserialize, Clone, Debug)]
 #[serde(rename_all = "PascalCase")]
-struct DiskUtilApfsInfoOutput {
-    #[serde(rename = "ErrorMessage")]
-    error_message: Option<String>,
+pub(crate) struct DiskUtilApfsInfoOutput {
     #[serde(rename = "VolumeUUID")]
-    volume_uuid: Option<Uuid>,
+    volume_uuid: Uuid,
+    pub(crate) file_vault: bool,
+}
+
+#[derive(Deserialize, Clone, Debug)]
+#[serde(rename_all = "PascalCase")]
+struct DiskUtilApfsInfoError {
+    #[serde(rename = "ErrorMessage")]
+    error_message: String,
 }
 
 #[tracing::instrument]
@@ -122,7 +132,7 @@ pub(crate) async fn wait_for_nix_store_dir() -> Result<(), ActionErrorKind> {
         command.args(["info", "/nix"]);
         command.stderr(std::process::Stdio::null());
         command.stdout(std::process::Stdio::null());
-        tracing::trace!(%retry_tokens, command = ?command.as_std(), "Checking for Nix Store mount path existence");
+        tracing::debug!(%retry_tokens, command = ?command.as_std(), "Checking for Nix Store mount path existence");
         let output = command
             .output()
             .await
@@ -140,7 +150,7 @@ pub(crate) async fn wait_for_nix_store_dir() -> Result<(), ActionErrorKind> {
     Ok(())
 }
 
-/// Wait for `launchctl bootstrap {domain} {service}` to succeed up to `retry_tokens * 500ms` amount
+/// Wait for `launchctl bootstrap {domain} {service_path}` to succeed up to `retry_tokens * 500ms` amount
 /// of time.
 #[tracing::instrument]
 pub(crate) async fn retry_bootstrap(
@@ -175,7 +185,7 @@ pub(crate) async fn retry_bootstrap(
         command.stdin(std::process::Stdio::null());
         command.stderr(std::process::Stdio::null());
         command.stdout(std::process::Stdio::null());
-        tracing::trace!(%retry_tokens, command = ?command.as_std(), "Waiting for bootstrap to succeed");
+        tracing::debug!(%retry_tokens, command = ?command.as_std(), "Waiting for bootstrap to succeed");
 
         let output = command
             .output()
@@ -196,19 +206,17 @@ pub(crate) async fn retry_bootstrap(
     Ok(())
 }
 
-/// Wait for `launchctl bootout {domain} {service_path}` to succeed up to `retry_tokens * 500ms` amount
+/// Wait for `launchctl bootout {domain}/{service_name}` to succeed up to `retry_tokens * 500ms` amount
 /// of time.
 #[tracing::instrument]
-pub(crate) async fn retry_bootout(
-    domain: &str,
-    service_name: &str,
-    service_path: &Path,
-) -> Result<(), ActionErrorKind> {
+pub(crate) async fn retry_bootout(domain: &str, service_name: &str) -> Result<(), ActionErrorKind> {
+    let service_identifier = [domain, service_name].join("/");
+
     let check_service_running = execute_command(
         Command::new("launchctl")
             .process_group(0)
             .arg("print")
-            .arg([domain, service_name].join("/"))
+            .arg(&service_identifier)
             .stdin(std::process::Stdio::null())
             .stdout(std::process::Stdio::piped())
             .stderr(std::process::Stdio::piped()),
@@ -226,12 +234,68 @@ pub(crate) async fn retry_bootout(
         let mut command = Command::new("launchctl");
         command.process_group(0);
         command.arg("bootout");
-        command.arg(domain);
-        command.arg(service_path);
+        command.arg(&service_identifier);
         command.stdin(std::process::Stdio::null());
         command.stderr(std::process::Stdio::null());
         command.stdout(std::process::Stdio::null());
-        tracing::trace!(%retry_tokens, command = ?command.as_std(), "Waiting for bootout to succeed");
+        tracing::debug!(%retry_tokens, command = ?command.as_std(), "Waiting for bootout to succeed");
+
+        let output = command
+            .output()
+            .await
+            .map_err(|e| ActionErrorKind::command(&command, e))?;
+
+        if output.status.success() {
+            break;
+        } else if retry_tokens == 0 {
+            return Err(ActionErrorKind::command_output(&command, output))?;
+        } else {
+            retry_tokens = retry_tokens.saturating_sub(1);
+        }
+
+        tokio::time::sleep(Duration::from_millis(500)).await;
+    }
+
+    Ok(())
+}
+
+/// Attempt to manually unlink a socket path. When reinstalling, launchd can
+/// sometimes fail to remove sockets when `launchctl bootstrap` is invoked,
+/// leaving only these slightly cryptic errors:
+///
+/// ```text
+/// 2025-04-12 14:22:58.165233 (system/systems.determinate.nix-daemon - determinate-nixd.socket) <Error>: Failed to unlinkat() old socket path: path=/var/run/determinate-nixd.socket, error=Invalid argument (22)
+/// 2025-04-12 14:22:58.165279 (system/systems.determinate.nix-daemon - nix-daemon.socket) <Error>: Failed to unlinkat() old socket path: path=/var/run/nix-daemon.socket, error=Invalid argument (22)
+/// ```
+#[tracing::instrument]
+pub(crate) async fn remove_socket_path(path: &Path) {
+    if let Err(err) = fs::remove_file(path).await {
+        if err.kind() != ErrorKind::NotFound {
+            tracing::warn!(?err, ?path, "Could not clean up unused socket");
+        }
+    }
+}
+
+/// Wait for `launchctl kickstart {domain}/{service_name}` to succeed up to `retry_tokens * 500ms` amount
+/// of time.
+#[tracing::instrument]
+pub(crate) async fn retry_kickstart(
+    domain: &str,
+    service_name: &str,
+) -> Result<(), ActionErrorKind> {
+    let service_identifier = [domain, service_name].join("/");
+
+    let mut retry_tokens: usize = 10;
+    loop {
+        let mut command = Command::new("launchctl");
+        command.process_group(0);
+        command.arg("kickstart");
+        command.arg("-k");
+        command.arg(&service_identifier);
+        command.stdin(std::process::Stdio::null());
+        command.stderr(std::process::Stdio::null());
+        command.stdout(std::process::Stdio::null());
+        tracing::debug!(%retry_tokens, command = ?command.as_std(), "Waiting for kickstart to succeed");
 
         let output = command
             .output()

@@ -1,15 +1,16 @@
 use serde::{Deserialize, Serialize};
 use tracing::{span, Span};
 
-use std::path::{Path, PathBuf};
-use tokio::{
-    fs::{remove_file, OpenOptions},
-    io::AsyncWriteExt,
-    process::Command,
+use std::{
+    path::{Path, PathBuf},
+    process::Stdio,
 };
+use tokio::{fs::OpenOptions, io::AsyncWriteExt, process::Command};
 
-use crate::action::{
-    Action, ActionDescription, ActionError, ActionErrorKind, ActionTag, StatefulAction,
+use crate::{
+    action::{Action, ActionDescription, ActionError, ActionErrorKind, ActionTag, StatefulAction},
+    execute_command,
+    util::OnMissing,
 };
 
 use super::DARWIN_LAUNCHD_DOMAIN;
@@ -43,27 +44,27 @@ impl CreateDeterminateVolumeService {
 
         // If the service is currently loaded or running, we need to unload it during execute (since we will then recreate it and reload it)
         // This `launchctl` command may fail if the service isn't loaded
-        let mut check_loaded_command = Command::new("launchctl");
-        check_loaded_command.arg("print");
-        check_loaded_command.arg(format!("system/{}", this.mount_service_label));
-        tracing::trace!(
-            command = format!("{:?}", check_loaded_command.as_std()),
-            "Executing"
-        );
-        let check_loaded_output = check_loaded_command
-            .status()
-            .await
-            .map_err(|e| ActionErrorKind::command(&check_loaded_command, e))
-            .map_err(Self::error)?;
+        let check_loaded = execute_command(
+            Command::new("launchctl")
+                .arg("print")
+                .arg(format!(
+                    "{DARWIN_LAUNCHD_DOMAIN}/{}",
+                    this.mount_service_label
+                ))
+                .stdin(Stdio::null())
+                .stdout(Stdio::null())
+                .stderr(Stdio::null()),
+        )
+        .await
+        .ok();
 
-        this.needs_bootout = check_loaded_output.success();
-
-        if this.needs_bootout {
+        if check_loaded.is_some() {
             tracing::debug!(
                 "Detected loaded service `{}` which needs unload before replacing `{}`",
                 this.mount_service_label,
                 this.path.display(),
             );
+            this.needs_bootout = true;
         }
 
         if this.path.exists() {
@@ -139,7 +140,7 @@ impl Action for CreateDeterminateVolumeService {
         } = self;
 
         if *needs_bootout {
-            crate::action::macos::retry_bootout(DARWIN_LAUNCHD_DOMAIN, mount_service_label, path)
+            crate::action::macos::retry_bootout(DARWIN_LAUNCHD_DOMAIN, mount_service_label)
                 .await
                 .map_err(Self::error)?;
         }
@@ -174,7 +175,7 @@ impl Action for CreateDeterminateVolumeService {
 
     #[tracing::instrument(level = "debug", skip_all)]
     async fn revert(&mut self) -> Result<(), ActionError> {
-        remove_file(&self.path)
+        crate::util::remove_file(&self.path, OnMissing::Ignore)
             .await
             .map_err(|e| Self::error(ActionErrorKind::Remove(self.path.to_owned(), e)))?;
 

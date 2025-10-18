@@ -1,7 +1,7 @@
 [package]
 name = "nix-installer"
 description = "Experimental Nix Installer"
-version = "0.27.0"
+version = "3.11.3"
 edition = "2021"
 resolver = "2"
 license = "LGPL-2.1"
@@ -9,9 +9,8 @@ repository = "https://github.com/NixOS/experimental-nix-installer"
 
 [features]
 default = ["cli"]
-determinate-nix = []
 cli = ["eyre", "color-eyre", "clap", "tracing-subscriber", "tracing-error"]
-diagnostics = ["is_ci"]
+diagnostics = ["detsys-ids-client", "is_ci"]
 
 [[bin]]
 name = "nix-installer"
@@ -22,6 +21,7 @@ async-trait = { version = "0.1.57", default-features = false }
 bytes = { version = "1.2.1", default-features = false, features = ["std", "serde"] }
 clap = { version = "4", features = ["std", "color", "usage", "help", "error-context", "suggestions", "derive", "env"], optional = true }
 color-eyre = { version = "0.6.2", default-features = false, features = [ "track-caller", "issue-url", "tracing-error", "capture-spantrace", "color-spantrace" ], optional = true }
+detsys-ids-client = { version = "0.6", optional = true }
 eyre = { version = "0.6.8", default-features = false, features = [ "track-caller" ], optional = true }
 glob = { version = "0.3.0", default-features = false }
 nix = { version = "0.29.0", default-features = false, features = ["user", "fs", "process", "term"] }
@@ -39,7 +39,7 @@ tracing-error = { version = "0.2.0", default-features = false, optional = true, 
 tracing-subscriber = { version = "0.3.15", default-features = false, features = [ "std", "registry", "fmt", "json", "ansi", "env-filter" ], optional = true }
 url = { version = "2.3.1", default-features = false, features = ["serde"] }
 xz2 = { version = "0.1.7", default-features = false, features = ["static", "tokio"] }
-plist = { version = "1.7.0", default-features = false, features = [ "serde" ]}
+plist = { version = "=1.7.2", default-features = false, features = [ "serde" ]}
 dirs = { version = "5.0.0", default-features = false }
 typetag = { version = "0.2.17", default-features = false }
 dyn-clone = { version = "1.0.9", default-features = false }
@@ -56,10 +56,10 @@ sysctl = "0.6.0"
 walkdir = "2.3.3"
 indexmap = { version = "2.0.2", features = ["serde"] }
 once_cell = "1.19.0"
+tempfile = "3.3.0"
 
 [dev-dependencies]
 eyre = { version = "0.6.8", default-features = false, features = [ "track-caller" ] }
-tempfile = "3.3.0"
 
 [profile.release]
 strip = true  # Automatically strip symbols from the binary.
@@ -71,6 +71,6 @@ lto = true
 # available in docs.rs's build. It doesn't influence docs, so it's fine to set it to a bogus (but
 # existing-file) value.
 cargo-args = [
-    "--config", "env.NIX_INSTALLER_TARBALL_PATH=\"../Cargo.toml\"",
+    "--config", "env.DETERMINATE_NIX_TARBALL_PATH=\"../Cargo.toml\"",
     "--config", "env.DETERMINATE_NIXD_BINARY_PATH=\"../Cargo.toml\""
 ]

@@ -6,6 +6,8 @@ use tokio::process::Command;
 use which::which;
 
 use super::ShellProfileLocations;
+use crate::action::common::provision_nix::NIX_STORE_LOCATION;
+use crate::distribution::Distribution;
 use crate::planner::HasExpectedErrors;
 
 mod profile_queries;
@@ -29,7 +31,7 @@ use crate::{
     os::darwin::DiskUtilInfoOutput,
     planner::{Planner, PlannerError},
     settings::InstallSettingsError,
-    settings::{determinate_nix_settings, CommonSettings, InitSystem},
+    settings::{CommonSettings, InitSystem},
     Action, BuiltinPlanner,
 };
 
@@ -142,7 +144,9 @@ impl Planner for Macos {
     }
 
     async fn plan(&self) -> Result<Vec<StatefulAction<Box<dyn Action>>>, PlannerError> {
-        if self.use_ec2_instance_store && !self.settings.determinate_nix {
+        if self.use_ec2_instance_store
+            && self.settings.distribution() != Distribution::DeterminateNix
+        {
             return Err(PlannerError::Ec2InstanceStoreRequiresDeterminateNix);
         }
 
@@ -160,29 +164,62 @@ impl Planner for Macos {
         // The encrypt variable isn't used in Determinate Nix since we have our own plan step for it,
         // however this match accounts for Determinate Nix so the receipt indicates encrypt: true.
         // This is a goofy thing to do, but it is in an attempt to make a more globally coherent plan / receipt.
-        let encrypt = match (self.settings.determinate_nix, self.encrypt) {
-            (true, _) => true,
-            (false, Some(choice)) => choice,
-            (false, None) => {
-                let output = Command::new("/usr/bin/fdesetup")
-                    .arg("isactive")
-                    .stdout(std::process::Stdio::null())
-                    .stderr(std::process::Stdio::null())
-                    .process_group(0)
-                    .output()
-                    .await
-                    .map_err(|e| PlannerError::Custom(Box::new(e)))?;
+        let encrypt = match (self.settings.distribution(), self.encrypt) {
+            (Distribution::DeterminateNix, _) => true,
+            (_, Some(choice)) => {
+                if let Some(diskutil_info) =
+                    crate::action::macos::get_disk_info_for_label(&self.volume_label)
+                        .await
+                        .ok()
+                        .flatten()
+                {
+                    if diskutil_info.file_vault {
+                        tracing::warn!("Existing volume was encrypted with FileVault, forcing `encrypt` to true");
+                        true
+                    } else {
+                        choice
+                    }
+                } else {
+                    choice
+                }
+            },
+            (_, None) => {
+                let root_disk_is_encrypted = {
+                    let output = Command::new("/usr/bin/fdesetup")
+                        .arg("isactive")
+                        .stdout(std::process::Stdio::null())
+                        .stderr(std::process::Stdio::null())
+                        .process_group(0)
+                        .output()
+                        .await
+                        .map_err(|e| PlannerError::Custom(Box::new(e)))?;
 
-                let stdout = String::from_utf8_lossy(&output.stdout);
-                let stdout_trimmed = stdout.trim();
+                    let stdout = String::from_utf8_lossy(&output.stdout);
+                    let stdout_trimmed = stdout.trim();
 
-                stdout_trimmed == "true"
+                    stdout_trimmed == "true"
+                };
+
+                let existing_store_volume_is_encrypted = {
+                    if let Some(diskutil_info) =
+                        crate::action::macos::get_disk_info_for_label(&self.volume_label)
+                            .await
+                            .ok()
+                            .flatten()
+                    {
+                        diskutil_info.file_vault
+                    } else {
+                        false
+                    }
+                };
+
+                root_disk_is_encrypted || existing_store_volume_is_encrypted
             },
         };
 
         let mut plan = vec![];
 
-        if self.settings.determinate_nix {
+        if self.settings.distribution() == Distribution::DeterminateNix {
             plan.push(
                 ProvisionDeterminateNixd::plan()
                     .await
@@ -191,31 +228,35 @@ impl Planner for Macos {
             );
         }
 
-        if self.settings.determinate_nix {
-            plan.push(
-                CreateDeterminateNixVolume::plan(
-                    root_disk.unwrap(), /* We just ensured it was populated */
-                    self.volume_label.clone(),
-                    self.case_sensitive,
-                    self.settings.force,
-                    self.use_ec2_instance_store,
-                )
-                .await
-                .map_err(PlannerError::Action)?
-                .boxed(),
-            );
-        } else {
-            plan.push(
-                CreateNixVolume::plan(
-                    root_disk.unwrap(), /* We just ensured it was populated */
-                    self.volume_label.clone(),
-                    self.case_sensitive,
-                    encrypt,
-                )
-                .await
-                .map_err(PlannerError::Action)?
-                .boxed(),
-            );
+        match self.settings.distribution() {
+            Distribution::DeterminateNix => {
+                plan.push(
+                    CreateDeterminateNixVolume::plan(
+                        root_disk.unwrap(), /* We just ensured it was populated */
+                        self.volume_label.clone(),
+                        self.case_sensitive,
+                        self.settings.force,
+                        self.use_ec2_instance_store,
+                    )
+                    .await
+                    .map_err(PlannerError::Action)?
+                    .boxed(),
+                );
+            },
+            Distribution::Nix => {
+                plan.push(
+                    CreateNixVolume::plan(
+                        root_disk.unwrap(), /* We just ensured it was populated */
+                        self.volume_label.clone(),
+                        self.case_sensitive,
+                        encrypt,
+                        self.settings.distribution(),
+                    )
+                    .await
+                    .map_err(PlannerError::Action)?
+                    .boxed(),
+                );
+            },
         }
 
         plan.push(
@@ -233,20 +274,19 @@ impl Planner for Macos {
                 .boxed(),
         );
         plan.push(
-            SetTmutilExclusions::plan(vec![PathBuf::from("/nix/store"), PathBuf::from("/nix/var")])
-                .await
-                .map_err(PlannerError::Action)?
-                .boxed(),
-        );
-        plan.push(
-            ConfigureNix::plan(
-                ShellProfileLocations::default(),
-                &self.settings,
-                self.settings.determinate_nix.then(determinate_nix_settings),
-            )
+            SetTmutilExclusions::plan(vec![
+                PathBuf::from(NIX_STORE_LOCATION),
+                PathBuf::from("/nix/var"),
+            ])
             .await
             .map_err(PlannerError::Action)?
             .boxed(),
+        );
+        plan.push(
+            ConfigureNix::plan(ShellProfileLocations::default(), &self.settings)
+                .await
+                .map_err(PlannerError::Action)?
+                .boxed(),
         );
         plan.push(
             ConfigureRemoteBuilding::plan()
@@ -264,22 +304,26 @@ impl Planner for Macos {
             );
         }
 
-        if self.settings.determinate_nix {
-            // effectively disabled by skipping the cli option in settings.rs
-            plan.push(
-                ConfigureDeterminateNixdInitService::plan(InitSystem::Launchd, true)
-                    .await
-                    .map_err(PlannerError::Action)?
-                    .boxed(),
-            );
-        } else {
-            plan.push(
-                ConfigureUpstreamInitService::plan(InitSystem::Launchd, true)
-                    .await
-                    .map_err(PlannerError::Action)?
-                    .boxed(),
-            );
+        match self.settings.distribution() {
+            Distribution::DeterminateNix => {
+                // effectively disabled by skipping the cli option in settings.rs
+                plan.push(
+                    ConfigureDeterminateNixdInitService::plan(InitSystem::Launchd, true)
+                        .await
+                        .map_err(PlannerError::Action)?
+                        .boxed(),
+                );
+            },
+            Distribution::Nix => {
+                plan.push(
+                    ConfigureUpstreamInitService::plan(InitSystem::Launchd, true)
+                        .await
+                        .map_err(PlannerError::Action)?
+                        .boxed(),
+                );
+            },
         }
+
         plan.push(
             RemoveDirectory::plan(crate::settings::SCRATCH_DIR)
                 .await
@@ -331,20 +375,6 @@ impl Planner for Macos {
         }
 
         Ok(settings)
-    }
-
-    #[cfg(feature = "diagnostics")]
-    async fn diagnostic_data(&self) -> Result<crate::diagnostics::DiagnosticData, PlannerError> {
-        Ok(crate::diagnostics::DiagnosticData::new(
-            self.settings.diagnostic_attribution.clone(),
-            self.settings.diagnostic_endpoint.clone(),
-            self.typetag_name().into(),
-            self.configured_settings()
-                .await?
-                .into_keys()
-                .collect::<Vec<_>>(),
-            self.settings.ssl_cert_file.clone(),
-        )?)
     }
 
     async fn platform_check(&self) -> Result<(), PlannerError> {
@@ -443,12 +473,12 @@ async fn check_suis() -> Result<(), PlannerError> {
             return Ok(());
         },
         [block] => format!(
-            "The following macOS configuration profile includes a 'Restrictions - Media' policy, which interferes with the Nix Store volume:\n\n{}\n\nSee https://determinate.systems/solutions/macos-internal-disk-policy",
+            "The following macOS configuration profile includes a 'Restrictions - Media' policy, which interferes with the Nix Store volume:\n\n{}\n\nSee https://dtr.mn/suis-premount-dissented",
             block
         ),
         blocks => {
             format!(
-                "The following macOS configuration profiles include a 'Restrictions - Media' policy, which interferes with the Nix Store volume:\n\n{}\n\nSee https://determinate.systems/solutions/macos-internal-disk-policy",
+                "The following macOS configuration profiles include a 'Restrictions - Media' policy, which interferes with the Nix Store volume:\n\n{}\n\nSee https://dtr.mn/suis-premount-dissented",
                 blocks.join("\n\n")
             )
         },

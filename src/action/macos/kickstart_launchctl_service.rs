@@ -1,5 +1,4 @@
 use std::process::Output;
-use std::time::Duration;
 
 use tokio::process::Command;
 use tracing::{span, Span};
@@ -7,6 +6,7 @@ use tracing::{span, Span};
 use crate::action::{ActionError, ActionErrorKind, ActionTag, StatefulAction};
 
 use crate::action::{Action, ActionDescription};
+use crate::execute_command;
 
 /**
 Bootstrap and kickstart an APFS volume
@@ -19,29 +19,26 @@ pub struct KickstartLaunchctlService {
 }
 
 impl KickstartLaunchctlService {
-    #[tracing::instrument(level = "debug", skip_all)]
-    pub async fn plan(
-        domain: impl AsRef<str>,
-        service: impl AsRef<str>,
-    ) -> Result<StatefulAction<Self>, ActionError> {
-        let domain = domain.as_ref().to_string();
-        let service = service.as_ref().to_string();
+    #[tracing::instrument(level = "debug")]
+    pub async fn plan(domain: &str, service: &str) -> Result<StatefulAction<Self>, ActionError> {
+        let domain = domain.to_string();
+        let service = service.to_string();
 
         let mut service_exists = false;
         let mut service_started = false;
-        let mut command = Command::new("launchctl");
-        command.process_group(0);
-        command.arg("print");
-        command.arg(&service);
-        command.arg("-plist");
-        command.stdin(std::process::Stdio::null());
-        command.stdout(std::process::Stdio::piped());
-        command.stderr(std::process::Stdio::piped());
-        let output = command
-            .output()
-            .await
-            .map_err(|e| Self::error(ActionErrorKind::command(&command, e)))?;
-        if output.status.success() {
+        let output = execute_command(
+            Command::new("launchctl")
+                .process_group(0)
+                .arg("print")
+                .arg(format!("{domain}/{service}"))
+                .stdin(std::process::Stdio::null())
+                .stdout(std::process::Stdio::piped())
+                .stderr(std::process::Stdio::piped()),
+        )
+        .await
+        .ok();
+
+        if let Some(output) = output {
             service_exists = true;
 
             let output_string = String::from_utf8(output.stdout).map_err(Self::error)?;
@@ -53,7 +50,7 @@ impl KickstartLaunchctlService {
             for output_line in output_string.lines() {
                 let output_line_trimmed = output_line.trim();
                 if output_line_trimmed.starts_with("state") {
-                    if output_line_trimmed.contains("running") {
+                    if !output_line_trimmed.contains("not running") {
                         service_started = true;
                     }
                     break;
@@ -97,37 +94,9 @@ impl Action for KickstartLaunchctlService {
 
     #[tracing::instrument(level = "debug", skip_all)]
     async fn execute(&mut self) -> Result<(), ActionError> {
-        let Self { domain, service } = self;
-
-        let mut retry_tokens: usize = 10;
-        loop {
-            let mut command = Command::new("launchctl");
-            command.process_group(0);
-            command.args(["kickstart", "-k"]);
-            command.arg(format!("{domain}/{service}"));
-            command.stdin(std::process::Stdio::null());
-            command.stderr(std::process::Stdio::null());
-            command.stdout(std::process::Stdio::null());
-            tracing::trace!(%retry_tokens, command = ?command.as_std(), "Waiting for kickstart to succeed");
-
-            let output = command
-                .output()
-                .await
-                .map_err(|e| ActionErrorKind::command(&command, e))
-                .map_err(Self::error)?;
-
-            if output.status.success() {
-                break;
-            } else if retry_tokens == 0 {
-                return Err(Self::error(ActionErrorKind::command_output(
-                    &command, output,
-                )))?;
-            } else {
-                retry_tokens = retry_tokens.saturating_sub(1);
-            }
-
-            tokio::time::sleep(Duration::from_millis(500)).await;
-        }
+        super::retry_kickstart(&self.domain, &self.service)
+            .await
+            .map_err(Self::error)?;
 
         Ok(())
     }

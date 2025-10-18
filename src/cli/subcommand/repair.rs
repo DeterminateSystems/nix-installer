@@ -118,7 +118,10 @@ impl Repair {
 #[async_trait::async_trait]
 impl CommandExecute for Repair {
     #[tracing::instrument(level = "trace", skip_all)]
-    async fn execute(self) -> eyre::Result<ExitCode> {
+    async fn execute<T>(self, _feedback: T) -> eyre::Result<ExitCode>
+    where
+        T: crate::feedback::Feedback,
+    {
         let command = self.command();
 
         ensure_root()?;
@@ -171,7 +174,7 @@ impl CommandExecute for Repair {
                     PromptChoice::Yes => break,
                     PromptChoice::No => {
                         crate::cli::interaction::clean_exit_with_message(
-                            "Okay, didn't do anything! Bye!",
+                            "Okay, not continuing with the repair. Bye!",
                         )
                         .await
                     },
@@ -269,8 +272,33 @@ impl CommandExecute for Repair {
                     group_plist
                 };
 
-                let expected_users = group_plist
-                    .group_membership
+                let mut group_members = group_plist.group_membership;
+                group_members.sort_by(|a, b| {
+                    let a = a
+                        .trim_start_matches(|c: char| !c.is_numeric())
+                        .parse::<u32>()
+                        .unwrap_or_else(|_| {
+                            tracing::warn!(
+                                member = a,
+                                "Group member had no numbers in their name?"
+                            );
+                            0
+                        });
+                    let b = b
+                        .trim_start_matches(|c: char| !c.is_numeric())
+                        .parse::<u32>()
+                        .unwrap_or_else(|_| {
+                            tracing::warn!(
+                                member = b,
+                                "Group member had no numbers in their name?"
+                            );
+                            0
+                        });
+
+                    a.cmp(&b)
+                });
+
+                let expected_users = group_members
                     .into_iter()
                     .enumerate()
                     .map(|(idx, name)| ((idx + 1) as u32, name))

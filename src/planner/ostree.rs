@@ -11,9 +11,10 @@ use crate::{
         },
         StatefulAction,
     },
+    distribution::Distribution,
     error::HasExpectedErrors,
     planner::{Planner, PlannerError},
-    settings::{determinate_nix_settings, CommonSettings, InitSystem, InstallSettingsError},
+    settings::{CommonSettings, InitSystem, InstallSettingsError},
     Action, BuiltinPlanner,
 };
 use std::{collections::HashMap, path::PathBuf};
@@ -176,7 +177,7 @@ impl Planner for Ostree {
                 .boxed(),
         );
 
-        if self.settings.determinate_nix {
+        if self.settings.distribution() == Distribution::DeterminateNix {
             plan.push(
                 ProvisionDeterminateNixd::plan()
                     .await
@@ -198,21 +199,17 @@ impl Planner for Ostree {
                 .boxed(),
         );
         plan.push(
-            ConfigureNix::plan(
-                shell_profile_locations,
-                &self.settings,
-                self.settings.determinate_nix.then(determinate_nix_settings),
-            )
-            .await
-            .map_err(PlannerError::Action)?
-            .boxed(),
+            ConfigureNix::plan(shell_profile_locations, &self.settings)
+                .await
+                .map_err(PlannerError::Action)?
+                .boxed(),
         );
 
         if has_selinux {
             plan.push(
                 ProvisionSelinux::plan(
                     "/etc/nix-installer/selinux/packages/nix.pp".into(),
-                    if self.settings.determinate_nix {
+                    if self.settings.distribution() == Distribution::DeterminateNix {
                         DETERMINATE_SELINUX_POLICY_PP_CONTENT
                     } else {
                         SELINUX_POLICY_PP_CONTENT
@@ -289,20 +286,6 @@ impl Planner for Ostree {
         }
 
         Ok(settings)
-    }
-
-    #[cfg(feature = "diagnostics")]
-    async fn diagnostic_data(&self) -> Result<crate::diagnostics::DiagnosticData, PlannerError> {
-        Ok(crate::diagnostics::DiagnosticData::new(
-            self.settings.diagnostic_attribution.clone(),
-            self.settings.diagnostic_endpoint.clone(),
-            self.typetag_name().into(),
-            self.configured_settings()
-                .await?
-                .into_keys()
-                .collect::<Vec<_>>(),
-            self.settings.ssl_cert_file.clone(),
-        )?)
     }
 
     async fn platform_check(&self) -> Result<(), PlannerError> {
