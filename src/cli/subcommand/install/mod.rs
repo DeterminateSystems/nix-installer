@@ -1,5 +1,3 @@
-mod determinate;
-
 use std::{
     os::unix::prelude::PermissionsExt,
     path::{Path, PathBuf},
@@ -115,10 +113,6 @@ impl CommandExecute for Install {
             return Err(eyre!("`--plan` conflicts with passing a planner, a planner creates plans, so passing an existing plan doesn't make sense"));
         }
 
-        determinate::inform_macos_about_pkg(&feedback).await;
-
-        let mut post_install_message = None;
-
         let mut install_plan = if let Some(plan_path) = plan {
             let install_plan_string = tokio::fs::read_to_string(&plan_path)
                 .await
@@ -161,10 +155,6 @@ impl CommandExecute for Install {
                 eprintln!("{}", format!("Found existing plan in `{RECEIPT_LOCATION}`, with the same settings, already completed. Try uninstalling (`{uninstall_command}`) and reinstalling if Nix isn't working").red());
                 return Ok(ExitCode::SUCCESS);
             }
-
-            post_install_message =
-                determinate::prompt_for_determinate(&mut feedback, &mut planner, no_confirm)
-                    .await?;
 
             feedback.set_planner(&planner).await?;
 
@@ -344,10 +334,6 @@ impl CommandExecute for Install {
                             ". /nix/var/nix/profiles/default/etc/profile.d/nix-daemon.sh".bold(),
                     },
                 );
-
-                if let Some(msg) = post_install_message {
-                    println!("{}\n", msg.trim());
-                }
             },
         }
 

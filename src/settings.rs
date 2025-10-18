@@ -42,31 +42,6 @@ Settings which only apply to certain [`Planner`](crate::planner::Planner)s shoul
 #[derive(Debug, serde::Deserialize, serde::Serialize, Clone)]
 #[cfg_attr(feature = "cli", derive(clap::Parser))]
 pub struct CommonSettings {
-    /// Enable Determinate Nix. See: <https://determinate.systems/enterprise>
-    // setting skip = false means this always gets the value false, which is easier than completely removing this from the struct and changing all instances it is used
-    #[cfg_attr(
-        feature = "cli",
-        clap(
-            // long = "determinate",
-            // env = "NIX_INSTALLER_DETERMINATE",
-            // default_value = "false",
-            skip = false,
-        )
-    )]
-    pub determinate_nix: bool,
-
-    /// Prefer installing upstream Nix if possible when run in an automated context.
-    #[cfg_attr(
-        feature = "cli",
-        clap(
-            long = "prefer-upstream-nix",
-            env = "NIX_INSTALLER_PREFER_UPSTREAM_NIX",
-            // Note this default is replicated in a default() implementation
-            default_value = "true"
-        )
-    )]
-    pub prefer_upstream: bool,
-
     /// Modify the user profile to automatically load Nix
     #[cfg_attr(
         feature = "cli",
@@ -296,8 +271,6 @@ impl CommonSettings {
         };
 
         Ok(Self {
-            determinate_nix: false,
-            prefer_upstream: true,
             modify_profile: true,
             nix_build_group_name: String::from(crate::settings::DEFAULT_NIX_BUILD_USER_GROUP_NAME),
             nix_build_group_id: default_nix_build_group_id(),
@@ -310,6 +283,10 @@ impl CommonSettings {
             force: false,
             skip_nix_conf: false,
             ssl_cert_file: Default::default(),
+            #[cfg(feature = "diagnostics")]
+            diagnostic_attribution: None,
+            #[cfg(feature = "diagnostics")]
+            diagnostic_endpoint: Some("".into()),
             add_channel: false,
         })
     }
@@ -317,8 +294,6 @@ impl CommonSettings {
     /// A listing of the settings, suitable for [`Planner::settings`](crate::planner::Planner::settings)
     pub fn settings(&self) -> Result<HashMap<String, serde_json::Value>, InstallSettingsError> {
         let Self {
-            determinate_nix,
-            prefer_upstream,
             modify_profile,
             nix_build_group_name,
             nix_build_group_id,
@@ -339,14 +314,6 @@ impl CommonSettings {
         } = self;
         let mut map = HashMap::default();
 
-        map.insert(
-            "determinate_nix".into(),
-            serde_json::to_value(determinate_nix)?,
-        );
-        map.insert(
-            "prefer_upstream".into(),
-            serde_json::to_value(prefer_upstream)?,
-        );
         map.insert(
             "modify_profile".into(),
             serde_json::to_value(modify_profile)?,
@@ -387,14 +354,8 @@ impl CommonSettings {
     }
 
     pub fn distribution(&self) -> Distribution {
-        if self.determinate_nix {
-            Distribution::DeterminateNix
-        } else if self.prefer_upstream {
-            // If the user passed --prefer-upstream (or it defaults to true), default back to Nix
-            Distribution::Nix
-        } else {
-            Distribution::DeterminateNix
-        }
+        // This installer only supports upstream Nix
+        Distribution::Nix
     }
 }
 
