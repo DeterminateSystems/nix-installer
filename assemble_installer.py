@@ -1,89 +1,90 @@
-import os
-import requests
-import subprocess
+#!/usr/bin/env python3
+"""Assemble and release nix-installer binaries from Hydra builds."""
+
+import argparse
+import json
 import shutil
+import subprocess
 import sys
 import tempfile
 import tomllib
-
+import urllib.request
 from string import Template
+from typing import Any
 
-# A Hydra eval id must be passed as the argument to this script or an empty
-# string to use latest eval on Hydra
-# TODO: using an empty string is not the cleanest
-# TODO: print script usage
-# TODO: argparse or something
-if len(sys.argv) < 2:
-    eval_id = None
-else:
-    eval_id = sys.argv[1]
 
-response = requests.get('https://hydra.nixos.org/jobset/experimental-nix-installer/experimental-installer/evals', headers={'Accept': 'application/json'})
-evals = response.json()['evals']
+def get_hydra_evals() -> list[dict[str, Any]]:
+    """Fetch evaluations from Hydra jobset."""
+    url = "https://hydra.nixos.org/jobset/experimental-nix-installer/experimental-installer/evals"
+    req = urllib.request.Request(url, headers={"Accept": "application/json"})
+    with urllib.request.urlopen(req) as response:
+        data = json.loads(response.read().decode("utf-8"))
+    return data["evals"]
 
-if eval_id is not None and eval_id != "":
-    eval_id_int = int(eval_id)
-    ids = [eval['id'] for eval in evals]
-    hydra_eval = next( eval for eval in evals if eval['id'] == eval_id_int )
-else:
-    hydra_eval = evals[0]
 
-    rev = subprocess.run(
-        ["git", "rev-parse", "HEAD"], stdout=subprocess.PIPE, check=True, text=True
-    ).stdout.strip()
-
-    if not rev in hydra_eval["flake"]:
-        raise RuntimeError(
-            f"Expected flake with rev {rev} but found flake {hydra_eval['flake']}"
-        )
-
-installers = []
-
-for build_id in hydra_eval['builds']:
-    response = requests.get(f"https://hydra.nixos.org/build/{build_id}", headers={'Accept': 'application/json'})
-    build = response.json()
-    installer_url = build['buildoutputs']['out']['path']
-    system = build['system']
-    if build['finished'] == 1:
-        try:
-            subprocess.call(f"nix-store -r {installer_url}", shell=True)
-        except:
-            # retry once
-            subprocess.call(f"nix-store -r {installer_url}", shell=True)
-        installers.append((installer_url, system))
+def find_eval(evals: list[dict[str, Any]], eval_id: str | None) -> dict[str, Any]:
+    """Find the specified eval or return the latest one."""
+    if eval_id is not None and eval_id != "":
+        eval_id_int = int(eval_id)
+        return next(eval for eval in evals if eval["id"] == eval_id_int)
     else:
-        print(
-            f"Build {build_id} not finished. Check status at https://hydra.nixos.org/eval/{hydra_eval['id']}#tabs-unfinished"
+        # Use latest eval and verify it matches current HEAD
+        hydra_eval = evals[0]
+        result = subprocess.run(
+            ["git", "rev-parse", "HEAD"],
+            stdout=subprocess.PIPE,
+            check=True,
+            text=True,
         )
-        sys.exit(0)
+        rev = result.stdout.strip()
 
-with open("Cargo.toml", "rb") as f:
-    cargo_toml = tomllib.load(f)
-version = cargo_toml["package"]["version"]
+        if rev not in hydra_eval["flake"]:
+            raise RuntimeError(
+                f"Expected flake with rev {rev} but found flake {hydra_eval['flake']}"
+            )
 
-with tempfile.TemporaryDirectory() as tmpdirname:
-    release_files = []
-    for installer_url, system in installers:
-        installer_file = f"{tmpdirname}/nix-installer-{system}"
-        release_files.append(installer_file)
-        print(f"Copying {installer_url} to {installer_file}")
-        shutil.copy(f"{installer_url}/bin/nix-installer", installer_file)
+        return hydra_eval
 
-    # Substitute version in nix-installer.sh
-    original_file = "nix-installer.sh"
 
-    with open(original_file, "r") as nix_installer_sh:
-        nix_installer_sh_contents = nix_installer_sh.read()
+def get_build_info(build_id: int) -> dict[str, Any]:
+    """Fetch build information from Hydra."""
+    url = f"https://hydra.nixos.org/build/{build_id}"
+    req = urllib.request.Request(url, headers={"Accept": "application/json"})
+    with urllib.request.urlopen(req) as response:
+        return json.loads(response.read().decode("utf-8"))
 
-    template = Template(nix_installer_sh_contents)
-    updated_content = template.safe_substitute(assemble_installer_templated_version=version)
 
-    # Write the modified content to the output file
-    substituted_file=f"{tmpdirname}/nix-installer.sh"
-    with open(substituted_file, "w", encoding="utf-8") as output_file:
-        output_file.write(updated_content)
-    release_files.append(substituted_file)
+def download_installer(installer_url: str) -> bool:
+    """Download installer using nix-store, with retry logic."""
+    try:
+        subprocess.run(
+            f"nix-store -r {installer_url}",
+            shell=True,
+            check=True,
+        )
+        return True
+    except subprocess.CalledProcessError:
+        # Retry once
+        try:
+            subprocess.run(
+                f"nix-store -r {installer_url}",
+                shell=True,
+                check=True,
+            )
+            return True
+        except subprocess.CalledProcessError:
+            return False
 
+
+def get_version() -> str:
+    """Extract version from Cargo.toml."""
+    with open("Cargo.toml", "rb") as f:
+        cargo_toml = tomllib.load(f)
+    return cargo_toml["package"]["version"]
+
+
+def create_release(version: str, release_files: list[str]) -> None:
+    """Create a draft GitHub release with the given files."""
     subprocess.run(
         [
             "gh",
@@ -99,3 +100,75 @@ with tempfile.TemporaryDirectory() as tmpdirname:
         ],
         check=True,
     )
+
+
+def main() -> None:
+    """Main entry point for the installer assembly script."""
+    parser = argparse.ArgumentParser(
+        description="Assemble and release nix-installer binaries from Hydra builds"
+    )
+    parser.add_argument(
+        "eval_id",
+        nargs="?",
+        default=None,
+        help="Hydra evaluation ID to use (defaults to latest matching HEAD)",
+    )
+    args = parser.parse_args()
+
+    # Fetch and select the evaluation
+    evals = get_hydra_evals()
+    hydra_eval = find_eval(evals, args.eval_id)
+
+    # Process all builds in the evaluation
+    installers: list[tuple[str, str]] = []
+    for build_id in hydra_eval["builds"]:
+        build = get_build_info(build_id)
+        installer_url = build["buildoutputs"]["out"]["path"]
+        system = build["system"]
+
+        if build["finished"] == 1:
+            if download_installer(installer_url):
+                installers.append((installer_url, system))
+        else:
+            print(
+                f"Build {build_id} not finished. "
+                f"Check status at https://hydra.nixos.org/eval/{hydra_eval['id']}#tabs-unfinished"
+            )
+            sys.exit(0)
+
+    # Get version from Cargo.toml
+    version = get_version()
+
+    # Create release with all installer binaries
+    with tempfile.TemporaryDirectory() as tmpdirname:
+        release_files: list[str] = []
+
+        # Copy installer binaries
+        for installer_url, system in installers:
+            installer_file = f"{tmpdirname}/nix-installer-{system}"
+            release_files.append(installer_file)
+            print(f"Copying {installer_url} to {installer_file}")
+            shutil.copy(f"{installer_url}/bin/nix-installer", installer_file)
+
+        # Substitute version in nix-installer.sh
+        original_file = "nix-installer.sh"
+        with open(original_file, "r") as nix_installer_sh:
+            nix_installer_sh_contents = nix_installer_sh.read()
+
+        template = Template(nix_installer_sh_contents)
+        updated_content = template.safe_substitute(
+            assemble_installer_templated_version=version
+        )
+
+        # Write the modified content to the output file
+        substituted_file = f"{tmpdirname}/nix-installer.sh"
+        with open(substituted_file, "w", encoding="utf-8") as output_file:
+            output_file.write(updated_content)
+        release_files.append(substituted_file)
+
+        # Create the GitHub release
+        create_release(version, release_files)
+
+
+if __name__ == "__main__":
+    main()
