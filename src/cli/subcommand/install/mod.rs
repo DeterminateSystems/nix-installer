@@ -117,15 +117,13 @@ impl CommandExecute for Install {
 
         determinate::inform_macos_about_pkg(&feedback).await;
 
-        let mut post_install_message = None;
-
         let mut install_plan = if let Some(plan_path) = plan {
             let install_plan_string = tokio::fs::read_to_string(&plan_path)
                 .await
                 .wrap_err("Reading plan")?;
             serde_json::from_str(&install_plan_string)?
         } else {
-            let mut planner = match maybe_planner {
+            let planner = match maybe_planner {
                 Some(planner) => planner,
                 None => BuiltinPlanner::from_common_settings(settings.clone())
                     .await
@@ -161,10 +159,6 @@ impl CommandExecute for Install {
                 eprintln!("{}", format!("Found existing plan in `{RECEIPT_LOCATION}`, with the same settings, already completed. Try uninstalling (`{uninstall_command}`) and reinstalling if Nix isn't working").red());
                 return Ok(ExitCode::SUCCESS);
             }
-
-            post_install_message =
-                determinate::prompt_for_determinate(&mut feedback, &mut planner, no_confirm)
-                    .await?;
 
             feedback.set_planner(&planner).await?;
 
@@ -344,10 +338,6 @@ impl CommandExecute for Install {
                             ". /nix/var/nix/profiles/default/etc/profile.d/nix-daemon.sh".bold(),
                     },
                 );
-
-                if let Some(msg) = post_install_message {
-                    println!("{}\n", msg.trim());
-                }
             },
         }
 
