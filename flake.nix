@@ -35,8 +35,8 @@
     } @ inputs:
     let
       nix_tarball_url_prefix = "https://releases.nixos.org/nix/nix-2.32.2/nix-2.32.2-";
-      supportedSystems = [ "x86_64-linux" "aarch64-linux" "x86_64-darwin" "aarch64-darwin" ];
-      systemsSupportedByDeterminateNixd = [ "x86_64-linux" "aarch64-linux" "x86_64-darwin" "aarch64-darwin" ];
+      supportedSystems = [ "x86_64-linux" "aarch64-linux" "aarch64-darwin" ];
+      systemsSupportedByDeterminateNixd = [ "x86_64-linux" "aarch64-linux" "aarch64-darwin" ];
 
       forAllSystems = f: nixpkgs.lib.genAttrs supportedSystems (system: (forSystem system f));
 
