@@ -1172,8 +1172,8 @@
     "planner": "steam-deck",
     "persistence": "/home/nix",
     "settings": {
-      "determinate_nix": false,
-      "prefer_upstream": true,
+      "determinate_nix": true,
+      "prefer_upstream": false,
       "modify_profile": true,
       "nix_build_group_name": "nixbld",
       "nix_build_group_id": 30000,

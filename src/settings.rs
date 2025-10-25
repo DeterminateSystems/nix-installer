@@ -60,7 +60,7 @@ pub struct CommonSettings {
             long = "prefer-upstream-nix",
             env = "NIX_INSTALLER_PREFER_UPSTREAM_NIX",
             // Note this default is replicated in a default() implementation
-            default_value = "true"
+            default_value = "false"
         )
     )]
     pub prefer_upstream: bool,
@@ -240,7 +240,7 @@ impl CommonSettings {
 
         Ok(Self {
             determinate_nix: false,
-            prefer_upstream: true,
+            prefer_upstream: false,
             modify_profile: true,
             nix_build_group_name: String::from(crate::settings::DEFAULT_NIX_BUILD_USER_GROUP_NAME),
             nix_build_group_id: default_nix_build_group_id(),
