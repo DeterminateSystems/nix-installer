@@ -33,12 +33,12 @@
         ]
       },
       "locked": {
-        "lastModified": 1762266267,
-        "narHash": "sha256-3C5rKCdoi8b6G0IWkfVe/FVfXLgM8PmT2zuCIq0We9c=",
-        "rev": "5559629831ffcaf8031c1b01f7e34a61c4091db1",
-        "revCount": 307,
+        "lastModified": 1762366147,
+        "narHash": "sha256-wgdxpKPvkMqCdHwpO8/uboBHTWhLevVXpX0VxU+ahic=",
+        "rev": "43a73d8765c97ff76eac4ef543369891d4e2644d",
+        "revCount": 308,
         "type": "tarball",
-        "url": "https://api.flakehub.com/f/pinned/DeterminateSystems/determinate/3.12.1/019a4f44-aa60-764b-8f7c-ef1664c1aa29/source.tar.gz"
+        "url": "https://api.flakehub.com/f/pinned/DeterminateSystems/determinate/3.12.2/019a55b3-b1fd-794d-ae5b-c6f07d0d0ca7/source.tar.gz"
       },
       "original": {
         "type": "tarball",
@@ -48,37 +48,37 @@
     "determinate-nixd-aarch64-darwin": {
       "flake": false,
       "locked": {
-        "narHash": "sha256-VzRYkXZhTnYYedKAQhz8i7fXg6PTF0j+oFW0ZUe5bjA=",
+        "narHash": "sha256-6Nk7pIXTTsdp52WJ7PgA2ocJoxNYlaS0c2iOBsfIlfM=",
         "type": "file",
-        "url": "https://install.determinate.systems/determinate-nixd/tag/v3.12.1/macOS"
+        "url": "https://install.determinate.systems/determinate-nixd/tag/v3.12.2/macOS"
       },
       "original": {
         "type": "file",
-        "url": "https://install.determinate.systems/determinate-nixd/tag/v3.12.1/macOS"
+        "url": "https://install.determinate.systems/determinate-nixd/tag/v3.12.2/macOS"
       }
     },
     "determinate-nixd-aarch64-linux": {
       "flake": false,
       "locked": {
-        "narHash": "sha256-4PhP5fvYkM5Kz5GiAASIjFbOHbOW4q2gqIPpOAOTD7Y=",
+        "narHash": "sha256-Xd1H8NenrmJBbpVD0qcCWLqXiPz+WWm0MpZBDSgnMtE=",
         "type": "file",
-        "url": "https://install.determinate.systems/determinate-nixd/tag/v3.12.1/aarch64-linux"
+        "url": "https://install.determinate.systems/determinate-nixd/tag/v3.12.2/aarch64-linux"
       },
       "original": {
         "type": "file",
-        "url": "https://install.determinate.systems/determinate-nixd/tag/v3.12.1/aarch64-linux"
+        "url": "https://install.determinate.systems/determinate-nixd/tag/v3.12.2/aarch64-linux"
       }
     },
     "determinate-nixd-x86_64-linux": {
       "flake": false,
       "locked": {
-        "narHash": "sha256-2q3vsCBAFQd367V6Tc03aDCbKnN9g7LfDWnMW56pQ5M=",
+        "narHash": "sha256-e8RT5Jo5n3m95BXuUaIl05Bf0rUshb3S0lUhTPAQlZs=",
         "type": "file",
-        "url": "https://install.determinate.systems/determinate-nixd/tag/v3.12.1/x86_64-linux"
+        "url": "https://install.determinate.systems/determinate-nixd/tag/v3.12.2/x86_64-linux"
       },
       "original": {
         "type": "file",
-        "url": "https://install.determinate.systems/determinate-nixd/tag/v3.12.1/x86_64-linux"
+        "url": "https://install.determinate.systems/determinate-nixd/tag/v3.12.2/x86_64-linux"
       }
     },
     "flake-compat": {
@@ -150,12 +150,12 @@
         "nixpkgs-regression": "nixpkgs-regression"
       },
       "locked": {
-        "lastModified": 1762224796,
-        "narHash": "sha256-7XJaCctwSOF1AAdrr8qpkFIB1N4qThxXzskXLvGPsAI=",
-        "rev": "1d3ce493cca45d7bb19982ef43f24509e9e4f629",
-        "revCount": 23147,
+        "lastModified": 1762362505,
+        "narHash": "sha256-Wm+ar8RmbGPCzmrYeou2T37WHTBRynMIsEb/uBiw/Ac=",
+        "rev": "72d304e9097a7307f2d4c1bf260f75a94871122b",
+        "revCount": 23176,
         "type": "tarball",
-        "url": "https://api.flakehub.com/f/pinned/DeterminateSystems/nix-src/3.12.1/019a4ce5-50dd-7d73-aa4d-bf33d21b6368/source.tar.gz"
+        "url": "https://api.flakehub.com/f/pinned/DeterminateSystems/nix-src/3.12.2/019a5521-738e-7c3d-be11-70270771a4e2/source.tar.gz"
       },
       "original": {
         "type": "tarball",
