@@ -20,7 +20,7 @@ jobs:
           nix build .#packages.aarch64-linux.nix-installer-static -L
           cp result/bin/nix-installer ./nix-installer-aarch64-linux
       - name: Create GitHub artifacts from build outputs
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         with:
           path: nix-installer-aarch64-linux
           name: nix-installer-aarch64-linux

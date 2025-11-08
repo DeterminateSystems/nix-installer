@@ -20,7 +20,7 @@ jobs:
           nix build .#packages.x86_64-darwin.nix-installer-static -L
           cp result/bin/nix-installer ./nix-installer-x86_64-darwin
       - name: Create GitHub artifacts from build outputs
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         with:
           path: nix-installer-x86_64-darwin
           name: nix-installer-x86_64-darwin
