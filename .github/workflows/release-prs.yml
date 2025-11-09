@@ -35,17 +35,6 @@ jobs:
         || (github.event.action != 'labeled' && contains(github.event.pull_request.labels.*.name, 'upload to s3'))
       )
     uses: ./.github/workflows/build-aarch64-linux.yml
-  build-x86_64-darwin:
-    # Only intra-repo PRs are allowed to have PR artifacts uploaded
-    # We only want to trigger once the upload once in the case the upload label is added, not when any label is added
-    if: |
-      always() && !failure() && !cancelled()
-      && github.event.pull_request.head.repo.full_name == 'DeterminateSystems/nix-installer'
-      && (
-        (github.event.action == 'labeled' && github.event.label.name == 'upload to s3')
-        || (github.event.action != 'labeled' && contains(github.event.pull_request.labels.*.name, 'upload to s3'))
-      )
-    uses: ./.github/workflows/build-x86_64-darwin.yml
   build-aarch64-darwin:
     # Only intra-repo PRs are allowed to have PR artifacts uploaded
     # We only want to trigger once the upload once in the case the upload label is added, not when any label is added
@@ -72,7 +61,6 @@ jobs:
     needs:
       - build-x86_64-linux
       - build-aarch64-linux
-      - build-x86_64-darwin
       - build-aarch64-darwin
     steps:
       - name: Checkout
@@ -88,10 +76,6 @@ jobs:
         uses: actions/download-artifact@v6
         with:
           name: nix-installer-aarch64-linux
-      - name: Fetch x86_64-darwin binary artifact
-        uses: actions/download-artifact@v6
-        with:
-          name: nix-installer-x86_64-darwin
       - name: Fetch aarch64-darwin binary artifact
         uses: actions/download-artifact@v6
         with:
@@ -100,7 +84,6 @@ jobs:
         run: |
           mv nix-installer-x86_64-linux artifacts/
           mv nix-installer-aarch64-linux artifacts/
-          mv nix-installer-x86_64-darwin artifacts/
           mv nix-installer-aarch64-darwin artifacts/
 
       - name: Configure AWS Credentials
