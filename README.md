@@ -9,7 +9,7 @@
 **Determinate Nix Installer** is the easiest and most reliable way to install [Determinate Nix][det-nix] (as well as [Determinate Systems][detsys]' longest-running project as a company).
 The installer works across a wide range of environments, including macOS, Linux, Windows Subsystem for Linux (WSL), SELinux, the Valve Steam Deck, and more, it offers support for seamlessly [uninstalling Nix](#uninstalling), it enables Nix to survive [macOS upgrades][macos-upgrades], and offers a [range of features](#features) that make it the industry standard for installing Nix.
 
-[By default][blog-announcement], it installs Determinate Nix, which enables [flakes] by default and offers a variety of industry-leading [features] and [improvements].
+[By default][blog-announcement], it installs Determinate Nix, which enables [flakes] and offers a variety of industry-leading [features] and [improvements].
 You can, however, use Determinate Nix Installer to install [upstream Nix](#installing-upstream-nix) if you wish.
 
 ## Install Determinate Nix
