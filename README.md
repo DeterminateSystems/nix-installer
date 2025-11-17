@@ -9,8 +9,11 @@
 **Determinate Nix Installer** is the easiest and most reliable way to install [Determinate Nix][det-nix] (as well as [Determinate Systems][detsys]' longest-running project as a company).
 The installer works across a wide range of environments, including macOS, Linux, Windows Subsystem for Linux (WSL), SELinux, the Valve Steam Deck, and more, it offers support for seamlessly [uninstalling Nix](#uninstalling), it enables Nix to survive [macOS upgrades][macos-upgrades], and offers a [range of features](#features) that make it the industry standard for installing Nix.
 
-[By default][blog-announcement], it installs Determinate Nix, which enables [flakes] and offers a variety of industry-leading [features] and [improvements].
-You can, however, use Determinate Nix Installer to install [upstream Nix](#installing-upstream-nix) if you wish.
+By default, it installs Determinate Nix, which enables [flakes] and offers a variety of industry-leading [features] and [improvements].
+
+> [!NOTE]
+> You can also use Determinate Nix Installer to install [upstream Nix](#installing-upstream-nix) if you wish.
+> This option will be available, however, until [January 1, 2026][blog-announcement].
 
 ## Install Determinate Nix
 
@@ -368,26 +371,26 @@ These settings are available for all commands.
 
 ### Installation (`nix-installer install`)
 
-| Flag(s)                    | Description                                                                                                         | Default (if any)                     | Environment variable                   |
-| -------------------------- | ------------------------------------------------------------------------------------------------------------------- | ------------------------------------ | -------------------------------------- |
-| `--diagnostic-attribution` | Relate the install diagnostic to a specific distinct user ID                                                        |                                      | `NIX_INSTALLER_DIAGNOSTIC_ATTRIBUTION` |
-| `--diagnostic-endpoint`    | The URL or file path for an installation diagnostic to be sent                                                      |                                      | `NIX_INSTALLER_DIAGNOSTIC_ENDPOINT`    |
-| `--explain`                | Provide an explanation of the changes the installation process will make to your system                             | `false`                              | `NIX_INSTALLER_EXPLAIN`                |
-| `--extra-conf`             | Extra configuration lines for `/etc/nix.conf`                                                                       |                                      | `NIX_INSTALLER_EXTRA_CONF`             |
-| `--force`                  | Whether the installer should forcibly recreate files it finds existing                                              | `false`                              | `NIX_INSTALLER_FORCE`                  |
-| `--init`                   | Which init system to configure (if `--init none` Nix will be root-only)                                             | `launchd` (macOS), `systemd` (Linux) | `NIX_INSTALLER_INIT`                   |
-| `--nix-build-group-id`     | The Nix build group GID                                                                                             | `350` (macOS), `30000` (Linux)       | `NIX_INSTALLER_NIX_BUILD_GROUP_ID`     |
-| `--nix-build-group-name`   | The Nix build group name                                                                                            | `nixbld`                             | `NIX_INSTALLER_NIX_BUILD_GROUP_NAME`   |
-| `--nix-build-user-count`   | The number of build users to create                                                                                 | `32`                                 | `NIX_INSTALLER_NIX_BUILD_USER_COUNT`   |
-| `--nix-build-user-id-base` | The Nix build user base UID (ascending) (NOTE: the first UID will be this base + 1)                                 | `350` (macOS), `30000` (Linux)       | `NIX_INSTALLER_NIX_BUILD_USER_ID_BASE` |
-| `--nix-build-user-prefix`  | The Nix build user prefix (user numbers will be postfixed)                                                          | `_nixbld` (macOS), `nixbld` (Linux)  | `NIX_INSTALLER_NIX_BUILD_USER_PREFIX`  |
-| `--nix-package-url`        | The Nix package URL                                                                                                 |                                      | `NIX_INSTALLER_NIX_PACKAGE_URL`        |
-| `--no-confirm`             | Run installation without requiring explicit user confirmation                                                       | `false`                              | `NIX_INSTALLER_NO_CONFIRM`             |
-| `--no-modify-profile`      | Modify the user profile to automatically load Nix.                                                                  | `true`                               | `NIX_INSTALLER_MODIFY_PROFILE`         |
-| `--prefer-upstream-nix`    | Specify that you want the installer to install [upstream Nix][upstream-nix] rather than [Determinate Nix][det-nix]. | `false`                              | `NIX_INSTALLER_PREFER_UPSTREAM_NIX`    |
-| `--proxy`                  | The proxy to use (if any); valid proxy bases are `https://$URL`, `http://$URL` and `socks5://$URL`                  |                                      | `NIX_INSTALLER_PROXY`                  |
-| `--ssl-cert-file`          | An SSL cert to use (if any); used for fetching Nix and sets `ssl-cert-file` in `/etc/nix/nix.conf`                  |                                      | `NIX_INSTALLER_SSL_CERT_FILE`          |
-| `--no-start-daemon`        | Start the daemon (if not `--init none`)                                                                             | `true`                               | `NIX_INSTALLER_START_DAEMON`           |
+| Flag(s)                    | Description                                                                                                                                                               | Default (if any)                     | Environment variable                   |
+| -------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------ | -------------------------------------- |
+| `--diagnostic-attribution` | Relate the install diagnostic to a specific distinct user ID                                                                                                              |                                      | `NIX_INSTALLER_DIAGNOSTIC_ATTRIBUTION` |
+| `--diagnostic-endpoint`    | The URL or file path for an installation diagnostic to be sent                                                                                                            |                                      | `NIX_INSTALLER_DIAGNOSTIC_ENDPOINT`    |
+| `--explain`                | Provide an explanation of the changes the installation process will make to your system                                                                                   | `false`                              | `NIX_INSTALLER_EXPLAIN`                |
+| `--extra-conf`             | Extra configuration lines for `/etc/nix.conf`                                                                                                                             |                                      | `NIX_INSTALLER_EXTRA_CONF`             |
+| `--force`                  | Whether the installer should forcibly recreate files it finds existing                                                                                                    | `false`                              | `NIX_INSTALLER_FORCE`                  |
+| `--init`                   | Which init system to configure (if `--init none` Nix will be root-only)                                                                                                   | `launchd` (macOS), `systemd` (Linux) | `NIX_INSTALLER_INIT`                   |
+| `--nix-build-group-id`     | The Nix build group GID                                                                                                                                                   | `350` (macOS), `30000` (Linux)       | `NIX_INSTALLER_NIX_BUILD_GROUP_ID`     |
+| `--nix-build-group-name`   | The Nix build group name                                                                                                                                                  | `nixbld`                             | `NIX_INSTALLER_NIX_BUILD_GROUP_NAME`   |
+| `--nix-build-user-count`   | The number of build users to create                                                                                                                                       | `32`                                 | `NIX_INSTALLER_NIX_BUILD_USER_COUNT`   |
+| `--nix-build-user-id-base` | The Nix build user base UID (ascending) (NOTE: the first UID will be this base + 1)                                                                                       | `350` (macOS), `30000` (Linux)       | `NIX_INSTALLER_NIX_BUILD_USER_ID_BASE` |
+| `--nix-build-user-prefix`  | The Nix build user prefix (user numbers will be postfixed)                                                                                                                | `_nixbld` (macOS), `nixbld` (Linux)  | `NIX_INSTALLER_NIX_BUILD_USER_PREFIX`  |
+| `--nix-package-url`        | The Nix package URL                                                                                                                                                       |                                      | `NIX_INSTALLER_NIX_PACKAGE_URL`        |
+| `--no-confirm`             | Run installation without requiring explicit user confirmation                                                                                                             | `false`                              | `NIX_INSTALLER_NO_CONFIRM`             |
+| `--no-modify-profile`      | Modify the user profile to automatically load Nix.                                                                                                                        | `true`                               | `NIX_INSTALLER_MODIFY_PROFILE`         |
+| `--prefer-upstream-nix`    | Specify that you want the installer to install [upstream Nix][upstream-nix] rather than [Determinate Nix][det-nix]. Available until [January 1, 2026][blog-announcement]. | `false`                              | `NIX_INSTALLER_PREFER_UPSTREAM_NIX`    |
+| `--proxy`                  | The proxy to use (if any); valid proxy bases are `https://$URL`, `http://$URL` and `socks5://$URL`                                                                        |                                      | `NIX_INSTALLER_PROXY`                  |
+| `--ssl-cert-file`          | An SSL cert to use (if any); used for fetching Nix and sets `ssl-cert-file` in `/etc/nix/nix.conf`                                                                        |                                      | `NIX_INSTALLER_SSL_CERT_FILE`          |
+| `--no-start-daemon`        | Start the daemon (if not `--init none`)                                                                                                                                   | `true`                               | `NIX_INSTALLER_START_DAEMON`           |
 
 You can also specify a planner with the first argument:
 
