@@ -16,8 +16,6 @@ jobs:
     uses: ./.github/workflows/build-x86_64-linux.yml
   build-aarch64-linux:
     uses: ./.github/workflows/build-aarch64-linux.yml
-  build-x86_64-darwin:
-    uses: ./.github/workflows/build-x86_64-darwin.yml
   build-aarch64-darwin:
     uses: ./.github/workflows/build-aarch64-darwin.yml
 
@@ -28,7 +26,6 @@ jobs:
     needs:
       - build-x86_64-linux
       - build-aarch64-linux
-      - build-x86_64-darwin
       - build-aarch64-darwin
     steps:
       - name: Checkout
@@ -37,26 +34,21 @@ jobs:
         run: mkdir -p ./artifacts
 
       - name: Fetch x86_64-linux binary artifact
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v6
         with:
           name: nix-installer-x86_64-linux
       - name: Fetch aarch64-linux binary artifact
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v6
         with:
           name: nix-installer-aarch64-linux
-      - name: Fetch x86_64-darwin binary artifact
-        uses: actions/download-artifact@v4
-        with:
-          name: nix-installer-x86_64-darwin
       - name: Fetch aarch64-darwin binary artifact
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v6
         with:
           name: nix-installer-aarch64-darwin
       - name: Move binaries into upload staging dir
         run: |
           mv nix-installer-x86_64-linux artifacts/
           mv nix-installer-aarch64-linux artifacts/
-          mv nix-installer-x86_64-darwin artifacts/
           mv nix-installer-aarch64-darwin artifacts/
 
       - name: Configure AWS Credentials
