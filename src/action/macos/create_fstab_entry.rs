@@ -80,31 +80,24 @@ impl Action for CreateFstabEntry {
             })
             .map_err(|e| Self::error(ActionErrorKind::Read(fstab_path.to_owned(), e)))?;
 
-        let mut line_present = false;
         let mut current_fstab_lines = fstab_buf
             .lines()
-            .filter_map(|line| {
-                // Delete nix-installer entries with a "prelude" comment
+            .filter(|line| {
+                // Remove nix-installer entries with a "prelude" comment
                 if line.starts_with("# nix-installer created volume labelled") {
-                    None
-                } else {
-                    Some(line)
+                    return false;
                 }
-            })
-            .map(|line| {
+                // Remove any existing /nix mount point entries
                 if line.split(&[' ', '\t']).nth(1) == Some("/nix") {
-                    // Replace the existing line with an updated version
-                    line_present = true;
-                    fstab_entry(&uuid)
-                } else {
-                    line.to_owned()
+                    return false;
                 }
+                true
             })
+            .map(|line| line.to_owned())
             .collect::<Vec<String>>();
 
-        if !line_present {
-            current_fstab_lines.push(fstab_entry(&uuid))
-        }
+        // Always append exactly one new /nix entry
+        current_fstab_lines.push(fstab_entry(&uuid));
 
         if current_fstab_lines.last().map(|s| s.as_ref()) != Some("") {
             // Don't leave the file without a trailing newline
