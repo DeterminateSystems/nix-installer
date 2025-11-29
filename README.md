@@ -23,7 +23,7 @@ curl -fsSL https://install.determinate.systems/nix | sh -s -- install --determin
 If you'd prefer upstream Nix:
 
 ```shell
-curl -fsSL https://install.determinate.systems/nix | sh -s -- install
+curl -fsSL https://install.determinate.systems/nix | sh -s -- install --prefer-upstream-nix
 ```
 
 > [!TIP]
