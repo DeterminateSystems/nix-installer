@@ -20,7 +20,7 @@ By default, it installs Determinate Nix, which enables [flakes] and offers a var
 This one-liner installs Determinate Nix on just about any supported system:
 
 ```shell
-curl -fsSL https://install.determinate.systems/nix | sh -s -- install --prefer-upstream-nix
+curl -fsSL https://install.determinate.systems/nix | sh -s -- install
 ```
 
 > [!TIP]
