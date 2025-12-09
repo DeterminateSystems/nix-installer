@@ -1188,7 +1188,7 @@
             "user": null,
             "group": null,
             "mode": 420,
-            "buf": "\n# Set up Nix only on SSH connections\n# See: https://github.com/DeterminateSystems/nix-installer/pull/714\nif [ -e '/nix/var/nix/profiles/default/etc/profile.d/nix-daemon.sh' ] && [ -n \"${SSH_CONNECTION}\" ] && [ \"${SHLVL}\" -eq 1 ]; then\n    . '/nix/var/nix/profiles/default/etc/profile.d/nix-daemon.sh'\nfi\n# End Nix\n",
+            "buf": "\n# Set up Nix only on SSH connections\n# See: https://github.com/DeterminateSystems/nix-installer/pull/714\nif [ -e '/nix/var/nix/profiles/default/etc/profile.d/nix-daemon.sh' ] && [ -n \"${SSH_CONNECTION:-}\" ] && [ \"${SHLVL:-0}\" -eq 1 ]; then\n    . '/nix/var/nix/profiles/default/etc/profile.d/nix-daemon.sh'\nfi\n# End Nix\n",
             "position": "Beginning"
           },
           "state": "Completed"
