@@ -7,14 +7,14 @@ use crate::{
         },
         linux::{
             provision_selinux::{DETERMINATE_SELINUX_POLICY_PP_CONTENT, SELINUX_POLICY_PP_CONTENT},
-            ProvisionSelinux, StartSystemdUnit, SystemctlDaemonReload,
+            ProvisionSelinux, StartOrEnableSystemdUnit, SystemctlDaemonReload,
         },
         StatefulAction,
     },
     distribution::Distribution,
     error::HasExpectedErrors,
     planner::{Planner, PlannerError},
-    settings::{CommonSettings, InitSystem, InstallSettingsError},
+    settings::{CommonSettings, InitSettings, InitSystem, InstallSettingsError},
     Action, BuiltinPlanner,
 };
 use std::{collections::HashMap, path::PathBuf};
@@ -36,6 +36,8 @@ pub struct Ostree {
     persistence: PathBuf,
     #[cfg_attr(feature = "cli", clap(flatten))]
     pub settings: CommonSettings,
+    #[cfg_attr(feature = "cli", clap(flatten))]
+    pub init: InitSettings,
 }
 
 #[async_trait::async_trait]
@@ -45,19 +47,23 @@ impl Planner for Ostree {
         Ok(Self {
             persistence: PathBuf::from("/var/home/nix"),
             settings: CommonSettings::default().await?,
+            init: InitSettings::default().await?,
         })
     }
 
     async fn plan(&self) -> Result<Vec<StatefulAction<Box<dyn Action>>>, PlannerError> {
         let has_selinux = detect_selinux().await?;
-        let mut plan = vec![
-            // Primarily for uninstall
-            SystemctlDaemonReload::plan()
-                .await
-                .map_err(PlannerError::Action)?
-                .boxed(),
-        ];
+        let mut plan = vec![];
 
+        if self.init.start_daemon {
+            // Primarily for uninstall
+            plan.push(
+                SystemctlDaemonReload::plan()
+                    .await
+                    .map_err(PlannerError::Action)?
+                    .boxed(),
+            )
+        }
         plan.push(
             CreateDirectory::plan(&self.persistence, None, None, 0o0755, true)
                 .await
@@ -171,7 +177,7 @@ impl Planner for Ostree {
         }
 
         plan.push(
-            StartSystemdUnit::plan("nix.mount".to_string(), false)
+            StartOrEnableSystemdUnit::plan("nix.mount".to_string(), false, self.init.start_daemon)
                 .await
                 .map_err(PlannerError::Action)?
                 .boxed(),
@@ -229,16 +235,20 @@ impl Planner for Ostree {
         );
 
         plan.push(
-            ConfigureUpstreamInitService::plan(InitSystem::Systemd, true)
+            ConfigureUpstreamInitService::plan(InitSystem::Systemd, self.init.start_daemon)
                 .await
                 .map_err(PlannerError::Action)?
                 .boxed(),
         );
         plan.push(
-            StartSystemdUnit::plan("ensure-symlinked-units-resolve.service".to_string(), true)
-                .await
-                .map_err(PlannerError::Action)?
-                .boxed(),
+            StartOrEnableSystemdUnit::plan(
+                "ensure-symlinked-units-resolve.service".to_string(),
+                true,
+                self.init.start_daemon,
+            )
+            .await
+            .map_err(PlannerError::Action)?
+            .boxed(),
         );
         plan.push(
             RemoveDirectory::plan(crate::settings::SCRATCH_DIR)
@@ -246,12 +256,15 @@ impl Planner for Ostree {
                 .map_err(PlannerError::Action)?
                 .boxed(),
         );
-        plan.push(
-            SystemctlDaemonReload::plan()
-                .await
-                .map_err(PlannerError::Action)?
-                .boxed(),
-        );
+
+        if self.init.start_daemon {
+            plan.push(
+                SystemctlDaemonReload::plan()
+                    .await
+                    .map_err(PlannerError::Action)?
+                    .boxed(),
+            );
+        }
 
         Ok(plan)
     }
@@ -260,10 +273,12 @@ impl Planner for Ostree {
         let Self {
             persistence,
             settings,
+            init,
         } = self;
         let mut map = HashMap::default();
 
         map.extend(settings.settings()?);
+        map.extend(init.settings()?);
         map.insert(
             "persistence".to_string(),
             serde_json::to_value(persistence)?,
@@ -302,7 +317,9 @@ impl Planner for Ostree {
     async fn pre_uninstall_check(&self) -> Result<(), PlannerError> {
         check_not_wsl1()?;
 
-        check_systemd_active()?;
+        if self.init.init == InitSystem::Systemd && self.init.start_daemon {
+            check_systemd_active()?;
+        }
 
         Ok(())
     }
@@ -314,7 +331,9 @@ impl Planner for Ostree {
 
         check_not_wsl1()?;
 
-        check_systemd_active()?;
+        if self.init.init == InitSystem::Systemd && self.init.start_daemon {
+            check_systemd_active()?;
+        }
 
         Ok(())
     }
