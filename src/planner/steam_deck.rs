@@ -108,7 +108,7 @@ use crate::{
             ProvisionDeterminateNixd, ProvisionNix,
         },
         linux::{
-            EnsureSteamosNixDirectory, RevertCleanSteamosNixOffload, StartSystemdUnit,
+            EnsureSteamosNixDirectory, RevertCleanSteamosNixOffload, StartOrEnableSystemdUnit,
             SystemctlDaemonReload,
         },
         Action, StatefulAction,
@@ -265,9 +265,10 @@ impl Planner for SteamDeck {
                 .map_err(PlannerError::Action)?;
             actions.push(ensure_steamos_nix_directory.boxed());
 
-            let start_nix_mount = StartSystemdUnit::plan("nix.mount".to_string(), true)
-                .await
-                .map_err(PlannerError::Action)?;
+            let start_nix_mount =
+                StartOrEnableSystemdUnit::plan("nix.mount".to_string(), true, true)
+                    .await
+                    .map_err(PlannerError::Action)?;
             actions.push(start_nix_mount.boxed());
         }
 
@@ -337,7 +338,7 @@ impl Planner for SteamDeck {
 
         if requires_nix_bind_mount {
             actions.push(
-                StartSystemdUnit::plan("nix.mount".to_string(), false)
+                StartOrEnableSystemdUnit::plan("nix.mount".to_string(), false, true)
                     .await
                     .map_err(PlannerError::Action)?
                     .boxed(),
@@ -371,10 +372,14 @@ impl Planner for SteamDeck {
                 .await
                 .map_err(PlannerError::Action)?
                 .boxed(),
-            StartSystemdUnit::plan("ensure-symlinked-units-resolve.service".to_string(), true)
-                .await
-                .map_err(PlannerError::Action)?
-                .boxed(),
+            StartOrEnableSystemdUnit::plan(
+                "ensure-symlinked-units-resolve.service".to_string(),
+                true,
+                true,
+            )
+            .await
+            .map_err(PlannerError::Action)?
+            .boxed(),
             RemoveDirectory::plan(crate::settings::SCRATCH_DIR)
                 .await
                 .map_err(PlannerError::Action)?

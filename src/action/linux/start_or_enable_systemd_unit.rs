@@ -10,17 +10,19 @@ use crate::action::{Action, ActionDescription};
 Start a given systemd unit
  */
 #[derive(Debug, serde::Deserialize, serde::Serialize, Clone)]
-#[serde(tag = "action_name", rename = "start_systemd_unit")]
-pub struct StartSystemdUnit {
+#[serde(tag = "action_name", rename = "start_or_enable_systemd_unit")]
+pub struct StartOrEnableSystemdUnit {
     unit: String,
     enable: bool,
+    start: bool,
 }
 
-impl StartSystemdUnit {
+impl StartOrEnableSystemdUnit {
     #[tracing::instrument(level = "debug", skip_all)]
     pub async fn plan(
         unit: impl AsRef<str>,
         enable: bool,
+        start: bool,
     ) -> Result<StatefulAction<Self>, ActionError> {
         let unit = unit.as_ref();
         let mut command = Command::new("systemctl");
@@ -42,6 +44,7 @@ impl StartSystemdUnit {
             action: Self {
                 unit: unit.to_string(),
                 enable,
+                start,
             },
             state,
         })
@@ -49,19 +52,19 @@ impl StartSystemdUnit {
 }
 
 #[async_trait::async_trait]
-#[typetag::serde(name = "start_systemd_unit")]
-impl Action for StartSystemdUnit {
+#[typetag::serde(name = "start_or_enable_systemd_unit")]
+impl Action for StartOrEnableSystemdUnit {
     fn action_tag() -> ActionTag {
-        ActionTag("start_systemd_unit")
+        ActionTag("start_or_enable_systemd_unit")
     }
     fn tracing_synopsis(&self) -> String {
-        format!("Enable (and start) the systemd unit `{}`", self.unit)
+        format!("Enable (and/or start) the systemd unit `{}`", self.unit)
     }
 
     fn tracing_span(&self) -> Span {
         span!(
             tracing::Level::DEBUG,
-            "start_systemd_unit",
+            "start_or_enable_systemd_unit",
             unit = %self.unit,
         )
     }
@@ -72,10 +75,14 @@ impl Action for StartSystemdUnit {
 
     #[tracing::instrument(level = "debug", skip_all)]
     async fn execute(&mut self) -> Result<(), ActionError> {
-        let Self { unit, enable } = self;
+        let Self {
+            unit,
+            enable,
+            start,
+        } = self;
 
-        match enable {
-            true => {
+        match (enable, start) {
+            (true, true) => {
                 // TODO(@Hoverbear): Handle proxy vars
                 execute_command(
                     Command::new("systemctl")
@@ -88,7 +95,7 @@ impl Action for StartSystemdUnit {
                 .await
                 .map_err(Self::error)?;
             },
-            false => {
+            (false, true) => {
                 // TODO(@Hoverbear): Handle proxy vars
                 execute_command(
                     Command::new("systemctl")
@@ -99,6 +106,21 @@ impl Action for StartSystemdUnit {
                 )
                 .await
                 .map_err(Self::error)?;
+            },
+            (true, false) => {
+                // TODO(@Hoverbear): Handle proxy vars
+                execute_command(
+                    Command::new("systemctl")
+                        .process_group(0)
+                        .arg("enable")
+                        .arg(unit)
+                        .stdin(std::process::Stdio::null()),
+                )
+                .await
+                .map_err(Self::error)?;
+            },
+            (false, false) => {
+                tracing::warn!("Told to neither enable nor start unit {}. Noop!", unit);
             },
         }
 
