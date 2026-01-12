@@ -2,8 +2,8 @@ use crate::{
     action::{
         base::{CreateDirectory, CreateFile, RemoveDirectory},
         common::{
-            ConfigureNix, ConfigureUpstreamInitService, CreateUsersAndGroups,
-            ProvisionDeterminateNixd, ProvisionNix,
+            ConfigureDeterminateNixdInitService, ConfigureNix, ConfigureUpstreamInitService,
+            CreateUsersAndGroups, ProvisionDeterminateNixd, ProvisionNix,
         },
         linux::{
             provision_selinux::{DETERMINATE_SELINUX_POLICY_PP_CONTENT, SELINUX_POLICY_PP_CONTENT},
@@ -228,12 +228,27 @@ impl Planner for Ostree {
                 .boxed(),
         );
 
-        plan.push(
-            ConfigureUpstreamInitService::plan(InitSystem::Systemd, true)
-                .await
-                .map_err(PlannerError::Action)?
-                .boxed(),
-        );
+        let init = InitSystem::Systemd;
+        let start_daemon = true;
+        match self.settings.distribution() {
+            Distribution::DeterminateNix => {
+                plan.push(
+                    ConfigureDeterminateNixdInitService::plan(init, start_daemon)
+                        .await
+                        .map_err(PlannerError::Action)?
+                        .boxed(),
+                );
+            },
+            Distribution::Nix => {
+                plan.push(
+                    ConfigureUpstreamInitService::plan(init, start_daemon)
+                        .await
+                        .map_err(PlannerError::Action)?
+                        .boxed(),
+                );
+            },
+        }
+
         plan.push(
             StartSystemdUnit::plan("ensure-symlinked-units-resolve.service".to_string(), true)
                 .await
