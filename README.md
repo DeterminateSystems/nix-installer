@@ -31,7 +31,7 @@ Determinate Nix Installer successfully completes **tens of thousands** of instal
 | Platform                                                             |    Multi user?    | `root` only |     Maturity      |
 | -------------------------------------------------------------------- | :---------------: | :---------: | :---------------: |
 | Linux (`x86_64` and `aarch64`)                                       | ✓ (via [systemd]) |      ✓      |      Stable       |
-| MacOS (Apple Silicon / `aarch64`)                                    |         ✓         |             | Stable (see note) |
+| macOS (Apple Silicon / `aarch64`)                                    |         ✓         |             | Stable (see note) |
 | [Valve Steam Deck][steam-deck] (SteamOS)                             |         ✓         |             |      Stable       |
 | [Windows Subsystem for Linux][wsl] 2 (WSL2) (`x86_64` and `aarch64`) | ✓ (via [systemd]) |      ✓      |      Stable       |
 | [Podman] Linux containers                                            | ✓ (via [systemd]) |      ✓      |      Stable       |
@@ -306,7 +306,7 @@ The working group maintains a [foundation-owned fork of the installer][forked-in
 While Determinate Nix Installer tries to provide a comprehensive and unquirky experience, there are unfortunately some issues that may require manual intervention or operator choices.
 See [this document](./docs/quirks.md) for information on resolving these issues:
 
-- [Using MacOS after removing Nix while nix-darwin was still installed, network requests fail](./docs/quirks.md#using-macos-after-removing-nix-while-nix-darwin-was-still-installed-network-requests-fail)
+- [Using macOS after removing Nix while nix-darwin was still installed, network requests fail](./docs/quirks.md#using-macos-after-removing-nix-while-nix-darwin-was-still-installed-network-requests-fail)
 
 ## Building a binary
 
