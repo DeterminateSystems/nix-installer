@@ -31,7 +31,7 @@
         flake = false;
       };
       inputs.determinate-nixd-aarch64-darwin = {
-        url = "https://install.determinate.systems/determinate-nixd/rev/122a45f4442d20d57f232d3f076dcc26df00b109/aarch64-darwin";
+        url = "https://install.determinate.systems/determinate-nixd/rev/122a45f4442d20d57f232d3f076dcc26df00b109/macOS";
         flake = false;
       };
     };
