@@ -22,6 +22,18 @@
       # This means `follows` won't cause surprisingly extensive rebuilds, just trivial `chmod +x` rebuilds.
       inputs.nixpkgs.follows = "nixpkgs";
       inputs.nix.follows = "nix";
+      inputs.determinate-nixd-x86_64-linux = {
+        url = "https://install.determinate.systems/determinate-nixd/rev/122a45f4442d20d57f232d3f076dcc26df00b109/x86_64-linux";
+        flake = false;
+      };
+      inputs.determinate-nixd-aarch64-linux = {
+        url = "https://install.determinate.systems/determinate-nixd/rev/122a45f4442d20d57f232d3f076dcc26df00b109/aarch64-linux";
+        flake = false;
+      };
+      inputs.determinate-nixd-aarch64-darwin = {
+        url = "https://install.determinate.systems/determinate-nixd/rev/122a45f4442d20d57f232d3f076dcc26df00b109/aarch64-darwin";
+        flake = false;
+      };
     };
   };
 
