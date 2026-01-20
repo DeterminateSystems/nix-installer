@@ -146,7 +146,7 @@ impl Action for CreateFstabEntry {
                 }
             })
             .filter_map(|line| {
-                if line.split(&[' ', '\t']).nth(1) == Some("/nix") {
+                if line.split_ascii_whitespace().nth(1) == Some("/nix") {
                     // Delete the mount line for /nix
                     None
                 } else {
