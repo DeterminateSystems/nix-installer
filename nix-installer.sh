@@ -89,7 +89,7 @@ main() {
         need_tty=no
     fi
 
-    say 'downloading Determinate Nix Installer'
+    say 'downloading the Determinate Nix Installer'
 
     ensure mkdir -p "$_dir"
     ensure downloader "$_url" "$_file" "$_arch"
