@@ -124,7 +124,7 @@ jobs:
         if: success() || failure()
         run: |
           nix run nixpkgs#hello
-          nix profile install nixpkgs#hello
+          nix profile add nixpkgs#hello
           hello
           nix store gc
           nix run nixpkgs#hello
@@ -247,7 +247,7 @@ jobs:
         if: success() || failure()
         run: |
           sudo -i nix run nixpkgs#hello
-          sudo -i nix profile install nixpkgs#hello
+          sudo -i nix profile add nixpkgs#hello
           hello
           sudo -i nix store gc
           sudo -i nix run nixpkgs#hello
@@ -364,7 +364,7 @@ jobs:
         if: success() || failure()
         run: |
           nix run nixpkgs#hello
-          nix profile install nixpkgs#hello
+          nix profile add nixpkgs#hello
           hello
           nix store gc
           nix run nixpkgs#hello
@@ -467,7 +467,7 @@ jobs:
         if: success() || failure()
         run: |
           nix run nixpkgs#hello
-          nix profile install nixpkgs#hello
+          nix profile add nixpkgs#hello
           hello
           nix store gc
           nix run nixpkgs#hello
