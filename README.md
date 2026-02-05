@@ -132,7 +132,7 @@ test:
     - curl --proto '=https' --tlsv1.2 -sSf -L https://install.determinate.systems/nix | sh -s -- install linux --no-confirm --init none
     - . /nix/var/nix/profiles/default/etc/profile.d/nix-daemon.sh
     - nix run nixpkgs#hello
-    - nix profile install nixpkgs#hello
+    - nix profile add nixpkgs#hello
     - hello
 ```
 
