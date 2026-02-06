@@ -76,6 +76,7 @@ impl Action for SetupDefaultProfile {
             "HOME",
             dirs::home_dir().ok_or_else(|| Self::error(SetupDefaultProfileError::NoRootHome))?,
         );
+        load_db_command.env_remove("NIX_REMOTE");
         tracing::trace!(
             "Executing `{:?}` with stdin from `{}`",
             load_db_command.as_std(),
