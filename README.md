@@ -6,7 +6,7 @@
 [![License](https://img.shields.io/github/license/DeterminateSystems/nix-installer)](https://github.com/DeterminateSystems/nix-installer/blob/main/LICENSE)
 [![Discord](https://img.shields.io/discord/1116012109709463613)](https://determinate.systems/discord)
 
-**Determinate Nix Installer** is the easiest and most reliable way to install [Determinate Nix][det-nix] (as well as [Determinate Systems][detsys]' longest-running project as a company).
+**Determinate Nix Installer** is the easiest and most reliable way to install [Determinate Nix][det-nix].[^1]
 The installer works across a wide range of environments, including macOS, Linux, Windows Subsystem for Linux (WSL), SELinux, the Valve Steam Deck, and more, it offers support for seamlessly [uninstalling Nix](#uninstalling), it enables Nix to survive [macOS upgrades][macos-upgrades], and offers a [range of features](#features) that make it the industry standard for installing Nix.
 
 By default, it installs Determinate Nix, which enables [flakes] and offers a variety of industry-leading [features] and [improvements].
@@ -470,8 +470,12 @@ To disable diagnostic reporting, set the diagnostics URL to an empty string by p
 
 You can read the full privacy policy for [Determinate Systems][detsys], the creators of Determinate Nix Installer, [here][privacy].
 
+[^1]: A bit of history: Determinate Nix Installer is [Determinate Systems][detsys]' longest-running project as a company.
+  We've gone on to build many other things, like [FlakeHub], [FlakeHub Cache][cache], and [Determinate Secure Packages][secure-packages], but this is where it all started!
+
 [actions]: https://github.com/features/actions
 [blog-announcement]: https://determinate.systems/blog/installer-dropping-upstream
+[cache]: https://flakehub.com/cache
 [det-nix]: https://docs.determinate.systems/determinate-nix
 [determinate-nix-action]: https://github.com/DeterminateSystems/determinate-nix-action
 [detsys]: https://determinate.systems
@@ -479,6 +483,7 @@ You can read the full privacy policy for [Determinate Systems][detsys], the crea
 [docker]: https://docker.com
 [enabling-systemd]: https://devblogs.microsoft.com/commandline/systemd-support-is-now-available-in-wsl/#how-can-you-get-systemd-on-your-machine
 [features]: https://docs.determinate.systems/determinate-nix/#special-features
+[flakehub]: https://flakehub.com
 [flakes]: https://zero-to-nix.com/concepts/flakes
 [forked-installer]: https://github.com/nixos/experimental-nix-installer
 [gitlab]: https://gitlab.com
@@ -493,6 +498,7 @@ You can read the full privacy policy for [Determinate Systems][detsys], the crea
 [privacy]: https://determinate.systems/policies/privacy
 [releases]: https://github.com/DeterminateSystems/nix-installer/releases
 [rust]: https://rust-lang.org
+[secure-packages]: https://determinate.systems/secure-packages
 [steam-deck]: https://store.steampowered.com/steamdeck
 [survival-mode]: https://determinate.systems/posts/nix-survival-mode-on-macos
 [systemd]: https://systemd.io
