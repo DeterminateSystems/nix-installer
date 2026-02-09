@@ -62,7 +62,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: Restore Github cache artifacts
-        uses: actions/download-artifact@v6
+        uses: actions/download-artifact@v7
         with:
           name: nix-installer-x86_64-linux
       - name: Move & set executable
@@ -179,7 +179,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: Restore Github cache artifacts
-        uses: actions/download-artifact@v6
+        uses: actions/download-artifact@v7
         with:
           name: nix-installer-x86_64-linux
       - name: Move & set executable
@@ -302,7 +302,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: Restore Github cache artifacts
-        uses: actions/download-artifact@v6
+        uses: actions/download-artifact@v7
         with:
           name: nix-installer-aarch64-linux
       - name: Move & set executable
@@ -419,7 +419,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: Restore Github cache artifacts
-        uses: actions/download-artifact@v6
+        uses: actions/download-artifact@v7
         with:
           name: nix-installer-aarch64-darwin
       - name: Move & set executable
@@ -514,7 +514,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: Restore Github cache artifacts
-        uses: actions/download-artifact@v6
+        uses: actions/download-artifact@v7
         with:
           name: nix-installer-x86_64-linux
       - name: Move & set executable
