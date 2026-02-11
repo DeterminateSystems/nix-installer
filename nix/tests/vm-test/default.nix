@@ -1,5 +1,9 @@
 # Largely derived from https://github.com/NixOS/nix/blob/14f7dae3e4eb0c34192d0077383a7f2a2d630129/tests/installer/default.nix
-{ forSystem, binaryTarball, lib }:
+{
+  forSystem,
+  binaryTarball,
+  lib,
+}:
 
 let
   nix-installer-install = ''
@@ -220,7 +224,8 @@ let
           sudo journalctl -eu determinate-nixd.service
           exit 1
         fi
-      '' + installCases.install-default.check;
+      ''
+      + installCases.install-default.check;
       uninstall = installCases.install-default.uninstall;
       uninstallCheck = installCases.install-default.uninstallCheck;
     };
@@ -502,13 +507,18 @@ let
 
   };
 
-  makeTest = imageName: testName: test:
-    let image = images.${imageName}; in
+  makeTest =
+    imageName: testName: test:
+    let
+      image = images.${imageName};
+    in
     with (forSystem image.system ({ system, pkgs, ... }: pkgs));
-    runCommand
-      "installer-test-${imageName}-${testName}"
+    runCommand "installer-test-${imageName}-${testName}"
       {
-        buildInputs = [ qemu_kvm openssh ];
+        buildInputs = [
+          qemu_kvm
+          openssh
+        ];
         image = image.image;
         postBoot = image.postBoot or "";
         preinstallScript = test.preinstall or "echo \"Not Applicable\"";
@@ -602,31 +612,27 @@ let
         touch $out
       '';
 
-  makeTests = name: tests: builtins.mapAttrs
-    (imageName: image:
+  makeTests =
+    name: tests:
+    builtins.mapAttrs (
+      imageName: image:
       let
         doTests = builtins.removeAttrs tests (image.skip or [ ]);
       in
       rec {
-        ${image.system} = (builtins.mapAttrs
-          (testName: test:
-            makeTest imageName testName test
-          )
-          doTests) // {
-          "${name}" = (with (forSystem "x86_64-linux" ({ system, pkgs, ... }: pkgs)); pkgs.releaseTools.aggregate {
-            name = name;
-            constituents = (
-              pkgs.lib.mapAttrsToList
-                (testName: test:
-                  makeTest imageName testName test
-                )
-                doTests
+        ${image.system} =
+          (builtins.mapAttrs (testName: test: makeTest imageName testName test) doTests)
+          // {
+            "${name}" = (
+              with (forSystem "x86_64-linux" ({ system, pkgs, ... }: pkgs));
+              pkgs.releaseTools.aggregate {
+                name = name;
+                constituents = (pkgs.lib.mapAttrsToList (testName: test: makeTest imageName testName test) doTests);
+              }
             );
-          });
-        };
+          };
       }
-    )
-    images;
+    ) images;
 
   allCases = lib.recursiveUpdate (lib.recursiveUpdate installCases (lib.recursiveUpdate cureSelfCases cureScriptCases)) uninstallCases;
 
@@ -638,27 +644,48 @@ let
 
   uninstall-tests = makeTests "uninstall" uninstallCases;
 
-  all-tests = builtins.mapAttrs
-    (imageName: image: {
-      "x86_64-linux".all = (with (forSystem "x86_64-linux" ({ system, pkgs, ... }: pkgs)); pkgs.releaseTools.aggregate {
+  all-tests = builtins.mapAttrs (imageName: image: {
+    "x86_64-linux".all = (
+      with (forSystem "x86_64-linux" ({ system, pkgs, ... }: pkgs));
+      pkgs.releaseTools.aggregate {
         name = "all";
         constituents = [
           install-tests."${imageName}"."x86_64-linux".install
           cure-self-tests."${imageName}"."x86_64-linux".cure-self
           uninstall-tests."${imageName}"."x86_64-linux".uninstall
-        ] ++ (lib.optional (image.upstreamScriptsWork or false) cure-script-tests."${imageName}"."x86_64-linux".cure-script);
-      });
-    })
-    images;
+        ]
+        ++ (lib.optional (image.upstreamScriptsWork or false)
+          cure-script-tests."${imageName}"."x86_64-linux".cure-script
+        );
+      }
+    );
+  }) images;
 
   joined-tests = lib.recursiveUpdate (lib.recursiveUpdate (lib.recursiveUpdate install-tests (lib.recursiveUpdate cure-self-tests cure-script-tests)) uninstall-tests) all-tests;
 
 in
 lib.recursiveUpdate joined-tests {
-  all."x86_64-linux" = (with (forSystem "x86_64-linux" ({ system, pkgs, ... }: pkgs)); pkgs.lib.mapAttrs (caseName: case:
-    pkgs.releaseTools.aggregate {
-      name = caseName;
-      constituents = pkgs.lib.mapAttrsToList (name: value: value."x86_64-linux"."${caseName}" or "") joined-tests;
-    }
-  )) (allCases // { "cure-self" = { }; "cure-script" = { }; "install" = { }; "uninstall" = { }; "all" = { }; });
+  all."x86_64-linux" =
+    (
+      with (forSystem "x86_64-linux" ({ system, pkgs, ... }: pkgs));
+      pkgs.lib.mapAttrs (
+        caseName: case:
+        pkgs.releaseTools.aggregate {
+          name = caseName;
+          constituents = pkgs.lib.mapAttrsToList (
+            name: value: value."x86_64-linux"."${caseName}" or ""
+          ) joined-tests;
+        }
+      )
+    )
+      (
+        allCases
+        // {
+          "cure-self" = { };
+          "cure-script" = { };
+          "install" = { };
+          "uninstall" = { };
+          "all" = { };
+        }
+      );
 }

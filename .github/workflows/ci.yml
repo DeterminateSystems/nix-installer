@@ -42,8 +42,8 @@ jobs:
         run: nix develop --command check-clippy
       - name: Check Spelling
         run: nix develop --command check-spelling
-      - name: Check nixpkgs-fmt formatting
-        run: nix develop --command check-nixpkgs-fmt
+      - name: Check Nix formatting
+        run: nix develop --command check-nixfmt
       - name: Check EditorConfig conformance
         run: nix develop --command check-editorconfig
       - name: Shell check for nix-installer.sh

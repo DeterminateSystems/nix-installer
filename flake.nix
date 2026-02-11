@@ -26,33 +26,60 @@
   };
 
   outputs =
-    { self
-    , nixpkgs
-    , crane
-    , nix
-    , determinate
-    , ...
-    } @ inputs:
+    {
+      self,
+      nixpkgs,
+      crane,
+      nix,
+      determinate,
+      ...
+    }@inputs:
     let
       nix_tarball_url_prefix = "https://releases.nixos.org/nix/nix-2.33.1/nix-2.33.1-";
-      supportedSystems = [ "x86_64-linux" "aarch64-linux" "aarch64-darwin" ];
-      systemsSupportedByDeterminateNixd = [ "x86_64-linux" "aarch64-linux" "aarch64-darwin" ];
+      supportedSystems = [
+        "x86_64-linux"
+        "aarch64-linux"
+        "aarch64-darwin"
+      ];
+      systemsSupportedByDeterminateNixd = [
+        "x86_64-linux"
+        "aarch64-linux"
+        "aarch64-darwin"
+      ];
 
       forAllSystems = f: nixpkgs.lib.genAttrs supportedSystems (system: (forSystem system f));
 
-      forSystem = system: f: f rec {
-        inherit system;
-        pkgs = import nixpkgs { inherit system; overlays = [ self.overlays.default ]; };
-        lib = pkgs.lib;
-      };
+      forSystem =
+        system: f:
+        f rec {
+          inherit system;
+          pkgs = import nixpkgs {
+            inherit system;
+            overlays = [ self.overlays.default ];
+          };
+          lib = pkgs.lib;
+        };
 
-      nixTarballs = forAllSystems ({ system, ... }:
-        inputs.nix.tarballs_direct.${system}
-          or "${inputs.nix.packages."${system}".binaryTarball}/nix-${inputs.nix.packages."${system}".default.version}-${system}.tar.xz");
+      nixTarballs = forAllSystems (
+        { system, ... }:
+        inputs.nix.tarballs_direct.${system} or "${inputs.nix.packages."${system}".binaryTarball}/nix-${
+          inputs.nix.packages."${system}".default.version
+        }-${system}.tar.xz"
+      );
 
-      optionalPathToDeterminateNixd = system: if builtins.elem system systemsSupportedByDeterminateNixd then "${inputs.determinate.packages.${system}.default}/bin/determinate-nixd" else null;
+      optionalPathToDeterminateNixd =
+        system:
+        if builtins.elem system systemsSupportedByDeterminateNixd then
+          "${inputs.determinate.packages.${system}.default}/bin/determinate-nixd"
+        else
+          null;
 
-      installerPackage = { pkgs, stdenv, buildPackages }:
+      installerPackage =
+        {
+          pkgs,
+          stdenv,
+          buildPackages,
+        }:
         let
           craneLib = crane.mkLib pkgs;
           sharedAttrs = {
@@ -77,22 +104,25 @@
             };
           };
         in
-        craneLib.buildPackage (sharedAttrs // {
-          cargoArtifacts = craneLib.buildDepsOnly sharedAttrs;
+        craneLib.buildPackage (
+          sharedAttrs
+          // {
+            cargoArtifacts = craneLib.buildDepsOnly sharedAttrs;
 
-          cargoTestExtraArgs = "--all";
+            cargoTestExtraArgs = "--all";
 
-          postInstall = ''
-            cp nix-installer.sh $out/bin/nix-installer.sh
-          '';
+            postInstall = ''
+              cp nix-installer.sh $out/bin/nix-installer.sh
+            '';
 
-          env = sharedAttrs.env // {
-            RUSTFLAGS = "--cfg tokio_unstable";
-            NIX_TARBALL_URL = "${nix_tarball_url_prefix}${pkgs.stdenv.hostPlatform.system}.tar.xz";
-            DETERMINATE_NIX_TARBALL_PATH = nixTarballs.${stdenv.hostPlatform.system};
-            DETERMINATE_NIXD_BINARY_PATH = optionalPathToDeterminateNixd stdenv.hostPlatform.system;
-          };
-        });
+            env = sharedAttrs.env // {
+              RUSTFLAGS = "--cfg tokio_unstable";
+              NIX_TARBALL_URL = "${nix_tarball_url_prefix}${pkgs.stdenv.hostPlatform.system}.tar.xz";
+              DETERMINATE_NIX_TARBALL_PATH = nixTarballs.${stdenv.hostPlatform.system};
+              DETERMINATE_NIXD_BINARY_PATH = optionalPathToDeterminateNixd stdenv.hostPlatform.system;
+            };
+          }
+        );
     in
     {
       overlays.default = final: prev: {
@@ -100,7 +130,8 @@
         nix-installer-static = final.pkgsStatic.callPackage installerPackage { };
       };
 
-      devShells = forAllSystems ({ system, pkgs, ... }:
+      devShells = forAllSystems (
+        { system, pkgs, ... }:
         let
           check = import ./nix/check.nix { inherit pkgs; };
         in
@@ -114,36 +145,44 @@
             DETERMINATE_NIXD_BINARY_PATH = optionalPathToDeterminateNixd system;
 
             nativeBuildInputs = with pkgs; [ ];
-            buildInputs = with pkgs; [
-              rustc
-              cargo
-              clippy
-              rustfmt
-              shellcheck
-              rust-analyzer
-              cargo-outdated
-              cacert
-              # cargo-audit # NOTE(cole-h): build currently broken because of time dependency and Rust 1.80
-              cargo-watch
-              nixpkgs-fmt
-              check.check-rustfmt
-              check.check-spelling
-              check.check-nixpkgs-fmt
-              check.check-editorconfig
-              check.check-semver
-              check.check-clippy
-              editorconfig-checker
-              toml-cli
-            ]
-            ++ lib.optionals (pkgs.stdenv.isLinux) (with pkgs; [
-              checkpolicy
-              semodule-utils
-              /* users are expected to have a system docker, too */
-            ]);
-          };
-        });
+            buildInputs =
+              with pkgs;
+              [
+                rustc
+                cargo
+                clippy
+                rustfmt
+                shellcheck
+                rust-analyzer
+                cargo-outdated
+                cacert
+                # cargo-audit # NOTE(cole-h): build currently broken because of time dependency and Rust 1.80
+                cargo-watch
+                check.check-rustfmt
+                check.check-spelling
+                check.check-nixfmt
+                check.check-editorconfig
+                check.check-semver
+                check.check-clippy
+                editorconfig-checker
+                toml-cli
 
-      checks = forAllSystems ({ system, pkgs, ... }:
+                self.formatter.${system}
+              ]
+              ++ lib.optionals (pkgs.stdenv.isLinux) (
+                with pkgs;
+                [
+                  checkpolicy
+                  semodule-utils
+                  # users are expected to have a system docker, too
+                ]
+              );
+          };
+        }
+      );
+
+      checks = forAllSystems (
+        { system, pkgs, ... }:
         let
           check = import ./nix/check.nix { inherit pkgs; };
         in
@@ -158,27 +197,41 @@
             check-spelling
             touch $out
           '';
-          check-nixpkgs-fmt = pkgs.runCommand "check-nixpkgs-fmt" { buildInputs = [ check.check-nixpkgs-fmt ]; } ''
+          check-nixfmt = pkgs.runCommand "check-nixfmt" { buildInputs = [ check.check-nixfmt ]; } ''
             cd ${./.}
-            check-nixpkgs-fmt
+            check-nixfmt
             touch $out
           '';
-          check-editorconfig = pkgs.runCommand "check-editorconfig" { buildInputs = [ pkgs.git check.check-editorconfig ]; } ''
-            cd ${./.}
-            check-editorconfig
-            touch $out
-          '';
-        });
+          check-editorconfig =
+            pkgs.runCommand "check-editorconfig"
+              {
+                buildInputs = [
+                  pkgs.git
+                  check.check-editorconfig
+                ];
+              }
+              ''
+                cd ${./.}
+                check-editorconfig
+                touch $out
+              '';
+        }
+      );
 
-      packages = forAllSystems ({ system, pkgs, ... }:
+      formatter = forAllSystems ({ pkgs, ... }: pkgs.nixfmt);
+
+      packages = forAllSystems (
+        { system, pkgs, ... }:
         {
           inherit (pkgs) nix-installer nix-installer-static;
           default = pkgs.nix-installer-static;
-        } // nixpkgs.lib.optionalAttrs (pkgs.stdenv.isDarwin) {
+        }
+        // nixpkgs.lib.optionalAttrs (pkgs.stdenv.isDarwin) {
           determinate-nixd = pkgs.runCommand "determinate-nixd-link" { } ''
             ln -s ${optionalPathToDeterminateNixd system} $out
           '';
-        });
+        }
+      );
 
       hydraJobs = {
         vm-test = import ./nix/tests/vm-test {
