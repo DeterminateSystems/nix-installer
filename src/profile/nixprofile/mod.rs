@@ -282,12 +282,6 @@ impl NixProfile<'_> {
     }
 }
 
-#[derive(Debug, serde::Deserialize)]
-struct PackageInfo {
-    #[serde(default)]
-    outputs: HashMap<String, PathBuf>,
-}
-
 fn collect_children<P: AsRef<std::path::Path>>(
     base_path: P,
 ) -> Result<HashSet<PathBuf>, std::io::Error> {
