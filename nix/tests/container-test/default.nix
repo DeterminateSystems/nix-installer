@@ -36,33 +36,45 @@ let
     };
   };
 
-  makeTest = containerTool: imageName:
-    let image = images.${imageName}; in
-    with (forSystem image.system ({ system, pkgs, lib, ... }: pkgs));
-    testers.nixosTest
+  makeTest =
+    containerTool: imageName:
+    let
+      image = images.${imageName};
+    in
+    with (forSystem image.system (
       {
-        name = "container-test-${imageName}";
-        nodes = {
-          machine =
-            { config, pkgs, ... }: {
-              virtualisation.${containerTool}.enable = true;
-              virtualisation.diskSize = 4 * 1024;
-            };
-        };
-        testScript = ''
-          machine.start()
-          machine.copy_from_host("${image.tarball}", "/image")
-          machine.succeed("mkdir -p /test")
-          machine.copy_from_host("${image.tester}", "/test/Dockerfile")
-          machine.copy_from_host("${nix-installer-static}", "/test/nix-installer")
-          machine.copy_from_host("${binaryTarball.${system}}", "/test/binary-tarball")
-          machine.succeed("${containerTool} import /image default")
-          machine.succeed("${containerTool} build -t test /test")
-        '';
+        system,
+        pkgs,
+        lib,
+        ...
+      }:
+      pkgs
+    ));
+    testers.nixosTest {
+      name = "container-test-${imageName}";
+      nodes = {
+        machine =
+          { config, pkgs, ... }:
+          {
+            virtualisation.${containerTool}.enable = true;
+            virtualisation.diskSize = 4 * 1024;
+          };
       };
+      testScript = ''
+        machine.start()
+        machine.copy_from_host("${image.tarball}", "/image")
+        machine.succeed("mkdir -p /test")
+        machine.copy_from_host("${image.tester}", "/test/Dockerfile")
+        machine.copy_from_host("${nix-installer-static}", "/test/nix-installer")
+        machine.copy_from_host("${binaryTarball.${system}}", "/test/binary-tarball")
+        machine.succeed("${containerTool} import /image default")
+        machine.succeed("${containerTool} build -t test /test")
+      '';
+    };
 
-  container-tests = builtins.mapAttrs
-    (imageName: image: (with (forSystem "x86_64-linux" ({ system, pkgs, ... }: pkgs)); {
+  container-tests = builtins.mapAttrs (
+    imageName: image:
+    (with (forSystem "x86_64-linux" ({ system, pkgs, ... }: pkgs)); {
       ${image.system} = rec {
         docker = makeTest "docker" imageName;
         podman = makeTest "podman" imageName;
@@ -74,27 +86,36 @@ let
           ];
         };
       };
-    }))
-    images;
+    })
+  ) images;
 
 in
-container-tests // {
+container-tests
+// {
   all."x86_64-linux" = rec {
-    all = (with (forSystem "x86_64-linux" ({ system, pkgs, ... }: pkgs)); pkgs.releaseTools.aggregate {
-      name = "all";
-      constituents = [
-        docker
-        podman
-      ];
-    });
-    docker = (with (forSystem "x86_64-linux" ({ system, pkgs, ... }: pkgs)); pkgs.releaseTools.aggregate {
-      name = "all";
-      constituents = pkgs.lib.mapAttrsToList (name: value: value."x86_64-linux".docker) container-tests;
-    });
-    podman = (with (forSystem "x86_64-linux" ({ system, pkgs, ... }: pkgs)); pkgs.releaseTools.aggregate {
-      name = "all";
-      constituents = pkgs.lib.mapAttrsToList (name: value: value."x86_64-linux".podman) container-tests;
-    });
+    all = (
+      with (forSystem "x86_64-linux" ({ system, pkgs, ... }: pkgs));
+      pkgs.releaseTools.aggregate {
+        name = "all";
+        constituents = [
+          docker
+          podman
+        ];
+      }
+    );
+    docker = (
+      with (forSystem "x86_64-linux" ({ system, pkgs, ... }: pkgs));
+      pkgs.releaseTools.aggregate {
+        name = "all";
+        constituents = pkgs.lib.mapAttrsToList (name: value: value."x86_64-linux".docker) container-tests;
+      }
+    );
+    podman = (
+      with (forSystem "x86_64-linux" ({ system, pkgs, ... }: pkgs));
+      pkgs.releaseTools.aggregate {
+        name = "all";
+        constituents = pkgs.lib.mapAttrsToList (name: value: value."x86_64-linux".podman) container-tests;
+      }
+    );
   };
 }
-
