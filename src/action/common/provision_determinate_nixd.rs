@@ -10,7 +10,7 @@ use crate::{
 
 use super::place_nix_configuration::{NIX_CONF, NIX_CONF_FOLDER};
 
-const DETERMINATE_NIXD_BINARY_PATH: &str = "/usr/local/bin/determinate-nixd";
+pub const DETERMINATE_NIXD_BINARY_PATH: &str = "/usr/local/bin/determinate-nixd";
 /**
 Provision the determinate-nixd binary
 */
