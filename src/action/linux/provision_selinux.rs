@@ -69,12 +69,9 @@ impl Action for ProvisionSelinux {
 
     #[tracing::instrument(level = "debug", skip_all)]
     async fn execute(&mut self) -> Result<(), ActionError> {
-        if self.policy_path.exists() {
-            // Rebuild it.
-            remove_existing_policy(&self.policy_path)
-                .await
-                .map_err(Self::error)?;
-        }
+        remove_existing_policy(&self.policy_path)
+            .await
+            .map_err(Self::error)?;
 
         if let Some(parent) = self.policy_path.parent() {
             tokio::fs::create_dir_all(&parent)
@@ -123,7 +120,11 @@ impl Action for ProvisionSelinux {
 }
 
 async fn remove_existing_policy(policy_path: &Path) -> Result<(), ActionErrorKind> {
-    execute_command(Command::new("semodule").arg("--remove").arg("nix")).await?;
+    let output = execute_command(Command::new("semodule").arg("--list-modules=standard")).await?;
+    let stdout = String::from_utf8_lossy(&output.stdout);
+    if stdout.lines().any(|line| line == "nix") {
+        execute_command(Command::new("semodule").arg("--remove").arg("nix")).await?;
+    }
 
     crate::util::remove_file(policy_path, OnMissing::Ignore)
         .await
