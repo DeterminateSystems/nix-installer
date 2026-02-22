@@ -23,15 +23,15 @@
       inputs.nixpkgs.follows = "nixpkgs";
       inputs.nix.follows = "nix";
       inputs.determinate-nixd-x86_64-linux = {
-        url = "https://install.determinate.systems/determinate-nixd/rev/a7710b00a7bb521b70e4b8404b411ac30750b3e8/x86_64-linux";
+        url = "https://install.determinate.systems/determinate-nixd/rev/9862982f86533cd68ae4858ea89602a97c9db590/x86_64-linux";
         flake = false;
       };
       inputs.determinate-nixd-aarch64-linux = {
-        url = "https://install.determinate.systems/determinate-nixd/rev/a7710b00a7bb521b70e4b8404b411ac30750b3e8/aarch64-linux";
+        url = "https://install.determinate.systems/determinate-nixd/rev/9862982f86533cd68ae4858ea89602a97c9db590/aarch64-linux";
         flake = false;
       };
       inputs.determinate-nixd-aarch64-darwin = {
-        url = "https://install.determinate.systems/determinate-nixd/rev/a7710b00a7bb521b70e4b8404b411ac30750b3e8/macOS";
+        url = "https://install.determinate.systems/determinate-nixd/rev/9862982f86533cd68ae4858ea89602a97c9db590/macOS";
         flake = false;
       };
     };
