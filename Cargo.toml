@@ -1,7 +1,7 @@
 [package]
 name = "nix-installer"
 description = "The Determinate Nix Installer"
-version = "3.16.0"
+version = "3.16.1"
 edition = "2021"
 resolver = "2"
 license = "LGPL-2.1"
