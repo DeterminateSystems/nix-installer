@@ -24,6 +24,8 @@ pub enum SelfTestError {
     },
     #[error(transparent)]
     SystemTime(#[from] std::time::SystemTimeError),
+    #[error("command timed out")]
+    TimedOut { shell: Shell, command: String },
 }
 
 #[cfg(feature = "diagnostics")]
@@ -34,6 +36,7 @@ impl crate::diagnostics::ErrorDiagnostic for SelfTestError {
             Self::ShellFailed { shell, .. } => vec![shell.to_string()],
             Self::Command { shell, .. } => vec![shell.to_string()],
             Self::SystemTime(_) => vec![],
+            Self::TimedOut { shell, .. } => vec![shell.to_string()],
         };
         format!(
             "{}({})",
@@ -114,8 +117,14 @@ impl Shell {
         let output = command
             .stdin(std::process::Stdio::null())
             .env("NIX_REMOTE", "daemon")
-            .output()
+            .kill_on_drop(true)
+            .output();
+        let output = tokio::time::timeout(std::time::Duration::from_secs(10), output)
             .await
+            .map_err(|_| SelfTestError::TimedOut {
+                shell: *self,
+                command: command_str.clone(),
+            })?
             .map_err(|error| SelfTestError::Command {
                 shell: *self,
                 command: command_str.clone(),
