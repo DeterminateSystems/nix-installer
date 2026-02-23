@@ -7,6 +7,9 @@ use crate::action::{
     Action, ActionDescription, ActionError, ActionErrorKind, ActionTag, StatefulAction,
 };
 
+const PROFILES_PER_USER: &str = "/nix/var/nix/profiles/per-user";
+const GCROOTS_PER_USER: &str = "/nix/var/nix/gcroots/per-user";
+
 const PATHS: &[&str] = &[
     "/nix/var",
     "/nix/var/log",
@@ -15,9 +18,9 @@ const PATHS: &[&str] = &[
     "/nix/var/nix",
     "/nix/var/nix/db",
     "/nix/var/nix/gcroots",
-    "/nix/var/nix/gcroots/per-user",
+    GCROOTS_PER_USER,
     "/nix/var/nix/profiles",
-    "/nix/var/nix/profiles/per-user",
+    PROFILES_PER_USER,
     "/nix/var/nix/temproots",
     "/nix/var/nix/userpool",
     "/nix/var/nix/daemon-socket",
@@ -151,10 +154,10 @@ async fn ensure_nix_var_ownership() -> Result<(), ActionErrorKind> {
         .contents_first(true)
         .into_iter()
         .filter_entry(|entry| {
-            let parent = entry.path().parent();
+            let path = entry.path();
 
-            if parent == Some(std::path::Path::new("/nix/var/nix/profiles/per-user"))
-                || parent == Some(std::path::Path::new("/nix/var/nix/gcroots/per-user"))
+            if (path.starts_with(PROFILES_PER_USER) || path.starts_with(GCROOTS_PER_USER))
+                && (path != PROFILES_PER_USER && path != GCROOTS_PER_USER)
             {
                 // False means do *not* descend into this directory
                 // ...which we don't want to do, because the per-user subdirectories are usually owned by that user.
