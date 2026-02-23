@@ -1,4 +1,5 @@
 use std::os::unix::fs::MetadataExt;
+use std::path::PathBuf;
 
 use tracing::{span, Span};
 
@@ -78,9 +79,9 @@ impl Action for CreateNixTree {
         vec![
             ActionDescription::new(self.tracing_synopsis(), create_directory_descriptions),
             ActionDescription::new(
-                "Synchronize /nix/var ownership".to_string(),
+                "Synchronize /nix and /nix/var ownership".to_string(),
                 vec![format!(
-                    "Will update existing files in /nix/var to be owned by User ID 0, Group ID 0"
+                    "Will update /nix, as well as existing files inside /nix/var, to be owned by User ID 0, Group ID 0"
                 )],
             ),
         ]
@@ -93,7 +94,7 @@ impl Action for CreateNixTree {
             create_directory.try_execute().await.map_err(Self::error)?;
         }
 
-        ensure_nix_var_ownership().await.map_err(Self::error)?;
+        ensure_nix_ownership().await.map_err(Self::error)?;
 
         Ok(())
     }
@@ -147,7 +148,12 @@ impl Action for CreateNixTree {
 /// * /nix/var/nix/gcroots/per-user/*
 ///
 /// This function walks /nix/var and makes sure that is true.
-async fn ensure_nix_var_ownership() -> Result<(), ActionErrorKind> {
+///
+/// It also ensures that `/nix` is also owned by 0:0.
+async fn ensure_nix_ownership() -> Result<(), ActionErrorKind> {
+    // NOTE(cole-h): We don't walk over `/nix` directly because macOS has a `/nix/.Trashes` folder
+    // that we can't ignore (we do `contents_first(true)`, so it tries to enter the directory, which
+    // it fails to do, and prints a warning). Instead, we add `/nix` at the end via `Iterator::chain`.
     let entryiter = walkdir::WalkDir::new("/nix/var")
         .follow_links(false)
         .same_file_system(true)
@@ -190,21 +196,25 @@ async fn ensure_nix_var_ownership() -> Result<(), ActionErrorKind> {
                 return None;
             }
 
-            Some((entry, metadata))
-        });
-    for (entry, _metadata) in entryiter {
+            Some(entry.into_path())
+        })
+        // Ensure /nix is also owned by 0:0
+        .chain(std::iter::once(PathBuf::from("/nix")));
+
+    for path in entryiter {
         tracing::debug!(
-            path = %entry.path().to_string_lossy(),
+            path = %path.to_string_lossy(),
             "Re-owning path to 0:0"
         );
 
-        if let Err(e) = std::os::unix::fs::lchown(entry.path(), Some(0), Some(0)) {
+        if let Err(e) = std::os::unix::fs::lchown(&path, Some(0), Some(0)) {
             tracing::warn!(
-                path = %entry.path().to_string_lossy(),
+                path = %path.to_string_lossy(),
                 %e,
                 "Failed to set the owner:group to 0:0"
             );
         }
     }
+
     Ok(())
 }
