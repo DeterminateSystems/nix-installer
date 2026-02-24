@@ -185,14 +185,12 @@ async fn ensure_nix_store_ownership(
             // is useful until the entire store is examined
             .contents_first(true)
             .into_iter()
-            .filter_map(|entry| {
-                match entry {
-                    Ok(entry) => Some(entry),
-                    Err(e) => {
-                        tracing::warn!(%e, "Enumerating the Nix store");
-                        None
-                    }
-                }
+            .filter_map(|entry| match entry {
+                Ok(entry) => Some(entry),
+                Err(e) => {
+                    tracing::warn!(%e, "Enumerating the Nix store");
+                    None
+                },
             })
             .filter_map(|entry| match entry.metadata() {
                 Ok(metadata) => Some((entry, metadata)),
@@ -203,7 +201,7 @@ async fn ensure_nix_store_ownership(
                         "Reading ownership and mode data"
                     );
                     None
-                }
+                },
             })
             .filter_map(|(entry, metadata)| {
                 // NOTE(@grahamc, 2024-11-15): Nix on macOS has store paths with a group of nixbld, and sometimes a group of `wheel` (0).

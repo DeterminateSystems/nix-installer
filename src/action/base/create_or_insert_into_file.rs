@@ -227,9 +227,8 @@ impl Action for CreateOrInsertIntoFile {
             .mode(0o600)
             .open(&temp_file_path)
             .await
-            .map_err(|e| {
-                ActionErrorKind::Open(temp_file_path.clone(), e)
-            }).map_err(Self::error)?;
+            .map_err(|e| ActionErrorKind::Open(temp_file_path.clone(), e))
+            .map_err(Self::error)?;
 
         if *position == Position::End {
             if let Some(ref mut orig_file) = orig_file {
