@@ -11,6 +11,8 @@ use tracing::{span, Span};
 
 use crate::action::{Action, ActionDescription};
 
+pub(crate) const DEFAULT_PROFILE_PATH: &str = "/nix/var/nix/profiles/default";
+
 /**
 Setup the default Nix profile with `nss-cacert` and `nix` itself.
  */
@@ -120,7 +122,7 @@ impl Action for SetupDefaultProfile {
             nix_store_path: &nix_pkg,
             nss_ca_cert_path: &nss_ca_cert_pkg,
 
-            profile: std::path::Path::new("/nix/var/nix/profiles/default"),
+            profile: std::path::Path::new(DEFAULT_PROFILE_PATH),
             pkgs: &[&nix_pkg, &nss_ca_cert_pkg],
         };
         profile
