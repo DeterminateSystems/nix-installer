@@ -14,9 +14,24 @@ pub(crate) struct NixEnv<'a> {
 }
 
 impl NixEnv<'_> {
+    pub(crate) async fn remove_conflicts(
+        &self,
+        to_default: super::WriteToDefaultProfile,
+    ) -> Result<(), super::Error> {
+        self.install_packages_impl(to_default, false).await
+    }
+
     pub(crate) async fn install_packages(
         &self,
         to_default: super::WriteToDefaultProfile,
+    ) -> Result<(), super::Error> {
+        self.install_packages_impl(to_default, true).await
+    }
+
+    async fn install_packages_impl(
+        &self,
+        to_default: super::WriteToDefaultProfile,
+        install_packages: bool,
     ) -> Result<(), super::Error> {
         self.validate_paths_can_cohabitate().await?;
 
@@ -55,7 +70,9 @@ impl NixEnv<'_> {
                 }
             }
 
-            self.install_path(&temporary_profile, pkg).await?;
+            if install_packages {
+                self.install_path(&temporary_profile, pkg).await?;
+            }
         }
 
         self.set_profile_to(
