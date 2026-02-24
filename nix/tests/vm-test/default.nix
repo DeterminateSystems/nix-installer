@@ -46,6 +46,18 @@ let
           exit 1
         fi
 
+        if systemctl is-active determinate-nixd.socket; then
+          echo "determinate-nixd.socket was active"
+        else
+          echo "determinate-nixd.socket was not active, should be"
+          exit 1
+        fi
+        if systemctl is-failed determinate-nixd.socket; then
+          echo "determinate-nixd.socket is failed"
+          sudo journalctl -eu determinate-nixd.socket
+          exit 1
+        fi
+
         if !(sudo systemctl start nix-daemon.service); then
           echo "nix-daemon.service failed to start"
           sudo journalctl -eu nix-daemon.service
