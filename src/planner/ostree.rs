@@ -255,13 +255,13 @@ impl Planner for Ostree {
                 .map_err(PlannerError::Action)?
                 .boxed(),
         );
-        plan.push(Cleanup::plan().await.map_err(PlannerError::Action)?.boxed());
         plan.push(
             SystemctlDaemonReload::plan()
                 .await
                 .map_err(PlannerError::Action)?
                 .boxed(),
         );
+        plan.push(Cleanup::plan().await.map_err(PlannerError::Action)?.boxed());
 
         Ok(plan)
     }

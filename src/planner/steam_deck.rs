@@ -375,11 +375,11 @@ impl Planner for SteamDeck {
                 .await
                 .map_err(PlannerError::Action)?
                 .boxed(),
-            Cleanup::plan().await.map_err(PlannerError::Action)?.boxed(),
             SystemctlDaemonReload::plan()
                 .await
                 .map_err(PlannerError::Action)?
                 .boxed(),
+            Cleanup::plan().await.map_err(PlannerError::Action)?.boxed(),
         ]);
         Ok(actions)
     }
