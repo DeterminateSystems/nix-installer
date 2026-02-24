@@ -60,8 +60,7 @@ impl NixProfile<'_> {
 
         self.set_profile_to(
             match to_default {
-                #[cfg(test)]
-                super::WriteToDefaultProfile::Isolated => Some(self.profile),
+                super::WriteToDefaultProfile::Specific => Some(self.profile),
                 super::WriteToDefaultProfile::WriteToDefault => None,
             },
             &temporary_profile,

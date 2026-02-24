@@ -87,7 +87,7 @@ async fn test_detect_intersection() {
         profile: &profile_path,
         pkgs: &[&tree_1, &tree_2],
     })
-    .install_packages(WriteToDefaultProfile::Isolated)
+    .install_packages(WriteToDefaultProfile::Specific)
     .await
     .unwrap_err();
 }
@@ -109,7 +109,7 @@ async fn test_no_intersection() {
         profile: &profile_path,
         pkgs: &[&tree_1, &tree_2],
     })
-    .install_packages(WriteToDefaultProfile::Isolated)
+    .install_packages(WriteToDefaultProfile::Specific)
     .await
     .unwrap();
 
@@ -134,7 +134,7 @@ async fn test_no_intersection() {
         profile: &profile_path,
         pkgs: &[&tree_3, &tree_4],
     })
-    .install_packages(WriteToDefaultProfile::Isolated)
+    .install_packages(WriteToDefaultProfile::Specific)
     .await
     .unwrap();
 
@@ -168,7 +168,7 @@ async fn test_overlap_replaces() {
         profile: &profile_path,
         pkgs: &[&tree_base, &tree_1],
     })
-    .install_packages(WriteToDefaultProfile::Isolated)
+    .install_packages(WriteToDefaultProfile::Specific)
     .await
     .unwrap();
 
@@ -191,7 +191,7 @@ async fn test_overlap_replaces() {
         profile: &profile_path,
         pkgs: &[&tree_2],
     })
-    .install_packages(WriteToDefaultProfile::Isolated)
+    .install_packages(WriteToDefaultProfile::Specific)
     .await
     .unwrap();
 
@@ -208,7 +208,7 @@ async fn test_overlap_replaces() {
         profile: &profile_path,
         pkgs: &[&tree_3],
     })
-    .install_packages(WriteToDefaultProfile::Isolated)
+    .install_packages(WriteToDefaultProfile::Specific)
     .await
     .unwrap();
 

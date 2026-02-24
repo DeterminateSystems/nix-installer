@@ -49,9 +49,7 @@ pub enum Error {
 
 pub enum WriteToDefaultProfile {
     WriteToDefault,
-
-    #[cfg(test)]
-    Isolated,
+    Specific,
 }
 
 #[derive(Debug, Clone, Copy, Eq, PartialEq)]
