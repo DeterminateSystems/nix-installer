@@ -1,12 +1,14 @@
 mod determinate;
 
 use std::{
+    io::Write,
     os::unix::prelude::PermissionsExt,
     path::{Path, PathBuf},
     process::ExitCode,
 };
 
 use crate::{
+    action::common::provision_determinate_nixd::DETERMINATE_NIXD_BINARY_PATH,
     cli::{
         ensure_root,
         interaction::{self, PromptChoice},
@@ -26,6 +28,7 @@ use color_eyre::{
     Section,
 };
 use owo_colors::OwoColorize;
+use url::Url;
 
 const EXISTING_INCOMPATIBLE_PLAN_GUIDANCE: &str = "\
     If you are trying to upgrade Nix, try running `sudo -i nix upgrade-nix` instead.\n\
@@ -66,6 +69,9 @@ pub struct Install {
     )]
     pub explain: bool,
 
+    #[clap(long, env = "NIX_INSTALLER_DETERMINATE_NIXD_INSTALL_URL")]
+    determinate_nixd_install_url: Option<Url>,
+
     /// A path to a non-default installer plan
     #[clap(env = "NIX_INSTALLER_PLAN")]
     pub plan: Option<PathBuf>,
@@ -87,6 +93,7 @@ impl CommandExecute for Install {
             planner: maybe_planner,
             settings,
             explain,
+            determinate_nixd_install_url,
         } = self;
 
         ensure_root()?;
@@ -217,6 +224,12 @@ impl CommandExecute for Install {
             Err(err) => {
                 // Attempt to copy self to the store if possible, but since the install failed, this might not work, that's ok.
                 copy_self_to_nix_dir().await.ok();
+
+                // If an explicit Determinate Nixd installation URL is provided, download that to the expected
+                // path on disk.
+                if let Some(determinate_nixd_install_url) = determinate_nixd_install_url {
+                    download_determinate_nixd(&determinate_nixd_install_url.to_string()).await?;
+                }
 
                 if !no_confirm {
                     let mut was_expected = false;
@@ -350,5 +363,25 @@ async fn copy_self_to_nix_dir() -> Result<(), std::io::Error> {
     let path = std::env::current_exe()?;
     tokio::fs::copy(path, "/nix/nix-installer").await?;
     tokio::fs::set_permissions("/nix/nix-installer", PermissionsExt::from_mode(0o0755)).await?;
+    Ok(())
+}
+
+// By default, Determinate Nixd is loaded from on disk. This download logic is used only if a
+// Determinate Nixd download URL is specified.
+#[tracing::instrument(level = "debug")]
+async fn download_determinate_nixd(determinate_nixd_install_url: &str) -> color_eyre::Result<()> {
+    let response = reqwest::get(determinate_nixd_install_url)
+        .await?
+        .error_for_status()?
+        .bytes()
+        .await?;
+
+    let mut tempfile = tempfile::NamedTempFile::new_in("/usr/local/bin/")?;
+    let file = tempfile.as_file_mut();
+
+    file.write_all(&response)?;
+    file.set_permissions(std::fs::Permissions::from_mode(0o555))?;
+    tempfile.persist(DETERMINATE_NIXD_BINARY_PATH)?;
+
     Ok(())
 }

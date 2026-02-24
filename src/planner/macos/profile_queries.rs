@@ -44,7 +44,7 @@ impl TargetProfileHardDiskInternalOpts<'_> {
     }
 }
 
-fn flatten(policies: &Policies) -> impl Iterator<Item = TargetProfileItem> {
+fn flatten(policies: &Policies) -> impl Iterator<Item = TargetProfileItem<'_>> {
     policies
         .iter()
         .flat_map(|(target, profiles): (&Target, &Vec<Profile>)| {
@@ -62,7 +62,7 @@ fn flatten(policies: &Policies) -> impl Iterator<Item = TargetProfileItem> {
         })
 }
 
-pub fn blocks_internal_mounting(policies: &Policies) -> Vec<TargetProfileHardDiskInternalOpts> {
+pub fn blocks_internal_mounting(policies: &Policies) -> Vec<TargetProfileHardDiskInternalOpts<'_>> {
     flatten(policies)
         .filter_map(move |target_profile_item| {
             let ProfileItem::SystemUIServer(system_ui_server) = target_profile_item.item else {
