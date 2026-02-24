@@ -152,7 +152,7 @@ let
           echo "nix-daemon.service was running, should not be"
           exit 1
         fi
-        sudo systemctl start nix-daemon.socket
+        sudo systemctl start nix-daemon.socket determinate-nixd.socket
 
         nix-env --version
         nix --extra-experimental-features nix-command store ping
