@@ -21,6 +21,8 @@ The Determinate Nix Installer failed.
 Try our macOS-native package instead, which can handle almost anything: https://dtr.mn/determinate-nix\
 ";
 
+pub(crate) const ORIG_HOME_ENV: &str = "ORIG_HOME";
+
 #[async_trait::async_trait]
 pub trait CommandExecute {
     async fn execute<T>(self, feedback: T) -> eyre::Result<ExitCode>
@@ -224,6 +226,12 @@ pub fn ensure_root() -> eyre::Result<()> {
             if preserve {
                 env_list.push(format!("{key}={value}"));
             }
+        }
+
+        // NOTE(cole-h): record the original caller's home directory so that we can attempt to clean
+        // up their profile in the case of a single-user installation
+        if let Some(home_dir) = dirs::home_dir() {
+            env_list.push(format!("{ORIG_HOME_ENV}={}", home_dir.display()))
         }
 
         #[cfg(feature = "diagnostics")]

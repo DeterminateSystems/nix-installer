@@ -3,6 +3,20 @@ use std::path::{Path, PathBuf};
 pub(crate) mod nixenv;
 pub(crate) mod nixprofile;
 
+trait NixCommandExt {
+    fn set_nix_options(&mut self) -> Result<&mut tokio::process::Command, Error>;
+}
+
+impl NixCommandExt for tokio::process::Command {
+    fn set_nix_options(&mut self) -> Result<&mut tokio::process::Command, Error> {
+        Ok(self
+            .args(["--option", "substitute", "false"])
+            .args(["--option", "post-build-hook", ""])
+            .env_remove("NIX_REMOTE")
+            .env("HOME", dirs::home_dir().ok_or(Error::NoRootHome)?))
+    }
+}
+
 #[non_exhaustive]
 #[derive(Debug, thiserror::Error)]
 pub enum Error {
@@ -35,9 +49,7 @@ pub enum Error {
 
 pub enum WriteToDefaultProfile {
     WriteToDefault,
-
-    #[cfg(test)]
-    Isolated,
+    Specific,
 }
 
 #[derive(Debug, Clone, Copy, Eq, PartialEq)]
@@ -48,7 +60,6 @@ pub enum BackendType {
 
 pub(crate) struct Profile<'a> {
     pub nix_store_path: &'a Path,
-    pub nss_ca_cert_path: &'a Path,
 
     pub profile: &'a Path,
     pub pkgs: &'a [&'a Path],
@@ -63,7 +74,6 @@ impl Profile<'_> {
             Some(BackendType::NixProfile) => {
                 nixprofile::NixProfile {
                     nix_store_path: self.nix_store_path,
-                    nss_ca_cert_path: self.nss_ca_cert_path,
                     profile: self.profile,
                     pkgs: self.pkgs,
                 }
@@ -73,7 +83,6 @@ impl Profile<'_> {
             _ => {
                 nixenv::NixEnv {
                     nix_store_path: self.nix_store_path,
-                    nss_ca_cert_path: self.nss_ca_cert_path,
                     profile: self.profile,
                     pkgs: self.pkgs,
                 }

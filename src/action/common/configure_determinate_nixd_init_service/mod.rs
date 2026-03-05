@@ -206,7 +206,7 @@ enum SocketFamily {
 
 fn generate_plist() -> DeterminateNixDaemonPlist {
     DeterminateNixDaemonPlist {
-        run_at_load: false,
+        run_at_load: true,
         label: "systems.determinate.nix-daemon".into(),
         program_arguments: vec!["/usr/local/bin/determinate-nixd".into(), "daemon".into()],
         standard_error_path: "/var/log/determinate-nix-daemon.log".into(),

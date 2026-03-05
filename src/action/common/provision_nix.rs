@@ -113,7 +113,7 @@ impl Action for ProvisionNix {
             .await
             .map_err(Self::error)?;
 
-        ensure_nix_store_group(self.nix_store_gid)
+        ensure_nix_store_ownership(self.nix_store_gid)
             .await
             .map_err(Self::error)?;
 
@@ -168,12 +168,15 @@ impl Action for ProvisionNix {
 /// If there is an existing /nix/store directory, ensure that the group ID we're going to use for
 /// the nix build group matches the group that owns /nix/store to prevent weird mismatched-ownership
 /// issues.
-async fn ensure_nix_store_group(desired_nix_build_group_id: u32) -> Result<(), ActionErrorKind> {
+async fn ensure_nix_store_ownership(
+    desired_nix_build_group_id: u32,
+) -> Result<(), ActionErrorKind> {
     let previous_store_metadata = tokio::fs::metadata(NIX_STORE_LOCATION)
         .await
         .map_err(|e| ActionErrorKind::GettingMetadata(NIX_STORE_LOCATION.into(), e))?;
     let previous_store_group_id = previous_store_metadata.gid();
-    if previous_store_group_id != desired_nix_build_group_id {
+    let previous_store_owner_id = previous_store_metadata.uid();
+    if previous_store_group_id != desired_nix_build_group_id || previous_store_owner_id != 0 {
         let entryiter = walkdir::WalkDir::new(NIX_STORE_LOCATION)
             .follow_links(false)
             .same_file_system(true)
@@ -182,14 +185,12 @@ async fn ensure_nix_store_group(desired_nix_build_group_id: u32) -> Result<(), A
             // is useful until the entire store is examined
             .contents_first(true)
             .into_iter()
-            .filter_map(|entry| {
-                match entry {
-                    Ok(entry) => Some(entry),
-                    Err(e) => {
-                        tracing::warn!(%e, "Enumerating the Nix store");
-                        None
-                    }
-                }
+            .filter_map(|entry| match entry {
+                Ok(entry) => Some(entry),
+                Err(e) => {
+                    tracing::warn!(%e, "Enumerating the Nix store");
+                    None
+                },
             })
             .filter_map(|entry| match entry.metadata() {
                 Ok(metadata) => Some((entry, metadata)),
@@ -200,21 +201,20 @@ async fn ensure_nix_store_group(desired_nix_build_group_id: u32) -> Result<(), A
                         "Reading ownership and mode data"
                     );
                     None
-                }
+                },
             })
             .filter_map(|(entry, metadata)| {
-                // If the dirent's group ID is the *previous* GID, reassign.
                 // NOTE(@grahamc, 2024-11-15): Nix on macOS has store paths with a group of nixbld, and sometimes a group of `wheel` (0).
                 // On NixOS, all the store paths have their GID set to 0.
                 // The discrepancy is due to BSD's behavior around the /nix/store sticky bit.
                 // On BSD, it causes newly created files to inherit the group of the parent directory.
-                if metadata.gid() == previous_store_group_id {
-                    return Some((entry, metadata));
+                if metadata.gid() != desired_nix_build_group_id || metadata.uid() != 0 {
+                    return Some(entry);
                 }
 
                 None
             });
-        for (entry, _metadata) in entryiter {
+        for entry in entryiter {
             if let Err(e) =
                 std::os::unix::fs::lchown(entry.path(), Some(0), Some(desired_nix_build_group_id))
             {

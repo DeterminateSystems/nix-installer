@@ -9,32 +9,36 @@
     },
     {
       "action": {
-        "action_name": "revert_clean_steamos_nix_offload"
+        "action_name": "create_directory",
+        "path": "/home/nix",
+        "user": null,
+        "group": null,
+        "mode": 493,
+        "is_mountpoint": false,
+        "force_prune_on_revert": true
       },
       "state": "Completed"
-    },
-    {
-      "action": {
-        "action_name": "ensure_steamos_nix_directory"
-      },
-      "state": "Completed"
-    },
-    {
-      "action": {
-        "action_name": "start_systemd_unit",
-        "unit": "nix.mount",
-        "enable": true
-      },
-      "state": "Skipped"
     },
     {
       "action": {
         "action_name": "create_file",
-        "path": "/etc/atomic-update.conf.d/nix-installer.conf",
+        "path": "/etc/systemd/system/nix-directory.service",
         "user": null,
         "group": null,
         "mode": 420,
-        "buf": "/etc/fish/conf.d/nix.fish\n/etc/nix/**\n/etc/profile.d/nix.sh\n/etc/systemd/system/nix-daemon.socket\n/etc/tmpfiles.d/nix-daemon.conf\n",
+        "buf": "[Unit]\nDescription=Create a `/nix` directory to be used for bind mounting\nPropagatesStopTo=nix-daemon.service\nPropagatesStopTo=nix.mount\nDefaultDependencies=no\nAfter=grub-recordfail.service\nAfter=steamos-finish-oobe-migration.service\n\n[Service]\nType=oneshot\nExecStart=steamos-readonly disable\nExecStart=mkdir -vp /nix\nExecStart=chmod -v 0755 /nix\nExecStart=chown -v root /nix\nExecStart=chgrp -v root /nix\nExecStart=steamos-readonly enable\nExecStop=steamos-readonly disable\nExecStop=rmdir /nix\nExecStop=steamos-readonly enable\nRemainAfterExit=true\n",
+        "force": false
+      },
+      "state": "Completed"
+    },
+    {
+      "action": {
+        "action_name": "create_file",
+        "path": "/etc/systemd/system/nix.mount",
+        "user": null,
+        "group": null,
+        "mode": 420,
+        "buf": "[Unit]\nDescription=Mount `/home/nix` on `/nix`\nPropagatesStopTo=nix-daemon.service\nPropagatesStopTo=nix-directory.service\nAfter=nix-directory.service\nRequires=nix-directory.service\nConditionPathIsDirectory=/nix\nDefaultDependencies=no\n\n[Mount]\nWhat=/home/nix\nWhere=/nix\nType=none\nDirectoryMode=0755\nOptions=bind\n\n[Install]\nRequiredBy=nix-daemon.service\nRequiredBy=nix-daemon.socket\n\n            ",
         "force": false
       },
       "state": "Completed"
@@ -53,16 +57,24 @@
     },
     {
       "action": {
+        "action_name": "start_systemd_unit",
+        "unit": "nix.mount",
+        "enable": false
+      },
+      "state": "Completed"
+    },
+    {
+      "action": {
         "action_name": "provision_nix",
         "nix_store_gid": 30000,
         "fetch_nix": {
           "action": {
             "action_name": "fetch_and_unpack_nix",
+            "distribution": "Nix",
             "url_or_path": null,
             "dest": "/nix/temp-install-dir",
             "proxy": null,
-            "ssl_cert_file": null,
-            "distribution": "Nix"
+            "ssl_cert_file": null
           },
           "state": "Completed"
         },
@@ -976,6 +988,18 @@
               {
                 "action": {
                   "action_name": "create_directory",
+                  "path": "/etc/zsh",
+                  "user": null,
+                  "group": null,
+                  "mode": 493,
+                  "is_mountpoint": false,
+                  "force_prune_on_revert": false
+                },
+                "state": "Completed"
+              },
+              {
+                "action": {
+                  "action_name": "create_directory",
                   "path": "/etc/fish/conf.d",
                   "user": null,
                   "group": null,
@@ -1156,14 +1180,21 @@
     },
     {
       "action": {
-        "action_name": "remove_directory",
-        "path": "/nix/temp-install-dir"
+        "action_name": "systemctl_daemon_reload"
       },
       "state": "Completed"
     },
     {
       "action": {
-        "action_name": "systemctl_daemon_reload"
+        "action_name": "cleanup",
+        "remove_scratch_dir": {
+          "action": {
+            "action_name": "remove_directory",
+            "path": "/nix/temp-install-dir"
+          },
+          "state": "Completed"
+        },
+        "original_home_dir": "/home/deck"
       },
       "state": "Completed"
     }
@@ -1172,8 +1203,8 @@
     "planner": "steam-deck",
     "persistence": "/home/nix",
     "settings": {
-      "determinate_nix": true,
-      "prefer_upstream": false,
+      "determinate_nix": false,
+      "prefer_upstream": true,
       "modify_profile": true,
       "nix_build_group_name": "nixbld",
       "nix_build_group_id": 30000,

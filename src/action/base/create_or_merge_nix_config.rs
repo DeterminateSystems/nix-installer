@@ -309,9 +309,7 @@ impl Action for CreateOrMergeNixConfig {
             .mode(0o600)
             .open(&temp_file_path)
             .await
-            .map_err(|e| {
-                Self::error(ActionErrorKind::Open(temp_file_path.clone(), e))
-            })?;
+            .map_err(|e| Self::error(ActionErrorKind::Open(temp_file_path.clone(), e)))?;
 
         let (mut merged_nix_config, mut existing_nix_config) = if self.path.exists() {
             let (merged_nix_config, existing_nix_config) =

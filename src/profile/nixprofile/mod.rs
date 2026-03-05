@@ -1,12 +1,13 @@
 use std::collections::{HashMap, HashSet};
 use std::path::{Path, PathBuf};
 
+use crate::profile::NixCommandExt;
+
 #[cfg(test)]
 mod tests;
 
 pub(crate) struct NixProfile<'a> {
     pub nix_store_path: &'a Path,
-    pub nss_ca_cert_path: &'a Path,
 
     pub profile: &'a Path,
     pub pkgs: &'a [&'a Path],
@@ -59,8 +60,7 @@ impl NixProfile<'_> {
 
         self.set_profile_to(
             match to_default {
-                #[cfg(test)]
-                super::WriteToDefaultProfile::Isolated => Some(self.profile),
+                super::WriteToDefaultProfile::Specific => Some(self.profile),
                 super::WriteToDefaultProfile::WriteToDefault => None,
             },
             &temporary_profile,
@@ -97,7 +97,7 @@ impl NixProfile<'_> {
         // See: https://github.com/DeterminateSystems/nix-src/blob/f60b21563990ec11d87dd4abe57b8b187d6b6fb3/src/nix-env/buildenv.nix
         let output = tokio::process::Command::new(self.nix_store_path.join("bin/nix"))
             .process_group(0)
-            .set_nix_options(self.nss_ca_cert_path)?
+            .set_nix_options()?
             .args([
                 "build",
                 "--expr",
@@ -139,7 +139,7 @@ impl NixProfile<'_> {
         let mut cmd = tokio::process::Command::new(self.nix_store_path.join("bin/nix-env"));
 
         cmd.process_group(0);
-        cmd.set_nix_options(self.nss_ca_cert_path)?;
+        cmd.set_nix_options()?;
 
         if let Some(profile) = profile {
             cmd.arg("--profile");
@@ -178,7 +178,7 @@ impl NixProfile<'_> {
         {
             let output = tokio::process::Command::new(self.nix_store_path.join("bin/nix"))
                 .process_group(0)
-                .set_nix_options(self.nss_ca_cert_path)?
+                .set_nix_options()?
                 .arg("profile")
                 .arg("list")
                 .arg("--profile")
@@ -231,7 +231,7 @@ impl NixProfile<'_> {
     async fn uninstall_element(&self, profile: &Path, element: &str) -> Result<(), super::Error> {
         let output = tokio::process::Command::new(self.nix_store_path.join("bin/nix"))
             .process_group(0)
-            .set_nix_options(self.nss_ca_cert_path)?
+            .set_nix_options()?
             .arg("profile")
             .arg("remove")
             .arg("--profile")
@@ -259,7 +259,7 @@ impl NixProfile<'_> {
     async fn install_path(&self, profile: &Path, add: &Path) -> Result<(), super::Error> {
         let output = tokio::process::Command::new(self.nix_store_path.join("bin/nix"))
             .process_group(0)
-            .set_nix_options(self.nss_ca_cert_path)?
+            .set_nix_options()?
             .arg("profile")
             .arg("install") // "add" in determinate nix, but "install" is an alias
             .arg("--profile")
@@ -280,12 +280,6 @@ impl NixProfile<'_> {
 
         Ok(())
     }
-}
-
-#[derive(Debug, serde::Deserialize)]
-struct PackageInfo {
-    #[serde(default)]
-    outputs: HashMap<String, PathBuf>,
 }
 
 fn collect_children<P: AsRef<std::path::Path>>(
@@ -319,28 +313,4 @@ fn collect_children<P: AsRef<std::path::Path>>(
         })
         .collect::<HashSet<PathBuf>>();
     Ok(paths)
-}
-
-trait NixCommandExt {
-    fn set_nix_options(
-        &mut self,
-        nss_ca_cert_pkg: &Path,
-    ) -> Result<&mut tokio::process::Command, super::Error>;
-}
-
-impl NixCommandExt for tokio::process::Command {
-    fn set_nix_options(
-        &mut self,
-        nss_ca_cert_pkg: &Path,
-    ) -> Result<&mut tokio::process::Command, super::Error> {
-        Ok(self
-            .args(["--option", "substitute", "false"])
-            .args(["--option", "post-build-hook", ""])
-            .env_remove("NIX_REMOTE")
-            .env("HOME", dirs::home_dir().ok_or(super::Error::NoRootHome)?)
-            .env(
-                "NIX_SSL_CERT_FILE",
-                nss_ca_cert_pkg.join("etc/ssl/certs/ca-bundle.crt"),
-            ))
-    }
 }
