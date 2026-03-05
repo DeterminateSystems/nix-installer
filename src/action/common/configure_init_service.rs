@@ -181,6 +181,12 @@ impl Action for ConfigureInitService {
         let mut vec = Vec::new();
         match self.init {
             InitSystem::Systemd => {
+                let service_dest = self
+                    .service_dest
+                    .as_ref()
+                    .expect("service_dest should be defined for systemd")
+                    .display();
+
                 let mut explanation = vec![
                     "Run `systemd-tmpfiles --create --prefix=/nix/var/nix`".to_string(),
                     match self
@@ -188,21 +194,10 @@ impl Action for ConfigureInitService {
                         .as_ref()
                         .expect("service_src should be defined or systemd")
                     {
-                        UnitSrc::Path(src) => format!(
-                            "Symlink `{0}` to `{1}`",
-                            src.display(),
-                            self.service_dest
-                                .as_ref()
-                                .expect("service_dest should be defined for systemd")
-                                .display()
-                        ),
-                        UnitSrc::Literal(_) => format!(
-                            "Create `{0}`",
-                            self.service_dest
-                                .as_ref()
-                                .expect("service_dest should be defined for systemd")
-                                .display()
-                        ),
+                        UnitSrc::Path(src) => {
+                            format!("Symlink `{0}` to `{1}`", src.display(), service_dest,)
+                        },
+                        UnitSrc::Literal(_) => format!("Create `{0}`", service_dest,),
                     },
                 ];
 
@@ -227,6 +222,13 @@ impl Action for ConfigureInitService {
                         explanation.push(format!("Run `systemctl enable --now {}`", name));
                     }
                 }
+
+                explanation.push(format!(
+                    "Run `systemctl enable {}{}`",
+                    if self.start_daemon { "--now " } else { "" },
+                    service_dest
+                ));
+
                 vec.push(ActionDescription::new(self.tracing_synopsis(), explanation))
             },
             InitSystem::Launchd => {
@@ -478,6 +480,10 @@ impl Action for ConfigureInitService {
                         },
                     }
                 }
+
+                enable(service_dest.display().to_string().as_ref(), *start_daemon)
+                    .await
+                    .map_err(Self::error)?;
             },
             InitSystem::None => {
                 // Nothing here, no init system
