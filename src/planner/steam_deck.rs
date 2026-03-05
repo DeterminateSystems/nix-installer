@@ -102,13 +102,13 @@ use tokio::process::Command;
 
 use crate::{
     action::{
-        base::{CreateDirectory, CreateFile, RemoveDirectory},
+        base::{CreateDirectory, CreateFile},
         common::{
             ConfigureNix, ConfigureUpstreamInitService, CreateUsersAndGroups,
             ProvisionDeterminateNixd, ProvisionNix,
         },
         linux::{
-            EnsureSteamosNixDirectory, RevertCleanSteamosNixOffload, StartSystemdUnit,
+            Cleanup, EnsureSteamosNixDirectory, RevertCleanSteamosNixOffload, StartSystemdUnit,
             SystemctlDaemonReload,
         },
         Action, StatefulAction,
@@ -375,14 +375,11 @@ impl Planner for SteamDeck {
                 .await
                 .map_err(PlannerError::Action)?
                 .boxed(),
-            RemoveDirectory::plan(crate::settings::SCRATCH_DIR)
-                .await
-                .map_err(PlannerError::Action)?
-                .boxed(),
             SystemctlDaemonReload::plan()
                 .await
                 .map_err(PlannerError::Action)?
                 .boxed(),
+            Cleanup::plan().await.map_err(PlannerError::Action)?.boxed(),
         ]);
         Ok(actions)
     }

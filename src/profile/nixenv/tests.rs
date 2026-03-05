@@ -9,7 +9,7 @@ use super::NixEnv;
 
 async fn should_skip() -> bool {
     let cmdret = tokio::process::Command::new("nix")
-        .set_nix_options(Path::new("/dev/null"))
+        .set_nix_options()
         .unwrap()
         .arg("--version")
         .output()
@@ -41,7 +41,7 @@ async fn sample_tree(dirname: &str, filename: &str, content: &str) -> PathBuf {
     f.write_all(content.as_bytes()).await.unwrap();
 
     let mut cmdret = tokio::process::Command::new("nix")
-        .set_nix_options(Path::new("/dev/null"))
+        .set_nix_options()
         .unwrap()
         .args(&["store", "add"])
         .arg(&sub_dir)
@@ -84,11 +84,10 @@ async fn test_detect_intersection() {
 
     (NixEnv {
         nix_store_path: Path::new("/nix/var/nix/profiles/default/"),
-        nss_ca_cert_path: Path::new("/nix/var/nix/profiles/default/"),
         profile: &profile_path,
         pkgs: &[&tree_1, &tree_2],
     })
-    .install_packages(WriteToDefaultProfile::Isolated)
+    .install_packages(WriteToDefaultProfile::Specific)
     .await
     .unwrap_err();
 }
@@ -107,11 +106,10 @@ async fn test_no_intersection() {
 
     (NixEnv {
         nix_store_path: Path::new("/nix/var/nix/profiles/default/"),
-        nss_ca_cert_path: Path::new("/nix/var/nix/profiles/default/"),
         profile: &profile_path,
         pkgs: &[&tree_1, &tree_2],
     })
-    .install_packages(WriteToDefaultProfile::Isolated)
+    .install_packages(WriteToDefaultProfile::Specific)
     .await
     .unwrap();
 
@@ -133,11 +131,10 @@ async fn test_no_intersection() {
 
     (NixEnv {
         nix_store_path: Path::new("/nix/var/nix/profiles/default/"),
-        nss_ca_cert_path: Path::new("/nix/var/nix/profiles/default/"),
         profile: &profile_path,
         pkgs: &[&tree_3, &tree_4],
     })
-    .install_packages(WriteToDefaultProfile::Isolated)
+    .install_packages(WriteToDefaultProfile::Specific)
     .await
     .unwrap();
 
@@ -168,11 +165,10 @@ async fn test_overlap_replaces() {
     let tree_1 = sample_tree("foo", "foo", "a").await;
     (NixEnv {
         nix_store_path: Path::new("/nix/var/nix/profiles/default/"),
-        nss_ca_cert_path: Path::new("/nix/var/nix/profiles/default/"),
         profile: &profile_path,
         pkgs: &[&tree_base, &tree_1],
     })
-    .install_packages(WriteToDefaultProfile::Isolated)
+    .install_packages(WriteToDefaultProfile::Specific)
     .await
     .unwrap();
 
@@ -192,11 +188,10 @@ async fn test_overlap_replaces() {
     let tree_2 = sample_tree("foo", "foo", "b").await;
     (NixEnv {
         nix_store_path: Path::new("/nix/var/nix/profiles/default/"),
-        nss_ca_cert_path: Path::new("/nix/var/nix/profiles/default/"),
         profile: &profile_path,
         pkgs: &[&tree_2],
     })
-    .install_packages(WriteToDefaultProfile::Isolated)
+    .install_packages(WriteToDefaultProfile::Specific)
     .await
     .unwrap();
 
@@ -210,11 +205,10 @@ async fn test_overlap_replaces() {
     let tree_3 = sample_tree("bar", "foo", "c").await;
     (NixEnv {
         nix_store_path: Path::new("/nix/var/nix/profiles/default/"),
-        nss_ca_cert_path: Path::new("/nix/var/nix/profiles/default/"),
         profile: &profile_path,
         pkgs: &[&tree_3],
     })
-    .install_packages(WriteToDefaultProfile::Isolated)
+    .install_packages(WriteToDefaultProfile::Specific)
     .await
     .unwrap();
 

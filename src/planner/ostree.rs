@@ -1,13 +1,13 @@
 use crate::{
     action::{
-        base::{CreateDirectory, CreateFile, RemoveDirectory},
+        base::{CreateDirectory, CreateFile},
         common::{
             ConfigureDeterminateNixdInitService, ConfigureNix, ConfigureUpstreamInitService,
             CreateUsersAndGroups, ProvisionDeterminateNixd, ProvisionNix,
         },
         linux::{
             provision_selinux::{DETERMINATE_SELINUX_POLICY_PP_CONTENT, SELINUX_POLICY_PP_CONTENT},
-            ProvisionSelinux, StartSystemdUnit, SystemctlDaemonReload,
+            Cleanup, ProvisionSelinux, StartSystemdUnit, SystemctlDaemonReload,
         },
         StatefulAction,
     },
@@ -256,17 +256,12 @@ impl Planner for Ostree {
                 .boxed(),
         );
         plan.push(
-            RemoveDirectory::plan(crate::settings::SCRATCH_DIR)
-                .await
-                .map_err(PlannerError::Action)?
-                .boxed(),
-        );
-        plan.push(
             SystemctlDaemonReload::plan()
                 .await
                 .map_err(PlannerError::Action)?
                 .boxed(),
         );
+        plan.push(Cleanup::plan().await.map_err(PlannerError::Action)?.boxed());
 
         Ok(plan)
     }

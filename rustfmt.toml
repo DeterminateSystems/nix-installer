@@ -8,5 +8,3 @@ reorder_imports = true
 reorder_modules = true
 # Use field initialize shorthand if possible.
 use_field_init_shorthand = true
-# Replace uses of the try! macro by the ? shorthand
-use_try_shorthand = true
