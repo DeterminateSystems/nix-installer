@@ -2,7 +2,7 @@
   description = "The Determinate Nix Installer";
 
   inputs = {
-    nixpkgs.url = "https://flakehub.com/f/NixOS/nixpkgs/0.1.793735";
+    nixpkgs.url = "https://flakehub.com/f/NixOS/nixpkgs/0";
 
     crane.url = "github:ipetkov/crane/v0.20.0";
 
@@ -123,7 +123,7 @@
               rust-analyzer
               cargo-outdated
               cacert
-              # cargo-audit # NOTE(cole-h): build currently broken because of time dependency and Rust 1.80
+              cargo-audit
               cargo-watch
               nixpkgs-fmt
               check.check-rustfmt
