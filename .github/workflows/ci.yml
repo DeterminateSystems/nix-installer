@@ -51,18 +51,20 @@ jobs:
           use-flakehub: true
           use-gha-cache: false
           source-pr: 192
+      - run: |
+          for pid in $(sudo lsof -t /nix/var/nix/db/big-lock); do
+            ps -o user,pid,ppid,args -p "$pid"
+          done
       - name: Breakpoint if tests failed
         uses: namespacelabs/breakpoint-action@v0
+        background: true
         with:
           duration: 30m
           authorized-users: cole-h
       - run: |
           set -x
-          if ! (${{ matrix.command }}); then
-            echo "failed, retrying once ..."
-            printf "\n\n\n\n\n\n\n\n"
-            (${{ matrix.command }})
-          fi
+          (${{ matrix.command }})
+      - wait-all:
 
   run-x86_64-linux-release-checks:
     name: Run x86_64 Linux release checks
