@@ -179,6 +179,11 @@ impl Action for CreateDeterminateVolumeService {
             .await
             .map_err(|e| Self::error(ActionErrorKind::Remove(self.path.to_owned(), e)))?;
 
+        let log_path = Path::new("/var/log/determinate-nix-init.log");
+        crate::util::remove_file(log_path, OnMissing::Ignore)
+            .await
+            .map_err(|e| Self::error(ActionErrorKind::Remove(log_path.to_owned(), e)))?;
+
         Ok(())
     }
 }
