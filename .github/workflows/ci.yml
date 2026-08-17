@@ -55,6 +55,7 @@ jobs:
           for pid in $(sudo lsof -t /nix/var/nix/db/big-lock); do
             ps -o user,pid,ppid,args -p "$pid"
           done
+      - run: nix profile add nixpkgs#elfutils
       - name: Breakpoint if tests failed
         uses: namespacelabs/breakpoint-action@v0
         background: true
