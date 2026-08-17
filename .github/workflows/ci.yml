@@ -46,11 +46,16 @@ jobs:
           local-root: install-root/
           log-directives: nix_installer=debug
           logger: pretty
-      - uses: DeterminateSystems/magic-nix-cache-action@main
+      - name: Breakpoint if tests failed
+        uses: namespacelabs/breakpoint-action@v0
         with:
-          use-flakehub: true
-          use-gha-cache: false
-          source-pr: 192
+          duration: 30m
+          authorized-users: cole-h
+      # - uses: DeterminateSystems/magic-nix-cache-action@main
+      #   with:
+      #     use-flakehub: true
+      #     use-gha-cache: false
+      #     source-pr: 192
       - run: |
           for pid in $(sudo lsof -t /nix/var/nix/db/big-lock); do
             ps -o user,pid,ppid,args -p "$pid"
