@@ -26,6 +26,7 @@ let
     install-default = {
       install = nix-installer-install;
       check = ''
+        # foo
         set -ex
 
         dir /nix
@@ -154,6 +155,7 @@ let
         RUST_BACKTRACE="full" ./nix-installer install linux --nix-package-url "file://$NIX_PATH" --no-confirm --logger pretty --log-directive nix_installer=info --no-start-daemon
       '';
       check = ''
+        # foo
         set -ex
 
         if systemctl is-active nix-daemon.socket; then
@@ -181,6 +183,7 @@ let
         RUST_BACKTRACE="full" ./nix-installer install linux --nix-package-url "file://$NIX_PATH" --no-confirm --logger pretty --log-directive nix_installer=info --init none
       '';
       check = ''
+        # foo
         set -ex
         sudo -i nix-env --version
         sudo -i nix --extra-experimental-features nix-command store ping
@@ -201,6 +204,7 @@ let
       '';
       install = installCases.install-default.install;
       check = installCases.install-default.check;
+      # foo
       uninstall = installCases.install-default.uninstall;
       uninstallCheck = installCases.install-default.uninstallCheck;
     };
@@ -213,6 +217,7 @@ let
       '';
       install = installCases.install-default.install;
       check = installCases.install-default.check + ''
+        # foo
         grep --quiet "^# foobar" /etc/nix/nix.custom.conf
       '';
       uninstall = installCases.install-default.uninstall;
@@ -221,6 +226,7 @@ let
     install-determinate = {
       install = nix-installer-install-determinate;
       check = ''
+        # foo
         if ! systemctl is-active determinate-nixd.socket; then
           echo "determinate-nixd.socket is not active"
           sudo journalctl -eu determinate-nixd.socket
@@ -245,6 +251,7 @@ let
       '';
       install = installCases.install-default.install;
       check = installCases.install-default.check;
+      # foo
       uninstall = installCases.install-default.uninstall;
       uninstallCheck = installCases.install-default.uninstallCheck;
     };
@@ -257,6 +264,7 @@ let
       '';
       install = installCases.install-default.install;
       check = installCases.install-default.check;
+      # foo
       uninstall = installCases.install-default.uninstall;
       uninstallCheck = installCases.install-default.uninstallCheck;
     };
@@ -270,6 +278,7 @@ let
       '';
       install = installCases.install-default.install;
       check = installCases.install-default.check;
+      # foo
       uninstall = installCases.install-default.uninstall;
       uninstallCheck = installCases.install-default.uninstallCheck;
     };
@@ -285,6 +294,7 @@ let
       '';
       install = installCases.install-default.install;
       check = installCases.install-default.check;
+      # foo
       uninstall = installCases.install-default.uninstall;
       uninstallCheck = installCases.install-default.uninstallCheck;
     };
@@ -296,6 +306,7 @@ let
       '';
       install = installCases.install-default.install;
       check = installCases.install-default.check;
+      # foo
       uninstall = installCases.install-default.uninstall;
       uninstallCheck = installCases.install-default.uninstallCheck;
     };
@@ -307,6 +318,7 @@ let
       '';
       install = installCases.install-default.install;
       check = installCases.install-default.check;
+      # foo
       uninstall = installCases.install-default.uninstall;
       uninstallCheck = installCases.install-default.uninstallCheck;
     };
@@ -318,6 +330,7 @@ let
       '';
       install = installCases.install-default.install;
       check = installCases.install-default.check;
+      # foo
       uninstall = installCases.install-default.uninstall;
       uninstallCheck = installCases.install-default.uninstallCheck;
     };
@@ -329,6 +342,7 @@ let
       '';
       install = installCases.install-default.install;
       check = installCases.install-default.check;
+      # foo
       uninstall = installCases.install-default.uninstall;
       uninstallCheck = installCases.install-default.uninstallCheck;
     };
@@ -341,6 +355,7 @@ let
       '';
       install = installCases.install-default.install;
       check = installCases.install-default.check;
+      # foo
       uninstall = installCases.install-default.uninstall;
       uninstallCheck = installCases.install-default.uninstallCheck;
     };
@@ -353,6 +368,7 @@ let
       '';
       install = installCases.install-default.install;
       check = installCases.install-default.check;
+      # foo
       uninstall = installCases.install-default.uninstall;
       uninstallCheck = installCases.install-default.uninstallCheck;
     };
@@ -363,6 +379,7 @@ let
       '';
       install = installCases.install-default.install;
       check = installCases.install-default.check;
+      # foo
       uninstall = installCases.install-default.uninstall;
       uninstallCheck = installCases.install-default.uninstallCheck;
     };
@@ -373,6 +390,7 @@ let
       '';
       install = installCases.install-default.install;
       check = installCases.install-default.check;
+      # foo
       uninstall = installCases.install-default.uninstall;
       uninstallCheck = installCases.install-default.uninstallCheck;
     };
@@ -383,6 +401,7 @@ let
       '';
       install = installCases.install-default.install;
       check = installCases.install-default.check;
+      # foo
       uninstall = installCases.install-default.uninstall;
       uninstallCheck = installCases.install-default.uninstallCheck;
     };
@@ -393,6 +412,7 @@ let
       '';
       install = installCases.install-default.install;
       check = installCases.install-default.check;
+      # foo
       uninstall = installCases.install-default.uninstall;
       uninstallCheck = installCases.install-default.uninstallCheck;
     };
@@ -400,6 +420,7 @@ let
       preinstall = cure-script-multi-user;
       install = installCases.install-default.install;
       check = installCases.install-default.check;
+      # foo
       uninstall = installCases.install-default.uninstall;
       uninstallCheck = installCases.install-default.uninstallCheck;
     };
@@ -407,6 +428,7 @@ let
     #   preinstall = cure-script-single-user;
     #   install = installCases.install-default.install;
     #   check = installCases.install-default.check;
+    # # foo
     # };
   };
   # Cases to test uninstalling is complete even in the face of errors.
@@ -425,6 +447,7 @@ let
       uninstall-users-and-groups-missing = {
         install = installCases.install-default.install;
         check = installCases.install-default.check;
+        # foo
         preuninstall = ''
           for i in $(seq 1 32); do
             sudo userdel nixbld$i
@@ -437,6 +460,7 @@ let
       uninstall-nix-conf-gone = {
         install = installCases.install-default.install;
         check = installCases.install-default.check;
+        # foo
         preuninstall = ''
           sudo rm -rf /etc/nix
         '';
