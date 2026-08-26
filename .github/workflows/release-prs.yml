@@ -8,12 +8,10 @@ on:
       - synchronize
       - labeled
 
-permissions:
-  id-token: "write"
-  contents: "read"
-
 jobs:
   build-x86_64-linux:
+    permissions:
+      contents: read
     # Only intra-repo PRs are allowed to have PR artifacts uploaded
     # We only want to trigger once the upload once in the case the upload label is added, not when any label is added
     if: |
@@ -25,6 +23,8 @@ jobs:
       )
     uses: ./.github/workflows/build-x86_64-linux.yml
   build-aarch64-linux:
+    permissions:
+      contents: read
     # Only intra-repo PRs are allowed to have PR artifacts uploaded
     # We only want to trigger once the upload once in the case the upload label is added, not when any label is added
     if: |
@@ -36,6 +36,8 @@ jobs:
       )
     uses: ./.github/workflows/build-aarch64-linux.yml
   build-aarch64-darwin:
+    permissions:
+      contents: read
     # Only intra-repo PRs are allowed to have PR artifacts uploaded
     # We only want to trigger once the upload once in the case the upload label is added, not when any label is added
     if: |
@@ -48,6 +50,8 @@ jobs:
     uses: ./.github/workflows/build-aarch64-darwin.yml
 
   release:
+    permissions:
+      contents: read
     # Only intra-repo PRs are allowed to have PR artifacts uploaded
     # We only want to trigger once the upload once in the case the upload label is added, not when any label is added
     if: |
@@ -64,20 +68,22 @@ jobs:
       - build-aarch64-darwin
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
+        with:
+          persist-credentials: false
       - name: Create artifacts directory
         run: mkdir -p ./artifacts
 
       - name: Fetch x86_64-linux binary artifact
-        uses: actions/download-artifact@v6
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
         with:
           name: nix-installer-x86_64-linux
       - name: Fetch aarch64-linux binary artifact
-        uses: actions/download-artifact@v6
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
         with:
           name: nix-installer-aarch64-linux
       - name: Fetch aarch64-darwin binary artifact
-        uses: actions/download-artifact@v6
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
         with:
           name: nix-installer-aarch64-darwin
       - name: Move binaries into upload staging dir
@@ -87,7 +93,7 @@ jobs:
           mv nix-installer-aarch64-darwin artifacts/
 
       - name: Configure AWS Credentials
-        uses: aws-actions/configure-aws-credentials@v2
+        uses: aws-actions/configure-aws-credentials@e7f100cf4c008499ea8adda475de1042d6975c7b # v6.2.0
         with:
           role-to-assume: ${{ secrets.AWS_S3_UPLOAD_ROLE }}
           aws-region: us-east-2
