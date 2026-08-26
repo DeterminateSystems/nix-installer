@@ -12,6 +12,7 @@ const PROFILES_PER_USER: &str = "/nix/var/nix/profiles/per-user";
 const GCROOTS_PER_USER: &str = "/nix/var/nix/gcroots/per-user";
 
 const PATHS: &[&str] = &[
+    "/nix",
     "/nix/var",
     "/nix/var/log",
     "/nix/var/log/nix",
