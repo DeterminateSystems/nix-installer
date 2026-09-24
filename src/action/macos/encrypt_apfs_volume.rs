@@ -7,7 +7,7 @@ use crate::{
     },
     distribution::Distribution,
     execute_command,
-    os::darwin::DiskUtilApfsListOutput,
+    os::darwin::{DiskUtilApfsListOutput, DiskUtilInfoOutput},
 };
 use rand::Rng;
 use std::{
@@ -289,15 +289,48 @@ impl Action for EncryptApfsVolume {
             }
         }
 
-        execute_command(
-            Command::new("/usr/sbin/diskutil")
-                .process_group(0)
-                .arg("unmount")
-                .arg("force")
-                .arg(&self.name),
-        )
-        .await
-        .map_err(Self::error)?;
+        // If the volume is already mounted at /nix on the disk we expect, skip the
+        // trailing force-unmount: the volume mount LaunchDaemon bootstrapped a few
+        // steps later (`systems.determinate.nix-store` for Determinate, or
+        // `org.nixos.darwin-store` for upstream Nix) treats its mount step as a
+        // no-op against an already-correctly-mounted volume, so the unmount serves
+        // no purpose in that case.
+        //
+        // Force-unmounting a `/nix` volume that is currently serving live
+        // `/nix/store` mmaps to user processes severs those mappings; macOS then
+        // delivers SIGBUS to every process the next time it touches a page from
+        // the now-detached volume — terminals, editors, GUI apps whose code or
+        // libs are paged from `/nix/store` all die mid-install. Remounting the
+        // same APFS volume afterwards does not restore the severed mappings.
+        //
+        // Mirrors the existing `UnmountApfsVolume::plan_skip_if_already_mounted_to_nix`
+        // pattern used for the other unmount in this install path.
+        let already_mounted_at_nix = match DiskUtilInfoOutput::for_volume_name(&self.name).await {
+            Ok(info) => {
+                Path::new(&info.parent_whole_disk) == self.disk
+                    && info.mount_point.as_deref() == Some(Path::new("/nix"))
+            },
+            Err(_) => false,
+        };
+
+        if already_mounted_at_nix {
+            tracing::debug!(
+                volume = %self.name,
+                disk = %self.disk.display(),
+                "Volume is already mounted at /nix on the expected disk; skipping \
+                 force-unmount to avoid SIGBUS on processes with /nix/store mmaps"
+            );
+        } else {
+            execute_command(
+                Command::new("/usr/sbin/diskutil")
+                    .process_group(0)
+                    .arg("unmount")
+                    .arg("force")
+                    .arg(&self.name),
+            )
+            .await
+            .map_err(Self::error)?;
+        }
 
         Ok(())
     }

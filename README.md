@@ -12,8 +12,7 @@ The installer works across a wide range of environments, including macOS, Linux,
 By default, it installs Determinate Nix, which enables [flakes] and offers a variety of industry-leading [features] and [improvements].
 
 > [!NOTE]
-> You can also use Determinate Nix Installer to install [upstream Nix](#installing-upstream-nix) if you wish.
-> This option will be available, however, until [January 1, 2026][blog-announcement].
+> You can also use Determinate Nix Installer to install [upstream Nix](#installing-upstream-nix) if you wish, although that isn't a supported configuration.
 
 ## Install Determinate Nix
 
@@ -387,7 +386,7 @@ These settings are available for all commands.
 | `--nix-package-url`        | The Nix package URL                                                                                                                                                       |                                      | `NIX_INSTALLER_NIX_PACKAGE_URL`        |
 | `--no-confirm`             | Run installation without requiring explicit user confirmation                                                                                                             | `false`                              | `NIX_INSTALLER_NO_CONFIRM`             |
 | `--no-modify-profile`      | Modify the user profile to automatically load Nix.                                                                                                                        | `true`                               | `NIX_INSTALLER_MODIFY_PROFILE`         |
-| `--prefer-upstream-nix`    | Specify that you want the installer to install [upstream Nix][upstream-nix] rather than [Determinate Nix][det-nix]. Available until [January 1, 2026][blog-announcement]. | `false`                              | `NIX_INSTALLER_PREFER_UPSTREAM_NIX`    |
+| `--prefer-upstream-nix`    | Specify that you want the installer to install [upstream Nix][upstream-nix] rather than [Determinate Nix][det-nix]. Not a supported configuration.                        | `false`                              | `NIX_INSTALLER_PREFER_UPSTREAM_NIX`    |
 | `--proxy`                  | The proxy to use (if any); valid proxy bases are `https://$URL`, `http://$URL` and `socks5://$URL`                                                                        |                                      | `NIX_INSTALLER_PROXY`                  |
 | `--ssl-cert-file`          | An SSL cert to use (if any); used for fetching Nix and sets `ssl-cert-file` in `/etc/nix/nix.conf`                                                                        |                                      | `NIX_INSTALLER_SSL_CERT_FILE`          |
 | `--no-start-daemon`        | Start the daemon (if not `--init none`)                                                                                                                                   | `true`                               | `NIX_INSTALLER_START_DAEMON`           |
@@ -450,6 +449,9 @@ In GitHub Actions, you can install upstream Nix by using our [nix-installer-acti
     determinate: false
 ```
 
+Installing upstream Nix isn't a supported configuration.
+The option remains available for now, but we may remove it in a future release.
+
 ## Diagnostics
 
 The goal of Determinate Nix Installer is to successfully and correctly install Nix.
@@ -474,7 +476,6 @@ You can read the full privacy policy for [Determinate Systems][detsys], the crea
   We've gone on to build many other things, like [FlakeHub], [FlakeHub Cache][cache], and [Determinate Secure Packages][secure-packages], but this is where it all started!
 
 [actions]: https://github.com/features/actions
-[blog-announcement]: https://determinate.systems/blog/installer-dropping-upstream
 [cache]: https://flakehub.com/cache
 [det-nix]: https://docs.determinate.systems/determinate-nix
 [determinate-nix-action]: https://github.com/DeterminateSystems/determinate-nix-action
