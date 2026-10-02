@@ -7,16 +7,18 @@ on:
       # otherwise creating the directory and uploading to s3 will fail
       - "main"
 
-permissions:
-  id-token: "write"
-  contents: "read"
-
 jobs:
   build-x86_64-linux:
+    permissions:
+      contents: read
     uses: ./.github/workflows/build-x86_64-linux.yml
   build-aarch64-linux:
+    permissions:
+      contents: read
     uses: ./.github/workflows/build-aarch64-linux.yml
   build-aarch64-darwin:
+    permissions:
+      contents: read
     uses: ./.github/workflows/build-aarch64-darwin.yml
 
   release:
@@ -29,20 +31,22 @@ jobs:
       - build-aarch64-darwin
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
+        with:
+          persist-credentials: false
       - name: Create artifacts directory
         run: mkdir -p ./artifacts
 
       - name: Fetch x86_64-linux binary artifact
-        uses: actions/download-artifact@v6
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
         with:
           name: nix-installer-x86_64-linux
       - name: Fetch aarch64-linux binary artifact
-        uses: actions/download-artifact@v6
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
         with:
           name: nix-installer-aarch64-linux
       - name: Fetch aarch64-darwin binary artifact
-        uses: actions/download-artifact@v6
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
         with:
           name: nix-installer-aarch64-darwin
       - name: Move binaries into upload staging dir
@@ -52,25 +56,26 @@ jobs:
           mv nix-installer-aarch64-darwin artifacts/
 
       - name: Configure AWS Credentials
-        uses: aws-actions/configure-aws-credentials@v2
+        uses: aws-actions/configure-aws-credentials@e7f100cf4c008499ea8adda475de1042d6975c7b # v6.2.0
         with:
           role-to-assume: ${{ secrets.AWS_S3_UPLOAD_ROLE }}
           aws-region: us-east-2
       - name: Publish Release (Branch)
         env:
           AWS_BUCKET: ${{ secrets.AWS_S3_UPLOAD_BUCKET }}
+          REF_NAME: ${{ github.ref_name }}
         run: |
-          BRANCH="branch_${{ github.ref_name }}"
-          GIT_ISH="$GITHUB_SHA"
-          ./upload_s3.sh "$BRANCH" "$GIT_ISH" "https://install.determinate.systems/nix/rev/$GIT_ISH"
+          BRANCH="branch_${REF_NAME}"
+          GIT_ISH="${GITHUB_SHA}"
+          ./upload_s3.sh "${BRANCH}" "${GIT_ISH}" "https://install.determinate.systems/nix/rev/${GIT_ISH}"
       - name: Install Instructions (Branch)
         run: |
           cat <<EOF
           This commit can be installed by running the following command:
 
-          curl --proto '=https' --tlsv1.2 -sSf -L https://install.determinate.systems/nix/rev/$GITHUB_SHA | sh -s -- install
+          curl --proto '=https' --tlsv1.2 -sSf -L "https://install.determinate.systems/nix/rev/${GITHUB_SHA}" | sh -s -- install
 
           The latest commit from this branch can be installed by running the following command:
 
-          curl --proto '=https' --tlsv1.2 -sSf -L https://install.determinate.systems/nix/branch/${{ github.ref_name }} | sh -s -- install
+          curl --proto '=https' --tlsv1.2 -sSf -L "https://install.determinate.systems/nix/branch/${REF_NAME}" | sh -s -- install
           EOF
