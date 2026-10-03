@@ -127,8 +127,10 @@ impl PlaceNixConfiguration {
             experimental_features.join(" "),
         );
 
+        // Previously disabled on macOS due to:
         // https://github.com/DeterminateSystems/nix-installer/issues/449#issuecomment-1551782281
-        #[cfg(not(target_os = "macos"))]
+        // But was fixed:
+        // https://github.com/NixOS/nix/pull/14676
         settings.insert("auto-optimise-store".to_string(), "true".to_string());
 
         // https://github.com/NixOS/nix/pull/8047
