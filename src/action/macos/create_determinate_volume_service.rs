@@ -169,7 +169,10 @@ impl Action for CreateDeterminateVolumeService {
     fn revert_description(&self) -> Vec<ActionDescription> {
         vec![ActionDescription::new(
             format!("Delete file `{}`", self.path.display()),
-            vec![format!("Delete file `{}`", self.path.display())],
+            vec![
+                format!("Delete file `{}`", self.path.display()),
+                "Delete file `/var/log/determinate-nix-init.log`".to_string(),
+            ],
         )]
     }
 
