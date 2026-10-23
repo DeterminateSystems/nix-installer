@@ -26,6 +26,7 @@ impl CreateUsersAndGroups {
         let create_group = CreateGroup::plan(
             settings.nix_build_group_name.clone(),
             settings.nix_build_group_id,
+            settings.force,
         )?;
         let mut create_users = Vec::with_capacity(settings.nix_build_user_count as usize);
         let mut add_users_to_groups = Vec::with_capacity(settings.nix_build_user_count as usize);
