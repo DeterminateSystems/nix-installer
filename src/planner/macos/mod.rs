@@ -1,4 +1,4 @@
-use std::{collections::HashMap, io::Cursor, path::PathBuf};
+use std::{collections::HashMap, io::Cursor};
 
 #[cfg(feature = "cli")]
 use clap::ArgAction;
@@ -6,7 +6,6 @@ use tokio::process::Command;
 use which::which;
 
 use super::ShellProfileLocations;
-use crate::action::common::provision_nix::NIX_STORE_LOCATION;
 use crate::distribution::Distribution;
 use crate::planner::HasExpectedErrors;
 
@@ -24,7 +23,7 @@ use crate::{
         },
         macos::{
             ConfigureRemoteBuilding, CreateDeterminateNixVolume, CreateNixHookService,
-            CreateNixVolume, SetTmutilExclusions,
+            CreateNixVolume,
         },
         StatefulAction,
     },
@@ -273,15 +272,6 @@ impl Planner for Macos {
                 .await
                 .map_err(PlannerError::Action)?
                 .boxed(),
-        );
-        plan.push(
-            SetTmutilExclusions::plan(vec![
-                PathBuf::from(NIX_STORE_LOCATION),
-                PathBuf::from("/nix/var"),
-            ])
-            .await
-            .map_err(PlannerError::Action)?
-            .boxed(),
         );
         plan.push(
             ConfigureNix::plan(ShellProfileLocations::default(), &self.settings)
