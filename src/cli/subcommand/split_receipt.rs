@@ -283,9 +283,12 @@ async fn two_phased_can_parse_receipt_perfectly(
                 let mut action_unjson =
                     roundtrip_to_extract_type::<crate::action::common::ConfigureNix>(action)?;
 
-                if let Some(custom_nix_config) =
+                if let Some((create_directory, custom_nix_config)) =
                     skip_custom_nix_config_until_phase2(&mut action_unjson.action)
                 {
+                    // NOTE: phase 2 is reverted in reverse order, so this removes the file
+                    // before its directory
+                    phase2_plan.actions.push(create_directory.boxed());
                     phase2_plan.actions.push(custom_nix_config.boxed());
                     let _ = std::mem::replace(action, action_unjson.boxed());
                 }
@@ -467,11 +470,14 @@ async fn two_phased_cannot_parse_receipt_perfectly(
             // ConfigureNix; receipts from before `nix.custom.conf` existed won't have the
             // nested action, in which case this does nothing
             "configure_nix" => {
-                if let Some(custom_nix_config) =
-                    skip_custom_nix_config_until_phase2_json(action_obj, &skipped_json_value)
-                {
-                    phase2_plan.actions.push(custom_nix_config);
-                }
+                // NOTE: phase 2 is reverted in reverse order, so this removes the file before its
+                // directory
+                phase2_plan
+                    .actions
+                    .extend(skip_custom_nix_config_until_phase2_json(
+                        action_obj,
+                        &skipped_json_value,
+                    ));
             },
             _s => {},
         }
@@ -486,50 +492,81 @@ async fn two_phased_cannot_parse_receipt_perfectly(
 /// it must survive a phase 1 uninstall + reinstall (e.g. an upgrade via the macOS package).
 /// Reverting it deletes the whole file, so defer that until phase 2 (a full uninstall).
 ///
-/// Returns the deferred action (with its original state) for the phase 2 plan, if there was one.
+/// The `/etc/nix` directory is deferred too: when the original install used `--force`, reverting
+/// it removes the directory recursively, taking `nix.custom.conf` with it.
+///
+/// Returns the deferred directory and custom config actions (with their original states) for
+/// the phase 2 plan, if there was a custom config.
 fn skip_custom_nix_config_until_phase2(
     configure_nix: &mut crate::action::common::ConfigureNix,
-) -> Option<StatefulAction<crate::action::base::CreateOrMergeNixConfig>> {
-    let place_nix_configuration = configure_nix.place_nix_configuration.as_mut()?;
-    let custom_nix_config = &mut place_nix_configuration
-        .action
-        .create_or_merge_custom_nix_config;
+) -> Option<(
+    StatefulAction<crate::action::base::CreateDirectory>,
+    StatefulAction<crate::action::base::CreateOrMergeNixConfig>,
+)> {
+    let place_nix_configuration = &mut configure_nix.place_nix_configuration.as_mut()?.action;
+    let create_directory = &mut place_nix_configuration.create_directory;
+    let custom_nix_config = &mut place_nix_configuration.create_or_merge_custom_nix_config;
 
     tracing::debug!(
-        "Marking create_or_merge_nix_config for {path} as skipped so we don't undo it until phase 2",
-        path = custom_nix_config.action.path.display()
+        "Marking create_directory for {dir} and create_or_merge_nix_config for {path} as skipped so we don't undo them until phase 2",
+        dir = create_directory.action.path.display(),
+        path = custom_nix_config.action.path.display(),
     );
 
-    let phase2_action = custom_nix_config.clone();
+    let phase2_actions = (create_directory.clone(), custom_nix_config.clone());
+    create_directory.state = ActionState::Skipped;
     custom_nix_config.state = ActionState::Skipped;
 
-    Some(phase2_action)
+    Some(phase2_actions)
 }
 
 /// The naive JSON equivalent of [`skip_custom_nix_config_until_phase2`].
+///
+/// Returns the deferred actions in the order they should be added to the phase 2 plan; empty if
+/// the receipt has no custom config.
 fn skip_custom_nix_config_until_phase2_json(
     configure_nix: &mut serde_json::Value,
     skipped_json_value: &serde_json::Value,
-) -> Option<serde_json::Value> {
+) -> Vec<serde_json::Value> {
     // NOTE: use `pointer_mut` rather than indexing, since indexing a missing key on a mutable
     // `Value` inserts it
-    let custom_nix_config = configure_nix
-        .pointer_mut("/place_nix_configuration/action/create_or_merge_custom_nix_config")?
-        .as_object_mut()?;
+    let Some(place_nix_configuration) = configure_nix
+        .pointer_mut("/place_nix_configuration/action")
+        .and_then(|action| action.as_object_mut())
+    else {
+        return Vec::new();
+    };
 
-    tracing::debug!(
-        "Marking create_or_merge_nix_config for {path} as skipped so we don't undo it until phase 2",
-        path = custom_nix_config
-            .get("action")
-            .and_then(|action| action.get("path"))
-            .and_then(|path| path.as_str())
-            .unwrap_or("nix.custom.conf")
-    );
+    if !place_nix_configuration
+        .get("create_or_merge_custom_nix_config")
+        .is_some_and(|action| action.is_object())
+    {
+        return Vec::new();
+    }
 
-    let phase2_action = serde_json::Value::Object(custom_nix_config.clone());
-    custom_nix_config.insert("state".to_string(), skipped_json_value.clone());
+    let mut phase2_actions = Vec::new();
+    for name in ["create_directory", "create_or_merge_custom_nix_config"] {
+        let Some(action) = place_nix_configuration
+            .get_mut(name)
+            .and_then(|action| action.as_object_mut())
+        else {
+            continue;
+        };
 
-    Some(phase2_action)
+        tracing::debug!(
+            "Marking {name} for {path} as skipped so we don't undo it until phase 2",
+            path = action
+                .get("action")
+                .and_then(|action| action.get("path"))
+                .and_then(|path| path.as_str())
+                .unwrap_or("<unknown>")
+        );
+
+        phase2_actions.push(serde_json::Value::Object(action.clone()));
+        action.insert("state".to_string(), skipped_json_value.clone());
+    }
+
+    phase2_actions
 }
 
 fn roundtrip_to_extract_type<T: serde::de::DeserializeOwned>(
@@ -571,16 +608,23 @@ mod tests {
             let mut configure_nix: crate::action::common::ConfigureNix =
                 serde_json::from_value(configure_nix_json(receipt)).unwrap();
 
-            let phase2_action = skip_custom_nix_config_until_phase2(&mut configure_nix)
-                .expect("custom nix config should be deferred");
+            let (create_directory, custom_nix_config) =
+                skip_custom_nix_config_until_phase2(&mut configure_nix)
+                    .expect("custom nix config should be deferred");
 
+            assert_eq!(create_directory.action.path, PathBuf::from("/etc/nix"));
+            assert_eq!(create_directory.state, ActionState::Completed);
             assert_eq!(
-                phase2_action.action.path,
+                custom_nix_config.action.path,
                 PathBuf::from("/etc/nix/nix.custom.conf")
             );
-            assert_eq!(phase2_action.state, ActionState::Completed);
+            assert_eq!(custom_nix_config.state, ActionState::Completed);
 
             let place_nix_configuration = configure_nix.place_nix_configuration.unwrap();
+            assert_eq!(
+                place_nix_configuration.action.create_directory.state,
+                ActionState::Skipped
+            );
             assert_eq!(
                 place_nix_configuration
                     .action
@@ -600,15 +644,25 @@ mod tests {
         for receipt in [LINUX, MACOS] {
             let mut configure_nix = configure_nix_json(receipt);
 
-            let phase2_action =
-                skip_custom_nix_config_until_phase2_json(&mut configure_nix, &skipped)
-                    .expect("custom nix config should be deferred");
+            let phase2_actions =
+                skip_custom_nix_config_until_phase2_json(&mut configure_nix, &skipped);
 
-            assert_eq!(phase2_action["action"]["path"], "/etc/nix/nix.custom.conf");
-            assert_eq!(phase2_action["state"], "Completed");
+            assert_eq!(phase2_actions.len(), 2);
+            assert_eq!(phase2_actions[0]["action"]["path"], "/etc/nix");
+            assert_eq!(phase2_actions[0]["state"], "Completed");
             assert_eq!(
-                configure_nix["place_nix_configuration"]["action"]
-                    ["create_or_merge_custom_nix_config"]["state"],
+                phase2_actions[1]["action"]["path"],
+                "/etc/nix/nix.custom.conf"
+            );
+            assert_eq!(phase2_actions[1]["state"], "Completed");
+
+            let place_nix_configuration = &configure_nix["place_nix_configuration"]["action"];
+            assert_eq!(
+                place_nix_configuration["create_directory"]["state"],
+                skipped
+            );
+            assert_eq!(
+                place_nix_configuration["create_or_merge_custom_nix_config"]["state"],
                 skipped
             );
             assert_eq!(
@@ -630,14 +684,14 @@ mod tests {
             .remove("create_or_merge_custom_nix_config");
         let expected = configure_nix.clone();
 
-        assert!(skip_custom_nix_config_until_phase2_json(&mut configure_nix, &skipped).is_none());
+        assert!(skip_custom_nix_config_until_phase2_json(&mut configure_nix, &skipped).is_empty());
         assert_eq!(configure_nix, expected);
 
         // ...or `place_nix_configuration` entirely
         let mut configure_nix = serde_json::json!({ "action_name": "configure_nix" });
         let expected = configure_nix.clone();
 
-        assert!(skip_custom_nix_config_until_phase2_json(&mut configure_nix, &skipped).is_none());
+        assert!(skip_custom_nix_config_until_phase2_json(&mut configure_nix, &skipped).is_empty());
         assert_eq!(configure_nix, expected);
     }
 }

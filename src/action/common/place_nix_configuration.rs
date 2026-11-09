@@ -34,7 +34,7 @@ Place the `/etc/nix/nix.conf` file
 #[derive(Debug, serde::Deserialize, serde::Serialize, Clone)]
 #[serde(tag = "action_name", rename = "place_nix_configuration")]
 pub struct PlaceNixConfiguration {
-    create_directory: StatefulAction<CreateDirectory>,
+    pub(crate) create_directory: StatefulAction<CreateDirectory>,
     create_or_merge_standard_nix_config: Option<StatefulAction<CreateOrMergeNixConfig>>,
     pub(crate) create_or_merge_custom_nix_config: StatefulAction<CreateOrMergeNixConfig>,
 }
