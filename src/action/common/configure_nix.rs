@@ -21,7 +21,7 @@ Configure Nix and start it
 pub struct ConfigureNix {
     setup_default_profile: StatefulAction<SetupDefaultProfile>,
     configure_shell_profile: Option<StatefulAction<ConfigureShellProfile>>,
-    place_nix_configuration: Option<StatefulAction<PlaceNixConfiguration>>,
+    pub(crate) place_nix_configuration: Option<StatefulAction<PlaceNixConfiguration>>,
 }
 
 impl ConfigureNix {

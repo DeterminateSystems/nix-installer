@@ -36,7 +36,7 @@ Place the `/etc/nix/nix.conf` file
 pub struct PlaceNixConfiguration {
     create_directory: StatefulAction<CreateDirectory>,
     create_or_merge_standard_nix_config: Option<StatefulAction<CreateOrMergeNixConfig>>,
-    create_or_merge_custom_nix_config: StatefulAction<CreateOrMergeNixConfig>,
+    pub(crate) create_or_merge_custom_nix_config: StatefulAction<CreateOrMergeNixConfig>,
 }
 
 impl PlaceNixConfiguration {
