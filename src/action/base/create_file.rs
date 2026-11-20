@@ -27,11 +27,13 @@ regardless of its presence prior to install.
 #[serde(tag = "action_name", rename = "create_file")]
 pub struct CreateFile {
     pub(crate) path: PathBuf,
-    user: Option<String>,
-    group: Option<String>,
+    pub(crate) user: Option<String>,
+    pub(crate) group: Option<String>,
     mode: Option<u32>,
     buf: String,
     force: bool,
+    #[serde(default, skip_serializing_if = "std::ops::Not::not")]
+    pub(crate) atomic: bool,
 }
 
 impl CreateFile {
@@ -55,6 +57,7 @@ impl CreateFile {
             mode,
             buf,
             force,
+            atomic: false,
         };
 
         if this.path.exists() {
@@ -159,7 +162,7 @@ impl CreateFile {
 
     /// Publish a small file only after its contents and permissions are ready.
     /// Fail if the destination appeared since planning.
-    pub(crate) fn create_atomically(&self) -> Result<(), ActionError> {
+    fn create_atomically(&self) -> Result<(), ActionError> {
         let (uid, gid) = self.owner_ids()?;
         let parent = self.path.parent().unwrap_or_else(|| Path::new("."));
         let mut temporary = tempfile::NamedTempFile::new_in(parent)
@@ -261,6 +264,10 @@ impl Action for CreateFile {
             span.record("buf", &self.buf);
         }
 
+        if self.atomic {
+            return self.create_atomically();
+        }
+
         let mut options = OpenOptions::new();
         options.create_new(true).write(true).read(true);
 
@@ -295,6 +302,7 @@ impl Action for CreateFile {
             mode: _,
             buf: _,
             force: _,
+            atomic: _,
         } = &self;
 
         vec![ActionDescription::new(
@@ -312,6 +320,7 @@ impl Action for CreateFile {
             mode: _,
             buf: _,
             force: _,
+            atomic: _,
         } = self;
 
         crate::util::remove_file(path, OnMissing::Ignore)
