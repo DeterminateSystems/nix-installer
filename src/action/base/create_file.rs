@@ -1,7 +1,9 @@
-use nix::unistd::{chown, Group, User};
+use nix::unistd::{chown, fchown, Gid, Group, Uid, User};
 use tracing::{span, Span};
 
 use std::{
+    io::Write,
+    os::fd::AsRawFd,
     os::{unix::fs::MetadataExt, unix::fs::PermissionsExt},
     path::{Path, PathBuf},
 };
@@ -142,6 +144,81 @@ impl CreateFile {
 
         Ok(StatefulAction::uncompleted(this))
     }
+
+    pub(crate) async fn replan(&self) -> Result<StatefulAction<Self>, ActionError> {
+        Self::plan(
+            &self.path,
+            self.user.clone(),
+            self.group.clone(),
+            self.mode,
+            self.buf.clone(),
+            self.force,
+        )
+        .await
+    }
+
+    /// Publish a small file only after its contents and permissions are ready.
+    /// Fail if the destination appeared since planning.
+    pub(crate) fn create_atomically(&self) -> Result<(), ActionError> {
+        let (uid, gid) = self.owner_ids()?;
+        let parent = self.path.parent().unwrap_or_else(|| Path::new("."));
+        let mut temporary = tempfile::NamedTempFile::new_in(parent)
+            .map_err(|error| Self::error(ActionErrorKind::Open(self.path.clone(), error)))?;
+        temporary
+            .write_all(self.buf.as_bytes())
+            .map_err(|error| Self::error(ActionErrorKind::Write(self.path.clone(), error)))?;
+        fchown(temporary.as_file().as_raw_fd(), uid, gid)
+            .map_err(|error| Self::error(ActionErrorKind::Chown(self.path.clone(), error)))?;
+        if let Some(mode) = self.mode {
+            temporary
+                .as_file()
+                .set_permissions(PermissionsExt::from_mode(mode))
+                .map_err(|error| {
+                    Self::error(ActionErrorKind::SetPermissions(
+                        mode,
+                        self.path.clone(),
+                        error,
+                    ))
+                })?;
+        }
+        let temporary_path = temporary.path().to_owned();
+        temporary.persist_noclobber(&self.path).map_err(|error| {
+            Self::error(ActionErrorKind::Rename(
+                temporary_path,
+                self.path.clone(),
+                error.error,
+            ))
+        })?;
+        Ok(())
+    }
+
+    pub(crate) fn owner_ids(&self) -> Result<(Option<Uid>, Option<Gid>), ActionError> {
+        let gid = if let Some(ref group) = self.group {
+            Some(
+                Group::from_name(group.as_str())
+                    .map_err(|e| ActionErrorKind::GettingGroupId(group.clone(), e))
+                    .map_err(Self::error)?
+                    .ok_or(ActionErrorKind::NoGroup(group.clone()))
+                    .map_err(Self::error)?
+                    .gid,
+            )
+        } else {
+            None
+        };
+        let uid = if let Some(ref user) = self.user {
+            Some(
+                User::from_name(user.as_str())
+                    .map_err(|e| ActionErrorKind::GettingUserId(user.clone(), e))
+                    .map_err(Self::error)?
+                    .ok_or(ActionErrorKind::NoUser(user.clone()))
+                    .map_err(Self::error)?
+                    .uid,
+            )
+        } else {
+            None
+        };
+        Ok((uid, gid))
+    }
 }
 
 #[async_trait::async_trait]
@@ -202,30 +279,7 @@ impl Action for CreateFile {
             .map_err(|e| ActionErrorKind::Write(self.path.to_owned(), e))
             .map_err(Self::error)?;
 
-        let gid = if let Some(ref group) = self.group {
-            Some(
-                Group::from_name(group.as_str())
-                    .map_err(|e| ActionErrorKind::GettingGroupId(group.clone(), e))
-                    .map_err(Self::error)?
-                    .ok_or(ActionErrorKind::NoGroup(group.clone()))
-                    .map_err(Self::error)?
-                    .gid,
-            )
-        } else {
-            None
-        };
-        let uid = if let Some(ref user) = self.user {
-            Some(
-                User::from_name(user.as_str())
-                    .map_err(|e| ActionErrorKind::GettingUserId(user.clone(), e))
-                    .map_err(Self::error)?
-                    .ok_or(ActionErrorKind::NoUser(user.clone()))
-                    .map_err(Self::error)?
-                    .uid,
-            )
-        } else {
-            None
-        };
+        let (uid, gid) = self.owner_ids()?;
         chown(&self.path, uid, gid)
             .map_err(|e| ActionErrorKind::Chown(self.path.clone(), e))
             .map_err(Self::error)?;

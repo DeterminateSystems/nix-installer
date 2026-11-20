@@ -2,6 +2,7 @@ use serde::{Deserialize, Serialize};
 use tracing::{span, Span};
 
 use std::{
+    fs as std_fs,
     io::ErrorKind,
     os::unix::fs::{MetadataExt, PermissionsExt},
     path::{Path, PathBuf},
@@ -39,56 +40,74 @@ pub struct CreateNixHookService {
 
 #[derive(Debug, Deserialize, Serialize, Clone)]
 struct HookLauncher {
+    #[serde(default)]
+    owns_file: bool,
     directory: Option<StatefulAction<CreateDirectory>>,
     file: StatefulAction<CreateFile>,
     #[serde(default)]
     owns_plist: bool,
 }
 
+#[derive(PartialEq, Eq)]
+enum PlistState {
+    Missing,
+    Legacy,
+    Named,
+}
+
+impl HookLauncher {
+    async fn file_is_ready(&self) -> Result<bool, ActionError> {
+        let file = self.file.inner();
+        match fs::symlink_metadata(&file.path).await {
+            Ok(metadata) if metadata.is_file() => {
+                Ok(file.replan().await?.state == ActionState::Completed)
+            },
+            Ok(_) => Err(CreateNixHookService::error(
+                ActionErrorKind::PathWasNotFile(file.path.clone()),
+            )),
+            Err(error) if error.kind() == ErrorKind::NotFound => Ok(false),
+            Err(error) => Err(CreateNixHookService::error(
+                ActionErrorKind::GettingMetadata(file.path.clone(), error),
+            )),
+        }
+    }
+
+    async fn install(&mut self) -> Result<(), ActionError> {
+        let file = self.file.inner();
+        let parent = file.path.parent().unwrap_or_else(|| Path::new("."));
+        let (owner, _) = file.owner_ids()?;
+        let owner = owner.map(|uid| uid.as_raw());
+        if !launcher_directory_exists(parent, owner).map_err(CreateNixHookService::error)? {
+            if let Some(directory) = &mut self.directory {
+                directory.try_execute().await?;
+            }
+        }
+        if !self.file_is_ready().await? {
+            self.file.inner().create_atomically()?;
+            self.owns_file = true;
+        }
+        self.file.state = ActionState::Completed;
+        Ok(())
+    }
+}
+
 impl CreateNixHookService {
     async fn plan_launcher() -> Result<HookLauncher, ActionError> {
         let directory = Path::new(LAUNCHER_DIRECTORY);
-        let directory_action = match fs::symlink_metadata(directory).await {
-            Ok(metadata) => {
-                if !metadata.is_dir() {
-                    return Err(Self::error(ActionErrorKind::PathWasNotDirectory(
-                        directory.into(),
-                    )));
-                }
-                if metadata.uid() != 0 {
-                    return Err(Self::error(ActionErrorKind::PathUserMismatch(
-                        directory.into(),
-                        metadata.uid(),
-                        0,
-                    )));
-                }
-                let mode = metadata.permissions().mode() & 0o777;
-                if mode & 0o022 != 0 {
-                    return Err(Self::error(ActionErrorKind::PathModeMismatch(
-                        directory.into(),
-                        mode,
-                        mode & !0o022,
-                    )));
-                }
+        let directory_action =
+            if launcher_directory_exists(directory, Some(0)).map_err(Self::error)? {
                 None
-            },
-            Err(error) if error.kind() == ErrorKind::NotFound => Some(
-                CreateDirectory::plan(
+            } else {
+                let action = CreateDirectory::plan(
                     directory,
                     Some("root".into()),
                     Some("wheel".into()),
                     Some(0o755),
                     false,
                 )
-                .await?,
-            ),
-            Err(error) => {
-                return Err(Self::error(ActionErrorKind::GettingMetadata(
-                    directory.into(),
-                    error,
-                )));
-            },
-        };
+                .await?;
+                (action.state == ActionState::Uncompleted).then_some(action)
+            };
 
         match fs::symlink_metadata(LAUNCHER_PATH).await {
             Ok(metadata) if !metadata.is_file() => {
@@ -115,6 +134,7 @@ impl CreateNixHookService {
         )
         .await?;
         Ok(HookLauncher {
+            owns_file: false,
             directory: directory_action,
             file,
             owns_plist: false,
@@ -127,42 +147,32 @@ impl CreateNixHookService {
             format!("/Library/LaunchDaemons/{SERVICE_LABEL}.plist").into(),
             Self::plan_launcher().await?,
         )
-        .await
     }
 
-    async fn plan_at(
-        path: PathBuf,
-        launcher: HookLauncher,
-    ) -> Result<StatefulAction<Self>, ActionError> {
+    fn plan_at(path: PathBuf, launcher: HookLauncher) -> Result<StatefulAction<Self>, ActionError> {
         let launcher_ready =
             launcher.directory.is_none() && launcher.file.state == ActionState::Completed;
-        let mut this = Self {
+        let this = Self {
             path,
             service_label: SERVICE_LABEL.into(),
             needs_bootout: false,
             launcher: Some(launcher),
         };
-
-        let owns_plist = this.has_named_plist().await?;
-        if let Some(launcher) = &mut this.launcher {
-            launcher.owns_plist = owns_plist;
-        }
-        if owns_plist && launcher_ready {
+        if this.plist_state()? == PlistState::Named && launcher_ready {
             return Ok(StatefulAction::completed(this));
         }
-
         Ok(StatefulAction::uncompleted(this))
     }
 
-    async fn has_named_plist(&self) -> Result<bool, ActionError> {
-        let Some(discovered) = read_plist(&self.path).await.map_err(Self::error)? else {
-            return Ok(false);
+    fn plist_state(&self) -> Result<PlistState, ActionError> {
+        let Some(discovered) = read_plist(&self.path).map_err(Self::error)? else {
+            return Ok(PlistState::Missing);
         };
         let expected = generate_plist(&self.service_label);
         if discovered == expected {
-            Ok(true)
+            Ok(PlistState::Named)
         } else if discovered == legacy_plist(&self.service_label) {
-            Ok(false)
+            Ok(PlistState::Legacy)
         } else {
             Err(Self::error(CreateNixHookServiceError::DifferentPlist {
                 expected,
@@ -170,6 +180,31 @@ impl CreateNixHookService {
                 path: self.path.clone(),
             }))
         }
+    }
+
+    fn install_named_plist(&mut self) -> Result<(), ActionError> {
+        let temporary =
+            stage_plist(&self.path, &generate_plist(&self.service_label)).map_err(Self::error)?;
+        let temporary_path = temporary.path().to_owned();
+
+        // Recheck after launcher installation and staging the replacement, so
+        // customizations made while the launcher was being prepared are kept.
+        let installed = match self.plist_state()? {
+            PlistState::Missing => temporary.persist_noclobber(&self.path),
+            PlistState::Legacy => temporary.persist(&self.path),
+            PlistState::Named => return Ok(()),
+        };
+        installed.map_err(|error| {
+            Self::error(ActionErrorKind::Rename(
+                temporary_path,
+                self.path.clone(),
+                error.error,
+            ))
+        })?;
+        if let Some(launcher) = &mut self.launcher {
+            launcher.owns_plist = true;
+        }
+        Ok(())
     }
 }
 
@@ -215,27 +250,13 @@ impl Action for CreateNixHookService {
 
     #[tracing::instrument(level = "debug", skip_all)]
     async fn execute(&mut self) -> Result<(), ActionError> {
-        let already_named = self.launcher.is_some() && self.has_named_plist().await?;
+        if self.launcher.is_some() {
+            self.plist_state()?;
+        }
         if let Some(launcher) = &mut self.launcher {
-            if let Some(directory) = &mut launcher.directory {
-                directory.try_execute().await?;
-            }
-            if let Err(error) = launcher.file.try_execute().await {
-                if matches!(error.kind(), ActionErrorKind::Open(_, io) if io.kind() == ErrorKind::AlreadyExists)
-                {
-                    // create_new failed before acquiring this path.
-                    launcher.file.state = ActionState::Uncompleted;
-                }
-                return Err(error);
-            }
-
-            // An already loaded legacy job can finish with its original
-            // command. launchd reads the replaced plist on its next load.
-            if !already_named {
-                write_plist(&self.path, &generate_plist(&self.service_label))
-                    .map_err(Self::error)?;
-            }
-            launcher.owns_plist = true;
+            launcher.install().await?;
+            // launchd reads the replacement on its next load.
+            self.install_named_plist()?;
         } else {
             // Preserve the behavior of a plan saved by an older installer.
             if self.needs_bootout {
@@ -249,12 +270,21 @@ impl Action for CreateNixHookService {
     }
 
     fn revert_description(&self) -> Vec<ActionDescription> {
-        let mut description = vec![ActionDescription::new(
-            format!("Delete file `{}`", self.path.display()),
-            vec![format!("Delete file `{}`", self.path.display())],
-        )];
+        let mut description = Vec::new();
+        if self
+            .launcher
+            .as_ref()
+            .is_none_or(|launcher| launcher.owns_plist)
+        {
+            description.push(ActionDescription::new(
+                format!("Delete file `{}`", self.path.display()),
+                vec![format!("Delete file `{}`", self.path.display())],
+            ));
+        }
         if let Some(launcher) = &self.launcher {
-            description.extend(launcher.file.describe_revert());
+            if launcher.owns_file {
+                description.extend(launcher.file.describe_revert());
+            }
             if let Some(directory) = &launcher.directory {
                 description.extend(directory.describe_revert());
             }
@@ -264,26 +294,35 @@ impl Action for CreateNixHookService {
 
     #[tracing::instrument(level = "debug", skip_all)]
     async fn revert(&mut self) -> Result<(), ActionError> {
-        // A failed migration may have left the original service in place.
-        // Keep it available if the named plist was never installed.
-        let owns_plist = match &self.launcher {
+        let remove_plist = match &self.launcher {
             None => true,
-            Some(launcher) if launcher.owns_plist => true,
-            Some(_) => matches!(
-                read_plist(&self.path).await,
-                Ok(Some(plist)) if plist == generate_plist(&self.service_label)
-            ),
+            Some(launcher) if launcher.owns_plist => self.plist_state()? != PlistState::Legacy,
+            Some(_) => false,
         };
-        if owns_plist {
+        if remove_plist {
             crate::action::macos::retry_bootout(DARWIN_LAUNCHD_DOMAIN, &self.service_label)
                 .await
                 .map_err(Self::error)?;
-            crate::util::remove_file(&self.path, OnMissing::Ignore)
-                .await
-                .map_err(|e| Self::error(ActionErrorKind::Remove(self.path.to_owned(), e)))?;
+            if self.launcher.is_none() || self.plist_state()? == PlistState::Named {
+                crate::util::remove_file(&self.path, OnMissing::Ignore)
+                    .await
+                    .map_err(|e| Self::error(ActionErrorKind::Remove(self.path.to_owned(), e)))?;
+            }
+            if let Some(launcher) = &mut self.launcher {
+                launcher.owns_plist = false;
+            }
         }
+        let another_named_plist = matches!(
+            read_plist(&self.path),
+            Ok(Some(plist)) if plist == generate_plist(&self.service_label)
+        );
         if let Some(launcher) = &mut self.launcher {
-            launcher.file.try_revert().await?;
+            if launcher.owns_file && !another_named_plist {
+                if launcher.file_is_ready().await? {
+                    launcher.file.try_revert().await?;
+                }
+                launcher.owns_file = false;
+            }
             if let Some(directory) = &mut launcher.directory {
                 directory.try_revert().await?;
             }
@@ -293,15 +332,61 @@ impl Action for CreateNixHookService {
     }
 }
 
-async fn read_plist(path: &Path) -> Result<Option<LaunchctlHookPlist>, ActionErrorKind> {
-    match fs::read(path).await {
-        Ok(bytes) => Ok(Some(plist::from_bytes(&bytes)?)),
-        Err(error) if error.kind() == ErrorKind::NotFound => Ok(None),
-        Err(error) => Err(ActionErrorKind::Read(path.into(), error)),
+fn launcher_directory_exists(path: &Path, owner: Option<u32>) -> Result<bool, ActionErrorKind> {
+    let metadata = match std_fs::symlink_metadata(path) {
+        Ok(metadata) => metadata,
+        Err(error) if error.kind() == ErrorKind::NotFound => return Ok(false),
+        Err(error) => return Err(ActionErrorKind::GettingMetadata(path.into(), error)),
+    };
+    if !metadata.is_dir() {
+        return Err(ActionErrorKind::PathWasNotDirectory(path.into()));
     }
+    if let Some(owner) = owner {
+        if metadata.uid() != owner {
+            return Err(ActionErrorKind::PathUserMismatch(
+                path.into(),
+                metadata.uid(),
+                owner,
+            ));
+        }
+    }
+    let mode = metadata.permissions().mode() & 0o777;
+    if mode & 0o022 != 0 {
+        return Err(ActionErrorKind::PathModeMismatch(
+            path.into(),
+            mode,
+            mode & !0o022,
+        ));
+    }
+    Ok(true)
+}
+
+fn read_plist(path: &Path) -> Result<Option<LaunchctlHookPlist>, ActionErrorKind> {
+    match std_fs::symlink_metadata(path) {
+        Ok(metadata) if !metadata.is_file() => {
+            return Err(ActionErrorKind::PathWasNotFile(path.into()));
+        },
+        Ok(_) => {},
+        Err(error) if error.kind() == ErrorKind::NotFound => return Ok(None),
+        Err(error) => return Err(ActionErrorKind::GettingMetadata(path.into(), error)),
+    }
+    let plist = plist::from_file(path)?;
+    Ok(Some(plist))
 }
 
 fn write_plist(path: &Path, plist: &LaunchctlHookPlist) -> Result<(), ActionErrorKind> {
+    let temporary = stage_plist(path, plist)?;
+    let temporary_path = temporary.path().to_owned();
+    temporary
+        .persist(path)
+        .map_err(|error| ActionErrorKind::Rename(temporary_path, path.into(), error.error))?;
+    Ok(())
+}
+
+fn stage_plist(
+    path: &Path,
+    plist: &LaunchctlHookPlist,
+) -> Result<tempfile::NamedTempFile, ActionErrorKind> {
     let directory = path.parent().unwrap_or_else(|| Path::new("."));
     let temporary = tempfile::NamedTempFile::new_in(directory)
         .map_err(|error| ActionErrorKind::Open(path.into(), error))?;
@@ -310,11 +395,7 @@ fn write_plist(path: &Path, plist: &LaunchctlHookPlist) -> Result<(), ActionErro
         .as_file()
         .set_permissions(std::fs::Permissions::from_mode(0o644))
         .map_err(|error| ActionErrorKind::SetPermissions(0o644, path.into(), error))?;
-    let temporary_path = temporary.path().to_owned();
-    temporary
-        .persist(path)
-        .map_err(|error| ActionErrorKind::Rename(temporary_path, path.into(), error.error))?;
-    Ok(())
+    Ok(temporary)
 }
 
 fn generate_plist(service_label: &str) -> LaunchctlHookPlist {
@@ -381,6 +462,7 @@ mod tests {
 
     async fn temporary_launcher(directory: &Path) -> HookLauncher {
         HookLauncher {
+            owns_file: false,
             directory: None,
             owns_plist: false,
             file: CreateFile::plan(
@@ -404,12 +486,11 @@ mod tests {
 
         let mut action =
             CreateNixHookService::plan_at(path.clone(), temporary_launcher(directory.path()).await)
-                .await
                 .unwrap();
         assert_eq!(action.state, ActionState::Uncompleted);
         action.try_execute().await.unwrap();
 
-        let plist = read_plist(&path).await.unwrap().unwrap();
+        let plist = read_plist(&path).unwrap().unwrap();
         assert_eq!(plist.program_arguments, [LAUNCHER_PATH]);
         assert!(!plist.keep_alive.successful_exit);
         let launcher = directory.path().join("nix-installer-repair");
@@ -421,7 +502,6 @@ mod tests {
 
         let replan =
             CreateNixHookService::plan_at(path, temporary_launcher(directory.path()).await)
-                .await
                 .unwrap();
         assert_eq!(replan.state, ActionState::Completed);
     }
@@ -434,14 +514,13 @@ mod tests {
         write_plist(&path, &legacy).unwrap();
         let mut action =
             CreateNixHookService::plan_at(path.clone(), temporary_launcher(directory.path()).await)
-                .await
                 .unwrap();
         let launcher = directory.path().join("nix-installer-repair");
         fs::write(&launcher, "unrelated file").await.unwrap();
 
         assert!(action.try_execute().await.is_err());
         action.try_revert().await.unwrap();
-        assert_eq!(read_plist(&path).await.unwrap(), Some(legacy));
+        assert_eq!(read_plist(&path).unwrap(), Some(legacy));
         assert_eq!(
             fs::read_to_string(&launcher).await.unwrap(),
             "unrelated file"
@@ -456,7 +535,6 @@ mod tests {
         write_plist(&path, &legacy).unwrap();
         let mut action =
             CreateNixHookService::plan_at(path.clone(), temporary_launcher(directory.path()).await)
-                .await
                 .unwrap();
         let mut customized = legacy;
         customized.standard_out_path = "/tmp/custom.log".into();
@@ -466,10 +544,106 @@ mod tests {
             path.clone(),
             temporary_launcher(directory.path()).await
         )
-        .await
         .is_err());
         assert!(action.try_execute().await.is_err());
         action.try_revert().await.unwrap();
-        assert_eq!(read_plist(&path).await.unwrap(), Some(customized));
+        assert_eq!(read_plist(&path).unwrap(), Some(customized));
+    }
+    #[tokio::test]
+    async fn rechecks_plist_after_installing_launcher() {
+        let directory = tempfile::tempdir().unwrap();
+        let path = directory.path().join("hook.plist");
+        let mut customized = legacy_plist(SERVICE_LABEL);
+        write_plist(&path, &customized).unwrap();
+        let mut action =
+            CreateNixHookService::plan_at(path.clone(), temporary_launcher(directory.path()).await)
+                .unwrap()
+                .action;
+
+        action.launcher.as_mut().unwrap().install().await.unwrap();
+        customized.standard_out_path = "/tmp/custom.log".into();
+        write_plist(&path, &customized).unwrap();
+
+        assert!(action.install_named_plist().is_err());
+        action.revert().await.unwrap();
+        assert_eq!(read_plist(&path).unwrap(), Some(customized));
+        assert!(!directory.path().join("nix-installer-repair").exists());
+    }
+
+    #[tokio::test]
+    async fn recreates_a_launcher_removed_after_planning() {
+        let directory = tempfile::tempdir().unwrap();
+        let path = directory.path().join("hook.plist");
+        let launcher_path = directory.path().join("nix-installer-repair");
+        temporary_launcher(directory.path())
+            .await
+            .install()
+            .await
+            .unwrap();
+        write_plist(&path, &legacy_plist(SERVICE_LABEL)).unwrap();
+        let mut action =
+            CreateNixHookService::plan_at(path.clone(), temporary_launcher(directory.path()).await)
+                .unwrap();
+
+        fs::remove_file(&launcher_path).await.unwrap();
+        action.try_execute().await.unwrap();
+        assert_eq!(
+            fs::read_to_string(&launcher_path).await.unwrap(),
+            LAUNCHER_SCRIPT
+        );
+        assert_eq!(
+            read_plist(&path).unwrap(),
+            Some(generate_plist(SERVICE_LABEL))
+        );
+    }
+
+    #[tokio::test]
+    async fn keeps_a_named_hook_installed_after_planning() {
+        let directory = tempfile::tempdir().unwrap();
+        let path = directory.path().join("hook.plist");
+        write_plist(&path, &legacy_plist(SERVICE_LABEL)).unwrap();
+        let mut action =
+            CreateNixHookService::plan_at(path.clone(), temporary_launcher(directory.path()).await)
+                .unwrap();
+        temporary_launcher(directory.path())
+            .await
+            .install()
+            .await
+            .unwrap();
+        let named = generate_plist(SERVICE_LABEL);
+        write_plist(&path, &named).unwrap();
+
+        action.try_execute().await.unwrap();
+        action.try_revert().await.unwrap();
+        assert_eq!(read_plist(&path).unwrap(), Some(named));
+        assert_eq!(
+            fs::read_to_string(directory.path().join("nix-installer-repair"))
+                .await
+                .unwrap(),
+            LAUNCHER_SCRIPT,
+        );
+    }
+    #[tokio::test]
+    async fn retries_a_saved_plan_after_plist_publication_failed() {
+        let directory = tempfile::tempdir().unwrap();
+        let plist_dir = directory.path().join("LaunchDaemons");
+        let path = plist_dir.join("hook.plist");
+        let launcher_path = directory.path().join("nix-installer-repair");
+        let mut action =
+            CreateNixHookService::plan_at(path.clone(), temporary_launcher(directory.path()).await)
+                .unwrap();
+
+        assert!(action.try_execute().await.is_err());
+        assert_eq!(
+            fs::read_to_string(&launcher_path).await.unwrap(),
+            LAUNCHER_SCRIPT
+        );
+        let saved = serde_json::to_vec(&action).unwrap();
+        let mut resumed: StatefulAction<CreateNixHookService> =
+            serde_json::from_slice(&saved).unwrap();
+        assert!(resumed.try_execute().await.is_err());
+        resumed.try_revert().await.unwrap();
+        assert!(!path.exists());
+        assert!(!launcher_path.exists());
     }
 }
