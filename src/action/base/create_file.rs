@@ -29,8 +29,8 @@ pub struct CreateFile {
     pub(crate) path: PathBuf,
     pub(crate) user: Option<String>,
     pub(crate) group: Option<String>,
-    mode: Option<u32>,
-    buf: String,
+    pub(in crate::action) mode: Option<u32>,
+    pub(in crate::action) buf: String,
     force: bool,
     #[serde(default, skip_serializing_if = "std::ops::Not::not")]
     atomic: bool,
