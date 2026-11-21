@@ -33,7 +33,7 @@ pub struct CreateFile {
     buf: String,
     force: bool,
     #[serde(default, skip_serializing_if = "std::ops::Not::not")]
-    pub(crate) atomic: bool,
+    atomic: bool,
 }
 
 impl CreateFile {
@@ -149,7 +149,7 @@ impl CreateFile {
     }
 
     pub(crate) async fn replan(&self) -> Result<StatefulAction<Self>, ActionError> {
-        Self::plan(
+        let mut file = Self::plan(
             &self.path,
             self.user.clone(),
             self.group.clone(),
@@ -157,7 +157,15 @@ impl CreateFile {
             self.buf.clone(),
             self.force,
         )
-        .await
+        .await?;
+        file.action.atomic = self.atomic;
+        Ok(file)
+    }
+
+    pub(crate) async fn replan_atomically(&self) -> Result<StatefulAction<Self>, ActionError> {
+        let mut file = self.replan().await?;
+        file.action.atomic = true;
+        Ok(file)
     }
 
     /// Publish a small file only after its contents and permissions are ready.
