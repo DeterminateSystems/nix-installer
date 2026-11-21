@@ -7,7 +7,6 @@ use std::{
     os::fd::AsRawFd,
     os::unix::fs::{MetadataExt, OpenOptionsExt, PermissionsExt},
     path::{Path, PathBuf},
-    time::SystemTime,
 };
 use tokio::{
     fs::{File, OpenOptions},
@@ -18,6 +17,8 @@ use crate::{
     action::{Action, ActionDescription, ActionError, ActionErrorKind, ActionTag, StatefulAction},
     util::OnMissing,
 };
+
+use super::PublishedPathIdentity;
 
 /** Create a file at the given location with the provided `buf`,
 optionally with an owning user, group, and mode.
@@ -37,23 +38,7 @@ pub struct CreateFile {
     #[serde(default, skip_serializing_if = "std::ops::Not::not")]
     atomic: bool,
     #[serde(default, skip_serializing_if = "Option::is_none")]
-    published_identity: Option<PublishedFileIdentity>,
-}
-
-#[derive(Debug, serde::Deserialize, serde::Serialize, Clone, PartialEq, Eq)]
-struct PublishedFileIdentity {
-    inode: u64,
-    created: Option<SystemTime>,
-}
-
-impl From<&std_fs::Metadata> for PublishedFileIdentity {
-    fn from(metadata: &std_fs::Metadata) -> Self {
-        // Use persistent file metadata. The device number can change across boots.
-        Self {
-            inode: metadata.ino(),
-            created: metadata.created().ok(),
-        }
-    }
+    published_identity: Option<PublishedPathIdentity>,
 }
 
 pub(crate) struct FileSnapshot {
@@ -262,7 +247,7 @@ impl CreateFile {
                 error.error,
             ))
         })?;
-        self.published_identity = Some(PublishedFileIdentity::from(&metadata));
+        self.published_identity = Some(PublishedPathIdentity::from(&metadata));
         Ok(())
     }
 
@@ -329,7 +314,7 @@ impl CreateFile {
             Ok(Some(snapshot))
                 if !is_unlink_protected(&snapshot.metadata)
                     && self.published_identity.as_ref().is_none_or(|identity| {
-                        *identity == PublishedFileIdentity::from(&snapshot.metadata)
+                        *identity == PublishedPathIdentity::from(&snapshot.metadata)
                     }) =>
             {
                 Ok(Some(snapshot))
@@ -520,6 +505,15 @@ impl Action for CreateFile {
 
     #[tracing::instrument(level = "debug", skip_all)]
     async fn revert(&mut self) -> Result<(), ActionError> {
+        if self.atomic {
+            // A completed plan can also describe a file that already existed.
+            if self.published_identity.is_some() {
+                if let Some(snapshot) = self.removal_candidate()? {
+                    self.remove_unchanged_file(snapshot)?;
+                }
+            }
+            return Ok(());
+        }
         let Self {
             path,
             user: _,
@@ -545,6 +539,30 @@ mod test {
     use super::*;
     use color_eyre::eyre::eyre;
     use tokio::fs::write;
+
+    #[tokio::test]
+    async fn atomic_revert_removes_only_the_published_file() -> eyre::Result<()> {
+        let dir = tempfile::tempdir()?;
+        let path = dir.path().join("helper");
+        let plan = || CreateFile::plan_atomically(&path, None, None, 0o700, "helper".into());
+
+        let mut owned = plan()?;
+        owned.try_execute().await?;
+        let mut existing = plan()?;
+        existing.try_revert().await?;
+        assert!(path.exists());
+        owned.try_revert().await?;
+        assert!(!path.exists());
+
+        let mut owned = plan()?;
+        owned.try_execute().await?;
+        let replacement = dir.path().join("replacement");
+        std_fs::copy(&path, &replacement)?;
+        std_fs::rename(replacement, &path)?;
+        owned.try_revert().await?;
+        assert_eq!(std_fs::read_to_string(&path)?, "helper");
+        Ok(())
+    }
 
     #[tokio::test]
     async fn creates_and_deletes_file() -> eyre::Result<()> {

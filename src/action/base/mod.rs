@@ -25,3 +25,21 @@ pub use fetch_and_unpack_nix::{FetchAndUnpackNix, FetchUrlError};
 pub use move_unpacked_nix::{MoveUnpackedNix, MoveUnpackedNixError};
 pub use remove_directory::RemoveDirectory;
 pub use setup_default_profile::{SetupDefaultProfile, SetupDefaultProfileError};
+
+#[derive(Debug, serde::Deserialize, serde::Serialize, Clone, PartialEq, Eq)]
+struct PublishedPathIdentity {
+    inode: u64,
+    created: Option<std::time::SystemTime>,
+}
+
+impl From<&std::fs::Metadata> for PublishedPathIdentity {
+    fn from(metadata: &std::fs::Metadata) -> Self {
+        use std::os::unix::fs::MetadataExt;
+
+        // Device numbers can change across boots.
+        Self {
+            inode: metadata.ino(),
+            created: metadata.created().ok(),
+        }
+    }
+}

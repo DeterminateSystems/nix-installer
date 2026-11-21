@@ -8,7 +8,7 @@ use std::{
     os::unix::fs::{MetadataExt, PermissionsExt},
     path::{Path, PathBuf},
 };
-use tokio::{fs, process::Command};
+use tokio::process::Command;
 
 use crate::{
     action::{
@@ -89,6 +89,7 @@ impl HookLauncher {
             .await?;
             if directory.state == ActionState::Uncompleted {
                 let directory = self.directory.insert(directory);
+                directory.action.use_shared_directory_policy();
                 directory.try_execute().await?;
             }
         }
@@ -381,16 +382,9 @@ impl CreateNixHookService {
                 }
             }
         }
-        if let Some(directory) = &launcher.directory {
-            if matches!(
-                directory.state,
-                ActionState::Progress | ActionState::Completed
-            ) {
-                remove_empty_launcher_directory(&directory.inner().path)
-                    .await
-                    .map_err(Self::error)?;
-                launcher.directory = None;
-            }
+        if let Some(directory) = &mut launcher.directory {
+            directory.action.use_shared_directory_policy();
+            directory.try_revert().await?;
         }
         Ok(())
     }
@@ -400,22 +394,6 @@ async fn remove_hook_plist(path: &Path) -> Result<(), ActionErrorKind> {
     crate::util::remove_file(path, OnMissing::Ignore)
         .await
         .map_err(|error| ActionErrorKind::Remove(path.to_owned(), error))
-}
-
-async fn remove_empty_launcher_directory(path: &Path) -> Result<(), ActionErrorKind> {
-    // rmdir checks emptiness and removes the directory in one operation.
-    match fs::remove_dir(path).await {
-        Ok(()) => Ok(()),
-        Err(error)
-            if matches!(
-                error.kind(),
-                ErrorKind::NotFound | ErrorKind::DirectoryNotEmpty | ErrorKind::NotADirectory
-            ) =>
-        {
-            Ok(())
-        },
-        Err(error) => Err(ActionErrorKind::Remove(path.to_owned(), error)),
-    }
 }
 
 fn launchctl_job_command(operation: &str, service_label: &str) -> Command {
@@ -504,10 +482,10 @@ fn retained_plist_uses_launcher(path: &Path, launcher: &Path) -> bool {
             }
             let working_directory = match plist.get("WorkingDirectory") {
                 Some(plist::Value::String(directory)) if Path::new(directory).is_absolute() => {
-                    Some(Path::new(directory))
+                    Path::new(directory)
                 },
                 Some(_) => return true,
-                None => None,
+                None => Path::new("/"),
             };
             let arguments = match plist.get("ProgramArguments") {
                 Some(plist::Value::Array(arguments)) => arguments.as_slice(),
@@ -529,21 +507,12 @@ fn retained_plist_uses_launcher(path: &Path, launcher: &Path) -> bool {
                 return true;
             };
             // An interpreter can run the helper as a script argument. Resolve
-            // relative arguments in launchd's explicit working directory.
+            // relative arguments in the system job's working directory.
             path_references_launcher(program, launcher, &metadata).unwrap_or(true)
                 || arguments.iter().any(|argument| {
                     argument.as_string().is_none_or(|argument| {
-                        let path = Path::new(argument);
-                        let resolved;
-                        let path = if path.is_absolute() {
-                            path
-                        } else if let Some(directory) = working_directory {
-                            resolved = directory.join(path);
-                            &resolved
-                        } else {
-                            return false;
-                        };
-                        path_references_launcher(path, launcher, &metadata)
+                        let path = working_directory.join(argument);
+                        path_references_launcher(&path, launcher, &metadata)
                             .unwrap_or_else(|error| error.kind() != ErrorKind::NotFound)
                     })
                 })
@@ -708,6 +677,7 @@ impl From<CreateNixHookServiceError> for ActionErrorKind {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use tokio::fs;
 
     async fn temporary_launcher(directory: &Path) -> HookLauncher {
         HookLauncher {
@@ -1392,6 +1362,19 @@ mod tests {
             .unwrap();
         assert!(helper.exists());
 
+        retained.remove("WorkingDirectory");
+        let from_root = format!(".{}", alias.display());
+        retained.insert(
+            "ProgramArguments".into(),
+            plist::Value::Array(vec![LEGACY_PROGRAM.into(), from_root.into()]),
+        );
+        plist::to_file_xml(&path, &retained).unwrap();
+        action
+            .revert_with(skip_unload, || std::future::ready(Ok(LoadedJob::Absent)))
+            .await
+            .unwrap();
+        assert!(helper.exists());
+
         retained.insert(
             "ProgramArguments".into(),
             plist::Value::Array(vec![LEGACY_PROGRAM.into(), "-e".into(), "/dev/null".into()]),
@@ -1484,29 +1467,60 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn removes_shared_directory_only_when_empty() {
+    async fn removes_only_the_owned_empty_shared_directory() {
         let dir = tempfile::tempdir().unwrap();
         let path = dir.path().join("shared");
-        fs::create_dir(&path).await.unwrap();
+        let mut launcher = temporary_launcher(&path).await;
+        launcher.install().await.unwrap();
+        fs::remove_file(path.join("nix-installer-repair"))
+            .await
+            .unwrap();
         let unrelated = path.join("other-helper");
         fs::write(&unrelated, "other installer").await.unwrap();
 
-        remove_empty_launcher_directory(&path).await.unwrap();
+        let action = launcher.directory.as_mut().unwrap();
+        let receipt = serde_json::to_value(&action).unwrap();
+        action.try_revert().await.unwrap();
+        assert_eq!(action.state, ActionState::Uncompleted);
         assert_eq!(
             fs::read_to_string(&unrelated).await.unwrap(),
             "other installer"
         );
         fs::remove_file(unrelated).await.unwrap();
-        remove_empty_launcher_directory(&path).await.unwrap();
-        assert!(!path.exists());
-        remove_empty_launcher_directory(&path).await.unwrap();
+        let mut legacy_receipt = receipt.clone();
+        legacy_receipt["action"]
+            .as_object_mut()
+            .unwrap()
+            .remove("shared");
+        let mut legacy: StatefulAction<CreateDirectory> =
+            serde_json::from_value(legacy_receipt).unwrap();
+        legacy.action.use_shared_directory_policy();
+        legacy.try_revert().await.unwrap();
+        assert!(path.is_dir());
 
-        std::os::unix::fs::symlink(dir.path(), &path).unwrap();
-        remove_empty_launcher_directory(&path).await.unwrap();
+        let original = dir.path().join("original");
+        fs::rename(&path, &original).await.unwrap();
+        fs::create_dir(&path).await.unwrap();
+        let mut replaced: StatefulAction<CreateDirectory> =
+            serde_json::from_value(receipt.clone()).unwrap();
+        replaced.try_revert().await.unwrap();
+        assert!(path.is_dir());
+
+        fs::remove_dir(&path).await.unwrap();
+        std::os::unix::fs::symlink(&original, &path).unwrap();
+        let mut replaced: StatefulAction<CreateDirectory> =
+            serde_json::from_value(receipt.clone()).unwrap();
+        replaced.try_revert().await.unwrap();
         assert!(fs::symlink_metadata(&path)
             .await
             .unwrap()
             .file_type()
             .is_symlink());
+
+        fs::remove_file(&path).await.unwrap();
+        fs::rename(original, &path).await.unwrap();
+        let mut owned: StatefulAction<CreateDirectory> = serde_json::from_value(receipt).unwrap();
+        owned.try_revert().await.unwrap();
+        assert!(!path.exists());
     }
 }
