@@ -16,7 +16,7 @@ use crate::action::{ActionError, StatefulAction};
 use crate::execute_command;
 use crate::util::OnMissing;
 
-use super::PublishedPathIdentity;
+use super::{validate_no_extended_acl, PublishedPathIdentity};
 
 /** Create a directory at the given location, optionally with an owning user, group, and mode.
 
@@ -60,6 +60,10 @@ impl CreateDirectory {
             if !metadata.is_dir() {
                 return Err(Self::error(ActionErrorKind::PathWasNotDirectory(path)));
             }
+            let directory = Self::open_shared(&path)?;
+            let metadata = directory.metadata().map_err(|error| {
+                Self::error(ActionErrorKind::GettingMetadata(path.clone(), error))
+            })?;
             if let Some(uid) = Self::resolve_uid(user.as_deref())? {
                 if metadata.uid() != uid.as_raw() {
                     return Err(Self::error(ActionErrorKind::PathUserMismatch(
@@ -77,6 +81,7 @@ impl CreateDirectory {
                     permissions & !0o022,
                 )));
             }
+            validate_no_extended_acl(&directory, &path).map_err(Self::error)?;
         }
         let action = Self {
             path,
@@ -191,6 +196,26 @@ impl CreateDirectory {
             .is_some_and(|shared| shared.identity.is_some())
     }
 
+    pub(crate) fn owns_shared_path(&self) -> Result<bool, ActionError> {
+        match fs::symlink_metadata(&self.path) {
+            Ok(metadata) => Ok(self.matches_shared_identity(&metadata)),
+            Err(error) if error.kind() == ErrorKind::NotFound => Ok(false),
+            Err(error) => Err(Self::error(ActionErrorKind::GettingMetadata(
+                self.path.clone(),
+                error,
+            ))),
+        }
+    }
+
+    fn matches_shared_identity(&self, metadata: &fs::Metadata) -> bool {
+        metadata.is_dir()
+            && self
+                .shared
+                .as_ref()
+                .and_then(|shared| shared.identity.as_ref())
+                .is_some_and(|identity| *identity == PublishedPathIdentity::from(metadata))
+    }
+
     fn resolve_uid(user: Option<&str>) -> Result<Option<Uid>, ActionError> {
         let Some(user) = user else { return Ok(None) };
         let entry = User::from_name(user)
@@ -199,25 +224,38 @@ impl CreateDirectory {
         Ok(Some(entry.uid))
     }
 
-    fn create_shared(&mut self, uid: Option<Uid>, gid: Option<Gid>) -> Result<(), ActionError> {
-        let path = &self.path;
-        // An existing entry belongs to someone else, even if it appeared after planning.
-        fs::DirBuilder::new()
-            .mode(0o700)
-            .create(path)
-            .map_err(|error| Self::error(ActionErrorKind::CreateDirectory(path.clone(), error)))?;
-        let directory = fs::OpenOptions::new()
+    fn open_shared(path: &Path) -> Result<fs::File, ActionError> {
+        fs::OpenOptions::new()
             .read(true)
             .custom_flags(nix::libc::O_DIRECTORY | nix::libc::O_NOFOLLOW)
             .open(path)
-            .map_err(|error| Self::error(ActionErrorKind::Open(path.clone(), error)))?;
+            .map_err(|error| Self::error(ActionErrorKind::Open(path.into(), error)))
+    }
+
+    fn create_shared(&mut self, uid: Option<Uid>, gid: Option<Gid>) -> Result<(), ActionError> {
+        let path = &self.path;
+        let resuming = self.has_shared_identity();
+        if !resuming {
+            // An existing entry belongs to someone else, even if it appeared after planning.
+            fs::DirBuilder::new()
+                .mode(0o700)
+                .create(path)
+                .map_err(|error| {
+                    Self::error(ActionErrorKind::CreateDirectory(path.clone(), error))
+                })?;
+        }
+        let directory = Self::open_shared(path)?;
         let metadata = directory
             .metadata()
             .map_err(|error| Self::error(ActionErrorKind::GettingMetadata(path.clone(), error)))?;
+        if resuming && !self.matches_shared_identity(&metadata) {
+            return Err(Self::error(ActionErrorKind::DirExists(path.clone())));
+        }
         // Record ownership before setting attributes so partial installs can clean up.
         self.shared = Some(SharedDirectory {
             identity: Some(PublishedPathIdentity::from(&metadata)),
         });
+        validate_no_extended_acl(&directory, path).map_err(Self::error)?;
         fchown(directory.as_raw_fd(), uid, gid)
             .map_err(|error| Self::error(ActionErrorKind::Chown(path.clone(), error)))?;
         if let Some(mode) = self.mode {

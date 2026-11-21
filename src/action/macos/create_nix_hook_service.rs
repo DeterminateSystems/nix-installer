@@ -80,6 +80,13 @@ impl HookLauncher {
             CreateDirectory::plan_shared(parent, file.user.clone(), file.group.clone(), 0o755)?;
         if directory.state == ActionState::Uncompleted {
             self.directory.insert(directory).try_execute().await?;
+        } else if let Some(previous) = &mut self.directory {
+            if previous.state == ActionState::Progress
+                && previous.inner().path == parent
+                && previous.inner().owns_shared_path()?
+            {
+                previous.try_execute().await?;
+            }
         }
         // The file may have vanished since this plan was saved. Recheck it
         // before publishing a complete launcher without replacing an existing one.
@@ -269,12 +276,12 @@ impl Action for CreateNixHookService {
     }
 
     fn revert_description(&self) -> Vec<ActionDescription> {
+        let Some(launcher) = &self.launcher else {
+            let delete = format!("Delete file `{}`", self.path.display());
+            return vec![ActionDescription::new(delete.clone(), vec![delete])];
+        };
         let mut description = Vec::new();
-        if self
-            .launcher
-            .as_ref()
-            .is_some_and(|launcher| launcher.owns_plist)
-        {
+        if launcher.owns_plist {
             description.push(ActionDescription::new(
                 format!(
                     "Unload repair hook `{}` if owned by this install",
@@ -282,36 +289,28 @@ impl Action for CreateNixHookService {
                 ),
                 vec!["Unload the launchd job if it matches the installed repair hook.".into()],
             ));
-        }
-        if self
-            .launcher
-            .as_ref()
-            .is_none_or(|launcher| launcher.owns_plist)
-        {
             description.push(ActionDescription::new(
-                format!("Delete file `{}`", self.path.display()),
-                vec![format!("Delete file `{}`", self.path.display())],
+                format!(
+                    "Delete plist `{}` if it still matches this install and no other job owns the label",
+                    self.path.display()
+                ),
+                vec![],
             ));
         }
-        if let Some(launcher) = &self.launcher {
-            if launcher.owns_file
-                && matches!(
-                    launcher.file.state,
-                    ActionState::Completed | ActionState::Progress
-                )
-            {
-                description.push(ActionDescription::new(
+        if launcher.owns_file {
+            description.extend(launcher.file.describe_revert_with(|file| {
+                vec![ActionDescription::new(
                     format!(
                         "Remove repair helper `{}` if it still matches the installer record and is unused",
-                        launcher.file.inner().path.display(),
+                        file.path.display(),
                     ),
                     vec![],
-                ));
-            }
-            if let Some(directory) = &launcher.directory {
-                if directory.inner().has_shared_identity() {
-                    description.extend(directory.describe_revert());
-                }
+                )]
+            }));
+        }
+        if let Some(directory) = &launcher.directory {
+            if directory.inner().has_shared_identity() {
+                description.extend(directory.describe_revert());
             }
         }
         description
@@ -698,6 +697,10 @@ mod tests {
             step.description
                 == format!("Unload repair hook `{SERVICE_LABEL}` if owned by this install")
         }));
+        assert!(action.describe_revert().iter().any(|step| {
+            step.description.starts_with("Delete plist")
+                && step.description.contains("if it still matches")
+        }));
 
         let replan =
             CreateNixHookService::plan_at(path, temporary_launcher(directory.path()).await)
@@ -880,6 +883,83 @@ mod tests {
         assert!(failed.describe_revert().is_empty());
         failed.try_revert().await.unwrap();
         assert_eq!(fs::read_to_string(&helper).await.unwrap(), LAUNCHER_SCRIPT);
+    }
+
+    #[tokio::test]
+    async fn saved_plan_finishes_only_its_own_partial_directory() {
+        let dir = tempfile::tempdir().unwrap();
+        for replace in [false, true] {
+            let parent = dir
+                .path()
+                .join(if replace { "replacement" } else { "resume" });
+            let mut launcher = temporary_launcher(&parent).await;
+            let mut directory = CreateDirectory::plan_shared(&parent, None, None, 0o755).unwrap();
+            directory.try_execute().await.unwrap();
+            // Model a receipt written after mkdir but before final permissions.
+            fs::set_permissions(&parent, std_fs::Permissions::from_mode(0o700))
+                .await
+                .unwrap();
+            directory.state = ActionState::Progress;
+            launcher.directory = Some(directory);
+            if replace {
+                fs::rename(&parent, dir.path().join("original"))
+                    .await
+                    .unwrap();
+                fs::create_dir(&parent).await.unwrap();
+                fs::set_permissions(&parent, std_fs::Permissions::from_mode(0o700))
+                    .await
+                    .unwrap();
+            }
+            let mut saved: HookLauncher =
+                serde_json::from_slice(&serde_json::to_vec(&launcher).unwrap()).unwrap();
+            saved.install().await.unwrap();
+            let expected_mode = if replace { 0o700 } else { 0o755 };
+            assert_eq!(
+                fs::metadata(&parent).await.unwrap().mode() & 0o777,
+                expected_mode
+            );
+            assert!(parent.join("nix-installer-repair").is_file());
+            if !replace {
+                assert_eq!(saved.directory.unwrap().state, ActionState::Completed);
+            }
+        }
+    }
+
+    #[cfg(target_os = "macos")]
+    #[tokio::test]
+    async fn shared_directory_and_matching_helper_reject_extended_acls() {
+        fn chmod_acl(path: &Path, entry: &str) {
+            assert!(std::process::Command::new("/bin/chmod")
+                .args(["+a", entry])
+                .arg(path)
+                .status()
+                .unwrap()
+                .success());
+        }
+        let dir = tempfile::tempdir().unwrap();
+        let parent = dir.path().join("shared");
+        fs::create_dir(&parent).await.unwrap();
+        fs::set_permissions(&parent, std_fs::Permissions::from_mode(0o755))
+            .await
+            .unwrap();
+        chmod_acl(&parent, "everyone allow add_file,delete_child");
+        let mut launcher = temporary_launcher(&parent).await;
+        assert!(matches!(
+            launcher.install().await.unwrap_err().kind(),
+            ActionErrorKind::UnexpectedAcl(path) if path == &parent
+        ));
+        assert!(!parent.join("nix-installer-repair").exists());
+
+        let mut launcher = temporary_launcher(dir.path()).await;
+        launcher.install().await.unwrap();
+        let helper = dir.path().join("nix-installer-repair");
+        chmod_acl(&helper, "everyone allow write");
+        let file = launcher.file.inner();
+        assert!(matches!(
+            file.replan_atomically().unwrap_err().kind(),
+            ActionErrorKind::UnexpectedAcl(path) if path == &helper
+        ));
+        assert!(file.removal_candidate().unwrap().is_none());
     }
 
     #[tokio::test]
@@ -1213,6 +1293,10 @@ mod tests {
             "needs_bootout": false,
         }))
         .unwrap();
+        assert_eq!(
+            action.revert_description()[0].description,
+            format!("Delete file `{}`", plist_path.display())
+        );
         action
             .revert_with(skip_unload, || async {
                 panic!("legacy receipts do not query launchd on uninstall")

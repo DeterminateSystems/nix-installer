@@ -43,3 +43,41 @@ impl From<&std::fs::Metadata> for PublishedPathIdentity {
         }
     }
 }
+
+#[cfg(target_os = "macos")]
+fn validate_no_extended_acl(
+    file: &std::fs::File,
+    path: &std::path::Path,
+) -> Result<(), super::ActionErrorKind> {
+    use nix::libc::{c_int, c_void, ENOENT};
+    use std::{io, os::fd::AsRawFd};
+
+    extern "C" {
+        fn acl_get_fd(fd: c_int) -> *mut c_void;
+        fn acl_free(acl: *mut c_void) -> c_int;
+    }
+
+    // SAFETY: the borrowed file keeps the descriptor open throughout the call.
+    let acl = unsafe { acl_get_fd(file.as_raw_fd()) };
+    if acl.is_null() {
+        let error = io::Error::last_os_error();
+        // Darwin reports a missing ACL as ENOENT even for a valid open descriptor.
+        return if error.raw_os_error() == Some(ENOENT) {
+            Ok(())
+        } else {
+            Err(super::ActionErrorKind::GettingMetadata(path.into(), error))
+        };
+    }
+    // SAFETY: acl_get_fd returned an allocated ACL owned by this function.
+    unsafe { acl_free(acl) };
+    // Keep the validation independent of ACL ordering, inheritance, and membership.
+    Err(super::ActionErrorKind::UnexpectedAcl(path.into()))
+}
+
+#[cfg(not(target_os = "macos"))]
+fn validate_no_extended_acl(
+    _: &std::fs::File,
+    _: &std::path::Path,
+) -> Result<(), super::ActionErrorKind> {
+    Ok(())
+}

@@ -18,7 +18,7 @@ use crate::{
     util::OnMissing,
 };
 
-use super::PublishedPathIdentity;
+use super::{validate_no_extended_acl, PublishedPathIdentity};
 
 /** Create a file at the given location with the provided `buf`,
 optionally with an owning user, group, and mode.
@@ -236,6 +236,7 @@ impl CreateFile {
                     ))
                 })?;
         }
+        validate_no_extended_acl(temporary.as_file(), &self.path).map_err(Self::error)?;
         let metadata = temporary.as_file().metadata().map_err(|error| {
             Self::error(ActionErrorKind::GettingMetadata(self.path.clone(), error))
         })?;
@@ -297,6 +298,7 @@ impl CreateFile {
         if !unchanged_file(&metadata, &opened) {
             return Ok(None);
         }
+        validate_no_extended_acl(&file, &self.path).map_err(Self::error)?;
         let mut contents = Vec::new();
         (&mut file)
             .take(self.buf.len() as u64 + 1)
@@ -327,6 +329,7 @@ impl CreateFile {
                         | ActionErrorKind::PathModeMismatch(..)
                         | ActionErrorKind::PathUserMismatch(..)
                         | ActionErrorKind::PathGroupMismatch(..)
+                        | ActionErrorKind::UnexpectedAcl(_)
                         | ActionErrorKind::DifferentContent(_)
                 ) =>
             {

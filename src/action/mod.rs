@@ -413,6 +413,8 @@ pub enum ActionErrorKind {
         existing_mode = .1 & 0o777,
         planned_mode = .2 & 0o777)]
     PathModeMismatch(std::path::PathBuf, u32, u32),
+    #[error("Path `{0}` has an extended ACL. The repair helper and its directory must use standard ownership and permissions")]
+    UnexpectedAcl(std::path::PathBuf),
     #[error("Path `{0}` exists, but is not a file, consider removing it with `rm {0}`")]
     PathWasNotFile(std::path::PathBuf),
     #[error("Path `{0}` exists, but is not a directory, consider removing it with `rm {0}`")]
@@ -606,7 +608,8 @@ impl HasExpectedErrors for ActionErrorKind {
         match self {
             Self::PathUserMismatch(_, _, _)
             | Self::PathGroupMismatch(_, _, _)
-            | Self::PathModeMismatch(_, _, _) => Some(Box::new(self)),
+            | Self::PathModeMismatch(_, _, _)
+            | Self::UnexpectedAcl(_) => Some(Box::new(self)),
             Self::SystemdMissing => Some(Box::new(self)),
             _ => None,
         }

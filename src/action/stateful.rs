@@ -153,10 +153,17 @@ where
     }
     /// A description of what this action would do during revert
     pub fn describe_revert(&self) -> Vec<ActionDescription> {
-        if self.state == ActionState::Uncompleted {
+        self.describe_revert_with(|action| action.revert_description())
+    }
+
+    pub(super) fn describe_revert_with(
+        &self,
+        describe: impl FnOnce(&A) -> Vec<ActionDescription>,
+    ) -> Vec<ActionDescription> {
+        if matches!(self.state, ActionState::Uncompleted | ActionState::Skipped) {
             return vec![];
         }
-        self.action.revert_description()
+        describe(&self.action)
     }
     /// Perform any execution steps
     ///
