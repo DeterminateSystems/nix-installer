@@ -514,6 +514,7 @@ mod tests {
                 mode: None,
                 is_mountpoint: false,
                 force_prune_on_revert: false,
+                shared: None,
             }),
             create_or_merge_standard_nix_config: Some(
                 CreateOrMergeNixConfig::plan(
@@ -600,6 +601,7 @@ mod tests {
                 mode: None,
                 is_mountpoint: false,
                 force_prune_on_revert: false,
+                shared: None,
             }),
             create_or_merge_standard_nix_config: Some(
                 CreateOrMergeNixConfig::plan(

@@ -1,7 +1,11 @@
+use std::fs;
+use std::io::ErrorKind;
+use std::os::fd::AsRawFd;
+use std::os::unix::fs::{DirBuilderExt, OpenOptionsExt};
 use std::os::unix::fs::{MetadataExt, PermissionsExt};
 use std::path::{Path, PathBuf};
 
-use nix::unistd::{chown, Group, User};
+use nix::unistd::{chown, fchown, Gid, Group, Uid, User};
 
 use target_lexicon::OperatingSystem;
 use tokio::process::Command;
@@ -11,6 +15,8 @@ use crate::action::{Action, ActionDescription, ActionErrorKind, ActionState};
 use crate::action::{ActionError, StatefulAction};
 use crate::execute_command;
 use crate::util::OnMissing;
+
+use super::PublishedPathIdentity;
 
 /** Create a directory at the given location, optionally with an owning user, group, and mode.
 
@@ -26,6 +32,13 @@ pub struct CreateDirectory {
     pub(crate) mode: Option<u32>,
     pub(crate) is_mountpoint: bool,
     pub(crate) force_prune_on_revert: bool,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub(crate) shared: Option<SharedDirectory>,
+}
+
+#[derive(Debug, Default, serde::Deserialize, serde::Serialize, Clone)]
+pub(crate) struct SharedDirectory {
+    identity: Option<PublishedPathIdentity>,
 }
 
 impl CreateDirectory {
@@ -110,9 +123,83 @@ impl CreateDirectory {
                 mode,
                 is_mountpoint,
                 force_prune_on_revert,
+                shared: None,
             },
             state: action_state,
         })
+    }
+
+    pub(crate) fn use_shared_directory_policy(&mut self) {
+        self.shared.get_or_insert_with(SharedDirectory::default);
+    }
+
+    fn create_shared(&mut self, uid: Option<Uid>, gid: Option<Gid>) -> Result<(), ActionError> {
+        let path = &self.path;
+        // An existing entry belongs to someone else, even if it appeared after planning.
+        fs::DirBuilder::new()
+            .mode(0o700)
+            .create(path)
+            .map_err(|error| Self::error(ActionErrorKind::CreateDirectory(path.clone(), error)))?;
+        let directory = fs::OpenOptions::new()
+            .read(true)
+            .custom_flags(nix::libc::O_DIRECTORY | nix::libc::O_NOFOLLOW)
+            .open(path)
+            .map_err(|error| Self::error(ActionErrorKind::Open(path.clone(), error)))?;
+        let metadata = directory
+            .metadata()
+            .map_err(|error| Self::error(ActionErrorKind::GettingMetadata(path.clone(), error)))?;
+        // Record ownership before setting attributes so partial installs can clean up.
+        self.shared = Some(SharedDirectory {
+            identity: Some(PublishedPathIdentity::from(&metadata)),
+        });
+        fchown(directory.as_raw_fd(), uid, gid)
+            .map_err(|error| Self::error(ActionErrorKind::Chown(path.clone(), error)))?;
+        if let Some(mode) = self.mode {
+            directory
+                .set_permissions(PermissionsExt::from_mode(mode))
+                .map_err(|error| {
+                    Self::error(ActionErrorKind::SetPermissions(mode, path.clone(), error))
+                })?;
+        }
+        Ok(())
+    }
+
+    fn revert_shared(&self, shared: &SharedDirectory) -> Result<(), ActionError> {
+        // Older receipts lack identity information. Leave the shared path in place.
+        let Some(identity) = &shared.identity else {
+            return Ok(());
+        };
+        let path = &self.path;
+        let metadata = match fs::symlink_metadata(path) {
+            Ok(metadata) => metadata,
+            Err(error)
+                if matches!(error.kind(), ErrorKind::NotFound | ErrorKind::NotADirectory) =>
+            {
+                return Ok(());
+            },
+            Err(error) => {
+                return Err(Self::error(ActionErrorKind::GettingMetadata(
+                    path.clone(),
+                    error,
+                )));
+            },
+        };
+        if !metadata.is_dir() || *identity != PublishedPathIdentity::from(&metadata) {
+            return Ok(());
+        }
+        // rmdir checks emptiness and removes the directory in one operation.
+        match fs::remove_dir(path) {
+            Ok(()) => Ok(()),
+            Err(error)
+                if matches!(
+                    error.kind(),
+                    ErrorKind::NotFound | ErrorKind::DirectoryNotEmpty | ErrorKind::NotADirectory
+                ) =>
+            {
+                Ok(())
+            },
+            Err(error) => Err(Self::error(ActionErrorKind::Remove(path.clone(), error))),
+        }
     }
 }
 
@@ -152,6 +239,7 @@ impl Action for CreateDirectory {
             mode,
             is_mountpoint, // If `is_mountpoint = true` the `ActionState` should be completed.
             force_prune_on_revert: _,
+            shared,
         } = self;
 
         if *is_mountpoint {
@@ -184,6 +272,10 @@ impl Action for CreateDirectory {
             None
         };
 
+        if shared.is_some() {
+            return self.create_shared(uid, gid);
+        }
+
         tokio::fs::create_dir_all(&path)
             .await
             .map_err(|e| ActionErrorKind::CreateDirectory(path.clone(), e))
@@ -210,6 +302,7 @@ impl Action for CreateDirectory {
             mode: _,
             is_mountpoint,
             force_prune_on_revert,
+            shared: _,
         } = &self;
         match (is_mountpoint, force_prune_on_revert) {
             (true, true) => vec![ActionDescription::new(
@@ -234,6 +327,9 @@ impl Action for CreateDirectory {
 
     #[tracing::instrument(level = "debug", skip_all)]
     async fn revert(&mut self) -> Result<(), ActionError> {
+        if let Some(shared) = &self.shared {
+            return self.revert_shared(shared);
+        }
         let Self {
             path,
             user: _,
@@ -241,6 +337,7 @@ impl Action for CreateDirectory {
             mode: _,
             is_mountpoint,
             force_prune_on_revert,
+            shared: _,
         } = self;
 
         let contents = path

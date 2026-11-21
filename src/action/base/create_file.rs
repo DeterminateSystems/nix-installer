@@ -1,8 +1,11 @@
-use nix::unistd::{chown, Group, User};
+use nix::unistd::{chown, fchown, Gid, Group, Uid, User};
 use tracing::{span, Span};
 
 use std::{
-    os::{unix::fs::MetadataExt, unix::fs::PermissionsExt},
+    fs as std_fs,
+    io::{ErrorKind, Read, Write},
+    os::fd::AsRawFd,
+    os::unix::fs::{MetadataExt, OpenOptionsExt, PermissionsExt},
     path::{Path, PathBuf},
 };
 use tokio::{
@@ -15,6 +18,8 @@ use crate::{
     util::OnMissing,
 };
 
+use super::PublishedPathIdentity;
+
 /** Create a file at the given location with the provided `buf`,
 optionally with an owning user, group, and mode.
 
@@ -25,11 +30,21 @@ regardless of its presence prior to install.
 #[serde(tag = "action_name", rename = "create_file")]
 pub struct CreateFile {
     pub(crate) path: PathBuf,
-    user: Option<String>,
-    group: Option<String>,
+    pub(crate) user: Option<String>,
+    pub(crate) group: Option<String>,
     mode: Option<u32>,
     buf: String,
     force: bool,
+    #[serde(default, skip_serializing_if = "std::ops::Not::not")]
+    atomic: bool,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    published_identity: Option<PublishedPathIdentity>,
+}
+
+pub(crate) struct FileSnapshot {
+    // Keep the inode from being reused while the caller checks launchd.
+    _file: std_fs::File,
+    metadata: std_fs::Metadata,
 }
 
 impl CreateFile {
@@ -53,6 +68,8 @@ impl CreateFile {
             mode,
             buf,
             force,
+            atomic: false,
+            published_identity: None,
         };
 
         if this.path.exists() {
@@ -68,60 +85,8 @@ impl CreateFile {
                 .map_err(|e| ActionErrorKind::GettingMetadata(this.path.clone(), e))
                 .map_err(Self::error)?;
 
-            if !metadata.is_file() {
-                return Err(Self::error(ActionErrorKind::PathWasNotFile(this.path)));
-            }
-
-            if let Some(mode) = mode {
-                // Does the file have the right permissions?
-                let discovered_mode = metadata.permissions().mode();
-                // We only care about user-group-other permissions
-                let discovered_mode = discovered_mode & 0o777;
-
-                if discovered_mode != mode {
-                    return Err(Self::error(ActionErrorKind::PathModeMismatch(
-                        this.path.clone(),
-                        discovered_mode,
-                        mode,
-                    )));
-                }
-            }
-
-            // Does it have the right user/group?
-            if let Some(user) = &this.user {
-                // If the file exists, the user must also exist to be correct.
-                let expected_uid = User::from_name(user.as_str())
-                    .map_err(|e| ActionErrorKind::GettingUserId(user.clone(), e))
-                    .map_err(Self::error)?
-                    .ok_or_else(|| ActionErrorKind::NoUser(user.clone()))
-                    .map_err(Self::error)?
-                    .uid;
-                let found_uid = metadata.uid();
-                if found_uid != expected_uid.as_raw() {
-                    return Err(Self::error(ActionErrorKind::PathUserMismatch(
-                        this.path.clone(),
-                        found_uid,
-                        expected_uid.as_raw(),
-                    )));
-                }
-            }
-            if let Some(group) = &this.group {
-                // If the file exists, the group must also exist to be correct.
-                let expected_gid = Group::from_name(group.as_str())
-                    .map_err(|e| ActionErrorKind::GettingGroupId(group.clone(), e))
-                    .map_err(Self::error)?
-                    .ok_or_else(|| ActionErrorKind::NoUser(group.clone()))
-                    .map_err(Self::error)?
-                    .gid;
-                let found_gid = metadata.gid();
-                if found_gid != expected_gid.as_raw() {
-                    return Err(Self::error(ActionErrorKind::PathGroupMismatch(
-                        this.path.clone(),
-                        found_gid,
-                        expected_gid.as_raw(),
-                    )));
-                }
-            }
+            // Preserve the permission policy used by ordinary CreateFile actions.
+            this.validate_metadata(&metadata, 0o777)?;
 
             // Does it have the right content?
             let mut discovered_buf = String::new();
@@ -130,17 +95,323 @@ impl CreateFile {
                 .map_err(|e| ActionErrorKind::Read(this.path.clone(), e))
                 .map_err(Self::error)?;
 
-            if discovered_buf != this.buf {
-                return Err(Self::error(ActionErrorKind::DifferentContent(
-                    this.path.clone(),
-                )));
-            }
+            this.validate_contents(discovered_buf.as_bytes())?;
 
             tracing::debug!("Creating file `{}` already complete", this.path.display());
             return Ok(StatefulAction::completed(this));
         }
 
         Ok(StatefulAction::uncompleted(this))
+    }
+
+    fn validate_metadata(
+        &self,
+        metadata: &std_fs::Metadata,
+        mode_mask: u32,
+    ) -> Result<(), ActionError> {
+        if !metadata.is_file() {
+            return Err(Self::error(ActionErrorKind::PathWasNotFile(
+                self.path.clone(),
+            )));
+        }
+
+        if let Some(mode) = self.mode {
+            // Does the file have the right permissions?
+            let discovered_mode = metadata.permissions().mode();
+            let discovered_mode = discovered_mode & mode_mask;
+
+            if discovered_mode != mode {
+                return Err(Self::error(ActionErrorKind::PathModeMismatch(
+                    self.path.clone(),
+                    discovered_mode,
+                    mode,
+                )));
+            }
+        }
+
+        // Does it have the right user/group?
+        if let Some(user) = &self.user {
+            // If the file exists, the user must also exist to be correct.
+            let expected_uid = User::from_name(user.as_str())
+                .map_err(|e| ActionErrorKind::GettingUserId(user.clone(), e))
+                .map_err(Self::error)?
+                .ok_or_else(|| ActionErrorKind::NoUser(user.clone()))
+                .map_err(Self::error)?
+                .uid;
+            let found_uid = metadata.uid();
+            if found_uid != expected_uid.as_raw() {
+                return Err(Self::error(ActionErrorKind::PathUserMismatch(
+                    self.path.clone(),
+                    found_uid,
+                    expected_uid.as_raw(),
+                )));
+            }
+        }
+        if let Some(group) = &self.group {
+            // If the file exists, the group must also exist to be correct.
+            let expected_gid = Group::from_name(group.as_str())
+                .map_err(|e| ActionErrorKind::GettingGroupId(group.clone(), e))
+                .map_err(Self::error)?
+                .ok_or_else(|| ActionErrorKind::NoUser(group.clone()))
+                .map_err(Self::error)?
+                .gid;
+            let found_gid = metadata.gid();
+            if found_gid != expected_gid.as_raw() {
+                return Err(Self::error(ActionErrorKind::PathGroupMismatch(
+                    self.path.clone(),
+                    found_gid,
+                    expected_gid.as_raw(),
+                )));
+            }
+        }
+
+        Ok(())
+    }
+
+    fn validate_contents(&self, contents: &[u8]) -> Result<(), ActionError> {
+        if contents != self.buf.as_bytes() {
+            return Err(Self::error(ActionErrorKind::DifferentContent(
+                self.path.clone(),
+            )));
+        }
+        Ok(())
+    }
+
+    pub(crate) fn plan_atomically(
+        path: impl Into<PathBuf>,
+        user: Option<String>,
+        group: Option<String>,
+        mode: u32,
+        buf: String,
+    ) -> Result<StatefulAction<Self>, ActionError> {
+        Self {
+            path: path.into(),
+            user,
+            group,
+            mode: Some(mode),
+            buf,
+            force: false,
+            atomic: true,
+            published_identity: None,
+        }
+        .check_atomic_plan()
+    }
+
+    pub(crate) fn replan_atomically(&self) -> Result<StatefulAction<Self>, ActionError> {
+        let mut action = self.clone();
+        action.atomic = true;
+        action.check_atomic_plan()
+    }
+
+    fn check_atomic_plan(mut self) -> Result<StatefulAction<Self>, ActionError> {
+        if self.open_matching_file()?.is_some() {
+            Ok(StatefulAction::completed(self))
+        } else {
+            self.published_identity = None;
+            Ok(StatefulAction::uncompleted(self))
+        }
+    }
+
+    /// Publish a small file only after its contents and permissions are ready.
+    /// Fail if the destination appeared since planning.
+    fn create_atomically(&mut self) -> Result<(), ActionError> {
+        let (uid, gid) = self.owner_ids()?;
+        let parent = self.path.parent().unwrap_or_else(|| Path::new("."));
+        let mut temporary = tempfile::NamedTempFile::new_in(parent)
+            .map_err(|error| Self::error(ActionErrorKind::Open(self.path.clone(), error)))?;
+        temporary
+            .write_all(self.buf.as_bytes())
+            .map_err(|error| Self::error(ActionErrorKind::Write(self.path.clone(), error)))?;
+        fchown(temporary.as_file().as_raw_fd(), uid, gid)
+            .map_err(|error| Self::error(ActionErrorKind::Chown(self.path.clone(), error)))?;
+        if let Some(mode) = self.mode {
+            temporary
+                .as_file()
+                .set_permissions(PermissionsExt::from_mode(mode))
+                .map_err(|error| {
+                    Self::error(ActionErrorKind::SetPermissions(
+                        mode,
+                        self.path.clone(),
+                        error,
+                    ))
+                })?;
+        }
+        let metadata = temporary.as_file().metadata().map_err(|error| {
+            Self::error(ActionErrorKind::GettingMetadata(self.path.clone(), error))
+        })?;
+        let temporary_path = temporary.path().to_owned();
+        temporary.persist_noclobber(&self.path).map_err(|error| {
+            Self::error(ActionErrorKind::Rename(
+                temporary_path,
+                self.path.clone(),
+                error.error,
+            ))
+        })?;
+        self.published_identity = Some(PublishedPathIdentity::from(&metadata));
+        Ok(())
+    }
+
+    fn path_metadata(&self) -> Result<Option<std_fs::Metadata>, ActionError> {
+        match std_fs::symlink_metadata(&self.path) {
+            Ok(metadata) => Ok(Some(metadata)),
+            Err(error)
+                if matches!(error.kind(), ErrorKind::NotFound | ErrorKind::NotADirectory) =>
+            {
+                Ok(None)
+            },
+            Err(error) => Err(Self::error(ActionErrorKind::GettingMetadata(
+                self.path.clone(),
+                error,
+            ))),
+        }
+    }
+
+    fn open_matching_file(&self) -> Result<Option<FileSnapshot>, ActionError> {
+        let Some(metadata) = self.path_metadata()? else {
+            return Ok(None);
+        };
+        // Both installation and guarded removal check the full permission mode.
+        self.validate_metadata(&metadata, 0o7777)?;
+        // Avoid following a replacement symlink or blocking on a replacement FIFO.
+        let mut file = match std_fs::OpenOptions::new()
+            .read(true)
+            .custom_flags(nix::libc::O_NOFOLLOW | nix::libc::O_NONBLOCK)
+            .open(&self.path)
+        {
+            Ok(file) => file,
+            Err(error)
+                if matches!(error.kind(), ErrorKind::NotFound | ErrorKind::NotADirectory) =>
+            {
+                return Ok(None);
+            },
+            Err(error) if error.raw_os_error() == Some(nix::libc::ELOOP) => {
+                return Err(Self::error(ActionErrorKind::PathWasNotFile(
+                    self.path.clone(),
+                )));
+            },
+            Err(error) => return Err(Self::error(ActionErrorKind::Open(self.path.clone(), error))),
+        };
+        let opened = file.metadata().map_err(|error| {
+            Self::error(ActionErrorKind::GettingMetadata(self.path.clone(), error))
+        })?;
+        if !unchanged_file(&metadata, &opened) {
+            return Ok(None);
+        }
+        let mut contents = Vec::new();
+        (&mut file)
+            .take(self.buf.len() as u64 + 1)
+            .read_to_end(&mut contents)
+            .map_err(|error| Self::error(ActionErrorKind::Read(self.path.clone(), error)))?;
+        self.validate_contents(&contents)?;
+        Ok(Some(FileSnapshot {
+            _file: file,
+            metadata: opened,
+        }))
+    }
+
+    pub(crate) fn removal_candidate(&self) -> Result<Option<FileSnapshot>, ActionError> {
+        match self.open_matching_file() {
+            Ok(Some(snapshot))
+                if !is_unlink_protected(&snapshot.metadata)
+                    && self.published_identity.as_ref().is_none_or(|identity| {
+                        *identity == PublishedPathIdentity::from(&snapshot.metadata)
+                    }) =>
+            {
+                Ok(Some(snapshot))
+            },
+            Ok(_) => Ok(None),
+            Err(error)
+                if matches!(
+                    error.kind(),
+                    ActionErrorKind::PathWasNotFile(_)
+                        | ActionErrorKind::PathModeMismatch(..)
+                        | ActionErrorKind::PathUserMismatch(..)
+                        | ActionErrorKind::PathGroupMismatch(..)
+                        | ActionErrorKind::DifferentContent(_)
+                ) =>
+            {
+                Ok(None)
+            },
+            Err(error) => Err(error),
+        }
+    }
+
+    fn remove_unchanged_file(&self, original: FileSnapshot) -> Result<(), ActionError> {
+        let Some(current) = self.removal_candidate()? else {
+            return Ok(());
+        };
+        // An independent writer can still change the pathname between the last
+        // metadata check and unlink. Keep both operations synchronous.
+        if !unchanged_file(&original.metadata, &current.metadata)
+            || !self
+                .path_metadata()?
+                .is_some_and(|metadata| unchanged_file(&current.metadata, &metadata))
+        {
+            return Ok(());
+        }
+        match std_fs::remove_file(&self.path) {
+            Ok(()) => Ok(()),
+            Err(error) if error.kind() == ErrorKind::NotFound => Ok(()),
+            Err(error) => Err(Self::error(ActionErrorKind::Remove(
+                self.path.clone(),
+                error,
+            ))),
+        }
+    }
+
+    pub(crate) fn owner_ids(&self) -> Result<(Option<Uid>, Option<Gid>), ActionError> {
+        let gid = if let Some(ref group) = self.group {
+            Some(
+                Group::from_name(group.as_str())
+                    .map_err(|e| ActionErrorKind::GettingGroupId(group.clone(), e))
+                    .map_err(Self::error)?
+                    .ok_or(ActionErrorKind::NoGroup(group.clone()))
+                    .map_err(Self::error)?
+                    .gid,
+            )
+        } else {
+            None
+        };
+        let uid = if let Some(ref user) = self.user {
+            Some(
+                User::from_name(user.as_str())
+                    .map_err(|e| ActionErrorKind::GettingUserId(user.clone(), e))
+                    .map_err(Self::error)?
+                    .ok_or(ActionErrorKind::NoUser(user.clone()))
+                    .map_err(Self::error)?
+                    .uid,
+            )
+        } else {
+            None
+        };
+        Ok((uid, gid))
+    }
+}
+
+fn unchanged_file(a: &std_fs::Metadata, b: &std_fs::Metadata) -> bool {
+    (a.dev(), a.ino(), a.ctime(), a.ctime_nsec()) == (b.dev(), b.ino(), b.ctime(), b.ctime_nsec())
+}
+
+#[cfg(target_os = "macos")]
+fn is_unlink_protected(metadata: &std_fs::Metadata) -> bool {
+    use nix::libc::{SF_APPEND, SF_IMMUTABLE, UF_APPEND, UF_IMMUTABLE};
+    use std::os::macos::fs::MetadataExt as _;
+
+    metadata.st_flags() & (SF_APPEND | SF_IMMUTABLE | UF_APPEND | UF_IMMUTABLE) != 0
+}
+
+#[cfg(not(target_os = "macos"))]
+fn is_unlink_protected(_: &std_fs::Metadata) -> bool {
+    false
+}
+
+impl StatefulAction<CreateFile> {
+    pub(crate) async fn try_revert_unchanged(
+        &mut self,
+        snapshot: FileSnapshot,
+    ) -> Result<(), ActionError> {
+        self.try_revert_with(|file| Box::pin(async move { file.remove_unchanged_file(snapshot) }))
+            .await
     }
 }
 
@@ -184,6 +455,10 @@ impl Action for CreateFile {
             span.record("buf", &self.buf);
         }
 
+        if self.atomic {
+            return self.create_atomically();
+        }
+
         let mut options = OpenOptions::new();
         options.create_new(true).write(true).read(true);
 
@@ -202,30 +477,7 @@ impl Action for CreateFile {
             .map_err(|e| ActionErrorKind::Write(self.path.to_owned(), e))
             .map_err(Self::error)?;
 
-        let gid = if let Some(ref group) = self.group {
-            Some(
-                Group::from_name(group.as_str())
-                    .map_err(|e| ActionErrorKind::GettingGroupId(group.clone(), e))
-                    .map_err(Self::error)?
-                    .ok_or(ActionErrorKind::NoGroup(group.clone()))
-                    .map_err(Self::error)?
-                    .gid,
-            )
-        } else {
-            None
-        };
-        let uid = if let Some(ref user) = self.user {
-            Some(
-                User::from_name(user.as_str())
-                    .map_err(|e| ActionErrorKind::GettingUserId(user.clone(), e))
-                    .map_err(Self::error)?
-                    .ok_or(ActionErrorKind::NoUser(user.clone()))
-                    .map_err(Self::error)?
-                    .uid,
-            )
-        } else {
-            None
-        };
+        let (uid, gid) = self.owner_ids()?;
         chown(&self.path, uid, gid)
             .map_err(|e| ActionErrorKind::Chown(self.path.clone(), e))
             .map_err(Self::error)?;
@@ -241,6 +493,8 @@ impl Action for CreateFile {
             mode: _,
             buf: _,
             force: _,
+            atomic: _,
+            published_identity: _,
         } = &self;
 
         vec![ActionDescription::new(
@@ -251,6 +505,15 @@ impl Action for CreateFile {
 
     #[tracing::instrument(level = "debug", skip_all)]
     async fn revert(&mut self) -> Result<(), ActionError> {
+        if self.atomic {
+            // A completed plan can also describe a file that already existed.
+            if self.published_identity.is_some() {
+                if let Some(snapshot) = self.removal_candidate()? {
+                    self.remove_unchanged_file(snapshot)?;
+                }
+            }
+            return Ok(());
+        }
         let Self {
             path,
             user: _,
@@ -258,6 +521,8 @@ impl Action for CreateFile {
             mode: _,
             buf: _,
             force: _,
+            atomic: _,
+            published_identity: _,
         } = self;
 
         crate::util::remove_file(path, OnMissing::Ignore)
@@ -274,6 +539,30 @@ mod test {
     use super::*;
     use color_eyre::eyre::eyre;
     use tokio::fs::write;
+
+    #[tokio::test]
+    async fn atomic_revert_removes_only_the_published_file() -> eyre::Result<()> {
+        let dir = tempfile::tempdir()?;
+        let path = dir.path().join("helper");
+        let plan = || CreateFile::plan_atomically(&path, None, None, 0o700, "helper".into());
+
+        let mut owned = plan()?;
+        owned.try_execute().await?;
+        let mut existing = plan()?;
+        existing.try_revert().await?;
+        assert!(path.exists());
+        owned.try_revert().await?;
+        assert!(!path.exists());
+
+        let mut owned = plan()?;
+        owned.try_execute().await?;
+        let replacement = dir.path().join("replacement");
+        std_fs::copy(&path, &replacement)?;
+        std_fs::rename(replacement, &path)?;
+        owned.try_revert().await?;
+        assert_eq!(std_fs::read_to_string(&path)?, "helper");
+        Ok(())
+    }
 
     #[tokio::test]
     async fn creates_and_deletes_file() -> eyre::Result<()> {

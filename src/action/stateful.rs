@@ -1,7 +1,11 @@
+use std::{future::Future, pin::Pin};
+
 use serde::{Deserialize, Serialize};
 use tracing::{Instrument, Span};
 
 use super::{Action, ActionDescription, ActionError, ActionTag};
+
+type RevertFuture<'a> = Pin<Box<dyn Future<Output = Result<(), ActionError>> + Send + 'a>>;
 
 /// A wrapper around an [`Action`](crate::action::Action) which tracks the [`ActionState`] and
 /// handles some tracing output
@@ -194,6 +198,13 @@ where
     ///
     /// You should prefer this ([`try_revert`][StatefulAction::try_revert]) over [`revert`][Action::revert] as it handles [`ActionState`] and does tracing
     pub async fn try_revert(&mut self) -> Result<(), ActionError> {
+        self.try_revert_with(|action| action.revert()).await
+    }
+
+    pub(super) async fn try_revert_with(
+        &mut self,
+        revert: impl for<'a> FnOnce(&'a mut A) -> RevertFuture<'a> + Send,
+    ) -> Result<(), ActionError> {
         let span = self.action.tracing_span();
         match self.state {
             ActionState::Uncompleted => {
@@ -215,7 +226,7 @@ where
                     "Reverting: {}",
                     self.action.tracing_synopsis()
                 );
-                self.action.revert().instrument(span.clone()).await?;
+                revert(&mut self.action).instrument(span.clone()).await?;
                 tracing::debug!(
                     parent: &span,
                     "Reverted: {}",
@@ -250,7 +261,7 @@ where
 }
 
 /** The state of an [`Action`](crate::action::Action)
-*/
+ */
 #[derive(Debug, Serialize, Deserialize, Clone, PartialEq, Eq, Copy)]
 pub enum ActionState {
     /**
