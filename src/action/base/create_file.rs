@@ -359,7 +359,7 @@ impl CreateFile {
         }
     }
 
-    pub(crate) fn owner_ids(&self) -> Result<(Option<Uid>, Option<Gid>), ActionError> {
+    fn owner_ids(&self) -> Result<(Option<Uid>, Option<Gid>), ActionError> {
         let gid = if let Some(ref group) = self.group {
             Some(
                 Group::from_name(group.as_str())
@@ -486,6 +486,19 @@ impl Action for CreateFile {
     }
 
     fn revert_description(&self) -> Vec<ActionDescription> {
+        if self.atomic {
+            return if self.published_identity.is_some() {
+                vec![ActionDescription::new(
+                    format!(
+                        "Delete file `{}` if it still matches the installer record",
+                        self.path.display(),
+                    ),
+                    vec![],
+                )]
+            } else {
+                vec![]
+            };
+        }
         let Self {
             path,
             user: _,
@@ -549,8 +562,12 @@ mod test {
         let mut owned = plan()?;
         owned.try_execute().await?;
         let mut existing = plan()?;
+        assert!(existing.describe_revert().is_empty());
         existing.try_revert().await?;
         assert!(path.exists());
+        assert!(owned.describe_revert()[0]
+            .description
+            .contains("if it still matches"));
         owned.try_revert().await?;
         assert!(!path.exists());
 

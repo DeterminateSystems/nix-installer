@@ -42,6 +42,58 @@ pub(crate) struct SharedDirectory {
 }
 
 impl CreateDirectory {
+    pub(crate) fn plan_shared(
+        path: impl Into<PathBuf>,
+        user: Option<String>,
+        group: Option<String>,
+        mode: u32,
+    ) -> Result<StatefulAction<Self>, ActionError> {
+        let path = path.into();
+        let existing = match fs::symlink_metadata(&path) {
+            Ok(metadata) => Some(metadata),
+            Err(error) if error.kind() == ErrorKind::NotFound => None,
+            Err(error) => {
+                return Err(Self::error(ActionErrorKind::GettingMetadata(path, error)));
+            },
+        };
+        if let Some(metadata) = &existing {
+            if !metadata.is_dir() {
+                return Err(Self::error(ActionErrorKind::PathWasNotDirectory(path)));
+            }
+            if let Some(uid) = Self::resolve_uid(user.as_deref())? {
+                if metadata.uid() != uid.as_raw() {
+                    return Err(Self::error(ActionErrorKind::PathUserMismatch(
+                        path,
+                        metadata.uid(),
+                        uid.as_raw(),
+                    )));
+                }
+            }
+            let permissions = metadata.mode() & 0o777;
+            if permissions & 0o022 != 0 {
+                return Err(Self::error(ActionErrorKind::PathModeMismatch(
+                    path,
+                    permissions,
+                    permissions & !0o022,
+                )));
+            }
+        }
+        let action = Self {
+            path,
+            user,
+            group,
+            mode: Some(mode),
+            is_mountpoint: false,
+            force_prune_on_revert: false,
+            shared: Some(SharedDirectory::default()),
+        };
+        Ok(if existing.is_some() {
+            StatefulAction::completed(action)
+        } else {
+            StatefulAction::uncompleted(action)
+        })
+    }
+
     #[tracing::instrument(level = "debug", skip_all)]
     pub async fn plan(
         path: impl AsRef<Path>,
@@ -131,6 +183,20 @@ impl CreateDirectory {
 
     pub(crate) fn use_shared_directory_policy(&mut self) {
         self.shared.get_or_insert_with(SharedDirectory::default);
+    }
+
+    pub(crate) fn has_shared_identity(&self) -> bool {
+        self.shared
+            .as_ref()
+            .is_some_and(|shared| shared.identity.is_some())
+    }
+
+    fn resolve_uid(user: Option<&str>) -> Result<Option<Uid>, ActionError> {
+        let Some(user) = user else { return Ok(None) };
+        let entry = User::from_name(user)
+            .map_err(|error| Self::error(ActionErrorKind::GettingUserId(user.into(), error)))?
+            .ok_or_else(|| Self::error(ActionErrorKind::NoUser(user.into())))?;
+        Ok(Some(entry.uid))
     }
 
     fn create_shared(&mut self, uid: Option<Uid>, gid: Option<Gid>) -> Result<(), ActionError> {
@@ -259,18 +325,7 @@ impl Action for CreateDirectory {
         } else {
             None
         };
-        let uid = if let Some(user) = user {
-            Some(
-                User::from_name(user.as_str())
-                    .map_err(|e| ActionErrorKind::GettingUserId(user.clone(), e))
-                    .map_err(Self::error)?
-                    .ok_or(ActionErrorKind::NoUser(user.clone()))
-                    .map_err(Self::error)?
-                    .uid,
-            )
-        } else {
-            None
-        };
+        let uid = Self::resolve_uid(user.as_deref())?;
 
         if shared.is_some() {
             return self.create_shared(uid, gid);
@@ -295,6 +350,19 @@ impl Action for CreateDirectory {
     }
 
     fn revert_description(&self) -> Vec<ActionDescription> {
+        if self.shared.is_some() {
+            return if self.has_shared_identity() {
+                vec![ActionDescription::new(
+                    format!(
+                        "Remove the directory `{}` if it is empty and still matches the installer record",
+                        self.path.display(),
+                    ),
+                    vec![],
+                )]
+            } else {
+                vec![]
+            };
+        }
         let Self {
             path,
             user: _,

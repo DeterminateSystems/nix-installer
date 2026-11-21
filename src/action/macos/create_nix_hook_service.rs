@@ -76,52 +76,38 @@ impl HookLauncher {
     async fn install(&mut self) -> Result<(), ActionError> {
         let file = self.file.inner();
         let parent = file.path.parent().unwrap_or_else(|| Path::new("."));
-        let (owner, _) = file.owner_ids()?;
-        let owner = owner.map(|uid| uid.as_raw());
-        if !launcher_directory_exists(parent, owner).map_err(CreateNixHookService::error)? {
-            let directory = CreateDirectory::plan(
-                parent,
-                file.user.clone(),
-                file.group.clone(),
-                Some(0o755),
-                false,
-            )
-            .await?;
-            if directory.state == ActionState::Uncompleted {
-                let directory = self.directory.insert(directory);
-                directory.action.use_shared_directory_policy();
-                directory.try_execute().await?;
-            }
+        let directory =
+            CreateDirectory::plan_shared(parent, file.user.clone(), file.group.clone(), 0o755)?;
+        if directory.state == ActionState::Uncompleted {
+            self.directory.insert(directory).try_execute().await?;
         }
         // The file may have vanished since this plan was saved. Recheck it
         // before publishing a complete launcher without replacing an existing one.
         let file = self.file.inner().replan_atomically()?;
         if file.state == ActionState::Uncompleted {
-            self.file = file;
-            self.file.try_execute().await?;
-            self.owns_file = true;
+            self.publish(file).await?;
         }
+        Ok(())
+    }
+
+    async fn publish(&mut self, file: StatefulAction<CreateFile>) -> Result<(), ActionError> {
+        // The replacement action has no publication identity until it succeeds.
+        self.owns_file = false;
+        self.file = file;
+        self.file.try_execute().await?;
+        self.owns_file = true;
         Ok(())
     }
 }
 
 impl CreateNixHookService {
-    async fn plan_launcher() -> Result<HookLauncher, ActionError> {
-        let directory = Path::new(LAUNCHER_DIRECTORY);
-        let directory_action =
-            if launcher_directory_exists(directory, Some(0)).map_err(Self::error)? {
-                None
-            } else {
-                let action = CreateDirectory::plan(
-                    directory,
-                    Some("root".into()),
-                    Some("wheel".into()),
-                    Some(0o755),
-                    false,
-                )
-                .await?;
-                (action.state == ActionState::Uncompleted).then_some(action)
-            };
+    fn plan_launcher() -> Result<HookLauncher, ActionError> {
+        let directory = CreateDirectory::plan_shared(
+            LAUNCHER_DIRECTORY,
+            Some("root".into()),
+            Some("wheel".into()),
+            0o755,
+        )?;
 
         let file = CreateFile::plan_atomically(
             LAUNCHER_PATH,
@@ -132,7 +118,7 @@ impl CreateNixHookService {
         )?;
         Ok(HookLauncher {
             owns_file: false,
-            directory: directory_action,
+            directory: (directory.state == ActionState::Uncompleted).then_some(directory),
             file,
             owns_plist: false,
             job_token: None,
@@ -143,7 +129,7 @@ impl CreateNixHookService {
     pub async fn plan() -> Result<StatefulAction<Self>, ActionError> {
         Self::plan_at(
             format!("/Library/LaunchDaemons/{SERVICE_LABEL}.plist").into(),
-            Self::plan_launcher().await?,
+            Self::plan_launcher()?,
         )
     }
 
@@ -308,11 +294,24 @@ impl Action for CreateNixHookService {
             ));
         }
         if let Some(launcher) = &self.launcher {
-            if launcher.owns_file {
-                description.extend(launcher.file.describe_revert());
+            if launcher.owns_file
+                && matches!(
+                    launcher.file.state,
+                    ActionState::Completed | ActionState::Progress
+                )
+            {
+                description.push(ActionDescription::new(
+                    format!(
+                        "Remove repair helper `{}` if it still matches the installer record and is unused",
+                        launcher.file.inner().path.display(),
+                    ),
+                    vec![],
+                ));
             }
             if let Some(directory) = &launcher.directory {
-                description.extend(directory.describe_revert());
+                if directory.inner().has_shared_identity() {
+                    description.extend(directory.describe_revert());
+                }
             }
         }
         description
@@ -534,35 +533,6 @@ fn path_references_launcher(
 
 fn same_file(a: &std_fs::Metadata, b: &std_fs::Metadata) -> bool {
     (a.dev(), a.ino()) == (b.dev(), b.ino())
-}
-
-fn launcher_directory_exists(path: &Path, owner: Option<u32>) -> Result<bool, ActionErrorKind> {
-    let metadata = match std_fs::symlink_metadata(path) {
-        Ok(metadata) => metadata,
-        Err(error) if error.kind() == ErrorKind::NotFound => return Ok(false),
-        Err(error) => return Err(ActionErrorKind::GettingMetadata(path.into(), error)),
-    };
-    if !metadata.is_dir() {
-        return Err(ActionErrorKind::PathWasNotDirectory(path.into()));
-    }
-    if let Some(owner) = owner {
-        if metadata.uid() != owner {
-            return Err(ActionErrorKind::PathUserMismatch(
-                path.into(),
-                metadata.uid(),
-                owner,
-            ));
-        }
-    }
-    let mode = metadata.permissions().mode() & 0o777;
-    if mode & 0o022 != 0 {
-        return Err(ActionErrorKind::PathModeMismatch(
-            path.into(),
-            mode,
-            mode & !0o022,
-        ));
-    }
-    Ok(true)
 }
 
 fn read_plist<T: DeserializeOwned>(path: &Path) -> Result<Option<T>, ActionErrorKind> {
@@ -882,6 +852,64 @@ mod tests {
             .unwrap();
         assert!(!path.exists());
         assert!(!launcher_path.exists());
+    }
+
+    #[tokio::test]
+    async fn failed_republication_does_not_claim_a_helper_restored_by_someone_else() {
+        let dir = tempfile::tempdir().unwrap();
+        let plist = dir.path().join("missing-launch-daemons").join("hook.plist");
+        let helper = dir.path().join("nix-installer-repair");
+        let mut action =
+            CreateNixHookService::plan_at(plist, temporary_launcher(dir.path()).await).unwrap();
+        assert!(action.try_execute().await.is_err());
+        assert!(helper.exists());
+
+        let mut resumed: StatefulAction<CreateNixHookService> =
+            serde_json::from_slice(&serde_json::to_vec(&action).unwrap()).unwrap();
+        let launcher = resumed.action.launcher.as_mut().unwrap();
+        assert!(launcher.owns_file);
+        let restored = dir.path().join("saved-helper");
+        fs::rename(&helper, &restored).await.unwrap();
+        let retry = launcher.file.inner().replan_atomically().unwrap();
+        assert_eq!(retry.state, ActionState::Uncompleted);
+        fs::copy(restored, &helper).await.unwrap();
+        assert!(launcher.publish(retry).await.is_err());
+
+        let mut failed: StatefulAction<CreateNixHookService> =
+            serde_json::from_slice(&serde_json::to_vec(&resumed).unwrap()).unwrap();
+        assert!(failed.describe_revert().is_empty());
+        failed.try_revert().await.unwrap();
+        assert_eq!(fs::read_to_string(&helper).await.unwrap(), LAUNCHER_SCRIPT);
+    }
+
+    #[tokio::test]
+    async fn rejects_an_unsafe_helper_directory_that_appears_after_planning() {
+        let dir = tempfile::tempdir().unwrap();
+        let parent = dir.path().join("shared");
+        let plist = dir.path().join("hook.plist");
+        let mut action =
+            CreateNixHookService::plan_at(plist.clone(), temporary_launcher(&parent).await)
+                .unwrap();
+        let other = dir.path().join("other");
+        fs::create_dir(&other).await.unwrap();
+        std::os::unix::fs::symlink(&other, &parent).unwrap();
+        assert!(matches!(
+            action.try_execute().await.unwrap_err().kind(),
+            ActionErrorKind::PathWasNotDirectory(path) if path == &parent
+        ));
+        assert!(!other.join("nix-installer-repair").exists());
+
+        fs::remove_file(&parent).await.unwrap();
+        fs::create_dir(&parent).await.unwrap();
+        fs::set_permissions(&parent, std_fs::Permissions::from_mode(0o777))
+            .await
+            .unwrap();
+        assert!(matches!(
+            action.try_execute().await.unwrap_err().kind(),
+            ActionErrorKind::PathModeMismatch(path, 0o777, 0o755) if path == &parent
+        ));
+        assert!(!parent.join("nix-installer-repair").exists());
+        assert!(!plist.exists());
     }
     #[tokio::test]
     async fn unloads_owned_named_job_before_removing_launcher() {
@@ -1479,6 +1507,9 @@ mod tests {
         fs::write(&unrelated, "other installer").await.unwrap();
 
         let action = launcher.directory.as_mut().unwrap();
+        assert!(action.describe_revert()[0]
+            .description
+            .contains("if it is empty"));
         let receipt = serde_json::to_value(&action).unwrap();
         action.try_revert().await.unwrap();
         assert_eq!(action.state, ActionState::Uncompleted);
@@ -1494,7 +1525,13 @@ mod tests {
             .remove("shared");
         let mut legacy: StatefulAction<CreateDirectory> =
             serde_json::from_value(legacy_receipt).unwrap();
+        let mut old_launcher = temporary_launcher(dir.path()).await;
+        old_launcher.directory = Some(legacy.clone());
+        let old_hook =
+            CreateNixHookService::plan_at(dir.path().join("hook.plist"), old_launcher).unwrap();
+        assert!(old_hook.inner().revert_description().is_empty());
         legacy.action.use_shared_directory_policy();
+        assert!(legacy.describe_revert().is_empty());
         legacy.try_revert().await.unwrap();
         assert!(path.is_dir());
 
