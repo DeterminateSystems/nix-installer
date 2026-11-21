@@ -4,8 +4,8 @@ use tracing::{span, Span};
 use std::{
     fs as std_fs,
     future::Future,
-    io::{ErrorKind, Read},
-    os::unix::fs::{MetadataExt, OpenOptionsExt, PermissionsExt},
+    io::ErrorKind,
+    os::unix::fs::{MetadataExt, PermissionsExt},
     path::{Path, PathBuf},
 };
 use tokio::{fs, process::Command};
@@ -73,22 +73,6 @@ enum LoadedJob {
 }
 
 impl HookLauncher {
-    async fn file_is_ready(&self) -> Result<bool, ActionError> {
-        let file = self.file.inner();
-        match fs::symlink_metadata(&file.path).await {
-            Ok(metadata) if metadata.is_file() => {
-                Ok(file.replan().await?.state == ActionState::Completed)
-            },
-            Ok(_) => Err(CreateNixHookService::error(
-                ActionErrorKind::PathWasNotFile(file.path.clone()),
-            )),
-            Err(error) if error.kind() == ErrorKind::NotFound => Ok(false),
-            Err(error) => Err(CreateNixHookService::error(
-                ActionErrorKind::GettingMetadata(file.path.clone(), error),
-            )),
-        }
-    }
-
     async fn install(&mut self) -> Result<(), ActionError> {
         let file = self.file.inner();
         let parent = file.path.parent().unwrap_or_else(|| Path::new("."));
@@ -108,101 +92,14 @@ impl HookLauncher {
                 directory.try_execute().await?;
             }
         }
-        if !self.file_is_ready().await? {
-            // The previous file action may describe a launcher that vanished
-            // since this plan was saved. Publication is exclusive and atomic.
-            self.file = self.file.inner().replan_atomically().await?;
-            if self.file.state == ActionState::Uncompleted {
-                self.file.try_execute().await?;
-                self.owns_file = true;
-            }
+        // The file may have vanished since this plan was saved. Recheck it
+        // before publishing a complete launcher without replacing an existing one.
+        let file = self.file.inner().replan_atomically()?;
+        if file.state == ActionState::Uncompleted {
+            self.file = file;
+            self.file.try_execute().await?;
+            self.owns_file = true;
         }
-        Ok(())
-    }
-
-    fn open_removable_file(&self) -> Result<Option<(std_fs::File, std_fs::Metadata)>, ActionError> {
-        let action = self.file.inner();
-        let path = &action.path;
-        let Some(metadata) = launcher_metadata(path).map_err(CreateNixHookService::error)? else {
-            return Ok(None);
-        };
-        if !metadata.is_file()
-            || action
-                .mode
-                .is_some_and(|mode| metadata.mode() & 0o7777 != mode)
-        {
-            return Ok(None);
-        }
-        let (uid, gid) = action.owner_ids()?;
-        if uid.is_some_and(|uid| uid.as_raw() != metadata.uid())
-            || gid.is_some_and(|gid| gid.as_raw() != metadata.gid())
-        {
-            return Ok(None);
-        }
-        // Inspect the selected file without following a replacement symlink
-        // or blocking if a FIFO appeared after the metadata check.
-        let mut file = match std_fs::OpenOptions::new()
-            .read(true)
-            .custom_flags(nix::libc::O_NOFOLLOW | nix::libc::O_NONBLOCK)
-            .open(path)
-        {
-            Ok(file) => file,
-            Err(error)
-                if matches!(error.kind(), ErrorKind::NotFound | ErrorKind::NotADirectory)
-                    || error.raw_os_error() == Some(nix::libc::ELOOP) =>
-            {
-                return Ok(None);
-            },
-            Err(error) => {
-                return Err(CreateNixHookService::error(ActionErrorKind::Open(
-                    path.clone(),
-                    error,
-                )));
-            },
-        };
-        let opened = file.metadata().map_err(|error| {
-            CreateNixHookService::error(ActionErrorKind::GettingMetadata(path.clone(), error))
-        })?;
-        if !unchanged_file(&metadata, &opened) {
-            return Ok(None);
-        }
-        let expected = action.buf.as_bytes();
-        let mut contents = Vec::new();
-        (&mut file)
-            .take(expected.len() as u64 + 1)
-            .read_to_end(&mut contents)
-            .map_err(|error| {
-                CreateNixHookService::error(ActionErrorKind::Read(path.clone(), error))
-            })?;
-        Ok((contents == expected).then_some((file, opened)))
-    }
-
-    fn remove_unchanged_file(&mut self, original: &std_fs::Metadata) -> Result<(), ActionError> {
-        let Some((_current_file, current)) = self.open_removable_file()? else {
-            return Ok(());
-        };
-        let path = &self.file.inner().path;
-        // Keep the final check and unlink synchronous. An independent writer
-        // can still change the pathname between the two filesystem operations.
-        if !unchanged_file(original, &current)
-            || !launcher_metadata(path)
-                .map_err(CreateNixHookService::error)?
-                .is_some_and(|metadata| unchanged_file(&current, &metadata))
-        {
-            return Ok(());
-        }
-        match std_fs::remove_file(path) {
-            Ok(()) => (),
-            Err(error) if error.kind() == ErrorKind::NotFound => (),
-            Err(error) => {
-                return Err(CreateNixHookService::error(ActionErrorKind::Remove(
-                    path.clone(),
-                    error,
-                )));
-            },
-        }
-        self.file.state = ActionState::Uncompleted;
-        self.owns_file = false;
         Ok(())
     }
 }
@@ -225,30 +122,13 @@ impl CreateNixHookService {
                 (action.state == ActionState::Uncompleted).then_some(action)
             };
 
-        match fs::symlink_metadata(LAUNCHER_PATH).await {
-            Ok(metadata) if !metadata.is_file() => {
-                return Err(Self::error(ActionErrorKind::PathWasNotFile(
-                    LAUNCHER_PATH.into(),
-                )));
-            },
-            Ok(_) => (),
-            Err(error) if error.kind() == ErrorKind::NotFound => (),
-            Err(error) => {
-                return Err(Self::error(ActionErrorKind::GettingMetadata(
-                    LAUNCHER_PATH.into(),
-                    error,
-                )));
-            },
-        }
-        let file = CreateFile::plan(
+        let file = CreateFile::plan_atomically(
             LAUNCHER_PATH,
             Some("root".into()),
             Some("wheel".into()),
-            Some(LAUNCHER_MODE),
+            LAUNCHER_MODE,
             LAUNCHER_SCRIPT.into(),
-            false,
-        )
-        .await?;
+        )?;
         Ok(HookLauncher {
             owns_file: false,
             directory: directory_action,
@@ -490,15 +370,14 @@ impl CreateNixHookService {
         // but remove the new files if no job or retained plist uses the helper.
         let helper_path = &launcher.file.inner().path;
         if launcher.owns_file && !retained_plist_uses_launcher(&self.path, helper_path) {
-            // Keep the original file open across the launchd probe to prevent
-            // reuse of its inode. Check the pathname again before unlinking.
-            if let Some((_original_file, original)) = launcher.open_removable_file()? {
+            if let Some(original) = launcher.file.inner().removal_candidate()? {
                 if matches!(
                     inspect().await.map_err(Self::error)?,
                     LoadedJob::Absent | LoadedJob::Legacy
                 ) && !retained_plist_uses_launcher(&self.path, helper_path)
                 {
-                    launcher.remove_unchanged_file(&original)?;
+                    launcher.file.try_revert_unchanged(original).await?;
+                    launcher.owns_file = false;
                 }
             }
         }
@@ -619,6 +498,17 @@ fn retained_plist_uses_launcher(path: &Path, launcher: &Path) -> bool {
     match read_plist::<plist::Dictionary>(path) {
         Ok(None) => false,
         Ok(Some(plist)) => {
+            if plist.contains_key("RootDirectory") {
+                // A chroot can change the meaning of absolute paths as well.
+                return true;
+            }
+            let working_directory = match plist.get("WorkingDirectory") {
+                Some(plist::Value::String(directory)) if Path::new(directory).is_absolute() => {
+                    Some(Path::new(directory))
+                },
+                Some(_) => return true,
+                None => None,
+            };
             let arguments = match plist.get("ProgramArguments") {
                 Some(plist::Value::Array(arguments)) => arguments.as_slice(),
                 Some(_) => return true,
@@ -638,15 +528,23 @@ fn retained_plist_uses_launcher(path: &Path, launcher: &Path) -> bool {
             let Ok(metadata) = std_fs::metadata(launcher) else {
                 return true;
             };
-            // An interpreter can run the helper as a script argument. Check
-            // explicit paths, following symlinks and recognizing hard links.
+            // An interpreter can run the helper as a script argument. Resolve
+            // relative arguments in launchd's explicit working directory.
             path_references_launcher(program, launcher, &metadata).unwrap_or(true)
                 || arguments.iter().any(|argument| {
                     argument.as_string().is_none_or(|argument| {
                         let path = Path::new(argument);
-                        path.is_absolute()
-                            && path_references_launcher(path, launcher, &metadata)
-                                .unwrap_or_else(|error| error.kind() != ErrorKind::NotFound)
+                        let resolved;
+                        let path = if path.is_absolute() {
+                            path
+                        } else if let Some(directory) = working_directory {
+                            resolved = directory.join(path);
+                            &resolved
+                        } else {
+                            return false;
+                        };
+                        path_references_launcher(path, launcher, &metadata)
+                            .unwrap_or_else(|error| error.kind() != ErrorKind::NotFound)
                     })
                 })
         },
@@ -667,20 +565,6 @@ fn path_references_launcher(
 
 fn same_file(a: &std_fs::Metadata, b: &std_fs::Metadata) -> bool {
     (a.dev(), a.ino()) == (b.dev(), b.ino())
-}
-
-fn unchanged_file(a: &std_fs::Metadata, b: &std_fs::Metadata) -> bool {
-    same_file(a, b) && (a.ctime(), a.ctime_nsec()) == (b.ctime(), b.ctime_nsec())
-}
-
-fn launcher_metadata(path: &Path) -> Result<Option<std_fs::Metadata>, ActionErrorKind> {
-    match std_fs::symlink_metadata(path) {
-        Ok(metadata) => Ok(Some(metadata)),
-        Err(error) if matches!(error.kind(), ErrorKind::NotFound | ErrorKind::NotADirectory) => {
-            Ok(None)
-        },
-        Err(error) => Err(ActionErrorKind::GettingMetadata(path.into(), error)),
-    }
 }
 
 fn launcher_directory_exists(path: &Path, owner: Option<u32>) -> Result<bool, ActionErrorKind> {
@@ -1187,7 +1071,7 @@ mod tests {
         fs::write(&helper, &other_contents).await.unwrap();
 
         plan.action
-            .revert_with(skip_unload, || std::future::ready(Ok(LoadedJob::Other)))
+            .revert_with(skip_unload, || std::future::ready(Ok(LoadedJob::Absent)))
             .await
             .unwrap();
 
@@ -1197,6 +1081,11 @@ mod tests {
         fs::set_permissions(&helper, std_fs::Permissions::from_mode(0o000))
             .await
             .unwrap();
+        let file = plan.inner().launcher.as_ref().unwrap().file.inner();
+        assert!(matches!(
+            file.replan_atomically().unwrap_err().kind(),
+            ActionErrorKind::PathModeMismatch(_, 0, LAUNCHER_MODE)
+        ));
         plan.action
             .revert_with(skip_unload, || std::future::ready(Ok(LoadedJob::Absent)))
             .await
@@ -1214,6 +1103,76 @@ mod tests {
             .await
             .unwrap();
         assert_eq!(fs::read_link(&helper).await.unwrap(), target);
+    }
+
+    #[tokio::test]
+    async fn saved_receipt_preserves_an_identical_launcher_replaced_before_rollback() {
+        let dir = tempfile::tempdir().unwrap();
+        let plist = dir.path().join("hook.plist");
+        let helper = dir.path().join("nix-installer-repair");
+        let mut plan =
+            CreateNixHookService::plan_at(plist.clone(), temporary_launcher(dir.path()).await)
+                .unwrap();
+        plan.try_execute().await.unwrap();
+        let mut receipt = serde_json::to_value(&plan).unwrap();
+        let mut saved: StatefulAction<CreateNixHookService> =
+            serde_json::from_value(receipt.clone()).unwrap();
+        fs::remove_file(plist).await.unwrap();
+        let replacement = dir.path().join("replacement");
+        fs::copy(&helper, &replacement).await.unwrap();
+        let replacement_inode = fs::metadata(&replacement).await.unwrap().ino();
+        fs::rename(replacement, &helper).await.unwrap();
+
+        saved
+            .action
+            .revert_with(skip_unload, || std::future::ready(Ok(LoadedJob::Absent)))
+            .await
+            .unwrap();
+        assert_eq!(
+            fs::metadata(&helper).await.unwrap().ino(),
+            replacement_inode
+        );
+
+        // A receipt written before file identities were recorded still reverts.
+        let file = receipt["action"]["launcher"]["file"]["action"]
+            .as_object_mut()
+            .unwrap();
+        assert!(file.remove("published_identity").is_some());
+        let mut old: StatefulAction<CreateNixHookService> =
+            serde_json::from_value(receipt).unwrap();
+        old.action
+            .revert_with(skip_unload, || std::future::ready(Ok(LoadedJob::Absent)))
+            .await
+            .unwrap();
+        assert!(!helper.exists());
+    }
+
+    #[cfg(target_os = "macos")]
+    #[tokio::test]
+    async fn rollback_preserves_a_finder_locked_launcher() {
+        let dir = tempfile::tempdir().unwrap();
+        let plist = dir.path().join("hook.plist");
+        let helper = dir.path().join("nix-installer-repair");
+        let mut action = CreateNixHookService::plan_at(plist, temporary_launcher(dir.path()).await)
+            .unwrap()
+            .action;
+        action.launcher.as_mut().unwrap().install().await.unwrap();
+
+        let set_flag = |flag| {
+            std::process::Command::new("/usr/bin/chflags")
+                .arg(flag)
+                .arg(&helper)
+                .status()
+                .unwrap()
+                .success()
+        };
+        assert!(set_flag("uchg"));
+        let reverted = action
+            .revert_with(skip_unload, || std::future::ready(Ok(LoadedJob::Absent)))
+            .await;
+        assert!(set_flag("nouchg"));
+        reverted.unwrap();
+        assert_eq!(fs::read_to_string(&helper).await.unwrap(), LAUNCHER_SCRIPT);
     }
 
     #[tokio::test]
@@ -1417,6 +1376,21 @@ mod tests {
                 .unwrap();
             assert!(helper.exists());
         }
+
+        retained.insert(
+            "WorkingDirectory".into(),
+            dir.path().to_str().unwrap().into(),
+        );
+        retained.insert(
+            "ProgramArguments".into(),
+            plist::Value::Array(vec![LEGACY_PROGRAM.into(), "nix-installer-repair".into()]),
+        );
+        plist::to_file_xml(&path, &retained).unwrap();
+        action
+            .revert_with(skip_unload, || std::future::ready(Ok(LoadedJob::Absent)))
+            .await
+            .unwrap();
+        assert!(helper.exists());
 
         retained.insert(
             "ProgramArguments".into(),
