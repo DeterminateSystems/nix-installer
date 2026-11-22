@@ -434,7 +434,9 @@ impl Action for CreateDirectory {
     #[tracing::instrument(level = "debug", skip_all)]
     async fn revert(&mut self) -> Result<(), ActionError> {
         if let Some(shared) = &self.shared {
-            return self.revert_shared(shared);
+            self.revert_shared(shared)?;
+            self.shared = Some(SharedDirectory::default());
+            return Ok(());
         }
         let Self {
             path,

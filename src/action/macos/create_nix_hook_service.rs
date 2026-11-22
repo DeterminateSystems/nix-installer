@@ -504,16 +504,18 @@ fn retained_plist_uses_launcher(path: &Path, launcher: &Path) -> bool {
             let Ok(metadata) = std_fs::metadata(launcher) else {
                 return true;
             };
-            // An interpreter can run the helper as a script argument. Resolve
-            // relative arguments in the system job's working directory.
-            path_references_launcher(program, launcher, &metadata).unwrap_or(true)
-                || arguments.iter().any(|argument| {
-                    argument.as_string().is_none_or(|argument| {
-                        let path = working_directory.join(argument);
-                        path_references_launcher(&path, launcher, &metadata)
-                            .unwrap_or_else(|error| error.kind() != ErrorKind::NotFound)
-                    })
+            // An interpreter can read the helper as a script argument or stdin.
+            // Resolve relative paths in the system job's working directory.
+            let references_launcher = |value: &plist::Value| {
+                value.as_string().is_none_or(|value| {
+                    let path = working_directory.join(value);
+                    path_references_launcher(&path, launcher, &metadata)
+                        .unwrap_or_else(|error| error.kind() != ErrorKind::NotFound)
                 })
+            };
+            path_references_launcher(program, launcher, &metadata).unwrap_or(true)
+                || arguments.iter().any(&references_launcher)
+                || plist.get("StandardInPath").is_some_and(references_launcher)
         },
         Err(_) => true,
     }
@@ -1501,6 +1503,46 @@ mod tests {
     }
 
     #[tokio::test]
+    async fn keeps_a_helper_used_as_standard_input_by_a_retained_plist() {
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().join("hook.plist");
+        let helper = dir.path().join("nix-installer-repair");
+        let mut action =
+            CreateNixHookService::plan_at(path.clone(), temporary_launcher(dir.path()).await)
+                .unwrap()
+                .action;
+        action.launcher.as_mut().unwrap().install().await.unwrap();
+        std::os::unix::fs::symlink(&helper, dir.path().join("script-input")).unwrap();
+
+        let mut retained = plist::Dictionary::new();
+        retained.insert("Program".into(), LEGACY_PROGRAM.into());
+        retained.insert(
+            "ProgramArguments".into(),
+            plist::Value::Array(vec![LEGACY_PROGRAM.into(), "-s".into()]),
+        );
+        retained.insert(
+            "WorkingDirectory".into(),
+            dir.path().to_str().unwrap().into(),
+        );
+        retained.insert("StandardInPath".into(), "script-input".into());
+        plist::to_file_xml(&path, &retained).unwrap();
+        action
+            .revert_with(skip_unload, || std::future::ready(Ok(LoadedJob::Absent)))
+            .await
+            .unwrap();
+        assert_eq!(fs::read_to_string(&helper).await.unwrap(), LAUNCHER_SCRIPT);
+
+        retained.insert("StandardInPath".into(), "/dev/null".into());
+        plist::to_file_xml(&path, &retained).unwrap();
+        action
+            .revert_with(skip_unload, || std::future::ready(Ok(LoadedJob::Absent)))
+            .await
+            .unwrap();
+        assert!(!helper.exists());
+        assert!(path.exists());
+    }
+
+    #[tokio::test]
     async fn keeps_a_helper_referenced_by_a_plist_created_during_the_live_probe() {
         let directory = tempfile::tempdir().unwrap();
         let path = directory.path().join("hook.plist");
@@ -1641,6 +1683,11 @@ mod tests {
         fs::remove_file(&path).await.unwrap();
         fs::rename(original, &path).await.unwrap();
         let mut owned: StatefulAction<CreateDirectory> = serde_json::from_value(receipt).unwrap();
+        owned.try_revert().await.unwrap();
+        assert!(!path.exists());
+        assert!(!owned.inner().has_shared_identity());
+        owned.try_execute().await.unwrap();
+        assert!(path.is_dir());
         owned.try_revert().await.unwrap();
         assert!(!path.exists());
     }

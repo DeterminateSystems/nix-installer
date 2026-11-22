@@ -280,11 +280,12 @@ pub enum ActionState {
     If [`Progress`](ActionState::Progress) an [`Action`](crate::action::Action) will be run on
     [`InstallPlan::install`](crate::InstallPlan::install) and [`InstallPlan::uninstall`](crate::InstallPlan::uninstall)
 
-    Only applicable to meta-actions that contain other multiple sub-actions.
+    An execution or revert attempt has started. Its effects may be partial,
+    including for a single base action such as directory creation.
     */
     Progress,
     /**
-    If [`Completed`](ActionState::Completed) an [`Action`](crate::action::Action) will be skipped
+    If [`Uncompleted`](ActionState::Uncompleted) an [`Action`](crate::action::Action) will be skipped
     on [`InstallPlan::uninstall`](crate::InstallPlan::uninstall) and executed on [`InstallPlan::install`](crate::InstallPlan::install)
     */
     Uncompleted,
