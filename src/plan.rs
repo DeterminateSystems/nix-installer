@@ -12,6 +12,8 @@ use owo_colors::OwoColorize;
 use semver::{Version, VersionReq};
 use tokio::sync::broadcast::Receiver;
 
+pub(crate) const PHASE1_RECEIPT_LOCATION: &str = "/nix/uninstall-phase1.json";
+
 pub const RECEIPT_LOCATION: &str = "/nix/receipt.json";
 
 /**
