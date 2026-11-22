@@ -29,6 +29,8 @@ const LAUNCHER_SCRIPT: &str =
 const SERVICE_LABEL: &str = "systems.determinate.nix-installer.nix-hook";
 const LEGACY_PROGRAM: &str = "/bin/sh";
 const LEGACY_COMMAND: &str = "/bin/wait4path /nix/nix-installer && /nix/nix-installer repair";
+const LEGACY_ARGUMENTS: [&str; 3] = [LEGACY_PROGRAM, "-c", LEGACY_COMMAND];
+const JOB_TOKEN_PREFIX: &str = "nix-installer-repair-";
 const HOOK_STDERR: &str = "/nix/.nix-installer-hook.err.log";
 const HOOK_STDOUT: &str = "/nix/.nix-installer-hook.out.log";
 const LAUNCHCTL_SERVICE_NOT_FOUND: i32 = 113;
@@ -47,8 +49,9 @@ pub struct CreateNixHookService {
 
 #[derive(Debug, Deserialize, Serialize, Clone)]
 struct HookLauncher {
-    #[serde(default)]
-    owns_file: bool,
+    // Keep the receipt field for compatibility with hooks published before file identities.
+    #[serde(default, rename = "owns_file")]
+    legacy_receipt_owns_file: bool,
     directory: Option<StatefulAction<CreateDirectory>>,
     file: StatefulAction<CreateFile>,
     #[serde(default)]
@@ -73,6 +76,12 @@ enum LoadedJob {
 }
 
 impl HookLauncher {
+    fn owns_published_file(&self) -> bool {
+        self.file
+            .inner()
+            .has_publication(self.legacy_receipt_owns_file)
+    }
+
     async fn install(&mut self) -> Result<(), ActionError> {
         let file = self.file.inner();
         let parent = file.path.parent().unwrap_or_else(|| Path::new("."));
@@ -99,10 +108,10 @@ impl HookLauncher {
 
     async fn publish(&mut self, file: StatefulAction<CreateFile>) -> Result<(), ActionError> {
         // The replacement action has no publication identity until it succeeds.
-        self.owns_file = false;
+        self.legacy_receipt_owns_file = false;
         self.file = file;
         self.file.try_execute().await?;
-        self.owns_file = true;
+        self.legacy_receipt_owns_file = true;
         Ok(())
     }
 }
@@ -124,7 +133,7 @@ impl CreateNixHookService {
             LAUNCHER_SCRIPT.into(),
         )?;
         Ok(HookLauncher {
-            owns_file: false,
+            legacy_receipt_owns_file: false,
             directory: (directory.state == ActionState::Uncompleted).then_some(directory),
             file,
             owns_plist: false,
@@ -144,10 +153,7 @@ impl CreateNixHookService {
         path: PathBuf,
         mut launcher: HookLauncher,
     ) -> Result<StatefulAction<Self>, ActionError> {
-        launcher.job_token = Some(format!(
-            "nix-installer-repair-{:032x}",
-            rand::random::<u128>()
-        ));
+        launcher.job_token = Some(format!("{JOB_TOKEN_PREFIX}{:032x}", rand::random::<u128>()));
         let this = Self {
             path,
             service_label: SERVICE_LABEL.into(),
@@ -297,7 +303,7 @@ impl Action for CreateNixHookService {
                 vec![],
             ));
         }
-        if launcher.owns_file {
+        if launcher.owns_published_file() {
             description.extend(launcher.file.describe_revert_with(|file| {
                 vec![ActionDescription::new(
                     format!(
@@ -368,15 +374,20 @@ impl CreateNixHookService {
         // The stock legacy job runs the installer directly. Leave it loaded,
         // but remove the new files if no job or retained plist uses the helper.
         let helper_path = &launcher.file.inner().path;
-        if launcher.owns_file && !retained_plist_uses_launcher(&self.path, helper_path) {
-            if let Some(original) = launcher.file.inner().removal_candidate()? {
+        if launcher.owns_published_file() && !retained_plist_uses_launcher(&self.path, helper_path)
+        {
+            if let Some(original) = launcher
+                .file
+                .inner()
+                .removal_candidate(launcher.legacy_receipt_owns_file)?
+            {
                 if matches!(
                     inspect().await.map_err(Self::error)?,
                     LoadedJob::Absent | LoadedJob::Legacy
                 ) && !retained_plist_uses_launcher(&self.path, helper_path)
                 {
                     launcher.file.try_revert_unchanged(original).await?;
-                    launcher.owns_file = false;
+                    launcher.legacy_receipt_owns_file = false;
                 }
             }
         }
@@ -440,6 +451,11 @@ fn identify_loaded_job(output: &str, path: &Path, token: Option<&str>) -> Loaded
     if field("\tpath = ").map(Path::new) != Some(path) {
         return LoadedJob::Other;
     }
+    // The loaded configuration can differ from the plist on disk. Neither
+    // stock hook configures stdin, even when its command line matches.
+    if field("\tstdin path = ").is_some() {
+        return LoadedJob::Other;
+    }
     let mut lines = output.lines().skip_while(|line| *line != "\targuments = {");
     if lines.next().is_none() {
         return LoadedJob::Other;
@@ -449,12 +465,13 @@ fn identify_loaded_job(output: &str, path: &Path, token: Option<&str>) -> Loaded
         if line == "\t}" {
             let program = field("\tprogram = ");
             if let Some(token) = token {
-                if program == Some(LAUNCHER_PATH) && arguments == [LAUNCHER_PATH, token] {
+                let expected = named_arguments(Some(token));
+                if program == expected.clone().next() && arguments.iter().copied().eq(expected) {
                     return LoadedJob::Owned;
                 }
             }
-            if program == Some(LEGACY_PROGRAM)
-                && arguments == [LEGACY_PROGRAM, "-c", LEGACY_COMMAND]
+            if program == LEGACY_ARGUMENTS.first().copied()
+                && arguments == LEGACY_ARGUMENTS
                 && field("\tstdout path = ") == Some(HOOK_STDOUT)
                 && field("\tstderr path = ") == Some(HOOK_STDERR)
             {
@@ -574,36 +591,34 @@ fn stage_plist(
 }
 
 fn generate_plist(service_label: &str) -> LaunchctlHookPlist {
+    installed_plist(service_label, None)
+}
+
+fn named_arguments(token: Option<&str>) -> impl Iterator<Item = &str> + Clone {
+    [Some(LAUNCHER_PATH), token].into_iter().flatten()
+}
+
+fn installed_plist(service_label: &str, token: Option<&str>) -> LaunchctlHookPlist {
     LaunchctlHookPlist {
         keep_alive: KeepAliveOpts {
             successful_exit: false,
         },
         label: service_label.into(),
-        program_arguments: vec![LAUNCHER_PATH.into()],
+        program_arguments: named_arguments(token).map(str::to_owned).collect(),
         standard_error_path: HOOK_STDERR.into(),
         standard_out_path: HOOK_STDOUT.into(),
     }
 }
 
 fn valid_job_token(value: &str) -> bool {
-    value
-        .strip_prefix("nix-installer-repair-")
-        .is_some_and(|suffix| {
-            suffix.len() == 32 && suffix.bytes().all(|byte| byte.is_ascii_hexdigit())
-        })
-}
-
-fn installed_plist(service_label: &str, token: Option<&str>) -> LaunchctlHookPlist {
-    let mut plist = generate_plist(service_label);
-    if let Some(token) = token {
-        plist.program_arguments.push(token.into());
-    }
-    plist
+    value.strip_prefix(JOB_TOKEN_PREFIX).is_some_and(|suffix| {
+        suffix.len() == 32 && suffix.bytes().all(|byte| byte.is_ascii_hexdigit())
+    })
 }
 
 fn legacy_plist(service_label: &str) -> LaunchctlHookPlist {
     LaunchctlHookPlist {
-        program_arguments: vec![LEGACY_PROGRAM.into(), "-c".into(), LEGACY_COMMAND.into()],
+        program_arguments: LEGACY_ARGUMENTS.map(str::to_owned).into(),
         ..generate_plist(service_label)
     }
 }
@@ -652,7 +667,7 @@ mod tests {
 
     async fn temporary_launcher(directory: &Path) -> HookLauncher {
         HookLauncher {
-            owns_file: false,
+            legacy_receipt_owns_file: false,
             directory: None,
             owns_plist: false,
             job_token: None,
@@ -710,7 +725,7 @@ mod tests {
         let mut replan = replan;
         replan.try_execute().await.unwrap();
         let launcher = replan.inner().launcher.as_ref().unwrap();
-        assert!(!launcher.owns_file && !launcher.owns_plist);
+        assert!(!launcher.owns_published_file() && !launcher.owns_plist);
         assert!(replan.describe_revert().is_empty());
     }
 
@@ -872,7 +887,7 @@ mod tests {
         let mut resumed: StatefulAction<CreateNixHookService> =
             serde_json::from_slice(&serde_json::to_vec(&action).unwrap()).unwrap();
         let launcher = resumed.action.launcher.as_mut().unwrap();
-        assert!(launcher.owns_file);
+        assert!(launcher.owns_published_file());
         let restored = dir.path().join("saved-helper");
         fs::rename(&helper, &restored).await.unwrap();
         let retry = launcher.file.inner().replan_atomically().unwrap();
@@ -961,7 +976,7 @@ mod tests {
             file.replan_atomically().unwrap_err().kind(),
             ActionErrorKind::UnexpectedAcl(path) if path == &helper
         ));
-        assert!(file.removal_candidate().unwrap().is_none());
+        assert!(file.removal_candidate(false).unwrap().is_none());
     }
 
     #[tokio::test]
@@ -1328,6 +1343,11 @@ mod tests {
             LoadedJob::Other
         );
         assert_eq!(identify_loaded_job(&loaded, path, None), LoadedJob::Other);
+        let customized = loaded.replace("\n\tprogram", "\n\tstdin path = /dev/null\n\tprogram");
+        assert_eq!(
+            identify_loaded_job(&customized, path, Some(token)),
+            LoadedJob::Other
+        );
     }
 
     #[tokio::test]
@@ -1563,7 +1583,7 @@ mod tests {
         assert!(directory.path().join("nix-installer-repair").exists());
     }
     #[tokio::test]
-    async fn removes_migrated_files_while_the_stock_legacy_job_is_loaded() {
+    async fn cleans_up_migrated_files_only_for_a_stock_legacy_job() {
         let dir = tempfile::tempdir().unwrap();
         let path = dir.path().join("hook.plist");
         write_plist(&path, &legacy_plist(SERVICE_LABEL)).unwrap();
@@ -1586,6 +1606,21 @@ mod tests {
             ),
             LoadedJob::Other
         );
+        let helper = dir.path().join("nix-installer-repair");
+        let customized = loaded.replace(
+            "\n\tstdout path",
+            &format!("\n\tstdin path = {}\n\tstdout path", helper.display()),
+        );
+        let customized = identify_loaded_job(&customized, &path, token.as_deref());
+        assert_eq!(customized, LoadedJob::Other);
+        action
+            .action
+            .revert_with(skip_unload, || std::future::ready(Ok(customized)))
+            .await
+            .unwrap();
+        assert!(path.exists());
+        assert_eq!(fs::read_to_string(&helper).await.unwrap(), LAUNCHER_SCRIPT);
+
         action
             .action
             .revert_with(skip_unload, || std::future::ready(Ok(job)))

@@ -311,16 +311,28 @@ impl CreateFile {
         }))
     }
 
-    pub(crate) fn removal_candidate(&self) -> Result<Option<FileSnapshot>, ActionError> {
+    pub(crate) fn has_publication(&self, legacy_receipt_owns_file: bool) -> bool {
+        // Early hook receipts recorded ownership without a file identity.
+        self.published_identity.is_some() || legacy_receipt_owns_file
+    }
+
+    pub(crate) fn removal_candidate(
+        &self,
+        legacy_receipt_owns_file: bool,
+    ) -> Result<Option<FileSnapshot>, ActionError> {
+        if !self.has_publication(legacy_receipt_owns_file) {
+            return Ok(None);
+        }
+        Ok(self.open_removable_file()?.filter(|snapshot| {
+            self.published_identity
+                .as_ref()
+                .is_none_or(|identity| *identity == PublishedPathIdentity::from(&snapshot.metadata))
+        }))
+    }
+
+    fn open_removable_file(&self) -> Result<Option<FileSnapshot>, ActionError> {
         match self.open_matching_file() {
-            Ok(Some(snapshot))
-                if !is_unlink_protected(&snapshot.metadata)
-                    && self.published_identity.as_ref().is_none_or(|identity| {
-                        *identity == PublishedPathIdentity::from(&snapshot.metadata)
-                    }) =>
-            {
-                Ok(Some(snapshot))
-            },
+            Ok(Some(snapshot)) if !is_unlink_protected(&snapshot.metadata) => Ok(Some(snapshot)),
             Ok(_) => Ok(None),
             Err(error)
                 if matches!(
@@ -340,7 +352,8 @@ impl CreateFile {
     }
 
     fn remove_unchanged_file(&self, original: FileSnapshot) -> Result<(), ActionError> {
-        let Some(current) = self.removal_candidate()? else {
+        // The original snapshot was already checked against the publication record.
+        let Some(current) = self.open_removable_file()? else {
             return Ok(());
         };
         // An independent writer can still change the pathname between the last
@@ -413,8 +426,14 @@ impl StatefulAction<CreateFile> {
         &mut self,
         snapshot: FileSnapshot,
     ) -> Result<(), ActionError> {
-        self.try_revert_with(|file| Box::pin(async move { file.remove_unchanged_file(snapshot) }))
-            .await
+        self.try_revert_with(|file| {
+            Box::pin(async move {
+                file.remove_unchanged_file(snapshot)?;
+                file.published_identity = None;
+                Ok(())
+            })
+        })
+        .await
     }
 }
 
@@ -425,7 +444,11 @@ impl Action for CreateFile {
         ActionTag("create_file")
     }
     fn tracing_synopsis(&self) -> String {
-        format!("Create or overwrite file `{}`", self.path.display())
+        if self.atomic {
+            format!("Create file `{}` only if it is absent", self.path.display())
+        } else {
+            format!("Create or overwrite file `{}`", self.path.display())
+        }
     }
 
     fn tracing_span(&self) -> Span {
@@ -522,12 +545,10 @@ impl Action for CreateFile {
     #[tracing::instrument(level = "debug", skip_all)]
     async fn revert(&mut self) -> Result<(), ActionError> {
         if self.atomic {
-            // A completed plan can also describe a file that already existed.
-            if self.published_identity.is_some() {
-                if let Some(snapshot) = self.removal_candidate()? {
-                    self.remove_unchanged_file(snapshot)?;
-                }
+            if let Some(snapshot) = self.removal_candidate(false)? {
+                self.remove_unchanged_file(snapshot)?;
             }
+            self.published_identity = None;
             return Ok(());
         }
         let Self {
@@ -563,7 +584,11 @@ mod test {
         let plan = || CreateFile::plan_atomically(&path, None, None, 0o700, "helper".into());
 
         let mut owned = plan()?;
+        assert!(owned.describe_execute()[0]
+            .description
+            .contains("only if it is absent"));
         owned.try_execute().await?;
+        assert!(owned.inner().has_publication(false));
         let mut existing = plan()?;
         assert!(existing.describe_revert().is_empty());
         existing.try_revert().await?;
@@ -572,6 +597,7 @@ mod test {
             .description
             .contains("if it still matches"));
         owned.try_revert().await?;
+        assert!(!owned.inner().has_publication(false));
         assert!(!path.exists());
 
         let mut owned = plan()?;
