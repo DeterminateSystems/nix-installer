@@ -3,7 +3,7 @@ use std::{path::PathBuf, process::ExitCode, time::SystemTime};
 use crate::{
     action::{Action, ActionState, StatefulAction},
     cli::{ensure_root, interaction::PromptChoice},
-    plan::RECEIPT_LOCATION,
+    plan::{PHASE1_RECEIPT_LOCATION, RECEIPT_LOCATION},
     InstallPlan,
 };
 use clap::{ArgAction, Parser};
@@ -13,7 +13,6 @@ use owo_colors::OwoColorize;
 
 use crate::cli::CommandExecute;
 
-pub(crate) const PHASE1_RECEIPT_LOCATION: &str = "/nix/uninstall-phase1.json";
 pub(crate) const PHASE2_RECEIPT_LOCATION: &str = "/nix/uninstall-phase2.json";
 
 /// Split an existing receipt into two phases, one that cleans up the Nix store (phase 2), and
